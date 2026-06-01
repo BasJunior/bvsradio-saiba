@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9667714563110814"
+     crossorigin="anonymous"></div>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="BVS Radio - Listen Live" />
+    <title>Listen Live - BVS Radio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/style.css" />
+    <link rel="icon" type="image/png" href="assets/images/Bvsradio_logo.png?v=2" sizes="32x32" />
+    <link rel="apple-touch-icon" href="assets/images/Bvsradio_logo.png?v=2" sizes="180x180" />
+</head>
+<body class="home-page theme-bvs">
+<header class="site-header">
+    <div class="container">
+        <a class="logo" href="index.html" aria-label="BVS Radio">
+            <img src="assets/images/Bvsradio_logo.png?v=2" alt="BVS Radio" class="logo-img" />
+        </a>
+        <nav class="nav" aria-label="Primary navigation">
+            <a href="index.html">Home</a>
+            <a href="radio.html" class="active">Radio</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact</a>
+            <a href="privacy.html">Privacy</a>
+            <a href="terms.html">Terms</a>
+        </nav>
+        <div class="header-actions">
+            <div class="searchbar" role="search">
+                <input id="siteSearch" type="search" placeholder="Search music, shows, products..." aria-label="Search BVS Radio" autocomplete="off" />
+                <ul id="searchResults" class="search-results" role="listbox" aria-label="Search results" hidden></ul>
+            </div>
+            <button class="btn btn-secondary" id="loginBtn">Log in</button>
+            <button class="btn" id="signUpBtn">Sign up</button>
+        </div>
+    </div>
+</header>
+
+<main class="container">
+    <section class="card">
+        <div class="card-content">
+            <h1>Listen Live</h1>
+            <div class="player-container">
+                <!-- Spotify-like player bar would go here -->
+                <div class="player-bar">
+                    <div class="player-info">
+                        <div class="player-artwork">
+                            <img src="assets/images/Bvsradio_logo.png?v=2" alt="Now Playing" class="player-img">
+                        </div>
+                        <div class="player-details">
+                            <div class="player-title">BVS Radio Live</div>
+                            <div class="player-artist">Streaming Now</div>
+                        </div>
+                    </div>
+                    <div class="player-controls">
+                        <button class="player-btn prev">&#9664;&#9664;</button>
+                        <button class="player-btn play">&#9658;</button>
+                        <button class="player-btn next">&#9654;&#9654;</button>
+                    </div>
+                    <div class="player-progress">
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="progress-time">
+                            <span class="current-time">0:00</span>
+                            <span class="duration">0:00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="player-footer">
+                    <div class="player-volume">
+                        <button class="volume-btn">&#9836;</button>
+                        <input type="range" min="0" max="100" value="70" class="volume-slider">
+                    </div>
+                    <div class="player-actions">
+                        <button class="action-btn">&#9835;</button>
+                        <button class="action-btn">&#128266;</button>
+                        <button class="action-btn">&#128250;</button>
+                    </div>
+                </div>
+            </div>
+            <p>Enjoy our 24/7 live stream featuring the best in music, entertainment, and community programming.</p>
+            <p>Tune in anytime for fresh updates, exclusive mixes, and live shows from our talented DJs.</p>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container">
+        <nav class="footer-nav">
+            <a href="index.html">Home</a>
+            <a href="radio.html">Radio</a>
+            <a href="about.html">About</a>
+            <a href="contact.html">Contact</a>
+            <a href="privacy.html">Privacy</a>
+            <a href="terms.html">Terms</a>
+        </nav>
+        <small>© <span id="year"></span> BVS Radio. All rights reserved.</small>
+    </div>
+</footer>
+
+<script src="assets/js/main.js" defer></script>
+<script src="assets/js/player.js"></script>
+</body>
+</html>
