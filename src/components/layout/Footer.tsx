@@ -8,15 +8,17 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-bold text-brand mb-4">BVS Radio</h3>
             <p className="text-sm text-text-secondary">
-              Zimbabwe's premier online radio station. Discover African music, upload your tracks, and connect with artists.
+              Zimbabwe&apos;s premier online radio station. Discover African music, upload your tracks, and connect with artists.
             </p>
           </div>
           <div>
             <h4 className="text-sm font-semibold text-text-primary mb-3">Platform</h4>
             <div className="flex flex-col gap-2">
-              <Link href="/catalogue" className="text-sm text-text-secondary hover:text-brand transition-colors">Catalogue</Link>
-              <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Upload Music</Link>
               <Link href="/radio" className="text-sm text-text-secondary hover:text-brand transition-colors">Live Radio</Link>
+              <Link href="/catalogue" className="text-sm text-text-secondary hover:text-brand transition-colors">Music Catalogue</Link>
+              <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Upload Music</Link>
+              <Link href="/blog" className="text-sm text-text-secondary hover:text-brand transition-colors">Blog</Link>
+              <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Shop</Link>
             </div>
           </div>
           <div>
@@ -24,7 +26,8 @@ export default function Footer() {
             <div className="flex flex-col gap-2">
               <Link href="/about" className="text-sm text-text-secondary hover:text-brand transition-colors">About</Link>
               <Link href="/contact" className="text-sm text-text-secondary hover:text-brand transition-colors">Contact</Link>
-              <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Shop</Link>
+              <Link href="/privacy" className="text-sm text-text-secondary hover:text-brand transition-colors">Privacy</Link>
+              <Link href="/terms" className="text-sm text-text-secondary hover:text-brand transition-colors">Terms</Link>
             </div>
           </div>
           <div>
