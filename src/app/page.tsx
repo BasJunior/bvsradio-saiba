@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { featuredPosts, blogPosts } from "@/lib/blog";
+import RadioPlayer from "@/components/RadioPlayer";
 
 // Daily Updates
 const dailyUpdates = [
