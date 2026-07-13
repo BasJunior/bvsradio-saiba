@@ -8,7 +8,7 @@ interface RadioPlayerProps {
 }
 
 export default function RadioPlayer({ 
-  streamUrl = "https://YOUR-STREAM-URL-HERE", 
+  streamUrl = "https://stream.bvsradio.com/stream" // TODO: replace with real stream URL, 
   stationName = "BVS Radio Live" 
 }: RadioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
