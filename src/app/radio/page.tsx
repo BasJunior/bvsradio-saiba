@@ -1,34 +1,82 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import RadioPlayer from "@/components/RadioPlayer";
+import Image from "next/image";
 
 export const metadata: Metadata = {
-  title: "Listen Live",
-  description: "BVS Radio — Listen live 24/7",
+  title: "Listen Live | BVS Radio",
+  description: "Stream BVS Radio live 24/7 — Zimbabwe's premier online radio station. Music, culture, and community from Harare to the world.",
 };
 
 export default function RadioPage() {
   // TODO: Replace with the real BVS Radio stream URL
-  const streamUrl = "https://YOUR-ACTUAL-STREAM-URL-HERE";
+  const streamUrl = "https://stream.bvsradio.com/stream";
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <section className="bg-bg-card/50 backdrop-blur rounded-2xl border border-white/10 p-8 md:p-12">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">Listen Live</h1>
-          <p className="text-text-secondary text-lg">
-            Tune in 24/7 for the best in music, entertainment, and community programming.
+    <div className="max-w-5xl mx-auto px-6 py-12">
+      <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
+        <div>
+          <h1 className="text-5xl font-semibold tracking-[-0.025em] mb-4">Listen Live</h1>
+          <p className="text-xl text-text-secondary mb-6">
+            The soundtrack of Zimbabwe. Broadcasting 24/7 in true HiFi from Harare with the best in local and African music, 
+            exclusive interviews, and cultural conversations.
           </p>
+          <div className="flex flex-wrap gap-2 text-sm text-text-secondary">
+            <span>Live daily broadcasts</span>
+            <span className="opacity-40">·</span>
+            <span>Global audience</span>
+            <span className="opacity-40">·</span>
+            <span>Zimbabwean sound</span>
+          </div>
         </div>
 
-        {/* Functional Player */}
+        <div className="relative aspect-[16/9] rounded-2xl overflow-hidden border border-white/10">
+          <Image 
+            src="/images/mic-closeup.jpg" 
+            alt="BVS Radio microphone in studio" 
+            fill 
+            className="object-cover" 
+          />
+        </div>
+      </div>
+
+      {/* Live Player */}
+      <div className="max-w-md mx-auto mb-12">
         <RadioPlayer streamUrl={streamUrl} stationName="BVS Radio Live" />
-
-        {/* Stream Info */}
-        <div className="text-center text-text-secondary space-y-2">
-          <p>Enjoy our 24/7 live stream featuring the best in music, entertainment, and community programming.</p>
-          <p>Tune in anytime for fresh updates, exclusive mixes, and live shows from our talented DJs.</p>
+        <div className="text-center mt-4 text-xs text-text-secondary">
+          Listening to live? Browse our catalogue for on-demand songs, beats &amp; more.
         </div>
-      </section>
+      </div>
+
+      {/* Browse like Spotify */}
+      <div>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-semibold">Browse the Catalogue</h2>
+          <Link href="/catalogue" className="text-brand hover:underline text-sm">See all</Link>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { title: "Harare Nights", artist: "BVS Collective", img: "/images/festival-crowd.jpg" },
+            { title: "Vibrations", artist: "Wolf Bridges", img: "/images/musicians.jpg" },
+            { title: "Shona Soul", artist: "BVS Artists", img: "/images/hero-studio.jpg" },
+            { title: "City Lights", artist: "BVS Collective", img: "/images/female-host.jpg" },
+          ].map((track, i) => (
+            <Link key={i} href="/catalogue" className="group bg-bg-card/50 rounded-xl overflow-hidden border border-white/10 hover:border-brand/40 flex items-center gap-3 p-2">
+              <div className="relative w-16 h-16 flex-shrink-0">
+                <Image src={track.img} alt={track.title} fill className="object-cover rounded" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium truncate group-hover:text-brand">{track.title}</p>
+                <p className="text-sm text-text-secondary truncate">{track.artist}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-12 text-center text-sm text-text-secondary">
+        Love a track? Double-click it in <Link href="/catalogue" className="text-brand hover:underline">Browse</Link> to see the full album and purchase the download. Or get it mixed/mastered by <Link href="/shop" className="text-brand hover:underline">Wolf Bridges</Link>.
+      </div>
     </div>
   );
 }

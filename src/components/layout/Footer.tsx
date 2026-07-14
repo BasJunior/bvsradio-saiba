@@ -8,7 +8,7 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-bold text-brand mb-4">BVS Radio</h3>
             <p className="text-sm text-text-secondary">
-              Zimbabwe&apos;s premier online radio station. Discover African music, upload your tracks, and connect with artists.
+              BVS Radio (Best Virtual Sound) — Zimbabwe&apos;s premier online radio station. Discover African music, access pro services, upload your tracks, and connect with artists.
             </p>
           </div>
           <div>

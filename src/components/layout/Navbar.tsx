@@ -1,40 +1,88 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { featuredPosts } from '@/lib/blog'
 
 export default function Navbar() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+
+  const navLinks = [
+    { href: '/radio', label: 'Listen' },
+    { href: '/catalogue', label: 'Browse' },
+    { href: '/shop', label: 'Services' },
+    { href: '/upload', label: 'Upload' },
+    { href: '/blog', label: 'Blog' },
+    { href: '/about', label: 'About' },
+  ]
+
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/80 backdrop-blur-xl border-b border-white/10">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2">
+        <Link href="/" className="flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
           <Image src="/assets/images/Bvsradio_logo.png" alt="BVS Radio" width={32} height={32} className="rounded" />
-          <span className="text-xl font-bold text-brand">BVS Radio</span>
+          <span className="text-xl font-bold text-brand" title="Best Virtual Sound">BVS Radio</span>
         </Link>
 
-        <div className="hidden md:flex items-center gap-5">
-          <Link href="/radio" className="text-sm text-text-secondary hover:text-brand transition-colors">Radio</Link>
-          <Link href="/catalogue" className="text-sm text-text-secondary hover:text-brand transition-colors">Catalogue</Link>
-          <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Upload</Link>
-          <Link href="/blog" className="text-sm text-text-secondary hover:text-brand transition-colors">Blog</Link>
-          <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Shop</Link>
-          <Link href="/about" className="text-sm text-text-secondary hover:text-brand transition-colors">About</Link>
+        {/* Desktop Navigation */}
+        <div className="hidden md:flex items-center gap-6 text-sm">
+          {navLinks.map((link) => (
+            <Link key={link.href} href={link.href} className="text-text-secondary hover:text-brand transition-colors">
+              {link.label}
+            </Link>
+          ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <Link
-            href="/auth/login"
-            className="px-4 py-2 text-sm text-text-primary hover:text-brand transition-colors"
-          >
+        <div className="hidden md:flex items-center gap-3">
+          <Link href="/auth/login" className="px-4 py-2 text-sm text-text-primary hover:text-brand transition-colors">
             Sign In
           </Link>
-          <Link
-            href="/auth/signup"
-            className="px-4 py-2 text-sm font-medium bg-brand text-black rounded-full hover:bg-brand-dark transition-colors"
-          >
+          <Link href="/auth/signup" className="px-4 py-2 text-sm font-medium bg-brand text-black rounded-full hover:bg-brand-dark transition-colors">
             Join Free
           </Link>
         </div>
+
+        {/* Mobile Menu Button */}
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="md:hidden p-2 text-text-secondary hover:text-brand"
+          aria-label="Toggle menu"
+        >
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {isMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
       </div>
+
+      {/* Mobile Menu */}
+      {isMenuOpen && (
+        <div className="md:hidden border-t border-white/10 bg-bg-primary/95 backdrop-blur">
+          <div className="px-4 py-4 space-y-1">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block py-2.5 text-text-secondary hover:text-brand transition-colors"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                {link.label}
+              </Link>
+            ))}
+            <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
+              <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
+                Sign In
+              </Link>
+              <Link href="/auth/signup" className="py-2.5 text-center bg-brand text-black font-medium rounded-full" onClick={() => setIsMenuOpen(false)}>
+                Join Free
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }

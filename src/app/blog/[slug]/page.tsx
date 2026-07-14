@@ -1,70 +1,29 @@
-import type { Metadata } from "next";
-import Link from "next/link";
 import { blogPosts } from "@/lib/blog";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
-interface Props {
-  params: Promise<{ slug: string }>;
-}
-
-export async function generateStaticParams() {
-  return blogPosts.map((post) => ({ slug: post.slug }));
-}
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const post = blogPosts.find((p) => p.slug === slug);
-  if (!post) return {};
-  return {
-    title: post.title,
-    description: post.description,
-  };
-}
-
-export default async function BlogPostPage({ params }: Props) {
-  const { slug } = await params;
-  const post = blogPosts.find((p) => p.slug === slug);
-  if (!post) notFound();
+export default function BlogPost({ params }: { params: { slug: string } }) {
+  const post = blogPosts.find((p) => p.slug === params.slug);
+  if (!post) return notFound();
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
-      <Link
-        href="/blog"
-        className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-brand transition-colors mb-8"
-      >
-        ← Back to Blog
-      </Link>
+    <div className="max-w-3xl mx-auto px-6 py-12">
+      <Link href="/blog" className="text-sm text-brand hover:underline">← Back to Journal</Link>
 
-      <article className="bg-bg-card/50 backdrop-blur rounded-2xl border border-white/10 p-8 md:p-12">
-        <div className="flex items-center gap-3 text-sm text-text-secondary mb-4">
-          <span>{post.date}</span>
-          <span>•</span>
-          <span>{post.readTime}</span>
-        </div>
+      <div className="mt-6">
+        <div className="text-xs tracking-widest text-text-secondary mb-2">{post.date} • {post.readTime}</div>
+        <h1 className="text-5xl font-bold tracking-tight leading-none mb-8">{post.title}</h1>
+      </div>
 
-        <h1 className="text-3xl md:text-4xl font-bold mb-6">{post.title}</h1>
-
-        <div className="space-y-6 text-text-secondary leading-relaxed">
-          {post.content.map((paragraph, i) => {
-            if (paragraph.startsWith("**") && paragraph.endsWith("**")) {
-              return (
-                <h2 key={i} className="text-2xl font-semibold text-text-primary mt-10 mb-4">
-                  {paragraph.replace(/\*\*/g, "")}
-                </h2>
-              );
-            }
-            return <p key={i}>{paragraph}</p>;
-          })}
-        </div>
+      <article className="prose prose-invert max-w-none prose-p:text-text-secondary prose-headings:text-white prose-strong:text-white">
+        {post.content.map((paragraph, i) => (
+          <p key={i} className="mb-5 text-[15px] leading-relaxed">{paragraph}</p>
+        ))}
       </article>
 
-      <div className="mt-8">
-        <Link
-          href="/blog"
-          className="text-brand hover:underline text-sm"
-        >
-          ← Back to all articles
-        </Link>
+      <div className="mt-16 pt-8 border-t border-white/10 flex justify-between text-sm">
+        <Link href="/blog" className="text-brand hover:underline">← All stories</Link>
+        <Link href="/upload" className="text-brand hover:underline">Submit your music</Link>
       </div>
     </div>
   );

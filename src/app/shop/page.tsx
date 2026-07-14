@@ -1,100 +1,247 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Shop",
-  description: "BVS Radio Shop — exclusive merchandise, music gear, and deals",
+  title: "Services | BVS Radio — Professional Audio Engineering",
+  description: "BVS Radio Services — Online mixing, mastering, and production by top engineers including Wolf Bridges. Upload your tracks and get industry-standard results.",
 };
 
-const products = [
-  { name: "BVS Radio Logo T-Shirt", price: "$24.99", desc: "Premium cotton tee with embroidered BVS logo" },
-  { name: "BVS Radio Ceramic Mug", price: "$14.99", desc: "12oz ceramic mug with gold foil logo" },
-  { name: "BVS Radio Pullover Hoodie", price: "$39.99", desc: "Heavyweight fleece hoodie with front pocket" },
-  { name: "BVS Radio Cap", price: "$19.99", desc: "Dad hat style with embroidered front logo" },
-  { name: "BVS Radio Sticker Pack", price: "$5.99", desc: "5 vinyl stickers featuring BVS designs" },
-  { name: "BVS Radio Phone Case", price: "$15.99", desc: "Impact-resistant case with printed artwork" },
+const engineers = [
+  {
+    name: "Wolf Bridges",
+    title: "Lead Mixing & Mastering Engineer",
+    image: "/images/female-host.jpg",
+    bio: "With credits on Spotify for artists across Africa and beyond, Wolf Bridges brings a signature warm, dynamic sound to every project. Specializing in Afrobeats, Hip-Hop, and live-recorded genres, he has mixed and mastered tracks that have amassed millions of streams. His work bridges traditional Zimbabwean sounds with modern production.",
+    spotifyCredits: "Mixing & Mastering credits on tracks by BVS artists and international acts. Featured on Spotify playlists like 'Afrobeats Hits' and 'African Heat'.",
+    specialties: ["Mixing", "Mastering", "Vocal Production", "Stem Work"],
+    turnaround: "24-72 hours",
+    testimonials: [
+      "Wolf's masters always hit different — the clarity and punch are unmatched. — BVS Artist",
+      "He understands the vision and elevates it without losing the soul of the track."
+    ]
+  },
+  {
+    name: "BVS Engineering Team",
+    title: "In-House Engineers",
+    image: "/images/musicians.jpg",
+    bio: "Our team of experienced engineers at BVS Studios deliver consistent, high-quality results tailored to Zimbabwean and African music.",
+    specialties: ["Mixing", "Mastering", "Custom Production"],
+    turnaround: "48 hours standard",
+  }
 ];
 
-export default function ShopPage() {
+const services = [
+  {
+    title: "Mixing",
+    engineer: "Wolf Bridges",
+    price: "From $89",
+    tiers: [
+      { name: "Basic Mix", price: "$89", desc: "Clean mix, 1 revision, 72hr turnaround" },
+      { name: "Pro Mix", price: "$149", desc: "Detailed mix + stems, 2 revisions, 48hr" },
+      { name: "Premium Mix", price: "$199", desc: "Full production mix, unlimited revisions, priority" }
+    ],
+    desc: "Professional mixing that brings your track to life. Reference tracks welcome."
+  },
+  {
+    title: "Mastering",
+    engineer: "Wolf Bridges",
+    price: "From $39",
+    tiers: [
+      { name: "Standard Master", price: "$69", desc: "Streaming optimized, 1 revision, 24hr" },
+      { name: "Premium Master", price: "$99", desc: "High-end + stems, 2 revisions, 12hr priority" },
+      { name: "Album Master", price: "$299", desc: "Up to 14 tracks, consistent loudness across project" }
+    ],
+    desc: "Industry-standard mastering for Spotify, Apple Music and all platforms."
+  },
+  {
+    title: "Mix + Master Bundle",
+    engineer: "Wolf Bridges",
+    price: "From $189",
+    tiers: [
+      { name: "Standard Bundle", price: "$189", desc: "Pro mix + standard master" },
+      { name: "Premium Bundle", price: "$249", desc: "Premium mix + premium master + stems" }
+    ],
+    desc: "Complete post-production package. The full Metropolis-style experience."
+  },
+  {
+    title: "Vocal Production",
+    engineer: "Wolf Bridges",
+    price: "From $65",
+    tiers: [
+      { name: "Vocal Comping & Tuning", price: "$65", desc: "Full comp + pitch correction. 1 revision." },
+      { name: "Full Vocal Production", price: "$129", desc: "Layering, harmonies, ad-libs, effects. 2 revisions." }
+    ],
+    desc: "Bring your vocals to professional level."
+  }
+];
+
+const processSteps = [
+  { step: "1", title: "Order", desc: "Choose your service and engineer (Wolf Bridges or team)." },
+  { step: "2", title: "Upload", desc: "Upload your tracks and share your vision via the form." },
+  { step: "3", title: "In The Studio", desc: "Wolf Bridges or our engineers work their magic with feedback loops." },
+  { step: "4", title: "Files Ready", desc: "Download your mastered/mixed files. Ready for BVS Radio or release." },
+];
+
+export default function ServicesPage() {
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12">
-      <section className="mb-12">
-        <h1 className="text-3xl md:text-4xl font-bold mb-3">BVS Radio Shop</h1>
-        <p className="text-text-secondary text-lg">
-          Exclusive merchandise, music gear, and special deals for BVS Radio fans and supporters.
-        </p>
+    <div className="max-w-7xl mx-auto px-6 py-12">
+      {/* Hero - Metropolis style */}
+      <section className="mb-16 text-center">
+        <div className="max-w-3xl mx-auto">
+          <p className="uppercase text-xs tracking-[3px] text-brand mb-2">HiFi Services • BVS Radio</p>
+          <h1 className="text-5xl font-semibold tracking-[-0.03em] mb-4">Professional Online Mixing &amp; Mastering</h1>
+          <p className="text-xl text-text-secondary mb-8">
+            Direct access to leading engineers. Upload your tracks from anywhere and receive true HiFi masters exactly as the artist intended.
+            Featuring Wolf Bridges and the BVS team.
+          </p>
+          <div className="text-xs text-brand/80">All masters delivered in lossless quality, ready for BVS Radio and streaming platforms.</div>
+          <div className="flex gap-4 justify-center">
+            <Link href="#engineers" className="px-8 py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark">Meet the Engineers</Link>
+            <Link href="#services" className="px-8 py-3 border border-white/30 rounded-full hover:bg-white/5">Browse Services</Link>
+          </div>
+        </div>
       </section>
 
-      <section className="mb-12">
-        <h2 className="text-2xl font-semibold mb-6">Featured Items</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {products.map((product) => (
-            <div
-              key={product.name}
-              className="bg-bg-card/50 backdrop-blur rounded-xl border border-white/10 overflow-hidden hover:border-brand/30 transition-all group"
-            >
-              <div className="aspect-square bg-gradient-to-br from-brand/10 to-accent/10 flex items-center justify-center">
-                <Image
-                  src="/assets/images/Bvsradio_logo.png"
-                  alt={product.name}
-                  width={120}
-                  height={120}
-                  className="opacity-60 group-hover:opacity-100 transition-opacity"
-                />
-              </div>
-              <div className="p-4">
-                <h3 className="font-semibold text-lg">{product.name}</h3>
-                <p className="text-sm text-text-secondary mb-2">{product.desc}</p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xl font-bold text-brand">{product.price}</span>
-                  <button className="px-4 py-2 bg-brand text-black text-sm font-semibold rounded-full hover:bg-brand-dark transition-all">
-                    Add to Cart
-                  </button>
+      {/* Featured Engineer - Wolf Bridges */}
+      <section id="engineers" className="mb-20">
+        <h2 className="text-3xl font-bold mb-8">Our Engineers</h2>
+        <div className="grid md:grid-cols-2 gap-8">
+          {engineers.map((eng, i) => (
+            <div key={i} className="bg-bg-card/40 border border-white/5 rounded-3xl overflow-hidden">
+              <div className="relative h-64">
+                <Image src={eng.image} alt={eng.name} fill className="object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                <div className="absolute bottom-0 left-0 p-6">
+                  <h3 className="text-3xl font-bold">{eng.name}</h3>
+                  <p className="text-brand">{eng.title}</p>
                 </div>
+              </div>
+              <div className="p-6 space-y-4">
+                <p className="text-text-secondary leading-relaxed">{eng.bio}</p>
+                
+                {eng.spotifyCredits && (
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-brand mb-1">Spotify Credits</p>
+                    <p className="text-sm">{eng.spotifyCredits}</p>
+                  </div>
+                )}
+
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-brand mb-2">Specialties</p>
+                  <div className="flex flex-wrap gap-2">
+                    {eng.specialties.map((s, idx) => (
+                      <span key={idx} className="text-xs px-3 py-1 bg-white/5 rounded-full">{s}</span>
+                    ))}
+                  </div>
+                </div>
+
+                <p className="text-sm text-text-secondary"><strong>Turnaround:</strong> {eng.turnaround}</p>
+
+                {eng.testimonials && (
+                  <div className="pt-4 border-t border-white/10 text-sm italic text-text-secondary">
+                    {eng.testimonials.map((t, idx) => <p key={idx} className="mb-2">“{t}”</p>)}
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-bg-card/50 backdrop-blur rounded-2xl border border-white/10 p-8">
-          <h2 className="text-2xl font-semibold mb-4">Exclusive Deals</h2>
-          <p className="text-text-secondary mb-4">Limited-time offers on:</p>
-          <ul className="space-y-3 text-text-secondary">
-            {[
-              "Music production equipment",
-              "Headphones and audio gear",
-              "Concert tickets and festival passes",
-              "Vinyl records and music memorabilia",
-              "Streaming service subscriptions",
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2">
-                <span className="text-brand mt-1">•</span>
-                {item}
-              </li>
-            ))}
-          </ul>
+      {/* Services - Metropolis style */}
+      <section id="services" className="mb-20">
+        <h2 className="text-3xl font-bold mb-2">Services</h2>
+        <p className="text-text-secondary mb-8 max-w-2xl">Bespoke mixing and mastering by Wolf Bridges and the BVS team. All services include commercial rights and direct communication.</p>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          {services.map((service, index) => (
+            <div key={index} className="bg-bg-card/40 border border-white/5 rounded-3xl p-8">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <h3 className="text-2xl font-semibold">{service.title}</h3>
+                  <p className="text-brand text-sm">by {service.engineer}</p>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm text-text-secondary">Starting at</div>
+                  <div className="text-2xl font-bold text-brand">{service.price}</div>
+                </div>
+              </div>
+
+              <p className="text-text-secondary mb-6">{service.desc}</p>
+
+              <div className="space-y-3 mb-6">
+                {service.tiers.map((tier, tIdx) => (
+                  <div key={tIdx} className="flex justify-between items-center border border-white/10 rounded-xl p-4 hover:border-brand/30">
+                    <div>
+                      <div className="font-medium">{tier.name}</div>
+                      <div className="text-sm text-text-secondary">{tier.desc}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-brand">{tier.price}</div>
+                      <Link href="#upload" className="text-xs text-brand hover:underline">Order</Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
-        <div className="bg-bg-card/50 backdrop-blur rounded-2xl border border-white/10 p-8">
-          <h2 className="text-2xl font-semibold mb-4">How to Order</h2>
-          <ol className="space-y-3 text-text-secondary">
-            {[
-              "Browse our featured products above",
-              'Click "Add to Cart" on items you want',
-              "Review your cart and proceed to checkout",
-              "Enter shipping and payment information",
-              "Confirm your order and await confirmation email",
-            ].map((step, i) => (
-              <li key={step} className="flex items-start gap-3">
-                <span className="w-6 h-6 bg-brand/20 text-brand rounded-full flex items-center justify-center text-sm font-semibold shrink-0 mt-0.5">
-                  {i + 1}
-                </span>
-                {step}
-              </li>
-            ))}
-          </ol>
+      </section>
+
+      {/* The Process - exact style from Metropolis */}
+      <section className="mb-20">
+        <h2 className="text-3xl font-bold mb-8">The Process</h2>
+        <div className="grid md:grid-cols-4 gap-6">
+          {processSteps.map((step, i) => (
+            <div key={i} className="bg-bg-card/50 border border-white/10 rounded-2xl p-6">
+              <div className="text-4xl font-bold text-brand/30 mb-4">{step.step}</div>
+              <h4 className="font-semibold text-lg mb-2">{step.title}</h4>
+              <p className="text-sm text-text-secondary">{step.desc}</p>
+            </div>
+          ))}
         </div>
+        <p className="text-center text-sm text-text-secondary mt-6">Upload your stems or mixes. Communicate directly with Wolf Bridges. Receive broadcast-ready files ready for BVS Radio or release.</p>
+      </section>
+
+      {/* Upload / Order Section */}
+      <section id="upload" className="bg-bg-card/30 border border-white/10 rounded-2xl p-8 md:p-12 mb-16">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-4">Start Your Project</h2>
+          <p className="text-text-secondary mb-8">Ready to work with Wolf Bridges or the BVS team? Upload your tracks below or browse our music first.</p>
+          
+          <Link href="/upload" className="inline-block px-10 py-4 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark text-lg mb-4">Upload Tracks for Service</Link>
+          
+          <div className="text-xs text-text-secondary mt-4">
+            Or <Link href="/radio" className="text-brand hover:underline">listen to tracks already mastered by our engineers</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Tie to BVS Music + Direct Downloads + Cart */}
+      <section className="text-center mb-12">
+        <p className="text-sm text-text-secondary mb-2">Listen to BVS artists in Radio, then purchase singles, beats or full releases directly from the catalogue.</p>
+        <Link href="/catalogue" className="inline-flex items-center gap-2 text-brand hover:underline">Browse &amp; Buy Music</Link>
+        <p className="text-xs text-text-secondary mt-4">Services by Wolf Bridges are also available for your own tracks.</p>
+        
+        {/* Simple Cart from catalogue */}
+        {typeof window !== 'undefined' && localStorage.getItem('bvs_cart') && JSON.parse(localStorage.getItem('bvs_cart') || '[]').length > 0 && (
+          <div className="mt-6 p-4 bg-bg-card/50 rounded-xl max-w-md mx-auto text-left">
+            <p className="font-semibold mb-2">Your Cart from Music Browse:</p>
+            {JSON.parse(localStorage.getItem('bvs_cart') || '[]').map((item: any, i: number) => (
+              <div key={i} className="text-sm flex justify-between py-1 border-b border-white/10 last:border-0">
+                <span>{item.title} - ${item.price}</span>
+                <button onClick={() => {
+                  const cart = JSON.parse(localStorage.getItem('bvs_cart') || '[]')
+                  const newCart = cart.filter((c: any) => c.id !== item.id)
+                  localStorage.setItem('bvs_cart', JSON.stringify(newCart))
+                  window.location.reload()
+                }} className="text-red-400 text-xs">Remove</button>
+              </div>
+            ))}
+            <button onClick={() => alert('Checkout simulated! In production this would process payment and deliver files.')} className="mt-3 w-full py-2 bg-brand text-black rounded-full text-sm font-semibold">Checkout Cart</button>
+          </div>
+        )}
       </section>
     </div>
   );

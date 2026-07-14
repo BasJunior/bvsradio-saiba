@@ -1,32 +1,35 @@
 import type { Metadata } from "next";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import Link from "next/link";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BVS Radio",
-  description: "Zimbabwe's Sound",
+  title: "BVS Radio | Best Virtual Sound — Zimbabwe's Sound • Live • Culture • Community",
+  description: "BVS Radio (Best Virtual Sound) — Zimbabwe's premier online radio station. Stream live 24/7, discover African music, access pro services (mixing, mastering, beats, presets, distribution), upload your tracks, and connect with the community.",
+  icons: {
+    icon: "/assets/images/Bvsradio_logo.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-zinc-950 text-white min-h-screen font-sans">
-        <div className="max-w-4xl mx-auto p-8">
-          <h1 className="text-5xl font-bold mb-8 text-yellow-400">BVS Radio</h1>
-          <p className="text-xl mb-8">Site has been fixed. The previous blank page issue has been resolved.</p>
-          <p className="mb-6">Current status: Live on Vercel with simplified layout.</p>
-          
-          <div className="bg-zinc-900 p-8 rounded-2xl border border-yellow-400/30">
-            <h2 className="text-2xl font-semibold mb-4">Quick Links</h2>
-            <ul className="space-y-3 text-lg">
-              <li><a href="/radio" className="text-yellow-400 hover:underline">→ Listen Live</a></li>
-              <li><a href="/shop" className="text-yellow-400 hover:underline">→ Shop Deals</a></li>
-              <li><a href="/blog" className="text-yellow-400 hover:underline">→ Latest News</a></li>
-            </ul>
-          </div>
+      <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
+        <Navbar />
+        <main className="pt-16">
+          {children}
+        </main>
+        <Footer />
 
-          <p className="mt-12 text-sm text-zinc-500">
-            Fixed by Saiba • Original complex layout + components temporarily simplified to resolve blank page.
-          </p>
-        </div>
+        {/* Floating Listen Button - clean premium style */}
+        <Link
+          href="/radio"
+          className="fixed bottom-6 right-6 z-50 group flex items-center gap-2 bg-brand hover:bg-brand-dark text-black font-medium px-6 py-2.5 rounded-full text-sm tracking-[-0.01em] transition-all"
+        >
+          Listen
+          <span className="opacity-60 group-hover:translate-x-0.5 transition">→</span>
+        </Link>
       </body>
     </html>
   );

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -34,61 +35,49 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-20">
-      <div className="max-w-md w-full">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome Back</h1>
-          <p className="text-text-secondary">Sign in to your account</p>
+    <div className="min-h-[85vh] flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-10">
+          <Link href="/" className="inline-flex items-center gap-2 mb-6">
+            <Image src="/assets/images/Bvsradio_logo.png" alt="BVS Radio" width={40} height={40} />
+            <span className="text-2xl font-bold text-brand">BVS Radio</span>
+          </Link>
+          <h1 className="text-3xl font-bold">Welcome back</h1>
+          <p className="text-text-secondary mt-1">Sign in to access your account and favourite tracks.</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-bg-card border border-white/10 rounded-xl focus:outline-none focus:border-brand transition-colors"
-              placeholder="you@example.com"
-              required
-            />
-          </div>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email address"
+            required
+            className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            required
+            className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+          />
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">Password</label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-bg-card border border-white/10 rounded-xl focus:outline-none focus:border-brand transition-colors"
-              placeholder="Your password"
-              required
-            />
-          </div>
+          {error && <p className="text-sm text-red-400">{error}</p>}
 
-          {error && (
-            <div className="bg-accent/10 border border-accent/30 rounded-xl px-4 py-3 text-sm text-accent">
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
+          <button 
+            type="submit" 
             disabled={loading}
-            className="w-full py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark disabled:opacity-50 transition-all"
+            className="w-full py-3.5 mt-2 bg-brand hover:bg-brand-dark disabled:opacity-70 text-black font-semibold rounded-full transition-all"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-text-secondary mt-6">
-          Don't have an account?{' '}
-          <Link href="/auth/signup" className="text-brand hover:underline">
-            Join Free
-          </Link>
-        </p>
+        <div className="mt-8 text-center text-sm">
+          Don&apos;t have an account? <Link href="/auth/signup" className="text-brand hover:underline">Join for free</Link>
+        </div>
       </div>
     </div>
   )

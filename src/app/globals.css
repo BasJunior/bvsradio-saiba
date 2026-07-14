@@ -10,13 +10,36 @@
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #A0A0B0;
   --color-accent: #E94560;
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 body {
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
   font-family: var(--font-sans);
+  font-feature-settings: "tnum";
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+}
+
+/* Premium typography scale (Apple-inspired) */
+h1, .text-5xl, .text-4xl, .text-3xl {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+h2, .text-2xl {
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+p, .text-base {
+  line-height: 1.5;
+}
+
+.text-sm {
+  letter-spacing: 0.005em;
 }
 
 /* Custom scrollbar */
