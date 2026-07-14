@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import fs from "node:fs";
+import path from "node:path";
 import RadioPlayer from "@/components/RadioPlayer";
 import Image from "next/image";
 
@@ -8,9 +10,36 @@ export const metadata: Metadata = {
   description: "Stream BVS Radio live 24/7 — Zimbabwe's premier online radio station. Music, culture, and community from Harare to the world.",
 };
 
+const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".m4a", ".ogg"]);
+
+function titleFromFilename(filename: string) {
+  return filename
+    .replace(/\.[^.]+$/, "")
+    .replace(/^pack\d+_/, "")
+    .replace(/_/g, " ")
+    .trim();
+}
+
+function getLocalTracks() {
+  const musicDir = path.join(process.cwd(), "public", "music");
+
+  if (!fs.existsSync(musicDir)) {
+    return [];
+  }
+
+  return fs
+    .readdirSync(musicDir)
+    .filter((filename) => AUDIO_EXTENSIONS.has(path.extname(filename).toLowerCase()))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .map((filename) => ({
+      title: titleFromFilename(filename),
+      artist: "BVS Radio",
+      src: `/music/${encodeURIComponent(filename)}`,
+    }));
+}
+
 export default function RadioPage() {
-  // TODO: Replace with the real BVS Radio stream URL
-  const streamUrl = "https://stream.bvsradio.com/stream";
+  const tracks = getLocalTracks();
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-12">
@@ -42,9 +71,9 @@ export default function RadioPage() {
 
       {/* Live Player */}
       <div className="max-w-md mx-auto mb-12">
-        <RadioPlayer streamUrl={streamUrl} stationName="BVS Radio Live" />
+        <RadioPlayer tracks={tracks} stationName="BVS Radio Live" />
         <div className="text-center mt-4 text-xs text-text-secondary">
-          Listening to live? Browse our catalogue for on-demand songs, beats &amp; more.
+          Playing the preserved BVS Radio library with {tracks.length} tracks from the VPS and WolfBrx packs.
         </div>
       </div>
 

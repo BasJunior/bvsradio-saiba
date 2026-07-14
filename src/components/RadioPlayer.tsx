@@ -2,13 +2,19 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 
+interface Track {
+  title: string;
+  artist: string;
+  src: string;
+}
+
 interface RadioPlayerProps {
-  streamUrl?: string;
+  tracks?: Track[];
   stationName?: string;
 }
 
 export default function RadioPlayer({ 
-  streamUrl = "https://stream.bvsradio.com/stream", // TODO: replace with real stream URL
+  tracks = [],
   stationName = "BVS Radio Live" 
 }: RadioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -16,9 +22,19 @@ export default function RadioPlayer({
   const [volume, setVolume] = useState(70);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const currentTrack = tracks[currentTrackIndex];
 
   const togglePlay = async () => {
     if (!audioRef.current) return;
+
+    if (!currentTrack) {
+      setError("No tracks are available yet.");
+      return;
+    }
 
     try {
       if (isPlaying) {
@@ -27,14 +43,13 @@ export default function RadioPlayer({
       } else {
         setIsLoading(true);
         setError(null);
-        
-        // Try to play
+
         await audioRef.current.play();
         setIsPlaying(true);
       }
     } catch (err) {
       console.error("Playback error:", err);
-      setError("Failed to play stream. Check the stream URL or try again.");
+      setError("Failed to play this track. Try the next one.");
       setIsPlaying(false);
     } finally {
       setIsLoading(false);
@@ -48,21 +63,62 @@ export default function RadioPlayer({
     }
   }, [volume]);
 
-  // Handle stream errors
+  useEffect(() => {
+    setCurrentTime(0);
+    setDuration(0);
+
+    if (audioRef.current) {
+      audioRef.current.load();
+
+      if (isPlaying && currentTrack) {
+        audioRef.current.play().catch((err) => {
+          console.error("Track change playback error:", err);
+          setError("Failed to play this track. Try the next one.");
+          setIsPlaying(false);
+        });
+      }
+    }
+  }, [currentTrackIndex]);
+
+  const playTrackAt = (index: number) => {
+    if (tracks.length === 0) return;
+    setError(null);
+    setCurrentTrackIndex((index + tracks.length) % tracks.length);
+  };
+
+  const playPrevious = () => {
+    playTrackAt(currentTrackIndex - 1);
+  };
+
+  const playNext = () => {
+    playTrackAt(currentTrackIndex + 1);
+  };
+
+  const formatTime = (seconds: number) => {
+    if (!Number.isFinite(seconds)) return "0:00";
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  };
+
   const handleError = () => {
-    setError("Stream error. The station may be offline or the URL is incorrect.");
+    setError("Track error. This file may be unavailable.");
     setIsPlaying(false);
     setIsLoading(false);
   };
 
+  const progress = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-xl mx-auto">
       <audio 
         ref={audioRef} 
-        src={streamUrl} 
+        src={currentTrack?.src} 
         preload="none"
         onError={handleError}
-        onEnded={() => setIsPlaying(false)}
+        onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+        onEnded={playNext}
       />
 
       {/* Player Card */}
@@ -70,7 +126,9 @@ export default function RadioPlayer({
         {/* Station Info */}
         <div className="text-center mb-6">
           <h2 className="text-2xl font-bold text-text-primary">{stationName}</h2>
-          <p className="text-text-secondary text-sm mt-1">24/7 Live Stream</p>
+          <p className="text-text-secondary text-sm mt-1">
+            {tracks.length > 0 ? `${tracks.length} tracks in rotation` : "No tracks loaded"}
+          </p>
         </div>
 
         {/* Error Message */}
@@ -80,11 +138,30 @@ export default function RadioPlayer({
           </div>
         )}
 
-        {/* Play Button */}
-        <div className="flex justify-center mb-8">
+        <div className="mb-6 text-center min-h-[4rem]">
+          <p className="text-lg font-semibold text-text-primary truncate">
+            {currentTrack?.title || "BVS Radio Library"}
+          </p>
+          <p className="text-sm text-text-secondary truncate">
+            {currentTrack?.artist || "BVS Radio"}
+          </p>
+        </div>
+
+        {/* Player Controls */}
+        <div className="flex items-center justify-center gap-5 mb-8">
+          <button
+            onClick={playPrevious}
+            disabled={tracks.length === 0}
+            className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center text-text-primary transition-all active:scale-95 disabled:opacity-40"
+            aria-label="Previous track"
+          >
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 6h2v12H6V6zm3.5 6L18 6v12l-8.5-6z" />
+            </svg>
+          </button>
           <button
             onClick={togglePlay}
-            disabled={isLoading}
+            disabled={isLoading || tracks.length === 0}
             className="w-20 h-20 bg-brand hover:bg-brand-dark rounded-full flex items-center justify-center text-black transition-all active:scale-95 disabled:opacity-50"
             aria-label={isPlaying ? "Pause" : "Play"}
           >
@@ -100,6 +177,26 @@ export default function RadioPlayer({
               </svg>
             )}
           </button>
+          <button
+            onClick={playNext}
+            disabled={tracks.length === 0}
+            className="w-12 h-12 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center text-text-primary transition-all active:scale-95 disabled:opacity-40"
+            aria-label="Next track"
+          >
+            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M16 6h2v12h-2V6zM6 18V6l8.5 6L6 18z" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mb-6">
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div className="h-full bg-brand" style={{ width: `${progress}%` }} />
+          </div>
+          <div className="flex justify-between text-xs text-text-secondary mt-2">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
         </div>
 
         {/* Volume Control */}
@@ -123,10 +220,10 @@ export default function RadioPlayer({
           {isPlaying ? (
             <div className="flex items-center justify-center gap-2 text-brand">
               <div className="w-2 h-2 bg-brand rounded-full animate-pulse" />
-              <span className="text-sm font-medium">LIVE • Streaming</span>
+              <span className="text-sm font-medium">Playing BVS Radio</span>
             </div>
           ) : (
-            <span className="text-sm text-text-secondary">Click play to start streaming</span>
+            <span className="text-sm text-text-secondary">Click play to start the BVS library</span>
           )}
         </div>
       </div>
