@@ -188,3 +188,33 @@ CREATE TRIGGER on_auth_user_created
 -- 9. STORAGE BUCKETS
 -- Run this in Supabase Storage section: Create bucket "bvsradio-audio"
 -- Set bucket to public
+
+-- 10. ORDERS TABLE
+CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  reference VARCHAR(40) UNIQUE NOT NULL,
+  customer_name VARCHAR(120) NOT NULL,
+  customer_email VARCHAR(160) NOT NULL,
+  customer_whatsapp VARCHAR(80),
+  payment_method VARCHAR(40) NOT NULL,
+  project_notes TEXT,
+  items JSONB NOT NULL DEFAULT '[]'::jsonb,
+  subtotal NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  total NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  status VARCHAR(40) NOT NULL DEFAULT 'pending_payment',
+  delivery_status VARCHAR(40) NOT NULL DEFAULT 'awaiting_payment',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_reference ON orders(reference);
+CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON orders(customer_email);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Orders can be inserted by checkout" ON orders
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Orders are admin managed" ON orders
+  FOR SELECT USING (false);

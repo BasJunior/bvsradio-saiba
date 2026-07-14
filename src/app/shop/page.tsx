@@ -179,7 +179,12 @@ export default function ServicesPage() {
                     </div>
                     <div className="text-right">
                       <div className="font-semibold text-brand">{tier.price}</div>
-                      <Link href="#upload" className="text-xs text-brand hover:underline">Order</Link>
+                      <Link
+                        href={`/checkout?item=${encodeURIComponent(tier.name)}&price=${tier.price.replace('$', '')}`}
+                        className="text-xs text-brand hover:underline"
+                      >
+                        Order
+                      </Link>
                     </div>
                   </div>
                 ))}
@@ -210,7 +215,10 @@ export default function ServicesPage() {
           <h2 className="text-3xl font-bold mb-4">Start Your Project</h2>
           <p className="text-text-secondary mb-8">Ready to work with Wolf Bridges or the BVS team? Upload your tracks below or browse our music first.</p>
           
-          <Link href="/upload" className="inline-block px-10 py-4 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark text-lg mb-4">Upload Tracks for Service</Link>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link href="/upload" className="inline-block px-8 py-4 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark text-lg">Upload Tracks</Link>
+            <Link href="/checkout?item=Custom%20BVS%20Service&price=69" className="inline-block px-8 py-4 border border-white/25 font-semibold rounded-full hover:bg-white/5 text-lg">Start Checkout</Link>
+          </div>
           
           <div className="text-xs text-text-secondary mt-4">
             Or <Link href="/radio" className="text-brand hover:underline">listen to tracks already mastered by our engineers</Link>
@@ -218,30 +226,14 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      {/* Tie to BVS Music + Direct Downloads + Cart */}
+      {/* Tie to BVS Music + Direct Downloads */}
       <section className="text-center mb-12">
         <p className="text-sm text-text-secondary mb-2">Listen to BVS artists in Radio, then purchase singles, beats or full releases directly from the catalogue.</p>
-        <Link href="/catalogue" className="inline-flex items-center gap-2 text-brand hover:underline">Browse &amp; Buy Music</Link>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link href="/catalogue" className="inline-flex items-center justify-center gap-2 text-brand hover:underline">Browse &amp; Buy Music</Link>
+          <Link href="/checkout" className="inline-flex items-center justify-center gap-2 text-brand hover:underline">Open Checkout</Link>
+        </div>
         <p className="text-xs text-text-secondary mt-4">Services by Wolf Bridges are also available for your own tracks.</p>
-        
-        {/* Simple Cart from catalogue */}
-        {typeof window !== 'undefined' && localStorage.getItem('bvs_cart') && JSON.parse(localStorage.getItem('bvs_cart') || '[]').length > 0 && (
-          <div className="mt-6 p-4 bg-bg-card/50 rounded-xl max-w-md mx-auto text-left">
-            <p className="font-semibold mb-2">Your Cart from Music Browse:</p>
-            {JSON.parse(localStorage.getItem('bvs_cart') || '[]').map((item: any, i: number) => (
-              <div key={i} className="text-sm flex justify-between py-1 border-b border-white/10 last:border-0">
-                <span>{item.title} - ${item.price}</span>
-                <button onClick={() => {
-                  const cart = JSON.parse(localStorage.getItem('bvs_cart') || '[]')
-                  const newCart = cart.filter((c: any) => c.id !== item.id)
-                  localStorage.setItem('bvs_cart', JSON.stringify(newCart))
-                  window.location.reload()
-                }} className="text-red-400 text-xs">Remove</button>
-              </div>
-            ))}
-            <button onClick={() => alert('Checkout simulated! In production this would process payment and deliver files.')} className="mt-3 w-full py-2 bg-brand text-black rounded-full text-sm font-semibold">Checkout Cart</button>
-          </div>
-        )}
       </section>
     </div>
   );

@@ -18,6 +18,7 @@ interface Track {
   src: string
   artwork: string
   bpm?: string
+  price?: number
 }
 
 const coverArt = '/music/Bvs-3000x3000%202.png'
@@ -239,6 +240,22 @@ const collectionCards = [
   { name: 'Producer Picks', detail: 'Beats ready for artists', img: '/images/hero-studio.jpg' },
 ]
 
+function trackPrice(track: Track) {
+  if (track.price !== undefined) {
+    return track.price
+  }
+
+  if (track.type === 'beat') {
+    return 29
+  }
+
+  if (track.type === 'mix') {
+    return 4
+  }
+
+  return 2
+}
+
 export default function CataloguePage() {
   const [search, setSearch] = useState('')
   const [genreFilter, setGenreFilter] = useState('All')
@@ -317,7 +334,7 @@ export default function CataloguePage() {
       return
     }
 
-    setCart([...cart, track])
+    setCart([...cart, { ...track, price: trackPrice(track) }])
   }
 
   const collectionTracks = selectedTrack
@@ -391,7 +408,7 @@ export default function CataloguePage() {
             </option>
           ))}
         </select>
-        <Link href="/shop" className="rounded-full bg-brand px-5 py-3 text-center text-sm font-semibold text-black hover:bg-brand-dark">
+        <Link href="/checkout" className="rounded-full bg-brand px-5 py-3 text-center text-sm font-semibold text-black hover:bg-brand-dark">
           Cart ({cart.length})
         </Link>
       </section>
@@ -423,7 +440,7 @@ export default function CataloguePage() {
                 <p className="truncate text-sm text-text-secondary">{track.artist}</p>
                 <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-secondary">
                   <span className="truncate">{track.genre}</span>
-                  <span className="flex-shrink-0">{track.bpm || track.duration}</span>
+                  <span className="flex-shrink-0">${trackPrice(track)}</span>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button
@@ -529,6 +546,7 @@ export default function CataloguePage() {
                 <p className="mt-1 text-sm text-text-secondary">
                   {selectedTrack.duration}
                   {selectedTrack.bpm ? ` · ${selectedTrack.bpm}` : ''}
+                  {` · $${trackPrice(selectedTrack)}`}
                 </p>
                 <p className="mt-5 text-text-secondary">{selectedTrack.description}</p>
 
