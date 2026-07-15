@@ -19,6 +19,23 @@ CREATE INDEX IF NOT EXISTS analytics_events_created_idx ON public.analytics_even
 ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY;
 -- No browser policies: only the service-role API can read or write this table.
 
+CREATE OR REPLACE FUNCTION public.prune_old_analytics_events()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  DELETE FROM public.analytics_events WHERE created_at < NOW() - INTERVAL '90 days';
+  RETURN NULL;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS prune_old_analytics_events_after_insert ON public.analytics_events;
+CREATE TRIGGER prune_old_analytics_events_after_insert
+  AFTER INSERT ON public.analytics_events
+  FOR EACH STATEMENT EXECUTE FUNCTION public.prune_old_analytics_events();
+
 CREATE OR REPLACE VIEW public.analytics_daily_summary WITH (security_invoker = true) AS
 SELECT date_trunc('day', created_at) AS day, event_name, count(*) AS events,
        count(DISTINCT session_id) FILTER (WHERE session_id IS NOT NULL) AS sessions
@@ -30,6 +47,3 @@ SELECT created_at, event_name, path, properties, source
 FROM public.analytics_events
 WHERE event_name IN ('playback_error', 'payment_error')
 ORDER BY created_at DESC;
-
--- Run weekly (or schedule with pg_cron if enabled) to keep only 90 days.
--- DELETE FROM public.analytics_events WHERE created_at < NOW() - INTERVAL '90 days';
