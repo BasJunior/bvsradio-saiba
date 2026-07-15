@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -18,10 +18,40 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
+    if (!isSupabaseConfigured()) {
+      setError('Account service is not configured. Please try again later.')
+      setLoading(false)
+      return
+    }
+
     try {
       const supabase = createClient()
-      const { error: loginError } = await supabase.auth.signInWithPassword({ email, password })
-      if (loginError) throw loginError
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      })
+      if (loginError) {
+        const msg = loginError.message || 'Login failed'
+        if (/confirm|not confirmed|email not confirmed/i.test(msg)) {
+          throw new Error(
+            'Email not confirmed yet. Check your inbox for the confirmation link, or use Resend on the signup page.',
+          )
+        }
+        if (/invalid login credentials/i.test(msg)) {
+          throw new Error(
+            'Invalid email or password. Use the password from signup (not your IONOS mail password). Or use Forgot password.',
+          )
+        }
+        throw loginError
+      }
+
+      if (data.session) {
+        await fetch('/api/auth/profile', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        }).catch(() => null)
+      }
+
       router.push('/')
       router.refresh()
     } catch (err: unknown) {
@@ -50,6 +80,7 @@ export default function LoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email address"
             required
+            autoComplete="email"
             className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
           />
           <input
@@ -58,22 +89,36 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
             required
+            autoComplete="current-password"
             className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
           />
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          <div className="flex justify-end">
+            <Link href="/auth/forgot-password" className="text-sm text-brand hover:underline">
+              Forgot password?
+            </Link>
+          </div>
 
-          <button 
-            type="submit" 
+          {error && (
+            <p className="text-sm text-red-400" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button
+            type="submit"
             disabled={loading}
             className="w-full py-3.5 mt-2 bg-brand hover:bg-brand-dark disabled:opacity-70 text-black font-semibold rounded-full transition-all"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
         <div className="mt-8 text-center text-sm">
-          Don&apos;t have an account? <Link href="/auth/signup" className="text-brand hover:underline">Join for free</Link>
+          Don&apos;t have an account?{' '}
+          <Link href="/auth/signup" className="text-brand hover:underline">
+            Join for free
+          </Link>
         </div>
       </div>
     </div>

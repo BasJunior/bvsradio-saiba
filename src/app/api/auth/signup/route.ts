@@ -53,8 +53,10 @@ export async function POST(req: Request) {
       }),
     })
 
+    // Admin API does not send confirmation email. Prefer client signUp at /auth/signup.
     return NextResponse.json({
-      message: 'Verification email sent. Check your inbox.',
+      message:
+        'User created. If email confirmation is required, complete signup via /auth/signup so Supabase can send the link.',
       user: { id: userId, email },
     })
   } catch (err: any) {

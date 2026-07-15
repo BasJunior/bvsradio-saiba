@@ -1,12 +1,33 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
+  const [user, setUser] = useState<User | null>(null)
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null))
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  const signOut = async () => {
+    if (!isSupabaseConfigured()) return
+    await createClient().auth.signOut()
+    setUser(null)
+    setIsMenuOpen(false)
+    window.location.href = '/'
+  }
 
   const navLinks = [
     { href: '/radio', label: 'Listen' },
@@ -75,12 +96,29 @@ export default function Navbar() {
           <Link href="/checkout" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
             Cart
           </Link>
-          <Link href="/auth/login" className="px-4 py-2 text-sm text-text-primary hover:text-brand transition-colors">
-            Sign In
-          </Link>
-          <Link href="/auth/signup" className="px-4 py-2 text-sm font-medium bg-brand text-black rounded-full hover:bg-brand-dark transition-colors">
-            Join Free
-          </Link>
+          {user ? (
+            <>
+              <span className="max-w-[10rem] truncate px-2 text-sm text-text-secondary" title={user.email || ''}>
+                {user.email}
+              </span>
+              <button
+                type="button"
+                onClick={signOut}
+                className="px-4 py-2 text-sm text-text-primary hover:text-brand transition-colors"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth/login" className="px-4 py-2 text-sm text-text-primary hover:text-brand transition-colors">
+                Sign In
+              </Link>
+              <Link href="/auth/signup" className="px-4 py-2 text-sm font-medium bg-brand text-black rounded-full hover:bg-brand-dark transition-colors">
+                Join Free
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -125,12 +163,23 @@ export default function Navbar() {
             <Link href="/library" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Library</Link>
             <Link href="/checkout" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Cart</Link>
             <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
-              <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
-                Sign In
-              </Link>
-              <Link href="/auth/signup" className="py-2.5 text-center bg-brand text-black font-medium rounded-full" onClick={() => setIsMenuOpen(false)}>
-                Join Free
-              </Link>
+              {user ? (
+                <>
+                  <p className="py-1 text-sm text-text-secondary truncate">{user.email}</p>
+                  <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
+                    Sign In
+                  </Link>
+                  <Link href="/auth/signup" className="py-2.5 text-center bg-brand text-black font-medium rounded-full" onClick={() => setIsMenuOpen(false)}>
+                    Join Free
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

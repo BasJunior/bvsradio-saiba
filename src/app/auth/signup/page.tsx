@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient } from '@/lib/supabase'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import { getAuthCallbackUrl } from '@/lib/auth-url'
 
 export default function SignupPage() {
   const [form, setForm] = useState({ email: '', password: '', fullName: '', username: '' })
@@ -11,6 +12,9 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
   const [resendMessage, setResendMessage] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
+
+  const redirectTo = getAuthCallbackUrl('/auth/confirmed')
 
   const resendConfirmation = async () => {
     if (!verificationEmail) return
@@ -19,32 +23,68 @@ export default function SignupPage() {
     const { error: resendError } = await supabase.auth.resend({
       type: 'signup',
       email: verificationEmail,
-      options: { emailRedirectTo: `${window.location.origin}/auth/confirmed` },
+      options: { emailRedirectTo: redirectTo },
     })
-    setResendMessage(resendError ? resendError.message : 'A new confirmation link was sent.')
+    setResendMessage(
+      resendError
+        ? resendError.message
+        : 'A new confirmation link was sent. Check inbox and Spam.',
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setInfo(null)
+
+    if (!isSupabaseConfigured()) {
+      setError('Account service is not configured. Please try again later.')
+      setLoading(false)
+      return
+    }
+
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters.')
+      setLoading(false)
+      return
+    }
 
     try {
       const supabase = createClient()
-      const { error: signupError } = await supabase.auth.signUp({
-        email: form.email,
+      const { data, error: signupError } = await supabase.auth.signUp({
+        email: form.email.trim(),
         password: form.password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/confirmed`,
+          emailRedirectTo: redirectTo,
           data: {
-            username: form.username,
-            full_name: form.fullName,
+            username: form.username.trim(),
+            full_name: form.fullName.trim(),
             role: 'artist',
           },
         },
       })
       if (signupError) throw signupError
-      setVerificationEmail(form.email)
+
+      // Supabase returns a user with empty identities when the email is already registered
+      const identities = data.user?.identities
+      if (data.user && Array.isArray(identities) && identities.length === 0) {
+        setError('An account with this email already exists. Sign in, or use Forgot password.')
+        return
+      }
+
+      if (data.session) {
+        // Email confirmations disabled in Supabase — go straight in
+        await fetch('/api/auth/profile', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        })
+        setInfo('Account created — you are signed in.')
+        window.location.href = '/'
+        return
+      }
+
+      setVerificationEmail(form.email.trim())
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Signup failed')
     } finally {
@@ -65,30 +105,96 @@ export default function SignupPage() {
         </div>
 
         {verificationEmail ? (
-          <div className="rounded-2xl border border-brand/30 bg-brand/10 p-6 text-center">
+          <div className="rounded-2xl border border-brand/30 bg-brand/10 p-6 text-center" role="status">
             <h2 className="text-xl font-semibold">Check your email</h2>
-            <p className="mt-3 text-sm text-text-secondary">We sent a confirmation link to <strong className="text-text-primary">{verificationEmail}</strong>. Open it on this device to finish creating your account.</p>
-            <p className="mt-4 text-xs text-text-secondary">Also check Spam or Promotions. The link may take a minute to arrive.</p>
+            <p className="mt-3 text-sm text-text-secondary">
+              We sent a confirmation link to{' '}
+              <strong className="text-text-primary">{verificationEmail}</strong>.
+              Open it to finish creating your account.
+            </p>
+            <p className="mt-4 text-xs text-text-secondary">
+              Also check Spam or Promotions. Links open on <strong>bvsradio.com</strong> (not localhost).
+              From address should be contact@bvsradio.com when custom SMTP is set.
+            </p>
             <div className="mt-5 flex flex-wrap justify-center gap-4 text-sm">
-              <button type="button" onClick={resendConfirmation} className="text-brand hover:underline">Resend confirmation</button>
-              <button type="button" onClick={() => setVerificationEmail(null)} className="text-brand hover:underline">Use a different email</button>
+              <button type="button" onClick={resendConfirmation} className="text-brand hover:underline">
+                Resend confirmation
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setVerificationEmail(null)
+                  setResendMessage(null)
+                }}
+                className="text-brand hover:underline"
+              >
+                Use a different email
+              </button>
+              <Link href="/auth/login" className="text-brand hover:underline">
+                Sign in
+              </Link>
             </div>
             {resendMessage && <p className="mt-3 text-xs text-text-secondary">{resendMessage}</p>}
           </div>
-        ) : <form onSubmit={handleSubmit} className="space-y-4">
-          <input type="text" placeholder="Full name" value={form.fullName} onChange={e => setForm({ ...form, fullName: e.target.value })} required className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none" />
-          <input type="text" placeholder="Username" value={form.username} onChange={e => setForm({ ...form, username: e.target.value })} required className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none" />
-          <input type="email" placeholder="Email address" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} required className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none" />
-          <input type="password" placeholder="Create a password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} required className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none" />
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input
+              type="text"
+              placeholder="Full name"
+              value={form.fullName}
+              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+              required
+              autoComplete="name"
+              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+            />
+            <input
+              type="text"
+              placeholder="Username"
+              value={form.username}
+              onChange={(e) => setForm({ ...form, username: e.target.value })}
+              required
+              autoComplete="username"
+              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+            />
+            <input
+              type="email"
+              placeholder="Email address"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              required
+              autoComplete="email"
+              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+            />
+            <input
+              type="password"
+              placeholder="Create a password (min 8 characters)"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              required
+              minLength={8}
+              autoComplete="new-password"
+              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+            />
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
+            {info && <p className="text-sm text-brand" role="status">{info}</p>}
 
-          <button type="submit" disabled={loading} className="w-full py-3.5 mt-2 bg-brand hover:bg-brand-dark disabled:opacity-70 text-black font-semibold rounded-full transition-all">
-            {loading ? "Creating account..." : "Create Free Account"}
-          </button>
-        </form>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3.5 mt-2 bg-brand hover:bg-brand-dark disabled:opacity-70 text-black font-semibold rounded-full transition-all"
+            >
+              {loading ? 'Creating account…' : 'Create Free Account'}
+            </button>
+          </form>
+        )}
 
-        <p className="text-center mt-6 text-sm text-text-secondary">Already have an account? <Link href="/auth/login" className="text-brand hover:underline">Sign in</Link></p>
+        <p className="text-center mt-6 text-sm text-text-secondary">
+          Already have an account?{' '}
+          <Link href="/auth/login" className="text-brand hover:underline">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   )
