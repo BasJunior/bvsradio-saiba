@@ -7,7 +7,7 @@ import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,33 +24,43 @@ export default function LoginPage() {
       return
     }
 
+    const id = identifier.trim()
+    if (!id) {
+      setError('Enter your email or username.')
+      setLoading(false)
+      return
+    }
+
     try {
-      const supabase = createClient()
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      // Server resolves username → email, then authenticates
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: id, password }),
       })
-      if (loginError) {
-        const msg = loginError.message || 'Login failed'
-        if (/confirm|not confirmed|email not confirmed/i.test(msg)) {
-          throw new Error(
-            'Email not confirmed yet. Check your inbox for the confirmation link, or use Resend on the signup page.',
-          )
-        }
-        if (/invalid login credentials/i.test(msg)) {
-          throw new Error(
-            'Invalid email or password. Use the password from signup (not your IONOS mail password). Or use Forgot password.',
-          )
-        }
-        throw loginError
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed')
       }
 
-      if (data.session) {
-        await fetch('/api/auth/profile', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-        }).catch(() => null)
+      const access_token = data.session?.access_token
+      const refresh_token = data.session?.refresh_token
+      if (!access_token || !refresh_token) {
+        throw new Error('Login succeeded but no session was returned.')
       }
+
+      const supabase = createClient()
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      })
+      if (sessionError) throw sessionError
+
+      // Ensure profile row exists (best effort)
+      await fetch('/api/auth/profile', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${access_token}` },
+      }).catch(() => null)
 
       router.push('/')
       router.refresh()
@@ -70,28 +80,43 @@ export default function LoginPage() {
             <span className="text-2xl font-bold text-brand">BVS Radio</span>
           </Link>
           <h1 className="text-3xl font-bold">Welcome back</h1>
-          <p className="text-text-secondary mt-1">Sign in to access your account and favourite tracks.</p>
+          <p className="text-text-secondary mt-1">
+            Sign in with your <strong className="text-text-primary">email or username</strong> and
+            password.
+          </p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email address"
-            required
-            autoComplete="email"
-            className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            required
-            autoComplete="current-password"
-            className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
-          />
+          <div>
+            <label htmlFor="login-identifier" className="mb-1.5 block text-sm text-text-secondary">
+              Email or username
+            </label>
+            <input
+              id="login-identifier"
+              type="text"
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="you@email.com or your_username"
+              required
+              autoComplete="username"
+              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+            />
+          </div>
+          <div>
+            <label htmlFor="login-password" className="mb-1.5 block text-sm text-text-secondary">
+              Password
+            </label>
+            <input
+              id="login-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password from signup"
+              required
+              autoComplete="current-password"
+              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+            />
+          </div>
 
           <div className="flex justify-end">
             <Link href="/auth/forgot-password" className="text-sm text-brand hover:underline">
@@ -114,12 +139,15 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-8 text-center text-sm">
+        <div className="mt-8 text-center text-sm text-text-secondary">
           Don&apos;t have an account?{' '}
           <Link href="/auth/signup" className="text-brand hover:underline">
             Join for free
           </Link>
         </div>
+        <p className="mt-4 text-center text-xs text-text-secondary">
+          Username is the one you chose at signup. Password is not your IONOS or Gmail password.
+        </p>
       </div>
     </div>
   )
