@@ -66,8 +66,8 @@ export const viewport: Viewport = {
   colorScheme: "dark",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const stationTracks = getStationTracks();
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const stationTracks = await getStationTracks();
   return (
     <html lang="en">
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">

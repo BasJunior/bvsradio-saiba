@@ -3,14 +3,17 @@ import Image from "next/image";
 import Link from "next/link";
 import RadioPlayer from "@/components/RadioPlayer";
 import { RecentListening } from "@/components/RecentListening";
-import { schedule, shows } from "@/lib/station";
+import { schedule as fallbackSchedule } from "@/lib/station";
+import { getPublicProgrammes } from "@/lib/station-content";
 
 export const metadata: Metadata = {
   title: "Listen | BVS Radio",
   description: "Listen to the BVS continuous music rotation and explore the programme in development.",
 };
 
-export default function RadioPage() {
+export default async function RadioPage() {
+  const shows = await getPublicProgrammes();
+  const schedule = shows.some(show => show.status === 'active') ? shows.map(show => { const [day, time = 'Time TBA'] = show.schedule.split(' · '); return { day, time, title: show.title, note: show.status === 'active' ? `Presented by ${show.host}` : 'Scheduled programme' }; }) : fallbackSchedule;
   return <div className="mx-auto max-w-6xl px-6 py-12">
     <section className="grid items-center gap-10 lg:grid-cols-2">
       <div>

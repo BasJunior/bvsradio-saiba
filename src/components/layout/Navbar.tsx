@@ -98,6 +98,7 @@ export default function Navbar() {
           </Link>
           {user ? (
             <>
+              <Link href="/admin/editorial" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>
               <span className="max-w-[10rem] truncate px-2 text-sm text-text-secondary" title={user.email || ''}>
                 {user.email}
               </span>
@@ -166,6 +167,7 @@ export default function Navbar() {
               {user ? (
                 <>
                   <p className="py-1 text-sm text-text-secondary truncate">{user.email}</p>
+                  <Link href="/admin/editorial" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Editorial dashboard</Link>
                   <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
                     Sign out
                   </button>

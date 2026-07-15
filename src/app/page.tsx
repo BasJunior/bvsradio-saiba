@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
-import { shows } from "@/lib/station";
+import { getPublicProgrammes } from "@/lib/station-content";
 
 const listenerPaths = [
   { title: "Listen", copy: "Start the continuous BVS music rotation and keep it playing while you browse.", href: "/radio", cta: "Open radio" },
@@ -9,7 +9,8 @@ const listenerPaths = [
   { title: "Your library", copy: "Save music, follow programmes and return to your recent listening on this device.", href: "/library", cta: "View library" },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const shows = await getPublicProgrammes();
   return (
     <div className="bg-bg-primary text-text-primary">
       <section className="relative min-h-[88vh] overflow-hidden">
