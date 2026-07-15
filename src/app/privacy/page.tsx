@@ -10,7 +10,7 @@ export default function PrivacyPage() {
     <div className="max-w-4xl mx-auto px-4 py-12">
       <section className="bg-bg-card/50 backdrop-blur rounded-2xl border border-white/10 p-8 md:p-12">
         <h1 className="text-3xl md:text-4xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-text-secondary mb-8">Last updated: May 23, 2026</p>
+        <p className="text-text-secondary mb-8">Last updated: July 15, 2026</p>
 
         <div className="prose prose-invert max-w-none space-y-6 text-text-secondary leading-relaxed">
           <p>This privacy policy describes how BVS Radio (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) collects, uses, and shares information when you use our website and services.</p>
@@ -40,6 +40,9 @@ export default function PrivacyPage() {
 
           <h2 className="text-2xl font-semibold text-text-primary mt-10">Cookies and Tracking Technologies</h2>
           <p>We use cookies and similar tracking technologies to remember your preferences, analyze site traffic, and deliver targeted advertisements. You can control cookies through your browser settings.</p>
+
+          <h2 className="text-2xl font-semibold text-text-primary mt-10">Privacy-conscious product analytics</h2>
+          <p>BVS measures a small set of product events—such as playback starts, coarse listening-duration ranges, searches with no result, saves, uploads, and checkout outcomes—to improve reliability and content discovery. These events do not contain names, email addresses, payment details, raw IP addresses, or advertising identifiers. The anonymous analytics session ends when the browser tab closes, Do Not Track is respected, and operational data is retained for no longer than 90 days.</p>
 
           <h2 className="text-2xl font-semibold text-text-primary mt-10">Your Rights</h2>
           <p>Depending on your location, you may have the right to access, correct, delete, or restrict the use of your personal information. You may also have the right to object to certain processing and to data portability.</p>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { loadOrderLocal, notifyOwnerNewOrder, updateOrderLocal } from "@/lib/orders";
+import { recordServerEvent } from "@/lib/analytics-server";
 
 export const runtime = "nodejs";
 
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     event = stripe.webhooks.constructEvent(body, sig, secret);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Invalid signature";
+    await recordServerEvent("payment_error", { provider: "stripe", stage: "webhook_signature" });
     return NextResponse.json({ error: message }, { status: 400 });
   }
 
@@ -38,6 +40,7 @@ export async function POST(req: Request) {
       session.client_reference_id || session.metadata?.reference || "";
 
     if (reference) {
+      await recordServerEvent("checkout_complete", { provider: "stripe", status: "paid" });
       const updated = await updateOrderLocal(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",

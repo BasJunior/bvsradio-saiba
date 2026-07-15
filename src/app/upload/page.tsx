@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
+import { trackEvent } from '@/lib/analytics'
 
 export default function UploadPage() {
   const [title, setTitle] = useState('')
@@ -50,6 +51,7 @@ export default function UploadPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
+      trackEvent('upload_complete', { genre, has_artwork: Boolean(artworkFile) })
       setSuccess(true)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Upload failed')

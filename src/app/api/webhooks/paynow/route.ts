@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getPaynow } from "@/lib/paynow";
 import { loadOrderLocal, notifyOwnerNewOrder, updateOrderLocal } from "@/lib/orders";
+import { recordServerEvent } from "@/lib/analytics-server";
 
 /**
  * Paynow result URL — they POST status updates here.
@@ -27,15 +28,16 @@ export async function POST(req: Request) {
     if (paynow && pollUrl) {
       try {
         const polled = await paynow.pollTransaction(pollUrl);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const st = String((polled as any).status || "").toLowerCase();
-        paid = paid || st === "paid" || Boolean((polled as any).paid);
+        const result = polled as { status?: string; paid?: boolean };
+        const st = String(result.status || "").toLowerCase();
+        paid = paid || st === "paid" || Boolean(result.paid);
       } catch {
         /* use body status */
       }
     }
 
     if (reference && paid) {
+      await recordServerEvent("checkout_complete", { provider: "paynow", status: "paid" });
       const updated = await updateOrderLocal(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",
@@ -52,6 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof Error ? e.message : "webhook error";
+    await recordServerEvent("payment_error", { provider: "paynow", stage: "webhook" });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

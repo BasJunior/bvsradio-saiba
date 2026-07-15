@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 
 interface CartItem {
   id: string | number;
@@ -140,6 +141,8 @@ export default function CheckoutPage() {
     } else if (!savedCart && queryItem) {
       initial = [queryItem];
     }
+    // Hydrate browser-owned cart state after mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(initial);
     setCancelled(new URLSearchParams(window.location.search).has("cancelled"));
     setHydrated(true);
@@ -185,6 +188,7 @@ export default function CheckoutPage() {
       return;
     }
     setIsSubmitting(true);
+    trackEvent("checkout_started", { payment_method: paymentMethod, item_count: items.length, total });
     try {
       const response = await fetch("/api/orders", {
         method: "POST",
@@ -212,16 +216,19 @@ export default function CheckoutPage() {
       if (!response.ok) throw new Error(data.error || "Checkout failed.");
 
       if (data.checkoutUrl) {
+        trackEvent("checkout_redirect", { payment_method: data.paymentMode || paymentMethod, item_count: items.length, total });
         window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
         window.location.href = data.checkoutUrl as string;
         return;
       }
 
       setResult(data);
+      trackEvent("checkout_complete", { payment_method: data.paymentMode || paymentMethod, item_count: items.length, total, status: data.status || "pending_payment" });
       window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
       window.localStorage.removeItem("bvs_cart");
       setItems([]);
     } catch (caught) {
+      trackEvent("payment_error", { payment_method: paymentMethod, stage: "order_creation" });
       setError(caught instanceof Error ? caught.message : "Checkout failed.");
     } finally {
       setIsSubmitting(false);

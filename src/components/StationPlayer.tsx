@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { StationTrack } from "@/lib/station";
 import { recordListening } from "@/lib/library";
+import { listeningBucket, trackEvent } from "@/lib/analytics";
 
 type PlayerContextValue = {
   tracks: StationTrack[];
@@ -23,6 +24,7 @@ const PlayerContext = createContext<PlayerContextValue | null>(null);
 
 export function StationPlayerProvider({ tracks, children }: { tracks: StationTrack[]; children: React.ReactNode }) {
   const audio = useRef<HTMLAudioElement>(null);
+  const startedAt = useRef<number | null>(null);
   const [index, setIndex] = useState(0);
   const [isPlaying, setPlaying] = useState(false);
   const [volume, setVolume] = useState(70);
@@ -30,14 +32,37 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
   const [history, setHistory] = useState<StationTrack[]>([]);
   const current = tracks[index];
 
+  const flushListening = useCallback(() => {
+    if (startedAt.current === null || !current) return;
+    const seconds = Math.round((Date.now() - startedAt.current) / 1000);
+    startedAt.current = null;
+    const duration = listeningBucket(seconds);
+    if (duration > 0) trackEvent("listening_duration", { track_id: `rotation-${current.src}`, seconds_bucket: duration });
+  }, [current]);
+
   useEffect(() => { if (audio.current) audio.current.volume = volume / 100; }, [volume]);
   useEffect(() => {
     if (!audio.current || !current) return;
-    if (isPlaying) audio.current.play().catch(() => { setPlaying(false); setError("This recording could not be played."); });
+    if (isPlaying) audio.current.play().then(() => {
+      if (startedAt.current === null) {
+        startedAt.current = Date.now();
+        trackEvent("player_start", { track_id: `rotation-${current.src}` });
+      }
+    }).catch(() => {
+      trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "track_change" });
+      setPlaying(false);
+      setError("This recording could not be played.");
+    });
   }, [current, isPlaying]);
+  useEffect(() => {
+    const stop = () => flushListening();
+    window.addEventListener("pagehide", stop);
+    return () => { window.removeEventListener("pagehide", stop); stop(); };
+  }, [flushListening]);
 
   const move = useCallback((amount: number) => {
     if (!tracks.length) return;
+    flushListening();
     setError(null);
     setIndex((value) => {
       const nextIndex = (value + amount + tracks.length) % tracks.length;
@@ -47,11 +72,14 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
       }
       return nextIndex;
     });
-  }, [isPlaying, tracks]);
+  }, [flushListening, isPlaying, tracks]);
   const toggle = useCallback(async () => {
     if (!audio.current || !current) return setError("The rotation is being prepared.");
     try {
-      if (isPlaying) audio.current.pause(); else {
+      if (isPlaying) {
+        audio.current.pause();
+        flushListening();
+      } else {
         await audio.current.play();
         setHistory((items) => [current, ...items.filter((item) => item.src !== current.src)].slice(0, 6));
         recordListening({
@@ -64,13 +92,17 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
       }
       setPlaying(!isPlaying);
       setError(null);
-    } catch { setPlaying(false); setError("Playback could not start. Please try again."); }
-  }, [current, isPlaying]);
+    } catch {
+      setPlaying(false);
+      trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "start" });
+      setError("Playback could not start. Please try again.");
+    }
+  }, [current, flushListening, isPlaying]);
   const value = useMemo(() => ({ tracks, current, index, isPlaying, volume, error, history, toggle, next: () => move(1), previous: () => move(-1), setVolume }), [tracks, current, index, isPlaying, volume, error, history, move, toggle]);
 
   return <PlayerContext.Provider value={value}>
     {children}
-    <audio ref={audio} src={current?.src} preload="none" playsInline onEnded={() => move(1)} onError={() => { setPlaying(false); setError("This recording is unavailable."); }} />
+    <audio ref={audio} src={current?.src} preload="none" playsInline onEnded={() => move(1)} onError={() => { flushListening(); setPlaying(false); trackEvent("playback_error", { track_id: current ? `rotation-${current.src}` : "unknown", stage: "media" }); setError("This recording is unavailable."); }} />
   </PlayerContext.Provider>;
 }
 

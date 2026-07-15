@@ -12,6 +12,7 @@ import {
 import { getStripe, siteUrl, stripeEnabled } from "@/lib/stripe";
 import { getPaynow, normalizeZwPhone, paynowEnabled } from "@/lib/paynow";
 import { createDownloadToken, resolveProductFile } from "@/lib/products";
+import { recordServerEvent } from "@/lib/analytics-server";
 
 function isOrderItem(item: unknown): item is OrderItem {
   if (!item || typeof item !== "object") return false;
@@ -237,6 +238,7 @@ export async function POST(req: Request) {
           }
         } catch (paynowErr) {
           console.error("Paynow error", paynowErr);
+          await recordServerEvent("payment_error", { provider: "paynow", stage: "checkout_creation" });
           // continue to manual
         }
       }
@@ -280,6 +282,7 @@ export async function POST(req: Request) {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Order creation failed.";
+    await recordServerEvent("payment_error", { provider: "checkout", stage: "order_creation" });
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

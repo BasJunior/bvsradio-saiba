@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import LibraryAction from '@/components/LibraryAction'
 import { discoveryItems, type DiscoveryKind } from '@/lib/discovery'
 import { recordListening } from '@/lib/library'
+import { trackEvent } from '@/lib/analytics'
 
 const filters: Array<{ label: string; value: 'all' | DiscoveryKind }> = [
   { label: 'All', value: 'all' }, { label: 'Tracks', value: 'track' }, { label: 'Artists', value: 'artist' }, { label: 'Shows', value: 'show' },
@@ -18,6 +19,16 @@ export default function SearchPage() {
     const needle = query.trim().toLowerCase()
     return discoveryItems.filter((item) => (filter === 'all' || item.kind === filter) && (!needle || [item.title, item.subtitle, ...(item.tags || [])].join(' ').toLowerCase().includes(needle)))
   }, [query, filter])
+
+  useEffect(() => {
+    const term = query.trim()
+    if (term.length < 2 || results.length > 0) return
+    const timer = window.setTimeout(() => {
+      const sensitive = /@|\+?\d[\d\s()-]{6,}/.test(term)
+      trackEvent('search_no_results', { query: sensitive ? '[redacted]' : term.toLowerCase().slice(0, 80), query_length: term.length, filter })
+    }, 800)
+    return () => window.clearTimeout(timer)
+  }, [filter, query, results.length])
 
   return <main className="mx-auto min-h-[70vh] max-w-6xl px-6 py-12">
     <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Discover BVS</p>
@@ -42,4 +53,3 @@ export default function SearchPage() {
     </div>
   </main>
 }
-
