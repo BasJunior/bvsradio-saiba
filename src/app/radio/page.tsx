@@ -1,111 +1,43 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import fs from "node:fs";
-import path from "node:path";
-import RadioPlayer from "@/components/RadioPlayer";
 import Image from "next/image";
+import Link from "next/link";
+import RadioPlayer from "@/components/RadioPlayer";
+import { RecentListening } from "@/components/RecentListening";
+import { schedule, shows } from "@/lib/station";
 
 export const metadata: Metadata = {
-  title: "Listen Live | BVS Radio",
-  description: "Stream BVS Radio live 24/7 — Zimbabwe's premier online radio station. Music, culture, and community from Harare to the world.",
+  title: "Listen | BVS Radio",
+  description: "Listen to the BVS continuous music rotation and explore the programme in development.",
 };
 
-const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".m4a", ".ogg"]);
-
-function titleFromFilename(filename: string) {
-  return filename
-    .replace(/\.[^.]+$/, "")
-    .replace(/^pack\d+_/, "")
-    .replace(/_/g, " ")
-    .trim();
-}
-
-function getLocalTracks() {
-  const musicDir = path.join(process.cwd(), "public", "music");
-
-  if (!fs.existsSync(musicDir)) {
-    return [];
-  }
-
-  return fs
-    .readdirSync(musicDir)
-    .filter((filename) => AUDIO_EXTENSIONS.has(path.extname(filename).toLowerCase()))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-    .map((filename) => ({
-      title: titleFromFilename(filename),
-      artist: "BVS Radio",
-      src: `/music/${encodeURIComponent(filename)}`,
-    }));
-}
-
 export default function RadioPage() {
-  const tracks = getLocalTracks();
-
-  return (
-    <div className="max-w-5xl mx-auto px-6 py-12">
-      <div className="grid lg:grid-cols-2 gap-12 items-center mb-12">
-        <div>
-          <h1 className="text-5xl font-semibold tracking-[-0.025em] mb-4">Listen Live</h1>
-          <p className="text-xl text-text-secondary mb-6">
-            The soundtrack of Zimbabwe. Broadcasting 24/7 in true HiFi from Harare with the best in local and African music, 
-            exclusive interviews, and cultural conversations.
-          </p>
-          <div className="flex flex-wrap gap-2 text-sm text-text-secondary">
-            <span>Live daily broadcasts</span>
-            <span className="opacity-40">·</span>
-            <span>Global audience</span>
-            <span className="opacity-40">·</span>
-            <span>Zimbabwean sound</span>
-          </div>
-        </div>
-
-        <div className="relative aspect-[16/9] rounded-2xl overflow-hidden border border-white/10">
-          <Image 
-            src="/images/mic-closeup.jpg" 
-            alt="BVS Radio microphone in studio" 
-            fill 
-            className="object-cover" 
-          />
-        </div>
-      </div>
-
-      {/* Live Player */}
-      <div className="max-w-md mx-auto mb-12">
-        <RadioPlayer tracks={tracks} stationName="BVS Radio Live" />
-        <div className="text-center mt-4 text-xs text-text-secondary">
-          Playing the preserved BVS Radio library with {tracks.length} tracks from the VPS and WolfBrx packs.
-        </div>
-      </div>
-
-      {/* Browse like Spotify */}
+  return <div className="mx-auto max-w-6xl px-6 py-12">
+    <section className="grid items-center gap-10 lg:grid-cols-2">
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-semibold">Browse the Catalogue</h2>
-          <Link href="/catalogue" className="text-brand hover:underline text-sm">See all</Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { title: "Harare Nights", artist: "BVS Collective", img: "/images/festival-crowd.jpg" },
-            { title: "Vibrations", artist: "Wolf Bridges", img: "/images/musicians.jpg" },
-            { title: "Shona Soul", artist: "BVS Artists", img: "/images/hero-studio.jpg" },
-            { title: "City Lights", artist: "BVS Collective", img: "/images/female-host.jpg" },
-          ].map((track, i) => (
-            <Link key={i} href="/catalogue" className="group bg-bg-card/50 rounded-xl overflow-hidden border border-white/10 hover:border-brand/40 flex items-center gap-3 p-2">
-              <div className="relative w-16 h-16 flex-shrink-0">
-                <Image src={track.img} alt={track.title} fill className="object-cover rounded" />
-              </div>
-              <div className="min-w-0">
-                <p className="font-medium truncate group-hover:text-brand">{track.title}</p>
-                <p className="text-sm text-text-secondary truncate">{track.artist}</p>
-              </div>
-            </Link>
-          ))}
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[.22em] text-brand">Listen now</p>
+        <h1 className="text-5xl font-semibold tracking-tight">Zimbabwean sound, always within reach.</h1>
+        <p className="mt-5 max-w-xl text-lg text-text-secondary">BVS currently runs an automated continuous rotation from our preserved music library. Hosted live programming is being prepared and will be clearly marked when it launches.</p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs text-brand">Automated rotation</span>
+          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-text-secondary">CAT / Harare</span>
         </div>
       </div>
+      <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-white/10"><Image src="/images/editorial/radio-studio-harare.webp" alt="BVS radio studio overlooking Harare" fill priority className="object-cover" /></div>
+    </section>
 
-      <div className="mt-12 text-center text-sm text-text-secondary">
-        Love a track? Double-click it in <Link href="/catalogue" className="text-brand hover:underline">Browse</Link> to see the full album and purchase the download. Or get it mixed/mastered by <Link href="/shop" className="text-brand hover:underline">Wolf Bridges</Link>.
+    <section className="mx-auto my-14 max-w-2xl" aria-labelledby="now-playing"><h2 id="now-playing" className="sr-only">Now playing</h2><RadioPlayer /></section>
+
+    <section className="grid gap-8 lg:grid-cols-[1.2fr_.8fr]">
+      <div>
+        <div className="mb-5 flex items-end justify-between"><div><p className="text-xs uppercase tracking-[.18em] text-brand">Programme preview</p><h2 className="mt-1 text-3xl font-semibold">What BVS is building</h2></div><Link href="/shows" className="text-sm text-brand hover:underline">All shows →</Link></div>
+        <div className="space-y-3">{schedule.map((slot) => <div key={`${slot.day}-${slot.title}`} className="grid gap-2 rounded-xl border border-white/10 bg-white/[.03] p-4 sm:grid-cols-[8rem_7rem_1fr]"><span className="text-sm text-text-secondary">{slot.day}</span><span className="text-sm font-medium">{slot.time}</span><div><p className="font-medium">{slot.title}</p><p className="mt-1 text-xs text-text-secondary">{slot.note}</p></div></div>)}</div>
       </div>
-    </div>
-  );
+      <RecentListening />
+    </section>
+
+    <section className="mt-16">
+      <div className="mb-6 flex items-end justify-between"><div><p className="text-xs uppercase tracking-[.18em] text-brand">Shows</p><h2 className="mt-1 text-3xl font-semibold">Made for the scene</h2></div><Link href="/upload" className="text-sm text-brand hover:underline">Submit music →</Link></div>
+      <div className="grid gap-5 md:grid-cols-3">{shows.map((show) => <Link key={show.slug} href={`/shows/${show.slug}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-card/40"><div className="relative aspect-[16/10]"><Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-105" /></div><div className="p-5"><span className="text-[10px] font-semibold uppercase tracking-widest text-brand">In development</span><h3 className="mt-2 text-xl font-semibold group-hover:text-brand">{show.title}</h3><p className="mt-2 text-sm text-text-secondary">{show.tagline}</p></div></Link>)}</div>
+    </section>
+  </div>;
 }

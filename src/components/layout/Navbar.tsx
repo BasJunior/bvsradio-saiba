@@ -69,6 +69,12 @@ export default function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
+          <Link href="/library" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
+            Library
+          </Link>
+          <Link href="/checkout" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
+            Cart
+          </Link>
           <Link href="/auth/login" className="px-4 py-2 text-sm text-text-primary hover:text-brand transition-colors">
             Sign In
           </Link>
@@ -116,6 +122,8 @@ export default function Navbar() {
               ))}
             </div>
             <Link href="/search" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Search</Link>
+            <Link href="/library" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Library</Link>
+            <Link href="/checkout" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Cart</Link>
             <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
               <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
                 Sign In

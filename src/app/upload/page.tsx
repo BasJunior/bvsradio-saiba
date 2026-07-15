@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { createClient } from '@/lib/supabase'
 
 export default function UploadPage() {
   const [title, setTitle] = useState('')
@@ -36,15 +37,22 @@ export default function UploadPage() {
     if (artworkFile) formData.append('artwork', artworkFile)
 
     try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) {
+        throw new Error('Please sign in before submitting your track.')
+      }
+
       const res = await fetch('/api/tracks/upload', {
         method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Upload failed')
       setSuccess(true)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
       setLoading(false)
     }
@@ -59,8 +67,8 @@ export default function UploadPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold mb-4">Track Uploaded Successfully!</h1>
-          <p className="text-text-secondary mb-6">Thank you for contributing to the sound of Zimbabwe. Your track will be reviewed and added to the catalogue soon.</p>
+          <h1 className="text-2xl font-bold mb-4">Submission received</h1>
+          <p className="text-text-secondary mb-6">BVS has received your files for editorial review. Submission does not guarantee radio play or catalogue publication; we will contact you if more information is needed.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={() => { setSuccess(false); setTitle(''); setGenre(''); setDescription(''); setAudioFile(null); setArtworkFile(null) }} className="px-6 py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark transition-all">
               Upload Another
@@ -77,13 +85,14 @@ export default function UploadPage() {
       <div className="grid lg:grid-cols-2 gap-16">
         {/* Left side - Info */}
         <div>
-          <h1 className="text-5xl font-bold tracking-tight mb-4">Share your sound with Zimbabwe.</h1>
-          <p className="text-xl text-text-secondary mb-8">Upload your original music and join a growing community of artists shaping the future of African sound.</p>
+          <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">For artists · Radio submission</p>
+          <h1 className="text-5xl font-bold tracking-tight mb-4">Submit your music to BVS.</h1>
+          <p className="text-xl text-text-secondary mb-8">Send an original release for editorial review. This form is for radio and catalogue consideration, not for ordering mixing or mastering.</p>
 
-          <div className="space-y-6 text-sm">
+          <div id="requirements" className="scroll-mt-24 space-y-6 text-sm">
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">1</div>
-              <div><strong className="block mb-1">Upload original work only</strong> We support independent artists who own their masters.</div>
+              <div><strong className="block mb-1">You must control the rights</strong> Submit original work only, with permission from all artists, producers and rights holders.</div>
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">2</div>
@@ -91,8 +100,12 @@ export default function UploadPage() {
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">3</div>
-              <div><strong className="block mb-1">Get discovered</strong> Your tracks can reach listeners in Zimbabwe and across the diaspora.</div>
+              <div><strong className="block mb-1">Editorial review</strong> BVS decides what fits its programming. Uploading does not guarantee airplay, publication or feedback.</div>
             </div>
+          </div>
+
+          <div className="mt-8 rounded-xl border border-white/10 bg-bg-card/40 p-5 text-sm text-text-secondary">
+            Need engineering instead? <Link href="/shop" className="font-medium text-brand hover:underline">See mixing and mastering packages</Link>. Need help with rights or a submission already sent? <Link href="/contact" className="font-medium text-brand hover:underline">Contact BVS</Link>.
           </div>
 
           <div className="mt-10">
@@ -153,7 +166,7 @@ export default function UploadPage() {
               {loading ? 'Uploading to BVS...' : 'Upload & Submit for Review'}
             </button>
 
-            <p className="text-center text-xs text-text-secondary">Your upload will be reviewed within 48 hours.</p>
+            <p className="text-center text-xs text-text-secondary">Keep your own copy of every file. Review times vary; BVS will contact you using the details connected to your account.</p>
           </form>
         </div>
       </div>

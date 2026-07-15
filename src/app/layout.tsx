@@ -3,7 +3,8 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import VisitorAssistant from "@/components/VisitorAssistant";
 import PwaRegister from "@/components/PwaRegister";
-import Link from "next/link";
+import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
+import { getStationTracks } from "@/lib/station-library";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com";
@@ -65,22 +66,18 @@ export const viewport: Viewport = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const stationTracks = getStationTracks();
   return (
     <html lang="en">
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
-        <Navbar />
-        <main className="pt-16 pb-24 sm:pb-16">{children}</main>
-        <Footer />
-        <VisitorAssistant />
-        <PwaRegister />
-
-        <Link
-          href="/radio"
-          className="fixed bottom-6 left-4 z-50 group flex items-center gap-2 bg-brand hover:bg-brand-dark text-black font-medium px-5 py-2.5 rounded-full text-sm tracking-[-0.01em] transition-all sm:left-6"
-        >
-          Listen
-          <span className="opacity-60 group-hover:translate-x-0.5 transition">→</span>
-        </Link>
+        <StationPlayerProvider tracks={stationTracks}>
+          <Navbar />
+          <main className="pt-16 pb-28">{children}</main>
+          <Footer />
+          <VisitorAssistant />
+          <PwaRegister />
+          <PersistentPlayer />
+        </StationPlayerProvider>
       </body>
     </html>
   );

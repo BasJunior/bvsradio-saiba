@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BVS Radio</string>
+    <string name="title_activity_main">BVS Radio</string>
+    <string name="package_name">com.bvsradio.app</string>
+    <string name="custom_url_scheme">com.bvsradio.app</string>
+</resources>

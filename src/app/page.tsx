@@ -1,222 +1,58 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+import HomeListenPanel from "@/components/HomeListenPanel";
+import { shows } from "@/lib/station";
+
+const listenerPaths = [
+  { title: "Listen", copy: "Start the continuous BVS music rotation and keep it playing while you browse.", href: "/radio", cta: "Open radio" },
+  { title: "Discover", copy: "Search real tracks, artists, programmes and stories from one place.", href: "/search", cta: "Search BVS" },
+  { title: "Your library", copy: "Save music, follow programmes and return to your recent listening on this device.", href: "/library", cta: "View library" },
+];
 
 export default function HomePage() {
   return (
     <div className="bg-bg-primary text-text-primary">
-      {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0">
-          <Image
-            src="/images/hero-studio.jpg"
-            alt="BVS Radio live studio in Zimbabwe"
-            fill
-            className="object-cover opacity-70"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-bg-primary" />
-        </div>
-
-        <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-          <div className="mb-6 flex justify-center">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-sm backdrop-blur tracking-widest">
-              LIVE FROM ZIMBABWE · 24/7
+      <section className="relative min-h-[88vh] overflow-hidden">
+        <Image src="/images/editorial/radio-studio-harare.webp" alt="Independent radio studio prepared for a BVS programme" fill className="object-cover" priority />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/75 to-black/25" />
+        <div className="relative mx-auto grid min-h-[88vh] max-w-7xl items-center gap-12 px-6 py-16 lg:grid-cols-[1.05fr_.95fr]">
+          <div>
+            <p className="mb-5 text-xs font-semibold uppercase tracking-[.25em] text-brand">Best Virtual Sound · Zimbabwe to the world</p>
+            <h1 className="max-w-4xl text-6xl font-semibold tracking-[-.045em] sm:text-7xl">Radio, music and tools for the people shaping Zimbabwean sound.</h1>
+            <p className="mt-6 max-w-2xl text-lg text-white/70">Listen to the BVS rotation, discover artists and future programmes, or bring your own project to the platform for submission and audio services.</p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link href="/radio" className="rounded-full bg-brand px-7 py-3 font-semibold text-black hover:bg-brand-dark">Start listening</Link>
+              <Link href="/upload" className="rounded-full border border-white/30 px-7 py-3 font-semibold hover:bg-white/10">For artists</Link>
             </div>
           </div>
+          <HomeListenPanel />
+        </div>
+      </section>
 
-          <h1 className="text-6xl md:text-7xl font-semibold tracking-[-0.04em] mb-3">
-            BVS Radio
-          </h1>
-          <p className="uppercase text-xs tracking-[3px] text-brand mb-4">Best Virtual Sound</p>
-          <p className="text-2xl md:text-3xl text-text-secondary tracking-tight mb-4">
-            Zimbabwe&apos;s Sound · Live · Culture · Community
-          </p>
-          <p className="max-w-xl mx-auto text-lg text-text-secondary mb-10">
-            Experience music in true HiFi. Discover Zimbabwean artists, stream lossless, and get your tracks mastered by the best.
-          </p>
+      <section className="mx-auto max-w-7xl px-6 py-16">
+        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+          <div><p className="mb-2 text-xs uppercase tracking-[.2em] text-brand">Choose your path</p><h2 className="text-4xl font-semibold tracking-tight">Easy to enter. Clear where to go next.</h2></div>
+        </div>
+        <div className="grid gap-5 md:grid-cols-3">
+          {listenerPaths.map((item) => <Link key={item.title} href={item.href} className="group rounded-3xl border border-white/10 bg-bg-card/45 p-7 transition hover:border-brand/40"><h3 className="text-2xl font-semibold group-hover:text-brand">{item.title}</h3><p className="mt-3 min-h-16 text-text-secondary">{item.copy}</p><span className="mt-6 inline-block text-sm font-medium text-brand">{item.cta} →</span></Link>)}
+        </div>
+      </section>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              href="/radio"
-              className="px-10 py-4 bg-brand hover:bg-brand-dark transition-all text-black font-semibold rounded-full text-lg inline-flex items-center justify-center gap-3 shadow-lg"
-            >
-              Start Listening
-            </Link>
-            <Link
-              href="/catalogue"
-              className="px-10 py-4 border border-white/40 hover:bg-white/10 transition-colors font-medium rounded-full text-lg"
-            >
-              Browse Music
-            </Link>
-          </div>
-
-          <div className="mt-12 flex items-center justify-center gap-8 text-sm text-text-secondary">
-            <div>Harare · Bulawayo · Global</div>
-            <div>HiFi • Lossless • Dolby Atmos</div>
+      <section className="border-y border-white/10 bg-bg-secondary py-16">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="mb-8 flex items-end justify-between gap-4"><div><p className="mb-2 text-xs uppercase tracking-[.2em] text-brand">Programmes in development</p><h2 className="text-4xl font-semibold">Shows built around the scene.</h2></div><Link href="/shows" className="hidden text-sm text-brand hover:underline sm:block">View all programmes →</Link></div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {shows.map((show) => <Link key={show.slug} href={`/shows/${show.slug}`} className="group overflow-hidden rounded-3xl border border-white/10 bg-black/30"><div className="relative aspect-[4/3]"><Image src={show.image} alt="" fill className="object-cover transition group-hover:scale-[1.02]" /><span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-[10px] uppercase tracking-widest">Preview</span></div><div className="p-5"><h3 className="text-xl font-semibold group-hover:text-brand">{show.title}</h3><p className="mt-2 text-sm text-text-secondary">{show.tagline}</p><p className="mt-4 text-xs text-brand">{show.schedule}</p></div></Link>)}
           </div>
         </div>
       </section>
 
-      {/* Quick Listen + Features */}
-      <section className="max-w-7xl mx-auto px-6 py-20 grid md:grid-cols-2 gap-12 items-center">
-        <div>
-          <h2 className="text-4xl font-bold mb-6 tracking-tight">Your soundtrack to Zimbabwe, anywhere.</h2>
-          <p className="text-text-secondary text-lg mb-8">
-            Whether you&apos;re in Harare, London, or Johannesburg — tune into BVS Radio for the freshest 
-            local talent, classic hits, and exclusive live sessions. Our DJs bring you the real stories 
-            behind the music.
-          </p>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { title: "24/7 Live Streaming", desc: "Never miss a beat" },
-              { title: "Local & Diaspora Artists", desc: "Curated with love" },
-              { title: "Community Shows", desc: "Talk, culture & events" },
-              { title: "Upload Your Music", desc: "Get your tracks heard" },
-            ].map((item, i) => (
-              <div key={i} className="bg-bg-card/60 border border-white/10 rounded-xl p-5">
-                <h4 className="font-semibold text-brand mb-1">{item.title}</h4>
-                <p className="text-sm text-text-secondary">{item.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="relative aspect-[16/10] rounded-3xl overflow-hidden border border-white/10">
-          <Image
-            src="/images/festival-crowd.jpg"
-            alt="Zimbabwe music festival crowd"
-            fill
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-6 left-6 right-6">
-            <Link href="/radio" className="inline-block bg-white text-black px-6 py-3 rounded-full font-medium hover:bg-brand transition-colors">
-              Start Listening →
-            </Link>
-          </div>
-        </div>
+      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-16 lg:grid-cols-2">
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-bg-card/40"><div className="relative aspect-[3/2]"><Image src="/images/editorial/audio-engineering-work.webp" alt="Audio engineer working at a mixing console" fill className="object-cover" /></div><div className="p-7"><p className="text-xs uppercase tracking-[.2em] text-brand">Audio services</p><h2 className="mt-2 text-3xl font-semibold">Bring the project. Confirm the scope.</h2><p className="mt-3 text-text-secondary">Mixing, mastering and vocal production start with a file review. Engineer, delivery and timetable are confirmed before work begins.</p><Link href="/shop" className="mt-6 inline-block font-medium text-brand hover:underline">Explore services →</Link></div></div>
+        <div className="rounded-3xl border border-white/10 bg-bg-card/40 p-8 lg:p-10"><p className="text-xs uppercase tracking-[.2em] text-brand">For artists</p><h2 className="mt-2 text-4xl font-semibold">Submit music without guessing what happens next.</h2><p className="mt-4 text-lg text-text-secondary">Read the requirements, send a real track for editorial review, and keep licensing or engineering orders separate from radio consideration.</p><div className="mt-8 grid gap-3 sm:grid-cols-2"><Link href="/upload" className="rounded-full bg-brand px-6 py-3 text-center font-semibold text-black hover:bg-brand-dark">Submission guide</Link><Link href="/catalogue" className="rounded-full border border-white/20 px-6 py-3 text-center font-semibold hover:bg-white/5">Browse music &amp; beats</Link></div><p className="mt-6 text-sm text-text-secondary">Buying a service never guarantees radio placement. Verified public credits and testimonials will appear only when approved.</p></div>
       </section>
 
-      {/* Culture & Community */}
-      <section className="bg-bg-secondary py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid md:grid-cols-12 gap-10 items-center">
-            <div className="md:col-span-5">
-              <h2 className="text-4xl font-bold mb-6">Rooted in Zimbabwe.<br />Loved worldwide.</h2>
-              <p className="text-text-secondary text-lg mb-6">
-                BVS Radio celebrates our rich musical heritage while pushing the sound forward. 
-                From mbira-infused electronic to amapiano, hip-hop, and gospel — we play the music that moves us.
-              </p>
-              <Link href="/about" className="text-brand hover:underline font-medium">Learn our story →</Link>
-            </div>
-
-            <div className="md:col-span-7 relative aspect-video rounded-2xl overflow-hidden">
-              <Image 
-                src="/images/musicians.jpg" 
-                alt="Zimbabwean musicians collaborating" 
-                fill 
-                className="object-cover" 
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* HiFi Experience */}
-      <section className="max-w-7xl mx-auto px-6 py-16 border-t border-white/10">
-        <div className="text-center mb-10">
-          <div className="inline-block px-3 py-1 bg-brand/10 text-brand text-xs tracking-widest rounded-full mb-3">BEST VIRTUAL SOUND</div>
-          <h2 className="text-4xl font-semibold tracking-tight">Music, exactly as the artist intended.</h2>
-          <p className="text-text-secondary mt-3 max-w-md mx-auto">Stream in true HiFi lossless, up to 24-bit/192kHz. Feel every detail.</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6 text-center">
-          {[
-            { label: "Lossless Audio", desc: "CD quality and beyond" },
-            { label: "Dolby Atmos", desc: "Immersive spatial audio" },
-            { label: "Mastered by Wolf Bridges", desc: "Signature BVS sound" },
-          ].map((item, i) => (
-            <div key={i} className="bg-bg-card/40 rounded-2xl p-8 border border-white/5">
-              <div className="text-brand text-sm tracking-widest mb-2">HI-FI</div>
-              <div className="text-xl font-semibold mb-2">{item.label}</div>
-              <p className="text-sm text-text-secondary">{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Curated Playlists - Tidal style */}
-      <section className="max-w-7xl mx-auto px-6 py-16">
-        <div className="flex items-baseline justify-between mb-6">
-          <h2 className="text-2xl font-semibold tracking-tight">Curated for you</h2>
-          <Link href="/catalogue" className="text-sm text-brand hover:underline">See all playlists</Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {[
-            { title: "Harare Heat", desc: "The hottest Afrobeats right now", img: "/images/festival-crowd.jpg" },
-            { title: "Zim Rising", desc: "New artists breaking through", img: "/images/musicians.jpg" },
-            { title: "Wolf Bridges Selects", desc: "Engineer's favorite mixes", img: "/images/hero-studio.jpg" },
-            { title: "Late Night Drive", desc: "Chill electronic and soul", img: "/images/female-host.jpg" },
-            { title: "BVS Radio Live", desc: "Tracks from the airwaves", img: "/images/festival-crowd.jpg" },
-          ].map((p, i) => (
-            <Link key={i} href="/catalogue" className="group block">
-              <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 border border-white/5">
-                <Image src={p.img} alt={p.title} fill className="object-cover group-hover:scale-[1.02] transition-transform duration-300" />
-              </div>
-              <div>
-                <div className="font-medium text-[15px]">{p.title}</div>
-                <div className="text-xs text-text-secondary mt-0.5 line-clamp-1">{p.desc}</div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* Professional Services Teaser */}
-      <section className="max-w-7xl mx-auto px-6 py-16 border-t border-white/10">
-        <div className="flex flex-col md:flex-row gap-10 items-center">
-          <div className="md:w-5/12">
-            <h2 className="text-4xl font-semibold tracking-tight mb-4">Elevate your sound.</h2>
-            <p className="text-text-secondary text-lg mb-6">
-              Work directly with Wolf Bridges and the BVS team for mixing, mastering, vocal production and more. 
-              Professional services used by the artists you hear on BVS Radio.
-            </p>
-            <Link 
-              href="/shop" 
-              className="inline-flex items-center px-8 py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark"
-            >
-              Explore Services
-            </Link>
-          </div>
-          <div className="md:w-7/12 aspect-[16/9] rounded-2xl overflow-hidden border border-white/10">
-            <Image 
-              src="/images/musicians.jpg" 
-              alt="Professional audio engineering at BVS" 
-              fill 
-              className="object-cover" 
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="border-t border-white/10 py-16 text-center max-w-2xl mx-auto px-6">
-        <h3 className="text-3xl font-semibold mb-4">Ready to join the movement?</h3>
-        <p className="text-text-secondary mb-8">Create a free account to upload tracks, save shows, and get early access to drops.</p>
-        <div className="flex justify-center gap-4">
-          <Link href="/auth/signup" className="px-8 py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark">
-            Join Free
-          </Link>
-          <Link href="/contact" className="px-8 py-3 border border-white/30 hover:bg-white/5 rounded-full">
-            Contact Us
-          </Link>
-        </div>
-      </section>
-
-      {/* Small trust bar */}
-      <div className="border-t border-white/10 py-5 text-center text-xs text-text-secondary tracking-widest">
-        POWERED BY ZIMBABWEAN TALENT • HEARD WORLDWIDE
-      </div>
+      <section className="border-t border-white/10 px-6 py-16 text-center"><p className="mx-auto max-w-2xl text-lg text-text-secondary">BVS is being prepared as Zimbabwe&apos;s digital radio and music platform: focused enough to feel human, broad enough to serve listeners and working artists.</p><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/auth/signup" className="rounded-full bg-brand px-7 py-3 font-semibold text-black">Join free</Link><Link href="/contact" className="rounded-full border border-white/20 px-7 py-3 font-semibold">Contact BVS</Link></div></section>
     </div>
   );
 }

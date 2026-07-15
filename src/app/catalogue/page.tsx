@@ -274,7 +274,11 @@ function rightsSummary(track: Track) {
 export default function CataloguePage() {
   const [search, setSearch] = useState('')
   const [genreFilter, setGenreFilter] = useState('All')
-  const [typeFilter, setTypeFilter] = useState<'all' | TrackType>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | TrackType>(() => {
+    if (typeof window === 'undefined') return 'all'
+    const requestedType = new URLSearchParams(window.location.search).get('type')
+    return requestedType === 'single' || requestedType === 'beat' || requestedType === 'mix' ? requestedType : 'all'
+  })
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null)
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -287,13 +291,6 @@ export default function CataloguePage() {
     return savedCart ? JSON.parse(savedCart) : []
   })
   const audioRef = useRef<HTMLAudioElement | null>(null)
-
-  useEffect(() => {
-    const requestedType = new URLSearchParams(window.location.search).get('type')
-    if (requestedType === 'single' || requestedType === 'beat' || requestedType === 'mix') {
-      setTypeFilter(requestedType)
-    }
-  }, [])
 
   useEffect(() => {
     localStorage.setItem('bvs_cart', JSON.stringify(cart))

@@ -9,78 +9,65 @@ export const metadata: Metadata = {
 
 const engineers = [
   {
-    name: "Wolf Bridges",
-    title: "Lead Mixing & Mastering Engineer",
-    image: "/images/female-host.jpg",
-    bio: "With credits on Spotify for artists across Africa and beyond, Wolf Bridges brings a signature warm, dynamic sound to every project. Specializing in Afrobeats, Hip-Hop, and live-recorded genres, he has mixed and mastered tracks that have amassed millions of streams. His work bridges traditional Zimbabwean sounds with modern production.",
-    spotifyCredits: "Mixing & Mastering credits on tracks by BVS artists and international acts. Featured on Spotify playlists like 'Afrobeats Hits' and 'African Heat'.",
+    name: "BVS Audio Services",
+    title: "Mixing, mastering and vocal production",
+    image: "/images/hero-studio.jpg",
+    bio: "Send BVS your track, references and release plans. We confirm the engineer, scope, delivery format and schedule before work begins, so the order matches what your project actually needs.",
     specialties: ["Mixing", "Mastering", "Vocal Production", "Stem Work"],
-    turnaround: "24-72 hours",
-    testimonials: [
-      "Wolf's masters always hit different — the clarity and punch are unmatched. — BVS Artist",
-      "He understands the vision and elevates it without losing the soul of the track."
-    ]
-  },
-  {
-    name: "BVS Engineering Team",
-    title: "In-House Engineers",
-    image: "/images/musicians.jpg",
-    bio: "Our team of experienced engineers at BVS Studios deliver consistent, high-quality results tailored to Zimbabwean and African music.",
-    specialties: ["Mixing", "Mastering", "Custom Production"],
-    turnaround: "48 hours standard",
+    turnaround: "Confirmed after file review",
   }
 ];
 
 const services = [
   {
     title: "Mixing",
-    engineer: "Wolf Bridges",
+    engineer: "BVS Audio Services",
     price: "From $89",
     tiers: [
-      { name: "Basic Mix", price: "$89", desc: "Clean mix, 1 revision, 72hr turnaround" },
-      { name: "Pro Mix", price: "$149", desc: "Detailed mix + stems, 2 revisions, 48hr" },
-      { name: "Premium Mix", price: "$199", desc: "Full production mix, unlimited revisions, priority" }
+      { name: "Basic Mix", price: "$89", desc: "Mix from supplied stems, 1 revision" },
+      { name: "Pro Mix", price: "$149", desc: "Detailed mix, delivery master + instrumental, 2 revisions" },
+      { name: "Premium Mix", price: "$199", desc: "Complex session review and priority scheduling; scope confirmed first" }
     ],
     desc: "Professional mixing that brings your track to life. Reference tracks welcome."
   },
   {
     title: "Mastering",
-    engineer: "Wolf Bridges",
-    price: "From $39",
+    engineer: "BVS Audio Services",
+    price: "From $69",
     tiers: [
-      { name: "Standard Master", price: "$69", desc: "Streaming optimized, 1 revision, 24hr" },
-      { name: "Premium Master", price: "$99", desc: "High-end + stems, 2 revisions, 12hr priority" },
+      { name: "Standard Master", price: "$69", desc: "Release-format master, 1 revision" },
+      { name: "Premium Master", price: "$99", desc: "Stem review where supplied, 2 revisions" },
       { name: "Album Master", price: "$299", desc: "Up to 14 tracks, consistent loudness across project" }
     ],
     desc: "Industry-standard mastering for Spotify, Apple Music and all platforms."
   },
   {
     title: "Mix + Master Bundle",
-    engineer: "Wolf Bridges",
+    engineer: "BVS Audio Services",
     price: "From $189",
     tiers: [
       { name: "Standard Bundle", price: "$189", desc: "Pro mix + standard master" },
-      { name: "Premium Bundle", price: "$249", desc: "Premium mix + premium master + stems" }
+      { name: "Premium Bundle", price: "$249", desc: "Premium mix + premium master; deliverables confirmed first" }
     ],
-    desc: "Complete post-production package. The full Metropolis-style experience."
+    desc: "Complete post-production package with one clear scope and delivery plan."
   },
   {
     title: "Vocal Production",
-    engineer: "Wolf Bridges",
+    engineer: "BVS Audio Services",
     price: "From $65",
     tiers: [
       { name: "Vocal Comping & Tuning", price: "$65", desc: "Full comp + pitch correction. 1 revision." },
-      { name: "Full Vocal Production", price: "$129", desc: "Layering, harmonies, ad-libs, effects. 2 revisions." }
+      { name: "Full Vocal Production", price: "$129", desc: "Editing and arrangement support from supplied takes. 2 revisions." }
     ],
     desc: "Bring your vocals to professional level."
   }
 ];
 
 const processSteps = [
-  { step: "1", title: "Order", desc: "Choose your service and engineer (Wolf Bridges or team)." },
-  { step: "2", title: "Upload", desc: "Upload your tracks and share your vision via the form." },
-  { step: "3", title: "In The Studio", desc: "Wolf Bridges or our engineers work their magic with feedback loops." },
-  { step: "4", title: "Files Ready", desc: "Download your mastered/mixed files. Ready for BVS Radio or release." },
+  { step: "1", title: "Choose", desc: "Select a starting package or ask BVS for a custom scope." },
+  { step: "2", title: "Send files", desc: "Upload your stems or mix and include references and release plans." },
+  { step: "3", title: "Confirm", desc: "BVS confirms file quality, assigned engineer, timeline and deliverables." },
+  { step: "4", title: "Review", desc: "Receive files, request the included revisions and approve delivery." },
 ];
 
 export default function ServicesPage() {
@@ -92,12 +79,11 @@ export default function ServicesPage() {
           <p className="uppercase text-xs tracking-[3px] text-brand mb-2">HiFi Services • BVS Radio</p>
           <h1 className="text-5xl font-semibold tracking-[-0.03em] mb-4">Professional Online Mixing &amp; Mastering</h1>
           <p className="text-xl text-text-secondary mb-8">
-            Direct access to leading engineers. Upload your tracks from anywhere and receive true HiFi masters exactly as the artist intended.
-            Featuring Wolf Bridges and the BVS team.
+            Send your project from anywhere. BVS will review the files and confirm the engineer, scope, turnaround and final deliverables before production starts.
           </p>
-          <div className="text-xs text-brand/80">All masters delivered in lossless quality, ready for BVS Radio and streaming platforms.</div>
+          <div className="text-xs text-brand/80">Final formats and platform requirements are agreed for each order.</div>
           <div className="flex gap-4 justify-center">
-            <Link href="#engineers" className="px-8 py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark">Meet the Engineers</Link>
+            <Link href="#engineers" className="px-8 py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark">How assignment works</Link>
             <Link href="#services" className="px-8 py-3 border border-white/30 rounded-full hover:bg-white/5">Browse Services</Link>
           </div>
         </div>
@@ -105,8 +91,9 @@ export default function ServicesPage() {
 
       {/* Featured Engineer - Wolf Bridges */}
       <section id="engineers" className="mb-20">
-        <h2 className="text-3xl font-bold mb-8">Our Engineers</h2>
-        <div className="grid md:grid-cols-2 gap-8">
+        <h2 className="text-3xl font-bold mb-2">How projects are assigned</h2>
+        <p className="mb-8 max-w-2xl text-text-secondary">Public engineer profiles and verified credits will be added as the roster is confirmed. Until then, we do not publish placeholder biographies or testimonials.</p>
+        <div className="grid gap-8">
           {engineers.map((eng, i) => (
             <div key={i} className="bg-bg-card/40 border border-white/5 rounded-3xl overflow-hidden">
               <div className="relative h-64">
@@ -120,13 +107,6 @@ export default function ServicesPage() {
               <div className="p-6 space-y-4">
                 <p className="text-text-secondary leading-relaxed">{eng.bio}</p>
                 
-                {eng.spotifyCredits && (
-                  <div>
-                    <p className="text-xs uppercase tracking-widest text-brand mb-1">Spotify Credits</p>
-                    <p className="text-sm">{eng.spotifyCredits}</p>
-                  </div>
-                )}
-
                 <div>
                   <p className="text-xs uppercase tracking-widest text-brand mb-2">Specialties</p>
                   <div className="flex flex-wrap gap-2">
@@ -138,11 +118,6 @@ export default function ServicesPage() {
 
                 <p className="text-sm text-text-secondary"><strong>Turnaround:</strong> {eng.turnaround}</p>
 
-                {eng.testimonials && (
-                  <div className="pt-4 border-t border-white/10 text-sm italic text-text-secondary">
-                    {eng.testimonials.map((t, idx) => <p key={idx} className="mb-2">“{t}”</p>)}
-                  </div>
-                )}
               </div>
             </div>
           ))}
@@ -152,7 +127,7 @@ export default function ServicesPage() {
       {/* Services - Metropolis style */}
       <section id="services" className="mb-20">
         <h2 className="text-3xl font-bold mb-2">Services</h2>
-        <p className="text-text-secondary mb-8 max-w-2xl">Bespoke mixing and mastering by Wolf Bridges and the BVS team. All services include commercial rights and direct communication.</p>
+        <p className="text-text-secondary mb-8 max-w-2xl">Transparent starting packages for your own recordings. Your music rights remain yours; the service fee covers the agreed production work and deliverables.</p>
 
         <div className="grid md:grid-cols-2 gap-6">
           {services.map((service, index) => (
@@ -206,22 +181,22 @@ export default function ServicesPage() {
             </div>
           ))}
         </div>
-        <p className="text-center text-sm text-text-secondary mt-6">Upload your stems or mixes. Communicate directly with Wolf Bridges. Receive broadcast-ready files ready for BVS Radio or release.</p>
+        <p className="text-center text-sm text-text-secondary mt-6">Turnaround begins after usable files, payment and the project scope are confirmed. Radio submission is a separate editorial review and is not guaranteed by buying a service.</p>
       </section>
 
       {/* Upload / Order Section */}
       <section id="upload" className="bg-bg-card/30 border border-white/10 rounded-2xl p-8 md:p-12 mb-16">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-3xl font-bold mb-4">Start Your Project</h2>
-          <p className="text-text-secondary mb-8">Ready to work with Wolf Bridges or the BVS team? Upload your tracks below or browse our music first.</p>
+          <p className="text-text-secondary mb-8">Choose a package when the scope is clear, or contact BVS first for complex sessions, albums and custom delivery needs.</p>
           
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Link href="/upload" className="inline-block px-8 py-4 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark text-lg">Upload Tracks</Link>
+            <Link href="/contact" className="inline-block px-8 py-4 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark text-lg">Request a project review</Link>
             <Link href="/checkout?item=Custom%20BVS%20Service&price=69" className="inline-block px-8 py-4 border border-white/25 font-semibold rounded-full hover:bg-white/5 text-lg">Start Checkout</Link>
           </div>
           
           <div className="text-xs text-text-secondary mt-4">
-            Or <Link href="/radio" className="text-brand hover:underline">listen to tracks already mastered by our engineers</Link>
+            Questions about stems or formats? <Link href="/contact" className="text-brand hover:underline">Ask before ordering</Link>.
           </div>
         </div>
       </section>
@@ -233,7 +208,7 @@ export default function ServicesPage() {
           <Link href="/catalogue" className="inline-flex items-center justify-center gap-2 text-brand hover:underline">Browse &amp; Buy Music</Link>
           <Link href="/checkout" className="inline-flex items-center justify-center gap-2 text-brand hover:underline">Open Checkout</Link>
         </div>
-        <p className="text-xs text-text-secondary mt-4">Services by Wolf Bridges are also available for your own tracks.</p>
+        <p className="text-xs text-text-secondary mt-4">Beat licences and engineering services are separate products with different rights and deliverables.</p>
       </section>
     </div>
   );

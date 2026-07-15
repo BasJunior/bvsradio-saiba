@@ -25,5 +25,7 @@ export const discoveryItems: DiscoveryItem[] = [
   { id: 'track-chiraq-drillaz', kind: 'track', title: 'Chiraq Drillaz', subtitle: 'WolfBrx · January Pack', href: '/catalogue?q=Chiraq%20Drillaz', image: '/images/festival-crowd.jpg', tags: ['beat', 'drill', '158 BPM'] },
   { id: 'artist-bvs-radio', kind: 'artist', title: 'BVS Radio', subtitle: 'Originals and archive recordings', href: '/artist/bvs-radio', image: '/music/Bvs-3000x3000%202.png', tags: ['artist', 'station'] },
   { id: 'artist-wolfbrx', kind: 'artist', title: 'WolfBrx', subtitle: 'Producer on BVS Radio', href: '/artist/wolfbrx', image: '/images/musicians.jpg', tags: ['artist', 'producer', 'beats'] },
+  { id: 'show-harare-after-dark', kind: 'show', title: 'Harare After Dark', subtitle: 'Programme preview · launch date to be announced', href: '/shows/harare-after-dark', image: '/images/editorial/music-discovery-show.webp', tags: ['show', 'preview', 'late night'] },
+  { id: 'show-studio-stories', kind: 'show', title: 'Studio Stories', subtitle: 'Programme preview · launch date to be announced', href: '/shows/studio-stories', image: '/images/editorial/audio-engineering-work.webp', tags: ['show', 'preview', 'interviews'] },
+  { id: 'show-new-zimbabwean-sound', kind: 'show', title: 'New Zimbabwean Sound', subtitle: 'Programme preview · launch date to be announced', href: '/shows/new-zimbabwean-sound', image: '/images/editorial/radio-studio-harare.webp', tags: ['show', 'preview', 'discovery', 'Zimbabwe'] },
 ]
-
