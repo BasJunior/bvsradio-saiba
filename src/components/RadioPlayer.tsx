@@ -111,10 +111,12 @@ export default function RadioPlayer({
 
   return (
     <div className="w-full max-w-xl mx-auto">
-      <audio 
-        ref={audioRef} 
-        src={currentTrack?.src} 
+      <audio
+        ref={audioRef}
+        src={currentTrack?.src}
         preload="none"
+        playsInline
+        controlsList="nodownload"
         onError={handleError}
         onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
         onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}

@@ -181,9 +181,9 @@ export default function ServicesPage() {
                       <div className="font-semibold text-brand">{tier.price}</div>
                       <Link
                         href={`/checkout?item=${encodeURIComponent(tier.name)}&price=${tier.price.replace('$', '')}`}
-                        className="text-xs text-brand hover:underline"
+                        className="mt-2 inline-block rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-black hover:bg-brand-dark"
                       >
-                        Order
+                        Buy now
                       </Link>
                     </div>
                   </div>

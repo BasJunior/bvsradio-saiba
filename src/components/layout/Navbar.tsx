@@ -6,14 +6,21 @@ import Image from 'next/image'
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
 
   const navLinks = [
     { href: '/radio', label: 'Listen' },
-    { href: '/catalogue', label: 'Browse' },
-    { href: '/shop', label: 'Services' },
-    { href: '/upload', label: 'Upload' },
-    { href: '/blog', label: 'Blog' },
-    { href: '/about', label: 'About' },
+    { href: '/catalogue', label: 'Music' },
+    { href: '/shows', label: 'Shows' },
+    { href: '/blog', label: 'Discover' },
+  ]
+
+  const artistLinks = [
+    { href: '/upload', label: 'Submit music' },
+    { href: '/catalogue?type=beat', label: 'Browse beats' },
+    { href: '/shop', label: 'Mixing & mastering' },
+    { href: '/upload#requirements', label: 'Submission requirements' },
+    { href: '/shop#services', label: 'Services & pricing' },
   ]
 
   return (
@@ -31,6 +38,34 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsArtistMenuOpen(true)}
+            onMouseLeave={() => setIsArtistMenuOpen(false)}
+          >
+            <button
+              type="button"
+              className="text-text-secondary hover:text-brand transition-colors"
+              aria-expanded={isArtistMenuOpen}
+              onClick={() => setIsArtistMenuOpen(!isArtistMenuOpen)}
+            >
+              For Artists <span aria-hidden="true">⌄</span>
+            </button>
+            {isArtistMenuOpen && (
+              <div className="absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3">
+                <div className="rounded-xl border border-white/10 bg-bg-primary p-2 shadow-2xl">
+                  {artistLinks.map((link) => (
+                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-text-secondary hover:bg-white/5 hover:text-brand">
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <Link href="/search" aria-label="Search BVS" className="text-text-secondary hover:text-brand transition-colors">
+            Search
+          </Link>
         </div>
 
         <div className="hidden md:flex items-center gap-3">
@@ -72,6 +107,15 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <div className="pt-2">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">For Artists</div>
+              {artistLinks.map((link) => (
+                <Link key={link.href} href={link.href} className="block py-2 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+            <Link href="/search" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Search</Link>
             <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
               <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
                 Sign In

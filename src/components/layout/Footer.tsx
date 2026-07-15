@@ -12,27 +12,30 @@ export default function Footer() {
             </p>
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-text-primary mb-3">Platform</h4>
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Listen &amp; discover</h4>
             <div className="flex flex-col gap-2">
               <Link href="/radio" className="text-sm text-text-secondary hover:text-brand transition-colors">Live Radio</Link>
-              <Link href="/catalogue" className="text-sm text-text-secondary hover:text-brand transition-colors">Music Catalogue</Link>
-              <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Upload Music</Link>
-              <Link href="/blog" className="text-sm text-text-secondary hover:text-brand transition-colors">Blog</Link>
-              <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Shop</Link>
+              <Link href="/catalogue" className="text-sm text-text-secondary hover:text-brand transition-colors">Music</Link>
+              <Link href="/shows" className="text-sm text-text-secondary hover:text-brand transition-colors">Shows</Link>
+              <Link href="/search" className="text-sm text-text-secondary hover:text-brand transition-colors">Search</Link>
+              <Link href="/blog" className="text-sm text-text-secondary hover:text-brand transition-colors">Stories</Link>
             </div>
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-text-primary mb-3">Company</h4>
+            <h4 className="text-sm font-semibold text-text-primary mb-3">For artists</h4>
+            <div className="flex flex-col gap-2">
+              <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Upload Music</Link>
+              <Link href="/catalogue?type=beat" className="text-sm text-text-secondary hover:text-brand transition-colors">Browse Beats</Link>
+              <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Mixing &amp; Mastering</Link>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Company &amp; social</h4>
             <div className="flex flex-col gap-2">
               <Link href="/about" className="text-sm text-text-secondary hover:text-brand transition-colors">About</Link>
               <Link href="/contact" className="text-sm text-text-secondary hover:text-brand transition-colors">Contact</Link>
               <Link href="/privacy" className="text-sm text-text-secondary hover:text-brand transition-colors">Privacy</Link>
               <Link href="/terms" className="text-sm text-text-secondary hover:text-brand transition-colors">Terms</Link>
-            </div>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-text-primary mb-3">Follow Us</h4>
-            <div className="flex flex-col gap-2">
               <a href="https://instagram.com/bvsradio" target="_blank" rel="noopener noreferrer" className="text-sm text-text-secondary hover:text-brand transition-colors">Instagram</a>
               <a href="https://twitter.com/bvsradio" target="_blank" rel="noopener noreferrer" className="text-sm text-text-secondary hover:text-brand transition-colors">Twitter / X</a>
               <a href="https://facebook.com/bvsradio" target="_blank" rel="noopener noreferrer" className="text-sm text-text-secondary hover:text-brand transition-colors">Facebook</a>

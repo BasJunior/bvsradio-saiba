@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.com.bvsradio.app",
+        "paths": ["*", "/radio/*", "/catalogue/*"]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.com.bvsradio.app"]
+  }
+}

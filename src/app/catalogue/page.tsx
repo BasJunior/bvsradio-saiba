@@ -22,6 +22,8 @@ interface Track {
 }
 
 const coverArt = '/music/Bvs-3000x3000%202.png'
+const junePackArt = '/images/music-packs/june-pack.jpg'
+const mayPackArt = '/images/music-packs/may-pack-1-2.jpg'
 
 function musicFile(filename: string) {
   return `/music/${encodeURIComponent(filename)}`
@@ -99,7 +101,7 @@ const tracks: Track[] = [
     type: 'beat',
     bpm: '156 BPM',
     src: musicFile('mellisa - 156 bpm @wolfbrx.mp3'),
-    artwork: '/images/musicians.jpg',
+    artwork: junePackArt,
   },
   {
     id: 7,
@@ -112,7 +114,7 @@ const tracks: Track[] = [
     type: 'beat',
     bpm: '170 BPM',
     src: musicFile('in my city - 170 bpm @wolfbrx.mp3'),
-    artwork: '/images/festival-crowd.jpg',
+    artwork: junePackArt,
   },
   {
     id: 8,
@@ -125,7 +127,7 @@ const tracks: Track[] = [
     type: 'beat',
     bpm: '160 BPM',
     src: musicFile('RGB - 160 bpm @wolfbrx.mp3'),
-    artwork: '/images/hero-studio.jpg',
+    artwork: junePackArt,
   },
   {
     id: 9,
@@ -216,7 +218,7 @@ const tracks: Track[] = [
     type: 'beat',
     bpm: '169 BPM',
     src: musicFile("grinder's prayer - 169 bpm @wolfbrx.mp3"),
-    artwork: '/images/musicians.jpg',
+    artwork: mayPackArt,
   },
   {
     id: 16,
@@ -235,7 +237,8 @@ const tracks: Track[] = [
 
 const collectionCards = [
   { name: 'BVS Archive', detail: 'Original station tracks', img: coverArt },
-  { name: 'June Pack', detail: 'WolfBrx radio-ready beats', img: '/images/musicians.jpg' },
+  { name: 'June Pack', detail: 'WolfBrx radio-ready beats', img: junePackArt },
+  { name: 'May Pack', detail: 'WolfBrx focused trap selections', img: mayPackArt },
   { name: 'March Pack', detail: 'Melodic and trap selections', img: '/images/mic-closeup.jpg' },
   { name: 'Producer Picks', detail: 'Beats ready for artists', img: '/images/hero-studio.jpg' },
 ]
@@ -256,9 +259,22 @@ function trackPrice(track: Track) {
   return 2
 }
 
+function offerLabel(track: Track) {
+  return track.type === 'beat' ? 'Beat licence' : track.type === 'mix' ? 'Archive download' : 'Track download'
+}
+
+function rightsSummary(track: Track) {
+  if (track.type === 'beat') {
+    return 'The listed price is a standard licence starting point. Usage limits, files supplied, credits and commercial release terms must be confirmed by BVS before release.'
+  }
+
+  return 'Personal listening download. Copyright and reuse rights remain with the rights holder; this purchase does not grant sampling, sync or redistribution rights.'
+}
+
 export default function CataloguePage() {
   const [search, setSearch] = useState('')
   const [genreFilter, setGenreFilter] = useState('All')
+  const [typeFilter, setTypeFilter] = useState<'all' | TrackType>('all')
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null)
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -271,6 +287,13 @@ export default function CataloguePage() {
     return savedCart ? JSON.parse(savedCart) : []
   })
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    const requestedType = new URLSearchParams(window.location.search).get('type')
+    if (requestedType === 'single' || requestedType === 'beat' || requestedType === 'mix') {
+      setTypeFilter(requestedType)
+    }
+  }, [])
 
   useEffect(() => {
     localStorage.setItem('bvs_cart', JSON.stringify(cart))
@@ -295,9 +318,10 @@ export default function CataloguePage() {
         )
 
       const matchesGenre = genreFilter === 'All' || track.genre === genreFilter
-      return matchesSearch && matchesGenre
+      const matchesType = typeFilter === 'all' || track.type === typeFilter
+      return matchesSearch && matchesGenre && matchesType
     })
-  }, [genreFilter, search])
+  }, [genreFilter, search, typeFilter])
 
   const previewTrack = (track: Track) => {
     if (currentTrack?.id === track.id && isPlaying) {
@@ -348,7 +372,7 @@ export default function CataloguePage() {
           <p className="text-xs tracking-[3px] text-brand uppercase mb-3">BVS Catalogue</p>
           <h1 className="text-5xl font-semibold mb-4">Real tracks from the BVS library.</h1>
           <p className="max-w-2xl text-text-secondary text-lg">
-            Browse restored BVS originals and curated WolfBrx packs. Every preview here points to actual media on the live site.
+            Preview available BVS archive audio and producer packs. Product labels make clear whether you are buying a personal download or starting a beat-licensing order.
           </p>
         </div>
 
@@ -408,6 +432,17 @@ export default function CataloguePage() {
             </option>
           ))}
         </select>
+        <select
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value as 'all' | TrackType)}
+          aria-label="Filter by content type"
+          className="rounded-full border border-white/10 bg-bg-card px-5 py-3 text-sm outline-none focus:border-brand"
+        >
+          <option value="all">All content</option>
+          <option value="single">Track downloads</option>
+          <option value="mix">Archive downloads</option>
+          <option value="beat">Beat licences</option>
+        </select>
         <Link href="/checkout" className="rounded-full bg-brand px-5 py-3 text-center text-sm font-semibold text-black hover:bg-brand-dark">
           Cart ({cart.length})
         </Link>
@@ -426,8 +461,8 @@ export default function CataloguePage() {
                 <div className="relative aspect-square overflow-hidden">
                   <Image src={track.artwork} alt={track.title} fill className="object-cover transition duration-300 group-hover:scale-[1.02]" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-                  <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[10px] uppercase tracking-[1.5px] text-white">
-                    {track.type}
+                  <span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] uppercase tracking-[1.5px] text-white">
+                    {offerLabel(track)}
                   </span>
                 </div>
               </button>
@@ -440,7 +475,7 @@ export default function CataloguePage() {
                 <p className="truncate text-sm text-text-secondary">{track.artist}</p>
                 <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-secondary">
                   <span className="truncate">{track.genre}</span>
-                  <span className="flex-shrink-0">${trackPrice(track)}</span>
+                  <span className="flex-shrink-0">{track.type === 'beat' ? 'from ' : ''}${trackPrice(track)}</span>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button
@@ -550,6 +585,14 @@ export default function CataloguePage() {
                 </p>
                 <p className="mt-5 text-text-secondary">{selectedTrack.description}</p>
 
+                <div className="mt-5 rounded-xl border border-brand/20 bg-brand/5 p-4">
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">{offerLabel(selectedTrack)}</div>
+                  <p className="text-sm leading-relaxed text-text-secondary">{rightsSummary(selectedTrack)}</p>
+                  {selectedTrack.type === 'beat' && (
+                    <p className="mt-2 text-xs text-text-secondary">Need exclusivity, stems or sync use? Contact BVS for a written quote before checkout.</p>
+                  )}
+                </div>
+
                 <div className="mt-7">
                   <h3 className="mb-3 text-sm font-semibold uppercase tracking-[2px]">Same collection</h3>
                   <div className="space-y-1">
@@ -582,12 +625,19 @@ export default function CataloguePage() {
                     onClick={() => addToCart(selectedTrack)}
                     className="flex-1 rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
                   >
-                    Save to Cart
+                    Add {selectedTrack.type === 'beat' ? 'licence' : 'download'} · ${trackPrice(selectedTrack)}
                   </button>
+                  <Link
+                    href="/checkout"
+                    onClick={() => addToCart(selectedTrack)}
+                    className="flex flex-1 items-center justify-center rounded-full bg-white px-5 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
+                  >
+                    Continue to checkout
+                  </Link>
                 </div>
 
                 <Link href="/contact" className="mt-4 text-center text-sm text-brand hover:underline">
-                  Ask BVS about licensing, placement, or mastering
+                  Ask BVS about rights, exclusive licensing, or audio services
                 </Link>
               </div>
             </div>
