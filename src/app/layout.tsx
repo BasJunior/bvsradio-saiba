@@ -5,6 +5,7 @@ import VisitorAssistant from "@/components/VisitorAssistant";
 import PwaRegister from "@/components/PwaRegister";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { getStationTracks } from "@/lib/station-library";
+import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com";
@@ -70,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
+        <LibrarySyncProvider>
         <StationPlayerProvider tracks={stationTracks}>
           <Navbar />
           <main className="pt-16 pb-28">{children}</main>
@@ -78,6 +80,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <PwaRegister />
           <PersistentPlayer />
         </StationPlayerProvider>
+        </LibrarySyncProvider>
       </body>
     </html>
   );

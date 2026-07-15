@@ -218,3 +218,28 @@ CREATE POLICY "Orders can be inserted by checkout" ON orders
 
 CREATE POLICY "Orders are admin managed" ON orders
   FOR SELECT USING (false);
+
+-- 11. ACCOUNT-SYNCED LIBRARY
+-- Stores the public catalogue snapshot needed to render saved items on any device.
+CREATE TABLE IF NOT EXISTS user_library_items (
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  section VARCHAR(20) NOT NULL CHECK (section IN ('favourites', 'follows', 'history')),
+  item_id TEXT NOT NULL,
+  item JSONB NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (user_id, section, item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_library_items_user_section_updated
+  ON user_library_items(user_id, section, updated_at DESC);
+
+ALTER TABLE user_library_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can read own library" ON user_library_items
+  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can add to own library" ON user_library_items
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own library" ON user_library_items
+  FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can remove from own library" ON user_library_items
+  FOR DELETE USING (auth.uid() = user_id);

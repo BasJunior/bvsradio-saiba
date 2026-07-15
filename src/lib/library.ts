@@ -18,6 +18,12 @@ export function readLibrary(section: LibrarySection): DiscoveryItem[] {
   return safeParse(window.localStorage.getItem(keys[section]))
 }
 
+export function writeLibrary(section: LibrarySection, items: DiscoveryItem[], source: 'local' | 'remote' = 'local') {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(keys[section], JSON.stringify(items))
+  window.dispatchEvent(new CustomEvent('bvs:library-change', { detail: { section, source } }))
+}
+
 export function hasLibraryItem(section: LibrarySection, id: string) {
   return readLibrary(section).some((item) => item.id === id)
 }
@@ -26,15 +32,14 @@ export function toggleLibraryItem(section: LibrarySection, item: DiscoveryItem) 
   const current = readLibrary(section)
   const exists = current.some((saved) => saved.id === item.id)
   const next = exists ? current.filter((saved) => saved.id !== item.id) : [item, ...current]
-  window.localStorage.setItem(keys[section], JSON.stringify(next))
-  window.dispatchEvent(new CustomEvent('bvs:library-change', { detail: { section } }))
+  writeLibrary(section, next)
+  window.dispatchEvent(new CustomEvent('bvs:library-mutation', { detail: { section, item, saved: !exists } }))
   return !exists
 }
 
 export function recordListening(item: DiscoveryItem) {
   if (typeof window === 'undefined') return
   const next = [item, ...readLibrary('history').filter((saved) => saved.id !== item.id)].slice(0, 30)
-  window.localStorage.setItem(keys.history, JSON.stringify(next))
-  window.dispatchEvent(new CustomEvent('bvs:library-change', { detail: { section: 'history' } }))
+  writeLibrary('history', next)
+  window.dispatchEvent(new CustomEvent('bvs:library-mutation', { detail: { section: 'history', item, saved: true } }))
 }
-
