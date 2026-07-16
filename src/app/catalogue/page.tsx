@@ -233,9 +233,39 @@ const tracks: Track[] = [
     src: musicFile('eternity - 90 bpm @wolfbrx.mp3'),
     artwork: '/images/female-host.jpg',
   },
+  // Drive commerce products (ids match bvsradio-products/albums/<id>.zip)
+  {
+    id: 100,
+    title: 'LORD Album',
+    artist: 'CalmBeast x W.Hills',
+    genre: 'Album',
+    collection: 'Albums',
+    duration: 'Full album',
+    description:
+      'Full LORD album download (CalmBeast x W.Hills). Preview uses a related Calm Beast master; full zip is fulfilled after payment.',
+    type: 'mix',
+    src: musicFile('Calm Beast - Mahendere (MAST).mp3'),
+    artwork: '/images/albums/lord-album.jpg',
+    price: 19,
+  },
+  {
+    id: 101,
+    title: 'Album 16 Bit',
+    artist: 'BVS Radio',
+    genre: 'Album',
+    collection: 'Albums',
+    duration: 'Full album',
+    description:
+      'Complete 16 Bit album package from the BVS product drop. Digital download after checkout confirmation.',
+    type: 'mix',
+    src: musicFile('calm-beast.mp3'),
+    artwork: '/images/albums/album-16-bit.jpg',
+    price: 14,
+  },
 ]
 
 const collectionCards = [
+  { name: 'Albums', detail: 'Full album downloads', img: '/images/albums/lord-album.jpg' },
   { name: 'BVS Archive', detail: 'Original station tracks', img: coverArt },
   { name: 'June Pack', detail: 'WolfBrx radio-ready beats', img: junePackArt },
   { name: 'May Pack', detail: 'WolfBrx focused trap selections', img: mayPackArt },

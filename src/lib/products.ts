@@ -19,6 +19,8 @@ export async function resolveProductFile(
     path.join(root, "beats", `${itemId}.zip`),
     path.join(root, "beats", `${itemId}.mp3`),
     path.join(root, "beats", `${itemId}.wav`),
+    path.join(root, "albums", `${itemId}.zip`),
+    path.join(root, "albums", `${itemId}.mp3`),
     path.join(root, "services", `${itemId}.zip`),
   ];
   if (title) {
@@ -26,6 +28,8 @@ export async function resolveProductFile(
     candidates.push(
       path.join(root, "beats", `${slug}.zip`),
       path.join(root, "beats", `${slug}.mp3`),
+      path.join(root, "albums", `${slug}.zip`),
+      path.join(root, "albums", `${slug}.mp3`),
     );
   }
   for (const file of candidates) {

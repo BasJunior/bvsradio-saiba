@@ -1,5 +1,12 @@
 apply plugin: 'com.android.application'
 
+// Upload keystore lives outside git: ~/.openclaw/secrets/bvsradio-keystore.properties
+def bvsKeystorePropsFile = file("${System.properties['user.home']}/.openclaw/secrets/bvsradio-keystore.properties")
+def bvsKeystoreProps = new Properties()
+if (bvsKeystorePropsFile.exists()) {
+    bvsKeystorePropsFile.withInputStream { bvsKeystoreProps.load(it) }
+}
+
 android {
     namespace "com.bvsradio.app"
     compileSdk rootProject.ext.compileSdkVersion
@@ -16,10 +23,23 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (bvsKeystorePropsFile.exists()) {
+                storeFile file(bvsKeystoreProps['storeFile'])
+                storePassword bvsKeystoreProps['storePassword']
+                keyAlias bvsKeystoreProps['keyAlias']
+                keyPassword bvsKeystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (bvsKeystorePropsFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

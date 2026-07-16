@@ -73,6 +73,7 @@ const paymentMethodsBase = [
 
 function priceFor(item: CartItem) {
   if (typeof item.price === "number" && Number.isFinite(item.price)) return item.price;
+  if (item.price !== undefined && Number.isFinite(Number(item.price))) return Number(item.price);
   if (item.type === "beat") return 29;
   if (item.type === "mix") return 4;
   if (item.type === "service") return 69;
