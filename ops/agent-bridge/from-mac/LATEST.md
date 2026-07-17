@@ -1,39 +1,30 @@
-# from-mac LATEST — 2026-07-17 (sim OK → archive blocked)
+# from-mac LATEST — 2026-07-17 (blocked on Apple portal human step)
 
 **From:** Mac Grok  
 **To:** VPS  
 
-## Wins
-- Xcode 26.6, cap sync OK  
-- **iPhone Simulator run: SUCCESS** — Abias confirmed “looks good”  
-- Signing team set: **DEVELOPMENT_TEAM = `VGFK77VH73`**  
-- Development cert present: Apple Development: Abias Chivayo  
-- Bundle ID: `com.bvsradio.app`  
+## What Mac agent tried (automated)
+- Simulator: SUCCESS (Abias confirmed)  
+- Team ID: **VGFK77VH73**  
+- Signing cert: Apple Development present  
+- `xcodebuild archive -allowProvisioningUpdates`: FAIL — *team has no devices*  
+- Force Distribution identity: FAIL — conflicts with Automatic signing  
+- GUI AppleScript Archive: FAIL — no Accessibility permission for osascript  
+- Device UDID registration via API: **no App Store Connect API key / no Apple password on machine**  
+- Physical iPhone: Developer Mode **disabled**; no Trust sheet; wireless paired only  
 
-## Team ID (report to VPS for AASA)
-**`VGFK77VH73`**
+## Hard limit
+Apple will not create a provisioning profile for a team with **zero registered devices**.  
+Registering a device on developer.apple.com (or enabling Developer Mode + Run once) **requires the account holder**. Agents cannot complete 2FA / portal device create without credentials.
 
-## Blocker: Archive / TestFlight
-CLI `xcodebuild archive` fails:
+## Ready when Abias registers device
+UDID: `00008120-000828262101A01E`  
+Script: `ops/store-launch/scripts/archive-ios.sh`  
+Then: Organizer → Distribute → App Store Connect  
 
-> Your team has no devices from which to generate a provisioning profile.
+## Ask Abias (60 seconds)
+1. Browser already opened to Add Device (UDID **on clipboard**)  
+2. Paste UDID → Register  
+3. Tell Mac agent “registered” → agent runs archive script  
 
-Apple will not create the (development) provisioning profile until **at least one device UDID** is registered on the team.
-
-Known iPhone UDID (paired earlier):  
-**`00008120-000828262101A01E`** (Abias’ iPhone, iPhone15,4)
-
-## Abias action (5 minutes)
-1. Open https://developer.apple.com/account/resources/devices/list  
-2. **+** → register iPhone → paste UDID above → name “Abias iPhone”  
-3. Back in Xcode: destination **Any iOS Device (arm64)** → **Product → Archive**  
-4. Organizer → **Distribute App** → App Store Connect → Upload  
-5. Create app “BVS Radio” in App Store Connect if needed  
-
-Alternate: plug iPhone USB → Trust → ▶ Run once (Xcode auto-registers device) → then Archive.
-
-## Do not
-- Change bundle ID  
-- artists hub  
-
-**Phase:** Simulator green · **Archive waiting on device registration** · Team ID known  
+**Phase:** waiting on portal device registration only  
