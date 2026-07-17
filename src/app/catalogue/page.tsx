@@ -309,7 +309,10 @@ function rightsSummary(track: Track) {
 }
 
 export default function CataloguePage() {
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    return new URLSearchParams(window.location.search).get('q') || ''
+  })
   const [genreFilter, setGenreFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState<'all' | TrackType>(() => {
     if (typeof window === 'undefined') return 'all'
@@ -327,7 +330,12 @@ export default function CataloguePage() {
     }
 
     const savedCart = window.localStorage.getItem('bvs_cart')
-    return savedCart ? JSON.parse(savedCart) : []
+    if (!savedCart) return []
+    try {
+      return JSON.parse(savedCart)
+    } catch {
+      return []
+    }
   })
   const audioRef = useRef<HTMLAudioElement | null>(null)
 
@@ -471,19 +479,28 @@ export default function CataloguePage() {
       </section>
 
       <section id="browse" className="scroll-mt-24">
-        <h2 className="mb-5 text-3xl font-semibold tracking-tight">Search Results</h2>
-        <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center">
-        <input
-          type="text"
-          placeholder="Search tracks, artists, packs..."
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          className="min-w-0 flex-1 rounded-full border border-white/10 bg-bg-card px-5 py-3 text-sm outline-none focus:border-brand"
-        />
+        <div className="mb-5 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-3 shadow-2xl shadow-black/20 md:p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center">
+        <label className="group relative min-w-0 flex-1">
+          <span className="sr-only">Search the BVS catalogue</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-text-secondary transition group-focus-within:text-brand">
+            <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+          </svg>
+          <input
+            type="search"
+            placeholder="Search tracks, artists, genres or packs"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            className="w-full rounded-xl border border-white/10 bg-black/35 py-3.5 pl-13 pr-12 text-sm outline-none transition placeholder:text-white/35 hover:border-white/20 focus:border-brand focus:ring-4 focus:ring-brand/10"
+          />
+          {search && (
+            <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 hover:text-white">Clear</button>
+          )}
+        </label>
         <select
           value={genreFilter}
           onChange={(event) => setGenreFilter(event.target.value)}
-          className="rounded-full border border-white/10 bg-bg-card px-5 py-3 text-sm outline-none focus:border-brand"
+          className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
         >
           {genres.map((genre) => (
             <option key={genre} value={genre}>
@@ -495,16 +512,24 @@ export default function CataloguePage() {
           value={typeFilter}
           onChange={(event) => setTypeFilter(event.target.value as 'all' | TrackType)}
           aria-label="Filter by content type"
-          className="rounded-full border border-white/10 bg-bg-card px-5 py-3 text-sm outline-none focus:border-brand"
+          className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
         >
           <option value="all">All content</option>
           <option value="single">Track downloads</option>
           <option value="mix">Archive downloads</option>
           <option value="beat">Beat licences</option>
         </select>
-        <Link href="/checkout" className="rounded-full bg-brand px-5 py-3 text-center text-sm font-semibold text-black hover:bg-brand-dark">
-          Cart ({cart.length})
+        <Link href="/checkout" className="rounded-xl bg-brand px-5 py-3.5 text-center text-sm font-semibold text-black shadow-lg shadow-brand/10 hover:bg-brand-light">
+          View cart · {cart.length}
         </Link>
+        </div>
+        </div>
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[2px] text-brand">BVS catalogue</p>
+            <h2 className="mt-1 text-3xl font-semibold tracking-tight">{search ? `Results for “${search}”` : 'Browse all music'}</h2>
+          </div>
+          <span className="flex-shrink-0 text-sm text-text-secondary">{filteredTracks.length} {filteredTracks.length === 1 ? 'result' : 'results'}</span>
         </div>
       </section>
 

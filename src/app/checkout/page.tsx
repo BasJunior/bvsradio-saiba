@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
@@ -13,6 +14,7 @@ interface CartItem {
   quantity?: number;
   src?: string;
   delivery?: string;
+  artwork?: string;
 }
 
 interface Customer {
@@ -253,6 +255,14 @@ export default function CheckoutPage() {
             Card payment was cancelled. Your cart is still here — try again or choose EcoCash / bank.
           </p>
         )}
+        <ol className="mt-8 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]" aria-label="Checkout progress">
+          {["Review cart", "Your details", "Payment"].map((step, index) => (
+            <li key={step} className={`flex items-center gap-3 px-3 py-4 sm:px-5 ${index === 0 ? "bg-brand/10" : "border-l border-white/10"}`}>
+              <span className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-xs font-bold ${index === 0 ? "bg-brand text-black" : "bg-white/10 text-text-secondary"}`}>{index + 1}</span>
+              <span className={`hidden text-sm font-medium sm:block ${index === 0 ? "text-white" : "text-text-secondary"}`}>{step}</span>
+            </li>
+          ))}
+        </ol>
       </section>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_0.85fr]">
@@ -277,10 +287,19 @@ export default function CheckoutPage() {
                     key={String(item.id)}
                     className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/20 p-4"
                   >
-                    <div>
-                      <div className="font-semibold">{item.title}</div>
-                      <div className="text-sm text-text-secondary">
-                        {item.artist || "BVS"} · {item.type} · qty {item.quantity || 1}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+                        {item.artwork ? (
+                          <Image src={item.artwork} alt="" fill className="object-cover" />
+                        ) : (
+                          <span className="grid h-full place-items-center text-lg text-brand">♪</span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold">{item.title}</div>
+                        <div className="text-sm capitalize text-text-secondary">
+                          {item.artist || "BVS"} · {item.type === "beat" ? "Beat licence" : item.type === "service" ? "Studio service" : "Digital download"}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
@@ -414,6 +433,16 @@ export default function CheckoutPage() {
         <aside className="space-y-6">
           <section className="sticky top-24 rounded-2xl border border-white/10 bg-bg-card/45 p-6">
             <h2 className="mb-4 text-xl font-semibold">Summary</h2>
+            {items.length > 0 && (
+              <div className="mb-4 space-y-2 border-b border-white/10 pb-4">
+                {items.map((item) => (
+                  <div key={`summary-${item.id}`} className="flex justify-between gap-4 text-sm">
+                    <span className="min-w-0 truncate text-text-secondary">{item.title}</span>
+                    <span className="flex-shrink-0">${(priceFor(item) * (item.quantity || 1)).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-text-secondary">
                 <span>Items</span>
