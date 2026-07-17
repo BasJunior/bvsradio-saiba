@@ -1,4 +1,5 @@
 import UIKit
+import AVFoundation
 import Capacitor
 
 @UIApplicationMain
@@ -7,7 +8,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Allow HTML5 / WebView audio to continue when the screen locks (radio use case).
+        do {
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback,
+                mode: .default,
+                options: [.allowAirPlay, .allowBluetooth]
+            )
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            // Non-fatal: playback still works while app is foregrounded.
+            print("AVAudioSession setup failed: \(error)")
+        }
         return true
     }
 

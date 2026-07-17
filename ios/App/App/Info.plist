@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>BVS Radio</string>
+	<string>BVS Radio</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -28,7 +28,7 @@
 	<string>Main</string>
 	<key>UIRequiredDeviceCapabilities</key>
 	<array>
-		<string>armv7</string>
+		<string>arm64</string>
 	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
@@ -45,5 +45,26 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<!-- Radio / web audio while screen locked or app backgrounded -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
+	<!-- HTTPS-only production site; no custom ATS exceptions -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
+	<!-- Export compliance: only standard HTTPS encryption -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<!-- Capacitor may request these; keep strings ready for review -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>BVS Radio may access your photo library when you choose artwork for uploads.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>BVS Radio may use the camera when you capture images for your profile or uploads.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BVS Radio does not record microphone audio in the standard radio experience.</string>
 </dict>
 </plist>
