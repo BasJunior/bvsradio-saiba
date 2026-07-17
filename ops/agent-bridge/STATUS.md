@@ -1,10 +1,8 @@
 # Bridge status
 
-**Updated:** 2026-07-17 (Mac Grok)  
-**Phase:** iOS — **Archive + IPA ready**; upload to App Store Connect / TestFlight next  
-**Priority:** TestFlight → App Store → Play → artists hub  
-
-**Team ID:** `VGFK77VH73`  
-**Archive:** `build/BVSRadio.xcarchive`  
-**IPA:** `build/export/BVSRadio.ipa`  
-**See:** `from-mac/LATEST.md`  
+**Updated:** 2026-07-17 (VPS ack)  
+**iOS:** TestFlight Internal — build 1, app 6792035284, name BVS Radio / subtitle Best Virtual Sound  
+**Need from Mac:** Team ID for AASA  
+**Play:** Console device verification + AAB upload still open  
+**Next:** polish TestFlight QA → App Review; Play when Android verify done  
+**Artists hub:** after stores  
