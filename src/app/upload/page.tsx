@@ -91,20 +91,28 @@ export default function UploadPage() {
           <h1 className="text-5xl font-bold tracking-tight mb-4">Submit your music to BVS.</h1>
           <p className="text-xl text-text-secondary mb-8">Send an original release for editorial review. This form is for radio and catalogue consideration, not for ordering mixing or mastering.</p>
 
-          <div id="requirements" className="scroll-mt-24 space-y-6 text-sm">
+          <section id="requirements" aria-labelledby="requirements-heading" className="scroll-mt-24 rounded-2xl border border-white/10 bg-bg-card/30 p-6">
+            <h2 id="requirements-heading" className="text-2xl font-semibold">Submission requirements</h2>
+            <p className="mt-2 text-sm text-text-secondary">Prepare these essentials before you upload.</p>
+            <div className="mt-6 space-y-6 text-sm">
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">1</div>
-              <div><strong className="block mb-1">You must control the rights</strong> Submit original work only, with permission from all artists, producers and rights holders.</div>
+              <div><strong className="block mb-1">Confirm eligibility and rights</strong> Submit original work only, with permission from every artist, producer and rights holder.</div>
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">2</div>
-              <div><strong className="block mb-1">High quality audio</strong> 320kbps MP3 or WAV preferred for the best listening experience.</div>
+              <div><strong className="block mb-1">Prepare the audio file</strong> Upload MP3, WAV or OGG up to 25MB. A 320kbps MP3 or WAV is preferred.</div>
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">3</div>
-              <div><strong className="block mb-1">Editorial review</strong> BVS decides what fits its programming. Uploading does not guarantee airplay, publication or feedback.</div>
+              <div><strong className="block mb-1">Add release details</strong> Provide the track title, genre and optional square cover artwork. Add context in the description when useful.</div>
             </div>
-          </div>
+            <div className="flex gap-4">
+              <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">4</div>
+              <div><strong className="block mb-1">Understand the review</strong> BVS decides what fits its programming. Uploading does not guarantee airplay, publication or feedback.</div>
+            </div>
+            </div>
+          </section>
 
           <div className="mt-8 rounded-xl border border-white/10 bg-bg-card/40 p-5 text-sm text-text-secondary">
             Need engineering instead? <Link href="/shop" className="font-medium text-brand hover:underline">See mixing and mastering packages</Link>. Need help with rights or a submission already sent? <Link href="/contact" className="font-medium text-brand hover:underline">Contact BVS</Link>.

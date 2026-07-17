@@ -52,6 +52,15 @@ const services = [
     desc: "Complete post-production package with one clear scope and delivery plan."
   },
   {
+    title: "Ultimate Bundle",
+    engineer: "BVS Audio Services",
+    price: "From $299",
+    tiers: [
+      { name: "Ultimate Bundle", price: "$299", desc: "Professional mix + release-format master + publishing setup support" }
+    ],
+    desc: "Take one song from final stems to a release-ready master with publishing setup support in one coordinated package."
+  },
+  {
     title: "Vocal Production",
     engineer: "BVS Audio Services",
     price: "From $65",

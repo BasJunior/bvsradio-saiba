@@ -24,6 +24,13 @@ interface Track {
 const coverArt = '/music/Bvs-3000x3000%202.png'
 const junePackArt = '/images/music-packs/june-pack.jpg'
 const mayPackArt = '/images/music-packs/may-pack-1-2.jpg'
+const previewLimitSeconds = 30
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
+  const wholeSeconds = Math.floor(seconds)
+  return `${Math.floor(wholeSeconds / 60)}:${String(wholeSeconds % 60).padStart(2, '0')}`
+}
 
 function musicFile(filename: string) {
   return `/music/${encodeURIComponent(filename)}`
@@ -312,6 +319,8 @@ export default function CataloguePage() {
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null)
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [previewElapsed, setPreviewElapsed] = useState(0)
+  const [previewDuration, setPreviewDuration] = useState(previewLimitSeconds)
   const [cart, setCart] = useState<Track[]>(() => {
     if (typeof window === 'undefined') {
       return []
@@ -362,10 +371,30 @@ export default function CataloguePage() {
     audioRef.current = audio
     setCurrentTrack(track)
     setIsPlaying(true)
+    setPreviewElapsed(0)
+    setPreviewDuration(previewLimitSeconds)
+
+    audio.addEventListener('loadedmetadata', () => {
+      setPreviewDuration(Math.min(audio.duration || previewLimitSeconds, previewLimitSeconds))
+    })
+
+    audio.addEventListener('timeupdate', () => {
+      const snippetDuration = Math.min(audio.duration || previewLimitSeconds, previewLimitSeconds)
+      const elapsed = Math.min(audio.currentTime, snippetDuration)
+      setPreviewElapsed(elapsed)
+      setPreviewDuration(snippetDuration)
+
+      if (audio.currentTime >= snippetDuration) {
+        audio.pause()
+        audio.currentTime = snippetDuration
+        setPreviewElapsed(snippetDuration)
+        setIsPlaying(false)
+      }
+    })
 
     audio.addEventListener('ended', () => {
       setIsPlaying(false)
-      setCurrentTrack(null)
+      setPreviewElapsed(Math.min(audio.duration || previewLimitSeconds, previewLimitSeconds))
     })
 
     audio.play().catch(() => {
@@ -378,6 +407,7 @@ export default function CataloguePage() {
     audioRef.current?.pause()
     setIsPlaying(false)
     setCurrentTrack(null)
+    setPreviewElapsed(0)
   }
 
   const addToCart = (track: Track) => {
@@ -440,7 +470,9 @@ export default function CataloguePage() {
         ))}
       </section>
 
-      <section className="mb-8 flex flex-col gap-3 md:flex-row md:items-center">
+      <section id="browse" className="scroll-mt-24">
+        <h2 className="mb-5 text-3xl font-semibold tracking-tight">Search Results</h2>
+        <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-center">
         <input
           type="text"
           placeholder="Search tracks, artists, packs..."
@@ -473,6 +505,7 @@ export default function CataloguePage() {
         <Link href="/checkout" className="rounded-full bg-brand px-5 py-3 text-center text-sm font-semibold text-black hover:bg-brand-dark">
           Cart ({cart.length})
         </Link>
+        </div>
       </section>
 
       <section className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
@@ -570,7 +603,12 @@ export default function CataloguePage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="hidden text-xs text-brand sm:inline">{isPlaying ? 'Previewing real media' : 'Paused'}</span>
+              <div className="text-right">
+                <span className="block text-xs text-brand">{isPlaying ? 'Previewing' : previewElapsed >= previewDuration ? 'Preview complete' : 'Paused'}</span>
+                <span className="block tabular-nums text-xs text-text-secondary" aria-label={`${formatTime(previewElapsed)} elapsed of ${formatTime(previewDuration)} preview`}>
+                  {formatTime(previewElapsed)} / {formatTime(previewDuration)}
+                </span>
+              </div>
               <button type="button" onClick={stopPreview} className="rounded-full border border-white/20 px-4 py-2 text-xs hover:bg-white/5">
                 Stop
               </button>
