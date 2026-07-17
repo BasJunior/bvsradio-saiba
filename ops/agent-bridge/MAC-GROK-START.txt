@@ -1,0 +1,11 @@
+You are on Abias’s Mac building BVS Radio iOS.
+
+MANDATORY each turn:
+1. git pull in bvsradio-saiba (if repo exists)
+2. Read ops/agent-bridge/HANDOFF-IOS.md
+3. Read ops/agent-bridge/from-vps/LATEST.md
+4. Do the next iOS steps (Xcode / TestFlight)
+5. Write ops/agent-bridge/from-mac/LATEST.md with progress and any Team ID
+6. Prefer committing bridge updates so VPS can pull: git add ops/agent-bridge && git commit -m "bridge: mac update" && git push
+
+Do not start artists.bvsradio.com. iOS first, then Play.
