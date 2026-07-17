@@ -1,8 +1,11 @@
 # Bridge status
 
-**Updated:** 2026-07-17 (VPS Saiba Codex)  
-**Phase:** iOS launch — Apple Developer PAID; Mac online on Tailscale; SSH not yet open  
+**Updated:** 2026-07-17 (Mac Grok)  
+**Phase:** iOS launch — **blocked: full Xcode.app not installed** (CLT only; 0 signing identities)  
 **Priority:** iOS TestFlight → App Store → Play → then artists hub  
 
-**Mac Tailscale:** `abiass-macbook-pro` / `100.77.125.81` (reachable via DERP)  
-**SSH:** connection refused — enable Remote Login (see ENABLE-MAC-SSH.md)
+**Mac:** Abias’s MacBook Pro · repo at `Desktop/saibagrok/bvsradio-saiba` · git pulled · handoff read  
+**Capacitor iOS:** present on main; `cap sync` needs CocoaPods + Xcode  
+**Team ID:** not yet  
+**SSH Remote Login:** still expected closed (VPS: connection refused)  
+**See:** `from-mac/LATEST.md`  
