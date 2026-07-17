@@ -1,57 +1,39 @@
-# from-mac LATEST — 2026-07-17 (post-Xcode download)
+# from-mac LATEST — 2026-07-17 (sim OK → archive blocked)
 
-**From:** Mac Grok (Grok Build) on Abias’s MacBook Pro  
-**To:** VPS agents  
-**Repo:** `/Users/abiaschivayo/Desktop/saibagrok/bvsradio-saiba` · `main` pulled  
+**From:** Mac Grok  
+**To:** VPS  
 
-## Status
+## Wins
+- Xcode 26.6, cap sync OK  
+- **iPhone Simulator run: SUCCESS** — Abias confirmed “looks good”  
+- Signing team set: **DEVELOPMENT_TEAM = `VGFK77VH73`**  
+- Development cert present: Apple Development: Abias Chivayo  
+- Bundle ID: `com.bvsradio.app`  
 
-| Item | State |
-|------|--------|
-| Xcode.app | **Installed** — Xcode **26.6** (17F113) |
-| xcode-select | `/Applications/Xcode.app/Contents/Developer` |
-| License + first launch | **Accepted** (admin GUI) — Install Succeeded |
-| CocoaPods | **1.17.0** via `gem install --user-install` (`~/.gem/ruby/4.0.0/bin/pod`) |
-| `npx cap sync ios` | **OK** — pod install succeeded, plugins: app, splash-screen, status-bar |
-| Xcode workspace | **Opened** via `npx cap open ios` |
-| iOS 26.5 Simulator runtime | **Downloading** (~8.52 GB arm64) via `xcodebuild -downloadPlatform iOS` |
-| Simulator build | Failed earlier: “iOS 26.5 Platform Not Installed” — waiting on download |
-| Code signing identities | **Still 0** — Abias must add Apple ID in Xcode |
-| Team ID | **Unknown** |
-| TestFlight / Archive | Not started |
+## Team ID (report to VPS for AASA)
+**`VGFK77VH73`**
 
-## Done this turn
+## Blocker: Archive / TestFlight
+CLI `xcodebuild archive` fails:
 
-1. Detected Xcode 26.6 after Abias download.  
-2. Accepted license + runFirstLaunch via admin privileges.  
-3. Installed CocoaPods (user gem; brew link still broken).  
-4. `git pull`, `cap sync ios` **green**.  
-5. Opened `ios/App/App.xcworkspace`.  
-6. Started iOS 26.5 Simulator platform download.  
-7. Bundle ID remains **`com.bvsradio.app`**; automatic signing style already set.
+> Your team has no devices from which to generate a provisioning profile.
 
-## Human next (Abias) — in Xcode UI now
+Apple will not create the (development) provisioning profile until **at least one device UDID** is registered on the team.
 
-While the simulator downloads, do this in the open Xcode window:
+Known iPhone UDID (paired earlier):  
+**`00008120-000828262101A01E`** (Abias’ iPhone, iPhone15,4)
 
-1. **Xcode → Settings → Accounts** → **+** → sign in with Apple ID that has the **paid Developer Program**.  
-2. Select target **App** → **Signing & Capabilities**:  
-   - Team = your team (Best Virtual Studios / personal)  
-   - Bundle ID = **`com.bvsradio.app`** (do not change)  
-   - Automatically manage signing = ON  
-3. If a physical iPhone is available: plug in, Trust, select as run destination → ▶ Run.  
-4. When ready for store: destination **Any iOS Device (arm64)** → **Product → Archive** → Distribute → App Store Connect.  
-5. Paste **Team ID** (Membership details on developer.apple.com) into chat / this file after first sign.
+## Abias action (5 minutes)
+1. Open https://developer.apple.com/account/resources/devices/list  
+2. **+** → register iPhone → paste UDID above → name “Abias iPhone”  
+3. Back in Xcode: destination **Any iOS Device (arm64)** → **Product → Archive**  
+4. Organizer → **Distribute App** → App Store Connect → Upload  
+5. Create app “BVS Radio” in App Store Connect if needed  
 
-## Still blocked for Archive
-
-- Apple ID not yet in Xcode accounts → **0 signing identities**  
-- Simulator platform download in progress (not required for device Archive, but needed for sim testing)
+Alternate: plug iPhone USB → Trust → ▶ Run once (Xcode auto-registers device) → then Archive.
 
 ## Do not
-
+- Change bundle ID  
 - artists hub  
-- change bundle ID  
-- commit secrets  
 
-**Phase:** iOS — Xcode live, cap sync OK, signing + TestFlight next  
+**Phase:** Simulator green · **Archive waiting on device registration** · Team ID known  
