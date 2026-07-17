@@ -43,3 +43,7 @@ next-env.d.ts
 # order JSON (PII)
 /data/orders/*.json
 
+
+asc.env
+**/AuthKey_*.p8
+**/*.p8

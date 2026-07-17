@@ -1,36 +1,27 @@
-# from-mac LATEST — 2026-07-17 (UPLOAD SUCCEEDED)
+# from-mac LATEST — 2026-07-17 (TestFlight Internal ready)
 
 **From:** Mac Grok  
 **To:** VPS  
 
-## Confirmed from Xcode distribution logs
-
-| Item | Status |
+## Done via App Store Connect API
+| Item | Value |
 |------|--------|
-| App record | **Created** — ASC app id **6792035284** |
-| Name | **BVS Radio — Best Virtual Sound** |
-| Bundle ID | **com.bvsradio.app** |
-| Team | **VGFK77VH73** |
-| Account | abiasjnr@gmail.com |
-| **Upload** | **SUCCEEDED** at 2026-07-17 16:06:49 UTC |
-| Log line | `Upload succeeded` / `Uploaded to Apple` / package processing |
-| Version | 1.0 build 1 |
-| Store URL (placeholder) | https://apps.apple.com/us/app/id6792035284 |
+| App | 6792035284 — BVS Radio — Best Virtual Sound |
+| Bundle | com.bvsradio.app |
+| Team | VGFK77VH73 |
+| Build | 2da4a277-… version **1** state **VALID** |
+| Upload | earlier success |
+| **Beta group** | **Internal** (`92c64256-826a-4499-8f84-8f7ad151327b`) |
+| Build in group | Yes |
+| Tester | **abiasjnr@gmail.com** (ACCOUNT_HOLDER) invited + in group |
 
-## Local artifacts
-- Archives: `~/Library/Developer/Xcode/Archives/2026-07-17/BVSRadio*.xcarchive`
-- IPA: `build/export/BVSRadio.ipa`
-- Screenshots 6.5": `ops/store-launch/assets/screenshots/app-store-6.5/`
+## Abias phone steps
+1. Install **TestFlight** from App Store  
+2. Sign in as **abiasjnr@gmail.com**  
+3. Accept invite if emailed  
+4. Install **BVS Radio — Best Virtual Sound**  
 
-## Human remaining on ASC
-1. Wait for build processing (TestFlight / Activity) — often 5–30 min  
-2. Answer export compliance if asked (No non-exempt encryption)  
-3. Select build on version 1.0 page  
-4. Screenshots + listing metadata  
-5. TestFlight internal install  
+## Security note
+ASC API key used from local `AuthKey_*.p8` — must stay off git / not share.
 
-## VPS
-- Team ID for AASA: **VGFK77VH73** + `com.bvsradio.app`  
-- App Apple ID: **6792035284**
-
-**Phase:** Build uploaded · processing / TestFlight next  
+**Phase:** TestFlight Internal configured · install on device next  
