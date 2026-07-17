@@ -1,21 +1,14 @@
 # Store screenshots checklist
 
+## App Store iPhone 6.5" (ready)
+- Size: **1284 × 2778**
+- Folder: `ops/store-launch/assets/appstore-iphone-65/upload/`
+- Zip: `ops/store-launch/assets/appstore-iphone-65/BVS-Radio-AppStore-Screenshots-6.5.zip`
+- Guide: `ops/store-launch/assets/appstore-iphone-65/UPLOAD_README.md`
+
+Upload order: 03-feature-home → 04-feature-player → 05-feature-catalogue → 06-feature-services → 07-feature-checkout-tax → 01-home-fill → 02-radio-fill
+
 ## Play Store
-- Phone: 16:9 or 9:16, min 320px, max 3840px on short side
-- Need: 2–8 screenshots
-- Suggested captures from https://bvsradio.com :
-  1. Home
-  2. /radio player
-  3. /catalogue
-  4. /shop
-  5. /library (signed out OK)
-
-## App Store
-- 6.7" iPhone required for modern submission
-- Optional iPad if tablet listed
-
-## Feature graphic (Play only)
-- 1024 x 500 PNG
-- Path target: ops/store-launch/assets/feature-graphic.png
-
-Generate later (agents) or Abias provides.
+- Phone: 16:9 or 9:16, min 320px, max 3840px short side
+- Feature graphic: `ops/store-launch/assets/feature-graphic.png` (1024×500)
+- Reuse pure UI shots from `assets/screenshots/` or App Store pack scaled as needed
