@@ -1,7 +1,8 @@
 # Bridge status
 
-**Updated:** Discord team review ingested  
-**PDF:** Found **Bvsradio-Developer-Change-Brief-v2.pdf** in Discord #general → copied to `ops/agent-bridge/team-review/`  
-**Web:** 5+1 UX notes pending implementation (see from-vps/LATEST.md)  
+**Updated:** website status check post–Discord Saiba implement  
+**Web:** Saiba commit `20b14e5` on main — review items 1–5 in code; live site 200  
+**Extra note #6** (search aesthetic + checkout cart flow): **not** in that commit  
 **iOS:** TestFlight OK · Submit for Review = Mac  
 **Play:** device verify still open  
+**Canonical truth:** git `origin/main` + live bvsradio.com (not Discord chat alone)  
