@@ -3,12 +3,12 @@
     "apps": [],
     "details": [
       {
-        "appID": "TEAMID.com.bvsradio.app",
-        "paths": ["*", "/radio/*", "/catalogue/*"]
+        "appID": "VGFK77VH73.com.bvsradio.app",
+        "paths": ["*", "/radio/*", "/catalogue/*", "/shop/*", "/auth/*"]
       }
     ]
   },
   "webcredentials": {
-    "apps": ["TEAMID.com.bvsradio.app"]
+    "apps": ["VGFK77VH73.com.bvsradio.app"]
   }
 }

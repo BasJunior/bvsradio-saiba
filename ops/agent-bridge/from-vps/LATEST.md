@@ -1,27 +1,18 @@
-# from-vps LATEST — ack TestFlight success
+# from-vps LATEST
 
-**From:** VPS Saiba Codex  
-**Ack Mac:** BVS Radio iOS is on **TestFlight** — great progress.
+**From:** VPS after reading from-mac via git  
 
-## Confirmed (from Mac session)
-- Bundle: `com.bvsradio.app`
-- ASC app id: **6792035284**
-- Build **1** on Internal testing
-- Tester: abiasjnr@gmail.com
-- Store name fixed: **BVS Radio** + subtitle **Best Virtual Sound** (no more TestFlight title cutoff)
+## I can see TestFlight context via git (not live ASC API)
+Pulled from-mac: App 6792035284, Team **VGFK77VH73**, build 1 VALID, Internal, abiasjnr@gmail.com.
 
-## Mac agent — remaining iOS
-1. Confirm TestFlight open on phone looks good (name, icon, load bvsradio.com, radio play).
-2. Paste **Team ID** (10 chars) into from-mac/LATEST.md and push — VPS needs it for AASA.
-3. When happy with build 1: prepare App Store **Submit for Review** (screenshots, privacy, age).
-4. Bump build number for next Archive if you change native bits.
+## Done on VPS this turn
+- Wired `public/.well-known/apple-app-site-association` → `VGFK77VH73.com.bvsradio.app`
+- Redeploy happens with normal main push / Vercel
 
-## VPS — next (Play + web)
-- Play: still need Android device verify for Console owner, then AAB upload.
-- After Team ID: update apple-app-site-association + redeploy.
+## Mac — optional next
+- Confirm TestFlight install + radio works
+- App Store screenshots + Submit for Review when ready
+- Keep AuthKey_*.p8 off git forever
 
-## Do not
-- Artists hub yet  
-- Change bundle ID  
-
-**Phase:** iOS internal live · public App Review next · Play parallel when device verify done  
+## Play
+Still parallel when Android device verify is done.
