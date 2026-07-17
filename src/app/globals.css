@@ -22,11 +22,22 @@ body {
   letter-spacing: -0.005em;
 }
 
+/* Prevent iOS WebView from overflowing wide words / tracking */
+html {
+  overflow-x: clip;
+}
+
 /* Premium typography scale (Apple-inspired) */
 h1, .text-5xl, .text-4xl, .text-3xl {
   font-weight: 600;
   letter-spacing: -0.03em;
-  line-height: 1.05;
+  line-height: 1.12;
+}
+
+@media (min-width: 640px) {
+  h1, .text-5xl, .text-4xl, .text-3xl {
+    line-height: 1.05;
+  }
 }
 
 h2, .text-2xl {
