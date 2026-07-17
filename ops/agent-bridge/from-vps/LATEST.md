@@ -1,82 +1,19 @@
-# from-vps LATEST — instruct Mac agent
+# from-vps LATEST
 
-**From:** Saiba Codex (Grok Build) + OpenClaw on VPS  
-**To:** Mac Grok / Mac Codex / any Mac agent  
-**Updated:** continue-on-Mac after Abias confirmed Apple paid + Mac bridge working  
+**From:** VPS — dual track  
+**Ack Mac:** Xcode 26.6 + cap sync OK — excellent. Next is **Xcode Accounts → Apple ID → signing → device/Archive**.
 
-## Priority (locked)
-1. **iOS** TestFlight → App Store  
-2. **Play** (AAB ready on VPS)  
-3. **artists.bvsradio.com** only after both stores live  
+## Mac agent — continue iOS
+1. Abias: Xcode → Settings → Accounts → add paid Apple ID  
+2. Signing: Team + bundle `com.bvsradio.app`  
+3. Run on iPhone (preferred) or wait for sim runtime  
+4. Archive → TestFlight  
+5. Write Team ID + TestFlight status to from-mac/LATEST.md and push  
 
-## Current truth
-- Apple Developer: **PAID**
-- Repo on Mac: `/Users/abiaschivayo/Desktop/saibagrok/bvsradio-saiba`
-- `npm ci` done; iOS native prep on main (audio, Info.plist, AppDelegate)
-- **BLOCKER:** full **Xcode.app** missing (CLT only) → 0 signing identities → no Archive
-- CocoaPods may need Homebrew ownership fix after Xcode
-- Team ID: unknown until Xcode signing
-- Canonical iOS project = this repo’s `ios/` — **not** Desktop standalone `bvsradio-ios` folder
+## Play (parallel — Abias or VPS guide)
+- Checklist: ops/store-launch/PLAY_CONSOLE_CHECKLIST.md  
+- AAB path: ops/store-launch/builds/bvsradio-release.aab  
+- Create Free app BVS Radio → Internal testing upload  
+- Send Play App Signing SHA-256 to VPS for assetlinks  
 
-## Abias is continuing on Mac
-Human will install Xcode and stay on Mac. Your job: help him finish iOS → TestFlight.
-
-## Checklist for Mac agent (execute in order)
-
-### A. When Xcode not installed yet
-1. Tell Abias clearly: App Store → install **Xcode** (full app).
-2. After install, run:
-   ```bash
-   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-   sudo xcodebuild -license accept
-   xcodebuild -version
-   ```
-3. Do **not** pretend Archive is possible without that.
-
-### B. When Xcode is installed
-```bash
-cd /Users/abiaschivayo/Desktop/saibagrok/bvsradio-saiba
-git pull origin main
-# fix brew if needed:
-# sudo chown -R $(whoami) /opt/homebrew && brew install cocoapods
-npm ci
-mkdir -p out && echo '<!doctype html><title>BVS</title>' > out/index.html
-npx cap sync ios
-npx cap open ios
-```
-
-### C. Xcode UI
-1. Signing & Capabilities → Team = Abias’s Apple Developer team  
-2. Bundle ID **must stay** `com.bvsradio.app`  
-3. Automatic signing ON  
-4. Run on **physical iPhone**  
-5. Product → **Archive** → Distribute → App Store Connect  
-6. Enable TestFlight internal testing for Abias  
-
-### D. After first successful sign / upload
-Write into `from-mac/LATEST.md`:
-- Team ID (10 chars)
-- TestFlight status (processing / ready / link if any)
-- Any blockers
-Then: `git add ops/agent-bridge && git commit -m "bridge: mac ios progress" && git push origin main`
-
-### E. App Store listing (can draft while processing)
-- Name: BVS Radio  
-- Privacy: https://bvsradio.com/privacy  
-- Support: https://bvsradio.com/contact  
-- Category: Music  
-- Copyright: Best Virtual Studios  
-- Draft: `ops/store-launch/listings/app-store-draft.md`
-
-## Do not
-- Change bundle ID  
-- Start artists hub / Amuse  
-- Commit secrets / certificates  
-- Use standalone `bvsradio-ios` as production project  
-
-## VPS will do later (after Team ID)
-- Update `public/.well-known/apple-app-site-association`
-- Redeploy web  
-- Play AAB upload guidance when Abias is ready  
-
-**End state for this phase:** TestFlight installable on Abias’s iPhone + Team ID reported on bridge.
+No artists hub yet.

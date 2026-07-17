@@ -1,25 +1,44 @@
-# Play Store listing draft — BVS Radio
+# Play Store listing — BVS Radio
 
-**Title (30 chars max):** BVS Radio  
-**Short description (80):** Zimbabwe online radio, beats catalogue, and mix/master services. Listen free.  
+**Developer (public profile):** Best Virtual Studios  
+**App name (30 max):** BVS Radio  
 
-**Full description:**
+## Short description (80 max)
 
-BVS Radio (Best Virtual Sound) is Zimbabwe’s online radio and music hub.
+```
+Zimbabwe online radio, beats catalogue & studio services. Listen free.
+```
+(72 chars)
 
-• Live-style station player with continuous rotation  
-• Music catalogue — browse and buy beats  
-• Mix & master services via the shop  
-• Library sync when you sign in  
-• Install as an app (PWA or this store build)
+## Full description
 
-Listening is free. Purchases (if any) complete securely on bvsradio.com.
+```
+BVS Radio — Best Virtual Sound from Best Virtual Studios.
 
-Support: https://bvsradio.com/contact  
-Privacy: https://bvsradio.com/privacy  
-Website: https://bvsradio.com  
+Listen free to online radio with continuous rotation. Browse the music catalogue, discover beats and albums, and book mix & master services.
 
-**Category:** Music & Audio  
-**Tags:** radio, zimbabwe, beats, music, streaming  
-**Contact email:** (use BVS support email)  
-**Privacy policy:** https://bvsradio.com/privacy  
+• Live radio player
+• Music catalogue and downloads
+• Mix & master services via the shop
+• Library when you sign in
+• Same experience as bvsradio.com — always up to date
+
+Listening is free. Optional purchases (beats, albums, services) complete securely on bvsradio.com.
+
+Website: https://bvsradio.com
+Support: https://bvsradio.com/contact
+Privacy: https://bvsradio.com/privacy
+```
+
+## Graphics
+- Icon: 512×512 PNG (`public/icon-512.png`)
+- Feature graphic: 1024×500 (`ops/store-launch/assets/feature-graphic.png`)
+- Screenshots: phone portrait — home + radio minimum; add catalogue/shop when recaptured
+
+## Contact
+- **Public developer email:** contact@bvsradio.com  
+- **Privacy policy URL:** https://bvsradio.com/privacy  
+- **Category:** Music & Audio  
+
+## Tags / keywords (for your notes)
+radio, zimbabwe, beats, hip-hop, streaming, music, studio, BVS
