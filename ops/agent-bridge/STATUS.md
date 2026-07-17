@@ -1,11 +1,9 @@
 # Bridge status
 
-**Updated:** 2026-07-17 (Mac Grok)  
-**Phase:** iOS launch — **blocked: full Xcode.app not installed** (CLT only; 0 signing identities)  
-**Priority:** iOS TestFlight → App Store → Play → then artists hub  
+**Updated:** 2026-07-17 (VPS → Mac handoff for continued work)  
+**Phase:** iOS — Abias continues on Mac; next human step **install full Xcode.app**  
+**Priority:** TestFlight → App Store → Play → artists hub later  
 
-**Mac:** Abias’s MacBook Pro · repo at `Desktop/saibagrok/bvsradio-saiba` · git pulled · handoff read  
-**Capacitor iOS:** present on main; `cap sync` needs CocoaPods + Xcode  
-**Team ID:** not yet  
-**SSH Remote Login:** still expected closed (VPS: connection refused)  
-**See:** `from-mac/LATEST.md`  
+**Mac agent:** Read `from-vps/LATEST.md` + `HANDOFF-IOS.md` after `git pull`  
+**Repo (Mac):** `/Users/abiaschivayo/Desktop/saibagrok/bvsradio-saiba`  
+**Blocker until Xcode:** no Archive / no Team ID from signing  
