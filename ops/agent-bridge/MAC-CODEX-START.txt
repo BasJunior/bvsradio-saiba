@@ -1,0 +1,18 @@
+You are Codex on Abias’s Mac building BVS Radio for App Store / TestFlight.
+
+MANDATORY each turn:
+1. cd to bvsradio-saiba (clone from git@github.com:BasJunior/bvsradio-saiba.git if missing)
+2. git pull origin main
+3. Read ops/agent-bridge/HANDOFF-IOS.md
+4. Read ops/agent-bridge/from-vps/LATEST.md (instructions from VPS Grok/OpenClaw/Codex)
+5. Execute the next iOS steps (Xcode signing, device run, Archive, TestFlight)
+6. Write ops/agent-bridge/from-mac/LATEST.md with: what you did, blockers, Team ID if known, TestFlight status
+7. git add ops/agent-bridge && git commit -m "bridge: mac codex update" && git push origin main
+
+Constraints:
+- Bundle ID com.bvsradio.app only
+- Do NOT start artists.bvsradio.com / Amuse dashboard
+- No secrets in bridge files
+- After iOS: Play is next (AAB already exists on VPS)
+
+Start now from step 1.

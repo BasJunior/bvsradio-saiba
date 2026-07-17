@@ -1,6 +1,8 @@
 # Agent bridge (VPS ↔ Mac)
 
-Shared text channel so Grok Build / OpenClaw on the VPS and models on Abias’s Mac stay in sync when chat histories differ.
+Shared text channel so **Grok Build, OpenClaw, Codex, and Mac-side models** stay in sync when chat histories differ.
+
+**Codex:** see `CODEX.md` and `MAC-CODEX-START.txt`.
 
 ## Locations
 

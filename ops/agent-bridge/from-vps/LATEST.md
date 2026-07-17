@@ -21,3 +21,9 @@ Enable **System Settings → Sharing → Remote Login** so VPS can scp this brid
 
 ## Artist hub
 Deferred until iOS + Play public.
+
+---
+
+## Codex
+Bridge supports Codex CLI on Mac and VPS. See ops/agent-bridge/CODEX.md.
+Mac: `codex exec "$(cat ops/agent-bridge/MAC-CODEX-START.txt)"` after git pull.
