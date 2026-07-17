@@ -7,6 +7,11 @@ import { Suspense, useEffect, useState } from "react";
 type OrderInfo = {
   reference: string;
   status: string;
+  subtotal?: number;
+  taxAmount?: number;
+  taxLabel?: string;
+  taxCountry?: string;
+  taxNote?: string;
   total: number;
   paymentMethod: string;
   items: Array<{ title: string; price: number; quantity: number }>;
@@ -45,10 +50,28 @@ function SuccessBody() {
             <span className="text-text-secondary">Status</span>
             <span className="font-semibold capitalize text-brand">{order.status.replace(/_/g, " ")}</span>
           </div>
-          <div className="mb-3 flex justify-between">
-            <span className="text-text-secondary">Total</span>
+          {typeof order.subtotal === "number" && (
+            <div className="mb-2 flex justify-between">
+              <span className="text-text-secondary">Subtotal</span>
+              <span>${Number(order.subtotal).toFixed(2)}</span>
+            </div>
+          )}
+          {typeof order.taxAmount === "number" && (
+            <div className="mb-2 flex justify-between">
+              <span className="text-text-secondary">
+                {order.taxLabel || "Tax"}
+                {order.taxCountry ? ` (${order.taxCountry})` : ""}
+              </span>
+              <span>${Number(order.taxAmount).toFixed(2)}</span>
+            </div>
+          )}
+          <div className="mb-3 flex justify-between font-semibold">
+            <span className="text-text-secondary">Total incl. tax</span>
             <span>${Number(order.total).toFixed(2)}</span>
           </div>
+          {order.taxNote && (
+            <p className="mb-3 text-xs text-text-secondary">{order.taxNote}</p>
+          )}
           <ul className="space-y-2 border-t border-white/10 pt-3">
             {order.items?.map((item) => (
               <li key={item.title} className="flex justify-between gap-4">

@@ -13,6 +13,7 @@ import { getStripe, siteUrl, stripeEnabled } from "@/lib/stripe";
 import { getPaynow, normalizeZwPhone, paynowEnabled } from "@/lib/paynow";
 import { createDownloadToken, resolveProductFile } from "@/lib/products";
 import { recordServerEvent } from "@/lib/analytics-server";
+import { calculateTax, stripeAutomaticTaxEnabled } from "@/lib/tax";
 
 function isOrderItem(item: unknown): item is OrderItem {
   if (!item || typeof item !== "object") return false;
@@ -31,8 +32,11 @@ type OrderBody = {
   items: OrderItem[];
   paymentMethod: string;
   projectNotes?: string;
-  subtotal: number;
-  total: number;
+  /** Client hint only — server recomputes */
+  subtotal?: number;
+  total?: number;
+  countryCode?: string;
+  vatId?: string;
   createStripeSession?: boolean;
 };
 
@@ -45,9 +49,7 @@ function parseBody(payload: unknown): OrderBody | null {
     typeof c.customer.email !== "string" ||
     !Array.isArray(c.items) ||
     !c.items.every(isOrderItem) ||
-    typeof c.paymentMethod !== "string" ||
-    typeof c.subtotal !== "number" ||
-    typeof c.total !== "number"
+    typeof c.paymentMethod !== "string"
   ) {
     return null;
   }
@@ -63,9 +65,28 @@ export async function POST(req: Request) {
     if (payload.items.length === 0) {
       return NextResponse.json({ error: "Add at least one item before checkout." }, { status: 400 });
     }
-    if (payload.total <= 0) {
+
+    // Net subtotal from line items (authoritative)
+    const subtotal = Number(
+      payload.items
+        .reduce((sum, item) => sum + item.price * item.quantity, 0)
+        .toFixed(2),
+    );
+    if (subtotal <= 0) {
       return NextResponse.json({ error: "Order total must be greater than zero." }, { status: 400 });
     }
+
+    const countryCode =
+      payload.countryCode ||
+      payload.customer.country ||
+      "OTHER";
+    const vatId = payload.vatId || payload.customer.vatId || "";
+    const tax = calculateTax({
+      subtotal,
+      countryCode,
+      vatId,
+      currency: "USD",
+    });
 
     const reference = orderReference();
     const wantsCard =
@@ -76,12 +97,22 @@ export async function POST(req: Request) {
     const order: StoredOrder = {
       reference,
       createdAt: new Date().toISOString(),
-      customer: payload.customer,
+      customer: {
+        ...payload.customer,
+        country: tax.countryCode,
+        vatId: vatId || undefined,
+      },
       items: payload.items,
       paymentMethod: payload.paymentMethod,
       projectNotes: payload.projectNotes,
-      subtotal: payload.subtotal,
-      total: payload.total,
+      subtotal: tax.subtotal,
+      taxAmount: tax.taxAmount,
+      taxRate: tax.rate,
+      taxMode: tax.mode,
+      taxLabel: tax.taxLabel,
+      taxCountry: tax.countryCode,
+      taxNote: tax.note,
+      total: tax.total,
       currency: "usd",
       status: "pending_payment",
       deliveryStatus: "awaiting_payment",
@@ -101,6 +132,32 @@ export async function POST(req: Request) {
     if (wantsCard && stripeEnabled()) {
       const stripe = getStripe();
       if (stripe) {
+        const useStripeTax = stripeAutomaticTaxEnabled();
+        const lineItems = order.items.map((item) => ({
+          quantity: item.quantity,
+          price_data: {
+            currency: "usd",
+            unit_amount: Math.round(item.price * 100),
+            product_data: {
+              name: item.title,
+              description: `${item.type}${item.artist ? ` · ${item.artist}` : ""} · ${reference}`,
+            },
+          },
+        }));
+        // When Stripe Tax is not enabled, add calculated regional tax as its own line
+        if (!useStripeTax && order.taxAmount > 0) {
+          lineItems.push({
+            quantity: 1,
+            price_data: {
+              currency: "usd",
+              unit_amount: Math.round(order.taxAmount * 100),
+              product_data: {
+                name: `${order.taxLabel || "Tax"} (${order.taxCountry || ""})`,
+                description: order.taxNote || `Tax for order ${reference}`,
+              },
+            },
+          });
+        }
         const session = await stripe.checkout.sessions.create({
           mode: "payment",
           customer_email: order.customer.email,
@@ -109,18 +166,18 @@ export async function POST(req: Request) {
             reference,
             customer_name: order.customer.name,
             whatsapp: order.customer.whatsapp || "",
+            tax_country: order.taxCountry || "",
+            tax_amount: String(order.taxAmount),
           },
-          line_items: order.items.map((item) => ({
-            quantity: item.quantity,
-            price_data: {
-              currency: "usd",
-              unit_amount: Math.round(item.price * 100),
-              product_data: {
-                name: item.title,
-                description: `${item.type}${item.artist ? ` · ${item.artist}` : ""} · ${reference}`,
-              },
-            },
-          })),
+          line_items: lineItems,
+          ...(useStripeTax
+            ? {
+                automatic_tax: { enabled: true },
+                billing_address_collection: "required" as const,
+              }
+            : {
+                automatic_tax: { enabled: false },
+              }),
           success_url: `${siteUrl()}/checkout/success?ref=${encodeURIComponent(reference)}&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${siteUrl()}/checkout?cancelled=1&ref=${encodeURIComponent(reference)}`,
         });
@@ -144,6 +201,14 @@ export async function POST(req: Request) {
             : `Order created. ${supabase.reason}`,
           checkoutUrl: session.url,
           paymentMode: "stripe",
+          subtotal: order.subtotal,
+          taxAmount: order.taxAmount,
+          taxRate: order.taxRate,
+          taxMode: order.taxMode,
+          taxLabel: order.taxLabel,
+          taxCountry: order.taxCountry,
+          taxNote: order.taxNote,
+          total: order.total,
           nextSteps: paymentInstructions("card", reference, order.total),
         });
       }
@@ -172,6 +237,12 @@ export async function POST(req: Request) {
           payment.add(
             `${item.title} (${item.type})`,
             Number((item.price * item.quantity).toFixed(2)),
+          );
+        }
+        if (order.taxAmount > 0) {
+          payment.add(
+            `${order.taxLabel || "Tax"} (${order.taxCountry || "region"})`,
+            Number(order.taxAmount.toFixed(2)),
           );
         }
 
@@ -203,6 +274,14 @@ export async function POST(req: Request) {
                   persistenceMessage: "Order saved. Approve EcoCash on your phone.",
                   paymentMode: "paynow_ecocash",
                   pollUrl: response.pollUrl,
+                  subtotal: order.subtotal,
+                  taxAmount: order.taxAmount,
+                  taxRate: order.taxRate,
+                  taxMode: order.taxMode,
+                  taxLabel: order.taxLabel,
+                  taxCountry: order.taxCountry,
+                  taxNote: order.taxNote,
+                  total: order.total,
                   nextSteps: paymentInstructions("ecocash", reference, order.total, {
                     paynowInstructions: order.paynowInstructions,
                   }),
@@ -232,6 +311,14 @@ export async function POST(req: Request) {
               checkoutUrl: response.redirectUrl,
               paymentMode: "paynow",
               pollUrl: response.pollUrl,
+              subtotal: order.subtotal,
+              taxAmount: order.taxAmount,
+              taxRate: order.taxRate,
+              taxMode: order.taxMode,
+              taxLabel: order.taxLabel,
+              taxCountry: order.taxCountry,
+              taxNote: order.taxNote,
+              total: order.total,
               nextSteps: paymentInstructions("paynow", reference, order.total),
               paynowReady: true,
             });
@@ -275,6 +362,14 @@ export async function POST(req: Request) {
       paymentMode: "manual",
       whatsappLink: waLink,
       orderEmail,
+      subtotal: order.subtotal,
+      taxAmount: order.taxAmount,
+      taxRate: order.taxRate,
+      taxMode: order.taxMode,
+      taxLabel: order.taxLabel,
+      taxCountry: order.taxCountry,
+      taxNote: order.taxNote,
+      total: order.total,
       nextSteps: paymentInstructions(order.paymentMethod, reference, order.total),
       stripeReady: stripeEnabled(),
       paynowReady: paynowEnabled(),
@@ -300,6 +395,12 @@ export async function GET(req: Request) {
   return NextResponse.json({
     reference: order.reference,
     status: order.status,
+    subtotal: order.subtotal,
+    taxAmount: order.taxAmount || 0,
+    taxRate: order.taxRate || 0,
+    taxLabel: order.taxLabel,
+    taxCountry: order.taxCountry,
+    taxNote: order.taxNote,
     total: order.total,
     paymentMethod: order.paymentMethod,
     items: order.items.map((i) => ({ title: i.title, price: i.price, quantity: i.quantity })),

@@ -4,6 +4,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
+import {
+  TAX_COUNTRIES,
+  calculateTax,
+  detectBrowserCountry,
+  type TaxBreakdown,
+} from "@/lib/tax";
 
 interface CartItem {
   id: string | number;
@@ -32,6 +38,12 @@ interface OrderResult {
   paymentMode?: string;
   whatsappLink?: string | null;
   stripeReady?: boolean;
+  subtotal?: number;
+  taxAmount?: number;
+  taxLabel?: string;
+  taxCountry?: string;
+  taxNote?: string;
+  total?: number;
 }
 
 const paymentMethodsBase = [
@@ -123,6 +135,8 @@ export default function CheckoutPage() {
   const [paynowReady, setPaynowReady] = useState(false);
   const [whatsapp, setWhatsapp] = useState<string | null>("+4917664006205");
   const [orderEmail, setOrderEmail] = useState("abiaschivayo3@gmail.com");
+  const [countryCode, setCountryCode] = useState("DE");
+  const [vatId, setVatId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<OrderResult | null>(null);
   const [error, setError] = useState("");
@@ -147,6 +161,7 @@ export default function CheckoutPage() {
     // Hydrate browser-owned cart state after mount.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(initial);
+    setCountryCode(detectBrowserCountry());
     setCancelled(new URLSearchParams(window.location.search).has("cancelled"));
     setHydrated(true);
 
@@ -172,7 +187,18 @@ export default function CheckoutPage() {
     () => items.reduce((sum, item) => sum + priceFor(item) * (item.quantity || 1), 0),
     [items],
   );
-  const total = subtotal;
+
+  const tax: TaxBreakdown = useMemo(
+    () =>
+      calculateTax({
+        subtotal,
+        countryCode,
+        vatId,
+        currency: "USD",
+      }),
+    [subtotal, countryCode, vatId],
+  );
+  const total = tax.total;
 
   const methods = paymentMethodsBase.filter((m) => {
     if ("needsPaynow" in m && m.needsPaynow) return paynowReady;
@@ -197,7 +223,11 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customer,
+          customer: {
+            ...customer,
+            country: countryCode,
+            vatId: vatId || undefined,
+          },
           items: items.map((item) => ({
             id: item.id,
             title: item.title,
@@ -210,6 +240,8 @@ export default function CheckoutPage() {
           })),
           paymentMethod,
           projectNotes,
+          countryCode,
+          vatId: vatId || undefined,
           subtotal,
           total,
           createStripeSession: paymentMethod === "card",
@@ -363,7 +395,38 @@ export default function CheckoutPage() {
                   placeholder="+263…"
                 />
               </label>
+              <label className="block text-sm sm:col-span-1">
+                <span className="mb-1.5 block text-text-secondary">Billing country / region</span>
+                <select
+                  required
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
+                  aria-label="Billing country for tax"
+                >
+                  {TAX_COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.name}
+                      {c.rate > 0 ? ` · ${Math.round(c.rate * 1000) / 10}% ${c.label}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm sm:col-span-1">
+                <span className="mb-1.5 block text-text-secondary">EU VAT ID (optional, B2B)</span>
+                <input
+                  value={vatId}
+                  onChange={(e) => setVatId(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
+                  placeholder="e.g. DE123456789"
+                  autoComplete="off"
+                />
+              </label>
             </div>
+            <p className="mt-3 text-xs text-text-secondary">
+              Tax is estimated from your billing country. Prices are net (ex-tax); the total includes calculated tax for your region.
+              {tax.note ? ` ${tax.note}` : ""}
+            </p>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
@@ -448,15 +511,33 @@ export default function CheckoutPage() {
                 <span>Items</span>
                 <span>{items.length}</span>
               </div>
+              <div className="flex justify-between text-text-secondary">
+                <span>Subtotal (ex-tax)</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between text-text-secondary">
+                <span>
+                  {tax.taxLabel}
+                  {tax.ratePercent > 0 ? ` (${tax.ratePercent}%)` : ""}
+                  <span className="block text-[11px] text-text-secondary/80">{tax.countryName}</span>
+                </span>
+                <span>${tax.taxAmount.toFixed(2)}</span>
+              </div>
               <div className="flex justify-between border-t border-white/10 pt-3 text-xl font-semibold">
-                <span>Total</span>
+                <span>Total incl. tax</span>
                 <span className="text-brand">${total.toFixed(2)} USD</span>
               </div>
+              {tax.mode === "reverse_charge" && (
+                <p className="pt-1 text-xs text-brand/90">{tax.note}</p>
+              )}
+              {(tax.mode === "unknown_region" || tax.mode === "zero_rated") && tax.taxAmount === 0 && (
+                <p className="pt-1 text-xs text-text-secondary">{tax.note}</p>
+              )}
             </div>
             <ul className="mt-6 space-y-2 text-xs text-text-secondary">
               <li>✓ Beats & tracks from catalogue</li>
               <li>✓ Mix / master services from shop</li>
-              <li>✓ No in-stream ads for buyers</li>
+              <li>✓ Tax estimated by billing country</li>
               <li>✓ Digital delivery after payment confirmed</li>
             </ul>
           </section>
@@ -466,6 +547,32 @@ export default function CheckoutPage() {
               <p className="text-xs uppercase tracking-[3px] text-brand">Order created</p>
               <h2 className="mt-2 font-mono text-2xl font-semibold">{result.reference}</h2>
               <p className="mt-3 text-sm text-text-secondary">{result.persistenceMessage}</p>
+              {typeof result.total === "number" && (
+                <div className="mt-4 space-y-1.5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm">
+                  {typeof result.subtotal === "number" && (
+                    <div className="flex justify-between text-text-secondary">
+                      <span>Subtotal</span>
+                      <span>${Number(result.subtotal).toFixed(2)}</span>
+                    </div>
+                  )}
+                  {typeof result.taxAmount === "number" && (
+                    <div className="flex justify-between text-text-secondary">
+                      <span>
+                        {result.taxLabel || "Tax"}
+                        {result.taxCountry ? ` (${result.taxCountry})` : ""}
+                      </span>
+                      <span>${Number(result.taxAmount).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-white/10 pt-2 font-semibold">
+                    <span>Total paid / due</span>
+                    <span className="text-brand">${Number(result.total).toFixed(2)}</span>
+                  </div>
+                  {result.taxNote && (
+                    <p className="pt-1 text-xs text-text-secondary">{result.taxNote}</p>
+                  )}
+                </div>
+              )}
               <div className="mt-4 space-y-2 text-sm">
                 {result.nextSteps?.map((step) => (
                   <div key={step} className="rounded-lg bg-black/20 px-3 py-2">

@@ -38,7 +38,7 @@ export default function VisitorAssistant() {
   }
 
   return <div className="fixed bottom-24 right-4 z-[60] sm:right-6 sm:bottom-28">
-    {open && <section aria-label="BVS visitor assistant" className="mb-3 flex h-[min(600px,70vh)] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#101018] shadow-2xl">
+    {open && <section aria-label="BVS visitor assistant" className="mb-3 flex h-[min(600px,70vh)] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#181818] shadow-2xl">
       <header className="flex items-center justify-between border-b border-white/10 bg-bg-secondary px-5 py-4">
         <div><h2 className="font-semibold text-brand">BVS Guide</h2><p className="text-xs text-text-secondary">Visitor support</p></div>
         <button onClick={() => setOpen(false)} aria-label="Close assistant" className="text-2xl text-text-secondary">×</button>

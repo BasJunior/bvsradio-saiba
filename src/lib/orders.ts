@@ -16,6 +16,10 @@ export type Customer = {
   name: string;
   email: string;
   whatsapp?: string;
+  /** ISO country code used for tax (e.g. DE, ZW) */
+  country?: string;
+  /** Optional EU VAT ID for reverse charge */
+  vatId?: string;
 };
 
 export type StoredOrder = {
@@ -26,6 +30,13 @@ export type StoredOrder = {
   paymentMethod: string;
   projectNotes?: string;
   subtotal: number;
+  /** Tax in major currency units */
+  taxAmount: number;
+  taxRate: number;
+  taxMode: string;
+  taxLabel?: string;
+  taxCountry?: string;
+  taxNote?: string;
   total: number;
   currency: string;
   status: "pending_payment" | "paid" | "cancelled" | "fulfilled";
@@ -104,6 +115,10 @@ export async function saveOrderToSupabase(order: StoredOrder) {
         project_notes: order.projectNotes || null,
         items: order.items,
         subtotal: order.subtotal,
+        tax_amount: order.taxAmount,
+        tax_rate: order.taxRate,
+        tax_mode: order.taxMode,
+        tax_country: order.taxCountry || order.customer.country || null,
         total: order.total,
         status: order.status,
         delivery_status: order.deliveryStatus,
@@ -128,6 +143,7 @@ export async function notifyOwnerNewOrder(order: StoredOrder) {
     `🦅 BVS new order ${order.reference}`,
     `${order.customer.name} · ${order.customer.email}`,
     order.customer.whatsapp ? `WhatsApp: ${order.customer.whatsapp}` : null,
+    `Subtotal: $${order.subtotal.toFixed(2)} · Tax: $${(order.taxAmount || 0).toFixed(2)} (${order.taxCountry || "—"})`,
     `Total: $${order.total.toFixed(2)} · ${order.paymentMethod} · ${order.status}`,
     ...order.items.map(
       (i) => `• ${i.title} ($${i.price} × ${i.quantity}) [${i.type}]`,

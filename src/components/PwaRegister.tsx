@@ -74,7 +74,7 @@ export default function PwaRegister() {
 
   return (
     <div
-      className="fixed bottom-24 left-4 right-4 z-[70] mx-auto max-w-md rounded-2xl border border-white/10 bg-[#12121a]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6"
+      className="fixed bottom-24 left-4 right-4 z-[70] mx-auto max-w-md rounded-2xl border border-white/10 bg-[#1C1C1C]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6"
       role="dialog"
       aria-label="Install BVS Radio"
     >
