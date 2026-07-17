@@ -616,27 +616,45 @@ export default function CataloguePage() {
       </section>
 
       {currentTrack && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/15 bg-black/95 px-4 py-3">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded">
-                <Image src={currentTrack.artwork} alt="" fill className="object-cover" />
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/15 bg-black/95">
+          {/* Runtime line: fills white as preview plays; full white at end */}
+          <div
+            className="h-1 w-full bg-white/15"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={Math.round(previewDuration)}
+            aria-valuenow={Math.round(previewElapsed)}
+            aria-label="Preview progress"
+          >
+            <div
+              className="h-full bg-white transition-[width] duration-150 ease-linear"
+              style={{
+                width: `${previewDuration > 0 ? Math.min(100, (previewElapsed / previewDuration) * 100) : 0}%`,
+              }}
+            />
+          </div>
+          <div className="px-4 py-3">
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded">
+                  <Image src={currentTrack.artwork} alt="" fill className="object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{currentTrack.title}</div>
+                  <div className="truncate text-xs text-text-secondary">{currentTrack.artist}</div>
+                </div>
               </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{currentTrack.title}</div>
-                <div className="truncate text-xs text-text-secondary">{currentTrack.artist}</div>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <span className="block text-xs text-brand">{isPlaying ? 'Previewing' : previewElapsed >= previewDuration ? 'Preview complete' : 'Paused'}</span>
+                  <span className="block tabular-nums text-xs text-text-secondary" aria-label={`${formatTime(previewElapsed)} elapsed of ${formatTime(previewDuration)} preview`}>
+                    {formatTime(previewElapsed)} / {formatTime(previewDuration)}
+                  </span>
+                </div>
+                <button type="button" onClick={stopPreview} className="rounded-full border border-white/20 px-4 py-2 text-xs hover:bg-white/5">
+                  Stop
+                </button>
               </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <span className="block text-xs text-brand">{isPlaying ? 'Previewing' : previewElapsed >= previewDuration ? 'Preview complete' : 'Paused'}</span>
-                <span className="block tabular-nums text-xs text-text-secondary" aria-label={`${formatTime(previewElapsed)} elapsed of ${formatTime(previewDuration)} preview`}>
-                  {formatTime(previewElapsed)} / {formatTime(previewDuration)}
-                </span>
-              </div>
-              <button type="button" onClick={stopPreview} className="rounded-full border border-white/20 px-4 py-2 text-xs hover:bg-white/5">
-                Stop
-              </button>
             </div>
           </div>
         </div>

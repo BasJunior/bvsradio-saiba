@@ -14,13 +14,26 @@ type PlayerContextValue = {
   volume: number;
   error: string | null;
   history: StationTrack[];
+  /** Seconds elapsed in current track */
+  elapsed: number;
+  /** Total duration of current track (0 if unknown) */
+  duration: number;
   toggle: () => void;
   next: () => void;
   previous: () => void;
   setVolume: (value: number) => void;
+  seek: (ratio: number) => void;
 };
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+  const whole = Math.floor(seconds);
+  const m = Math.floor(whole / 60);
+  const s = whole % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 export function StationPlayerProvider({ tracks, children }: { tracks: StationTrack[]; children: React.ReactNode }) {
   const audio = useRef<HTMLAudioElement>(null);
@@ -30,40 +43,71 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
   const [volume, setVolume] = useState(70);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<StationTrack[]>([]);
+  const [elapsed, setElapsed] = useState(0);
+  const [duration, setDuration] = useState(0);
   const current = tracks[index];
 
   const flushListening = useCallback(() => {
     if (startedAt.current === null || !current) return;
     const seconds = Math.round((Date.now() - startedAt.current) / 1000);
     startedAt.current = null;
-    const duration = listeningBucket(seconds);
-    if (duration > 0) trackEvent("listening_duration", { track_id: `rotation-${current.src}`, seconds_bucket: duration });
+    const bucket = listeningBucket(seconds);
+    if (bucket > 0) trackEvent("listening_duration", { track_id: `rotation-${current.src}`, seconds_bucket: bucket });
   }, [current]);
 
-  useEffect(() => { if (audio.current) audio.current.volume = volume / 100; }, [volume]);
+  useEffect(() => {
+    if (audio.current) audio.current.volume = volume / 100;
+  }, [volume]);
+
+  useEffect(() => {
+    setElapsed(0);
+    setDuration(0);
+  }, [current?.src]);
+
   useEffect(() => {
     if (!audio.current || !current) return;
-    if (isPlaying) audio.current.play().then(() => {
-      if (startedAt.current === null) {
-        startedAt.current = Date.now();
-        trackEvent("player_start", { track_id: `rotation-${current.src}` });
-      }
-    }).catch(() => {
-      trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "track_change" });
-      setPlaying(false);
-      setError("This recording could not be played.");
-    });
+    if (isPlaying) {
+      audio.current.play().then(() => {
+        if (startedAt.current === null) {
+          startedAt.current = Date.now();
+          trackEvent("player_start", { track_id: `rotation-${current.src}` });
+        }
+      }).catch(() => {
+        trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "track_change" });
+        setPlaying(false);
+        setError("This recording could not be played.");
+      });
+    }
   }, [current, isPlaying]);
+
   useEffect(() => {
     const stop = () => flushListening();
     window.addEventListener("pagehide", stop);
-    return () => { window.removeEventListener("pagehide", stop); stop(); };
+    return () => {
+      window.removeEventListener("pagehide", stop);
+      stop();
+    };
   }, [flushListening]);
+
+  const onTimeUpdate = useCallback(() => {
+    const el = audio.current;
+    if (!el) return;
+    setElapsed(el.currentTime || 0);
+    if (el.duration && Number.isFinite(el.duration)) setDuration(el.duration);
+  }, []);
+
+  const onLoadedMetadata = useCallback(() => {
+    const el = audio.current;
+    if (!el) return;
+    if (el.duration && Number.isFinite(el.duration)) setDuration(el.duration);
+  }, []);
 
   const move = useCallback((amount: number) => {
     if (!tracks.length) return;
     flushListening();
     setError(null);
+    setElapsed(0);
+    setDuration(0);
     setIndex((value) => {
       const nextIndex = (value + amount + tracks.length) % tracks.length;
       if (isPlaying) {
@@ -73,6 +117,7 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
       return nextIndex;
     });
   }, [flushListening, isPlaying, tracks]);
+
   const toggle = useCallback(async () => {
     if (!audio.current || !current) return setError("The rotation is being prepared.");
     try {
@@ -98,12 +143,55 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
       setError("Playback could not start. Please try again.");
     }
   }, [current, flushListening, isPlaying]);
-  const value = useMemo(() => ({ tracks, current, index, isPlaying, volume, error, history, toggle, next: () => move(1), previous: () => move(-1), setVolume }), [tracks, current, index, isPlaying, volume, error, history, move, toggle]);
 
-  return <PlayerContext.Provider value={value}>
-    {children}
-    <audio ref={audio} src={current?.src} preload="none" playsInline onEnded={() => move(1)} onError={() => { flushListening(); setPlaying(false); trackEvent("playback_error", { track_id: current ? `rotation-${current.src}` : "unknown", stage: "media" }); setError("This recording is unavailable."); }} />
-  </PlayerContext.Provider>;
+  const seek = useCallback((ratio: number) => {
+    const el = audio.current;
+    if (!el || !el.duration || !Number.isFinite(el.duration)) return;
+    const next = Math.min(1, Math.max(0, ratio)) * el.duration;
+    el.currentTime = next;
+    setElapsed(next);
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      tracks,
+      current,
+      index,
+      isPlaying,
+      volume,
+      error,
+      history,
+      elapsed,
+      duration,
+      toggle,
+      next: () => move(1),
+      previous: () => move(-1),
+      setVolume,
+      seek,
+    }),
+    [tracks, current, index, isPlaying, volume, error, history, elapsed, duration, move, toggle, seek],
+  );
+
+  return (
+    <PlayerContext.Provider value={value}>
+      {children}
+      <audio
+        ref={audio}
+        src={current?.src}
+        preload="none"
+        playsInline
+        onTimeUpdate={onTimeUpdate}
+        onLoadedMetadata={onLoadedMetadata}
+        onEnded={() => move(1)}
+        onError={() => {
+          flushListening();
+          setPlaying(false);
+          trackEvent("playback_error", { track_id: current ? `rotation-${current.src}` : "unknown", stage: "media" });
+          setError("This recording is unavailable.");
+        }}
+      />
+    </PlayerContext.Provider>
+  );
 }
 
 export function useStationPlayer() {
@@ -112,20 +200,65 @@ export function useStationPlayer() {
   return context;
 }
 
+function ProgressLine({
+  elapsed,
+  duration,
+  onSeek,
+  className = "",
+}: {
+  elapsed: number;
+  duration: number;
+  onSeek?: (ratio: number) => void;
+  className?: string;
+}) {
+  const pct = duration > 0 ? Math.min(100, (elapsed / duration) * 100) : 0;
+  return (
+    <div
+      className={`h-1 w-full cursor-pointer bg-white/15 ${className}`}
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={Math.round(duration || 0)}
+      aria-valuenow={Math.round(elapsed)}
+      aria-label="Playback progress"
+      onClick={(event) => {
+        if (!onSeek || duration <= 0) return;
+        const rect = event.currentTarget.getBoundingClientRect();
+        const ratio = (event.clientX - rect.left) / rect.width;
+        onSeek(ratio);
+      }}
+    >
+      <div
+        className="h-full bg-white transition-[width] duration-100 ease-linear"
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
+
 export function PersistentPlayer() {
   const player = useStationPlayer();
-  return <section className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#101018]/95 backdrop-blur-xl" aria-label="BVS rotation player">
-    <div className="mx-auto flex h-20 max-w-7xl items-center gap-3 px-4 sm:gap-5 sm:px-6">
-      <Link href="/radio" className="min-w-0 flex-1">
-        <span className="block text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Continuous rotation</span>
-        <span className="block truncate font-medium">{player.current?.title || "BVS library coming soon"}</span>
-        <span className="block truncate text-xs text-text-secondary">{player.current?.artist || "BVS Radio"}</span>
-      </Link>
-      <button onClick={player.previous} className="hidden rounded-full p-2 hover:bg-white/10 sm:block" aria-label="Previous recording">◀</button>
-      <button onClick={player.toggle} disabled={!player.current} className="grid h-12 w-12 place-items-center rounded-full bg-brand font-bold text-black disabled:opacity-40" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
-      <button onClick={player.next} className="rounded-full p-2 hover:bg-white/10" aria-label="Next recording">▶</button>
-      <label className="hidden items-center gap-2 text-xs text-text-secondary md:flex">Volume<input aria-label="Volume" type="range" min="0" max="100" value={player.volume} onChange={(event) => player.setVolume(Number(event.target.value))} className="w-24 accent-brand" /></label>
-      <Link href="/radio" className="hidden text-sm text-brand hover:underline sm:block">Now playing</Link>
-    </div>
-  </section>;
+  return (
+    <section className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl" aria-label="BVS rotation player">
+      <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
+      <div className="mx-auto flex h-20 max-w-7xl items-center gap-3 px-4 sm:gap-5 sm:px-6">
+        <Link href="/radio" className="min-w-0 flex-1">
+          <span className="block text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Continuous rotation</span>
+          <span className="block truncate font-medium">{player.current?.title || "BVS library coming soon"}</span>
+          <span className="block truncate text-xs text-text-secondary">
+            {player.current?.artist || "BVS Radio"}
+            {player.duration > 0 && (
+              <span className="ml-2 tabular-nums text-white/50">
+                {formatTime(player.elapsed)} / {formatTime(player.duration)}
+              </span>
+            )}
+          </span>
+        </Link>
+        <button onClick={player.previous} className="hidden rounded-full p-2 hover:bg-white/10 sm:block" aria-label="Previous recording">◀</button>
+        <button onClick={player.toggle} disabled={!player.current} className="grid h-12 w-12 place-items-center rounded-full bg-brand font-bold text-black disabled:opacity-40" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
+        <button onClick={player.next} className="rounded-full p-2 hover:bg-white/10" aria-label="Next recording">▶</button>
+        <label className="hidden items-center gap-2 text-xs text-text-secondary md:flex">Volume<input aria-label="Volume" type="range" min="0" max="100" value={player.volume} onChange={(event) => player.setVolume(Number(event.target.value))} className="w-24 accent-brand" /></label>
+        <Link href="/radio" className="hidden text-sm text-brand hover:underline sm:block">Now playing</Link>
+      </div>
+    </section>
+  );
 }
