@@ -1,42 +1,36 @@
-# from-mac LATEST — 2026-07-17 (ARCHIVE + IPA READY)
+# from-mac LATEST — 2026-07-17 (UPLOAD SUCCEEDED)
 
 **From:** Mac Grok  
 **To:** VPS  
 
-## Status
-| Item | Value |
+## Confirmed from Xcode distribution logs
+
+| Item | Status |
 |------|--------|
-| Device registered | Yes (Abias confirmed) |
-| Team ID | **VGFK77VH73** |
-| Bundle ID | com.bvsradio.app |
-| **Archive** | **SUCCEEDED** → `build/BVSRadio.xcarchive` |
-| **IPA export** | **SUCCEEDED** → `build/export/BVSRadio.ipa` (~1.2 MB) |
-| CLI upload to ASC | Failed: App Store Connect credentials error (`providerId` nil) |
-| Simulator | OK earlier |
+| App record | **Created** — ASC app id **6792035284** |
+| Name | **BVS Radio — Best Virtual Sound** |
+| Bundle ID | **com.bvsradio.app** |
+| Team | **VGFK77VH73** |
+| Account | abiasjnr@gmail.com |
+| **Upload** | **SUCCEEDED** at 2026-07-17 16:06:49 UTC |
+| Log line | `Upload succeeded` / `Uploaded to Apple` / package processing |
+| Version | 1.0 build 1 |
+| Store URL (placeholder) | https://apps.apple.com/us/app/id6792035284 |
 
-## Signing used for archive
-- Identity: Apple Development: Abias Chivayo (9XKB983T2N)  
-- Profile: iOS Team Provisioning Profile: *  
-- Export re-signed for App Store Connect (automatic)
+## Local artifacts
+- Archives: `~/Library/Developer/Xcode/Archives/2026-07-17/BVSRadio*.xcarchive`
+- IPA: `build/export/BVSRadio.ipa`
+- Screenshots 6.5": `ops/store-launch/assets/screenshots/app-store-6.5/`
 
-## Abias next (upload — needs Apple ID session in GUI)
-1. **Xcode → Window → Organizer** (archive should be listed)  
-   → **Distribute App** → **App Store Connect** → **Upload**  
-   **OR** Transporter app → deliver `build/export/BVSRadio.ipa`
-2. [App Store Connect](https://appstoreconnect.apple.com/apps) → create **BVS Radio** if missing  
-   - Bundle ID: com.bvsradio.app  
-   - SKU: bvsradio-ios-001  
-3. After processing: TestFlight → Internal Testing → install on phone  
-4. Export compliance: No non-exempt encryption (already in Info.plist)
+## Human remaining on ASC
+1. Wait for build processing (TestFlight / Activity) — often 5–30 min  
+2. Answer export compliance if asked (No non-exempt encryption)  
+3. Select build on version 1.0 page  
+4. Screenshots + listing metadata  
+5. TestFlight internal install  
 
-## VPS next after Team ID
-- AASA: `VGFK77VH73.com.bvsradio.app`  
-- Redeploy web  
+## VPS
+- Team ID for AASA: **VGFK77VH73** + `com.bvsradio.app`  
+- App Apple ID: **6792035284**
 
-## Paths on Mac
-```
-/Users/abiaschivayo/Desktop/saibagrok/bvsradio-saiba/build/BVSRadio.xcarchive
-/Users/abiaschivayo/Desktop/saibagrok/bvsradio-saiba/build/export/BVSRadio.ipa
-```
-
-**Phase:** Archive + IPA done · **Upload to TestFlight via Xcode Organizer / Transporter**  
+**Phase:** Build uploaded · processing / TestFlight next  
