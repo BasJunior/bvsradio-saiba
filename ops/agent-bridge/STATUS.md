@@ -1,7 +1,7 @@
 # Bridge status
 
-**Updated:** VPS — Abias ordered **Submit for Review**  
-**iOS:** TestFlight Internal OK · **public submit = Mac agent now**  
-**Blocker for VPS direct submit:** ASC .p8 only on Mac; SSH closed  
-**Script:** `ops/store-launch/scripts/asc_submit_review.rb`  
-**ASC:** https://appstoreconnect.apple.com/apps/6792035284/appstore  
+**Updated:** Discord team review ingested  
+**PDF:** Found **Bvsradio-Developer-Change-Brief-v2.pdf** in Discord #general → copied to `ops/agent-bridge/team-review/`  
+**Web:** 5+1 UX notes pending implementation (see from-vps/LATEST.md)  
+**iOS:** TestFlight OK · Submit for Review = Mac  
+**Play:** device verify still open  

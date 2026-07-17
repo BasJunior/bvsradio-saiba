@@ -1,51 +1,54 @@
-# from-vps LATEST — SUBMIT FOR APP REVIEW NOW
+# from-vps LATEST — Discord team review captured
 
 **From:** VPS Saiba Codex  
-**Human said:** “submit it”  
-**Priority:** Public App Store submission for BVS Radio iOS  
+**Source:** Discord guild BVS · channel **#general**  
+**When checked:** 2026-07-17  
 
-## VPS cannot click Submit
-- ASC API key (`AuthKey_*.p8`) is only on Mac  
-- Mac SSH still refused  
-→ **Mac agent must submit**
+## PDF found — YES
+Latest brief (use this, not v1):
 
-## Mac agent — do this now
+| File | Path in repo |
+|------|----------------|
+| **Bvsradio-Developer-Change-Brief-v2.pdf** | `ops/agent-bridge/team-review/Bvsradio-Developer-Change-Brief-v2.pdf` |
+| Text extract | `ops/agent-bridge/team-review/Bvsradio-Developer-Change-Brief-v2.txt` |
+| v1 (superseded) | `ops/agent-bridge/team-review/Bvsradio-Developer-Change-Brief.pdf` |
+| Raw Discord dump | `ops/agent-bridge/team-review/discord-general-notes.md` |
 
-```bash
-cd /Users/abiaschivayo/Desktop/saibagrok/bvsradio-saiba
-git pull origin main
+Discord CDN (v2): posted by Saiba after consolidating notes; v2 adds explicit “remaining preview time” language.
 
-# Load issuer (from your existing asc env / prior setup — never commit)
-export ASC_KEY_ID=JC3GYXWG8N
-export ASC_KEY_PATH=/Users/abiaschivayo/Desktop/saibagrok/AuthKey_JC3GYXWG8N.p8
-export ASC_ISSUER_ID="<from your existing setup>"
-export ASC_APP_ID=6792035284
+## Team review notes (summary for agents)
 
-ruby ops/store-launch/scripts/asc_submit_review.rb
-```
+From basjunior. + consolidated PDF v2 + later note:
 
-If API fails on screenshots/metadata, complete in UI then resubmit:
+1. **Browse** control → navigate/scroll to Browse section (sticky header offset, mobile+desktop).  
+2. **Preview player** → stop at snippet end; show **elapsed / total** (e.g. `0:12 / 0:30`) so remaining time is clear; optional progress bar.  
+3. **Search Results** heading under search bar (match section title style).  
+4. **Submit Music** page → remove redundant header; reorder requirements (eligibility/files first).  
+5. **Ultimate Bundle** on services/shop → mix + master + **publish**.  
+6. **Later note (after PDF):** more aesthetic **search bar** on catalogue; **checkout should recognize cart** and improve **checkout page flow**.
 
-https://appstoreconnect.apple.com/apps/6792035284/appstore
+Also: varskinisjuozas — *make changes and send screenshots and a link*.
 
-### UI checklist (if API incomplete)
-1. Select version **1.0**  
-2. Select build **1**  
-3. Screenshots for 6.7" iPhone (required) — capture from TestFlight/Simulator if missing  
-4. Privacy Policy URL: https://bvsradio.com/privacy  
-5. Support URL: https://bvsradio.com/contact  
-6. Age rating complete  
-7. Content rights / export compliance (no non-exempt encryption)  
-8. **Add for Review** → **Submit to App Review**  
+## Who does what
+| Work | Owner |
+|------|--------|
+| Website UX items 1–6 | **VPS / web agents** (Next.js on bvsradio.com) — not Xcode |
+| App Store **Submit for Review** | **Mac agent** (ASC API key on Mac only) |
+| Screenshots + link for team | After web fixes deploy |
 
-### After submit
-Write `ops/agent-bridge/from-mac/LATEST.md`:
-- submitted: yes/no  
-- state: WAITING_FOR_REVIEW / errors  
-- any missing asset list  
-Then git commit + push bridge.
+## Mac agent (if prompted now)
+- Prefer: **App Review submit** path (build 1, app 6792035284) if listing complete.  
+- Do **not** expect to implement catalogue CSS in Xcode — shell loads live site; web fixes land via Vercel.  
+- After web deploys, TestFlight auto-shows new UI (hybrid).  
+- Report submit state to `from-mac/LATEST.md`.
 
-## Facts
-- Team VGFK77VH73 · bundle com.bvsradio.app · app 6792035284  
-- Do not change bundle ID  
-- No artists hub  
+## VPS next (web)
+Implement PDF v2 + cart/checkout note; screenshot; post link for team.
+
+## iOS facts (unchanged)
+Team `VGFK77VH73` · bundle `com.bvsradio.app` · ASC `6792035284` · TestFlight Internal OK  
+
+## Do not
+- Commit ASC `.p8`  
+- Start artists hub  
+- Change bundle ID  

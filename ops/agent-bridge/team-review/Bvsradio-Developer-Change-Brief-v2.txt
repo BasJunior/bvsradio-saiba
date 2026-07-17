@@ -1,0 +1,88 @@
+7/17/26, 10:55 PM                                                 Bvsradio Website Change Brief
+
+
+
+
+      Bvsradio Website Change Brief
+      Developer implementation instructions • bvsradio.com • 17 July 2026
+
+
+
+          Objective: Improve navigation, audio-preview feedback, search-result clarity, the music-
+          submission page structure, and the available service bundles.
+
+
+
+      Requested changes
+
+      1. Browse navigation
+          Make the “Browse” control navigate or scroll the visitor to the Browse section.
+          Ensure the destination is positioned correctly below any sticky header and works on desktop and
+          mobile.
+
+      Acceptance: Clicking “Browse” consistently lands on the Browse section without a broken link or
+      incorrect offset.
+
+      2. Audio-preview behavior and timing
+          When the available preview snippet reaches its end, stop the player automatically.
+          While a song is playing, show both the current playback time and the preview snippet’s total
+          duration so listeners can immediately tell how much time is left.
+          Use a familiar time display such as 0:12 / 0:30 (optionally paired with a progress bar or remaining-
+          time label), and keep it synchronized while seeking or replaying.
+
+      Acceptance: The preview never continues beyond the snippet, stops cleanly at its end, and displays
+      accurate elapsed and total times throughout playback so the remaining preview time is clear.
+
+      3. Search Results title
+          Add a “Search Results” heading directly below the search bar and above the results list.
+          Match the typography and visual style used by the site’s other section titles.
+          Use appropriate spacing and alignment so the heading clearly belongs to the returned results.
+
+      Acceptance: Search results have a clear, consistently styled title that remains well positioned at
+      common screen sizes.
+
+
+
+
+file:///home/admin/.openclaw/workspace/bvsradio-developer-change-brief.html                                      1/2
+7/17/26, 10:55 PM                                                 Bvsradio Website Change Brief
+
+
+
+
+      4. Submit Music page cleanup
+          Remove the redundant “Submit Music” header where the page already communicates that title.
+          Reorganize the submission requirements into a clearer order.
+          Group related requirements, place critical eligibility and file requirements first, and use short
+          headings or bullets for easy scanning.
+          Remove repeated information while preserving every unique requirement.
+
+      Acceptance: Only one necessary page title remains, and an artist can quickly understand what is
+      required and in what order to prepare it.
+
+      5. Ultimate Bundle
+          Add an “Ultimate Bundle” service option.
+          The bundle must include mixing, mastering, and publishing.
+          Present it consistently with the existing service/package cards, including a concise description,
+          inclusions, price or enquiry action, and primary call to action as applicable.
+
+      Acceptance: Visitors can clearly identify the Ultimate Bundle and understand that all three services
+      are included.
+
+
+      Implementation and QA guidance
+          Reuse the site’s existing design system, spacing, typography, colors, and responsive breakpoints.
+          Preserve keyboard navigation, visible focus states, semantic headings, and accessible labels.
+          Test Browse navigation, search layout, and preview playback on desktop and mobile widths.
+          Test audio completion, replay, pause/resume, seeking, and multiple previews to prevent
+          overlapping playback.
+          Confirm no existing submission requirements or package actions are lost during restructuring.
+
+
+      Prepared from the consolidated Bvsradio review notes shared in Discord #general.
+
+
+
+
+file:///home/admin/.openclaw/workspace/bvsradio-developer-change-brief.html                                   2/2
+
