@@ -4,6 +4,18 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  // Keep serverless/VHS artifacts small — media in public/ is static CDN, not lambda FS
+  outputFileTracingExcludes: {
+    "*": [
+      "./android/**/*",
+      "./ios/**/*",
+      "./ops/**/*",
+      "./artifacts/**/*",
+      "./public/music/**/*",
+      "./node_modules/@img/sharp-*/**/*",
+      "./node_modules/sharp/**/*",
+    ],
+  },
   async headers() {
     return [
       {

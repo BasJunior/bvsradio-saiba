@@ -1,0 +1,35 @@
+# Keep Vercel Fluid/VHS packaging under the builder disk limit.
+# Site needs public/ + src/ + package files only.
+
+# Native / store packaging (not served by Next.js)
+android
+ios
+ops
+artifacts
+out
+data
+
+# Local / tooling
+.next
+node_modules
+.git
+.vercel
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Large store binaries
+**/*.apk
+**/*.aab
+**/*.ipa
+**/*.zip
+
+# Docs / blueprints not needed at runtime
+monako-glass-blueprint.md
+COMMERCE.md
+MOBILE.md
+DEPLOYMENT_SECURITY.md
+supabase-*.sql
+
+# Env samples (secrets never go to Vercel via git; avoid clutter)
+.env*
+!.env.local.example

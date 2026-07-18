@@ -47,3 +47,9 @@ next-env.d.ts
 asc.env
 **/AuthKey_*.p8
 **/*.p8
+
+# Local/store artifacts (keep on disk; do not bloat git/Vercel)
+ops/store-launch/assets/appstore-iphone-65/raw/
+ops/store-launch/assets/appstore-iphone-65/final/
+ops/store-launch/builds/
+artifacts/
