@@ -5,6 +5,7 @@ import { getPublicProgrammes } from "@/lib/station-content";
 
 const listenerPaths = [
   { title: "Listen", copy: "Start the continuous BVS music rotation and keep it playing while you browse.", href: "/radio", cta: "Open radio" },
+  { title: "BeatStore", copy: "Browse producer libraries and find beats ready for artist placements.", href: "/catalogue?type=beat#beatstore", cta: "Browse BeatStore" },
   { title: "Discover", copy: "Search real tracks, artists, programmes and stories from one place.", href: "/search", cta: "Search BVS" },
   { title: "Your library", copy: "Save music, follow programmes and return to your recent listening on this device.", href: "/library", cta: "View library" },
 ];
@@ -47,6 +48,12 @@ export default async function HomePage() {
               >
                 For artists
               </Link>
+              <Link
+                href="/catalogue?type=beat#beatstore"
+                className="rounded-full border border-brand/60 bg-black/35 px-7 py-3.5 text-center font-semibold text-brand hover:bg-brand hover:text-black"
+              >
+                Browse BeatStore
+              </Link>
             </div>
           </div>
           <div className="min-w-0">
@@ -64,7 +71,7 @@ export default async function HomePage() {
             </h2>
           </div>
         </div>
-        <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
+        <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-4">
           {listenerPaths.map((item) => (
             <Link
               key={item.title}
@@ -148,7 +155,7 @@ export default async function HomePage() {
               Submission guide
             </Link>
             <Link href="/catalogue" className="rounded-full border border-white/20 px-6 py-3 text-center font-semibold hover:bg-white/5">
-              Browse music &amp; beats
+              Browse BeatStore
             </Link>
           </div>
           <p className="mt-6 text-sm text-text-secondary">

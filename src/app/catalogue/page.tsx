@@ -18,7 +18,9 @@ interface Track {
   src: string
   artwork: string
   bpm?: string
-  price?: number
+  price?: number | null
+  externalUrl?: string
+  streamOnly?: boolean
 }
 
 const coverArt = '/music/Bvs-3000x3000%202.png'
@@ -46,7 +48,7 @@ const tracks: Track[] = [
     duration: '3:42',
     description: 'One of the preserved original BVS cuts now restored into the live site catalogue.',
     type: 'single',
-    src: musicFile('1. RobertGabrielMugabeInternationalAirport.mp3'),
+    src: musicFile('bvs-radio-robert-gabriel-mugabe-international-airport.mp3'),
     artwork: coverArt,
   },
   {
@@ -58,7 +60,7 @@ const tracks: Track[] = [
     duration: '3:18',
     description: 'A direct BVS archive track from the original player library.',
     type: 'mix',
-    src: musicFile('2.BVSSlidemix1.mp3'),
+    src: musicFile('bvs-radio-slide-mix.mp3'),
     artwork: coverArt,
   },
   {
@@ -70,7 +72,7 @@ const tracks: Track[] = [
     duration: '4:08',
     description: 'BVS and Brx energy from the preserved VPS catalogue.',
     type: 'mix',
-    src: musicFile('3. BrxBVSNeverEndingmix1.mp3'),
+    src: musicFile('bvs-brx-never-ending-mix.mp3'),
     artwork: coverArt,
   },
   {
@@ -80,9 +82,9 @@ const tracks: Track[] = [
     genre: 'BVS Original',
     collection: 'BVS Archive',
     duration: '3:36',
-    description: 'A gritty BVS demo track carried forward from the original station files.',
+    description: 'A gritty BVS archive track carried forward from the original station files.',
     type: 'single',
-    src: musicFile('4. BVSStarveDEMO1.mp3'),
+    src: musicFile('bvs-radio-starve.mp3'),
     artwork: coverArt,
   },
   {
@@ -94,7 +96,7 @@ const tracks: Track[] = [
     duration: '4:22',
     description: 'A mastered archive track that gives the catalogue a warmer Zimbabwean gospel edge.',
     type: 'single',
-    src: musicFile('Calm Beast - Mahendere (MAST).mp3'),
+    src: musicFile('calm-beast-mahendere-master.mp3'),
     artwork: coverArt,
   },
   {
@@ -251,9 +253,54 @@ const tracks: Track[] = [
     description:
       'Full LORD album download (CalmBeast x W.Hills). Preview uses a related Calm Beast master; full zip is fulfilled after payment.',
     type: 'mix',
-    src: musicFile('Calm Beast - Mahendere (MAST).mp3'),
+    src: musicFile('calm-beast-mahendere-master.mp3'),
     artwork: '/images/albums/lord-album.jpg',
     price: 19,
+  },
+  {
+    id: 102,
+    title: 'STRAIGHTENIN',
+    artist: 'Wolfbridges',
+    genre: 'Spotify Release',
+    collection: 'Wolfbridges Projects',
+    duration: 'Project',
+    description: 'Spotify project from Wolfbridges, featured through the BVSRadio playlist.',
+    type: 'mix',
+    src: 'https://p.scdn.co/mp3-preview/a4c2906e4838d1513e71952936a5039c006c5cf9',
+    artwork: '/images/musicians.jpg',
+    externalUrl: 'https://open.spotify.com/album/2plE5CHEf6lodOSZdTzdXf',
+    streamOnly: true,
+    price: null,
+  },
+  {
+    id: 103,
+    title: 'HOWLING IN THE HILLS 2',
+    artist: 'Wolfbridges x W.Hills',
+    genre: 'Spotify Release',
+    collection: 'Wolfbridges Projects',
+    duration: 'Project',
+    description: 'A Wolfbridges and W.Hills project now surfaced in the BVS music catalogue with Spotify access.',
+    type: 'mix',
+    src: 'https://p.scdn.co/mp3-preview/afec4b1200c2ca74cbb50d6b0cfa053ccd6a5e8d',
+    artwork: '/images/editorial/music-discovery-show.webp',
+    externalUrl: 'https://open.spotify.com/album/5dHfrh9OYgQyvaWuEm9dfk',
+    streamOnly: true,
+    price: null,
+  },
+  {
+    id: 104,
+    title: 'WOLF BEEN BAD',
+    artist: 'Wolfbridges x I Ratty',
+    genre: 'Spotify Release',
+    collection: 'Wolfbridges Projects',
+    duration: 'Project',
+    description: 'A Wolfbridges and I Ratty project added to BVS catalogue discovery with a Spotify listen-through path.',
+    type: 'mix',
+    src: 'https://p.scdn.co/mp3-preview/625162a39886da9e1efec3c864f55238fbe6dd5c',
+    artwork: '/images/festival-crowd.jpg',
+    externalUrl: 'https://open.spotify.com/album/4Bxbabl2djOaaT2tGHXkrB',
+    streamOnly: true,
+    price: null,
   },
   {
     id: 101,
@@ -273,6 +320,7 @@ const tracks: Track[] = [
 
 const collectionCards = [
   { name: 'Albums', detail: 'Full album downloads', img: '/images/albums/lord-album.jpg' },
+  { name: 'Wolfbridges Projects', detail: 'Spotify releases now in catalogue', img: '/images/musicians.jpg' },
   { name: 'BVS Archive', detail: 'Original station tracks', img: coverArt },
   { name: 'June Pack', detail: 'WolfBrx radio-ready beats', img: junePackArt },
   { name: 'May Pack', detail: 'WolfBrx focused trap selections', img: mayPackArt },
@@ -280,7 +328,17 @@ const collectionCards = [
   { name: 'Producer Picks', detail: 'Beats ready for artists', img: '/images/hero-studio.jpg' },
 ]
 
+const producerLibraries = [
+  { name: 'WolfBrx Library', producer: 'WolfBrx', detail: 'Trap, drill and melodic beats for artist placements', query: 'WolfBrx', img: junePackArt },
+  { name: 'Naygifted Beats Library', producer: 'Naygifted Beats', detail: 'Soulful pockets and slower artist-ready ideas', query: 'Naygifted Beats', img: '/images/female-host.jpg' },
+  { name: 'Wolfbridges Projects', producer: 'Wolfbridges', detail: 'Spotify releases and collaborations surfaced in the BVS catalogue', query: 'Wolfbridges Projects', img: '/images/musicians.jpg' },
+]
+
 function trackPrice(track: Track) {
+  if (track.price === null || track.streamOnly) {
+    return null
+  }
+
   if (track.price !== undefined) {
     return track.price
   }
@@ -297,10 +355,15 @@ function trackPrice(track: Track) {
 }
 
 function offerLabel(track: Track) {
+  if (track.streamOnly) return 'Spotify release'
   return track.type === 'beat' ? 'Beat licence' : track.type === 'mix' ? 'Archive download' : 'Track download'
 }
 
 function rightsSummary(track: Track) {
+  if (track.streamOnly) {
+    return 'Streaming release listed for discovery. Listen on Spotify for the full project; BVS does not sell download or licensing rights for this item.'
+  }
+
   if (track.type === 'beat') {
     return 'The listed price is a standard licence starting point. Usage limits, files supplied, credits and commercial release terms must be confirmed by BVS before release.'
   }
@@ -419,6 +482,10 @@ export default function CataloguePage() {
   }
 
   const addToCart = (track: Track) => {
+    if (track.streamOnly || trackPrice(track) === null) {
+      return
+    }
+
     if (cart.some((item) => item.id === track.id)) {
       return
     }
@@ -437,7 +504,7 @@ export default function CataloguePage() {
           <p className="text-xs tracking-[3px] text-brand uppercase mb-3">BVS Catalogue</p>
           <h1 className="text-5xl font-semibold mb-4">Real tracks from the BVS library.</h1>
           <p className="max-w-2xl text-text-secondary text-lg">
-            Preview available BVS archive audio and producer packs. Product labels make clear whether you are buying a personal download or starting a beat-licensing order.
+            Preview available BVS archive audio, producer packs and Spotify releases. Product labels make clear whether you are buying a personal download, starting a beat-licensing order, or opening a stream.
           </p>
         </div>
 
@@ -453,6 +520,56 @@ export default function CataloguePage() {
               Open Radio
             </Link>
           </div>
+        </div>
+      </section>
+
+      <section id="beatstore" className="mb-10 scroll-mt-24 rounded-3xl border border-white/10 bg-bg-card/45 p-5 sm:p-7">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[3px] text-brand">Browse BeatStore</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight">Browse beats from your favorite producer.</h2>
+            <p className="mt-2 max-w-2xl text-sm text-text-secondary">
+              Each producer library groups the catalogue like a crate: jump straight into WolfBrx beats, soulful packs, or featured artist projects without changing how the page works.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setTypeFilter('beat')
+              setSearch('')
+              setGenreFilter('All')
+            }}
+            className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black hover:bg-brand-dark"
+          >
+            Show all beats
+          </button>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {producerLibraries.map((library) => (
+            <button
+              type="button"
+              key={library.name}
+              onClick={() => {
+                setSearch(library.query)
+                setGenreFilter('All')
+                setTypeFilter(library.query.includes('Projects') ? 'all' : 'beat')
+              }}
+              className="group overflow-hidden rounded-2xl border border-white/10 bg-black/25 text-left transition hover:border-brand/40"
+            >
+              <div className="relative aspect-[16/9]">
+                <Image src={library.img} alt="" fill className="object-cover transition group-hover:scale-[1.02]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
+                <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-[10px] uppercase tracking-widest text-brand">
+                  {library.producer}
+                </span>
+              </div>
+              <div className="p-4">
+                <h3 className="text-lg font-semibold group-hover:text-brand">{library.name}</h3>
+                <p className="mt-2 text-sm text-text-secondary">{library.detail}</p>
+                <span className="mt-4 inline-block text-sm font-medium text-brand">Open library →</span>
+              </div>
+            </button>
+          ))}
         </div>
       </section>
 
@@ -560,7 +677,9 @@ export default function CataloguePage() {
                 <p className="truncate text-sm text-text-secondary">{track.artist}</p>
                 <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-secondary">
                   <span className="truncate">{track.genre}</span>
-                  <span className="flex-shrink-0">{track.type === 'beat' ? 'from ' : ''}${trackPrice(track)}</span>
+                  <span className="flex-shrink-0">
+                    {track.streamOnly ? 'Spotify' : `${track.type === 'beat' ? 'from ' : ''}$${trackPrice(track)}`}
+                  </span>
                 </div>
                 <div className="mt-4 flex gap-2">
                   <button
@@ -689,7 +808,7 @@ export default function CataloguePage() {
                 <p className="mt-1 text-sm text-text-secondary">
                   {selectedTrack.duration}
                   {selectedTrack.bpm ? ` · ${selectedTrack.bpm}` : ''}
-                  {` · $${trackPrice(selectedTrack)}`}
+                  {selectedTrack.streamOnly ? ' · Spotify' : ` · $${trackPrice(selectedTrack)}`}
                 </p>
                 <p className="mt-5 text-text-secondary">{selectedTrack.description}</p>
 
@@ -728,20 +847,33 @@ export default function CataloguePage() {
                   >
                     {currentTrack?.id === selectedTrack.id && isPlaying ? 'Pause Preview' : 'Preview Track'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => addToCart(selectedTrack)}
-                    className="flex-1 rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
-                  >
-                    Add {selectedTrack.type === 'beat' ? 'licence' : 'download'} · ${trackPrice(selectedTrack)}
-                  </button>
-                  <Link
-                    href="/checkout"
-                    onClick={() => addToCart(selectedTrack)}
-                    className="flex flex-1 items-center justify-center rounded-full bg-white px-5 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
-                  >
-                    Continue to checkout
-                  </Link>
+                  {selectedTrack.streamOnly && selectedTrack.externalUrl ? (
+                    <Link
+                      href={selectedTrack.externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex flex-1 items-center justify-center rounded-full bg-[#1DB954] px-5 py-3 text-center text-sm font-semibold text-black hover:bg-[#1ed760]"
+                    >
+                      Open on Spotify
+                    </Link>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => addToCart(selectedTrack)}
+                        className="flex-1 rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                      >
+                        Add {selectedTrack.type === 'beat' ? 'licence' : 'download'} · ${trackPrice(selectedTrack)}
+                      </button>
+                      <Link
+                        href="/checkout"
+                        onClick={() => addToCart(selectedTrack)}
+                        className="flex flex-1 items-center justify-center rounded-full bg-white px-5 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
+                      >
+                        Continue to checkout
+                      </Link>
+                    </>
+                  )}
                 </div>
 
                 <Link href="/contact" className="mt-4 text-center text-sm text-brand hover:underline">

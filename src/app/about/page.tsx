@@ -12,8 +12,9 @@ export default function AboutPage() {
     <div className="max-w-5xl mx-auto px-6 py-16">
       <div className="mb-16 text-center">
         <h1 className="text-5xl font-bold tracking-tight mb-4">About BVS Radio</h1>
+        <p className="mb-4 text-xs font-semibold uppercase tracking-[0.25em] text-brand">Built by Artists, Made for Artists</p>
         <p className="text-xl text-text-secondary max-w-2xl mx-auto">
-          BVS Radio — <span className="text-brand">Best Virtual Sound</span>. Zimbabwe&apos;s premier online radio station broadcasting the sounds, stories, and spirit of our nation to the world.
+          BVS Radio — <span className="text-brand">Best Virtual Sound</span>. A digital radio and media platform helping independent creators share their sound, grow their audience and build real opportunities.
         </p>
       </div>
 
@@ -28,7 +29,7 @@ export default function AboutPage() {
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
         <div className="absolute bottom-0 left-0 p-10 max-w-lg">
           <p className="text-brand text-sm tracking-[3px] mb-2">EST. 2022 • HARARE</p>
-          <h2 className="text-4xl font-bold leading-tight">The voice of a new generation.</h2>
+          <h2 className="text-4xl font-bold leading-tight">Built by artists, made for artists.</h2>
         </div>
       </div>
 
@@ -41,9 +42,9 @@ export default function AboutPage() {
               and stories on the planet, and the world deserves to hear them.
             </p>
             <p>
-              What started as a small online stream from a bedroom studio in Harare has grown into 
-              a 24/7 platform connecting listeners across continents — from the townships of Bulawayo 
-              to the diaspora in the UK, USA, and South Africa.
+              What started as an independent online stream is growing into a home for radio, releases,
+              BeatStore libraries, artist services and discovery. The platform is shaped from artist
+              experience first: clear submissions, fair credits and real routes from a song idea to an audience.
             </p>
           </div>
         </div>
@@ -52,12 +53,12 @@ export default function AboutPage() {
           <h2 className="text-3xl font-semibold mb-4">Our Mission</h2>
           <div className="space-y-4 text-text-secondary leading-relaxed">
             <p>
-              We exist to amplify Zimbabwean voices. We platform both established legends and 
-              emerging artists, blend traditional sounds with contemporary genres, and create 
-              space for honest conversations about our culture, challenges, and celebrations.
+              We exist to amplify independent artists and Zimbabwean sound. BVS connects listeners,
+              producers and performers through radio, catalogue discovery, BeatStore access, interviews
+              and practical audio services.
             </p>
             <p>
-              More than a radio station, we are a community hub for discovery, connection, and pride.
+              More than a radio station, we are a working-artist hub for discovery, connection and opportunity.
             </p>
           </div>
         </div>
@@ -70,7 +71,7 @@ export default function AboutPage() {
           {[
             { title: "Authentic Curation", desc: "Every playlist and show is crafted by people who live and breathe Zimbabwean music and culture." },
             { title: "Live & Local", desc: "Real DJs. Real conversations. Real connection — no automation, just heart." },
-            { title: "Artist First", desc: "We give local creators a platform to upload, promote, and monetize their work directly." },
+            { title: "Artist First", desc: "Built by artists, made for artists — with upload, BeatStore, catalogue and service paths kept clear." },
             { title: "Global Reach", desc: "Streaming to Zimbabweans and Africa lovers across 40+ countries." },
           ].map((item, index) => (
             <div key={index} className="bg-bg-card/50 border border-white/10 rounded-2xl p-6">
