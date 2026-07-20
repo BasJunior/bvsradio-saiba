@@ -101,8 +101,8 @@ export async function editorialIdentity(request: Request) {
   // 3) Owner email bootstrap (fixes empty staff table / first login loop)
   if (!role && email && ownerEmails().has(email)) {
     role = 'administrator'
-    // Fire-and-forget persistence so next request is clean
-    void ensureAdministrator(user.id)
+    // Persist during the request so serverless does not drop the write
+    await ensureAdministrator(user.id)
   }
 
   if (!role || !rolePermissions[role]) return null
