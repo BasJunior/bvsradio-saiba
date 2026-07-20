@@ -7,6 +7,44 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 
+type SignedSlot = {
+  path: string
+  token: string
+  signedUrl: string
+  contentType: string
+}
+
+async function putToSignedSlot(slot: SignedSlot, file: File) {
+  const supabase = createClient()
+  const { error } = await supabase.storage
+    .from('bvsradio-audio')
+    .uploadToSignedUrl(slot.path, slot.token, file, {
+      contentType: slot.contentType || file.type || 'application/octet-stream',
+      upsert: true,
+    })
+  if (error) {
+    // Fallback: raw PUT to signed URL (same endpoint the SDK uses)
+    const url = new URL(slot.signedUrl)
+    if (!url.searchParams.get('token')) url.searchParams.set('token', slot.token)
+    const body = new FormData()
+    body.append('cacheControl', '3600')
+    body.append('', file)
+    const res = await fetch(url.toString(), {
+      method: 'PUT',
+      headers: { 'x-upsert': 'true' },
+      body,
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(
+        error.message ||
+          `Storage rejected the file (${res.status}). ${text.slice(0, 120) || 'Try again or contact BVS.'}`,
+      )
+    }
+    return
+  }
+}
+
 export default function UploadPage() {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
@@ -16,6 +54,7 @@ export default function UploadPage() {
   const [rightsConfirmed, setRightsConfirmed] = useState(false)
   const [explicit, setExplicit] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [signedInAs, setSignedInAs] = useState<string | null>(null)
@@ -41,7 +80,6 @@ export default function UploadPage() {
       setAudioFile(null)
       return
     }
-    // Log for support if something still fails
     console.info('[bvs upload] file chosen', {
       name: file.name,
       type: file.type || '(empty)',
@@ -88,19 +126,10 @@ export default function UploadPage() {
     }
 
     setLoading(true)
-
-    const formData = new FormData()
-    formData.append('title', title.trim())
-    formData.append('genre', genre)
-    formData.append('description', description.trim())
-    formData.append('audio', audioFile, audioFile.name)
-    formData.append('rightsConfirmed', 'true')
-    formData.append('explicit', explicit ? 'true' : 'false')
-    if (artworkFile) formData.append('artwork', artworkFile, artworkFile.name)
+    setProgress('Checking sign-in…')
 
     try {
       const supabase = createClient()
-      // Prefer getUser() so we refresh a stale access token when possible
       const { data: userData, error: userError } = await supabase.auth.getUser()
       if (userError) {
         console.error('[bvs upload] getUser', userError)
@@ -119,35 +148,107 @@ export default function UploadPage() {
         throw new Error('Please sign in before submitting. Use Sign In (top right), then return here.')
       }
 
-      const res = await fetch('/api/tracks/upload', {
+      const authHeaders = {
+        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      }
+
+      // 1) Prepare signed upload slots (tiny JSON — never hits Vercel body limit)
+      setProgress('Preparing secure upload…')
+      const prepRes = await fetch('/api/tracks/upload/prepare', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session.access_token}` },
-        body: formData,
+        headers: authHeaders,
+        body: JSON.stringify({
+          audio: {
+            name: audioFile.name,
+            type: audioFile.type,
+            size: audioFile.size,
+          },
+          artwork: artworkFile
+            ? {
+                name: artworkFile.name,
+                type: artworkFile.type,
+                size: artworkFile.size,
+              }
+            : null,
+        }),
+      })
+      let prep: {
+        error?: string
+        audio?: SignedSlot
+        artwork?: SignedSlot | null
+      } = {}
+      try {
+        prep = await prepRes.json()
+      } catch {
+        throw new Error(
+          prepRes.status === 413
+            ? 'File is too large for the old upload path. Hard-refresh this page and try again.'
+            : `Could not prepare upload (server ${prepRes.status}).`,
+        )
+      }
+      if (!prepRes.ok || !prep.audio) {
+        throw new Error(prep.error || `Could not prepare upload (${prepRes.status})`)
+      }
+
+      // 2) Upload audio (and artwork) straight to Supabase — bypasses Vercel 4.5MB limit
+      const mb = (audioFile.size / (1024 * 1024)).toFixed(1)
+      setProgress(`Uploading audio (${mb} MB) to BVS storage…`)
+      console.info('[bvs upload] direct storage', { path: prep.audio.path, size: audioFile.size })
+      await putToSignedSlot(prep.audio, audioFile)
+
+      if (artworkFile && prep.artwork) {
+        setProgress('Uploading cover artwork…')
+        await putToSignedSlot(prep.artwork, artworkFile)
+      }
+
+      // 3) Register the review row (JSON metadata only)
+      setProgress('Registering submission for review…')
+      const finRes = await fetch('/api/tracks/upload', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          title: title.trim(),
+          genre,
+          description: description.trim(),
+          rightsConfirmed: true,
+          explicit,
+          audioPath: prep.audio.path,
+          artworkPath: prep.artwork?.path || null,
+        }),
       })
       let data: { error?: string; message?: string; track?: { id?: string } } = {}
       try {
-        data = await res.json()
+        data = await finRes.json()
       } catch {
-        throw new Error(`Upload failed (server ${res.status}). Try again or contact BVS.`)
+        throw new Error(`Upload failed (server ${finRes.status}). Try again or contact BVS.`)
       }
-      if (!res.ok) {
-        console.error('[bvs upload] api error', res.status, data)
-        throw new Error(data.error || `Upload failed (${res.status})`)
+      if (!finRes.ok) {
+        console.error('[bvs upload] finalize error', finRes.status, data)
+        throw new Error(data.error || `Upload failed (${finRes.status})`)
       }
+
       trackEvent('upload_complete', { genre, has_artwork: Boolean(artworkFile) })
       setSuccess(true)
     } catch (err: unknown) {
       console.error('[bvs upload] failed', err)
       const raw = err instanceof Error ? err.message : String(err)
-      const msg =
+      let msg = raw
+      if (/413|Payload Too Large|request entity too large/i.test(raw)) {
+        msg =
+          'This file is too large for the site host. Hard-refresh /upload (new direct-to-storage path) and try again. WAV/FLAC up to 100MB, compressed audio up to 40MB.'
+      } else if (
         /did not match the expected pattern|match the requested format|typeMismatch|patternMismatch|Invalid regular expression/i.test(
           raw,
         )
-          ? 'Browser rejected a form value (often a bad session or video file). Sign out → sign in → pick a WAV/MP3 (not MP4 video) → fill title + genre → submit again.'
-          : raw
+      ) {
+        msg =
+          'Browser rejected a form value (often a bad session or video file). Sign out → sign in → pick a WAV/MP3 (not MP4 video) → fill title + genre → submit again.'
+      }
       setError(msg)
     } finally {
       setLoading(false)
+      setProgress('')
     }
   }
 
@@ -231,7 +332,8 @@ export default function UploadPage() {
                 <div>
                   <strong className="mb-1 block">Prepare the audio file</strong> Upload{' '}
                   <strong>MP3, WAV, M4A, FLAC, OGG or AAC</strong> — not video (no phone MP4/MOV). Compressed audio max
-                  ~40MB; WAV/FLAC max ~100MB.
+                  ~40MB; WAV/FLAC max ~100MB. Files go <strong>direct to BVS storage</strong> (not through the web host
+                  size limit).
                 </div>
               </div>
               <div className="flex gap-4">
@@ -279,12 +381,11 @@ export default function UploadPage() {
         </div>
 
         <div className="pt-2">
-          {/* noValidate: never show cryptic browser “pattern” tooltips */}
           <form onSubmit={handleSubmit} noValidate className="space-y-6 rounded-2xl border border-white/10 bg-bg-card/30 p-8">
             <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-text-secondary">
-              <strong className="text-text-primary">Where it goes:</strong> Supabase storage bucket{' '}
+              <strong className="text-text-primary">Where it goes:</strong> Browser → Supabase bucket{' '}
               <code className="text-brand">bvsradio-audio</code> under{' '}
-              <code className="text-brand">tracks/…</code>, plus a <em>submitted</em> row for staff at{' '}
+              <code className="text-brand">tracks/…</code>, then a <em>submitted</em> row for staff at{' '}
               <Link href="/admin/editorial" className="text-brand hover:underline">
                 Admin → Editorial
               </Link>
@@ -308,7 +409,6 @@ export default function UploadPage() {
                 Audio File *
               </label>
               <div className="rounded-2xl border-2 border-dashed border-white/20 p-8 text-center transition-colors hover:border-brand/50">
-                {/* No accept= — WebKit can throw “string did not match the expected pattern” on some accept lists */}
                 <input
                   type="file"
                   onChange={(e) => onAudioChosen(e.target.files?.[0] || null)}
@@ -330,8 +430,10 @@ export default function UploadPage() {
                     {audioFile ? audioFile.name : 'Select audio (MP3, WAV, M4A, FLAC, OGG, AAC)'}
                   </p>
                   <p className="mt-1 text-xs text-text-secondary">
-                    Not video · MP3/M4A/OGG/AAC ≤40MB · WAV/FLAC ≤100MB
-                    {audioFile ? ` · detected type: ${audioFile.type || 'unknown'}` : ''}
+                    Direct to storage · MP3/M4A/OGG/AAC ≤40MB · WAV/FLAC ≤100MB
+                    {audioFile
+                      ? ` · ${(audioFile.size / (1024 * 1024)).toFixed(1)} MB · ${audioFile.type || 'unknown type'}`
+                      : ''}
                   </p>
                 </label>
               </div>
@@ -400,7 +502,7 @@ export default function UploadPage() {
                 <label htmlFor="artwork" className="flex cursor-pointer items-center gap-3 text-sm">
                   <span className="rounded-lg border border-white/20 px-3 py-1.5 hover:bg-white/5">Choose image</span>
                   <span className="text-text-secondary">
-                    {artworkFile ? artworkFile.name : 'Recommended 1000×1000px'}
+                    {artworkFile ? artworkFile.name : 'Recommended 1000×1000px · max 8MB'}
                   </span>
                 </label>
               </div>
@@ -442,17 +544,22 @@ export default function UploadPage() {
               </div>
             )}
 
+            {loading && progress && (
+              <p className="text-center text-sm text-brand" aria-live="polite">
+                {progress}
+              </p>
+            )}
+
             <button
               type="submit"
               disabled={loading}
               className="w-full rounded-full bg-brand py-4 text-lg font-semibold text-black transition-all hover:bg-brand-dark disabled:opacity-60"
             >
-              {loading ? 'Uploading to BVS…' : 'Upload & Submit for Review'}
+              {loading ? progress || 'Uploading to BVS…' : 'Upload & Submit for Review'}
             </button>
 
             <p className="text-center text-xs text-text-secondary">
-              Keep your own copy of every file. Fill <strong>title</strong> and <strong>genre</strong> before submit —
-              empty fields used to trigger confusing browser errors.
+              Large WAVs upload directly to storage (not through Vercel). Keep your own copy of every file.
             </p>
           </form>
         </div>
