@@ -1,17 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+
+function safeNextPath(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/'
+  return raw
+}
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [nextPath, setNextPath] = useState('/')
+  const [alreadyIn, setAlreadyIn] = useState<string | null>(null)
   const router = useRouter()
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    setNextPath(safeNextPath(params.get('next')))
+    if (!isSupabaseConfigured()) return
+    void createClient().auth.getSession().then(({ data }) => {
+      const email = data.session?.user?.email
+      if (email) setAlreadyIn(email)
+    })
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,7 +80,7 @@ export default function LoginPage() {
         headers: { Authorization: `Bearer ${access_token}` },
       }).catch(() => null)
 
-      router.push('/')
+      router.push(nextPath || '/')
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
@@ -84,6 +102,15 @@ export default function LoginPage() {
             Sign in with your <strong className="text-text-primary">email or username</strong> and
             password.
           </p>
+          {alreadyIn ? (
+            <p className="mt-4 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm text-text-secondary">
+              Already signed in as <strong className="text-text-primary">{alreadyIn}</strong>.{' '}
+              <Link href={nextPath || '/'} className="text-brand hover:underline">
+                Continue
+              </Link>{' '}
+              or sign in with a different account below.
+            </p>
+          ) : null}
         </div>
 
         <form onSubmit={handleLogin} className="space-y-4">

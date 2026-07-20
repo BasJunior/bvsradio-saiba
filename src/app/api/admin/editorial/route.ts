@@ -14,9 +14,25 @@ async function patchTable(table: string, query: string, body: Record<string, unk
   }))
 }
 
+async function optionalJson(path: string) {
+  const response = await fetch(editorialUrl(path), { headers: serviceHeaders, cache: 'no-store' })
+  if (!response.ok) return []
+  return response.json()
+}
+
 export async function GET(request: Request) {
+  const hasBearer = Boolean(request.headers.get('authorization')?.replace(/^Bearer\s+/i, ''))
   const identity = await editorialIdentity(request)
-  if (!identity) return NextResponse.json({ error: 'Editorial access required' }, { status: 403 })
+  if (!identity) {
+    return NextResponse.json(
+      {
+        error: hasBearer
+          ? 'Editorial access required. Your account is signed in but not on the editorial staff list. Owner accounts are auto-promoted; try Refresh. Otherwise ask a BVS admin to assign your role.'
+          : 'Sign in required for editorial.',
+      },
+      { status: hasBearer ? 403 : 401 },
+    )
+  }
   const requests = [
     fetch(editorialUrl('tracks?select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('profiles?select=id,username,display_name,role,is_verified,is_published&order=created_at.desc&limit=200'), { headers: serviceHeaders, cache: 'no-store' }),
@@ -28,7 +44,15 @@ export async function GET(request: Request) {
   const responses = await Promise.all(requests)
   if (responses.some((response) => !response.ok)) return NextResponse.json({ error: 'Editorial migration is not ready. Run supabase-editorial-workflow.sql.' }, { status: 503 })
   const [tracks, profiles, programmes, credits, staff, auditLog] = await Promise.all(responses.map((response) => response.json()))
-  return NextResponse.json({ identity: { role: identity.role, permissions: identity.permissions, profile: identity.profile }, tracks, profiles, programmes, credits, staff, auditLog })
+  const trackRequests = await optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100')
+  const [artistWaitlist, artistDeposits, artistPayoutRequests] = can(identity, 'manage_artist_wallet')
+    ? await Promise.all([
+      optionalJson('artist_waitlist?select=*&order=created_at.desc&limit=100'),
+      optionalJson('artist_deposits?select=*&order=created_at.desc&limit=100'),
+      optionalJson('artist_payout_requests?select=*&order=requested_at.desc&limit=100'),
+    ])
+    : [[], [], []]
+  return NextResponse.json({ identity: { role: identity.role, permissions: identity.permissions, profile: identity.profile }, tracks, profiles, programmes, credits, staff, auditLog, trackRequests, artistWaitlist, artistDeposits, artistPayoutRequests })
 }
 
 type ActionBody = { action?: string; [key: string]: unknown }
@@ -112,6 +136,14 @@ export async function PATCH(request: Request) {
         if (!['administrator', 'editor', 'programmer', 'credits_editor', 'commerce_manager'].includes(role)) return NextResponse.json({ error: 'Invalid staff role.' }, { status: 400 })
         const result = await jsonOrError(await fetch(editorialUrl('editorial_staff?on_conflict=user_id'), { method: 'POST', headers: { ...serviceHeaders, Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify({ user_id: userId, role, active: body.active !== false, appointed_by: identity.user.id, updated_at: new Date().toISOString() }) }))
         await audit(identity.user.id, 'staff_assigned', 'profile', userId, { role, active: body.active !== false })
+        return NextResponse.json({ result })
+      }
+      case 'review_track_request': {
+        requirePermission('approve_submissions')
+        const requestId = String(body.requestId || '')
+        const status = ['reviewing', 'resolved', 'rejected'].includes(String(body.status)) ? String(body.status) : 'reviewing'
+        const result = await patchTable('track_review_requests', `id=eq.${encodeURIComponent(requestId)}`, { status, staff_notes: String(body.notes || '').slice(0, 2000), reviewed_by: identity.user.id, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+        await audit(identity.user.id, `track_request_${status}`, 'track_review_request', requestId)
         return NextResponse.json({ result })
       }
       default: return NextResponse.json({ error: 'Unknown editorial action.' }, { status: 400 })
