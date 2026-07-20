@@ -43,28 +43,37 @@ export function isAllowedAudioFile(file: { name: string; type: string; size: num
   error?: string;
   ext: string;
 } {
-  const ext = fileExtension(file.name) || "mp3";
-  const mimeOk = !file.type || AUDIO_MIME_TYPES.has(file.type);
+  const ext = fileExtension(file.name);
+  const mime = (file.type || "").toLowerCase();
+  const mimeOk = !mime || AUDIO_MIME_TYPES.has(mime);
   const extOk = (AUDIO_EXTENSIONS as readonly string[]).includes(ext);
   // Reject video containers (common confusion: phone camera MP4 vs audio)
-  if (file.type.startsWith("video/") || ext === "mp4" || ext === "mov" || ext === "mkv") {
+  if (mime.startsWith("video/") || ext === "mp4" || ext === "mov" || ext === "mkv") {
     return {
       ok: false,
-      ext,
+      ext: ext || "mp4",
       error:
         "Video files (MP4, MOV, etc.) are not accepted here. Export or convert to audio: MP3, WAV, M4A, FLAC, OGG or AAC.",
     };
   }
-  if (!mimeOk && !extOk) {
+  // Prefer extension when present; many OS leave type empty for .wav
+  if (ext && !extOk && !mimeOk) {
     return {
       ok: false,
       ext,
-      error: `Unsupported format (${file.type || "unknown type"} / .${ext}). Use MP3, WAV, M4A, FLAC, OGG or AAC.`,
+      error: `Unsupported format (${mime || "unknown type"} / .${ext}). Use MP3, WAV, M4A, FLAC, OGG or AAC.`,
     };
   }
-  if (!extOk && mimeOk) {
-    // MIME ok but weird extension — still allow common audio MIME
-  } else if (!extOk) {
+  if (!ext && !mimeOk) {
+    return {
+      ok: false,
+      ext: "unknown",
+      error: "Could not detect audio type. Rename the file to end with .mp3, .wav, .m4a, .flac or .ogg and try again.",
+    };
+  }
+  if (ext && !extOk && mimeOk) {
+    // e.g. odd extension but valid audio MIME — allow
+  } else if (ext && !extOk) {
     return {
       ok: false,
       ext,
