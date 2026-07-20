@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
+import { AUDIO_ACCEPT_ATTR, isAllowedAudioFile } from '@/lib/audio-formats'
 
 export default function UploadPage() {
   const [title, setTitle] = useState('')
@@ -12,19 +13,46 @@ export default function UploadPage() {
   const [description, setDescription] = useState('')
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [artworkFile, setArtworkFile] = useState<File | null>(null)
+  const [rightsConfirmed, setRightsConfirmed] = useState(false)
+  const [explicit, setExplicit] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
   const genres = [
     'Hip-Hop', 'Trap', 'Afrobeats', 'Amapiano', 'R&B',
-    'Dancehall', 'Electronic', 'Lofi', 'Gospel', 'Jazz', 'Pop', 'Other'
+    'Dancehall', 'Electronic', 'Lofi', 'Gospel', 'Jazz', 'Pop',
+    'Sungura', 'Zimdancehall', 'Chimurenga', 'Other',
   ]
+
+  const onAudioChosen = (file: File | null) => {
+    setError(null)
+    if (!file) {
+      setAudioFile(null)
+      return
+    }
+    const check = isAllowedAudioFile(file)
+    if (!check.ok) {
+      setAudioFile(null)
+      setError(check.error || 'Unsupported audio file.')
+      return
+    }
+    setAudioFile(file)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!audioFile || !title || !genre) {
       setError('Title, genre, and audio file are required')
+      return
+    }
+    if (!rightsConfirmed) {
+      setError('Confirm you control the rights before submitting.')
+      return
+    }
+    const check = isAllowedAudioFile(audioFile)
+    if (!check.ok) {
+      setError(check.error || 'Unsupported audio file.')
       return
     }
     setLoading(true)
@@ -35,6 +63,8 @@ export default function UploadPage() {
     formData.append('genre', genre)
     formData.append('description', description)
     formData.append('audio', audioFile)
+    formData.append('rightsConfirmed', String(rightsConfirmed))
+    formData.append('explicit', String(explicit))
     if (artworkFile) formData.append('artwork', artworkFile)
 
     try {
@@ -101,15 +131,15 @@ export default function UploadPage() {
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">2</div>
-              <div><strong className="block mb-1">Prepare the audio file</strong> Upload MP3, WAV or OGG up to 25MB. A 320kbps MP3 or WAV is preferred.</div>
+              <div><strong className="block mb-1">Prepare the audio file</strong> Upload <strong>MP3, WAV, M4A, FLAC, OGG or AAC</strong> — not video (no phone MP4/MOV). Compressed audio max ~40MB; WAV/FLAC max ~100MB. 320kbps MP3 or release-ready WAV preferred for Zimbabwe radio review.</div>
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">3</div>
-              <div><strong className="block mb-1">Add release details</strong> Provide the track title, genre and optional square cover artwork. Add context in the description when useful.</div>
+              <div><strong className="block mb-1">Add release details</strong> Provide the track title, genre and optional square cover artwork. Add context in the description when useful (language, city, features).</div>
             </div>
             <div className="flex gap-4">
               <div className="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center flex-shrink-0">4</div>
-              <div><strong className="block mb-1">Understand the review</strong> BVS decides what fits its programming. Uploading does not guarantee airplay, publication or feedback.</div>
+              <div><strong className="block mb-1">Understand the review</strong> BVS decides what fits Zimbabwean-facing programming. Uploading does not guarantee airplay, publication or feedback.</div>
             </div>
             </div>
           </section>
@@ -129,13 +159,13 @@ export default function UploadPage() {
             <div>
               <label className="block text-sm font-medium mb-1.5">Audio File *</label>
               <div className="border-2 border-dashed border-white/20 hover:border-brand/50 rounded-2xl p-8 text-center transition-colors">
-                <input type="file" accept="audio/*" onChange={(e) => setAudioFile(e.target.files?.[0] || null)} className="hidden" id="audio-upload" />
+                <input type="file" accept={AUDIO_ACCEPT_ATTR} onChange={(e) => onAudioChosen(e.target.files?.[0] || null)} className="hidden" id="audio-upload" />
                 <label htmlFor="audio-upload" className="cursor-pointer block">
                   <div className="mx-auto w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-3">
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
                   </div>
-                  <p className="text-sm font-medium">{audioFile ? audioFile.name : 'Select your track (MP3, WAV, OGG)'}</p>
-                  <p className="text-xs text-text-secondary mt-1">Max 25MB</p>
+                  <p className="text-sm font-medium">{audioFile ? audioFile.name : 'Select audio (MP3, WAV, M4A, FLAC, OGG, AAC)'}</p>
+                  <p className="text-xs text-text-secondary mt-1">Not video · MP3/M4A/OGG/AAC ≤40MB · WAV/FLAC ≤100MB</p>
                 </label>
               </div>
             </div>
@@ -170,9 +200,13 @@ export default function UploadPage() {
               </div>
             </div>
 
+            <label className="flex gap-3 rounded-xl border border-white/10 p-4 text-sm"><input type="checkbox" checked={rightsConfirmed} onChange={(event) => setRightsConfirmed(event.target.checked)} required className="mt-1 accent-brand" /><span><strong className="block">I control the necessary rights</strong><span className="text-text-secondary">I have permission from all artists, producers and rights holders to submit this recording.</span></span></label>
+
+            <label className="flex gap-3 rounded-xl border border-white/10 p-4 text-sm"><input type="checkbox" checked={explicit} onChange={(event) => setExplicit(event.target.checked)} className="mt-1 accent-brand" /><span><strong className="block">Explicit content</strong><span className="text-text-secondary">Mark this when the recording contains explicit language or themes.</span></span></label>
+
             {error && <div className="text-sm bg-red-500/10 text-red-400 p-3 rounded-xl">{error}</div>}
 
-            <button type="submit" disabled={loading} className="w-full py-4 bg-brand hover:bg-brand-dark disabled:opacity-60 text-black font-semibold rounded-full text-lg transition-all">
+            <button type="submit" disabled={loading || !rightsConfirmed} className="w-full py-4 bg-brand hover:bg-brand-dark disabled:opacity-60 text-black font-semibold rounded-full text-lg transition-all">
               {loading ? 'Uploading to BVS...' : 'Upload & Submit for Review'}
             </button>
 
