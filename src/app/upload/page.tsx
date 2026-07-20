@@ -69,9 +69,12 @@ export default function UploadPage() {
 
     try {
       const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      if (sessionError) {
+        throw new Error(sessionError.message || 'Could not read your session. Sign in again.')
+      }
       if (!session?.access_token) {
-        throw new Error('Please sign in before submitting your track.')
+        throw new Error('Please sign in before submitting your track. Use Sign In (top right), then return to Upload.')
       }
 
       const res = await fetch('/api/tracks/upload', {
@@ -79,12 +82,23 @@ export default function UploadPage() {
         headers: { Authorization: `Bearer ${session.access_token}` },
         body: formData,
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      let data: { error?: string; message?: string } = {}
+      try {
+        data = await res.json()
+      } catch {
+        throw new Error(`Upload failed (server ${res.status}). Try again or contact BVS.`)
+      }
+      if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`)
       trackEvent('upload_complete', { genre, has_artwork: Boolean(artworkFile) })
       setSuccess(true)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      const raw = err instanceof Error ? err.message : 'Upload failed'
+      // Browser native validity text is cryptic — rewrite for artists
+      const msg =
+        /did not match the expected pattern|match the requested format|typeMismatch|patternMismatch/i.test(raw)
+          ? 'Something in the form was invalid (often email at sign-in, or a video file instead of audio). Use a real email to sign in, and upload MP3/WAV/M4A/FLAC — not phone video (MP4).'
+          : raw
+      setError(msg)
     } finally {
       setLoading(false)
     }
@@ -155,7 +169,14 @@ export default function UploadPage() {
 
         {/* Form */}
         <div className="pt-2">
-          <form onSubmit={handleSubmit} className="space-y-6 bg-bg-card/30 border border-white/10 p-8 rounded-2xl">
+          <form onSubmit={handleSubmit} noValidate className="space-y-6 bg-bg-card/30 border border-white/10 p-8 rounded-2xl">
+            <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-text-secondary">
+              <strong className="text-text-primary">Where it goes:</strong> files land in BVS private review storage (Supabase), a row is created as <em>submitted</em>, and staff review at Admin → Editorial. Not live on radio until approved.
+              {' '}
+              <Link href="/auth/login" className="text-brand hover:underline">Sign in</Link>
+              {' · '}
+              <Link href="/auth/signup" className="text-brand hover:underline">Create account</Link>
+            </p>
             <div>
               <label className="block text-sm font-medium mb-1.5">Audio File *</label>
               <div className="border-2 border-dashed border-white/20 hover:border-brand/50 rounded-2xl p-8 text-center transition-colors">

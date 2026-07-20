@@ -30,8 +30,8 @@ export const AUDIO_MIME_TYPES = new Set([
   "audio/webm",
 ]);
 
-export const AUDIO_ACCEPT_ATTR =
-  "audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/ogg,audio/flac,audio/mp4,audio/x-m4a,audio/aac,.mp3,.wav,.ogg,.oga,.flac,.m4a,.aac,.opus";
+/** Prefer extensions — mixed MIME+extension lists confuse some mobile browsers. */
+export const AUDIO_ACCEPT_ATTR = ".mp3,.wav,.ogg,.oga,.flac,.m4a,.aac,.opus,audio/*";
 
 export function fileExtension(name: string): string {
   const part = name.split(".").pop() || "";

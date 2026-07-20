@@ -7,7 +7,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { getAuthCallbackUrl } from '@/lib/auth-url'
 
 export default function SignupPage() {
-  const [form, setForm] = useState({ email: '', password: '', fullName: '', username: '' })
+  const [form, setForm] = useState({ email: '', password: '', fullName: '', username: '', role: 'listener' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
@@ -50,21 +50,41 @@ export default function SignupPage() {
       return
     }
 
+    const email = form.email.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Enter a valid email address (must include @ and a domain), e.g. you@gmail.com.')
+      setLoading(false)
+      return
+    }
+
+    const username = form.username.trim()
+    if (!/^[a-zA-Z0-9._-]{2,32}$/.test(username)) {
+      setError('Username: 2–32 characters, letters/numbers/._- only (no spaces).')
+      setLoading(false)
+      return
+    }
+
     try {
       const supabase = createClient()
       const { data, error: signupError } = await supabase.auth.signUp({
-        email: form.email.trim(),
+        email,
         password: form.password,
         options: {
           emailRedirectTo: redirectTo,
           data: {
-            username: form.username.trim(),
+            username,
             full_name: form.fullName.trim(),
-            role: 'artist',
+            role: form.role,
           },
         },
       })
-      if (signupError) throw signupError
+      if (signupError) {
+        const m = signupError.message || 'Signup failed'
+        if (/pattern|invalid|email/i.test(m)) {
+          throw new Error('Email or username format was rejected. Use a normal email (you@domain.com) and a simple username without spaces.')
+        }
+        throw signupError
+      }
 
       // Supabase returns a user with empty identities when the email is already registered
       const identities = data.user?.identities
@@ -138,6 +158,7 @@ export default function SignupPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block text-sm font-medium">I am joining as<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-bg-card px-4 py-3 outline-none focus:border-brand"><option value="listener">Listener — discover, save and interact</option><option value="artist">Artist — submit music and use creator tools</option><option value="writer">Writer — pitch and publish stories</option><option value="show_creator">Show or podcast creator — upload weekly episodes</option></select><span className="mt-2 block text-xs text-text-secondary">This sets up your starting workspace. Every account can still listen and discover.</span></label>
             <input
               type="text"
               placeholder="Full name"
