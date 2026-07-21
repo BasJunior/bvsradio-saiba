@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { roleLabels, type EditorialPermission, type EditorialRole } from '@/lib/editorial'
+import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
 type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean }
@@ -15,7 +16,10 @@ type TrackRequest = { id: string; track_id: string; artist_user_id: string; requ
 type ArtistWaitlist = { id: string; email: string; artist_name: string; country?: string; city?: string; status: string; source: string; created_at: string }
 type ArtistDeposit = { id: string; artist_user_id: string; amount: number | string; currency: string; status: string; source: string; created_at: string }
 type ArtistPayoutRequest = { id: string; artist_user_id: string; requested_amount: number | string; currency: string; status: string; requested_at: string }
-type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
+type Release = { id: string; title: string; artist_name: string; genre?: string; cover_url?: string; release_type?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; track_count: number; created_at: string }
+type ReleaseTrack = { id: string; release_id: string; position: number; title: string; file_url?: string }
+type DistJob = { id: string; release_id: string; status: string; distributor?: string | null; notes?: string | null }
+type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
 const statusClass: Record<string, string> = { submitted: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', rejected: 'text-red-300' }
 
@@ -132,7 +136,18 @@ export default function EditorialDashboard() {
       {[['Awaiting review', data.tracks.filter(t => ['submitted','in_review'].includes(t.editorial_status)).length], ['Artist requests', data.trackRequests.filter(r => ['open','reviewing'].includes(r.status)).length], ['Approved', data.tracks.filter(t => t.editorial_status === 'approved').length], ['Published', data.tracks.filter(t => t.is_public).length], ['In rotation', data.tracks.filter(t => t.in_rotation).length]].map(([label, value]) => <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[.03] p-5"><p className="text-sm text-text-secondary">{label}</p><p className="mt-2 text-3xl font-semibold text-brand">{value}</p></div>)}
     </section>
 
-    <section className="mt-12"><h2 className="text-2xl font-semibold">Submission queue</h2><p className="mt-2 text-sm text-text-secondary">Approval does not automatically publish or add a track to rotation.</p><div className="mt-5 space-y-4">{data.tracks.map(track => <TrackCard key={track.id} track={track} credits={data.credits.filter(c => c.track_id === track.id)} allowed={allowed} act={act} busy={busy} />)}{data.tracks.length === 0 && <Empty text="No submissions yet." />}</div></section>
+    <ReleaseEditorialPanel
+      releases={data.releases || []}
+      releaseTracks={data.releaseTracks || []}
+      distributionJobs={data.distributionJobs || []}
+      canApprove={allowed('approve_submissions')}
+      canRotate={allowed('manage_rotation')}
+      canDistro={allowed('manage_artist_wallet')}
+      act={act}
+      busy={busy}
+    />
+
+    <section className="mt-12"><h2 className="text-2xl font-semibold">Single-track submission queue</h2><p className="mt-2 text-sm text-text-secondary">Legacy single uploads. Prefer Album/EP for multi-track. Approval does not automatically publish or add a track to rotation.</p><div className="mt-5 space-y-4">{data.tracks.map(track => <TrackCard key={track.id} track={track} credits={data.credits.filter(c => c.track_id === track.id)} allowed={allowed} act={act} busy={busy} />)}{data.tracks.length === 0 && <Empty text="No submissions yet." />}</div></section>
 
     <ArtistRequestPanel requests={data.trackRequests} tracks={data.tracks} profiles={data.profiles} enabled={allowed('approve_submissions')} act={act} busy={busy} />
 

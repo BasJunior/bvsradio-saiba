@@ -45,6 +45,9 @@ export async function GET(request: Request) {
   if (responses.some((response) => !response.ok)) return NextResponse.json({ error: 'Editorial migration is not ready. Run supabase-editorial-workflow.sql.' }, { status: 503 })
   const [tracks, profiles, programmes, credits, staff, auditLog] = await Promise.all(responses.map((response) => response.json()))
   const trackRequests = await optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100')
+  const releases = await optionalJson('releases?select=*&order=created_at.desc&limit=100')
+  const releaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
+  const distributionJobs = await optionalJson('distribution_jobs?select=*&order=updated_at.desc&limit=100')
   const [artistWaitlist, artistDeposits, artistPayoutRequests] = can(identity, 'manage_artist_wallet')
     ? await Promise.all([
       optionalJson('artist_waitlist?select=*&order=created_at.desc&limit=100'),
@@ -52,7 +55,22 @@ export async function GET(request: Request) {
       optionalJson('artist_payout_requests?select=*&order=requested_at.desc&limit=100'),
     ])
     : [[], [], []]
-  return NextResponse.json({ identity: { role: identity.role, permissions: identity.permissions, profile: identity.profile }, tracks, profiles, programmes, credits, staff, auditLog, trackRequests, artistWaitlist, artistDeposits, artistPayoutRequests })
+  return NextResponse.json({
+    identity: { role: identity.role, permissions: identity.permissions, profile: identity.profile },
+    tracks,
+    profiles,
+    programmes,
+    credits,
+    staff,
+    auditLog,
+    trackRequests,
+    releases,
+    releaseTracks,
+    distributionJobs,
+    artistWaitlist,
+    artistDeposits,
+    artistPayoutRequests,
+  })
 }
 
 type ActionBody = { action?: string; [key: string]: unknown }
@@ -144,6 +162,76 @@ export async function PATCH(request: Request) {
         const status = ['reviewing', 'resolved', 'rejected'].includes(String(body.status)) ? String(body.status) : 'reviewing'
         const result = await patchTable('track_review_requests', `id=eq.${encodeURIComponent(requestId)}`, { status, staff_notes: String(body.notes || '').slice(0, 2000), reviewed_by: identity.user.id, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         await audit(identity.user.id, `track_request_${status}`, 'track_review_request', requestId)
+        return NextResponse.json({ result })
+      }
+      case 'publish_release': {
+        requirePermission('approve_submissions')
+        const { materializeReleaseTracks } = await import('@/lib/releases-server')
+        const releaseId = String(body.releaseId || '')
+        const inRotation = body.inRotation !== false
+        const notes = String(body.notes || '').slice(0, 2000)
+        if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
+        if (notes) {
+          await patchTable('releases', `id=eq.${encodeURIComponent(releaseId)}`, { editorial_notes: notes })
+        }
+        const result = await materializeReleaseTracks(releaseId, {
+          publish: true,
+          inRotation,
+          reviewedBy: identity.user.id,
+        })
+        if (!result.ok) return NextResponse.json({ error: result.error || 'Publish failed.' }, { status: 400 })
+        await audit(identity.user.id, 'release_published', 'release', releaseId, { inRotation, trackCount: result.trackCount })
+        return NextResponse.json({ result })
+      }
+      case 'reject_release': {
+        requirePermission('approve_submissions')
+        const releaseId = String(body.releaseId || '')
+        const notes = String(body.notes || '').slice(0, 2000)
+        if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
+        const result = await patchTable('releases', `id=eq.${encodeURIComponent(releaseId)}`, {
+          editorial_status: 'rejected',
+          editorial_notes: notes,
+          is_public: false,
+          in_rotation: false,
+          reviewed_by: identity.user.id,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        await audit(identity.user.id, 'release_rejected', 'release', releaseId, { notes: notes.slice(0, 200) })
+        return NextResponse.json({ result })
+      }
+      case 'set_release_rotation': {
+        requirePermission('manage_rotation')
+        const releaseId = String(body.releaseId || '')
+        const enabled = Boolean(body.enabled)
+        if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
+        const result = await patchTable(
+          'releases',
+          `id=eq.${encodeURIComponent(releaseId)}&editorial_status=eq.approved&is_public=eq.true`,
+          { in_rotation: enabled, updated_at: new Date().toISOString() },
+        )
+        await patchTable('tracks', `release_id=eq.${encodeURIComponent(releaseId)}&editorial_status=eq.approved`, {
+          in_rotation: enabled,
+          rotation_added_at: enabled ? new Date().toISOString() : null,
+        })
+        await audit(identity.user.id, enabled ? 'release_rotation_on' : 'release_rotation_off', 'release', releaseId)
+        return NextResponse.json({ result })
+      }
+      case 'update_distribution_job': {
+        requirePermission('manage_artist_wallet')
+        const jobId = String(body.jobId || '')
+        const status = String(body.status || '')
+        const allowed = ['not_eligible', 'eligible', 'queued', 'submitted', 'live_on_dsp', 'failed', 'cancelled']
+        if (!jobId || !allowed.includes(status)) {
+          return NextResponse.json({ error: 'jobId and valid status required.' }, { status: 400 })
+        }
+        const result = await patchTable('distribution_jobs', `id=eq.${encodeURIComponent(jobId)}`, {
+          status,
+          distributor: body.distributor ? String(body.distributor).slice(0, 120) : null,
+          notes: body.notes != null ? String(body.notes).slice(0, 2000) : undefined,
+          updated_at: new Date().toISOString(),
+        })
+        await audit(identity.user.id, 'distribution_job_updated', 'distribution_job', jobId, { status })
         return NextResponse.json({ result })
       }
       default: return NextResponse.json({ error: 'Unknown editorial action.' }, { status: 400 })

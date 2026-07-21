@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
+import ReleaseSubmitForm from '@/components/ReleaseSubmitForm'
 
 type SignedSlot = {
   path: string
@@ -58,6 +59,7 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [signedInAs, setSignedInAs] = useState<string | null>(null)
+  const [mode, setMode] = useState<'single' | 'release'>('release')
 
   const genres = [
     'Hip-Hop', 'Trap', 'Afrobeats', 'Amapiano', 'R&B',
@@ -381,6 +383,43 @@ export default function UploadPage() {
         </div>
 
         <div className="pt-2">
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setMode('release')}
+              className={`rounded-full px-4 py-2 text-sm font-medium ${mode === 'release' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}
+            >
+              Album / EP release
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('single')}
+              className={`rounded-full px-4 py-2 text-sm font-medium ${mode === 'single' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}
+            >
+              Single track
+            </button>
+            <Link href="/artist/premium" className="rounded-full border border-white/20 px-4 py-2 text-sm text-text-secondary hover:border-brand">
+              Premium
+            </Link>
+          </div>
+
+          {mode === 'release' ? (
+            <div className="rounded-2xl border border-white/10 bg-bg-card/30 p-8">
+              {signedInAs ? (
+                <p className="mb-4 text-xs text-brand">Signed in as {signedInAs}</p>
+              ) : (
+                <p className="mb-4 text-xs text-text-secondary">
+                  <Link href="/auth/login?next=/upload" className="text-brand hover:underline">Sign in</Link> first.
+                </p>
+              )}
+              <ReleaseSubmitForm
+                onSuccess={() => {
+                  setSuccess(true)
+                  setMode('release')
+                }}
+              />
+            </div>
+          ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-6 rounded-2xl border border-white/10 bg-bg-card/30 p-8">
             <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-text-secondary">
               <strong className="text-text-primary">Where it goes:</strong> Browser → Supabase bucket{' '}
@@ -389,7 +428,7 @@ export default function UploadPage() {
               <Link href="/admin/editorial" className="text-brand hover:underline">
                 Admin → Editorial
               </Link>
-              . Not on radio until approved.
+              . Not on radio until approved. Prefer <strong className="text-text-primary">Album / EP</strong> for multi-track projects.
               <br />
               {signedInAs ? (
                 <span className="mt-1 inline-block text-brand">Signed in as {signedInAs}</span>
@@ -562,6 +601,7 @@ export default function UploadPage() {
               Large WAVs upload directly to storage (not through Vercel). Keep your own copy of every file.
             </p>
           </form>
+          )}
         </div>
       </div>
     </div>
