@@ -74,7 +74,7 @@ export default function ArtistPremiumPage() {
       <p className="text-xs uppercase tracking-[.2em] text-brand">Artists</p>
       <h1 className="mt-2 text-4xl font-semibold">Premium Artist</h1>
       <p className="mt-3 text-text-secondary">
-        Monthly subscription shell for multi-platform distribution when a BVS partner is configured. Continuous
+        Monthly subscription for multi-platform distribution when a BVS partner is configured. Continuous
         rotation on BVS after editorial publish does <strong className="text-text-primary">not</strong> require
         premium.
       </p>
