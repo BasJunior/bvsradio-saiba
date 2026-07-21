@@ -3,6 +3,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import VisitorAssistant from "@/components/VisitorAssistant";
 import PwaRegister from "@/components/PwaRegister";
+import AuthLinkRescue from "@/components/AuthLinkRescue";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { getStationTracks } from "@/lib/station-library";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
@@ -74,6 +75,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <LibrarySyncProvider>
         <StationPlayerProvider tracks={stationTracks}>
           <Navbar />
+          <AuthLinkRescue />
           <main className="pt-16 pb-28">{children}</main>
           <Footer />
           <VisitorAssistant />

@@ -133,8 +133,9 @@ export default function SignupPage() {
               Open it to finish creating your account.
             </p>
             <p className="mt-4 text-xs text-text-secondary">
-              Also check Spam or Promotions. Links open on <strong>bvsradio.com</strong> (not localhost).
-              From address should be contact@bvsradio.com when custom SMTP is set.
+              Also check Spam or Promotions. The link should open on <strong>bvsradio.com</strong>, not localhost.
+              Open the newest email in a full browser tab (mail previews can burn the one-time link).
+              If you see &quot;otp_expired&quot; or invalid link, use Resend below and ignore older emails.
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-4 text-sm">
               <button type="button" onClick={resendConfirmation} className="text-brand hover:underline">
