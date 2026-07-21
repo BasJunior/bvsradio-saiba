@@ -26,6 +26,9 @@ interface Track {
 const coverArt = '/music/Bvs-3000x3000%202.png'
 const junePackArt = '/images/music-packs/june-pack.jpg'
 const mayPackArt = '/images/music-packs/may-pack-1-2.jpg'
+const straighteninArt = '/images/albums/straightenin.jpg'
+const howlingArt = '/images/albums/howling-in-the-hills-2.jpg'
+const wolfBeenBadArt = '/images/albums/wolf-been-bad.jpg'
 const previewLimitSeconds = 30
 
 // Album product cards stay as commerce items; member songs below use the same covers
@@ -40,6 +43,82 @@ function formatTime(seconds: number) {
 function musicFile(filename: string) {
   return `/music/${encodeURIComponent(filename)}`
 }
+
+const streamingReleaseSongs: Track[] = [
+  ...[
+    ['Peter Piper (feat. W.Hills & Calm Beast)', '2:31', '6-rP-DUCq8o'],
+    ['Trap Jumping (feat. H.Sauce & W.Hills)', '1:48', 'OwGq3xqI0WE'],
+    ['Loot (feat. Obi Davids)', '2:25', 'ZxlRn4-BdtY'],
+    ['Diss You (feat. Obi Davids)', '2:27', 'IKhskzyN-BM'],
+    ['My Side (feat. I Ratty)', '2:06', 'JWyQp7H-bUE'],
+    ['Frightened (feat. W.Hills)', '2:09', 'tiracfBEIiI'],
+    ['Ndatenda (feat. 9xne)', '2:12', 'KeWj8zF5Tns'],
+    ['Chasing Dead Faces (OUTRO) (feat. I Ratty)', '4:50', '6SHdHsJ6X34'],
+  ].map(([title, duration, videoId], index) => ({
+    id: 1100 + index,
+    title,
+    artist: 'Wolfbridges',
+    genre: 'Streaming Release',
+    collection: 'STRAIGHTENIN',
+    duration,
+    description: `Track ${index + 1} from STRAIGHTENIN by Wolfbridges. Listed for BVS discovery with the project cover assigned.`,
+    type: 'mix' as TrackType,
+    src: '',
+    artwork: straighteninArt,
+    externalUrl: `https://music.youtube.com/watch?v=${videoId}`,
+    streamOnly: true,
+    price: null,
+  })),
+  ...[
+    ['The Wolf Cub & The Hill Intro (skit)', '2:28', 'pkVMa54Y4Sg'],
+    ['Forgive Me, Lord', '1:40', 'vEvrp6ty9C4'],
+    ['Nanganisa', '3:23', 'qY_iiPrml10'],
+    ['Zviriko Here?', '2:32', 'wKzna4XfvWA'],
+    ['Multiply (How Come)', '2:29', 'qPqzl3UFjsY'],
+    ['Doubted', '2:24', 'jIFxjGOf1z4'],
+    ['Kurt Kobain (feat. Omari Gray)', '2:39', 'wbyBSQ1xH0o'],
+    ['Boddies In The Booth (feat. Omari Gray)', '2:36', 'mVRvPr5ZyOA'],
+    ['Thank God (feat. Omari Gray)', '2:54', 'X9u1lzsWDJ4'],
+    ['Kunta Kinte (feat. Omari Gray)', '2:37', 'bpm_tC1POIE'],
+    ["NaZoaa's Call", '1:26', 'x26qVN_2jFE'],
+    ['Truth', '3:47', 'sNCqu1JzlZY'],
+    ['The Wolf Cub & The Hill Outro (skit)', '2:28', 'QJ7ftRLOC4Y'],
+  ].map(([title, duration, videoId], index) => ({
+    id: 1200 + index,
+    title,
+    artist: 'Wolfbridges x W.Hills',
+    genre: 'Streaming Release',
+    collection: 'HOWLING IN THE HILLS 2',
+    duration,
+    description: `Track ${index + 1} from HOWLING IN THE HILLS 2 by Wolfbridges and W.Hills. Listed for BVS discovery with the project cover assigned.`,
+    type: 'mix' as TrackType,
+    src: '',
+    artwork: howlingArt,
+    externalUrl: `https://music.youtube.com/watch?v=${videoId}`,
+    streamOnly: true,
+    price: null,
+  })),
+  ...[
+    ['See Clear', '1:54', 'Y6Ml21LuJhA'],
+    ['Run Dolla', '3:01', '8LOexU8JcGU'],
+    ["Don't Worry", '2:48', 'Ce2YDXITQXs'],
+    ['Only Jah', '2:05', 'N5l3k2tHRkQ'],
+  ].map(([title, duration, videoId], index) => ({
+    id: 1300 + index,
+    title,
+    artist: 'Wolfbridges x I Ratty',
+    genre: 'Streaming Release',
+    collection: 'WOLF BEEN BAD',
+    duration,
+    description: `Track ${index + 1} from WOLF BEEN BAD by Wolfbridges and I Ratty. Listed for BVS discovery with the project cover assigned.`,
+    type: 'mix' as TrackType,
+    src: '',
+    artwork: wolfBeenBadArt,
+    externalUrl: `https://music.youtube.com/watch?v=${videoId}`,
+    streamOnly: true,
+    price: null,
+  })),
+]
 
 const tracks: Track[] = [
   {
@@ -283,7 +362,7 @@ const tracks: Track[] = [
     description: 'Spotify project from Wolfbridges, featured through the BVSRadio playlist.',
     type: 'mix',
     src: 'https://p.scdn.co/mp3-preview/a4c2906e4838d1513e71952936a5039c006c5cf9',
-    artwork: '/images/musicians.jpg',
+    artwork: straighteninArt,
     externalUrl: 'https://open.spotify.com/album/2plE5CHEf6lodOSZdTzdXf',
     streamOnly: true,
     price: null,
@@ -298,7 +377,7 @@ const tracks: Track[] = [
     description: 'A Wolfbridges and W.Hills project now surfaced in the BVS music catalogue with Spotify access.',
     type: 'mix',
     src: 'https://p.scdn.co/mp3-preview/afec4b1200c2ca74cbb50d6b0cfa053ccd6a5e8d',
-    artwork: '/images/editorial/music-discovery-show.webp',
+    artwork: howlingArt,
     externalUrl: 'https://open.spotify.com/album/5dHfrh9OYgQyvaWuEm9dfk',
     streamOnly: true,
     price: null,
@@ -313,11 +392,12 @@ const tracks: Track[] = [
     description: 'A Wolfbridges and I Ratty project added to BVS catalogue discovery with a Spotify listen-through path.',
     type: 'mix',
     src: 'https://p.scdn.co/mp3-preview/625162a39886da9e1efec3c864f55238fbe6dd5c',
-    artwork: '/images/festival-crowd.jpg',
+    artwork: wolfBeenBadArt,
     externalUrl: 'https://open.spotify.com/album/4Bxbabl2djOaaT2tGHXkrB',
     streamOnly: true,
     price: null,
   },
+  ...streamingReleaseSongs,
   {
     id: 1011,
     title: '16 Bit Preview',
@@ -350,7 +430,10 @@ const collectionCards = [
   { name: 'Albums', detail: 'Full album downloads', img: '/images/albums/lord-album.jpg' },
   { name: 'LORD Album', detail: 'CalmBeast x W.Hills songs + cover', img: '/images/albums/lord-album.jpg' },
   { name: 'Album 16 Bit', detail: '16 Bit project songs + cover', img: '/images/albums/album-16-bit.jpg' },
-  { name: 'Wolfbridges Projects', detail: 'Spotify releases now in catalogue', img: '/images/musicians.jpg' },
+  { name: 'STRAIGHTENIN', detail: '8 Wolfbridges songs + cover', img: straighteninArt },
+  { name: 'HOWLING IN THE HILLS 2', detail: '13 Wolfbridges x W.Hills songs + cover', img: howlingArt },
+  { name: 'WOLF BEEN BAD', detail: '4 Wolfbridges x I Ratty songs + cover', img: wolfBeenBadArt },
+  { name: 'Wolfbridges Projects', detail: 'Streaming releases now in catalogue', img: straighteninArt },
   { name: 'BVS Archive', detail: 'Original station tracks', img: coverArt },
   { name: 'June Pack', detail: 'WolfBrx radio-ready beats', img: junePackArt },
   { name: 'May Pack', detail: 'WolfBrx focused trap selections', img: mayPackArt },
@@ -361,7 +444,7 @@ const collectionCards = [
 const producerLibraries = [
   { name: 'WolfBrx Library', producer: 'WolfBrx', detail: 'Trap, drill and melodic beats for artist placements', query: 'WolfBrx', img: junePackArt },
   { name: 'Naygifted Beats Library', producer: 'Naygifted Beats', detail: 'Soulful pockets and slower artist-ready ideas', query: 'Naygifted Beats', img: '/images/female-host.jpg' },
-  { name: 'Wolfbridges Projects', producer: 'Wolfbridges', detail: 'Spotify releases and collaborations surfaced in the BVS catalogue', query: 'Wolfbridges Projects', img: '/images/musicians.jpg' },
+  { name: 'Wolfbridges Projects', producer: 'Wolfbridges', detail: 'Albums and collaborations surfaced in the BVS catalogue', query: 'Wolfbridges Projects', img: straighteninArt },
 ]
 
 function trackPrice(track: Track) {
@@ -385,13 +468,13 @@ function trackPrice(track: Track) {
 }
 
 function offerLabel(track: Track) {
-  if (track.streamOnly) return 'Spotify release'
+  if (track.streamOnly) return 'Streaming release'
   return track.type === 'beat' ? 'Beat licence' : track.type === 'mix' ? 'Archive download' : 'Track download'
 }
 
 function rightsSummary(track: Track) {
   if (track.streamOnly) {
-    return 'Streaming release listed for discovery. Listen on Spotify for the full project; BVS does not sell download or licensing rights for this item.'
+    return 'Streaming release listed for discovery. Open the linked streaming page for the full song; BVS does not sell download or licensing rights for this item.'
   }
 
   if (track.type === 'beat') {
@@ -461,6 +544,11 @@ export default function CataloguePage() {
   }, [genreFilter, search, typeFilter])
 
   const previewTrack = (track: Track) => {
+    if (track.streamOnly && !track.src && track.externalUrl) {
+      window.open(track.externalUrl, '_blank', 'noopener,noreferrer')
+      return
+    }
+
     if (currentTrack?.id === track.id && isPlaying) {
       audioRef.current?.pause()
       setIsPlaying(false)
@@ -708,7 +796,7 @@ export default function CataloguePage() {
                 <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-secondary">
                   <span className="truncate">{track.genre}</span>
                   <span className="flex-shrink-0">
-                    {track.streamOnly ? 'Spotify' : `${track.type === 'beat' ? 'from ' : ''}$${trackPrice(track)}`}
+                    {track.streamOnly ? 'Stream' : `${track.type === 'beat' ? 'from ' : ''}$${trackPrice(track)}`}
                   </span>
                 </div>
                 <div className="mt-4 flex gap-2">
@@ -717,7 +805,7 @@ export default function CataloguePage() {
                     onClick={() => previewTrack(track)}
                     className="flex-1 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black hover:bg-brand-dark"
                   >
-                    {active ? 'Pause' : 'Preview'}
+                    {track.streamOnly && !track.src ? 'Open' : active ? 'Pause' : 'Preview'}
                   </button>
                   <button
                     type="button"
@@ -838,7 +926,7 @@ export default function CataloguePage() {
                 <p className="mt-1 text-sm text-text-secondary">
                   {selectedTrack.duration}
                   {selectedTrack.bpm ? ` · ${selectedTrack.bpm}` : ''}
-                  {selectedTrack.streamOnly ? ' · Spotify' : ` · $${trackPrice(selectedTrack)}`}
+                  {selectedTrack.streamOnly ? ' · Streaming' : ` · $${trackPrice(selectedTrack)}`}
                 </p>
                 <p className="mt-5 text-text-secondary">{selectedTrack.description}</p>
 
@@ -875,7 +963,7 @@ export default function CataloguePage() {
                     onClick={() => previewTrack(selectedTrack)}
                     className="flex-1 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black hover:bg-brand-dark"
                   >
-                    {currentTrack?.id === selectedTrack.id && isPlaying ? 'Pause Preview' : 'Preview Track'}
+                    {selectedTrack.streamOnly && !selectedTrack.src ? 'Open Stream' : currentTrack?.id === selectedTrack.id && isPlaying ? 'Pause Preview' : 'Preview Track'}
                   </button>
                   {selectedTrack.streamOnly && selectedTrack.externalUrl ? (
                     <Link
@@ -884,7 +972,7 @@ export default function CataloguePage() {
                       rel="noopener noreferrer"
                       className="flex flex-1 items-center justify-center rounded-full bg-[#1DB954] px-5 py-3 text-center text-sm font-semibold text-black hover:bg-[#1ed760]"
                     >
-                      Open on Spotify
+                      Open stream
                     </Link>
                   ) : (
                     <>

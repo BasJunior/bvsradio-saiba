@@ -5,9 +5,9 @@ export type PublicArtist = { id: string; username: string; name: string; role: s
 const fallback: Record<string, PublicArtist> = {
   'bvs-radio': { id: 'bvs-radio', username: 'bvs-radio', name: 'BVS Radio', role: 'Station artist', bio: 'Original recordings and restored cuts from the BVS archive. Credits and release details will be expanded as the archive is documented.', image: '/music/Bvs-3000x3000%202.png', tracks: [] },
   wolfbrx: { id: 'wolfbrx', username: 'wolfbrx', name: 'WolfBrx', role: 'Producer', bio: 'Producer behind beats currently available in the BVS catalogue. This profile will grow with verified credits, releases and artist-provided links.', image: '/images/musicians.jpg', tracks: [] },
-  wolfbridges: { id: 'wolfbridges', username: 'wolfbridges', name: 'Wolfbridges', role: 'Artist', bio: 'Artist behind STRAIGHTENIN, HOWLING IN THE HILLS 2, WOLF BEEN BAD and related BVSRadio playlist features now surfaced in catalogue discovery.', image: '/images/musicians.jpg', tracks: [] },
-  whills: { id: 'whills', username: 'whills', name: 'W.Hills', role: 'Artist', bio: 'Collaborator on Wolfbridges projects featured in the BVS catalogue, including HOWLING IN THE HILLS 2.', image: '/images/editorial/music-discovery-show.webp', tracks: [] },
-  'i-ratty': { id: 'i-ratty', username: 'i-ratty', name: 'I Ratty', role: 'Artist', bio: 'Collaborator on Wolfbridges releases featured through BVS catalogue discovery, including WOLF BEEN BAD.', image: '/images/festival-crowd.jpg', tracks: [] },
+  wolfbridges: { id: 'wolfbridges', username: 'wolfbridges', name: 'Wolfbridges', role: 'Artist', bio: 'Artist behind STRAIGHTENIN, HOWLING IN THE HILLS 2, WOLF BEEN BAD and related BVSRadio playlist features now surfaced in catalogue discovery.', image: '/images/albums/straightenin.jpg', tracks: [] },
+  whills: { id: 'whills', username: 'whills', name: 'W.Hills', role: 'Artist', bio: 'Collaborator on Wolfbridges projects featured in the BVS catalogue, including HOWLING IN THE HILLS 2.', image: '/images/albums/howling-in-the-hills-2.jpg', tracks: [] },
+  'i-ratty': { id: 'i-ratty', username: 'i-ratty', name: 'I Ratty', role: 'Artist', bio: 'Collaborator on Wolfbridges releases featured through BVS catalogue discovery, including WOLF BEEN BAD.', image: '/images/albums/wolf-been-bad.jpg', tracks: [] },
 }
 
 export async function getPublicArtist(slug: string): Promise<PublicArtist | null> {

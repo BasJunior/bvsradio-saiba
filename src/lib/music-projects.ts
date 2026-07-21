@@ -16,6 +16,9 @@ const junePackArt = "/images/music-packs/june-pack.jpg";
 const mayPackArt = "/images/music-packs/may-pack-1-2.jpg";
 const lordArt = "/images/albums/lord-album.jpg";
 const bit16Art = "/images/albums/album-16-bit.jpg";
+const straighteninArt = "/images/albums/straightenin.jpg";
+const howlingArt = "/images/albums/howling-in-the-hills-2.jpg";
+const wolfBeenBadArt = "/images/albums/wolf-been-bad.jpg";
 
 /** Curated projects Abias treats as albums / packs / releases */
 export const musicProjects: MusicProject[] = [
@@ -119,7 +122,7 @@ export const externalProjectTracks: ExternalProjectTrack[] = [
     project: "STRAIGHTENIN",
     title: "STRAIGHTENIN",
     artist: "Wolfbridges",
-    artwork: "/images/musicians.jpg",
+    artwork: straighteninArt,
     src: "https://p.scdn.co/mp3-preview/a4c2906e4838d1513e71952936a5039c006c5cf9",
     externalUrl: "https://open.spotify.com/album/2plE5CHEf6lodOSZdTzdXf",
   },
@@ -128,7 +131,7 @@ export const externalProjectTracks: ExternalProjectTrack[] = [
     project: "HOWLING IN THE HILLS 2",
     title: "HOWLING IN THE HILLS 2",
     artist: "Wolfbridges x W.Hills",
-    artwork: "/images/editorial/music-discovery-show.webp",
+    artwork: howlingArt,
     src: "https://p.scdn.co/mp3-preview/afec4b1200c2ca74cbb50d6b0cfa053ccd6a5e8d",
     externalUrl: "https://open.spotify.com/album/5dHfrh9OYgQyvaWuEm9dfk",
   },
@@ -137,7 +140,7 @@ export const externalProjectTracks: ExternalProjectTrack[] = [
     project: "WOLF BEEN BAD",
     title: "WOLF BEEN BAD",
     artist: "Wolfbridges x I Ratty",
-    artwork: "/images/festival-crowd.jpg",
+    artwork: wolfBeenBadArt,
     src: "https://p.scdn.co/mp3-preview/625162a39886da9e1efec3c864f55238fbe6dd5c",
     externalUrl: "https://open.spotify.com/album/4Bxbabl2djOaaT2tGHXkrB",
   },
