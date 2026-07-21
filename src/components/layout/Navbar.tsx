@@ -74,7 +74,7 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
           <Image
-            src="/branding/bvs-logo.png"
+            src="/logo.png"
             alt="BVS Radio"
             width={32}
             height={32}
