@@ -85,7 +85,7 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Image src="/assets/images/Bvsradio_logo.png" alt="BVS Radio" width={40} height={40} />
+            <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={40} height={40} priority />
             <span className="text-2xl font-bold text-brand">BVS Radio</span>
           </Link>
           <h1 className="text-3xl font-bold">Choose a new password</h1>

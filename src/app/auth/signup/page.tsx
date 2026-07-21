@@ -117,7 +117,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Image src="/assets/images/Bvsradio_logo.png" alt="BVS Radio" width={40} height={40} />
+            <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={40} height={40} priority />
             <span className="text-2xl font-bold text-brand">BVS Radio</span>
           </Link>
           <h1 className="text-3xl font-bold">Join the movement</h1>
@@ -157,7 +157,7 @@ export default function SignupPage() {
             {resendMessage && <p className="mt-3 text-xs text-text-secondary">{resendMessage}</p>}
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <label className="block text-sm font-medium">I am joining as<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-bg-card px-4 py-3 outline-none focus:border-brand"><option value="listener">Listener — discover, save and interact</option><option value="artist">Artist — submit music and use creator tools</option><option value="writer">Writer — pitch and publish stories</option><option value="show_creator">Show or podcast creator — upload weekly episodes</option></select><span className="mt-2 block text-xs text-text-secondary">This sets up your starting workspace. Every account can still listen and discover.</span></label>
             <input
               type="text"
@@ -170,7 +170,7 @@ export default function SignupPage() {
             />
             <input
               type="text"
-              placeholder="Username"
+              placeholder="Username (no spaces)"
               value={form.username}
               onChange={(e) => setForm({ ...form, username: e.target.value })}
               required
@@ -179,11 +179,13 @@ export default function SignupPage() {
             />
             <input
               type="email"
-              placeholder="Email address"
+              placeholder="you@email.com"
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               required
               autoComplete="email"
+              inputMode="email"
+              title="Use a full email like you@gmail.com"
               className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
             />
             <input
