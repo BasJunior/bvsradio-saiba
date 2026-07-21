@@ -7,8 +7,8 @@ def create_icons():
     img = Image.open(logo_path)
     
     # Convert to RGBA if not already
-    if img.mode != 'RGBA':
-        img = img.convert('RGBA')
+    #if img.mode != 'RGBA':
+    #   img = img.convert('RGBA')
     
     # Create 192x192 icon
     icon_192 = img.resize((192, 192), Image.Resampling.LANCZOS)
