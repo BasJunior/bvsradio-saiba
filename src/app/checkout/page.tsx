@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import {
   TAX_COUNTRIES,
   calculateTax,
@@ -86,11 +87,13 @@ const paymentMethodsBase = [
 ];
 
 function priceFor(item: CartItem) {
+  // Prefer price stamped at add-to-cart from catalogue (singles $2, albums explicit, beats $29…)
   if (typeof item.price === "number" && Number.isFinite(item.price)) return item.price;
   if (item.price !== undefined && Number.isFinite(Number(item.price))) return Number(item.price);
   if (item.type === "beat") return 29;
   if (item.type === "mix") return 4;
   if (item.type === "service") return 69;
+  // Album / archive single default
   return 2;
 }
 
@@ -219,9 +222,10 @@ export default function CheckoutPage() {
     setIsSubmitting(true);
     trackEvent("checkout_started", { payment_method: paymentMethod, item_count: items.length, total });
     try {
+      const session = isSupabaseConfigured() ? (await createClient().auth.getSession()).data.session : null;
       const response = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
         body: JSON.stringify({
           customer: {
             ...customer,

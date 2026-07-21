@@ -3,6 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import {
+  PRICE_SINGLE_DOWNLOAD,
+  catalogueUnitPrice,
+  offerLabel as pricingOfferLabel,
+  priceBadge,
+  rightsSummary as pricingRightsSummary,
+} from '@/lib/catalogue-pricing'
 
 type TrackType = 'single' | 'beat' | 'mix'
 
@@ -21,6 +28,8 @@ interface Track {
   price?: number | null
   externalUrl?: string
   streamOnly?: boolean
+  /** Full album zip product (not a $2 single) */
+  albumPackage?: boolean
 }
 
 const coverArt = '/music/Bvs-3000x3000%202.png'
@@ -324,7 +333,7 @@ const tracks: Track[] = [
     src: musicFile('eternity - 90 bpm @wolfbrx.mp3'),
     artwork: '/images/female-host.jpg',
   },
-  // LORD Album — songs share project cover (also in station player via music-projects)
+  // LORD Album — each song $2 single; full album package sold separately
   {
     id: 1001,
     title: 'Calm Beast (Mahendere Master)',
@@ -332,10 +341,11 @@ const tracks: Track[] = [
     genre: 'Gospel',
     collection: 'LORD Album',
     duration: '4:22',
-    description: 'LORD Album member track — cover art follows the LORD project. Full album download is sold separately.',
+    description: `LORD Album single — download $${PRICE_SINGLE_DOWNLOAD}. Cover follows the LORD project. Full album package also available.`,
     type: 'single',
     src: musicFile('calm-beast-mahendere-master.mp3'),
     artwork: '/images/albums/lord-album.jpg',
+    price: PRICE_SINGLE_DOWNLOAD,
   },
   // Drive commerce products (ids match bvsradio-products/albums/<id>.zip)
   {
@@ -346,11 +356,12 @@ const tracks: Track[] = [
     collection: 'Albums',
     duration: 'Full album',
     description:
-      'Full LORD album download (CalmBeast x W.Hills). Songs from this project play in the station player with the LORD cover. Full zip is fulfilled after payment.',
+      `Full LORD album download (CalmBeast x W.Hills). Individual songs also sell as $${PRICE_SINGLE_DOWNLOAD} singles where hosted. Full zip after payment.`,
     type: 'mix',
     src: musicFile('calm-beast-mahendere-master.mp3'),
     artwork: '/images/albums/lord-album.jpg',
     price: 19,
+    albumPackage: true,
   },
   {
     id: 102,
@@ -400,15 +411,16 @@ const tracks: Track[] = [
   ...streamingReleaseSongs,
   {
     id: 1011,
-    title: '16 Bit Preview',
+    title: '16 Bit — Calm Beast cut',
     artist: 'BVS Radio',
     genre: 'Album',
     collection: 'Album 16 Bit',
-    duration: 'Preview',
-    description: 'Preview cut for the 16 Bit project — uses the 16 Bit cover in the station player.',
+    duration: 'Single',
+    description: `Album 16 Bit single — download $${PRICE_SINGLE_DOWNLOAD}. Full album package sold separately.`,
     type: 'single',
     src: musicFile('calm-beast.mp3'),
     artwork: '/images/albums/album-16-bit.jpg',
+    price: PRICE_SINGLE_DOWNLOAD,
   },
   {
     id: 101,
@@ -418,27 +430,28 @@ const tracks: Track[] = [
     collection: 'Albums',
     duration: 'Full album',
     description:
-      'Complete 16 Bit album package from the BVS product drop. Project songs use the 16 Bit cover on the player. Digital download after checkout confirmation.',
+      `Complete 16 Bit album package. Songs also available as $${PRICE_SINGLE_DOWNLOAD} singles where hosted. Digital download after checkout.`,
     type: 'mix',
     src: musicFile('calm-beast.mp3'),
     artwork: '/images/albums/album-16-bit.jpg',
     price: 14,
+    albumPackage: true,
   },
 ]
 
 const collectionCards = [
-  { name: 'Albums', detail: 'Full album downloads', img: '/images/albums/lord-album.jpg' },
-  { name: 'LORD Album', detail: 'CalmBeast x W.Hills songs + cover', img: '/images/albums/lord-album.jpg' },
-  { name: 'Album 16 Bit', detail: '16 Bit project songs + cover', img: '/images/albums/album-16-bit.jpg' },
-  { name: 'STRAIGHTENIN', detail: '8 Wolfbridges songs + cover', img: straighteninArt },
-  { name: 'HOWLING IN THE HILLS 2', detail: '13 Wolfbridges x W.Hills songs + cover', img: howlingArt },
-  { name: 'WOLF BEEN BAD', detail: '4 Wolfbridges x I Ratty songs + cover', img: wolfBeenBadArt },
-  { name: 'Wolfbridges Projects', detail: 'Streaming releases now in catalogue', img: straighteninArt },
-  { name: 'BVS Archive', detail: 'Original station tracks', img: coverArt },
-  { name: 'June Pack', detail: 'WolfBrx radio-ready beats', img: junePackArt },
-  { name: 'May Pack', detail: 'WolfBrx focused trap selections', img: mayPackArt },
-  { name: 'March Pack', detail: 'Melodic and trap selections', img: '/images/mic-closeup.jpg' },
-  { name: 'Producer Picks', detail: 'Beats ready for artists', img: '/images/hero-studio.jpg' },
+  { name: 'Albums', detail: `Full albums + $${PRICE_SINGLE_DOWNLOAD} singles`, img: '/images/albums/lord-album.jpg' },
+  { name: 'LORD Album', detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $19`, img: '/images/albums/lord-album.jpg' },
+  { name: 'Album 16 Bit', detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $14`, img: '/images/albums/album-16-bit.jpg' },
+  { name: 'STRAIGHTENIN', detail: 'Stream only · no BVS download sale', img: straighteninArt },
+  { name: 'HOWLING IN THE HILLS 2', detail: 'Stream only · no BVS download sale', img: howlingArt },
+  { name: 'WOLF BEEN BAD', detail: 'Stream only · no BVS download sale', img: wolfBeenBadArt },
+  { name: 'Wolfbridges Projects', detail: 'Streaming discovery (regulated platforms)', img: straighteninArt },
+  { name: 'BVS Archive', detail: `$${PRICE_SINGLE_DOWNLOAD} singles / archive downloads`, img: coverArt },
+  { name: 'June Pack', detail: 'WolfBrx beats · licence from $29', img: junePackArt },
+  { name: 'May Pack', detail: 'WolfBrx beats · licence from $29', img: mayPackArt },
+  { name: 'March Pack', detail: 'Melodic and trap · licence from $29', img: '/images/mic-closeup.jpg' },
+  { name: 'Producer Picks', detail: 'Beats ready for artists · from $29', img: '/images/hero-studio.jpg' },
 ]
 
 const producerLibraries = [
@@ -448,40 +461,15 @@ const producerLibraries = [
 ]
 
 function trackPrice(track: Track) {
-  if (track.price === null || track.streamOnly) {
-    return null
-  }
-
-  if (track.price !== undefined) {
-    return track.price
-  }
-
-  if (track.type === 'beat') {
-    return 29
-  }
-
-  if (track.type === 'mix') {
-    return 4
-  }
-
-  return 2
+  return catalogueUnitPrice(track)
 }
 
 function offerLabel(track: Track) {
-  if (track.streamOnly) return 'Streaming release'
-  return track.type === 'beat' ? 'Beat licence' : track.type === 'mix' ? 'Archive download' : 'Track download'
+  return pricingOfferLabel(track)
 }
 
 function rightsSummary(track: Track) {
-  if (track.streamOnly) {
-    return 'Streaming release listed for discovery. Open the linked streaming page for the full song; BVS does not sell download or licensing rights for this item.'
-  }
-
-  if (track.type === 'beat') {
-    return 'The listed price is a standard licence starting point. Usage limits, files supplied, credits and commercial release terms must be confirmed by BVS before release.'
-  }
-
-  return 'Personal listening download. Copyright and reuse rights remain with the rights holder; this purchase does not grant sampling, sync or redistribution rights.'
+  return pricingRightsSummary(track)
 }
 
 export default function CataloguePage() {
@@ -796,7 +784,7 @@ export default function CataloguePage() {
                 <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-secondary">
                   <span className="truncate">{track.genre}</span>
                   <span className="flex-shrink-0">
-                    {track.streamOnly ? 'Stream' : `${track.type === 'beat' ? 'from ' : ''}$${trackPrice(track)}`}
+                    {priceBadge(track)}
                   </span>
                 </div>
                 <div className="mt-4 flex gap-2">
@@ -981,7 +969,7 @@ export default function CataloguePage() {
                         onClick={() => addToCart(selectedTrack)}
                         className="flex-1 rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
                       >
-                        Add {selectedTrack.type === 'beat' ? 'licence' : 'download'} · ${trackPrice(selectedTrack)}
+                        Add {selectedTrack.type === 'beat' ? 'licence' : selectedTrack.albumPackage ? 'full album' : 'single'} · ${trackPrice(selectedTrack)}
                       </button>
                       <Link
                         href="/checkout"

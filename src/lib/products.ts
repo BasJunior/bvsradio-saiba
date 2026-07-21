@@ -9,7 +9,7 @@ export function productsDir() {
   );
 }
 
-/** Map cart line id / title slug → relative path under products dir */
+/** Map cart line id / title slug → product file (staged folder or public music for $2 singles) */
 export async function resolveProductFile(
   itemId: string | number,
   title?: string,
@@ -22,6 +22,8 @@ export async function resolveProductFile(
     path.join(root, "albums", `${itemId}.zip`),
     path.join(root, "albums", `${itemId}.mp3`),
     path.join(root, "services", `${itemId}.zip`),
+    path.join(root, "singles", `${itemId}.mp3`),
+    path.join(root, "singles", `${itemId}.zip`),
   ];
   if (title) {
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -30,8 +32,30 @@ export async function resolveProductFile(
       path.join(root, "beats", `${slug}.mp3`),
       path.join(root, "albums", `${slug}.zip`),
       path.join(root, "albums", `${slug}.mp3`),
+      path.join(root, "singles", `${slug}.mp3`),
+      path.join(root, "singles", `${slug}.zip`),
     );
   }
+
+  // Hosted catalogue singles live under public/music (album songs sold as $2 downloads)
+  const publicMusic = path.join(process.cwd(), "public", "music");
+  if (title) {
+    try {
+      const files = await fs.readdir(publicMusic);
+      const needle = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+      const match = files.find((file) => {
+        const base = file.toLowerCase().replace(/\.[^.]+$/, "").replace(/[^a-z0-9]+/g, " ").trim();
+        return base.includes(needle) || needle.includes(base);
+      });
+      if (match) candidates.push(path.join(publicMusic, match));
+    } catch {
+      /* no public music dir */
+    }
+  }
+
   for (const file of candidates) {
     try {
       await fs.access(file);
