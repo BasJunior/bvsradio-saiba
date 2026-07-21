@@ -28,6 +28,9 @@ const junePackArt = '/images/music-packs/june-pack.jpg'
 const mayPackArt = '/images/music-packs/may-pack-1-2.jpg'
 const previewLimitSeconds = 30
 
+// Album product cards stay as commerce items; member songs below use the same covers
+// so catalogue, station rotation, and player artwork stay aligned (see music-projects.ts).
+
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
   const wholeSeconds = Math.floor(seconds)
@@ -242,6 +245,19 @@ const tracks: Track[] = [
     src: musicFile('eternity - 90 bpm @wolfbrx.mp3'),
     artwork: '/images/female-host.jpg',
   },
+  // LORD Album — songs share project cover (also in station player via music-projects)
+  {
+    id: 1001,
+    title: 'Calm Beast (Mahendere Master)',
+    artist: 'CalmBeast x W.Hills',
+    genre: 'Gospel',
+    collection: 'LORD Album',
+    duration: '4:22',
+    description: 'LORD Album member track — cover art follows the LORD project. Full album download is sold separately.',
+    type: 'single',
+    src: musicFile('calm-beast-mahendere-master.mp3'),
+    artwork: '/images/albums/lord-album.jpg',
+  },
   // Drive commerce products (ids match bvsradio-products/albums/<id>.zip)
   {
     id: 100,
@@ -251,7 +267,7 @@ const tracks: Track[] = [
     collection: 'Albums',
     duration: 'Full album',
     description:
-      'Full LORD album download (CalmBeast x W.Hills). Preview uses a related Calm Beast master; full zip is fulfilled after payment.',
+      'Full LORD album download (CalmBeast x W.Hills). Songs from this project play in the station player with the LORD cover. Full zip is fulfilled after payment.',
     type: 'mix',
     src: musicFile('calm-beast-mahendere-master.mp3'),
     artwork: '/images/albums/lord-album.jpg',
@@ -303,6 +319,18 @@ const tracks: Track[] = [
     price: null,
   },
   {
+    id: 1011,
+    title: '16 Bit Preview',
+    artist: 'BVS Radio',
+    genre: 'Album',
+    collection: 'Album 16 Bit',
+    duration: 'Preview',
+    description: 'Preview cut for the 16 Bit project — uses the 16 Bit cover in the station player.',
+    type: 'single',
+    src: musicFile('calm-beast.mp3'),
+    artwork: '/images/albums/album-16-bit.jpg',
+  },
+  {
     id: 101,
     title: 'Album 16 Bit',
     artist: 'BVS Radio',
@@ -310,7 +338,7 @@ const tracks: Track[] = [
     collection: 'Albums',
     duration: 'Full album',
     description:
-      'Complete 16 Bit album package from the BVS product drop. Digital download after checkout confirmation.',
+      'Complete 16 Bit album package from the BVS product drop. Project songs use the 16 Bit cover on the player. Digital download after checkout confirmation.',
     type: 'mix',
     src: musicFile('calm-beast.mp3'),
     artwork: '/images/albums/album-16-bit.jpg',
@@ -320,6 +348,8 @@ const tracks: Track[] = [
 
 const collectionCards = [
   { name: 'Albums', detail: 'Full album downloads', img: '/images/albums/lord-album.jpg' },
+  { name: 'LORD Album', detail: 'CalmBeast x W.Hills songs + cover', img: '/images/albums/lord-album.jpg' },
+  { name: 'Album 16 Bit', detail: '16 Bit project songs + cover', img: '/images/albums/album-16-bit.jpg' },
   { name: 'Wolfbridges Projects', detail: 'Spotify releases now in catalogue', img: '/images/musicians.jpg' },
   { name: 'BVS Archive', detail: 'Original station tracks', img: coverArt },
   { name: 'June Pack', detail: 'WolfBrx radio-ready beats', img: junePackArt },

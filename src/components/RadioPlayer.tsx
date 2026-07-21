@@ -37,8 +37,18 @@ export default function RadioPlayer() {
       </div>
 
       <div className="p-7">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-brand">BVS continuous rotation</p>
-        <h2 className="truncate text-2xl font-semibold">{player.current?.title || "Library coming soon"}</h2>
+        {player.current?.artwork && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={player.current.artwork}
+            alt=""
+            className="mx-auto mb-5 h-40 w-40 rounded-2xl border border-white/10 object-cover shadow-lg"
+          />
+        )}
+        <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-brand">
+          {player.current?.project || "BVS continuous rotation"}
+        </p>
+        <h2 className="truncate text-2xl font-semibold">{player.current?.title || "BVS Radio rotation"}</h2>
         <p className="mt-1 text-sm text-text-secondary">{player.current?.artist || "BVS Radio"}</p>
 
         <p className="mt-3 tabular-nums text-sm text-white/70" aria-live="polite">

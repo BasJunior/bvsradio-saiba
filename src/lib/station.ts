@@ -1,7 +1,13 @@
 export type StationTrack = {
+  id?: string;
   title: string;
   artist: string;
   src: string;
+  /** Album / project cover for the persistent player */
+  artwork?: string;
+  /** Album or pack name when known */
+  project?: string;
+  playCount?: number;
 };
 
 export type Show = {

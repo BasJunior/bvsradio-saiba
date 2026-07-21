@@ -38,6 +38,7 @@ function formatTime(seconds: number) {
 export function StationPlayerProvider({ tracks, children }: { tracks: StationTrack[]; children: React.ReactNode }) {
   const audio = useRef<HTMLAudioElement>(null);
   const startedAt = useRef<number | null>(null);
+  const countedStarts = useRef(new Set<string>());
   const [index, setIndex] = useState(0);
   const [isPlaying, setPlaying] = useState(false);
   const [volume, setVolume] = useState(70);
@@ -60,17 +61,22 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
   }, [volume]);
 
   useEffect(() => {
-    setElapsed(0);
-    setDuration(0);
-  }, [current?.src]);
-
-  useEffect(() => {
     if (!audio.current || !current) return;
     if (isPlaying) {
       audio.current.play().then(() => {
         if (startedAt.current === null) {
           startedAt.current = Date.now();
-          trackEvent("player_start", { track_id: `rotation-${current.src}` });
+          const trackKey = current.id || `rotation-${current.src}`;
+          trackEvent("player_start", { track_id: trackKey });
+          if (current.id && !countedStarts.current.has(current.id)) {
+            countedStarts.current.add(current.id);
+            void fetch("/api/tracks/play", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ trackId: current.id, source: "station" }),
+              keepalive: true,
+            }).catch(() => {});
+          }
         }
       }).catch(() => {
         trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "track_change" });
@@ -237,13 +243,25 @@ function ProgressLine({
 
 export function PersistentPlayer() {
   const player = useStationPlayer();
+  const art = player.current?.artwork;
   return (
     <section className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl" aria-label="BVS rotation player">
       <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
       <div className="mx-auto flex h-20 max-w-7xl items-center gap-3 px-4 sm:gap-5 sm:px-6">
-        <Link href="/radio" className="min-w-0 flex-1">
-          <span className="block text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Continuous rotation</span>
-          <span className="block truncate font-medium">{player.current?.title || "BVS library coming soon"}</span>
+        <Link href="/radio" className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
+            {art ? (
+              // eslint-disable-next-line @next/next/no-img-element -- dynamic album covers from storage/local
+              <img src={art} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <span className="grid h-full w-full place-items-center text-[10px] text-text-secondary">BVS</span>
+            )}
+          </span>
+          <span className="min-w-0">
+          <span className="block text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
+            {player.current?.project || "Continuous rotation"}
+          </span>
+          <span className="block truncate font-medium">{player.current?.title || "BVS Radio rotation"}</span>
           <span className="block truncate text-xs text-text-secondary">
             {player.current?.artist || "BVS Radio"}
             {player.duration > 0 && (
@@ -251,6 +269,7 @@ export function PersistentPlayer() {
                 {formatTime(player.elapsed)} / {formatTime(player.duration)}
               </span>
             )}
+          </span>
           </span>
         </Link>
         <button onClick={player.previous} className="hidden rounded-full p-2 hover:bg-white/10 sm:block" aria-label="Previous recording">◀</button>
