@@ -1,0 +1,4 @@
+import type { Metadata } from 'next'
+import CommunityChat from '@/components/CommunityChat'
+export const metadata: Metadata = { title: 'Community', description: 'Join signed-in BVS listeners and premium members during live broadcasts.' }
+export default function CommunityPage() { return <div className="mx-auto max-w-4xl px-6 py-12"><header className="mb-8"><p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">BVS community</p><h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Listen together.</h1><p className="mt-4 max-w-2xl text-lg text-text-secondary">A member space for live broadcast conversation, music discovery, and respectful connection around Zimbabwean sound.</p></header><CommunityChat /><p className="mt-5 text-sm text-text-secondary">Community rules: respect people, avoid spam, protect private information, and report unsafe content for staff review.</p></div> }

@@ -28,7 +28,7 @@ export default async function RadioPage() {
       <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-white/10"><Image src="/images/editorial/radio-studio-harare.webp" alt="BVS radio studio overlooking Harare" fill priority className="object-cover" /></div>
     </section>
 
-    <section className="mx-auto my-14 max-w-2xl" aria-labelledby="now-playing"><h2 id="now-playing" className="sr-only">Now playing</h2><RadioPlayer /></section>
+    <section className="mx-auto my-14 max-w-2xl" aria-labelledby="now-playing"><h2 id="now-playing" className="sr-only">Now playing</h2><RadioPlayer /><div className="mt-4 text-center"><Link href="/community" className="inline-flex rounded-full border border-brand/30 bg-brand/10 px-5 py-2.5 text-sm font-medium text-brand hover:bg-brand/20">Join the member conversation →</Link></div></section>
 
     <section className="grid gap-8 lg:grid-cols-[1.2fr_.8fr]">
       <div>
