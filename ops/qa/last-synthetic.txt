@@ -1,0 +1,12 @@
+2026-07-23T12:10:37+02:00
+OK   home http=200 ttfb=0.277224s
+OK   radio http=200 ttfb=0.191903s
+OK   catalogue http=200 ttfb=0.787740s
+OK   faq http=200 ttfb=0.152399s
+OK   checkout http=200 ttfb=0.157861s
+OK   checkout_cfg http=200 ttfb=0.293118s
+OK   manifest http=200 ttfb=0.073762s
+OK   sw http=200 ttfb=0.075367s
+OK   audio_range http=206 file=bvs-radio-robert-gabriel-mugabe-international-airport.mp3
+
+SYNTHETIC_OK

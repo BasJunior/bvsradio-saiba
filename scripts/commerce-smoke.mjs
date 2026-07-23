@@ -29,13 +29,13 @@ async function main() {
       {
         id: "smoke-single",
         title: "Sprint smoke item",
-        type: "track",
+        type: "single",
         price: 2,
-        qty: 1,
+        quantity: 1,
       },
     ],
     paymentMethod: "whatsapp",
-    currency: "USD",
+    countryCode: "DE",
   };
 
   const orderRes = await fetch(`${base}/api/orders`, {

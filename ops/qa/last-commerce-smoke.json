@@ -1,0 +1,32 @@
+{
+  "base": "https://bvsradio.com",
+  "steps": [
+    {
+      "step": "checkout_config",
+      "ok": true,
+      "status": 200,
+      "keys": [
+        "stripeEnabled",
+        "paynowEnabled",
+        "currency",
+        "whatsapp",
+        "orderEmail",
+        "tax",
+        "methods"
+      ]
+    },
+    {
+      "step": "create_order",
+      "ok": true,
+      "status": 200,
+      "reference": "BVS-20260723-PDZUJ",
+      "error": null
+    },
+    {
+      "step": "download_reject_invalid",
+      "ok": true,
+      "status": 403
+    }
+  ],
+  "ok": true
+}
