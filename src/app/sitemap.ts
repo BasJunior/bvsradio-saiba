@@ -14,6 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://bvsradio.com/shop", lastModified: new Date(), priority: 0.6 },
     { url: "https://bvsradio.com/checkout", lastModified: new Date(), priority: 0.5 },
     { url: "https://bvsradio.com/about", lastModified: new Date(), priority: 0.5 },
+    { url: "https://bvsradio.com/faq", lastModified: new Date(), priority: 0.5 },
     { url: "https://bvsradio.com/contact", lastModified: new Date(), priority: 0.5 },
     { url: "https://bvsradio.com/privacy", lastModified: new Date(), priority: 0.3 },
     { url: "https://bvsradio.com/terms", lastModified: new Date(), priority: 0.3 },

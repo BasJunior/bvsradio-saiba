@@ -24,6 +24,7 @@ export type Customer = {
 
 export type StoredOrder = {
   reference: string;
+  customerUserId?: string;
   createdAt: string;
   customer: Customer;
   items: OrderItem[];
@@ -108,6 +109,7 @@ export async function saveOrderToSupabase(order: StoredOrder) {
       },
       body: JSON.stringify({
         reference: order.reference,
+        customer_user_id: order.customerUserId || null,
         customer_name: order.customer.name,
         customer_email: order.customer.email,
         customer_whatsapp: order.customer.whatsapp || null,
@@ -115,14 +117,9 @@ export async function saveOrderToSupabase(order: StoredOrder) {
         project_notes: order.projectNotes || null,
         items: order.items,
         subtotal: order.subtotal,
-        tax_amount: order.taxAmount,
-        tax_rate: order.taxRate,
-        tax_mode: order.taxMode,
-        tax_country: order.taxCountry || order.customer.country || null,
         total: order.total,
         status: order.status,
         delivery_status: order.deliveryStatus,
-        stripe_session_id: order.stripeSessionId || null,
       }),
     });
 

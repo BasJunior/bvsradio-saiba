@@ -1,0 +1,12 @@
+Vercel CLI 56.5.0 (Node.js 24.15.0)
+Retrieving project…
+Downloading `production` environment variables
+Loaded env from /home/admin/.openclaw/workspace/bvsradio/.env.local
+BLOCKED: no DATABASE_URL / SUPABASE_DB_URL
+One-time setup for Abias (agents read this, never commit it):
+  1. Supabase → Project Settings → Database → Connection string (URI)
+     Prefer 'Direct' or 'Session' mode, not transaction pooler for DDL if issues.
+  2. Write (mode 600):
+     ~/.openclaw/secrets/bvs-supabase-db.env
+     DATABASE_URL=postgresql://postgres.[ref]:[PASSWORD]@...:5432/postgres
+  3. Agent re-runs: python3 scripts/apply-supabase-packs.py --apply-missing --yes

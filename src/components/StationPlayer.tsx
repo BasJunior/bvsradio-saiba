@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { StationTrack } from "@/lib/station";
-import { recordListening } from "@/lib/library";
+import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
 import { listeningBucket, trackEvent } from "@/lib/analytics";
+
+type RepeatMode = "off" | "all" | "one";
 
 type PlayerContextValue = {
   tracks: StationTrack[];
@@ -13,16 +15,21 @@ type PlayerContextValue = {
   isPlaying: boolean;
   volume: number;
   error: string | null;
+  notice: string | null;
   history: StationTrack[];
-  /** Seconds elapsed in current track */
   elapsed: number;
-  /** Total duration of current track (0 if unknown) */
   duration: number;
+  shuffle: boolean;
+  repeat: RepeatMode;
+  liked: boolean;
   toggle: () => void;
   next: () => void;
   previous: () => void;
   setVolume: (value: number) => void;
   seek: (ratio: number) => void;
+  toggleShuffle: () => void;
+  cycleRepeat: () => void;
+  toggleLike: () => void;
 };
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -35,18 +42,48 @@ function formatTime(seconds: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function trackLibraryId(track: StationTrack) {
+  return track.id || `rotation-${track.src}`;
+}
+
+function shuffleOrder(length: number, avoid?: number) {
+  const order = Array.from({ length }, (_, i) => i);
+  for (let i = order.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  if (avoid !== undefined && order.length > 1 && order[0] === avoid) {
+    [order[0], order[1]] = [order[1], order[0]];
+  }
+  return order;
+}
+
 export function StationPlayerProvider({ tracks, children }: { tracks: StationTrack[]; children: React.ReactNode }) {
   const audio = useRef<HTMLAudioElement>(null);
   const startedAt = useRef<number | null>(null);
   const countedStarts = useRef(new Set<string>());
+  const failStreak = useRef(0);
   const [index, setIndex] = useState(0);
   const [isPlaying, setPlaying] = useState(false);
   const [volume, setVolume] = useState(70);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [history, setHistory] = useState<StationTrack[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState<RepeatMode>("off");
+  const [shuffleQueue, setShuffleQueue] = useState<number[]>([]);
+  const [liked, setLiked] = useState(false);
   const current = tracks[index];
+  const shuffleRef = useRef(shuffle);
+  const repeatRef = useRef(repeat);
+  const shuffleQueueRef = useRef(shuffleQueue);
+  const indexRef = useRef(index);
+  shuffleRef.current = shuffle;
+  repeatRef.current = repeat;
+  shuffleQueueRef.current = shuffleQueue;
+  indexRef.current = index;
 
   const flushListening = useCallback(() => {
     if (startedAt.current === null || !current) return;
@@ -61,9 +98,21 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
   }, [volume]);
 
   useEffect(() => {
+    if (!current) {
+      setLiked(false);
+      return;
+    }
+    setLiked(hasLibraryItem("favourites", trackLibraryId(current)));
+    const sync = () => setLiked(hasLibraryItem("favourites", trackLibraryId(current)));
+    window.addEventListener("bvs:library-change", sync);
+    return () => window.removeEventListener("bvs:library-change", sync);
+  }, [current]);
+
+  useEffect(() => {
     if (!audio.current || !current) return;
     if (isPlaying) {
       audio.current.play().then(() => {
+        failStreak.current = 0;
         if (startedAt.current === null) {
           startedAt.current = Date.now();
           const trackKey = current.id || `rotation-${current.src}`;
@@ -108,21 +157,60 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
     if (el.duration && Number.isFinite(el.duration)) setDuration(el.duration);
   }, []);
 
-  const move = useCallback((amount: number) => {
+  const pickNextIndex = useCallback((from: number, direction: 1 | -1) => {
+    if (!tracks.length) return 0;
+    if (repeatRef.current === "one" && direction === 1) return from;
+    if (shuffleRef.current) {
+      let queue = [...shuffleQueueRef.current];
+      if (!queue.length) queue = shuffleOrder(tracks.length, from);
+      if (direction === 1) {
+        const next = queue[0] ?? (from + 1) % tracks.length;
+        const rest = queue.slice(1);
+        setShuffleQueue(rest.length ? rest : shuffleOrder(tracks.length, next));
+        return next;
+      }
+      return (from - 1 + tracks.length) % tracks.length;
+    }
+    return (from + direction + tracks.length) % tracks.length;
+  }, [tracks.length]);
+
+  const move = useCallback((amount: 1 | -1, opts?: { autoSkip?: boolean }) => {
     if (!tracks.length) return;
     flushListening();
     setError(null);
+    if (!opts?.autoSkip) setNotice(null);
     setElapsed(0);
     setDuration(0);
     setIndex((value) => {
-      const nextIndex = (value + amount + tracks.length) % tracks.length;
-      if (isPlaying) {
+      const nextIndex = pickNextIndex(value, amount);
+      if (isPlaying || opts?.autoSkip) {
         const nextTrack = tracks[nextIndex];
-        setHistory((items) => [nextTrack, ...items.filter((item) => item.src !== nextTrack.src)].slice(0, 6));
+        if (nextTrack) {
+          setHistory((items) => [nextTrack, ...items.filter((item) => item.src !== nextTrack.src)].slice(0, 6));
+        }
       }
       return nextIndex;
     });
-  }, [flushListening, isPlaying, tracks]);
+  }, [flushListening, isPlaying, pickNextIndex, tracks]);
+
+  const handleMediaError = useCallback(() => {
+    flushListening();
+    failStreak.current += 1;
+    trackEvent("playback_error", {
+      track_id: current ? `rotation-${current.src}` : "unknown",
+      stage: "media",
+      fail_streak: failStreak.current,
+    });
+    if (failStreak.current >= Math.min(8, Math.max(3, tracks.length))) {
+      setPlaying(false);
+      setError("Several tracks failed. Check your connection and try Play again.");
+      setNotice(null);
+      return;
+    }
+    setNotice("Skipping a broken track…");
+    setPlaying(true);
+    move(1, { autoSkip: true });
+  }, [current, flushListening, move, tracks.length]);
 
   const toggle = useCallback(async () => {
     if (!audio.current || !current) return setError("The rotation is being prepared.");
@@ -132,9 +220,10 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
         flushListening();
       } else {
         await audio.current.play();
+        failStreak.current = 0;
         setHistory((items) => [current, ...items.filter((item) => item.src !== current.src)].slice(0, 6));
         recordListening({
-          id: `rotation-${current.src}`,
+          id: trackLibraryId(current),
           kind: "track",
           title: current.title,
           subtitle: current.artist,
@@ -143,6 +232,7 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
       }
       setPlaying(!isPlaying);
       setError(null);
+      setNotice(null);
     } catch {
       setPlaying(false);
       trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "start" });
@@ -158,6 +248,46 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
     setElapsed(next);
   }, []);
 
+  const toggleShuffle = useCallback(() => {
+    setShuffle((on) => {
+      const next = !on;
+      if (next) setShuffleQueue(shuffleOrder(tracks.length, indexRef.current));
+      else setShuffleQueue([]);
+      return next;
+    });
+  }, [tracks.length]);
+
+  const cycleRepeat = useCallback(() => {
+    setRepeat((mode) => (mode === "off" ? "all" : mode === "all" ? "one" : "off"));
+  }, []);
+
+  const toggleLike = useCallback(() => {
+    if (!current) return;
+    const item = {
+      id: trackLibraryId(current),
+      kind: "track" as const,
+      title: current.title,
+      subtitle: current.artist,
+      href: "/radio",
+      image: current.artwork,
+    };
+    const next = toggleLibraryItem("favourites", item);
+    setLiked(next);
+    if (next) trackEvent("track_save", { track_id: item.id, source: "player" });
+  }, [current]);
+
+  const onEnded = useCallback(() => {
+    if (repeatRef.current === "one") {
+      const el = audio.current;
+      if (el) {
+        el.currentTime = 0;
+        void el.play().catch(() => setPlaying(false));
+      }
+      return;
+    }
+    move(1);
+  }, [move]);
+
   const value = useMemo(
     () => ({
       tracks,
@@ -166,16 +296,43 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
       isPlaying,
       volume,
       error,
+      notice,
       history,
       elapsed,
       duration,
+      shuffle,
+      repeat,
+      liked,
       toggle,
       next: () => move(1),
       previous: () => move(-1),
       setVolume,
       seek,
+      toggleShuffle,
+      cycleRepeat,
+      toggleLike,
     }),
-    [tracks, current, index, isPlaying, volume, error, history, elapsed, duration, move, toggle, seek],
+    [
+      tracks,
+      current,
+      index,
+      isPlaying,
+      volume,
+      error,
+      notice,
+      history,
+      elapsed,
+      duration,
+      shuffle,
+      repeat,
+      liked,
+      move,
+      toggle,
+      seek,
+      toggleShuffle,
+      cycleRepeat,
+      toggleLike,
+    ],
   );
 
   return (
@@ -188,13 +345,8 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
         playsInline
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
-        onEnded={() => move(1)}
-        onError={() => {
-          flushListening();
-          setPlaying(false);
-          trackEvent("playback_error", { track_id: current ? `rotation-${current.src}` : "unknown", stage: "media" });
-          setError("This recording is unavailable.");
-        }}
+        onEnded={onEnded}
+        onError={handleMediaError}
       />
     </PlayerContext.Provider>
   );
@@ -244,10 +396,16 @@ function ProgressLine({
 export function PersistentPlayer() {
   const player = useStationPlayer();
   const art = player.current?.artwork;
+  const repeatLabel = player.repeat === "off" ? "Repeat off" : player.repeat === "all" ? "Repeat all" : "Repeat one";
   return (
-    <section className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl" aria-label="BVS rotation player">
+    <section className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#181818]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" aria-label="BVS rotation player">
       <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
-      <div className="mx-auto flex h-20 max-w-7xl items-center gap-3 px-4 sm:gap-5 sm:px-6">
+      {(player.error || player.notice) && (
+        <p className={`px-4 py-1 text-center text-xs ${player.error ? "bg-red-500/15 text-red-200" : "bg-brand/10 text-brand"}`} role="status">
+          {player.error || player.notice}
+        </p>
+      )}
+      <div className="mx-auto flex h-20 max-w-7xl items-center gap-2 px-3 sm:gap-4 sm:px-6">
         <Link href="/radio" className="flex min-w-0 flex-1 items-center gap-3">
           <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
             {art ? (
@@ -258,25 +416,53 @@ export function PersistentPlayer() {
             )}
           </span>
           <span className="min-w-0">
-          <span className="block text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
-            {player.current?.project || "Continuous rotation"}
-          </span>
-          <span className="block truncate font-medium">{player.current?.title || "BVS Radio rotation"}</span>
-          <span className="block truncate text-xs text-text-secondary">
-            {player.current?.artist || "BVS Radio"}
-            {player.duration > 0 && (
-              <span className="ml-2 tabular-nums text-white/50">
-                {formatTime(player.elapsed)} / {formatTime(player.duration)}
-              </span>
-            )}
-          </span>
+            <span className="block text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
+              {player.current?.project || "Continuous rotation"}
+            </span>
+            <span className="block truncate font-medium">{player.current?.title || "BVS Radio rotation"}</span>
+            <span className="block truncate text-xs text-text-secondary">
+              {player.current?.artist || "BVS Radio"}
+              {player.duration > 0 && (
+                <span className="ml-2 tabular-nums text-white/50">
+                  {formatTime(player.elapsed)} / {formatTime(player.duration)}
+                </span>
+              )}
+            </span>
           </span>
         </Link>
-        <button onClick={player.previous} className="hidden rounded-full p-2 hover:bg-white/10 sm:block" aria-label="Previous recording">◀</button>
-        <button onClick={player.toggle} disabled={!player.current} className="grid h-12 w-12 place-items-center rounded-full bg-brand font-bold text-black disabled:opacity-40" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
-        <button onClick={player.next} className="rounded-full p-2 hover:bg-white/10" aria-label="Next recording">▶</button>
+        <button
+          type="button"
+          onClick={player.toggleLike}
+          disabled={!player.current}
+          className={`rounded-full p-2 text-sm disabled:opacity-40 ${player.liked ? "text-brand" : "text-text-secondary hover:text-white"}`}
+          aria-pressed={player.liked}
+          aria-label={player.liked ? "Remove from library" : "Save to library"}
+        >
+          {player.liked ? "♥" : "♡"}
+        </button>
+        <button
+          type="button"
+          onClick={player.toggleShuffle}
+          className={`hidden rounded-full px-2 py-1 text-xs sm:block ${player.shuffle ? "bg-brand/20 text-brand" : "text-text-secondary hover:bg-white/10"}`}
+          aria-pressed={player.shuffle}
+          aria-label={player.shuffle ? "Shuffle on" : "Shuffle off"}
+        >
+          ⇝
+        </button>
+        <button type="button" onClick={player.previous} className="hidden rounded-full p-2 hover:bg-white/10 sm:block" aria-label="Previous recording">◀</button>
+        <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-12 w-12 place-items-center rounded-full bg-brand font-bold text-black disabled:opacity-40" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
+        <button type="button" onClick={player.next} className="rounded-full p-2 hover:bg-white/10" aria-label="Next recording">▶</button>
+        <button
+          type="button"
+          onClick={player.cycleRepeat}
+          className={`hidden rounded-full px-2 py-1 text-xs sm:block ${player.repeat !== "off" ? "bg-brand/20 text-brand" : "text-text-secondary hover:bg-white/10"}`}
+          aria-label={repeatLabel}
+          title={repeatLabel}
+        >
+          {player.repeat === "one" ? "1↻" : "↻"}
+        </button>
         <label className="hidden items-center gap-2 text-xs text-text-secondary md:flex">Volume<input aria-label="Volume" type="range" min="0" max="100" value={player.volume} onChange={(event) => player.setVolume(Number(event.target.value))} className="w-24 accent-brand" /></label>
-        <Link href="/radio" className="hidden text-sm text-brand hover:underline sm:block">Now playing</Link>
+        <Link href="/library" className="hidden text-sm text-brand hover:underline sm:block">Library</Link>
       </div>
     </section>
   );

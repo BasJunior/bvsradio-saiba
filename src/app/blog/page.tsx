@@ -10,6 +10,12 @@ export const metadata: Metadata = {
 
 export default function BlogIndexPage() {
   const regularPosts = blogPosts.filter(post => !featuredPosts.some(fp => fp.slug === post.slug));
+  const discoverImages = [
+    "/images/editorial/radio-studio-harare.webp",
+    "/images/editorial/music-discovery-show.webp",
+    "/images/editorial/audio-engineering-work.webp",
+  ];
+  const imageFor = (slug: string) => discoverImages[Math.abs([...slug].reduce((sum, char) => sum + char.charCodeAt(0), 0)) % discoverImages.length];
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
@@ -29,7 +35,7 @@ export default function BlogIndexPage() {
           {featuredPosts.map((post) => (
             <Link key={post.slug} href={`/blog/${post.slug}`} className="group block bg-bg-card/40 border border-white/10 rounded-2xl overflow-hidden hover:border-brand/50 transition-colors">
               <div className="aspect-video bg-gradient-to-br from-brand/10 to-black relative">
-                <Image src="/images/hero-studio.jpg" alt={post.title} fill className="object-cover opacity-60 group-hover:opacity-80 transition" />
+                <Image src={imageFor(post.slug)} alt="BVS editorial scene" fill className="object-cover opacity-75 group-hover:opacity-95 transition" />
               </div>
               <div className="p-6">
                 <div className="flex gap-2 text-xs text-text-secondary mb-3">
@@ -57,6 +63,9 @@ export default function BlogIndexPage() {
               href={`/blog/${post.slug}`} 
               className="group flex gap-5 p-5 rounded-2xl border border-white/10 hover:border-white/30 hover:bg-bg-card/30 transition-all"
             >
+              <div className="relative h-24 w-28 flex-none overflow-hidden rounded-xl sm:h-28 sm:w-36">
+                <Image src={imageFor(post.slug)} alt="" fill className="object-cover transition-transform group-hover:scale-[1.03]" />
+              </div>
               <div className="flex-1">
                 <div className="text-xs text-text-secondary mb-1.5">{post.date} • {post.readTime}</div>
                 <h3 className="font-semibold text-lg leading-tight mb-2 group-hover:text-brand transition-colors">{post.title}</h3>

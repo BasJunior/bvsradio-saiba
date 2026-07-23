@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { loadOrderLocal, notifyOwnerNewOrder, updateOrderLocal } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
+import { creditPaidArtistDeposit } from "@/lib/artist-credit";
 
 export const runtime = "nodejs";
 
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
 
     if (reference) {
       await recordServerEvent("checkout_complete", { provider: "stripe", status: "paid" });
+      await creditPaidArtistDeposit(reference, "stripe");
       const updated = await updateOrderLocal(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",

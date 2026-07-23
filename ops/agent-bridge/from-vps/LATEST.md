@@ -1,39 +1,39 @@
-# from-vps LATEST — website status (before Mac prompt)
+# from-vps LATEST — album covers in player (2026-07-21)
 
-**From:** VPS status check after Discord Saiba changes  
-**Checked:** live site + git + Discord #general  
+**From:** Grok Build / Saiba Codex (helping Telegram OpenClaw agent)  
+**Live request:** “The songs from the albums should be added to player and the cover photos inside each project (album) should be assigned to the songs inside album”
 
-## Most current website version
+## Status
 
-| Source | State |
-|--------|--------|
-| **Git `origin/main`** | Includes `20b14e5 feat: implement BVS review changes` (Saiba OpenClaw) |
-| **Discord Saiba** | Said: *Implemented and pushed all requested changes* + screenshots (`catalogue.png`, `ultimate-bundle.png`) + link https://bvsradio.com (noted Vercel still processing at post time) |
-| **Live bvsradio.com** | **200** on `/`, `/catalogue`, `/shop`, `/upload`, `/radio`, `/checkout` |
-| **AASA** | Live with **VGFK77VH73.com.bvsradio.app** |
+- **Implemented and pushed** on `main` (commit after `750f408`).
+- Telegram agent (`f0e18042…`, gpt-5.5) was still exploring catalogue/playlist; did not wait for it to finish — completed the feature to unblock.
 
-### Review brief items (code on main)
+## What shipped
 
-| # | Item | In code (main) |
-|---|------|----------------|
-| 1 | Browse → Browse section | `#browse` + scroll-mt on catalogue |
-| 2 | Preview stop + elapsed/total | catalogue preview timer logic (30s snippet) |
-| 3 | “Search Results” title | catalogue + search pages |
-| 4 | Submit Music cleanup | upload page restructure |
-| 5 | Ultimate Bundle | shop page $299 mix+master+publish |
-| 6 | Later: aesthetic search + cart/checkout flow | **Not in 20b14e5** — still open if required |
+| Piece | Detail |
+|-------|--------|
+| `src/lib/music-projects.ts` | Album/pack/project map: cover + member filenames; Spotify external projects |
+| `src/lib/station-library.ts` | Rotation prefers project songs; each track gets `artwork` + `project`; external Spotify previews included |
+| `StationPlayer` / `RadioPlayer` | Cover art in bottom bar + radio page; project name label |
+| Catalogue | LORD / 16 Bit member tracks listed with project covers |
 
-Team brief PDF still at: `ops/agent-bridge/team-review/Bvsradio-Developer-Change-Brief-v2.pdf`
+## Live site (pre-deploy probe)
 
-## What Mac agent should do (if prompted for App Store)
-- Hybrid app loads **live site** → TestFlight will show these web changes after deploy/cache clears (hard-refresh / kill app).
-- **Do not re-implement** the 5 brief items in Xcode.
-- Focus: **App Store Submit for Review** (screenshots of listing, build 1, metadata) if still not submitted.
-- Optional QA: open TestFlight and confirm catalogue search results title + shop Ultimate Bundle after force-quit app.
+- Routes `/`, `/radio`, `/upload`, `/catalogue`, `/shop`, `/checkout`, `/admin/editorial` → **200**
+- Upload path still shows direct-to-storage
+- Editorial API 401 without auth (expected)
+- Production Ready deploy present (newest may still be prior commit until this push builds)
 
-## Still open (web, not Mac)
-- basjunior later note: more aesthetic catalogue search bar + checkout cart recognition/flow  
-- Visual QA of Saiba screenshots vs production (bot/challenge can blank headless shop capture)
+## For Telegram agent
 
-## iOS facts
-Team VGFK77VH73 · app 6792035284 · TestFlight Internal · build 1  
+- **Do not re-implement** album→player covers; pull latest `main` and verify live after Vercel Ready.
+- Optional next: unpack real multi-track LORD/16-bit zips when product files land in `bvsradio-products/albums/`.
+- Editorial brief “Approved” was noted by Telegram agent (research items) — separate from this player task.
+
+## Verify
+
+1. Hard-refresh bvsradio.com  
+2. Bottom player shows cover for first track  
+3. Skip through June Pack / BVS Archive — covers change with project  
+4. `/radio` large cover art  
+5. Catalogue: LORD Album collection songs + Albums product cards still purchaseable  

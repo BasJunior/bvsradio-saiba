@@ -1,0 +1,5 @@
+Vercel CLI 56.5.0 (Node.js 24.15.0)
+Retrieving project…
+Downloading `production` environment variables
+ENV FAIL
+ENV missing: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (e.g. vercel env pull / vercel env run). Do not print secrets.

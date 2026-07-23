@@ -40,6 +40,53 @@ type OrderBody = {
   createStripeSession?: boolean;
 };
 
+const SERVICE_PRICES: Record<string, number> = {
+  "basic-mix": 89,
+  "pro-mix": 149,
+  "premium-mix": 199,
+  "standard-master": 69,
+  "premium-master": 99,
+  "album-master": 299,
+  "standard-bundle": 189,
+  "premium-bundle": 249,
+  "ultimate-bundle": 299,
+  "vocal-comping-tuning": 65,
+  "full-vocal-production": 129,
+  "custom-bvs-service": 69,
+};
+
+function slug(value: string) {
+  return value.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function trustedUnitPrice(item: OrderItem) {
+  const id = String(item.id);
+  const titleKey = slug(item.title);
+  if (id === "100" || titleKey === "lord-album") return 19;
+  if (id === "101" || titleKey === "album-16-bit") return 14;
+  if (item.type === "service") return SERVICE_PRICES[titleKey] ?? 69;
+  if (item.type === "beat") return 29;
+  if (item.type === "mix") return 4;
+  return 2;
+}
+
+function trustedQuantity(item: OrderItem) {
+  const quantity = Number(item.quantity);
+  if (!Number.isFinite(quantity) || quantity < 1) return 1;
+  return Math.min(Math.floor(quantity), 20);
+}
+
+function normalizeServerItem(item: OrderItem): OrderItem {
+  const quantity = trustedQuantity(item);
+  const price = trustedUnitPrice(item);
+  return {
+    ...item,
+    type: item.type || "single",
+    price,
+    quantity,
+  };
+}
+
 function parseBody(payload: unknown): OrderBody | null {
   if (!payload || typeof payload !== "object") return null;
   const c = payload as Partial<OrderBody>;
@@ -56,8 +103,20 @@ function parseBody(payload: unknown): OrderBody | null {
   return c as OrderBody;
 }
 
+async function currentUserId(req: Request) {
+  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!token || !url || !anon) return undefined
+  const response = await fetch(`${url}/auth/v1/user`, { headers: { apikey: anon, Authorization: `Bearer ${token}` }, cache: 'no-store' })
+  if (!response.ok) return undefined
+  const user = await response.json() as { id?: string }
+  return user.id
+}
+
 export async function POST(req: Request) {
   try {
+    const customerUserId = await currentUserId(req);
     const payload = parseBody(await req.json());
     if (!payload) {
       return NextResponse.json({ error: "Invalid order payload." }, { status: 400 });
@@ -66,9 +125,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Add at least one item before checkout." }, { status: 400 });
     }
 
+    const trustedItems = payload.items.map(normalizeServerItem);
+
     // Net subtotal from line items (authoritative)
     const subtotal = Number(
-      payload.items
+      trustedItems
         .reduce((sum, item) => sum + item.price * item.quantity, 0)
         .toFixed(2),
     );
@@ -96,13 +157,14 @@ export async function POST(req: Request) {
 
     const order: StoredOrder = {
       reference,
+      customerUserId,
       createdAt: new Date().toISOString(),
       customer: {
         ...payload.customer,
         country: tax.countryCode,
         vatId: vatId || undefined,
       },
-      items: payload.items,
+      items: trustedItems,
       paymentMethod: payload.paymentMethod,
       projectNotes: payload.projectNotes,
       subtotal: tax.subtotal,
@@ -164,6 +226,7 @@ export async function POST(req: Request) {
           client_reference_id: reference,
           metadata: {
             reference,
+            customer_user_id: customerUserId || "",
             customer_name: order.customer.name,
             whatsapp: order.customer.whatsapp || "",
             tax_country: order.taxCountry || "",
@@ -198,7 +261,7 @@ export async function POST(req: Request) {
           savedSupabase: supabase.saved,
           persistenceMessage: localPath
             ? "Order saved. Redirecting to secure card payment."
-            : `Order created. ${supabase.reason}`,
+            : "Order created. Continue to secure card payment.",
           checkoutUrl: session.url,
           paymentMode: "stripe",
           subtotal: order.subtotal,
@@ -358,7 +421,7 @@ export async function POST(req: Request) {
       savedSupabase: supabase.saved,
       persistenceMessage: localPath
         ? "Order saved. Complete payment using the steps below."
-        : `Order reference created. ${supabase.reason}`,
+        : "Order created. Complete payment using the steps below.",
       paymentMode: "manual",
       whatsappLink: waLink,
       orderEmail,
@@ -376,9 +439,9 @@ export async function POST(req: Request) {
       hasProductFiles: downloadHints.length > 0,
     });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Order creation failed.";
+    console.error("Order creation failed", error);
     await recordServerEvent("payment_error", { provider: "checkout", stage: "order_creation" });
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Order creation failed. Please try again or contact BVS with your cart." }, { status: 500 });
   }
 }
 

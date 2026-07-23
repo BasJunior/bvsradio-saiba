@@ -325,7 +325,7 @@ const tracks: Track[] = [
     title: 'Eternity',
     artist: 'WolfBrx',
     genre: 'Soul',
-    collection: 'Naygifted Beats',
+    collection: 'WolfBrx Library',
     duration: '2:39',
     description: 'A slower, soulful beat to balance the harder drill and trap rows.',
     type: 'beat',
@@ -455,9 +455,8 @@ const collectionCards = [
 ]
 
 const producerLibraries = [
-  { name: 'WolfBrx Library', producer: 'WolfBrx', detail: 'Trap, drill and melodic beats for artist placements', query: 'WolfBrx', img: junePackArt },
-  { name: 'Naygifted Beats Library', producer: 'Naygifted Beats', detail: 'Soulful pockets and slower artist-ready ideas', query: 'Naygifted Beats', img: '/images/female-host.jpg' },
-  { name: 'Wolfbridges Projects', producer: 'Wolfbridges', detail: 'Albums and collaborations surfaced in the BVS catalogue', query: 'Wolfbridges Projects', img: straighteninArt },
+  { name: 'WolfBrx Library', producer: 'WolfBrx', detail: 'Trap, drill and melodic beats for artist placements.', query: 'WolfBrx', img: junePackArt, href: '/artist/wolfbrx' },
+  { name: 'Wolfbridges Projects', producer: 'Wolfbridges', detail: 'Albums and collaborations surfaced in the BVS catalogue.', query: 'Wolfbridges Projects', img: straighteninArt, href: '/artist/wolfbridges' },
 ]
 
 function trackPrice(track: Track) {
@@ -652,14 +651,8 @@ export default function CataloguePage() {
         </div>
         <div className="grid gap-4 md:grid-cols-3">
           {producerLibraries.map((library) => (
-            <button
-              type="button"
+            <article
               key={library.name}
-              onClick={() => {
-                setSearch(library.query)
-                setGenreFilter('All')
-                setTypeFilter(library.query.includes('Projects') ? 'all' : 'beat')
-              }}
               className="group overflow-hidden rounded-2xl border border-white/10 bg-black/25 text-left transition hover:border-brand/40"
             >
               <div className="relative aspect-[16/9]">
@@ -672,9 +665,12 @@ export default function CataloguePage() {
               <div className="p-4">
                 <h3 className="text-lg font-semibold group-hover:text-brand">{library.name}</h3>
                 <p className="mt-2 text-sm text-text-secondary">{library.detail}</p>
-                <span className="mt-4 inline-block text-sm font-medium text-brand">Open library →</span>
+                <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
+                  <button type="button" onClick={() => { setSearch(library.query); setGenreFilter('All'); setTypeFilter(library.query.includes('Projects') ? 'all' : 'beat') }} className="text-brand hover:underline">Browse music →</button>
+                  <Link href={library.href} className="text-text-secondary hover:text-brand">Producer bio</Link>
+                </div>
               </div>
-            </button>
+            </article>
           ))}
         </div>
       </section>

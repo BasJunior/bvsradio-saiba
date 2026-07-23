@@ -15,6 +15,10 @@ export async function POST(req: Request) {
 
   const user = await userResponse.json()
   const username = user.user_metadata?.username || user.email?.split('@')[0] || `artist-${user.id.slice(0, 8)}`
+  const requestedRole = String(user.user_metadata?.role || 'listener')
+  const allowedRoles = new Set(['listener', 'artist', 'writer', 'show_creator'])
+  const role = allowedRoles.has(requestedRole) ? requestedRole : 'listener'
+
   const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`, {
     method: 'POST',
     headers: {
@@ -27,7 +31,7 @@ export async function POST(req: Request) {
       id: user.id,
       username,
       display_name: user.user_metadata?.full_name || username,
-      role: user.user_metadata?.role || 'artist',
+      role,
       avatar_url: '/assets/images/default-avatar.png',
     }),
   })

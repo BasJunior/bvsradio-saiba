@@ -10,7 +10,9 @@ type BeforeInstallPromptEvent = Event & {
 export default function PwaRegister() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
-  const [dismissed, setDismissed] = useState(true);
+  const [dismissed, setDismissed] = useState(
+    () => typeof window === "undefined" || localStorage.getItem("bvs-install-dismissed") === "1",
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -24,8 +26,6 @@ export default function PwaRegister() {
 
     const dismissedKey = "bvs-install-dismissed";
     const wasDismissed = localStorage.getItem(dismissedKey) === "1";
-    setDismissed(wasDismissed);
-
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       // iOS Safari
@@ -45,8 +45,10 @@ export default function PwaRegister() {
     const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
     if (isIos && isSafari && !wasDismissed) {
-      setShowIosHint(true);
-      setDismissed(false);
+      window.setTimeout(() => {
+        setShowIosHint(true);
+        setDismissed(false);
+      }, 0);
     }
 
     return () => window.removeEventListener("beforeinstallprompt", onBip);

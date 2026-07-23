@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getPaynow } from "@/lib/paynow";
 import { loadOrderLocal, notifyOwnerNewOrder, updateOrderLocal } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
+import { creditPaidArtistDeposit } from "@/lib/artist-credit";
 
 /**
  * Paynow result URL — they POST status updates here.
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
 
     if (reference && paid) {
       await recordServerEvent("checkout_complete", { provider: "paynow", status: "paid" });
+      await creditPaidArtistDeposit(reference, "paynow");
       const updated = await updateOrderLocal(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",

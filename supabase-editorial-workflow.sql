@@ -5,6 +5,7 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NU
 ALTER TABLE public.tracks ADD COLUMN IF NOT EXISTS editorial_status TEXT NOT NULL DEFAULT 'submitted'
   CHECK (editorial_status IN ('submitted', 'in_review', 'approved', 'rejected'));
 ALTER TABLE public.tracks ADD COLUMN IF NOT EXISTS editorial_notes TEXT;
+ALTER TABLE public.tracks ADD COLUMN IF NOT EXISTS explicit_content BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE public.tracks ADD COLUMN IF NOT EXISTS reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 ALTER TABLE public.tracks ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
 ALTER TABLE public.tracks ADD COLUMN IF NOT EXISTS in_rotation BOOLEAN NOT NULL DEFAULT FALSE;
@@ -64,6 +65,34 @@ CREATE TABLE IF NOT EXISTS public.editorial_audit_log (
 
 CREATE INDEX IF NOT EXISTS tracks_editorial_status_idx ON public.tracks(editorial_status, created_at DESC);
 CREATE INDEX IF NOT EXISTS tracks_rotation_idx ON public.tracks(in_rotation, is_public);
+
+CREATE TABLE IF NOT EXISTS public.track_review_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  track_id UUID NOT NULL REFERENCES public.tracks(id) ON DELETE CASCADE,
+  artist_user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  request_type TEXT NOT NULL CHECK (request_type IN ('takedown','metadata_correction','artwork_replacement','rights_update','payout_question','other')),
+  message TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','reviewing','resolved','rejected')),
+  staff_notes TEXT,
+  reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS track_review_requests_artist_created_idx
+  ON public.track_review_requests(artist_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS track_review_requests_status_created_idx
+  ON public.track_review_requests(status, created_at DESC);
+
+ALTER TABLE public.track_review_requests ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "artists manage own track requests" ON public.track_review_requests;
+CREATE POLICY "artists manage own track requests"
+  ON public.track_review_requests
+  FOR ALL
+  USING (artist_user_id = auth.uid())
+  WITH CHECK (artist_user_id = auth.uid());
 CREATE INDEX IF NOT EXISTS programmes_status_idx ON public.programmes(status, day_label, start_time);
 CREATE INDEX IF NOT EXISTS editorial_audit_created_idx ON public.editorial_audit_log(created_at DESC);
 

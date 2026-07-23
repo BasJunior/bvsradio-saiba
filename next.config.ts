@@ -51,6 +51,10 @@ const nextConfig: NextConfig = {
       { source: "/radio.html", destination: "/radio", permanent: true },
       { source: "/listen", destination: "/radio", permanent: true },
       { source: "/listen.html", destination: "/radio", permanent: true },
+      { source: "/music", destination: "/catalogue", permanent: true },
+      { source: "/music.html", destination: "/catalogue", permanent: true },
+      { source: "/articles", destination: "/blog", permanent: true },
+      { source: "/articles.html", destination: "/blog", permanent: true },
     ];
   },
 };

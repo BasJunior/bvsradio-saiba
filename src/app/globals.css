@@ -13,6 +13,28 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+:root[data-theme="light"] {
+  --color-bg-primary: #F6F4EF;
+  --color-bg-secondary: #EAE6DD;
+  --color-bg-card: #FFFFFF;
+  --color-text-primary: #171717;
+  --color-text-secondary: #5F5B53;
+}
+
+:root[data-theme="light"] body { background: #F6F4EF; }
+
+/* Keep legacy dark-first utility surfaces readable until each screen is tokenised. */
+:root[data-theme="light"] .border-white\/10,
+:root[data-theme="light"] .border-white\/20,
+:root[data-theme="light"] .border-white\/30 { border-color: rgb(23 23 23 / 0.14); }
+:root[data-theme="light"] .bg-black\/20,
+:root[data-theme="light"] .bg-black\/25,
+:root[data-theme="light"] .bg-black\/35 { background-color: rgb(255 255 255 / 0.78); }
+:root[data-theme="light"] .bg-white\/5 { background-color: rgb(23 23 23 / 0.05); }
+:root[data-theme="light"] input,
+:root[data-theme="light"] select,
+:root[data-theme="light"] textarea { color: #171717; }
+
 body {
   background: var(--color-bg-primary);
   color: var(--color-text-primary);

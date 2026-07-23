@@ -80,20 +80,30 @@ export function isAllowedAudioFile(file: { name: string; type: string; size: num
       error: "Use MP3, WAV, M4A, FLAC, OGG or AAC for radio submission.",
     };
   }
-  const isWav = ext === "wav" || file.type.includes("wav");
-  const isLossless = isWav || ext === "flac" || file.type.includes("flac");
+  const isWav = ext === "wav" || mime.includes("wav");
+  const isLossless = isWav || ext === "flac" || mime.includes("flac");
   const maxBytes = isLossless ? 100 * 1024 * 1024 : 40 * 1024 * 1024;
   if (file.size <= 0) {
-    return { ok: false, ext, error: "The selected file is empty." };
+    return { ok: false, ext: ext || "unknown", error: "The selected file is empty." };
   }
   if (file.size > maxBytes) {
     return {
       ok: false,
-      ext,
+      ext: ext || "unknown",
       error: isLossless
         ? "WAV/FLAC must be 100MB or smaller."
         : "Compressed audio (MP3/M4A/OGG/AAC) must be 40MB or smaller.",
     };
   }
-  return { ok: true, ext: extOk ? ext : fileExtension(file.name) || "mp3" };
+  // Resolve extension for storage path
+  let resolved = ext;
+  if (!resolved || !extOk) {
+    if (mime.includes("mpeg") || mime === "audio/mp3") resolved = "mp3";
+    else if (mime.includes("wav")) resolved = "wav";
+    else if (mime.includes("flac")) resolved = "flac";
+    else if (mime.includes("ogg") || mime.includes("vorbis") || mime.includes("opus")) resolved = "ogg";
+    else if (mime.includes("mp4") || mime.includes("m4a") || mime.includes("aac")) resolved = "m4a";
+    else resolved = "mp3";
+  }
+  return { ok: true, ext: resolved };
 }

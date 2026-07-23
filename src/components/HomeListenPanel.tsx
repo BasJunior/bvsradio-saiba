@@ -16,7 +16,7 @@ export default function HomeListenPanel() {
   const pct = player.duration > 0 ? Math.min(100, (player.elapsed / player.duration) * 100) : 0;
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-black/55 text-left shadow-2xl backdrop-blur-xl">
+    <div className="min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-black/65 text-left text-white shadow-2xl backdrop-blur-xl">
       <div
         className="h-1 w-full cursor-pointer bg-white/15"
         role="progressbar"
@@ -41,11 +41,11 @@ export default function HomeListenPanel() {
             <h2 className="line-clamp-2 break-words text-xl font-semibold leading-snug sm:text-2xl">
               {player.current?.title || "Library being prepared"}
             </h2>
-            <p className="mt-0.5 line-clamp-1 break-words text-sm text-text-secondary">
+            <p className="mt-0.5 line-clamp-1 break-words text-sm text-white/70">
               {player.current?.artist || "BVS Radio"}
             </p>
             {player.duration > 0 && (
-              <p className="mt-2 tabular-nums text-xs text-white/60">
+              <p className="mt-2 tabular-nums text-xs text-white/65">
                 {formatTime(player.elapsed)} / {formatTime(player.duration)}
               </p>
             )}
@@ -61,7 +61,7 @@ export default function HomeListenPanel() {
           </button>
         </div>
         <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 text-sm sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-          <span className="w-fit rounded-full bg-white/10 px-3 py-1 text-xs text-text-secondary sm:text-sm">
+          <span className="w-fit rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 sm:text-sm">
             Automated library · not a live broadcast
           </span>
           <Link href="/radio" className="font-medium text-brand hover:underline">

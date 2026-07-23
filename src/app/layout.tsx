@@ -4,6 +4,7 @@ import Footer from "@/components/layout/Footer";
 import VisitorAssistant from "@/components/VisitorAssistant";
 import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
+import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { getStationTracks } from "@/lib/station-library";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
@@ -58,19 +59,22 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
-    { media: "(prefers-color-scheme: light)", color: "#0A0A0A" },
+    { media: "(prefers-color-scheme: light)", color: "#F6F4EF" },
   ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  colorScheme: "dark",
+  colorScheme: "dark light",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const stationTracks = await getStationTracks();
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `try{const t=localStorage.getItem('bvs_theme');const v=t==='light'||t==='dark'?t:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.dataset.theme=v;document.documentElement.style.colorScheme=v}catch(e){}` }} />
+      </head>
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
         <LibrarySyncProvider>
         <StationPlayerProvider tracks={stationTracks}>
@@ -80,6 +84,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Footer />
           <VisitorAssistant />
           <PwaRegister />
+          <ClientErrorBeacon />
           <PersistentPlayer />
         </StationPlayerProvider>
         </LibrarySyncProvider>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import ThemeToggle from '@/components/ThemeToggle'
 type Access = {
   artist: boolean
   writer: boolean
@@ -54,6 +55,7 @@ export default function Navbar() {
     { href: '/shows', label: 'Shows' },
     { href: '/community', label: 'Community' },
     { href: '/blog', label: 'Discover' },
+    { href: '/faq', label: 'FAQ' },
   ]
 
   const artistLinks = [
@@ -72,16 +74,15 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2" onClick={() => setIsMenuOpen(false)}>
+        <Link href="/" className="flex items-center" onClick={() => setIsMenuOpen(false)} aria-label="BVS Radio home">
           <Image
             src="/branding/bvs-logo.png"
             alt="BVS Radio"
-            width={32}
-            height={32}
-            className="rounded"
+            width={1032}
+            height={552}
+            className="h-11 w-auto rounded-md object-contain"
             priority
           />
-          <span className="text-xl font-bold text-brand" title="Best Virtual Sound">BVS Radio</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -122,6 +123,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
+          <ThemeToggle />
           <Link href="/library" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
             Library
           </Link>
@@ -197,6 +199,7 @@ export default function Navbar() {
             <Link href="/library" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Library</Link>
             <Link href="/checkout" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Cart</Link>
             <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
+              <div className="pb-2"><ThemeToggle /></div>
               {user ? (
                 <>
                   <p className="py-1 text-sm text-text-secondary truncate">{user.email}</p>

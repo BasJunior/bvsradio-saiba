@@ -10,6 +10,21 @@ const listenerPaths = [
   { title: "Your library", copy: "Save music, follow programmes and return to your recent listening on this device.", href: "/library", cta: "View library" },
 ];
 
+const faqHighlights = [
+  {
+    question: "How does talent make money?",
+    answer: "Through approved original content sales, creative services, BVS platform streams, and wider distribution revenue where eligible.",
+  },
+  {
+    question: "Is BVS a fixed job listing?",
+    answer: "No. It is a media, music, and creative commerce platform where the path depends on what the talent offers.",
+  },
+  {
+    question: "Does approval matter?",
+    answer: "Yes. Publication, rotation, sales, and wider streaming routes depend on review, rights clearance, and platform fit.",
+  },
+];
+
 export default async function HomePage() {
   const shows = await getPublicProgrammes();
   return (
@@ -24,7 +39,7 @@ export default async function HomePage() {
           priority
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-black/75 to-black/50 sm:bg-gradient-to-r sm:from-black sm:via-black/75 sm:to-black/25" />
-        <div className="relative mx-auto grid min-h-[min(88vh,900px)] max-w-7xl items-center gap-8 px-4 py-12 sm:gap-12 sm:px-6 sm:py-16 lg:grid-cols-[1.05fr_.95fr]">
+        <div className="relative mx-auto grid min-h-[min(88vh,900px)] max-w-7xl items-center gap-8 px-4 py-12 text-white sm:gap-12 sm:px-6 sm:py-16 lg:grid-cols-[1.05fr_.95fr]">
           <div className="min-w-0 max-w-full">
             <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand sm:mb-5 sm:text-xs sm:tracking-[0.2em]">
               Best Virtual Sound · Zimbabwe to the world
@@ -50,7 +65,7 @@ export default async function HomePage() {
               </Link>
               <Link
                 href="/catalogue?type=beat#beatstore"
-                className="rounded-full border border-brand/60 bg-black/35 px-7 py-3.5 text-center font-semibold text-brand hover:bg-brand hover:text-black"
+                className="rounded-full border border-brand/60 bg-neutral-950/40 px-7 py-3.5 text-center font-semibold text-brand hover:bg-brand hover:text-black"
               >
                 Browse BeatStore
               </Link>
@@ -161,6 +176,33 @@ export default async function HomePage() {
           <p className="mt-6 text-sm text-text-secondary">
             Buying a service never guarantees radio placement. Verified public credits and testimonials will appear only when approved.
           </p>
+        </div>
+      </section>
+
+      <section className="border-y border-white/10 bg-bg-secondary/60 px-4 py-12 sm:px-6 sm:py-16">
+        <div className="mx-auto max-w-7xl">
+          <div className="flex flex-wrap items-end justify-between gap-5">
+            <div className="max-w-2xl">
+              <p className="text-xs uppercase tracking-[0.15em] text-brand sm:tracking-[0.2em]">FAQ</p>
+              <h2 className="mt-2 text-balance text-2xl font-semibold sm:text-3xl md:text-4xl">
+                Clear answers for talent enquiries.
+              </h2>
+              <p className="mt-3 text-text-secondary">
+                Explain BVS opportunities, earning paths, approvals and distribution routes before a new artist or media professional applies.
+              </p>
+            </div>
+            <Link href="/faq" className="rounded-full border border-white/20 px-6 py-3 text-center font-semibold hover:bg-white/5">
+              Read all FAQs
+            </Link>
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {faqHighlights.map((item) => (
+              <article key={item.question} className="rounded-3xl border border-white/10 bg-bg-card/45 p-6">
+                <h3 className="text-xl font-semibold">{item.question}</h3>
+                <p className="mt-3 text-sm leading-relaxed text-text-secondary">{item.answer}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
