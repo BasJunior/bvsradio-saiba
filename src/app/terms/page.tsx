@@ -125,8 +125,8 @@ export default function TermsPage() {
             Focus: Zimbabwean music · CAT timezone for ops replies
             <br />
             Email:{" "}
-            <a href="mailto:abiaschivayo3@gmail.com" className="text-brand hover:underline">
-              abiaschivayo3@gmail.com
+            <a href="mailto:contact@bvsradio.com" className="text-brand hover:underline">
+              contact@bvsradio.com
             </a>
             {" · "}
             <a href="mailto:legal@bvsradio.com" className="text-brand hover:underline">

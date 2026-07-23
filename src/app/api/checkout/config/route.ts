@@ -9,7 +9,7 @@ export async function GET() {
     paynowEnabled: paynowEnabled(),
     currency: "USD",
     whatsapp: process.env.NEXT_PUBLIC_BVS_WHATSAPP || "+4917664006205",
-    orderEmail: process.env.BVS_ORDER_EMAIL || "abiaschivayo3@gmail.com",
+    orderEmail: process.env.BVS_ORDER_EMAIL || "contact@bvsradio.com",
     tax: {
       enabled: true,
       mode: stripeAutomaticTaxEnabled() ? "stripe_automatic" : "region_table",

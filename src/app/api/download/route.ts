@@ -33,7 +33,7 @@ export async function GET(req: Request) {
     return NextResponse.json(
       {
         error: "File not staged yet. BVS will send it on WhatsApp/email.",
-        contact: process.env.BVS_ORDER_EMAIL || "abiaschivayo3@gmail.com",
+        contact: process.env.BVS_ORDER_EMAIL || "contact@bvsradio.com",
       },
       { status: 404 },
     );

@@ -186,7 +186,7 @@ export function paymentInstructions(
 ) {
   const whatsapp =
     process.env.NEXT_PUBLIC_BVS_WHATSAPP || process.env.BVS_WHATSAPP || "+4917664006205";
-  const orderEmail = process.env.BVS_ORDER_EMAIL || "abiaschivayo3@gmail.com";
+  const orderEmail = process.env.BVS_ORDER_EMAIL || "contact@bvsradio.com";
   const bank =
     process.env.BVS_BANK_DETAILS ||
     "Bank details confirmed on WhatsApp after order (BVS Radio).";
