@@ -396,7 +396,7 @@ export async function POST(req: Request) {
 
     await notifyOwnerNewOrder(order);
 
-    const whatsapp = process.env.NEXT_PUBLIC_BVS_WHATSAPP || "+4917664006205";
+    const whatsapp = process.env.NEXT_PUBLIC_BVS_WHATSAPP || "+491706580888";
     const orderEmail = process.env.BVS_ORDER_EMAIL || "contact@bvsradio.com";
     const waLink = whatsapp
       ? `https://wa.me/${whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(

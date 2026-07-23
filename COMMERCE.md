@@ -17,7 +17,7 @@ Owner can get Telegram alerts via `BVS_ORDER_TELEGRAM_*`.
 
 | Role | Value |
 |------|--------|
-| WhatsApp (now) | +49 176 64006205 (017664006205) — business number later |
+| WhatsApp (now) | +49 170 6580888 (01706580888) — business number later |
 | Orders email | abiaschivayo3@gmail.com (`@bvsradio.com` → forward here on IONOS) |
 | Product files | `/home/admin/.openclaw/workspace/bvsradio-products/` |
 
@@ -45,7 +45,7 @@ Portal login for humans is stored **only** on the VPS at
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `NEXT_PUBLIC_SITE_URL` | Yes | `https://bvsradio.com` |
-| `NEXT_PUBLIC_BVS_WHATSAPP` | Yes | `+4917664006205` |
+| `NEXT_PUBLIC_BVS_WHATSAPP` | Yes | `+491706580888` |
 | `BVS_ORDER_EMAIL` | Yes | `abiaschivayo3@gmail.com` |
 | `PAYNOW_INTEGRATION_*` | For auto EcoCash | From Paynow dashboard |
 | `BVS_PRODUCTS_DIR` | If downloads | Path to product files (VPS) |

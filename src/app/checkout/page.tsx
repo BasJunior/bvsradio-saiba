@@ -136,7 +136,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState("mobile_money");
   const [stripeReady, setStripeReady] = useState(false);
   const [paynowReady, setPaynowReady] = useState(false);
-  const [whatsapp, setWhatsapp] = useState<string | null>("+4917664006205");
+  const [whatsapp, setWhatsapp] = useState<string | null>("+491706580888");
   const [orderEmail, setOrderEmail] = useState("contact@bvsradio.com");
   const [countryCode, setCountryCode] = useState("DE");
   const [vatId, setVatId] = useState("");

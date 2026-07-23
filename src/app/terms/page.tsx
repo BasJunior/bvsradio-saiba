@@ -134,8 +134,8 @@ export default function TermsPage() {
             </a>
             <br />
             WhatsApp:{" "}
-            <a href="https://wa.me/4917664006205" className="text-brand hover:underline">
-              +49 176 64006205
+            <a href="https://wa.me/491706580888" className="text-brand hover:underline">
+              +49 170 6580888
             </a>
             <br />
             Web:{" "}

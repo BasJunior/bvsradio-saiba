@@ -185,7 +185,7 @@ export function paymentInstructions(
   extra?: { paynowInstructions?: string; pollUrl?: string },
 ) {
   const whatsapp =
-    process.env.NEXT_PUBLIC_BVS_WHATSAPP || process.env.BVS_WHATSAPP || "+4917664006205";
+    process.env.NEXT_PUBLIC_BVS_WHATSAPP || process.env.BVS_WHATSAPP || "+491706580888";
   const orderEmail = process.env.BVS_ORDER_EMAIL || "contact@bvsradio.com";
   const bank =
     process.env.BVS_BANK_DETAILS ||
