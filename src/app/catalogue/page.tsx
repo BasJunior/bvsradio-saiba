@@ -10,6 +10,8 @@ import {
   priceBadge,
   rightsSummary as pricingRightsSummary,
 } from '@/lib/catalogue-pricing'
+import { rankCollections, type CollectionCard } from '@/lib/catalogue-trending'
+import { trackEvent } from '@/lib/analytics'
 
 type TrackType = 'single' | 'beat' | 'mix'
 
@@ -441,19 +443,19 @@ const tracks: Track[] = [
   },
 ]
 
-const collectionCards = [
-  { name: 'Albums', detail: `Full albums + $${PRICE_SINGLE_DOWNLOAD} singles`, img: '/images/albums/lord-album.jpg' },
-  { name: 'LORD Album', detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $19`, img: '/images/albums/lord-album.jpg' },
-  { name: 'Album 16 Bit', detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $14`, img: '/images/albums/album-16-bit.jpg' },
-  { name: 'STRAIGHTENIN', detail: 'Stream only · no BVS download sale', img: straighteninArt },
-  { name: 'HOWLING IN THE HILLS 2', detail: 'Stream only · no BVS download sale', img: howlingArt },
-  { name: 'WOLF BEEN BAD', detail: 'Stream only · no BVS download sale', img: wolfBeenBadArt },
-  { name: 'Wolfbridges Projects', detail: 'Streaming discovery (regulated platforms)', img: straighteninArt },
-  { name: 'BVS Archive', detail: `$${PRICE_SINGLE_DOWNLOAD} singles / archive downloads`, img: coverArt },
-  { name: 'June Pack', detail: 'WolfBrx beats · licence from $29', img: junePackArt },
-  { name: 'May Pack', detail: 'WolfBrx beats · licence from $29', img: mayPackArt },
-  { name: 'March Pack', detail: 'Melodic and trap · licence from $29', img: '/images/mic-closeup.jpg' },
-  { name: 'Producer Picks', detail: 'Beats ready for artists · from $29', img: '/images/hero-studio.jpg' },
+const collectionCards: CollectionCard[] = [
+  { name: 'Albums', detail: `Full albums + $${PRICE_SINGLE_DOWNLOAD} singles`, img: '/images/albums/lord-album.jpg', launchedAt: '2026-06-01' },
+  { name: 'LORD Album', detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $19`, img: '/images/albums/lord-album.jpg', launchedAt: '2026-06-15' },
+  { name: 'Album 16 Bit', detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $14`, img: '/images/albums/album-16-bit.jpg', launchedAt: '2026-06-20' },
+  { name: 'STRAIGHTENIN', detail: 'Stream only · no BVS download sale', img: straighteninArt, launchedAt: '2025-11-01' },
+  { name: 'HOWLING IN THE HILLS 2', detail: 'Stream only · no BVS download sale', img: howlingArt, launchedAt: '2025-12-01' },
+  { name: 'WOLF BEEN BAD', detail: 'Stream only · no BVS download sale', img: wolfBeenBadArt, launchedAt: '2026-01-15' },
+  { name: 'Wolfbridges Projects', detail: 'Streaming discovery (regulated platforms)', img: straighteninArt, launchedAt: '2025-11-01' },
+  { name: 'BVS Archive', detail: `$${PRICE_SINGLE_DOWNLOAD} singles / archive downloads`, img: coverArt, launchedAt: '2025-10-01' },
+  { name: 'June Pack', detail: 'WolfBrx beats · licence from $29', img: junePackArt, launchedAt: '2026-06-01' },
+  { name: 'May Pack', detail: 'WolfBrx beats · licence from $29', img: mayPackArt, launchedAt: '2026-05-01' },
+  { name: 'March Pack', detail: 'Melodic and trap · licence from $29', img: '/images/mic-closeup.jpg', launchedAt: '2026-03-01' },
+  { name: 'Producer Picks', detail: 'Beats ready for artists · from $29', img: '/images/hero-studio.jpg', launchedAt: '2026-07-01' },
 ]
 
 const producerLibraries = [
@@ -480,6 +482,8 @@ export default function CataloguePage() {
   })
   const [genreFilter, setGenreFilter] = useState('All')
   const [collectionJump, setCollectionJump] = useState('')
+  const [shelfMode, setShelfMode] = useState<'featured' | 'trending' | 'new'>('featured')
+  const [trendingScores, setTrendingScores] = useState<Record<string, { score: number; plays: number }>>({})
   /** Music nav defaults to non-beats; Beats nav forces type=beat. */
   const [typeFilter, setTypeFilter] = useState<'music' | 'beat' | 'all' | TrackType>(() => {
     if (typeof window === 'undefined') return 'music'
@@ -513,6 +517,24 @@ export default function CataloguePage() {
   useEffect(() => {
     localStorage.setItem('bvs_cart', JSON.stringify(cart))
   }, [cart])
+
+  useEffect(() => {
+    let cancelled = false
+    const names = collectionCards.map((c) => encodeURIComponent(c.name)).join(',')
+    fetch(`/api/catalogue/trending?names=${names}`, { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return
+        const payload = await res.json().catch(() => ({}))
+        if (cancelled || !payload?.scores || typeof payload.scores !== 'object') return
+        setTrendingScores(payload.scores as Record<string, { score: number; plays: number }>)
+      })
+      .catch(() => {
+        /* trending is optional */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -598,9 +620,23 @@ export default function CataloguePage() {
     [scopeTracks],
   )
 
+  const shelfCards = useMemo(
+    () => rankCollections(collectionCards, trendingScores, shelfMode),
+    [trendingScores, shelfMode],
+  )
+
   const jumpToCollection = (collectionName: string) => {
     setCollectionJump(collectionName)
     setGenreFilter('All')
+    try {
+      trackEvent('player_start', {
+        collection: collectionName,
+        source: 'catalogue_shelf',
+        shelf_mode: shelfMode,
+      })
+    } catch {
+      /* ignore */
+    }
     if (collectionName === 'Producer Picks') {
       setSearch('')
       setTypeFilter('beat')
@@ -872,23 +908,65 @@ export default function CataloguePage() {
       </section>
       )}
 
-      <section className="mb-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {collectionCards.map((collection) => (
-          <button
-            type="button"
-            key={collection.name}
-            onClick={() => jumpToCollection(collection.name)}
-            className="group flex items-center gap-3 rounded-xl border border-white/10 bg-bg-card/40 p-3 text-left hover:border-brand/40"
-          >
-            <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
-              <Image src={collection.img} alt="" fill className="object-cover group-hover:scale-[1.03] transition-transform" />
-            </div>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold">{collection.name}</div>
-              <div className="truncate text-xs text-text-secondary">{collection.detail}</div>
-            </div>
-          </button>
-        ))}
+      <section className="mb-10">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-brand">Catalogue shelves</p>
+            <p className="mt-1 text-sm text-text-secondary">
+              Featured is editorial. Trending ranks by plays and checkout activity.
+            </p>
+          </div>
+          <div className="inline-flex rounded-full border border-white/10 bg-black/30 p-1 text-xs font-medium">
+            {([
+              ['featured', 'Featured'],
+              ['trending', 'Trending'],
+              ['new', 'New'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setShelfMode(id)}
+                className={`rounded-full px-3.5 py-1.5 transition ${shelfMode === id ? 'bg-brand text-black' : 'text-text-secondary hover:text-white'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {shelfCards.map((collection) => {
+            const isTop = shelfMode === 'trending' && collection.rank === 1 && (collection.score || 0) > 0
+            const isActive = collectionJump === collection.name
+            return (
+              <button
+                type="button"
+                key={collection.name}
+                onClick={() => jumpToCollection(collection.name)}
+                className={`group relative flex items-center gap-3 rounded-xl border bg-bg-card/40 p-3 text-left transition ${
+                  isTop || isActive
+                    ? 'border-brand/70 ring-1 ring-brand/30'
+                    : 'border-white/10 hover:border-brand/40'
+                }`}
+              >
+                {collection.badge && (
+                  <span className="absolute right-2 top-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
+                    {collection.badge}
+                  </span>
+                )}
+                <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
+                  <Image src={collection.img} alt="" fill className="object-cover transition-transform group-hover:scale-[1.03]" />
+                </div>
+                <div className="min-w-0 pr-8">
+                  <div className="truncate text-sm font-semibold">{collection.name}</div>
+                  <div className="truncate text-xs text-text-secondary">{collection.detail}</div>
+                  {shelfMode === 'trending' && collection.statLine && (
+                    <div className="mt-0.5 truncate text-[11px] text-brand/90">{collection.statLine}</div>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
       </section>
 
       <section id="browse" className="scroll-mt-24">

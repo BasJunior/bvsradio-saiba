@@ -402,7 +402,12 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           if (startedAt.current === null) {
             startedAt.current = Date.now();
             const trackId = current.id || `rotation-${current.src}`;
-            trackEvent("player_start", { track_id: trackId });
+            trackEvent("player_start", {
+              track_id: trackId,
+              title: current.title || "",
+              collection: current.project || current.genre || "",
+              source: modeRef.current === "ondemand" ? "queue" : "station",
+            });
             if (current.id && !countedStarts.current.has(current.id)) {
               countedStarts.current.add(current.id);
               void fetch("/api/tracks/play", {
