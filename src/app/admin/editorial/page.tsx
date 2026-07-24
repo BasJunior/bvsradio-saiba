@@ -19,9 +19,11 @@ type ArtistPayoutRequest = { id: string; artist_user_id: string; requested_amoun
 type Release = { id: string; title: string; artist_name: string; genre?: string; cover_url?: string; release_type?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; track_count: number; created_at: string }
 type ReleaseTrack = { id: string; release_id: string; position: number; title: string; file_url?: string }
 type DistJob = { id: string; release_id: string; status: string; distributor?: string | null; notes?: string | null }
-type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
+type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
+type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
+type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; beats?: Beat[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
-const statusClass: Record<string, string> = { submitted: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', rejected: 'text-red-300' }
+const statusClass: Record<string, string> = { submitted: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary' }
 
 export default function EditorialDashboard() {
   const [data, setData] = useState<EditorialData | null>(null)
@@ -77,7 +79,7 @@ export default function EditorialDashboard() {
 
   const allowed = (permission: EditorialPermission) => Boolean(data?.identity.permissions.includes(permission))
   const act = async (action: string, body: Record<string, unknown>) => {
-    setBusy(`${action}-${String(body.trackId || body.profileId || body.slug || body.userId || '')}`)
+    setBusy(`${action}-${String(body.trackId || body.beatId || body.profileId || body.slug || body.userId || '')}`)
     setError('')
     try {
       const response = await fetch('/api/admin/editorial', { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action, ...body }) })
@@ -147,6 +149,14 @@ export default function EditorialDashboard() {
       busy={busy}
     />
 
+    <BeatStoreEditorialPanel
+      beats={data.beats || []}
+      profiles={data.profiles}
+      enabled={allowed('approve_submissions')}
+      act={act}
+      busy={busy}
+    />
+
     <section className="mt-12"><h2 className="text-2xl font-semibold">Single-track submission queue</h2><p className="mt-2 text-sm text-text-secondary">Legacy single uploads. Prefer Album/EP for multi-track. Approval does not automatically publish or add a track to rotation.</p><div className="mt-5 space-y-4">{data.tracks.map(track => <TrackCard key={track.id} track={track} credits={data.credits.filter(c => c.track_id === track.id)} allowed={allowed} act={act} busy={busy} />)}{data.tracks.length === 0 && <Empty text="No submissions yet." />}</div></section>
 
     <ArtistRequestPanel requests={data.trackRequests} tracks={data.tracks} profiles={data.profiles} enabled={allowed('approve_submissions')} act={act} busy={busy} />
@@ -160,6 +170,103 @@ export default function EditorialDashboard() {
     {allowed('manage_artist_wallet') && <ArtistWalletPanel waitlist={data.artistWaitlist} deposits={data.artistDeposits} payoutRequests={data.artistPayoutRequests} profiles={data.profiles} />}
     <section className="mt-14"><h2 className="text-2xl font-semibold">Recent audit trail</h2><div className="mt-4 overflow-x-auto rounded-2xl border border-white/10"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-white/5 text-text-secondary"><tr><th className="p-3">Time</th><th className="p-3">Action</th><th className="p-3">Entity</th><th className="p-3">ID</th></tr></thead><tbody>{data.auditLog.map(entry => <tr key={entry.id} className="border-t border-white/10"><td className="p-3 text-text-secondary">{new Date(entry.created_at).toLocaleString()}</td><td className="p-3">{entry.action.replaceAll('_', ' ')}</td><td className="p-3">{entry.entity_type}</td><td className="max-w-64 truncate p-3 font-mono text-xs">{entry.entity_id}</td></tr>)}</tbody></table></div></section>
   </main>
+}
+
+function BeatStoreEditorialPanel({
+  beats,
+  profiles,
+  enabled,
+  act,
+  busy,
+}: {
+  beats: Beat[]
+  profiles: Profile[]
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const nameFor = (id: string) =>
+    profiles.find((p) => p.id === id)?.display_name ||
+    profiles.find((p) => p.id === id)?.username ||
+    id.slice(0, 8)
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+  const previewUrl = (path?: string | null) =>
+    path
+      ? path.startsWith('http')
+        ? path
+        : `${supabaseUrl}/storage/v1/object/public/bvsradio-audio/${path}`
+      : ''
+  return (
+    <section className="mt-12">
+      <h2 className="text-2xl font-semibold">Producer BeatStore queue</h2>
+      <p className="mt-2 text-sm text-text-secondary">
+        Approve and publish producer beat listings. Publishing makes them visible in Beats / BeatStore.
+      </p>
+      <div className="mt-5 space-y-4">
+        {beats.map((beat) => {
+          const price = beat.beat_licence_options?.[0]?.price_usd
+          const src = previewUrl(beat.preview_path)
+          return (
+            <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
+              <div className="flex flex-wrap justify-between gap-4">
+                <div>
+                  <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[beat.status] || 'text-text-secondary'}`}>
+                    {beat.status.replaceAll('_', ' ')}
+                  </p>
+                  <h3 className="mt-1 text-xl font-semibold">{beat.title}</h3>
+                  <p className="text-sm text-text-secondary">
+                    {nameFor(beat.producer_user_id)} · {beat.genre || 'Beat'}
+                    {beat.bpm ? ` · ${beat.bpm} BPM` : ''}
+                    {price != null ? ` · $${Number(price).toFixed(2)} standard lease` : ''}
+                    {beat.is_public ? ' · public' : ' · not public'}
+                  </p>
+                  {beat.editorial_notes && (
+                    <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>
+                  )}
+                </div>
+                {src ? <audio controls preload="none" src={src} className="h-10 max-w-full" /> : null}
+              </div>
+              {enabled && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button
+                    disabled={Boolean(busy)}
+                    onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: beat.editorial_notes || '' })}
+                    className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    disabled={Boolean(busy)}
+                    onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: beat.editorial_notes || 'Please revise and resubmit.' })}
+                    className="rounded-full border border-white/20 px-4 py-2 text-xs"
+                  >
+                    Request changes
+                  </button>
+                  <button
+                    disabled={Boolean(busy)}
+                    onClick={() => act('review_beat', { beatId: beat.id, status: 'rejected', notes: beat.editorial_notes || '' })}
+                    className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black"
+                  >
+                    Reject
+                  </button>
+                  {['approved', 'published'].includes(beat.status) && (
+                    <button
+                      disabled={Boolean(busy)}
+                      onClick={() => act('publish_beat', { beatId: beat.id, publish: !beat.is_public })}
+                      className="rounded-full border border-brand px-4 py-2 text-xs text-brand"
+                    >
+                      {beat.is_public ? 'Unpublish' : 'Publish to BeatStore'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </article>
+          )
+        })}
+        {!beats.length && <Empty text="No producer beats in queue yet." />}
+      </div>
+    </section>
+  )
 }
 
 function TrackCard({ track, credits, allowed, act, busy }: { track: Track; credits: Credit[]; allowed: (p: EditorialPermission) => boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {

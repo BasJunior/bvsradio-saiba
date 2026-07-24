@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const user = (await userResponse.json()) as { id: string; email?: string }
   const adminHeaders = { apikey: service, Authorization: `Bearer ${service}` }
   const [profileResponse, staffResponse] = await Promise.all([
-    fetch(`${url}/rest/v1/profiles?id=eq.${user.id}&select=role`, {
+    fetch(`${url}/rest/v1/profiles?id=eq.${user.id}&select=role,is_producer`, {
       headers: adminHeaders,
       cache: 'no-store',
     }),
@@ -39,12 +39,16 @@ export async function GET(request: Request) {
   const profiles = profileResponse.ok ? await profileResponse.json() : []
   const staff = staffResponse.ok ? await staffResponse.json() : []
   const profileRole = String(profiles[0]?.role || 'listener')
+  const isProducerFlag = Boolean(profiles[0]?.is_producer)
   const staffRole = staff[0]?.role ? String(staff[0].role) : null
   const email = (user.email || '').toLowerCase().trim()
   const isOwner = email && ownerEmails().has(email)
   const isAdmin = staffRole === 'administrator' || profileRole === 'admin' || Boolean(isOwner)
   const isEditorial =
     Boolean(staffRole) || ['editor', 'admin', 'moderator'].includes(profileRole) || Boolean(isOwner)
+  const isArtist = profileRole === 'artist' || isAdmin
+  // Wave A: artists + explicit is_producer + admins can use My BeatStore
+  const isProducer = isProducerFlag || isArtist || isAdmin
   return NextResponse.json({
     authenticated: true,
     email: user.email,
@@ -52,7 +56,8 @@ export async function GET(request: Request) {
     staffRole,
     access: {
       listener: true,
-      artist: profileRole === 'artist' || isAdmin,
+      artist: isArtist,
+      producer: isProducer,
       writer: profileRole === 'writer' || isEditorial,
       showCreator: profileRole === 'show_creator' || isEditorial,
       editorial: isEditorial,

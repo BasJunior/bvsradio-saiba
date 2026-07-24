@@ -2,6 +2,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import MyBeatStore from '@/components/MyBeatStore'
 
 type WorkflowItem={id:string;title?:string;topic?:string;status?:string;editor_notes?:string;review_notes?:string;scheduled_for?:string}; type ShowItem=WorkflowItem & {status:string}; type Release={id:string;title:string;genre?:string;editorial_status:string;editorial_notes?:string;is_public:boolean;in_rotation:boolean;is_downloadable:boolean;download_price:number;licence_type:string;play_count:number;like_count?:number;created_at:string}; type TrackRequest={id:string;track_id:string;request_type:string;status:string;message:string;created_at:string}; type Data = { profile:{role:string;display_name?:string}; application?:{status:string;review_notes?:string}; articles:WorkflowItem[]; briefs:WorkflowItem[]; shows:ShowItem[]; episodes:WorkflowItem[]; tracks:Release[]; trackRequests:TrackRequest[] }
 const field = 'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
@@ -14,7 +15,9 @@ export default function CreatorStudio() {
   if(error&&!data)return <main className="mx-auto min-h-[65vh] max-w-2xl px-6 py-20 text-center"><h1 className="text-3xl">Creator workspace unavailable</h1><p className="mt-4 text-text-secondary">{error}</p><Link href="/auth/login" className="mt-6 inline-block rounded-full bg-brand px-6 py-3 font-semibold text-black">Sign in</Link></main>
   if(!data)return <main className="p-20 text-center text-text-secondary">Loading creator workspace…</main>
   const artist=['artist','admin'].includes(data.profile.role), writer=['writer','admin'].includes(data.profile.role), showCreator=['show_creator','admin'].includes(data.profile.role)
+  const producer = artist || Boolean((data.profile as {is_producer?: boolean}).is_producer)
   return <main className="mx-auto max-w-6xl px-6 py-12"><p className="text-xs uppercase tracking-[.22em] text-brand">Creator studio</p><h1 className="mt-2 text-4xl font-semibold">Welcome, {data.profile.display_name||'creator'}</h1><p className="mt-3 text-text-secondary">Draft privately, submit when ready, and follow the human editorial review.</p>{error&&<p className="mt-5 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}{message&&<p className="mt-5 rounded-xl bg-brand/10 p-4 text-brand">{message}</p>}
+    {producer&&<MyBeatStore/>}
     {artist&&<ArtistReleases tracks={data.tracks||[]} requests={data.trackRequests||[]} act={act}/>}
     {writer&&<><WriterApplication application={data.application} act={act}/><ArticleForm act={act}/><Queue title="Your articles" items={data.articles}/><Queue title="Assigned research briefs" items={data.briefs} note="Briefs provide sourced direction only. A human editor must approve them before drafting, and articles still require separate review."/></>}
     {showCreator&&<><ShowForm act={act}/><EpisodeForm shows={data.shows} token={token} act={act}/><Queue title="Your shows" items={data.shows}/><Queue title="Your episodes" items={data.episodes}/></>}

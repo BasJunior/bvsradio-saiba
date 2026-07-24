@@ -14,12 +14,12 @@ export async function creatorIdentity(request: Request) {
   if (!response.ok) return null
   const user = await response.json() as { id: string; email?: string; user_metadata?: Record<string, unknown> }
   const [profileResponse, staffResponse] = await Promise.all([
-    fetch(creatorUrl(`profiles?id=eq.${user.id}&select=id,username,display_name,role`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`profiles?id=eq.${user.id}&select=id,username,display_name,role,is_producer`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`editorial_staff?user_id=eq.${user.id}&active=eq.true&select=role&limit=1`), { headers: creatorHeaders, cache: 'no-store' }),
   ])
   const profiles = profileResponse.ok ? await profileResponse.json() : []
   const staff = staffResponse.ok ? await staffResponse.json() : []
-  const profile = profiles[0] as { id: string; username: string; display_name?: string; role: string } | undefined
+  const profile = profiles[0] as { id: string; username: string; display_name?: string; role: string; is_producer?: boolean } | undefined
   if (profile && (staff[0] || ['admin', 'editor'].includes(profile.role))) profile.role = 'admin'
   return { user, profile }
 }

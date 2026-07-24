@@ -45,6 +45,9 @@ export async function GET(request: Request) {
   if (responses.some((response) => !response.ok)) return NextResponse.json({ error: 'Editorial migration is not ready. Run supabase-editorial-workflow.sql.' }, { status: 503 })
   const [tracks, profiles, programmes, credits, staff, auditLog] = await Promise.all(responses.map((response) => response.json()))
   const trackRequests = await optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100')
+  const beats = await optionalJson(
+    'beats?select=*,beat_licence_options(*)&order=updated_at.desc&limit=100',
+  )
   const releases = await optionalJson('releases?select=*&order=created_at.desc&limit=100')
   const releaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
   const distributionJobs = await optionalJson('distribution_jobs?select=*&order=updated_at.desc&limit=100')
@@ -64,6 +67,7 @@ export async function GET(request: Request) {
     staff,
     auditLog,
     trackRequests,
+    beats,
     releases,
     releaseTracks,
     distributionJobs,
@@ -232,6 +236,55 @@ export async function PATCH(request: Request) {
           updated_at: new Date().toISOString(),
         })
         await audit(identity.user.id, 'distribution_job_updated', 'distribution_job', jobId, { status })
+        return NextResponse.json({ result })
+      }
+      case 'review_beat': {
+        requirePermission('approve_submissions')
+        const beatId = String(body.beatId || '')
+        const status =
+          body.status === 'approved'
+            ? 'approved'
+            : body.status === 'rejected'
+              ? 'rejected'
+              : body.status === 'changes_requested'
+                ? 'changes_requested'
+                : 'in_review'
+        const result = await patchTable('beats', `id=eq.${encodeURIComponent(beatId)}`, {
+          status,
+          editorial_notes: String(body.notes || '').slice(0, 2000),
+          reviewed_by: identity.user.id,
+          reviewed_at: new Date().toISOString(),
+          ...(status === 'rejected' || status === 'changes_requested'
+            ? { is_public: false }
+            : {}),
+          updated_at: new Date().toISOString(),
+        })
+        await audit(identity.user.id, `beat_${status}`, 'beat', beatId, {
+          notes: String(body.notes || '').slice(0, 300),
+        })
+        return NextResponse.json({ result })
+      }
+      case 'publish_beat': {
+        requirePermission('approve_submissions')
+        const beatId = String(body.beatId || '')
+        const publish = Boolean(body.publish)
+        const result = await patchTable(
+          'beats',
+          `id=eq.${encodeURIComponent(beatId)}&status=in.(approved,published)`,
+          {
+            is_public: publish,
+            status: publish ? 'published' : 'approved',
+            published_at: publish ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString(),
+          },
+        )
+        if (!result?.length) {
+          return NextResponse.json(
+            { error: 'Only approved beats can be published.' },
+            { status: 409 },
+          )
+        }
+        await audit(identity.user.id, publish ? 'beat_published' : 'beat_unpublished', 'beat', beatId)
         return NextResponse.json({ result })
       }
       default: return NextResponse.json({ error: 'Unknown editorial action.' }, { status: 400 })

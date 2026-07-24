@@ -14,7 +14,7 @@ import {
 type TrackType = 'single' | 'beat' | 'mix'
 
 interface Track {
-  id: number
+  id: number | string
   title: string
   artist: string
   genre: string
@@ -30,6 +30,8 @@ interface Track {
   streamOnly?: boolean
   /** Full album zip product (not a $2 single) */
   albumPackage?: boolean
+  /** DB-backed producer BeatStore listing */
+  producerBeat?: boolean
 }
 
 const coverArt = '/music/Bvs-3000x3000%202.png'
@@ -488,6 +490,7 @@ export default function CataloguePage() {
   const [isPlaying, setIsPlaying] = useState(false)
   const [previewElapsed, setPreviewElapsed] = useState(0)
   const [previewDuration, setPreviewDuration] = useState(previewLimitSeconds)
+  const [dbBeats, setDbBeats] = useState<Track[]>([])
   const [cart, setCart] = useState<Track[]>(() => {
     if (typeof window === 'undefined') {
       return []
@@ -508,6 +511,50 @@ export default function CataloguePage() {
   }, [cart])
 
   useEffect(() => {
+    let cancelled = false
+    fetch('/api/beats?scope=public', { cache: 'no-store' })
+      .then(async (res) => {
+        if (!res.ok) return
+        const payload = await res.json().catch(() => ({}))
+        const rows = Array.isArray(payload.beats) ? payload.beats : []
+        if (cancelled) return
+        setDbBeats(
+          rows.map((b: {
+            id: string
+            title?: string
+            description?: string
+            genre?: string
+            mood?: string
+            bpm?: number | null
+            artworkUrl?: string | null
+            previewUrl?: string | null
+            startingPrice?: number | null
+          }, index: number) => ({
+            id: b.id || `db-beat-${index}`,
+            title: b.title || 'Untitled beat',
+            artist: 'BVS Producer',
+            genre: b.genre || 'Beat',
+            collection: 'Producer BeatStore',
+            duration: b.bpm ? `${b.bpm} BPM` : 'Preview',
+            description: b.description || b.mood || 'Producer beat listing on BVS BeatStore.',
+            type: 'beat' as const,
+            src: b.previewUrl || '',
+            artwork: b.artworkUrl || coverArt,
+            bpm: b.bpm ? String(b.bpm) : undefined,
+            price: b.startingPrice ?? 29,
+            producerBeat: true,
+          })),
+        )
+      })
+      .catch(() => {
+        /* tables may not be applied yet */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
     return () => {
       audioRef.current?.pause()
     }
@@ -525,7 +572,12 @@ export default function CataloguePage() {
     return () => window.removeEventListener('bvs:audio-claim', releasePreviewAudio)
   }, [])
 
-  const genres = useMemo(() => ['All', ...Array.from(new Set(tracks.map((track) => track.genre)))], [])
+  const allTracks = useMemo(() => [...dbBeats, ...tracks], [dbBeats, tracks])
+
+  const genres = useMemo(
+    () => ['All', ...Array.from(new Set(allTracks.map((track) => track.genre)))],
+    [allTracks],
+  )
 
   const jumpToCollection = (collectionName: string) => {
     setCollectionJump(collectionName)
@@ -545,7 +597,7 @@ export default function CataloguePage() {
   const filteredTracks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
 
-    return tracks.filter((track) => {
+    return allTracks.filter((track) => {
       const matchesSearch =
         !normalizedSearch ||
         [track.title, track.artist, track.collection, track.genre].some((field) =>
@@ -556,7 +608,7 @@ export default function CataloguePage() {
       const matchesType = typeFilter === 'all' || track.type === typeFilter
       return matchesSearch && matchesGenre && matchesType
     })
-  }, [genreFilter, search, typeFilter])
+  }, [allTracks, genreFilter, search, typeFilter])
 
   const previewTrack = (track: Track) => {
     if (track.streamOnly && !track.src && track.externalUrl) {

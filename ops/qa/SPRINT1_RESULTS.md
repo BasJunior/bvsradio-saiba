@@ -12,7 +12,7 @@
 | 4 | Player like/shuffle/repeat/recovery | **Done** | Live controls verified (WhatsApp lane also touched StationPlayer 2026-07-24) |
 | 5 | Payment → download | **Code shipped; prod proof blocked** | `94dd562`: orders load/update via Supabase; webhooks + `/api/download` use it. Local token+paid order+MP3 **OK** (`ops/qa/last-paid-download-local.json`). Live create_order from VPS returned **403 Vercel challenge** — need browser/sandbox pass after deploy Ready. |
 | 6 | Monitoring + errors | **Done** | Synthetic OK + cron; ClientErrorBeacon |
-| 7 | Submit→approve→rotation→playcount | **Mostly (user tested submit)** | Abias: **submission test as bvsadmin**. Play tracking RPC works. Full chain still: confirm editorial saw it → approve/publish/rotation → play_count increments in studio. |
+| 7 | Submit→approve→rotation→playcount | **Done** | Abias confirmed full chain closed 2026-07-24. |
 
 ## Collision note (2026-07-24 ~16:10–16:20 Berlin)
 
@@ -35,3 +35,13 @@
 
 Home/radio/catalogue/faq/checkout/manifest/sw + audio range 206 — OK (earlier).  
 2026-07-24 afternoon: direct VPS curls to bvsradio.com hit **Vercel Security Checkpoint 403** — do not treat as product down without browser check.
+
+## SQL re-apply (2026-07-24 16:54 Berlin)
+- Abias: **Done** running SQL packs from zip.
+- Ops unlock still needs DATABASE_URL file for agent auto-apply.
+
+## #7 closed (2026-07-24 16:55 Berlin)
+- Abias: **#7 is done** (approve → rotation → play_count).
+
+## Parked #5 (2026-07-24 16:57)
+- Abias: run **#5 live proof later**, after more progress on the other plan discussed recently in Discord.
