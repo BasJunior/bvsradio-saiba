@@ -14,6 +14,7 @@ function formatTime(seconds: number) {
 export default function HomeListenPanel() {
   const player = useStationPlayer();
   const pct = player.duration > 0 ? Math.min(100, (player.elapsed / player.duration) * 100) : 0;
+  const art = player.current?.artwork;
 
   return (
     <div className="min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-black/65 text-left text-white shadow-2xl backdrop-blur-xl">
@@ -33,23 +34,33 @@ export default function HomeListenPanel() {
         <div className="h-full bg-white transition-[width] duration-100 ease-linear" style={{ width: `${pct}%` }} />
       </div>
       <div className="p-4 sm:p-6">
-        <div className="flex items-start justify-between gap-3 sm:gap-5">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] sm:h-20 sm:w-20 sm:rounded-2xl">
+            {art ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={art} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center" />
+            ) : (
+              <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold text-white/50">BVS</span>
+            )}
+          </span>
+
           <div className="min-w-0 flex-1">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand sm:text-[11px] sm:tracking-[0.18em]">
+            <p className="mb-1 truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-brand sm:text-[11px] sm:tracking-[0.18em]">
               Playing from {player.playingFrom || "BVS continuous rotation"}
             </p>
-            <h2 className="line-clamp-2 break-words text-xl font-semibold leading-snug sm:text-2xl">
+            <h2 className="truncate text-lg font-semibold leading-snug sm:text-2xl">
               {player.current?.title || "Library being prepared"}
             </h2>
-            <p className="mt-0.5 line-clamp-1 break-words text-sm text-white/70">
+            <p className="mt-0.5 truncate text-sm text-white/70">
               {player.current?.artist || "BVS Radio"}
             </p>
             {player.duration > 0 && (
-              <p className="mt-2 tabular-nums text-xs text-white/65">
+              <p className="mt-1.5 tabular-nums text-xs text-white/65">
                 {formatTime(player.elapsed)} / {formatTime(player.duration)}
               </p>
             )}
           </div>
+
           <button
             type="button"
             onClick={player.toggle}

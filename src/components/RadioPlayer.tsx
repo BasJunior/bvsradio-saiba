@@ -10,6 +10,22 @@ function formatTime(seconds: number) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function Cover({ src, className }: { src?: string | null; className?: string }) {
+  return (
+    <div
+      className={`relative shrink-0 overflow-hidden border border-white/10 bg-white/[0.06] shadow-lg ${className || ""}`}
+      aria-hidden
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center" />
+      ) : (
+        <span className="absolute inset-0 grid place-items-center text-xs font-semibold tracking-wide text-text-secondary">BVS</span>
+      )}
+    </div>
+  );
+}
+
 export default function RadioPlayer() {
   const player = useStationPlayer();
   const pct = player.duration > 0 ? Math.min(100, (player.elapsed / player.duration) * 100) : 0;
@@ -32,36 +48,41 @@ export default function RadioPlayer() {
         <div className="h-full bg-white transition-[width] duration-100 ease-linear" style={{ width: `${pct}%` }} />
       </div>
 
-      <div className="grid gap-0 lg:grid-cols-[1fr_1.05fr]">
-        <div className="p-7 text-center lg:text-left">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-brand">
+      <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+        <div className="p-4 sm:p-7">
+          <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-brand sm:mb-4 sm:text-left sm:text-xs sm:tracking-[0.2em]">
             Playing from {player.playingFrom}
           </p>
-          {player.current?.artwork && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={player.current.artwork}
-              alt=""
-              className="mx-auto mb-5 h-40 w-40 rounded-2xl border border-white/10 object-cover shadow-lg lg:mx-0"
-            />
-          )}
-          <h2 className="truncate text-2xl font-semibold">{player.current?.title || "BVS Radio rotation"}</h2>
-          <p className="mt-1 text-sm text-text-secondary">{player.current?.artist || "BVS Radio"}</p>
 
-          <p className="mt-3 tabular-nums text-sm text-white/70" aria-live="polite">
-            {player.duration > 0
-              ? `${formatTime(player.elapsed)} / ${formatTime(player.duration)}`
-              : player.isPlaying
-                ? "Loading time…"
-                : "— / —"}
-          </p>
+          {/* Mobile: art + meta row; Desktop: stacked art then meta */}
+          <div className="flex items-center gap-4 sm:block">
+            <Cover
+              src={player.current?.artwork}
+              className="aspect-square h-24 w-24 rounded-xl sm:mx-0 sm:mb-5 sm:h-40 sm:w-40 sm:rounded-2xl max-sm:mx-0"
+            />
+            <div className="min-w-0 flex-1 text-left sm:text-left">
+              <h2 className="truncate text-lg font-semibold sm:text-2xl">
+                {player.current?.title || "BVS Radio rotation"}
+              </h2>
+              <p className="mt-0.5 truncate text-sm text-text-secondary sm:mt-1">
+                {player.current?.artist || "BVS Radio"}
+              </p>
+              <p className="mt-2 tabular-nums text-xs text-white/70 sm:mt-3 sm:text-sm" aria-live="polite">
+                {player.duration > 0
+                  ? `${formatTime(player.elapsed)} / ${formatTime(player.duration)}`
+                  : player.isPlaying
+                    ? "Loading time…"
+                    : "— / —"}
+              </p>
+            </div>
+          </div>
 
           {player.error && <p className="mt-4 rounded-lg bg-red-500/10 p-3 text-sm text-red-300">{player.error}</p>}
           {player.notice && !player.error && (
             <p className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{player.notice}</p>
           )}
 
-          <div className="my-7 flex items-center justify-center gap-4 lg:justify-start">
+          <div className="my-5 flex flex-wrap items-center justify-center gap-2 sm:my-7 sm:gap-4 sm:justify-start">
             <button
               type="button"
               onClick={player.toggleShuffle}
@@ -77,7 +98,7 @@ export default function RadioPlayer() {
               type="button"
               onClick={player.toggle}
               disabled={!player.current}
-              className="grid h-20 w-20 place-items-center rounded-full bg-brand text-2xl text-black disabled:opacity-40"
+              className="grid h-14 w-14 place-items-center rounded-full bg-brand text-xl text-black disabled:opacity-40 sm:h-20 sm:w-20 sm:text-2xl"
               aria-label={player.isPlaying ? "Pause" : "Play"}
             >
               {player.isPlaying ? "Ⅱ" : "▶"}
@@ -95,7 +116,7 @@ export default function RadioPlayer() {
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
             <button
               type="button"
               onClick={() => player.setQueueOpen(true)}
@@ -113,7 +134,7 @@ export default function RadioPlayer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 bg-black/20 p-5 lg:border-l lg:border-t-0">
+        <div className="border-t border-white/10 bg-black/20 p-4 sm:p-5 lg:border-l lg:border-t-0">
           <div className="mb-3 flex items-center justify-between gap-2">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">Up next</p>
@@ -123,7 +144,7 @@ export default function RadioPlayer() {
               Clear
             </button>
           </div>
-          <ol className="max-h-[22rem] space-y-1 overflow-y-auto pr-1">
+          <ol className="max-h-[18rem] space-y-1 overflow-y-auto pr-1 sm:max-h-[22rem]">
             {player.upNext.length === 0 && (
               <li className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm text-text-secondary">
                 Queue empty{player.autoplay ? " — auto-play will refill." : "."}
@@ -131,14 +152,9 @@ export default function RadioPlayer() {
             )}
             {player.upNext.map((item, i) => (
               <li key={item.key} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5">
-                <span className="w-5 text-center text-[11px] text-text-secondary">{i + 1}</span>
+                <span className="w-5 shrink-0 text-center text-[11px] text-text-secondary">{i + 1}</span>
                 <button type="button" onClick={() => player.jumpToQueueItem(item.key)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                  <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-white/5">
-                    {item.track.artwork ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.track.artwork} alt="" className="h-full w-full object-cover" />
-                    ) : null}
-                  </span>
+                  <Cover src={item.track.artwork} className="h-10 w-10 rounded-md shadow-none" />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-medium">{item.track.title}</span>
                     <span className="block truncate text-xs text-text-secondary">
@@ -150,7 +166,7 @@ export default function RadioPlayer() {
                 <button
                   type="button"
                   onClick={() => player.removeFromQueue(item.key)}
-                  className="rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10"
+                  className="shrink-0 rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10"
                   aria-label="Remove"
                 >
                   ✕

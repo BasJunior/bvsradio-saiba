@@ -828,6 +828,38 @@ function ProgressLine({
   );
 }
 
+/** Fixed square cover slot so art never stretches or shifts layout on mobile. */
+function CoverArt({
+  src,
+  sizeClass = "h-12 w-12",
+  rounded = "rounded-lg",
+  label = "BVS",
+}: {
+  src?: string | null;
+  sizeClass?: string;
+  rounded?: string;
+  label?: string;
+}) {
+  return (
+    <span
+      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-white/[0.06] ${sizeClass} ${rounded}`}
+      aria-hidden={src ? true : undefined}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element -- dynamic covers from storage/local
+        <img
+          src={src}
+          alt=""
+          decoding="async"
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+      ) : (
+        <span className="select-none text-[9px] font-semibold tracking-wide text-text-secondary">{label}</span>
+      )}
+    </span>
+  );
+}
+
 function QueueSheet() {
   const player = useStationPlayer();
   if (!player.queueOpen) return null;
@@ -872,14 +904,7 @@ function QueueSheet() {
           <li key={item.key} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5">
             <span className="w-6 text-center text-xs text-text-secondary">{i + 1}</span>
             <button type="button" onClick={() => player.jumpToQueueItem(item.key)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md bg-white/5">
-                {item.track.artwork ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={item.track.artwork} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="grid h-full w-full place-items-center text-[9px] text-text-secondary">BVS</span>
-                )}
-              </span>
+              <CoverArt src={item.track.artwork} sizeClass="h-10 w-10" rounded="rounded-md" />
               <span className="min-w-0">
                 <span className="block truncate text-sm font-medium">{item.track.title}</span>
                 <span className="block truncate text-xs text-text-secondary">
@@ -903,10 +928,13 @@ function QueueSheet() {
                 key={trackKey(track)}
                 type="button"
                 onClick={() => player.playHistoryTrack(track)}
-                className="min-w-[140px] max-w-[160px] rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-left hover:border-brand/40"
+                className="flex w-[148px] shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-left hover:border-brand/40"
               >
-                <span className="block truncate text-xs font-medium">{track.title}</span>
-                <span className="block truncate text-[10px] text-text-secondary">{track.artist}</span>
+                <CoverArt src={track.artwork} sizeClass="h-9 w-9" rounded="rounded-md" />
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-medium">{track.title}</span>
+                  <span className="block truncate text-[10px] text-text-secondary">{track.artist}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -930,29 +958,26 @@ export function PersistentPlayer() {
             {player.error || player.notice}
           </p>
         )}
-        <div className="mx-auto flex h-20 max-w-7xl items-center gap-2 px-3 sm:gap-4 sm:px-6">
-          <button type="button" onClick={() => player.setQueueOpen(!player.queueOpen)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-            <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
-              {art ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={art} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="grid h-full w-full place-items-center text-[10px] text-text-secondary">BVS</span>
-              )}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
+        <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-2 px-2.5 sm:h-20 sm:gap-4 sm:px-6">
+          <button
+            type="button"
+            onClick={() => player.setQueueOpen(!player.queueOpen)}
+            className="flex min-w-0 flex-1 items-center gap-2.5 text-left sm:gap-3"
+          >
+            <CoverArt src={art} sizeClass="h-11 w-11 sm:h-12 sm:w-12" rounded="rounded-md sm:rounded-lg" />
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-brand sm:text-[10px] sm:tracking-[0.18em]">
                 {player.playingFrom || player.current?.project || "Continuous rotation"}
               </span>
-              <span className="block truncate font-medium">{player.current?.title || "BVS Radio rotation"}</span>
-              <span className="block truncate text-xs text-text-secondary">
-                {player.current?.artist || "BVS Radio"}
+              <span className="mt-0.5 block truncate text-sm font-medium sm:text-base">{player.current?.title || "BVS Radio rotation"}</span>
+              <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-text-secondary sm:text-xs">
+                <span className="truncate">{player.current?.artist || "BVS Radio"}</span>
                 {player.duration > 0 && (
-                  <span className="ml-2 tabular-nums text-white/50">
+                  <span className="hidden shrink-0 tabular-nums text-white/50 sm:inline">
                     {formatTime(player.elapsed)} / {formatTime(player.duration)}
                   </span>
                 )}
-                <span className="ml-2 text-white/40">· Queue {player.upNext.length}</span>
+                <span className="hidden shrink-0 text-white/40 sm:inline">· Queue {player.upNext.length}</span>
               </span>
             </span>
           </button>
