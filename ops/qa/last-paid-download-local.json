@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "reference": "BVS-LOCAL-PROOF-MRZ15APB",
+  "tokenOk": true,
+  "fileOk": true,
+  "fileBytes": 5298733,
+  "note": "Local paid order + token + staged MP3 path ready; prod API blocked by Vercel challenge from this host"
+}

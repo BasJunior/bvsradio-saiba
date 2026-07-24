@@ -1,34 +1,37 @@
-# Sprint 1 execution results — 2026-07-23
+# Sprint 1 execution results — updated 2026-07-24 (Telegram lane)
 
-**Commit:** `6d759c5` (+ follow-up commerce smoke fix)  
+**Commits:** `6d759c5` / `cec86c2` / **`94dd562`** (commerce paid-download path)  
 **Live:** https://bvsradio.com  
+**SQL:** packs 01–08 applied by Abias on project `rdwwyolrxahimcgpkzzy` (verified play **204**)
 
 | # | Outcome | Status | Evidence |
 |---|---------|--------|----------|
-| 1 | Dirty-tree integrate | **Done** | 56 files committed & pushed; temps removed |
-| 2 | Schema + auth roles | **Partial** | Auth pages live, no `localhost` in HTML. Schema REST verify **blocked**: Vercel sensitive env not injectable via CLI; no `DATABASE_URL` secret for agent apply. Play RPC returns **503** (function/schema not confirmed). |
-| 3 | FAQ + WIP ship | **Done** | `/faq` **200** with FAQ content; nav + footer links; ThemeToggle shipped |
-| 4 | Player like/shuffle/repeat/recovery | **Done** | Live HTML: `Save to library`, `Shuffle off`, `Repeat off`, auto-skip on media error in code |
-| 5 | Payment → download | **Partial** | Checkout config OK; order **BVS-20260723-PDZUJ** created (WhatsApp path); invalid download **403**. Full paid→file needs product staging + mark paid (sandbox keys / products dir). |
-| 6 | Monitoring + errors | **Done** | `scripts/synthetic-monitor.sh` → SYNTHETIC_OK; ClientErrorBeacon; FRIDAY_WILD.md |
-| 7 | Submit→rotation→playcount | **Partial** | Upload/studio/editorial/play routes live; play count RPC **503** until schema pack applied |
+| 1 | Dirty-tree integrate | **Done** | 56 files on `main` |
+| 2 | Schema + auth roles | **Done enough** | Packs 1–8 applied; play RPC **204**; auth pages no localhost. Multi-role matrix not fully automated. |
+| 3 | FAQ + WIP ship | **Done** | `/faq` **200**; ThemeToggle; nav/footer |
+| 4 | Player like/shuffle/repeat/recovery | **Done** | Live controls verified (WhatsApp lane also touched StationPlayer 2026-07-24) |
+| 5 | Payment → download | **Code shipped; prod proof blocked** | `94dd562`: orders load/update via Supabase; webhooks + `/api/download` use it. Local token+paid order+MP3 **OK** (`ops/qa/last-paid-download-local.json`). Live create_order from VPS returned **403 Vercel challenge** — need browser/sandbox pass after deploy Ready. |
+| 6 | Monitoring + errors | **Done** | Synthetic OK + cron; ClientErrorBeacon |
+| 7 | Submit→approve→rotation→playcount | **Mostly (user tested submit)** | Abias: **submission test as bvsadmin**. Play tracking RPC works. Full chain still: confirm editorial saw it → approve/publish/rotation → play_count increments in studio. |
 
-## Synthetic monitor (pass)
+## Collision note (2026-07-24 ~16:10–16:20 Berlin)
 
-All OK: home, radio, catalogue, faq, checkout, checkout config, manifest, SW, audio range 206.
+- WhatsApp agent session `80b211c6…` was active on **StationPlayer / catalogue** (browser + apply_patch + build/commit).
+- Telegram lane **did not edit** `StationPlayer.tsx`; owned commerce #5 only.
+- WhatsApp commit seen on main: `eda21ae fix(player): make catalogue audio claim unconditional`.
 
-## Blockers for Abias (one-time)
+## What Abias closed
 
-1. `~/.openclaw/secrets/bvs-supabase-db.env` with `DATABASE_URL` → agents run `apply-supabase-packs.py --apply-missing --yes`  
-2. Confirm Supabase SQL packs on production (or let agent apply after #1)  
-3. Optional: stage a file under products path for paid download demo; Stripe/Paynow test charge  
+- SQL packs 1–8 in Supabase SQL Editor  
+- Submission test with **bvsadmin** (submit leg of #7)
 
-## Commands after DATABASE_URL
+## Still open
 
-```bash
-cd ~/.openclaw/workspace/bvsradio
-python3 scripts/apply-supabase-packs.py --apply-missing --yes
-python3 scripts/verify-supabase-schema.py --full
-bash scripts/synthetic-monitor.sh
-node scripts/commerce-smoke.mjs
-```
+1. **#5 live proof** — after Vercel Ready + no challenge: run `node scripts/commerce-paid-download-proof.mjs` (or one real Stripe test card).
+2. **#7 tail** — editorial approve + rotation + play_count if not already done in bvsadmin test.
+3. **Ops unlock** — still **missing** `~/.openclaw/secrets/bvs-supabase-db.env` (`DATABASE_URL`). Only `.example` present. One-time Abias paste of DB URI unlocks agent SQL apply/verify.
+
+## Synthetic (last recheck)
+
+Home/radio/catalogue/faq/checkout/manifest/sw + audio range 206 — OK (earlier).  
+2026-07-24 afternoon: direct VPS curls to bvsradio.com hit **Vercel Security Checkpoint 403** — do not treat as product down without browser check.
