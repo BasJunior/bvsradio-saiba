@@ -43,10 +43,12 @@ export async function GET(request: Request) {
   // public published beats for catalogue / BeatStore
   const beats = await listPublishedBeats(60)
   const shaped = beats.map((b) => {
-    const licences = (b.beat_licence_options || []).filter((l) => l.is_active && !l.is_sold_out)
-    const starting = licences.length
-      ? Math.min(...licences.map((l) => Number(l.price_usd) || 0))
-      : null
+    const licences = (b.beat_licence_options || []).filter((l) => l.is_active !== false && !l.is_sold_out)
+    const priced = licences
+      .map((l) => Number(l.price_usd))
+      .filter((n) => Number.isFinite(n) && n > 0)
+    // Keep published beats visible even if licence row is missing/misconfigured
+    const starting = priced.length ? Math.min(...priced) : 29
     return {
       id: b.id,
       title: b.title,
@@ -65,7 +67,7 @@ export async function GET(request: Request) {
       created_at: b.created_at,
     }
   })
-  return NextResponse.json({ beats: shaped })
+  return NextResponse.json({ beats: shaped, count: shaped.length })
 }
 
 export async function POST(request: Request) {

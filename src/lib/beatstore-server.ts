@@ -141,16 +141,36 @@ export async function listBeatsForProducer(userId: string) {
 }
 
 export async function listPublishedBeats(limit = 48) {
-  const res = await fetch(
+  // Prefer embed with licences; fall back if relationship/filter fails so published beats still show.
+  const withLicences = await fetch(
     creatorUrl(
-      `beats?is_public=eq.true&status=eq.published&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,created_at,published_at,beat_licence_options!inner(id,licence_code,licence_name,price_usd,currency,is_active,is_sold_out)&beat_licence_options.is_active=eq.true&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
+      `beats?is_public=eq.true&status=eq.published&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,created_at,published_at,beat_licence_options(id,licence_code,licence_name,price_usd,currency,is_active,is_sold_out)&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
     ),
     { headers: creatorHeaders, cache: 'no-store' },
   )
-  if (!res.ok) return []
-  return (await res.json()) as Array<
-    BeatRow & { beat_licence_options?: BeatLicenceRow[] }
-  >
+  if (withLicences.ok) {
+    const rows = (await withLicences.json()) as Array<
+      BeatRow & { beat_licence_options?: BeatLicenceRow[] }
+    >
+    return rows.map((row) => ({
+      ...row,
+      beat_licence_options: (row.beat_licence_options || []).filter((l) => l.is_active !== false),
+    }))
+  }
+
+  console.error('listPublishedBeats embed failed', withLicences.status, await withLicences.text().catch(() => ''))
+
+  const plain = await fetch(
+    creatorUrl(
+      `beats?is_public=eq.true&status=eq.published&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,created_at,published_at&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
+    ),
+    { headers: creatorHeaders, cache: 'no-store' },
+  )
+  if (!plain.ok) {
+    console.error('listPublishedBeats plain failed', plain.status, await plain.text().catch(() => ''))
+    return []
+  }
+  return (await plain.json()) as Array<BeatRow & { beat_licence_options?: BeatLicenceRow[] }>
 }
 
 export async function listSubmittedBeats(limit = 100) {

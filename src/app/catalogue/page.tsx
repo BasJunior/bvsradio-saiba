@@ -480,10 +480,14 @@ export default function CataloguePage() {
   })
   const [genreFilter, setGenreFilter] = useState('All')
   const [collectionJump, setCollectionJump] = useState('')
-  const [typeFilter, setTypeFilter] = useState<'all' | TrackType>(() => {
-    if (typeof window === 'undefined') return 'all'
+  /** Music nav defaults to non-beats; Beats nav forces type=beat. */
+  const [typeFilter, setTypeFilter] = useState<'music' | 'beat' | 'all' | TrackType>(() => {
+    if (typeof window === 'undefined') return 'music'
     const requestedType = new URLSearchParams(window.location.search).get('type')
-    return requestedType === 'single' || requestedType === 'beat' || requestedType === 'mix' ? requestedType : 'all'
+    if (requestedType === 'beat') return 'beat'
+    if (requestedType === 'single' || requestedType === 'mix') return requestedType
+    if (requestedType === 'all') return 'all'
+    return 'music'
   })
   const [selectedTrack, setSelectedTrack] = useState<Track | null>(null)
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null)
@@ -574,9 +578,24 @@ export default function CataloguePage() {
 
   const allTracks = useMemo(() => [...dbBeats, ...tracks], [dbBeats, tracks])
 
+  const isBeatListing = (track: Track) =>
+    track.type === 'beat' || Boolean(track.producerBeat)
+
+  const isMusicListing = (track: Track) => !isBeatListing(track)
+
+  const scopeTracks = useMemo(() => {
+    // Beats lane: producer beats + typed beat licences only (never BVS archive songs)
+    if (typeFilter === 'beat') return allTracks.filter(isBeatListing)
+    // Music lane default: songs/streams/archive — exclude beats
+    if (typeFilter === 'music' || typeFilter === 'single' || typeFilter === 'mix') {
+      return allTracks.filter(isMusicListing)
+    }
+    return allTracks
+  }, [allTracks, typeFilter])
+
   const genres = useMemo(
-    () => ['All', ...Array.from(new Set(allTracks.map((track) => track.genre)))],
-    [allTracks],
+    () => ['All', ...Array.from(new Set(scopeTracks.map((track) => track.genre)))],
+    [scopeTracks],
   )
 
   const jumpToCollection = (collectionName: string) => {
@@ -585,8 +604,14 @@ export default function CataloguePage() {
     if (collectionName === 'Producer Picks') {
       setSearch('')
       setTypeFilter('beat')
+      if (typeof window !== 'undefined') {
+        const url = new URL(window.location.href)
+        url.searchParams.set('type', 'beat')
+        window.history.replaceState({}, '', `${url.pathname}?type=beat#beatstore`)
+      }
     } else {
       setSearch(collectionName)
+      if (typeFilter === 'beat') setTypeFilter('music')
       setTypeFilter('all')
     }
     window.requestAnimationFrame(() => {
@@ -597,7 +622,7 @@ export default function CataloguePage() {
   const filteredTracks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
 
-    return allTracks.filter((track) => {
+    return scopeTracks.filter((track) => {
       const matchesSearch =
         !normalizedSearch ||
         [track.title, track.artist, track.collection, track.genre].some((field) =>
@@ -605,16 +630,28 @@ export default function CataloguePage() {
         )
 
       const matchesGenre = genreFilter === 'All' || track.genre === genreFilter
-      const matchesType = typeFilter === 'all' || track.type === typeFilter
+      // typeFilter music/beat already applied in scopeTracks; single/mix narrow further
+      const matchesType =
+        typeFilter === 'all' ||
+        typeFilter === 'music' ||
+        typeFilter === 'beat' ||
+        track.type === typeFilter
       return matchesSearch && matchesGenre && matchesType
     })
-  }, [allTracks, genreFilter, search, typeFilter])
+  }, [scopeTracks, genreFilter, search, typeFilter])
+
+  const openExternalStream = (track: Track) => {
+    if (!track.externalUrl) return
+    window.open(track.externalUrl, '_blank', 'noopener,noreferrer')
+  }
 
   const previewTrack = (track: Track) => {
-    if (track.streamOnly && !track.src && track.externalUrl) {
-      window.open(track.externalUrl, '_blank', 'noopener,noreferrer')
+    // Stream-only without a hostable clip: no fake "open stream" here — caller uses Open stream.
+    if (track.streamOnly && !track.src) {
       return
     }
+
+    if (!track.src) return
 
     if (currentTrack?.id === track.id && isPlaying) {
       audioRef.current?.pause()
@@ -710,27 +747,74 @@ export default function CataloguePage() {
   }
 
   const collectionTracks = selectedTrack
-    ? tracks.filter((track) => track.collection === selectedTrack.collection)
+    ? allTracks.filter((track) => {
+        if (track.collection !== selectedTrack.collection) return false
+        // Keep same-lane siblings: beats with beats, music with music
+        if (isBeatListing(selectedTrack)) return isBeatListing(track)
+        return isMusicListing(track)
+      })
     : []
+
+  const beatsMode = typeFilter === 'beat'
+  const musicCount = allTracks.filter(isMusicListing).length
+  const beatCount = allTracks.filter(isBeatListing).length
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 pb-28">
       <section className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-end mb-10">
         <div>
-          <p className="text-xs tracking-[3px] text-brand uppercase mb-3">BVS Catalogue</p>
-          <h1 className="text-5xl font-semibold mb-4">Real tracks from the BVS library.</h1>
+          <p className="text-xs tracking-[3px] text-brand uppercase mb-3">{beatsMode ? 'BVS BeatStore' : 'BVS Music'}</p>
+          <h1 className="text-5xl font-semibold mb-4">
+            {beatsMode ? 'Beats for artists and producers.' : 'Music from the BVS library.'}
+          </h1>
           <p className="max-w-2xl text-text-secondary text-lg">
-            Preview available BVS archive audio, producer packs and Spotify releases. Product labels make clear whether you are buying a personal download, starting a beat-licensing order, or opening a stream.
+            {beatsMode
+              ? 'Producer beat licences only — no archive songs mixed in. Preview tagged clips on BVS, then lease when ready.'
+              : 'Songs, archive cuts, and streaming discovery. Beats live under Beats — not mixed into Music.'}
           </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter('music')
+                setSearch('')
+                setGenreFilter('All')
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href)
+                  url.searchParams.delete('type')
+                  window.history.replaceState({}, '', url.pathname + (url.hash || ''))
+                }
+              }}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${!beatsMode ? 'bg-brand text-black' : 'border border-white/15 text-text-secondary hover:bg-white/5'}`}
+            >
+              Music · {musicCount}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTypeFilter('beat')
+                setSearch('')
+                setGenreFilter('All')
+                if (typeof window !== 'undefined') {
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('type', 'beat')
+                  window.history.replaceState({}, '', `${url.pathname}?type=beat#beatstore`)
+                }
+              }}
+              className={`rounded-full px-4 py-2 text-sm font-semibold ${beatsMode ? 'bg-brand text-black' : 'border border-white/15 text-text-secondary hover:bg-white/5'}`}
+            >
+              Beats · {beatCount}
+            </button>
+          </div>
         </div>
 
         <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/10">
-          <Image src="/images/mic-closeup.jpg" alt="BVS Radio studio microphone" fill className="object-cover" priority />
+          <Image src={beatsMode ? '/images/hero-studio.jpg' : '/images/mic-closeup.jpg'} alt="" fill className="object-cover" priority />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
           <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
             <div>
-              <div className="text-3xl font-semibold">{tracks.length}</div>
-              <div className="text-sm text-text-secondary">featured cuts</div>
+              <div className="text-3xl font-semibold">{beatsMode ? beatCount : musicCount}</div>
+              <div className="text-sm text-text-secondary">{beatsMode ? 'beat listings' : 'music titles'}</div>
             </div>
             <Link href="/radio" className="rounded-full bg-white px-5 py-2 text-sm font-semibold text-black hover:bg-brand">
               Open Radio
@@ -739,13 +823,14 @@ export default function CataloguePage() {
         </div>
       </section>
 
+      {beatsMode && (
       <section id="beatstore" className="mb-10 scroll-mt-24 rounded-3xl border border-white/10 bg-bg-card/45 p-5 sm:p-7">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[3px] text-brand">Browse BeatStore</p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight">Browse beats from your favorite producer.</h2>
             <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-              Each producer library groups the catalogue like a crate: jump straight into WolfBrx beats, soulful packs, or featured artist projects without changing how the page works.
+              Producer crates only. BVS archive songs stay on Music — not here.
             </p>
           </div>
           <button
@@ -777,7 +862,7 @@ export default function CataloguePage() {
                 <h3 className="text-lg font-semibold group-hover:text-brand">{library.name}</h3>
                 <p className="mt-2 text-sm text-text-secondary">{library.detail}</p>
                 <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
-                  <button type="button" onClick={() => { setSearch(library.query); setGenreFilter('All'); setTypeFilter(library.query.includes('Projects') ? 'all' : 'beat') }} className="text-brand hover:underline">Browse music →</button>
+                  <button type="button" onClick={() => { setSearch(library.query); setGenreFilter('All'); setTypeFilter('beat') }} className="text-brand hover:underline">Browse beats →</button>
                   <Link href={library.href} className="text-text-secondary hover:text-brand">Producer bio</Link>
                 </div>
               </div>
@@ -785,6 +870,7 @@ export default function CataloguePage() {
           ))}
         </div>
       </section>
+      )}
 
       <section className="mb-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {collectionCards.map((collection) => (
@@ -851,15 +937,31 @@ export default function CataloguePage() {
           ))}
         </select>
         <select
-          value={typeFilter}
-          onChange={(event) => setTypeFilter(event.target.value as 'all' | TrackType)}
+          value={typeFilter === 'single' || typeFilter === 'mix' ? typeFilter : beatsMode ? 'beat' : 'music'}
+          onChange={(event) => {
+            const value = event.target.value as 'music' | 'beat' | 'single' | 'mix'
+            setTypeFilter(value)
+            if (typeof window !== 'undefined') {
+              const url = new URL(window.location.href)
+              if (value === 'beat') {
+                url.searchParams.set('type', 'beat')
+                window.history.replaceState({}, '', `${url.pathname}?type=beat#beatstore`)
+              } else if (value === 'music') {
+                url.searchParams.delete('type')
+                window.history.replaceState({}, '', url.pathname)
+              } else {
+                url.searchParams.set('type', value)
+                window.history.replaceState({}, '', `${url.pathname}?${url.searchParams.toString()}`)
+              }
+            }
+          }}
           aria-label="Filter by content type"
           className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
         >
-          <option value="all">All content</option>
+          <option value="music">Music only</option>
           <option value="single">Track downloads</option>
-          <option value="mix">Archive downloads</option>
-          <option value="beat">Beat licences</option>
+          <option value="mix">Archive & streams</option>
+          <option value="beat">Beats only</option>
         </select>
         <Link href="/checkout" className="rounded-xl bg-brand px-5 py-3.5 text-center text-sm font-semibold text-black shadow-lg shadow-brand/10 hover:bg-brand-light">
           View cart · {cart.length}
@@ -868,8 +970,8 @@ export default function CataloguePage() {
         </div>
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
-            <p className="text-xs uppercase tracking-[2px] text-brand">BVS catalogue</p>
-            <h2 className="mt-1 text-3xl font-semibold tracking-tight">{search ? `Results for “${search}”` : 'Browse all music'}</h2>
+            <p className="text-xs uppercase tracking-[2px] text-brand">{beatsMode ? 'Beat licences' : 'Music catalogue'}</p>
+            <h2 className="mt-1 text-3xl font-semibold tracking-tight">{search ? `Results for “${search}”` : beatsMode ? 'Browse beats' : 'Browse music'}</h2>
           </div>
           <span className="flex-shrink-0 text-sm text-text-secondary">{filteredTracks.length} {filteredTracks.length === 1 ? 'result' : 'results'}</span>
         </div>
@@ -913,31 +1015,57 @@ export default function CataloguePage() {
                   </span>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => previewTrack(track)}
-                    className="flex-1 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black hover:bg-brand-dark"
-                  >
-                    {track.streamOnly && !track.src ? 'Open' : active ? 'Pause' : 'Preview'}
-                  </button>
-                  {track.src && !track.streamOnly && (
+                  {track.streamOnly ? (
+                    <>
+                      {track.src ? (
+                        <button
+                          type="button"
+                          onClick={() => previewTrack(track)}
+                          className="flex-1 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black hover:bg-brand-dark"
+                        >
+                          {active ? 'Pause preview' : 'Preview stream'}
+                        </button>
+                      ) : null}
+                      {track.externalUrl ? (
+                        <a
+                          href={track.externalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`${track.src ? '' : 'flex-1 '}rounded-full border border-[#1DB954]/50 bg-[#1DB954]/15 px-3 py-2 text-center text-xs font-semibold text-[#1DB954] hover:bg-[#1DB954]/25`}
+                        >
+                          Open stream
+                        </a>
+                      ) : null}
+                    </>
+                  ) : (
                     <>
                       <button
                         type="button"
-                        onClick={() => queueAction('play', track)}
-                        className="rounded-full border border-brand/40 px-3 py-2 text-xs text-brand hover:bg-brand/10"
-                        title="Play in site player"
+                        onClick={() => previewTrack(track)}
+                        className="flex-1 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black hover:bg-brand-dark"
                       >
-                        Play
+                        {active ? 'Pause' : 'Preview'}
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => queueAction('play-next', track)}
-                        className="rounded-full border border-white/20 px-3 py-2 text-xs hover:bg-white/5"
-                        title="Play next"
-                      >
-                        Next
-                      </button>
+                      {track.src && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => queueAction('play', track)}
+                            className="rounded-full border border-brand/40 px-3 py-2 text-xs text-brand hover:bg-brand/10"
+                            title="Play in site player"
+                          >
+                            Play
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAction('play-next', track)}
+                            className="rounded-full border border-white/20 px-3 py-2 text-xs hover:bg-white/5"
+                            title="Play next"
+                          >
+                            Next
+                          </button>
+                        </>
+                      )}
                     </>
                   )}
                   <button
@@ -1091,58 +1219,75 @@ export default function CataloguePage() {
                 </div>
 
                 <div className="mt-auto flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => previewTrack(selectedTrack)}
-                    className="flex-1 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black hover:bg-brand-dark"
-                  >
-                    {selectedTrack.streamOnly && !selectedTrack.src ? 'Open Stream' : currentTrack?.id === selectedTrack.id && isPlaying ? 'Pause Preview' : 'Preview Track'}
-                  </button>
-                  {selectedTrack.src && !selectedTrack.streamOnly && (
+                  {selectedTrack.streamOnly ? (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => queueAction('play', selectedTrack)}
-                        className="flex-1 rounded-full border border-brand/40 px-5 py-3 text-sm font-semibold text-brand hover:bg-brand/10"
-                      >
-                        Play on BVS
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => queueAction('play-next', selectedTrack)}
-                        className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
-                      >
-                        Play next
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => queueAction('add', selectedTrack)}
-                        className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
-                      >
-                        Add to queue
-                      </button>
-                      {collectionTracks.length > 1 && (
+                      {selectedTrack.src ? (
                         <button
                           type="button"
-                          onClick={() => queueAction('play-all', selectedTrack, collectionTracks)}
-                          className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                          onClick={() => previewTrack(selectedTrack)}
+                          className="flex-1 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black hover:bg-brand-dark"
                         >
-                          Play collection
+                          {currentTrack?.id === selectedTrack.id && isPlaying ? 'Pause preview stream' : 'Preview stream'}
                         </button>
+                      ) : (
+                        <p className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-secondary">
+                          No on-site clip yet — open the full stream on the platform.
+                        </p>
+                      )}
+                      {selectedTrack.externalUrl && (
+                        <a
+                          href={selectedTrack.externalUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-1 items-center justify-center rounded-full bg-[#1DB954] px-5 py-3 text-center text-sm font-semibold text-black hover:bg-[#1ed760]"
+                        >
+                          Open stream
+                        </a>
                       )}
                     </>
-                  )}
-                  {selectedTrack.streamOnly && selectedTrack.externalUrl ? (
-                    <Link
-                      href={selectedTrack.externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex flex-1 items-center justify-center rounded-full bg-[#1DB954] px-5 py-3 text-center text-sm font-semibold text-black hover:bg-[#1ed760]"
-                    >
-                      Open stream
-                    </Link>
                   ) : (
                     <>
+                      <button
+                        type="button"
+                        onClick={() => previewTrack(selectedTrack)}
+                        className="flex-1 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black hover:bg-brand-dark"
+                      >
+                        {currentTrack?.id === selectedTrack.id && isPlaying ? 'Pause preview' : 'Preview track'}
+                      </button>
+                      {selectedTrack.src && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => queueAction('play', selectedTrack)}
+                            className="flex-1 rounded-full border border-brand/40 px-5 py-3 text-sm font-semibold text-brand hover:bg-brand/10"
+                          >
+                            Play on BVS
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAction('play-next', selectedTrack)}
+                            className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                          >
+                            Play next
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => queueAction('add', selectedTrack)}
+                            className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                          >
+                            Add to queue
+                          </button>
+                          {collectionTracks.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => queueAction('play-all', selectedTrack, collectionTracks)}
+                              className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                            >
+                              Play collection
+                            </button>
+                          )}
+                        </>
+                      )}
                       <button
                         type="button"
                         onClick={() => addToCart(selectedTrack)}
