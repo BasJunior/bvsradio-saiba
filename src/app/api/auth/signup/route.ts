@@ -48,12 +48,41 @@ function productionConfirmUrl() {
     : redirectTo
 }
 
+function mapVerifyType(raw: unknown, fallback: string): string {
+  const value = String(raw || fallback || 'signup').toLowerCase()
+  if (value.includes('magic')) return 'magiclink'
+  if (value.includes('recovery') || value.includes('reset')) return 'recovery'
+  if (value.includes('invite')) return 'invite'
+  if (value.includes('email_change') || value.includes('email_change_current') || value.includes('email_change_new')) {
+    return 'email_change'
+  }
+  return 'signup'
+}
+
+/**
+ * Prefer a first-party bvsradio.com link with token_hash.
+ * That way the member never lands on supabase.co/verify (which can bounce
+ * to localhost when Supabase Site URL is still misconfigured).
+ */
+function buildFirstPartyConfirmUrl(data: any, requestedType: string, safeRedirect: string): string | null {
+  const props = data?.properties || data || {}
+  const tokenHash = props.hashed_token || data?.hashed_token
+  if (!tokenHash) return null
+
+  const type = mapVerifyType(props.verification_type || data?.verification_type, requestedType)
+  const url = new URL(safeRedirect)
+  url.searchParams.set('token_hash', String(tokenHash))
+  url.searchParams.set('type', type)
+  return url.toString()
+}
+
 function sanitizeActionLink(actionLink: string, safeRedirect: string) {
   let cleaned = String(actionLink)
   try {
     const u = new URL(cleaned)
+    // If Supabase still emitted a verify URL, force redirect_to onto production.
     const redirect = u.searchParams.get('redirect_to')
-    if (redirect && /localhost|127\.0\.0\.1/i.test(redirect)) {
+    if (!redirect || /localhost|127\.0\.0\.1/i.test(redirect)) {
       u.searchParams.set('redirect_to', safeRedirect)
       cleaned = u.toString()
     }
@@ -66,31 +95,46 @@ function sanitizeActionLink(actionLink: string, safeRedirect: string) {
 async function generateConfirmLink(email: string) {
   const safeRedirect = productionConfirmUrl()
 
-  const attempts: Array<Record<string, unknown>> = [
+  const attempts: Array<{ type: string; body: Record<string, unknown> }> = [
     {
       type: 'signup',
-      email,
-      options: { redirect_to: safeRedirect },
-      redirect_to: safeRedirect,
+      body: {
+        type: 'signup',
+        email,
+        options: { redirect_to: safeRedirect },
+        redirect_to: safeRedirect,
+      },
     },
     {
       type: 'magiclink',
-      email,
-      options: { redirect_to: safeRedirect },
-      redirect_to: safeRedirect,
+      body: {
+        type: 'magiclink',
+        email,
+        options: { redirect_to: safeRedirect },
+        redirect_to: safeRedirect,
+      },
     },
   ]
 
   let lastError = 'Could not create confirmation link'
-  for (const body of attempts) {
+  for (const attempt of attempts) {
     const { res, data } = await supabaseAdmin('/auth/v1/admin/generate_link', {
       method: 'POST',
-      body: JSON.stringify(body),
+      body: JSON.stringify(attempt.body),
     })
     if (!res.ok) {
       lastError = data?.msg || data?.message || lastError
       continue
     }
+
+    const firstParty = buildFirstPartyConfirmUrl(data, attempt.type, safeRedirect)
+    if (firstParty) {
+      return {
+        actionLink: firstParty,
+        redirectTo: safeRedirect,
+      }
+    }
+
     const finalLink = data?.action_link || data?.properties?.action_link
     if (!finalLink) {
       lastError = 'Confirmation link was not returned by auth service'

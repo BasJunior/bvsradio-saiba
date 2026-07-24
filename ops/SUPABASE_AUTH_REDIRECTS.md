@@ -53,7 +53,9 @@ Without custom SMTP, Supabase only mails project team addresses and rate-limits 
 ## App behaviour (after deploy)
 
 - **Signup confirmation emails are sent by BVS** (`contact@bvsradio.com` via IONOS SMTP), not the default Supabase Auth mailer.
-- `/api/auth/signup` creates the user, generates a Supabase confirm link with `redirect_to=https://bvsradio.com/auth/confirmed`, rewrites any localhost redirect, and emails the link.
+- `/api/auth/signup` creates the user, generates a Supabase token via admin `generate_link`, and emails a **first-party** link:
+  `https://bvsradio.com/auth/confirmed?token_hash=...&type=signup|magiclink`
+  so members never have to open `*.supabase.co/auth/v1/verify` (that hop was still able to bounce to localhost when Site URL was wrong).
 - Resend uses the same BVS mail path (`resendOnly: true`).
 - Password reset still uses client `resetPasswordForEmail` with `emailRedirectTo` to **https://bvsradio.com/auth/reset-password**.
 - `/auth/confirmed` handles `code`, `token_hash`, hash tokens, and Supabase error query params.
