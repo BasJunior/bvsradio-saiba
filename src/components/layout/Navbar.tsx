@@ -48,23 +48,20 @@ export default function Navbar() {
     window.location.href = '/'
   }
 
+  // Keep primary nav short — secondary paths live in footer / artist menu / search.
   const navLinks = [
     { href: '/radio', label: 'Listen' },
     { href: '/catalogue', label: 'Music' },
-    { href: '/catalogue?type=beat#beatstore', label: 'Browse BeatStore' },
+    { href: '/catalogue?type=beat#beatstore', label: 'Beats' },
     { href: '/shows', label: 'Shows' },
-    { href: '/community', label: 'Community' },
-    { href: '/blog', label: 'Discover' },
-    { href: '/faq', label: 'FAQ' },
+    { href: '/blog', label: 'Stories' },
   ]
 
   const artistLinks = [
     { href: '/artists', label: 'Artist access' },
     { href: '/upload', label: 'Submit music' },
-    { href: '/catalogue?type=beat#beatstore', label: 'Browse BeatStore' },
-    { href: '/shop', label: 'Mixing & mastering' },
-    { href: '/upload#requirements', label: 'Submission requirements' },
-    { href: '/shop#services', label: 'Services & pricing' },
+    { href: '/catalogue?type=beat#beatstore', label: 'BeatStore' },
+    { href: '/shop', label: 'Services' },
   ]
 
   const showArtist = Boolean(access?.artist)
@@ -86,7 +83,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-6 text-sm">
+        <div className="hidden md:flex items-center gap-5 text-sm font-medium tracking-wide">
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href} className="text-text-secondary hover:text-brand transition-colors">
               {link.label}
@@ -117,41 +114,39 @@ export default function Navbar() {
               </div>
             )}
           </div>
-          <Link href="/search" aria-label="Search BVS" className="text-text-secondary hover:text-brand transition-colors">
-            Search
-          </Link>
         </div>
 
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/library" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
+          <Link href="/search" aria-label="Search BVS" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
+            Search
+          </Link>
+          <Link href="/library" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
             Library
           </Link>
-          <Link href="/checkout" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
+          <Link href="/checkout" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
             Cart
           </Link>
           {user ? (
             <>
-              {showCreator && <Link href="/creator/studio" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>}
-              {showEditorial && <Link href="/admin/editorial" className="px-3 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
-              <span className="max-w-[10rem] truncate px-2 text-sm text-text-secondary" title={user.email || ''}>
-                {user.email}
-              </span>
+              {showCreator && <Link href="/creator/studio" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>}
+              {showEditorial && <Link href="/admin/editorial" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
               <button
                 type="button"
                 onClick={signOut}
-                className="px-4 py-2 text-sm text-text-primary hover:text-brand transition-colors"
+                className="ml-1 px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors"
+                title={user.email || 'Sign out'}
               >
                 Sign out
               </button>
             </>
           ) : (
             <>
-              <Link href="/auth/login" className="px-4 py-2 text-sm text-text-primary hover:text-brand transition-colors">
-                Sign In
+              <Link href="/auth/login" className="px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors">
+                Sign in
               </Link>
               <Link href="/auth/signup" className="px-4 py-2 text-sm font-medium bg-brand text-black rounded-full hover:bg-brand-dark transition-colors">
-                Join Free
+                Join
               </Link>
             </>
           )}
