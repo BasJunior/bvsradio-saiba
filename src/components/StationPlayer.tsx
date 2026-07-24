@@ -100,9 +100,9 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
   useEffect(() => {
     const releaseStationAudio = (event: Event) => {
       const owner = (event as CustomEvent<{ owner?: string }>).detail?.owner;
-      if (owner !== "catalogue" || !audio.current || !isPlaying) return;
+      if (owner !== "catalogue" || !audio.current) return;
       audio.current.pause();
-      flushListening();
+      if (isPlaying) flushListening();
       setPlaying(false);
     };
 
