@@ -43,7 +43,6 @@ export default function ForgotPasswordPage() {
         <div className="text-center mb-10">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
             <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-14 w-auto rounded-md object-contain" priority />
-            <span className="text-2xl font-bold text-brand">BVS Radio</span>
           </Link>
           <h1 className="text-3xl font-bold">Reset password</h1>
           <p className="text-text-secondary mt-1">We will email you a link to choose a new password.</p>
