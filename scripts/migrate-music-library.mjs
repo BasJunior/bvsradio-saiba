@@ -61,20 +61,23 @@ for (const file of files) {
   const lookup = await fetch(`${url}/rest/v1/tracks?file_url=eq.${encodeURIComponent(fileUrl)}&select=id&limit=1`, { headers: auth })
   if (!lookup.ok) throw new Error(await lookup.text())
   const existing = await lookup.json()
-  if (!existing.length) {
-    const upload = await fetch(`${url}/storage/v1/object/bvsradio-audio/${object}`, {
-      method: 'POST', headers: { ...auth, 'Content-Type': 'audio/mpeg', 'x-upsert': 'true' },
-      body: await fs.readFile(path.join(root, 'public', 'music', file)),
-    })
-    if (!upload.ok) throw new Error(`Upload ${file}: ${await upload.text()}`)
+  // Never overwrite editorial decisions (reject/approve/rotation). Insert-only.
+  if (existing.length) {
+    process.stdout.write(`Skip existing (editorial preserved): ${file}\n`)
+    continue
   }
+  const upload = await fetch(`${url}/storage/v1/object/bvsradio-audio/${object}`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'audio/mpeg', 'x-upsert': 'true' },
+    body: await fs.readFile(path.join(root, 'public', 'music', file)),
+  })
+  if (!upload.ok) throw new Error(`Upload ${file}: ${await upload.text()}`)
   const payload = { user_id: owner.id, title: title(file), artist_name: 'BVS archive', genre: 'BVS archive',
     description: 'Preserved BVS Radio archive recording.', file_url: fileUrl,
     artwork_url: '/music/Bvs-3000x3000%202.png', is_public: true, is_featured: false,
     editorial_status: 'approved', in_rotation: true, rotation_added_at: new Date().toISOString(),
     reviewed_by: owner.id, reviewed_at: new Date().toISOString() }
-  const save = await fetch(existing.length ? `${url}/rest/v1/tracks?id=eq.${existing[0].id}` : `${url}/rest/v1/tracks`, {
-    method: existing.length ? 'PATCH' : 'POST', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+  const save = await fetch(`${url}/rest/v1/tracks`, {
+    method: 'POST', headers: { ...auth, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify(payload),
   })
   if (!save.ok) throw new Error(`Save ${file}: ${await save.text()}`)

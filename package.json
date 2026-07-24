@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "next build && node scripts/migrate-music-library.mjs",
+    "vercel-build": "next build",
     "start": "next start",
     "lint": "eslint",
     "cap:sync": "npx cap sync",
