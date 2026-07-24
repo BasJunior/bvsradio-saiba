@@ -49,29 +49,28 @@ export default function RadioPlayer() {
       </div>
 
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
-        <div className="p-4 sm:p-7">
-          <p className="mb-3 text-center text-[10px] font-semibold uppercase tracking-[0.18em] text-brand sm:mb-4 sm:text-left sm:text-xs sm:tracking-[0.2em]">
+        <div className="min-w-0 p-4 sm:p-7">
+          <p className="mb-3 truncate text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-brand sm:mb-4 sm:text-left sm:text-xs sm:tracking-[0.18em]">
             Playing from {player.playingFrom}
           </p>
 
-          {/* Mobile: art + meta row; Desktop: stacked art then meta */}
-          <div className="flex items-center gap-4 sm:block">
+          <div className="flex min-w-0 items-center gap-3 sm:block sm:gap-0">
             <Cover
               src={player.current?.artwork}
-              className="aspect-square h-24 w-24 rounded-xl sm:mx-0 sm:mb-5 sm:h-40 sm:w-40 sm:rounded-2xl max-sm:mx-0"
+              className="aspect-square h-20 w-20 rounded-xl sm:mb-5 sm:h-40 sm:w-40 sm:rounded-2xl"
             />
-            <div className="min-w-0 flex-1 text-left sm:text-left">
-              <h2 className="truncate text-lg font-semibold sm:text-2xl">
+            <div className="min-w-0 flex-1 overflow-hidden text-left">
+              <h2 className="truncate text-base font-semibold leading-snug sm:text-2xl">
                 {player.current?.title || "BVS Radio rotation"}
               </h2>
-              <p className="mt-0.5 truncate text-sm text-text-secondary sm:mt-1">
+              <p className="mt-0.5 truncate text-sm text-text-secondary">
                 {player.current?.artist || "BVS Radio"}
               </p>
-              <p className="mt-2 tabular-nums text-xs text-white/70 sm:mt-3 sm:text-sm" aria-live="polite">
+              <p className="mt-2 tabular-nums text-xs text-white/70 sm:text-sm" aria-live="polite">
                 {player.duration > 0
                   ? `${formatTime(player.elapsed)} / ${formatTime(player.duration)}`
                   : player.isPlaying
-                    ? "Loading time…"
+                    ? "Loading…"
                     : "— / —"}
               </p>
             </div>
@@ -82,7 +81,7 @@ export default function RadioPlayer() {
             <p className="mt-4 rounded-lg bg-brand/10 p-3 text-sm text-brand">{player.notice}</p>
           )}
 
-          <div className="my-5 flex flex-wrap items-center justify-center gap-2 sm:my-7 sm:gap-4 sm:justify-start">
+          <div className="my-5 flex flex-wrap items-center justify-center gap-2 sm:my-7 sm:justify-start sm:gap-3">
             <button
               type="button"
               onClick={player.toggleShuffle}
@@ -91,19 +90,19 @@ export default function RadioPlayer() {
             >
               Shuffle
             </button>
-            <button type="button" onClick={player.previous} className="rounded-full bg-white/5 px-4 py-3 hover:bg-white/10" aria-label="Previous">
+            <button type="button" onClick={player.previous} className="rounded-full bg-white/5 px-3 py-2.5 hover:bg-white/10 sm:px-4 sm:py-3" aria-label="Previous">
               ◀
             </button>
             <button
               type="button"
               onClick={player.toggle}
               disabled={!player.current}
-              className="grid h-14 w-14 place-items-center rounded-full bg-brand text-xl text-black disabled:opacity-40 sm:h-20 sm:w-20 sm:text-2xl"
+              className="grid h-14 w-14 place-items-center rounded-full bg-brand text-xl text-black disabled:opacity-40 sm:h-16 sm:w-16"
               aria-label={player.isPlaying ? "Pause" : "Play"}
             >
               {player.isPlaying ? "Ⅱ" : "▶"}
             </button>
-            <button type="button" onClick={player.next} className="rounded-full bg-white/5 px-4 py-3 hover:bg-white/10" aria-label="Next">
+            <button type="button" onClick={player.next} className="rounded-full bg-white/5 px-3 py-2.5 hover:bg-white/10 sm:px-4 sm:py-3" aria-label="Next">
               ▶
             </button>
             <button
@@ -126,36 +125,38 @@ export default function RadioPlayer() {
             </button>
             {player.mode === "ondemand" ? (
               <button type="button" onClick={player.backToStation} className="rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-sm text-brand hover:bg-brand/20">
-                Back to BVS station
+                Back to station
               </button>
             ) : (
-              <span className="text-sm text-text-secondary">{player.tracks.length} in editorial rotation</span>
+              <span className="max-w-full truncate text-sm text-text-secondary">
+                {player.tracks.length} in rotation
+              </span>
             )}
           </div>
         </div>
 
-        <div className="border-t border-white/10 bg-black/20 p-4 sm:p-5 lg:border-l lg:border-t-0">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <div>
+        <div className="min-w-0 border-t border-white/10 bg-black/20 p-4 sm:p-5 lg:border-l lg:border-t-0">
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <div className="min-w-0">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">Up next</p>
-              <p className="text-xs text-text-secondary">Skip, jump, or remove — you steer the list</p>
+              <p className="text-xs text-text-secondary">Skip, jump, or remove</p>
             </div>
-            <button type="button" onClick={player.clearQueue} className="text-xs text-text-secondary hover:text-white">
+            <button type="button" onClick={player.clearQueue} className="shrink-0 text-xs text-text-secondary hover:text-white">
               Clear
             </button>
           </div>
-          <ol className="max-h-[18rem] space-y-1 overflow-y-auto pr-1 sm:max-h-[22rem]">
+          <ol className="max-h-[16rem] space-y-1 overflow-y-auto overscroll-contain pr-1 sm:max-h-[22rem]">
             {player.upNext.length === 0 && (
               <li className="rounded-xl border border-dashed border-white/10 px-3 py-8 text-center text-sm text-text-secondary">
                 Queue empty{player.autoplay ? " — auto-play will refill." : "."}
               </li>
             )}
             {player.upNext.map((item, i) => (
-              <li key={item.key} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5">
+              <li key={item.key} className="flex min-w-0 items-center gap-2 rounded-xl px-1.5 py-2 hover:bg-white/5">
                 <span className="w-5 shrink-0 text-center text-[11px] text-text-secondary">{i + 1}</span>
-                <button type="button" onClick={() => player.jumpToQueueItem(item.key)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <button type="button" onClick={() => player.jumpToQueueItem(item.key)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
                   <Cover src={item.track.artwork} className="h-10 w-10 rounded-md shadow-none" />
-                  <span className="min-w-0">
+                  <span className="min-w-0 overflow-hidden">
                     <span className="block truncate text-sm font-medium">{item.track.title}</span>
                     <span className="block truncate text-xs text-text-secondary">
                       {item.track.artist}

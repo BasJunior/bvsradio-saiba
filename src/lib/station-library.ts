@@ -10,22 +10,16 @@ import {
 
 const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".m4a", ".ogg"]);
 
-/** House / foundation set while artist catalogue is thin — only used when no editorial rotation exists */
+/**
+ * Last-resort house files ONLY when Supabase returns zero in-rotation rows.
+ * Never mixed with editorial rotation.
+ */
 const HOUSE_LIBRARY = [
-  "bvs-radio-robert-gabriel-mugabe-international-airport.mp3",
-  "bvs-radio-slide-mix.mp3",
-  "bvs-brx-never-ending-mix.mp3",
-  "bvs-radio-starve.mp3",
-  "bvs-radio-ab2c-mix.mp3",
-  "bvs-radio-nerve-mix.mp3",
-  "bvs-radio-on-the-moon-mix.mp3",
-  "bvs-whills-brx-deep.mp3",
-  "bvs-brx-uptown-wins.mp3",
-  "bvs-radio-having-fun.mp3",
-  "bvs-brx-want-sumo.mp3",
-  "bvs-party-tarpy-mix.mp3",
-  "bvs-radio-sad-addict-mix.mp3",
   "calm-beast-mahendere-master.mp3",
+  "bvs-radio-ab2c-mix.mp3",
+  "bvs-radio-starve.mp3",
+  "bvs-radio-on-the-moon-mix.mp3",
+  "bvs-party-tarpy-mix.mp3",
 ];
 
 function titleFromFilename(filename: string) {
@@ -53,11 +47,10 @@ function localTrackFromFile(file: string): StationTrack {
     artist: /wolfbrx/i.test(file) ? "Wolf Bridges" : "BVS archive",
     src,
     artwork: artworkForMusicSrc(src),
-    project: projectNameForMusicSrc(src) || "BVS archive",
+    project: projectNameForMusicSrc(src) || "BVS station",
   };
 }
 
-/** Daily-stable shuffle so everyone hears a varied but consistent day order */
 function shuffleDaily<T>(items: T[]): T[] {
   if (items.length < 2) return items;
   const day = new Date().toISOString().slice(0, 10);
@@ -94,9 +87,10 @@ function publicStorageUrl(fileUrl: string) {
   if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!base) return fileUrl;
-  // Prefer public object path when stored as bare path in bucket
   const cleaned = fileUrl.replace(/^\/+/, "");
   if (cleaned.startsWith("storage/v1/")) return `${base}/${cleaned}`;
+  // Local public path already hosted by Next
+  if (cleaned.startsWith("music/")) return `/${cleaned}`;
   return `${base}/storage/v1/object/public/bvsradio-audio/${cleaned}`;
 }
 
@@ -110,33 +104,64 @@ function basenameFromUrl(url: string) {
   }
 }
 
+/** Rejected / demo archive names that must never auto-play once editorial is live. */
+const BLOCKED_HOUSE_SUBSTRINGS = [
+  "want sumo",
+  "never ending",
+  "having fun",
+  "uptown wins",
+  "whills brx deep",
+  "sad addict",
+  "slide mix",
+  "nerve mix",
+  "robert gabriel",
+  "mugabe",
+  "demo",
+];
+
+function isBlockedHouseTitle(title: string) {
+  const n = normalizeTitle(title);
+  return BLOCKED_HOUSE_SUBSTRINGS.some((s) => n.includes(s));
+}
+
 /**
  * Continuous rotation:
- * 1) Approved + public + in_rotation tracks from Supabase (editorial is source of truth)
- * 2) Only if no editorial rotation: house foundation from public/music
- * Never dump full disk library over rejected editorial rows.
+ * 1) ONLY approved + public + in_rotation Supabase tracks when any exist
+ * 2) Tiny house fallback only if rotation is empty (and still filter demos)
  */
 export async function getStationTracks(): Promise<StationTrack[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
   const musicDir = path.join(process.cwd(), "public", "music");
   const onDisk = fs.existsSync(musicDir) ? fs.readdirSync(musicDir) : HOUSE_LIBRARY;
   const audioFiles = onDisk.filter((file) => AUDIO_EXTENSIONS.has(path.extname(file).toLowerCase()));
-
   const housePreferred = HOUSE_LIBRARY.filter((f) => audioFiles.includes(f));
-  const localFallbackFiles = orderLocalFiles(housePreferred.length ? housePreferred : audioFiles.slice(0, 40));
-  const localFallback = localFallbackFiles.map(localTrackFromFile);
+  const localFallbackFiles = orderLocalFiles(housePreferred.length ? housePreferred : []);
+  const localFallback = localFallbackFiles
+    .map(localTrackFromFile)
+    .filter((t) => !isBlockedHouseTitle(t.title));
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return shuffleDaily(localFallback);
+  if (!url || !key) {
+    console.warn("getStationTracks: missing Supabase env — using filtered house fallback");
+    return shuffleDaily(localFallback);
+  }
 
   try {
-    const headers = { apikey: key, Authorization: `Bearer ${key}` };
+    const headers = {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      Accept: "application/json",
+    };
     const rotationRes = await fetch(
       `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre&order=rotation_added_at.desc&limit=500`,
-      { headers, next: { revalidate: 30 } },
+      { headers, cache: "no-store" },
     );
 
-    if (!rotationRes.ok) return shuffleDaily(localFallback);
+    if (!rotationRes.ok) {
+      console.error("getStationTracks rotation query failed", rotationRes.status, await rotationRes.text().catch(() => ""));
+      return shuffleDaily(localFallback);
+    }
 
     const remote = (await rotationRes.json()) as Array<{
       id: string;
@@ -150,31 +175,31 @@ export async function getStationTracks(): Promise<StationTrack[]> {
     }>;
 
     const remoteTracks: StationTrack[] = remote
-      .filter((t) => Boolean(t.file_url) && !t.file_url.includes("scdn.co"))
+      .filter((t) => Boolean(t.file_url) && !String(t.file_url).includes("scdn.co"))
       .map((track) => {
         const src = publicStorageUrl(track.file_url);
         return {
           id: track.id,
           title: track.title,
-          artist: track.artist_name,
+          artist: track.artist_name || "BVS Radio",
           src,
           artwork: track.artwork_url || artworkForMusicSrc(src) || undefined,
-          project: track.release_id ? "Artist release" : track.genre || "BVS station",
+          project: track.release_id ? "Artist release" : "BVS Station",
           playCount: Number(track.play_count || 0),
           genre: track.genre || undefined,
         };
       })
       .filter((t) => Boolean(t.src));
 
-    // Editorial has a live rotation → that IS the station. Do not append rejected house files.
+    // Source of truth: editorial rotation only. Never append disk archive on top.
     if (remoteTracks.length > 0) {
       return shuffleDaily(remoteTracks);
     }
 
-    // No rotation rows: fall back to house files, but drop any filename that DB marks rejected / not public
+    // Empty rotation — filter house against rejected DB titles
     const blockRes = await fetch(
-      `${url}/rest/v1/tracks?or=(editorial_status.eq.rejected,in_rotation.eq.false,is_public.eq.false)&select=title,file_url&limit=1000`,
-      { headers, next: { revalidate: 60 } },
+      `${url}/rest/v1/tracks?or=(editorial_status.eq.rejected,in_rotation.eq.false)&select=title,file_url&limit=1000`,
+      { headers, cache: "no-store" },
     );
     const blockedTitles = new Set<string>();
     const blockedFiles = new Set<string>();
@@ -188,14 +213,16 @@ export async function getStationTracks(): Promise<StationTrack[]> {
     }
 
     const filteredLocal = localFallback.filter((track) => {
+      if (isBlockedHouseTitle(track.title)) return false;
       const base = basenameFromUrl(track.src);
       if (base && blockedFiles.has(base)) return false;
       if (blockedTitles.has(normalizeTitle(track.title))) return false;
       return true;
     });
 
-    return shuffleDaily(filteredLocal.length ? filteredLocal : localFallback);
-  } catch {
+    return shuffleDaily(filteredLocal);
+  } catch (error) {
+    console.error("getStationTracks", error);
     return shuffleDaily(localFallback);
   }
 }

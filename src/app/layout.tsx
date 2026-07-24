@@ -10,6 +10,9 @@ import { getStationTracks } from "@/lib/station-library";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import "./globals.css";
 
+/** Always resolve live editorial rotation — never bake house archive into static HTML. */
+export const dynamic = "force-dynamic";
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com";
 
 export const metadata: Metadata = {
@@ -69,7 +72,13 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const stationTracks = await getStationTracks();
+  // Prefer editorial-only list; empty is OK until client refresh if DB briefly fails
+  let stationTracks: Awaited<ReturnType<typeof getStationTracks>> = [];
+  try {
+    stationTracks = await getStationTracks();
+  } catch (error) {
+    console.error("layout getStationTracks", error);
+  }
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

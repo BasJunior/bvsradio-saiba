@@ -57,7 +57,8 @@ type PlayerContextValue = {
 };
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
-const QUEUE_STORAGE_KEY = "bvs.player.queue.v1";
+/** v2: drop stale house-archive queues from pre-editorial rotation. */
+const QUEUE_STORAGE_KEY = "bvs.player.queue.v2";
 const UP_NEXT_TARGET = 18;
 
 function formatTime(seconds: number) {
@@ -117,15 +118,41 @@ function shuffleArray<T>(items: T[]) {
   return arr;
 }
 
-export function StationPlayerProvider({ tracks, children }: { tracks: StationTrack[]; children: React.ReactNode }) {
+export function StationPlayerProvider({ tracks: initialTracks, children }: { tracks: StationTrack[]; children: React.ReactNode }) {
   const audio = useRef<HTMLAudioElement>(null);
   const startedAt = useRef<number | null>(null);
   const countedStarts = useRef(new Set<string>());
   const failStreak = useRef(0);
   const hydrated = useRef(false);
+  const [tracks, setTracks] = useState<StationTrack[]>(initialTracks);
+
+  // Live editorial rotation — bypasses any stale SSR/layout bake-in
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetch("/api/station/tracks", { cache: "no-store" })
+        .then(async (res) => {
+          if (!res.ok) return;
+          const payload = await res.json().catch(() => ({}));
+          const next = Array.isArray(payload.tracks) ? (payload.tracks as StationTrack[]) : [];
+          if (!cancelled && next.length) setTracks(next);
+        })
+        .catch(() => {});
+    };
+    load();
+    const id = window.setInterval(load, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (initialTracks.length) setTracks((prev) => (prev.length ? prev : initialTracks));
+  }, [initialTracks]);
 
   const [nowPlaying, setNowPlaying] = useState<QueueItem | null>(() =>
-    tracks[0] ? makeQueueItem(tracks[0], "station") : null,
+    initialTracks[0] ? makeQueueItem(initialTracks[0], "station") : null,
   );
   const [upNext, setUpNext] = useState<QueueItem[]>([]);
   const [isPlaying, setPlaying] = useState(false);
@@ -239,9 +266,18 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
     [],
   );
 
-  // Hydrate + seed queue when tracks arrive
+  // Hydrate + seed queue when tracks arrive; drop anything not in live library
   useEffect(() => {
     if (!tracks.length) return;
+    try {
+      localStorage.removeItem("bvs.player.queue.v1");
+      localStorage.removeItem("bvs.pl…e.v1");
+    } catch {
+      /* ignore */
+    }
+
+    const byKey = new Map(tracks.map((t) => [trackKey(t), t]));
+
     if (!hydrated.current) {
       hydrated.current = true;
       try {
@@ -259,11 +295,17 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
           if (typeof saved.autoplay === "boolean") setAutoplay(saved.autoplay);
           if (typeof saved.shuffle === "boolean") setShuffle(saved.shuffle);
           if (typeof saved.volume === "number") setVolume(saved.volume);
-          if (saved.playingFrom) setPlayingFrom(saved.playingFrom);
-          if (saved.mode === "station" || saved.mode === "ondemand") setMode(saved.mode);
-          const byKey = new Map(tracks.map((t) => [trackKey(t), t]));
+          // Only restore on-demand context if the seed track still exists
           const nowTrack = (saved.nowKey && byKey.get(saved.nowKey)) || tracks[0];
-          const nowItem = makeQueueItem(nowTrack, saved.mode === "ondemand" ? "user" : "station");
+          const restoreOndemand = saved.mode === "ondemand" && saved.nowKey && byKey.has(saved.nowKey);
+          if (restoreOndemand) {
+            setMode("ondemand");
+            if (saved.playingFrom) setPlayingFrom(saved.playingFrom);
+          } else {
+            setMode("station");
+            setPlayingFrom("BVS Station");
+          }
+          const nowItem = makeQueueItem(nowTrack, restoreOndemand ? "user" : "station");
           setNowPlaying(nowItem);
           const restoredUp = (saved.upKeys || [])
             .map((k) => byKey.get(k))
@@ -278,13 +320,26 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
     }
 
     setNowPlaying((prev) => {
-      if (prev && tracks.some((t) => trackKey(t) === trackKey(prev.track))) return prev;
+      if (prev && byKey.has(trackKey(prev.track))) {
+        // Refresh track metadata from live library
+        const live = byKey.get(trackKey(prev.track))!;
+        if (live.src === prev.track.src) return prev;
+        return { ...prev, track: live };
+      }
+      // Current track left the library (e.g. rejected archive) → jump to station head
+      setMode("station");
+      setPlayingFrom("BVS Station");
       return makeQueueItem(tracks[0], "station");
     });
     setUpNext((prev) => {
-      const seed = nowRef.current?.track || tracks[0];
-      if (prev.length >= 8) return prev;
-      return fillUpNext(seed, prev);
+      const kept = prev.filter((item) => byKey.has(trackKey(item.track))).map((item) => ({
+        ...item,
+        track: byKey.get(trackKey(item.track))!,
+      }));
+      const seed = nowRef.current?.track && byKey.has(trackKey(nowRef.current.track))
+        ? byKey.get(trackKey(nowRef.current.track))
+        : tracks[0];
+      return fillUpNext(seed, kept);
     });
   }, [tracks, fillUpNext]);
 
