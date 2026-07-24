@@ -477,6 +477,7 @@ export default function CataloguePage() {
     return new URLSearchParams(window.location.search).get('q') || ''
   })
   const [genreFilter, setGenreFilter] = useState('All')
+  const [collectionJump, setCollectionJump] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | TrackType>(() => {
     if (typeof window === 'undefined') return 'all'
     const requestedType = new URLSearchParams(window.location.search).get('type')
@@ -512,7 +513,34 @@ export default function CataloguePage() {
     }
   }, [])
 
+  useEffect(() => {
+    const releasePreviewAudio = (event: Event) => {
+      const owner = (event as CustomEvent<{ owner?: string }>).detail?.owner
+      if (owner !== 'station') return
+      audioRef.current?.pause()
+      setIsPlaying(false)
+    }
+
+    window.addEventListener('bvs:audio-claim', releasePreviewAudio)
+    return () => window.removeEventListener('bvs:audio-claim', releasePreviewAudio)
+  }, [])
+
   const genres = useMemo(() => ['All', ...Array.from(new Set(tracks.map((track) => track.genre)))], [])
+
+  const jumpToCollection = (collectionName: string) => {
+    setCollectionJump(collectionName)
+    setGenreFilter('All')
+    if (collectionName === 'Producer Picks') {
+      setSearch('')
+      setTypeFilter('beat')
+    } else {
+      setSearch(collectionName)
+      setTypeFilter('all')
+    }
+    window.requestAnimationFrame(() => {
+      document.getElementById('browse')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
 
   const filteredTracks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -573,6 +601,7 @@ export default function CataloguePage() {
       setPreviewElapsed(Math.min(audio.duration || previewLimitSeconds, previewLimitSeconds))
     })
 
+    window.dispatchEvent(new CustomEvent('bvs:audio-claim', { detail: { owner: 'catalogue' } }))
     audio.play().catch(() => {
       setIsPlaying(false)
       setCurrentTrack(null)
@@ -680,10 +709,7 @@ export default function CataloguePage() {
           <button
             type="button"
             key={collection.name}
-            onClick={() => {
-              setSearch(collection.name)
-              setGenreFilter('All')
-            }}
+            onClick={() => jumpToCollection(collection.name)}
             className="group flex items-center gap-3 rounded-xl border border-white/10 bg-bg-card/40 p-3 text-left hover:border-brand/40"
           >
             <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
@@ -716,6 +742,21 @@ export default function CataloguePage() {
             <button type="button" onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 hover:text-white">Clear</button>
           )}
         </label>
+        <select
+          value={collectionJump}
+          onChange={(event) => {
+            if (event.target.value) jumpToCollection(event.target.value)
+          }}
+          aria-label="Jump to a catalogue collection"
+          className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
+        >
+          <option value="">Jump to collection</option>
+          {collectionCards.map((collection) => (
+            <option key={collection.name} value={collection.name}>
+              {collection.name} — {collection.detail}
+            </option>
+          ))}
+        </select>
         <select
           value={genreFilter}
           onChange={(event) => setGenreFilter(event.target.value)}

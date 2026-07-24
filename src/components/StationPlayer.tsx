@@ -98,6 +98,19 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
   }, [volume]);
 
   useEffect(() => {
+    const releaseStationAudio = (event: Event) => {
+      const owner = (event as CustomEvent<{ owner?: string }>).detail?.owner;
+      if (owner !== "catalogue" || !audio.current || !isPlaying) return;
+      audio.current.pause();
+      flushListening();
+      setPlaying(false);
+    };
+
+    window.addEventListener("bvs:audio-claim", releaseStationAudio);
+    return () => window.removeEventListener("bvs:audio-claim", releaseStationAudio);
+  }, [flushListening, isPlaying]);
+
+  useEffect(() => {
     if (!current) {
       setLiked(false);
       return;
@@ -111,6 +124,7 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
   useEffect(() => {
     if (!audio.current || !current) return;
     if (isPlaying) {
+      window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
       audio.current.play().then(() => {
         failStreak.current = 0;
         if (startedAt.current === null) {
@@ -219,6 +233,7 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
         audio.current.pause();
         flushListening();
       } else {
+        window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
         await audio.current.play();
         failStreak.current = 0;
         setHistory((items) => [current, ...items.filter((item) => item.src !== current.src)].slice(0, 6));
@@ -281,6 +296,7 @@ export function StationPlayerProvider({ tracks, children }: { tracks: StationTra
       const el = audio.current;
       if (el) {
         el.currentTime = 0;
+        window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
         void el.play().catch(() => setPlaying(false));
       }
       return;
