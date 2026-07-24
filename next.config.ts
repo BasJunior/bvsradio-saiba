@@ -4,6 +4,21 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
+  // Beat/track covers live on Supabase Storage; without this next/image fails or looks broken.
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "rdwwyolrxahimcgpkzzy.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+  },
   // Keep serverless/VHS artifacts small — media in public/ is static CDN, not lambda FS
   outputFileTracingExcludes: {
     "*": [

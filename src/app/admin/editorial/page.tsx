@@ -20,7 +20,7 @@ type Release = { id: string; title: string; artist_name: string; genre?: string;
 type ReleaseTrack = { id: string; release_id: string; position: number; title: string; file_url?: string }
 type DistJob = { id: string; release_id: string; status: string; distributor?: string | null; notes?: string | null }
 type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
-type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
+type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
 type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; beats?: Beat[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
 const statusClass: Record<string, string> = { submitted: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary' }
@@ -130,46 +130,212 @@ export default function EditorialDashboard() {
   }
   if (loading || !data) return <main className="p-20 text-center text-text-secondary">Loading editorial workflow…</main>
 
-  return <main className="mx-auto max-w-7xl px-6 py-12">
-    <div className="flex flex-wrap items-end justify-between gap-5"><div><p className="text-xs uppercase tracking-[.22em] text-brand">BVS operations</p><h1 className="mt-2 text-4xl font-semibold">Editorial workflow</h1><p className="mt-3 text-text-secondary">Signed in as {roleLabels[data.identity.role]}. Every action is recorded.</p></div><button onClick={() => load(token)} className="rounded-full border border-white/20 px-5 py-2 text-sm">Refresh</button></div>
-    {error && <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
+  const beatQueue = (data.beats || []).filter((b) =>
+    ['submitted', 'in_review', 'changes_requested', 'approved', 'published', 'rejected'].includes(b.status),
+  ).length
+  const trackQueue = data.tracks.filter((t) => ['submitted', 'in_review'].includes(t.editorial_status)).length
+  const requestQueue = data.trackRequests.filter((r) => ['open', 'reviewing'].includes(r.status)).length
+  const releaseQueue = (data.releases || []).filter((r) =>
+    ['submitted', 'in_review', 'approved'].includes(r.editorial_status),
+  ).length
 
-    <section className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-      {[['Awaiting review', data.tracks.filter(t => ['submitted','in_review'].includes(t.editorial_status)).length], ['Artist requests', data.trackRequests.filter(r => ['open','reviewing'].includes(r.status)).length], ['Approved', data.tracks.filter(t => t.editorial_status === 'approved').length], ['Published', data.tracks.filter(t => t.is_public).length], ['In rotation', data.tracks.filter(t => t.in_rotation).length]].map(([label, value]) => <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[.03] p-5"><p className="text-sm text-text-secondary">{label}</p><p className="mt-2 text-3xl font-semibold text-brand">{value}</p></div>)}
-    </section>
+  const jump = [
+    { id: 'ed-overview', label: 'Overview' },
+    { id: 'ed-releases', label: `Albums/EPs${releaseQueue ? ` (${releaseQueue})` : ''}` },
+    { id: 'ed-beats', label: `BeatStore${beatQueue ? ` (${beatQueue})` : ''}` },
+    { id: 'ed-tracks', label: `Singles${trackQueue ? ` (${trackQueue})` : ''}` },
+    { id: 'ed-requests', label: `Requests${requestQueue ? ` (${requestQueue})` : ''}` },
+    { id: 'ed-artists', label: 'Artists' },
+    { id: 'ed-programmes', label: 'Programmes' },
+    ...(allowed('manage_staff') ? [{ id: 'ed-staff', label: 'Staff' }] : []),
+    ...(allowed('manage_artist_wallet') ? [{ id: 'ed-wallet', label: 'Wallet' }] : []),
+    { id: 'ed-audit', label: 'Audit' },
+  ]
 
-    <ReleaseEditorialPanel
-      releases={data.releases || []}
-      releaseTracks={data.releaseTracks || []}
-      distributionJobs={data.distributionJobs || []}
-      canApprove={allowed('approve_submissions')}
-      canRotate={allowed('manage_rotation')}
-      canDistro={allowed('manage_artist_wallet')}
-      act={act}
-      busy={busy}
-    />
+  return (
+    <main className="mx-auto max-w-7xl px-6 py-12">
+      <div className="flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <p className="text-xs uppercase tracking-[.22em] text-brand">BVS operations</p>
+          <h1 className="mt-2 text-4xl font-semibold">Editorial workflow</h1>
+          <p className="mt-3 text-text-secondary">
+            Signed in as {roleLabels[data.identity.role]}. Every action is recorded.
+          </p>
+        </div>
+        <button onClick={() => load(token)} className="rounded-full border border-white/20 px-5 py-2 text-sm">
+          Refresh
+        </button>
+      </div>
+      {error && (
+        <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}</p>
+      )}
 
-    <BeatStoreEditorialPanel
-      beats={data.beats || []}
-      profiles={data.profiles}
-      enabled={allowed('approve_submissions')}
-      act={act}
-      busy={busy}
-    />
+      <nav
+        aria-label="Editorial sections"
+        className="sticky top-16 z-30 -mx-2 mt-8 overflow-x-auto rounded-2xl border border-white/10 bg-bg-primary/90 px-2 py-2 backdrop-blur-md"
+      >
+        <div className="flex min-w-max gap-2">
+          {jump.map((item) => (
+            <a
+              key={item.id}
+              href={`#${item.id}`}
+              className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary transition hover:border-brand hover:text-brand"
+            >
+              {item.label}
+            </a>
+          ))}
+        </div>
+      </nav>
 
-    <section className="mt-12"><h2 className="text-2xl font-semibold">Single-track submission queue</h2><p className="mt-2 text-sm text-text-secondary">Legacy single uploads. Prefer Album/EP for multi-track. Approval does not automatically publish or add a track to rotation.</p><div className="mt-5 space-y-4">{data.tracks.map(track => <TrackCard key={track.id} track={track} credits={data.credits.filter(c => c.track_id === track.id)} allowed={allowed} act={act} busy={busy} />)}{data.tracks.length === 0 && <Empty text="No submissions yet." />}</div></section>
+      <section id="ed-overview" className="mt-8 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {[
+          ['Awaiting review', trackQueue],
+          ['Artist requests', requestQueue],
+          ['BeatStore queue', beatQueue],
+          ['Published', data.tracks.filter((t) => t.is_public).length],
+          ['In rotation', data.tracks.filter((t) => t.in_rotation).length],
+        ].map(([label, value]) => (
+          <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[.03] p-5">
+            <p className="text-sm text-text-secondary">{label}</p>
+            <p className="mt-2 text-3xl font-semibold text-brand">{value}</p>
+          </div>
+        ))}
+      </section>
 
-    <ArtistRequestPanel requests={data.trackRequests} tracks={data.tracks} profiles={data.profiles} enabled={allowed('approve_submissions')} act={act} busy={busy} />
+      <section id="ed-releases" className="mt-12 scroll-mt-36">
+        <ReleaseEditorialPanel
+          releases={data.releases || []}
+          releaseTracks={data.releaseTracks || []}
+          distributionJobs={data.distributionJobs || []}
+          canApprove={allowed('approve_submissions')}
+          canRotate={allowed('manage_rotation')}
+          canDistro={allowed('manage_artist_wallet')}
+          act={act}
+          busy={busy}
+        />
+      </section>
 
-    <section className="mt-14 grid gap-10 lg:grid-cols-2">
-      <div><h2 className="text-2xl font-semibold">Artist publishing</h2><div className="mt-5 space-y-3">{data.profiles.filter(profile => ['artist','admin'].includes(profile.role)).map(profile => <div key={profile.id} className="flex items-center justify-between gap-4 rounded-xl border border-white/10 p-4"><div><p className="font-medium">{profile.display_name || profile.username}</p><p className="text-xs text-text-secondary">@{profile.username} · {profile.is_published ? 'Published and verified' : 'Not published'}</p></div>{allowed('publish_artists') && <button disabled={Boolean(busy)} onClick={() => act('publish_artist', { profileId: profile.id, publish: !profile.is_published })} className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand">{profile.is_published ? 'Unpublish' : 'Publish'}</button>}</div>)}</div></div>
-      <ProgrammePanel programmes={data.programmes} enabled={allowed('schedule_programmes')} act={act} />
-    </section>
+      <section id="ed-beats" className="scroll-mt-36">
+        <BeatStoreEditorialPanel
+          beats={data.beats || []}
+          profiles={data.profiles}
+          enabled={allowed('approve_submissions')}
+          act={act}
+          busy={busy}
+        />
+      </section>
 
-    {allowed('manage_staff') && <StaffPanel profiles={data.profiles} staff={data.staff} act={act} />}
-    {allowed('manage_artist_wallet') && <ArtistWalletPanel waitlist={data.artistWaitlist} deposits={data.artistDeposits} payoutRequests={data.artistPayoutRequests} profiles={data.profiles} />}
-    <section className="mt-14"><h2 className="text-2xl font-semibold">Recent audit trail</h2><div className="mt-4 overflow-x-auto rounded-2xl border border-white/10"><table className="w-full min-w-[650px] text-left text-sm"><thead className="bg-white/5 text-text-secondary"><tr><th className="p-3">Time</th><th className="p-3">Action</th><th className="p-3">Entity</th><th className="p-3">ID</th></tr></thead><tbody>{data.auditLog.map(entry => <tr key={entry.id} className="border-t border-white/10"><td className="p-3 text-text-secondary">{new Date(entry.created_at).toLocaleString()}</td><td className="p-3">{entry.action.replaceAll('_', ' ')}</td><td className="p-3">{entry.entity_type}</td><td className="max-w-64 truncate p-3 font-mono text-xs">{entry.entity_id}</td></tr>)}</tbody></table></div></section>
-  </main>
+      <section id="ed-tracks" className="mt-12 scroll-mt-36">
+        <h2 className="text-2xl font-semibold">Single-track submission queue</h2>
+        <p className="mt-2 text-sm text-text-secondary">
+          Legacy single uploads. Prefer Album/EP for multi-track. Approval does not automatically publish or
+          add a track to rotation.
+        </p>
+        <div className="mt-5 space-y-4">
+          {data.tracks.map((track) => (
+            <TrackCard
+              key={track.id}
+              track={track}
+              credits={data.credits.filter((c) => c.track_id === track.id)}
+              allowed={allowed}
+              act={act}
+              busy={busy}
+            />
+          ))}
+          {data.tracks.length === 0 && <Empty text="No submissions yet." />}
+        </div>
+      </section>
+
+      <section id="ed-requests" className="scroll-mt-36">
+        <ArtistRequestPanel
+          requests={data.trackRequests}
+          tracks={data.tracks}
+          profiles={data.profiles}
+          enabled={allowed('approve_submissions')}
+          act={act}
+          busy={busy}
+        />
+      </section>
+
+      <section id="ed-artists" className="mt-14 scroll-mt-36 grid gap-10 lg:grid-cols-2">
+        <div>
+          <h2 className="text-2xl font-semibold">Artist publishing</h2>
+          <div className="mt-5 space-y-3">
+            {data.profiles
+              .filter((profile) => ['artist', 'admin'].includes(profile.role))
+              .map((profile) => (
+                <div
+                  key={profile.id}
+                  className="flex items-center justify-between gap-4 rounded-xl border border-white/10 p-4"
+                >
+                  <div>
+                    <p className="font-medium">{profile.display_name || profile.username}</p>
+                    <p className="text-xs text-text-secondary">
+                      @{profile.username} · {profile.is_published ? 'Published and verified' : 'Not published'}
+                    </p>
+                  </div>
+                  {allowed('publish_artists') && (
+                    <button
+                      disabled={Boolean(busy)}
+                      onClick={() =>
+                        act('publish_artist', { profileId: profile.id, publish: !profile.is_published })
+                      }
+                      className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand"
+                    >
+                      {profile.is_published ? 'Unpublish' : 'Publish'}
+                    </button>
+                  )}
+                </div>
+              ))}
+          </div>
+        </div>
+        <div id="ed-programmes" className="scroll-mt-36">
+          <ProgrammePanel programmes={data.programmes} enabled={allowed('schedule_programmes')} act={act} />
+        </div>
+      </section>
+
+      {allowed('manage_staff') && (
+        <section id="ed-staff" className="scroll-mt-36">
+          <StaffPanel profiles={data.profiles} staff={data.staff} act={act} />
+        </section>
+      )}
+      {allowed('manage_artist_wallet') && (
+        <section id="ed-wallet" className="scroll-mt-36">
+          <ArtistWalletPanel
+            waitlist={data.artistWaitlist}
+            deposits={data.artistDeposits}
+            payoutRequests={data.artistPayoutRequests}
+            profiles={data.profiles}
+          />
+        </section>
+      )}
+      <section id="ed-audit" className="mt-14 scroll-mt-36">
+        <h2 className="text-2xl font-semibold">Recent audit trail</h2>
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10">
+          <table className="w-full min-w-[650px] text-left text-sm">
+            <thead className="bg-white/5 text-text-secondary">
+              <tr>
+                <th className="p-3">Time</th>
+                <th className="p-3">Action</th>
+                <th className="p-3">Entity</th>
+                <th className="p-3">ID</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.auditLog.map((entry) => (
+                <tr key={entry.id} className="border-t border-white/10">
+                  <td className="p-3 text-text-secondary">{new Date(entry.created_at).toLocaleString()}</td>
+                  <td className="p-3">{entry.action.replaceAll('_', ' ')}</td>
+                  <td className="p-3">{entry.entity_type}</td>
+                  <td className="max-w-64 truncate p-3 font-mono text-xs">{entry.entity_id}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  )
 }
 
 function BeatStoreEditorialPanel({
@@ -190,7 +356,7 @@ function BeatStoreEditorialPanel({
     profiles.find((p) => p.id === id)?.username ||
     id.slice(0, 8)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const previewUrl = (path?: string | null) =>
+  const publicUrl = (path?: string | null) =>
     path
       ? path.startsWith('http')
         ? path
@@ -205,11 +371,28 @@ function BeatStoreEditorialPanel({
       <div className="mt-5 space-y-4">
         {beats.map((beat) => {
           const price = beat.beat_licence_options?.[0]?.price_usd
-          const src = previewUrl(beat.preview_path)
+          const audioSrc = publicUrl(beat.preview_path)
+          const artSrc = publicUrl(beat.artwork_path)
           return (
             <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
               <div className="flex flex-wrap justify-between gap-4">
-                <div>
+                <div className="flex min-w-0 flex-1 gap-4">
+                  {artSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={artSrc}
+                      alt=""
+                      className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+                      onError={(e) => {
+                        ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[10px] text-text-secondary">
+                      No art
+                    </div>
+                  )}
+                  <div className="min-w-0">
                   <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[beat.status] || 'text-text-secondary'}`}>
                     {beat.status.replaceAll('_', ' ')}
                   </p>
@@ -223,8 +406,9 @@ function BeatStoreEditorialPanel({
                   {beat.editorial_notes && (
                     <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>
                   )}
+                  </div>
                 </div>
-                {src ? <audio controls preload="none" src={src} className="h-10 max-w-full" /> : null}
+                {audioSrc ? <audio controls preload="none" src={audioSrc} className="h-10 max-w-full" /> : null}
               </div>
               {enabled && (
                 <div className="mt-4 flex flex-wrap gap-2">

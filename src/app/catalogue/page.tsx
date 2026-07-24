@@ -856,7 +856,13 @@ export default function CataloguePage() {
             >
               <button type="button" onClick={() => setSelectedTrack(track)} className="block w-full text-left">
                 <div className="relative aspect-square overflow-hidden">
-                  <Image src={track.artwork} alt={track.title} fill className="object-cover transition duration-300 group-hover:scale-[1.02]" />
+                  <Image
+                    src={track.artwork}
+                    alt={track.title}
+                    fill
+                    unoptimized={/^https?:\/\//i.test(track.artwork)}
+                    className="object-cover transition duration-300 group-hover:scale-[1.02]"
+                  />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
                   <span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] uppercase tracking-[1.5px] text-white">
                     {offerLabel(track)}
