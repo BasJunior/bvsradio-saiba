@@ -207,10 +207,10 @@ export default function Navbar() {
               ) : (
                 <>
                   <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
-                    Sign In
+                    Sign in
                   </Link>
                   <Link href="/auth/signup" className="py-2.5 text-center bg-brand text-black font-medium rounded-full" onClick={() => setIsMenuOpen(false)}>
-                    Join Free
+                    Join
                   </Link>
                 </>
               )}
