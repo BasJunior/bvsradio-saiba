@@ -57,7 +57,8 @@ Without custom SMTP, Supabase only mails project team addresses and rate-limits 
   `https://bvsradio.com/auth/confirmed?token_hash=...&type=signup|magiclink`
   so members never have to open `*.supabase.co/auth/v1/verify` (that hop was still able to bounce to localhost when Site URL was wrong).
 - Resend uses the same BVS mail path (`resendOnly: true`).
-- Password reset still uses client `resetPasswordForEmail` with `emailRedirectTo` to **https://bvsradio.com/auth/reset-password**.
+- Password reset also uses BVS mail: `/api/auth/forgot-password` → recovery `generate_link` → email from `contact@bvsradio.com` with first-party
+  `https://bvsradio.com/auth/reset-password?token_hash=...&type=recovery`.
 - `/auth/confirmed` handles `code`, `token_hash`, hash tokens, and Supabase error query params.
 - `AuthLinkRescue` forwards `/?error=...` (and success tokens that land on home) to `/auth/confirmed`.
 - Navbar shows email + Sign out when session exists.

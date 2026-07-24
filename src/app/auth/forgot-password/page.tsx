@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient, isSupabaseConfigured } from '@/lib/supabase'
-import { getAuthCallbackUrl } from '@/lib/auth-url'
+import { isSupabaseConfigured } from '@/lib/supabase'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -24,11 +23,15 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const supabase = createClient()
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: getAuthCallbackUrl('/auth/reset-password'),
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim() }),
       })
-      if (resetError) throw resetError
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || 'Could not send reset email')
+      }
       setSent(true)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Could not send reset email')
@@ -42,7 +45,14 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <Link href="/" className="inline-flex items-center gap-2 mb-6">
-            <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-14 w-auto rounded-md object-contain" priority />
+            <Image
+              src="/branding/bvs-logo.png"
+              alt="BVS Radio"
+              width={1032}
+              height={552}
+              className="h-14 w-auto rounded-md object-contain"
+              priority
+            />
           </Link>
           <h1 className="text-3xl font-bold">Reset password</h1>
           <p className="text-text-secondary mt-1">We will email you a link to choose a new password.</p>
@@ -53,7 +63,8 @@ export default function ForgotPasswordPage() {
             <h2 className="text-xl font-semibold">Check your email</h2>
             <p className="mt-3 text-sm text-text-secondary">
               If an account exists for <strong className="text-text-primary">{email}</strong>, a reset
-              link is on its way. Check Spam too. The link opens on bvsradio.com.
+              link was sent from <strong className="text-text-primary">BVS Radio (contact@bvsradio.com)</strong>.
+              Check Spam too. The link opens on <strong>bvsradio.com</strong>.
             </p>
             <Link href="/auth/login" className="mt-6 inline-block text-brand hover:underline">
               Back to sign in
