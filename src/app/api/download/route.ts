@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "fs";
 import path from "path";
-import { loadOrderLocal } from "@/lib/orders";
+import { loadOrder } from "@/lib/orders";
 import { resolveProductFile, verifyDownloadToken } from "@/lib/products";
 
 /**
@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Invalid or expired link" }, { status: 403 });
   }
 
-  const order = await loadOrderLocal(parsed.reference);
+  const order = await loadOrder(parsed.reference);
   if (!order || (order.status !== "paid" && order.status !== "fulfilled")) {
     return NextResponse.json(
       { error: "Payment not confirmed yet. Contact BVS if you already paid." },

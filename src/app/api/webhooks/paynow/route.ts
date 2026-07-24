@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPaynow } from "@/lib/paynow";
-import { loadOrderLocal, notifyOwnerNewOrder, updateOrderLocal } from "@/lib/orders";
+import { loadOrder, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit } from "@/lib/artist-credit";
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
     if (reference && paid) {
       await recordServerEvent("checkout_complete", { provider: "paynow", status: "paid" });
       await creditPaidArtistDeposit(reference, "paynow");
-      const updated = await updateOrderLocal(reference, {
+      const updated = await updateOrder(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",
         paynowPollUrl: pollUrl || undefined,
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
       if (updated) {
         await notifyOwnerNewOrder(updated);
       } else {
-        const existing = await loadOrderLocal(reference);
+        const existing = await loadOrder(reference);
         if (existing) await notifyOwnerNewOrder({ ...existing, status: "paid" });
       }
     }

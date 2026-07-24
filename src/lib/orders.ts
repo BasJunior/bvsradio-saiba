@@ -90,22 +90,161 @@ export async function updateOrderLocal(
   return next;
 }
 
-export async function saveOrderToSupabase(order: StoredOrder) {
+type SupabaseOrderRow = {
+  reference: string;
+  customer_user_id?: string | null;
+  customer_name: string;
+  customer_email: string;
+  customer_whatsapp?: string | null;
+  payment_method: string;
+  project_notes?: string | null;
+  items?: OrderItem[] | null;
+  subtotal?: number | null;
+  tax_amount?: number | null;
+  tax_rate?: number | null;
+  tax_mode?: string | null;
+  tax_country?: string | null;
+  total?: number | null;
+  status?: string | null;
+  delivery_status?: string | null;
+  stripe_session_id?: string | null;
+  stripe_payment_intent?: string | null;
+  created_at?: string | null;
+};
+
+function supabaseConfigured() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
   if (!supabaseUrl || !serviceKey || supabaseUrl.includes("your-project")) {
+    return null;
+  }
+  return { supabaseUrl, serviceKey };
+}
+
+function rowToOrder(row: SupabaseOrderRow): StoredOrder {
+  const status = (row.status || "pending_payment") as StoredOrder["status"];
+  return {
+    reference: row.reference,
+    customerUserId: row.customer_user_id || undefined,
+    createdAt: row.created_at || new Date().toISOString(),
+    customer: {
+      name: row.customer_name,
+      email: row.customer_email,
+      whatsapp: row.customer_whatsapp || undefined,
+      country: row.tax_country || undefined,
+    },
+    items: Array.isArray(row.items) ? row.items : [],
+    paymentMethod: row.payment_method,
+    projectNotes: row.project_notes || undefined,
+    subtotal: Number(row.subtotal || 0),
+    taxAmount: Number(row.tax_amount || 0),
+    taxRate: Number(row.tax_rate || 0),
+    taxMode: row.tax_mode || "unknown",
+    taxCountry: row.tax_country || undefined,
+    total: Number(row.total || 0),
+    currency: "usd",
+    status,
+    deliveryStatus: row.delivery_status || "awaiting_payment",
+    stripeSessionId: row.stripe_session_id || undefined,
+    stripePaymentIntent: row.stripe_payment_intent || undefined,
+    source: "web",
+  };
+}
+
+/** Load order from local FS first, then Supabase (production source of truth). */
+export async function loadOrder(reference: string): Promise<StoredOrder | null> {
+  const local = await loadOrderLocal(reference);
+  if (local) return local;
+
+  const cfg = supabaseConfigured();
+  if (!cfg) return null;
+
+  try {
+    const url = `${cfg.supabaseUrl}/rest/v1/orders?reference=eq.${encodeURIComponent(reference)}&select=*&limit=1`;
+    const response = await fetch(url, {
+      headers: {
+        apikey: cfg.serviceKey,
+        Authorization: `Bearer ${cfg.serviceKey}`,
+      },
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const rows = (await response.json()) as SupabaseOrderRow[];
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    return rowToOrder(rows[0]);
+  } catch {
+    return null;
+  }
+}
+
+/** Update local + Supabase status after payment. Returns best-effort merged order. */
+export async function updateOrder(
+  reference: string,
+  patch: Partial<StoredOrder>,
+): Promise<StoredOrder | null> {
+  const local = await updateOrderLocal(reference, patch);
+
+  const cfg = supabaseConfigured();
+  let remote: StoredOrder | null = null;
+  if (cfg) {
+    try {
+      const body: Record<string, unknown> = {};
+      if (patch.status !== undefined) body.status = patch.status;
+      if (patch.deliveryStatus !== undefined) body.delivery_status = patch.deliveryStatus;
+      if (patch.stripeSessionId !== undefined) body.stripe_session_id = patch.stripeSessionId;
+      if (patch.stripePaymentIntent !== undefined) {
+        body.stripe_payment_intent = patch.stripePaymentIntent;
+      }
+      if (patch.taxAmount !== undefined) body.tax_amount = patch.taxAmount;
+      if (patch.taxRate !== undefined) body.tax_rate = patch.taxRate;
+      if (patch.taxMode !== undefined) body.tax_mode = patch.taxMode;
+      if (patch.taxCountry !== undefined) body.tax_country = patch.taxCountry;
+      if (Object.keys(body).length > 0) {
+        body.updated_at = new Date().toISOString();
+        const response = await fetch(
+          `${cfg.supabaseUrl}/rest/v1/orders?reference=eq.${encodeURIComponent(reference)}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: cfg.serviceKey,
+              Authorization: `Bearer ${cfg.serviceKey}`,
+              Prefer: "return=representation",
+            },
+            body: JSON.stringify(body),
+          },
+        );
+        if (response.ok) {
+          const rows = (await response.json()) as SupabaseOrderRow[];
+          if (Array.isArray(rows) && rows[0]) remote = rowToOrder(rows[0]);
+        }
+      }
+    } catch {
+      /* ignore remote patch failure */
+    }
+  }
+
+  if (local) return local;
+  if (remote) return { ...remote, ...patch };
+  const existing = await loadOrder(reference);
+  if (!existing) return null;
+  return { ...existing, ...patch };
+}
+
+export async function saveOrderToSupabase(order: StoredOrder) {
+  const cfg = supabaseConfigured();
+  if (!cfg) {
     return { saved: false, reason: "Supabase not configured (optional)." };
   }
 
   try {
-    const response = await fetch(`${supabaseUrl}/rest/v1/orders`, {
+    const response = await fetch(`${cfg.supabaseUrl}/rest/v1/orders`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: serviceKey,
-        Authorization: `Bearer ${serviceKey}`,
-        Prefer: "return=representation",
+        apikey: cfg.serviceKey,
+        Authorization: `Bearer ${cfg.serviceKey}`,
+        Prefer: "resolution=merge-duplicates,return=representation",
       },
       body: JSON.stringify({
         reference: order.reference,
@@ -117,9 +256,15 @@ export async function saveOrderToSupabase(order: StoredOrder) {
         project_notes: order.projectNotes || null,
         items: order.items,
         subtotal: order.subtotal,
+        tax_amount: order.taxAmount,
+        tax_rate: order.taxRate,
+        tax_mode: order.taxMode,
+        tax_country: order.taxCountry || null,
         total: order.total,
         status: order.status,
         delivery_status: order.deliveryStatus,
+        stripe_session_id: order.stripeSessionId || null,
+        stripe_payment_intent: order.stripePaymentIntent || null,
       }),
     });
 

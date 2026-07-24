@@ -450,8 +450,8 @@ export async function GET(req: Request) {
   if (!ref) {
     return NextResponse.json({ error: "Missing ref" }, { status: 400 });
   }
-  const { loadOrderLocal } = await import("@/lib/orders");
-  const order = await loadOrderLocal(ref);
+  const { loadOrder } = await import("@/lib/orders");
+  const order = await loadOrder(ref);
   if (!order) {
     return NextResponse.json({ error: "Order not found" }, { status: 404 });
   }

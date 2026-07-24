@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { loadOrderLocal, notifyOwnerNewOrder, updateOrderLocal } from "@/lib/orders";
+import { loadOrder, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit } from "@/lib/artist-credit";
 
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     if (reference) {
       await recordServerEvent("checkout_complete", { provider: "stripe", status: "paid" });
       await creditPaidArtistDeposit(reference, "stripe");
-      const updated = await updateOrderLocal(reference, {
+      const updated = await updateOrder(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",
         stripeSessionId: session.id,
@@ -57,8 +57,8 @@ export async function POST(req: Request) {
           status: "paid",
         });
       } else {
-        // Order may only exist in Stripe if filesystem missed write
-        const existing = await loadOrderLocal(reference);
+        // Order may only exist remotely if filesystem missed write
+        const existing = await loadOrder(reference);
         if (existing) {
           await notifyOwnerNewOrder({ ...existing, status: "paid" });
         }
