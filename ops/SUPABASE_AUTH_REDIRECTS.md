@@ -52,7 +52,22 @@ Without custom SMTP, Supabase only mails project team addresses and rate-limits 
 
 ## App behaviour (after deploy)
 
-- Signup / resend / password reset always set `emailRedirectTo` to **https://bvsradio.com/...** (never localhost).
+- **Signup confirmation emails are sent by BVS** (`contact@bvsradio.com` via IONOS SMTP), not the default Supabase Auth mailer.
+- `/api/auth/signup` creates the user, generates a Supabase confirm link with `redirect_to=https://bvsradio.com/auth/confirmed`, rewrites any localhost redirect, and emails the link.
+- Resend uses the same BVS mail path (`resendOnly: true`).
+- Password reset still uses client `resetPasswordForEmail` with `emailRedirectTo` to **https://bvsradio.com/auth/reset-password**.
 - `/auth/confirmed` handles `code`, `token_hash`, hash tokens, and Supabase error query params.
 - `AuthLinkRescue` forwards `/?error=...` (and success tokens that land on home) to `/auth/confirmed`.
 - Navbar shows email + Sign out when session exists.
+
+### Vercel env required for branded confirm mail
+
+| Var | Value |
+|-----|--------|
+| `SMTP_HOST` | `smtp.ionos.de` |
+| `SMTP_PORT` | `587` |
+| `SMTP_USER` | `contact@bvsradio.com` |
+| `SMTP_PASS` | contact@ mailbox password |
+| `SMTP_FROM` | `BVS Radio <contact@bvsradio.com>` |
+| `NEXT_PUBLIC_SITE_URL` | `https://bvsradio.com` |
+| `SUPABASE_SERVICE_ROLE_KEY` | service role (already on Production) |

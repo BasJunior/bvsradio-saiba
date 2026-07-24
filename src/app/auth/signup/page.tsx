@@ -3,8 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { createClient, isSupabaseConfigured } from '@/lib/supabase'
-import { getAuthCallbackUrl } from '@/lib/auth-url'
+import { isSupabaseConfigured } from '@/lib/supabase'
 
 export default function SignupPage() {
   const [form, setForm] = useState({ email: '', password: '', fullName: '', username: '', role: 'listener' })
@@ -14,22 +13,24 @@ export default function SignupPage() {
   const [resendMessage, setResendMessage] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
 
-  const redirectTo = getAuthCallbackUrl('/auth/confirmed')
-
   const resendConfirmation = async () => {
     if (!verificationEmail) return
     setResendMessage('Sending…')
-    const supabase = createClient()
-    const { error: resendError } = await supabase.auth.resend({
-      type: 'signup',
-      email: verificationEmail,
-      options: { emailRedirectTo: redirectTo },
-    })
-    setResendMessage(
-      resendError
-        ? resendError.message
-        : 'A new confirmation link was sent. Check inbox and Spam.',
-    )
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verificationEmail, resendOnly: true }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setResendMessage(data.error || 'Could not resend confirmation email.')
+        return
+      }
+      setResendMessage(data.message || 'A new confirmation link was sent. Check inbox and Spam.')
+    } catch {
+      setResendMessage('Could not resend confirmation email.')
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,46 +66,30 @@ export default function SignupPage() {
     }
 
     try {
-      const supabase = createClient()
-      const { data, error: signupError } = await supabase.auth.signUp({
-        email,
-        password: form.password,
-        options: {
-          emailRedirectTo: redirectTo,
-          data: {
-            username,
-            full_name: form.fullName.trim(),
-            role: form.role,
-          },
-        },
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          password: form.password,
+          username,
+          fullName: form.fullName.trim(),
+          role: form.role,
+        }),
       })
-      if (signupError) {
-        const m = signupError.message || 'Signup failed'
-        if (/pattern|invalid|email/i.test(m)) {
-          throw new Error('Email or username format was rejected. Use a normal email (you@domain.com) and a simple username without spaces.')
-        }
-        throw signupError
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(data.error || 'Signup failed')
       }
 
-      // Supabase returns a user with empty identities when the email is already registered
-      const identities = data.user?.identities
-      if (data.user && Array.isArray(identities) && identities.length === 0) {
-        setError('An account with this email already exists. Sign in, or use Forgot password.')
+      if (data.needsConfirmation !== false) {
+        setVerificationEmail(email)
+        setInfo(null)
         return
       }
 
-      if (data.session) {
-        // Email confirmations disabled in Supabase — go straight in
-        await fetch('/api/auth/profile', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${data.session.access_token}` },
-        })
-        setInfo('Account created — you are signed in.')
-        window.location.href = '/'
-        return
-      }
-
-      setVerificationEmail(form.email.trim())
+      setInfo(data.message || 'Account created.')
+      window.location.href = '/auth/login'
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Signup failed')
     } finally {
@@ -117,7 +102,14 @@ export default function SignupPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center justify-center mb-6" aria-label="BVS Radio home">
-            <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-14 w-auto rounded-md object-contain" priority />
+            <Image
+              src="/branding/bvs-logo.png"
+              alt="BVS Radio"
+              width={1032}
+              height={552}
+              className="h-14 w-auto rounded-md object-contain"
+              priority
+            />
           </Link>
           <h1 className="text-3xl font-bold">Join the movement</h1>
           <p className="text-text-secondary mt-1">Create your free account to upload music and connect.</p>
@@ -127,14 +119,14 @@ export default function SignupPage() {
           <div className="rounded-2xl border border-brand/30 bg-brand/10 p-6 text-center" role="status">
             <h2 className="text-xl font-semibold">Check your email</h2>
             <p className="mt-3 text-sm text-text-secondary">
-              We sent a confirmation link to{' '}
+              We sent a confirmation link from <strong className="text-text-primary">BVS Radio (contact@bvsradio.com)</strong> to{' '}
               <strong className="text-text-primary">{verificationEmail}</strong>.
               Open it to finish creating your account.
             </p>
             <p className="mt-4 text-xs text-text-secondary">
               Also check Spam or Promotions. The link should open on <strong>bvsradio.com</strong>, not localhost.
               Open the newest email in a full browser tab (mail previews can burn the one-time link).
-              If you see &quot;otp_expired&quot; or invalid link, use Resend below and ignore older emails.
+              If you see "otp_expired" or invalid link, use Resend below and ignore older emails.
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-4 text-sm">
               <button type="button" onClick={resendConfirmation} className="text-brand hover:underline">
@@ -158,7 +150,22 @@ export default function SignupPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            <label className="block text-sm font-medium">I am joining as<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="mt-2 w-full rounded-xl border border-white/10 bg-bg-card px-4 py-3 outline-none focus:border-brand"><option value="listener">Listener — discover, save and interact</option><option value="artist">Artist — submit music and use creator tools</option><option value="writer">Writer — pitch and publish stories</option><option value="show_creator">Show or podcast creator — upload weekly episodes</option></select><span className="mt-2 block text-xs text-text-secondary">This sets up your starting workspace. Every account can still listen and discover.</span></label>
+            <label className="block text-sm font-medium">
+              I am joining as
+              <select
+                value={form.role}
+                onChange={(e) => setForm({ ...form, role: e.target.value })}
+                className="mt-2 w-full rounded-xl border border-white/10 bg-bg-card px-4 py-3 outline-none focus:border-brand"
+              >
+                <option value="listener">Listener — discover, save and interact</option>
+                <option value="artist">Artist — submit music and use creator tools</option>
+                <option value="writer">Writer — pitch and publish stories</option>
+                <option value="show_creator">Show or podcast creator — upload weekly episodes</option>
+              </select>
+              <span className="mt-2 block text-xs text-text-secondary">
+                This sets up your starting workspace. Every account can still listen and discover.
+              </span>
+            </label>
             <input
               type="text"
               placeholder="Full name"
@@ -199,8 +206,16 @@ export default function SignupPage() {
               className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
             />
 
-            {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
-            {info && <p className="text-sm text-brand" role="status">{info}</p>}
+            {error && (
+              <p className="text-sm text-red-400" role="alert">
+                {error}
+              </p>
+            )}
+            {info && (
+              <p className="text-sm text-brand" role="status">
+                {info}
+              </p>
+            )}
 
             <button
               type="submit"
