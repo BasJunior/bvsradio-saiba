@@ -439,7 +439,7 @@ export default function CheckoutPage() {
               {paynowReady
                 ? "Paynow is live for EcoCash and local methods. International card optional via Stripe."
                 : stripeReady
-                  ? "Card is live. EcoCash manual still available until Paynow API keys are set."
+                  ? "Card is live. EcoCash manual still available until Paynow is set."
                   : "Order now — EcoCash/bank/PayPal manual. Add Paynow Integration ID+Key for automatic EcoCash."}
             </p>
             <div className="grid gap-3 sm:grid-cols-2">
