@@ -8,6 +8,8 @@ export type StationTrack = {
   /** Album or pack name when known */
   project?: string;
   playCount?: number;
+  /** Optional genre for similar / auto-fill */
+  genre?: string;
 };
 
 export type Show = {

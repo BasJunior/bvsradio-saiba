@@ -9,6 +9,9 @@ export const analyticsEvents = [
   "checkout_complete",
   "playback_error",
   "payment_error",
+  "queue_play_now",
+  "queue_play_next",
+  "queue_add",
 ] as const
 
 export type AnalyticsEvent = (typeof analyticsEvents)[number]

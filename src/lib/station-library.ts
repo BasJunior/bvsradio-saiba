@@ -10,7 +10,7 @@ import {
 
 const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".m4a", ".ogg"]);
 
-/** House / foundation set while artist catalogue is thin */
+/** House / foundation set while artist catalogue is thin — only used when no editorial rotation exists */
 const HOUSE_LIBRARY = [
   "bvs-radio-robert-gabriel-mugabe-international-airport.mp3",
   "bvs-radio-slide-mix.mp3",
@@ -34,6 +34,14 @@ function titleFromFilename(filename: string) {
     .replace(/^pack\d+_/, "")
     .replace(/^\d+\.\s*/, "")
     .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeTitle(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -81,37 +89,56 @@ function orderLocalFiles(files: string[]): string[] {
   return ordered;
 }
 
+function publicStorageUrl(fileUrl: string) {
+  if (!fileUrl) return "";
+  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!base) return fileUrl;
+  // Prefer public object path when stored as bare path in bucket
+  const cleaned = fileUrl.replace(/^\/+/, "");
+  if (cleaned.startsWith("storage/v1/")) return `${base}/${cleaned}`;
+  return `${base}/storage/v1/object/public/bvsradio-audio/${cleaned}`;
+}
+
+function basenameFromUrl(url: string) {
+  try {
+    const pathPart = url.split("?")[0] || url;
+    const name = decodeURIComponent(pathPart.split("/").pop() || "");
+    return name.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
 /**
  * Continuous rotation:
- * 1) Approved + public + in_rotation tracks from Supabase (artist releases)
- * 2) House foundation library from public/music (scaffold)
- * Shuffled with daily seed for radio-like variety.
+ * 1) Approved + public + in_rotation tracks from Supabase (editorial is source of truth)
+ * 2) Only if no editorial rotation: house foundation from public/music
+ * Never dump full disk library over rejected editorial rows.
  */
 export async function getStationTracks(): Promise<StationTrack[]> {
   const musicDir = path.join(process.cwd(), "public", "music");
   const onDisk = fs.existsSync(musicDir) ? fs.readdirSync(musicDir) : HOUSE_LIBRARY;
   const audioFiles = onDisk.filter((file) => AUDIO_EXTENSIONS.has(path.extname(file).toLowerCase()));
 
-  // Prefer house set + curated; still include rest of disk for depth
   const housePreferred = HOUSE_LIBRARY.filter((f) => audioFiles.includes(f));
-  const rest = audioFiles.filter((f) => !housePreferred.includes(f));
-  const localFiles = orderLocalFiles([...housePreferred, ...rest]);
-  const local = localFiles.map(localTrackFromFile);
+  const localFallbackFiles = orderLocalFiles(housePreferred.length ? housePreferred : audioFiles.slice(0, 40));
+  const localFallback = localFallbackFiles.map(localTrackFromFile);
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return shuffleDaily(local);
+  if (!url || !key) return shuffleDaily(localFallback);
 
   try {
-    const response = await fetch(
-      `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id&order=rotation_added_at.desc&limit=500`,
-      {
-        headers: { apikey: key, Authorization: `Bearer ${key}` },
-        next: { revalidate: 60 },
-      },
+    const headers = { apikey: key, Authorization: `Bearer ${key}` };
+    const rotationRes = await fetch(
+      `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre&order=rotation_added_at.desc&limit=500`,
+      { headers, next: { revalidate: 30 } },
     );
-    if (!response.ok) return shuffleDaily(local);
-    const remote = (await response.json()) as Array<{
+
+    if (!rotationRes.ok) return shuffleDaily(localFallback);
+
+    const remote = (await rotationRes.json()) as Array<{
       id: string;
       title: string;
       artist_name: string;
@@ -119,27 +146,56 @@ export async function getStationTracks(): Promise<StationTrack[]> {
       artwork_url?: string | null;
       play_count?: number;
       release_id?: string | null;
+      genre?: string | null;
     }>;
-    const remoteTracks: StationTrack[] = remote
-      .filter((t) => t.file_url && !t.file_url.includes("scdn.co"))
-      .map((track) => ({
-        id: track.id,
-        title: track.title,
-        artist: track.artist_name,
-        src: track.file_url,
-        artwork: track.artwork_url || artworkForMusicSrc(track.file_url),
-        project: track.release_id ? "Artist release" : undefined,
-        playCount: Number(track.play_count || 0),
-      }));
 
-    const remoteSrcs = new Set(remoteTracks.map((t) => t.src));
-    // Published artist catalogue first, then house foundation (deduped)
-    const combined = [
-      ...shuffleDaily(remoteTracks),
-      ...shuffleDaily(local.filter((track) => !remoteSrcs.has(track.src))),
-    ];
-    return combined.length ? combined : shuffleDaily(local);
+    const remoteTracks: StationTrack[] = remote
+      .filter((t) => Boolean(t.file_url) && !t.file_url.includes("scdn.co"))
+      .map((track) => {
+        const src = publicStorageUrl(track.file_url);
+        return {
+          id: track.id,
+          title: track.title,
+          artist: track.artist_name,
+          src,
+          artwork: track.artwork_url || artworkForMusicSrc(src) || undefined,
+          project: track.release_id ? "Artist release" : track.genre || "BVS station",
+          playCount: Number(track.play_count || 0),
+          genre: track.genre || undefined,
+        };
+      })
+      .filter((t) => Boolean(t.src));
+
+    // Editorial has a live rotation → that IS the station. Do not append rejected house files.
+    if (remoteTracks.length > 0) {
+      return shuffleDaily(remoteTracks);
+    }
+
+    // No rotation rows: fall back to house files, but drop any filename that DB marks rejected / not public
+    const blockRes = await fetch(
+      `${url}/rest/v1/tracks?or=(editorial_status.eq.rejected,in_rotation.eq.false,is_public.eq.false)&select=title,file_url&limit=1000`,
+      { headers, next: { revalidate: 60 } },
+    );
+    const blockedTitles = new Set<string>();
+    const blockedFiles = new Set<string>();
+    if (blockRes.ok) {
+      const blocked = (await blockRes.json()) as Array<{ title?: string; file_url?: string }>;
+      for (const row of blocked) {
+        if (row.title) blockedTitles.add(normalizeTitle(row.title));
+        const base = basenameFromUrl(row.file_url || "");
+        if (base) blockedFiles.add(base);
+      }
+    }
+
+    const filteredLocal = localFallback.filter((track) => {
+      const base = basenameFromUrl(track.src);
+      if (base && blockedFiles.has(base)) return false;
+      if (blockedTitles.has(normalizeTitle(track.title))) return false;
+      return true;
+    });
+
+    return shuffleDaily(filteredLocal.length ? filteredLocal : localFallback);
   } catch {
-    return shuffleDaily(local);
+    return shuffleDaily(localFallback);
   }
 }

@@ -36,7 +36,7 @@ export default function HomeListenPanel() {
         <div className="flex items-start justify-between gap-3 sm:gap-5">
           <div className="min-w-0 flex-1">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-brand sm:text-[11px] sm:tracking-[0.18em]">
-              BVS continuous rotation
+              Playing from {player.playingFrom || "BVS continuous rotation"}
             </p>
             <h2 className="line-clamp-2 break-words text-xl font-semibold leading-snug sm:text-2xl">
               {player.current?.title || "Library being prepared"}
@@ -62,10 +62,17 @@ export default function HomeListenPanel() {
         </div>
         <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 text-sm sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
           <span className="w-fit rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 sm:text-sm">
-            Automated library · not a live broadcast
+            {player.mode === "ondemand" ? "On demand queue" : "Editorial rotation"} · {player.upNext.length} up next
           </span>
+          <button
+            type="button"
+            onClick={() => player.setQueueOpen(true)}
+            className="font-medium text-white/80 hover:text-white hover:underline"
+          >
+            Open queue
+          </button>
           <Link href="/radio" className="font-medium text-brand hover:underline">
-            Player, schedule &amp; recently played →
+            Full player →
           </Link>
         </div>
       </div>

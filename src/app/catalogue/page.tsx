@@ -667,6 +667,36 @@ export default function CataloguePage() {
     setPreviewElapsed(0)
   }
 
+  const toStationTrack = (track: Track) => ({
+    id: String(track.id),
+    title: track.title,
+    artist: track.artist,
+    src: track.src,
+    artwork: track.artwork,
+    project: track.collection,
+    genre: track.genre,
+  })
+
+  const queueAction = (action: 'play' | 'play-next' | 'add' | 'play-all', track: Track, list?: Track[]) => {
+    if (action !== 'play-all' && (!track.src || track.streamOnly)) {
+      previewTrack(track)
+      return
+    }
+    stopPreview()
+    window.dispatchEvent(
+      new CustomEvent('bvs:queue', {
+        detail:
+          action === 'play-all'
+            ? {
+                action,
+                tracks: (list || []).filter((t) => t.src && !t.streamOnly).map(toStationTrack),
+                from: track.collection || track.artist,
+              }
+            : { action, track: toStationTrack(track), from: track.collection || track.artist },
+      }),
+    )
+  }
+
   const addToCart = (track: Track) => {
     if (track.streamOnly || trackPrice(track) === null) {
       return
@@ -882,7 +912,7 @@ export default function CataloguePage() {
                     {priceBadge(track)}
                   </span>
                 </div>
-                <div className="mt-4 flex gap-2">
+                <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => previewTrack(track)}
@@ -890,6 +920,26 @@ export default function CataloguePage() {
                   >
                     {track.streamOnly && !track.src ? 'Open' : active ? 'Pause' : 'Preview'}
                   </button>
+                  {track.src && !track.streamOnly && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => queueAction('play', track)}
+                        className="rounded-full border border-brand/40 px-3 py-2 text-xs text-brand hover:bg-brand/10"
+                        title="Play in site player"
+                      >
+                        Play
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => queueAction('play-next', track)}
+                        className="rounded-full border border-white/20 px-3 py-2 text-xs hover:bg-white/5"
+                        title="Play next"
+                      >
+                        Next
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={() => setSelectedTrack(track)}
@@ -1040,7 +1090,7 @@ export default function CataloguePage() {
                   </div>
                 </div>
 
-                <div className="mt-auto flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row">
+                <div className="mt-auto flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:flex-wrap">
                   <button
                     type="button"
                     onClick={() => previewTrack(selectedTrack)}
@@ -1048,6 +1098,40 @@ export default function CataloguePage() {
                   >
                     {selectedTrack.streamOnly && !selectedTrack.src ? 'Open Stream' : currentTrack?.id === selectedTrack.id && isPlaying ? 'Pause Preview' : 'Preview Track'}
                   </button>
+                  {selectedTrack.src && !selectedTrack.streamOnly && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => queueAction('play', selectedTrack)}
+                        className="flex-1 rounded-full border border-brand/40 px-5 py-3 text-sm font-semibold text-brand hover:bg-brand/10"
+                      >
+                        Play on BVS
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => queueAction('play-next', selectedTrack)}
+                        className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                      >
+                        Play next
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => queueAction('add', selectedTrack)}
+                        className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                      >
+                        Add to queue
+                      </button>
+                      {collectionTracks.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => queueAction('play-all', selectedTrack, collectionTracks)}
+                          className="rounded-full border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
+                        >
+                          Play collection
+                        </button>
+                      )}
+                    </>
+                  )}
                   {selectedTrack.streamOnly && selectedTrack.externalUrl ? (
                     <Link
                       href={selectedTrack.externalUrl}
