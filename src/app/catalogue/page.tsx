@@ -957,7 +957,7 @@ export default function CataloguePage() {
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded">
-                  <Image src={currentTrack.artwork} alt="" fill className="object-cover" />
+                  <Image src={currentTrack.artwork} alt="" fill unoptimized={/^https?:\/\//i.test(currentTrack.artwork)} className="object-cover" />
                 </div>
                 <div className="min-w-0">
                   <div className="truncate text-sm font-medium">{currentTrack.title}</div>
@@ -988,7 +988,7 @@ export default function CataloguePage() {
           >
             <div className="grid md:grid-cols-2">
               <div className="relative aspect-square">
-                <Image src={selectedTrack.artwork} alt={selectedTrack.title} fill className="object-cover" />
+                <Image src={selectedTrack.artwork} alt={selectedTrack.title} fill unoptimized={/^https?:\/\//i.test(selectedTrack.artwork)} className="object-cover" />
                 <button
                   type="button"
                   onClick={() => setSelectedTrack(null)}
