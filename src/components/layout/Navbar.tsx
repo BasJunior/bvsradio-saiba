@@ -132,6 +132,7 @@ export default function Navbar() {
             <>
               {showCreator && <Link href="/creator/studio" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>}
               {showEditorial && <Link href="/admin/editorial" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
+              <Link href="/account" className="px-2.5 py-2 text-sm text-text-primary hover:text-brand transition-colors">Account</Link>
               <button
                 type="button"
                 onClick={signOut}
@@ -212,6 +213,7 @@ export default function Navbar() {
               {user ? (
                 <>
                   <p className="py-1 text-sm text-text-secondary truncate">{user.email}</p>
+                  <Link href="/account" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Account Centre</Link>
                   {showCreator && <Link href="/creator/studio" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Creator studio</Link>}
                   {showEditorial && <Link href="/admin/editorial" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Editorial dashboard</Link>}
                   <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
