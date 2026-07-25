@@ -274,17 +274,29 @@ export default function EditorialDashboard() {
                       @{profile.username} · {profile.is_published ? 'Published and verified' : 'Not published'}
                     </p>
                   </div>
-                  {allowed('publish_artists') && (
-                    <button
-                      disabled={Boolean(busy)}
-                      onClick={() =>
-                        act('publish_artist', { profileId: profile.id, publish: !profile.is_published })
-                      }
-                      className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand"
-                    >
-                      {profile.is_published ? 'Unpublish' : 'Publish'}
-                    </button>
-                  )}
+                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                    {profile.is_published && (
+                      <Link
+                        href={`/artist/${profile.username}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand"
+                      >
+                        Open profile ↗
+                      </Link>
+                    )}
+                    {allowed('publish_artists') && (
+                      <button
+                        disabled={Boolean(busy)}
+                        onClick={() =>
+                          act('publish_artist', { profileId: profile.id, publish: !profile.is_published })
+                        }
+                        className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand"
+                      >
+                        {profile.is_published ? 'Unpublish' : 'Publish'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
           </div>

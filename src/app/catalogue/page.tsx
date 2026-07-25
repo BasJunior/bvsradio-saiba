@@ -12,6 +12,7 @@ import {
 } from '@/lib/catalogue-pricing'
 import { rankCollections, type CollectionCard } from '@/lib/catalogue-trending'
 import { trackEvent } from '@/lib/analytics'
+import PublishedArtistsShelf from '@/components/PublishedArtistsShelf'
 
 type TrackType = 'single' | 'beat' | 'mix'
 
@@ -907,6 +908,8 @@ export default function CataloguePage() {
         </div>
       </section>
       )}
+
+      {!beatsMode && <PublishedArtistsShelf />}
 
       <section className="mb-10">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

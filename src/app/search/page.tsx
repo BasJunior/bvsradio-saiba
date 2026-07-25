@@ -7,6 +7,7 @@ import LibraryAction from '@/components/LibraryAction'
 import { discoveryItems, type DiscoveryKind } from '@/lib/discovery'
 import { recordListening } from '@/lib/library'
 import { trackEvent } from '@/lib/analytics'
+import type { PublishedArtistSummary } from '@/lib/artist-content'
 
 const filters: Array<{ label: string; value: 'all' | DiscoveryKind }> = [
   { label: 'All', value: 'all' }, { label: 'Tracks', value: 'track' }, { label: 'Artists', value: 'artist' }, { label: 'Shows', value: 'show' },
@@ -15,10 +16,38 @@ const filters: Array<{ label: string; value: 'all' | DiscoveryKind }> = [
 export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | DiscoveryKind>('all')
+  const [publishedArtists, setPublishedArtists] = useState<PublishedArtistSummary[] | null>(null)
+  const indexedItems = useMemo(() => {
+    const nonArtists = discoveryItems.filter((item) => item.kind !== 'artist')
+    if (publishedArtists === null) return discoveryItems
+    return [
+      ...nonArtists,
+      ...publishedArtists.map((artist) => ({
+        id: `artist-${artist.id}`,
+        kind: 'artist' as const,
+        title: artist.name,
+        subtitle: `${artist.role} · ${artist.trackCount} published ${artist.trackCount === 1 ? 'track' : 'tracks'}`,
+        href: `/artist/${artist.username}`,
+        image: artist.image,
+        tags: ['artist', 'verified', ...artist.genres],
+      })),
+    ]
+  }, [publishedArtists])
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    return discoveryItems.filter((item) => (filter === 'all' || item.kind === filter) && (!needle || [item.title, item.subtitle, ...(item.tags || [])].join(' ').toLowerCase().includes(needle)))
-  }, [query, filter])
+    return indexedItems.filter((item) => (filter === 'all' || item.kind === filter) && (!needle || [item.title, item.subtitle, ...(item.tags || [])].join(' ').toLowerCase().includes(needle)))
+  }, [query, filter, indexedItems])
+
+  useEffect(() => {
+    let active = true
+    fetch('/api/artists')
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((payload: { artists?: PublishedArtistSummary[] }) => {
+        if (active) setPublishedArtists(payload.artists || [])
+      })
+      .catch(() => undefined)
+    return () => { active = false }
+  }, [])
 
   useEffect(() => {
     const term = query.trim()

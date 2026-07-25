@@ -1,6 +1,36 @@
 import 'server-only'
 
-export type PublicArtist = { id: string; username: string; name: string; role: string; bio: string; image: string; tracks: Array<{ id: string; title: string; genre?: string; artwork_url?: string; credits: Array<{ person_name: string; credit_role: string }> }> }
+export type PublicArtistTrack = {
+  id: string
+  title: string
+  genre?: string
+  artwork_url?: string
+  in_rotation?: boolean
+  is_downloadable?: boolean
+  licence_type?: string
+  credits: Array<{ person_name: string; credit_role: string }>
+}
+
+export type PublicArtist = {
+  id: string
+  username: string
+  name: string
+  role: string
+  bio: string
+  image: string
+  tracks: PublicArtistTrack[]
+}
+
+export type PublishedArtistSummary = {
+  id: string
+  username: string
+  name: string
+  role: string
+  bio: string
+  image: string
+  trackCount: number
+  genres: string[]
+}
 
 const fallback: Record<string, PublicArtist> = {
   'bvs-radio': { id: 'bvs-radio', username: 'bvs-radio', name: 'BVS Radio', role: 'Station artist', bio: 'Original recordings and restored cuts from the BVS archive. Credits and release details will be expanded as the archive is documented.', image: '/music/Bvs-3000x3000%202.png', tracks: [] },
@@ -8,6 +38,70 @@ const fallback: Record<string, PublicArtist> = {
   wolfbridges: { id: 'wolfbridges', username: 'wolfbridges', name: 'Wolfbridges', role: 'Artist', bio: 'Artist behind STRAIGHTENIN, HOWLING IN THE HILLS 2, WOLF BEEN BAD and related BVSRadio playlist features now surfaced in catalogue discovery.', image: '/images/albums/straightenin.jpg', tracks: [] },
   whills: { id: 'whills', username: 'whills', name: 'W.Hills', role: 'Artist', bio: 'Collaborator on Wolfbridges projects featured in the BVS catalogue, including HOWLING IN THE HILLS 2.', image: '/images/albums/howling-in-the-hills-2.jpg', tracks: [] },
   'i-ratty': { id: 'i-ratty', username: 'i-ratty', name: 'I Ratty', role: 'Artist', bio: 'Collaborator on Wolfbridges releases featured through BVS catalogue discovery, including WOLF BEEN BAD.', image: '/images/albums/wolf-been-bad.jpg', tracks: [] },
+}
+
+const fallbackSummaries = Object.values(fallback).map((artist) => ({
+  id: artist.id,
+  username: artist.username,
+  name: artist.name,
+  role: artist.role,
+  bio: artist.bio,
+  image: artist.image,
+  trackCount: artist.tracks.length,
+  genres: [],
+}))
+
+export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return fallbackSummaries
+  const headers = { apikey: key, Authorization: `Bearer ${key}` }
+  try {
+    const profileResponse = await fetch(
+      `${url}/rest/v1/profiles?is_published=eq.true&is_verified=eq.true&select=id,username,display_name,bio,avatar_url,role&order=display_name.asc`,
+      { headers, next: { revalidate: 60 } },
+    )
+    if (!profileResponse.ok) return fallbackSummaries
+    const profiles = (await profileResponse.json() as Array<{
+      id: string
+      username: string
+      display_name?: string
+      bio?: string
+      avatar_url?: string
+      role: string
+    }>).filter((profile) => ['artist', 'admin'].includes(profile.role))
+    if (!profiles.length) return []
+
+    const ids = profiles.map((profile) => profile.id)
+    const tracksResponse = await fetch(
+      `${url}/rest/v1/tracks?user_id=in.(${ids.join(',')})&is_public=eq.true&editorial_status=eq.approved&select=user_id,genre,artwork_url`,
+      { headers, next: { revalidate: 60 } },
+    )
+    const tracks = tracksResponse.ok
+      ? await tracksResponse.json() as Array<{ user_id: string; genre?: string; artwork_url?: string }>
+      : []
+
+    return profiles.map((profile) => {
+      const artistTracks = tracks.filter((track) => track.user_id === profile.id)
+      const genres = [...new Set(artistTracks.map((track) => track.genre).filter(Boolean))] as string[]
+      const trackArtwork = artistTracks.find((track) => track.artwork_url)?.artwork_url
+      const avatar = profile.avatar_url && !profile.avatar_url.includes('default-avatar')
+        ? profile.avatar_url
+        : trackArtwork
+      return {
+        id: profile.id,
+        username: profile.username,
+        name: profile.display_name || profile.username,
+        role: profile.role === 'artist' ? 'BVS artist' : profile.role,
+        bio: profile.bio || 'Verified artist on BVS Radio.',
+        image: avatar || '/assets/images/default-avatar.png',
+        trackCount: artistTracks.length,
+        genres,
+      }
+    })
+  } catch {
+    return fallbackSummaries
+  }
 }
 
 export async function getPublicArtist(slug: string): Promise<PublicArtist | null> {
@@ -20,8 +114,8 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     if (!profileResponse.ok) return fallback[slug] || null
     const profiles = await profileResponse.json()
     const profile = profiles[0]
-    if (!profile) return fallback[slug] || null
-    const tracksResponse = await fetch(`${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,genre,artwork_url&order=created_at.desc`, { headers, next: { revalidate: 60 } })
+    if (!profile) return null
+    const tracksResponse = await fetch(`${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type&order=created_at.desc`, { headers, next: { revalidate: 60 } })
     const tracks = tracksResponse.ok ? await tracksResponse.json() : []
     const ids = tracks.map((track: { id: string }) => track.id)
     let credits: Array<{ track_id: string; person_name: string; credit_role: string }> = []
@@ -29,6 +123,6 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       const creditsResponse = await fetch(`${url}/rest/v1/track_credits?track_id=in.(${ids.join(',')})&is_verified=eq.true&select=track_id,person_name,credit_role`, { headers, next: { revalidate: 60 } })
       if (creditsResponse.ok) credits = await creditsResponse.json()
     }
-    return { id: profile.id, username: profile.username, name: profile.display_name || profile.username, role: profile.role === 'artist' ? 'BVS artist' : profile.role, bio: profile.bio || 'Verified artist on BVS Radio.', image: profile.avatar_url || '/assets/images/default-avatar.png', tracks: tracks.map((track: { id: string; title: string; genre?: string; artwork_url?: string }) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })) }
+    return { id: profile.id, username: profile.username, name: profile.display_name || profile.username, role: profile.role === 'artist' ? 'BVS artist' : profile.role, bio: profile.bio || 'Verified artist on BVS Radio.', image: profile.avatar_url || tracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url || '/assets/images/default-avatar.png', tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })) }
   } catch { return fallback[slug] || null }
 }
