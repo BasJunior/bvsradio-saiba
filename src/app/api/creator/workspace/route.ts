@@ -1,14 +1,15 @@
 import { NextResponse } from 'next/server'
 import { creatorHeaders, creatorIdentity, creatorJson, creatorUrl } from '@/lib/creator-server'
 
-const allowedRoles = new Set(['artist', 'writer', 'show_creator', 'admin'])
 const clean = (value: unknown, max = 5000) => String(value || '').trim().slice(0, max)
 const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
+const hasCreatorAccess = (profile: { role: string; is_producer?: boolean }) =>
+  profile.role !== 'listener' || profile.is_producer === true
 
 export async function GET(request: Request) {
   const identity = await creatorIdentity(request)
   if (!identity) return NextResponse.json({ error: 'Sign in to open your creator workspace.' }, { status: 401 })
-  if (!identity.profile || !allowedRoles.has(identity.profile.role)) return NextResponse.json({ error: 'This workspace requires a creator account.' }, { status: 403 })
+  if (!identity.profile || !hasCreatorAccess(identity.profile)) return NextResponse.json({ error: 'This workspace requires a creator account.' }, { status: 403 })
   const id = identity.user.id
   const empty = { application: null, articles: [], briefs: [], shows: [], episodes: [] }
   const [tracksResponse, requestsResponse] = await Promise.all([
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const identity = await creatorIdentity(request)
   if (!identity) return NextResponse.json({ error: 'Sign in to submit creator work.' }, { status: 401 })
-  if (!identity.profile || !allowedRoles.has(identity.profile.role)) return NextResponse.json({ error: 'Your account does not have creator access.' }, { status: 403 })
+  if (!identity.profile || !hasCreatorAccess(identity.profile)) return NextResponse.json({ error: 'Your account does not have creator access.' }, { status: 403 })
   const body = await request.json().catch(() => ({})) as Record<string, unknown>
   const action = clean(body.action, 40)
   const id = identity.user.id

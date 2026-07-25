@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js'
 import ThemeToggle from '@/components/ThemeToggle'
 type Access = {
   artist: boolean
+  creator: boolean
   writer: boolean
   showCreator: boolean
   editorial: boolean
@@ -65,7 +66,7 @@ export default function Navbar() {
   ]
 
   const showArtist = Boolean(access?.artist)
-  const showCreator = Boolean(access?.writer || access?.showCreator || access?.editorial)
+  const showCreator = Boolean(access?.creator)
   const showEditorial = Boolean(access?.editorial)
 
   return (

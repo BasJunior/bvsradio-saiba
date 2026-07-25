@@ -49,6 +49,8 @@ export async function GET(request: Request) {
   const isArtist = profileRole === 'artist' || isAdmin
   // Wave A: artists + explicit is_producer + admins can use My BeatStore
   const isProducer = isProducerFlag || isArtist || isAdmin
+  // Creator Studio is available to every creator identity; only pure listeners are excluded.
+  const isCreator = profileRole !== 'listener' || isProducerFlag || isEditorial
   return NextResponse.json({
     authenticated: true,
     email: user.email,
@@ -58,6 +60,7 @@ export async function GET(request: Request) {
       listener: true,
       artist: isArtist,
       producer: isProducer,
+      creator: isCreator,
       writer: profileRole === 'writer' || isEditorial,
       showCreator: profileRole === 'show_creator' || isEditorial,
       editorial: isEditorial,
