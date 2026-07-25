@@ -845,7 +845,7 @@ export default function CataloguePage() {
         </div>
 
         <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/10">
-          <Image src={beatsMode ? '/images/hero-studio.jpg' : '/images/mic-closeup.jpg'} alt="" fill className="object-cover" priority />
+          <Image src={beatsMode ? junePackArt : '/images/mic-closeup.jpg'} alt={beatsMode ? 'WolfBrx June Pack beat artwork' : 'BVS music catalogue'} fill className="object-cover" priority />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
           <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
             <div>
