@@ -8,6 +8,9 @@ import { discoveryItems, type DiscoveryKind } from '@/lib/discovery'
 import { recordListening } from '@/lib/library'
 import { trackEvent } from '@/lib/analytics'
 import type { PublishedArtistSummary } from '@/lib/artist-content'
+import type { PublishedProducerSummary } from '@/lib/artist-content'
+
+type PublicBeat = { id: string; title: string; producer: string; producer_username?: string; genre?: string; mood?: string; artworkUrl?: string; bpm?: number }
 
 const filters: Array<{ label: string; value: 'all' | DiscoveryKind }> = [
   { label: 'All', value: 'all' }, { label: 'Tracks', value: 'track' }, { label: 'Artists', value: 'artist' }, { label: 'Shows', value: 'show' },
@@ -17,12 +20,14 @@ export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | DiscoveryKind>('all')
   const [publishedArtists, setPublishedArtists] = useState<PublishedArtistSummary[] | null>(null)
+  const [publishedProducers, setPublishedProducers] = useState<PublishedProducerSummary[]>([])
+  const [publishedBeats, setPublishedBeats] = useState<PublicBeat[]>([])
   const indexedItems = useMemo(() => {
     const nonArtists = discoveryItems.filter((item) => item.kind !== 'artist')
     if (publishedArtists === null) return discoveryItems
     return [
       ...nonArtists,
-      ...publishedArtists.map((artist) => ({
+      ...publishedArtists.filter((artist) => !publishedProducers.some((producer) => producer.id === artist.id)).map((artist) => ({
         id: `artist-${artist.id}`,
         kind: 'artist' as const,
         title: artist.name,
@@ -31,8 +36,26 @@ export default function SearchPage() {
         image: artist.image,
         tags: ['artist', 'verified', ...artist.genres],
       })),
+      ...publishedProducers.map((producer) => ({
+        id: `producer-${producer.id}`,
+        kind: 'artist' as const,
+        title: producer.name,
+        subtitle: `Verified producer · ${producer.beatCount} published ${producer.beatCount === 1 ? 'beat' : 'beats'}`,
+        href: `/artist/${producer.username}`,
+        image: producer.image,
+        tags: ['producer', 'beats', 'verified', ...producer.genres],
+      })),
+      ...publishedBeats.map((beat) => ({
+        id: `beat-${beat.id}`,
+        kind: 'track' as const,
+        title: beat.title,
+        subtitle: `${beat.producer} · Beat${beat.genre ? ` · ${beat.genre}` : ''}`,
+        href: `/catalogue?type=beat&q=${encodeURIComponent(beat.title)}#beatstore`,
+        image: beat.artworkUrl,
+        tags: ['beat', 'producer', beat.genre || '', beat.mood || '', beat.bpm ? `${beat.bpm} BPM` : ''].filter(Boolean),
+      })),
     ]
-  }, [publishedArtists])
+  }, [publishedArtists, publishedBeats, publishedProducers])
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase()
     return indexedItems.filter((item) => (filter === 'all' || item.kind === filter) && (!needle || [item.title, item.subtitle, ...(item.tags || [])].join(' ').toLowerCase().includes(needle)))
@@ -40,12 +63,16 @@ export default function SearchPage() {
 
   useEffect(() => {
     let active = true
-    fetch('/api/artists')
-      .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((payload: { artists?: PublishedArtistSummary[] }) => {
-        if (active) setPublishedArtists(payload.artists || [])
-      })
-      .catch(() => undefined)
+    Promise.all([
+      fetch('/api/artists').then((response) => response.ok ? response.json() : Promise.reject()),
+      fetch('/api/producers').then((response) => response.ok ? response.json() : Promise.reject()),
+      fetch('/api/beats').then((response) => response.ok ? response.json() : Promise.reject()),
+    ]).then(([artistsPayload, producersPayload, beatsPayload]) => {
+      if (!active) return
+      setPublishedArtists((artistsPayload as { artists?: PublishedArtistSummary[] }).artists || [])
+      setPublishedProducers((producersPayload as { producers?: PublishedProducerSummary[] }).producers || [])
+      setPublishedBeats((beatsPayload as { beats?: PublicBeat[] }).beats || [])
+    }).catch(() => undefined)
     return () => { active = false }
   }, [])
 

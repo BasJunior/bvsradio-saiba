@@ -208,7 +208,7 @@ export default async function HomePage() {
 
       <section className="border-t border-white/10 px-4 py-12 text-center sm:px-6 sm:py-16">
         <p className="mx-auto max-w-2xl text-pretty text-base text-text-secondary sm:text-lg">
-          BVS is being prepared as Zimbabwe&apos;s digital radio and music platform: focused enough to feel human, broad enough to serve listeners and working artists.
+          BVS is Zimbabwe&apos;s digital radio and music platform: live continuous rotation for listeners, with editorially reviewed publishing and creator tools for working artists.
         </p>
         <div className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           <Link href="/auth/signup" className="rounded-full bg-brand px-7 py-3.5 font-semibold text-black">

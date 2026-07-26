@@ -10,6 +10,7 @@ type BeforeInstallPromptEvent = Event & {
 export default function PwaRegister() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
+  const [engaged, setEngaged] = useState(false);
   const [dismissed, setDismissed] = useState(
     () => typeof window === "undefined" || localStorage.getItem("bvs-install-dismissed") === "1",
   );
@@ -33,6 +34,11 @@ export default function PwaRegister() {
 
     if (isStandalone) return;
 
+    const engagementTimer = window.setTimeout(() => setEngaged(true), 60_000);
+    const onEngagement = () => setEngaged(true);
+    window.addEventListener("bvs:player-open", onEngagement, { once: true });
+    window.addEventListener("bvs:library-change", onEngagement, { once: true });
+
     const onBip = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
@@ -48,10 +54,15 @@ export default function PwaRegister() {
       window.setTimeout(() => {
         setShowIosHint(true);
         setDismissed(false);
-      }, 0);
+      }, 60_000);
     }
 
-    return () => window.removeEventListener("beforeinstallprompt", onBip);
+    return () => {
+      window.clearTimeout(engagementTimer);
+      window.removeEventListener("beforeinstallprompt", onBip);
+      window.removeEventListener("bvs:player-open", onEngagement);
+      window.removeEventListener("bvs:library-change", onEngagement);
+    };
   }, []);
 
   const close = () => {
@@ -72,7 +83,7 @@ export default function PwaRegister() {
     close();
   };
 
-  if (dismissed || (!deferred && !showIosHint)) return null;
+  if (dismissed || !engaged || (!deferred && !showIosHint)) return null;
 
   return (
     <div

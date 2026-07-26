@@ -10,9 +10,10 @@ export async function createSignedUploadSlot(
   supabaseUrl: string,
   serviceKey: string,
   path: string,
+  bucket = BUCKET,
 ): Promise<{ path: string; token: string; signedUrl: string } | null> {
   const res = await fetch(
-    `${supabaseUrl}/storage/v1/object/upload/sign/${BUCKET}/${path}`,
+    `${supabaseUrl}/storage/v1/object/upload/sign/${bucket}/${path}`,
     {
       method: "POST",
       headers: {

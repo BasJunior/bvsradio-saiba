@@ -126,6 +126,15 @@ export async function PATCH(request: Request) {
         await audit(identity.user.id, publish ? 'artist_published' : 'artist_unpublished', 'profile', profileId)
         return NextResponse.json({ result })
       }
+      case 'set_producer': {
+        requirePermission('publish_artists')
+        const profileId = String(body.profileId || '')
+        if (!profileId) return NextResponse.json({ error: 'Profile is required.' }, { status: 400 })
+        const enabled = body.enabled === true
+        const result = await patchTable('profiles', `id=eq.${encodeURIComponent(profileId)}`, { is_producer: enabled })
+        await audit(identity.user.id, enabled ? 'producer_enabled' : 'producer_disabled', 'profile', profileId)
+        return NextResponse.json({ result })
+      }
       case 'manage_license': {
         requirePermission('manage_licensing')
         const trackId = String(body.trackId || '')

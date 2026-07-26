@@ -38,7 +38,7 @@ export function fileExtension(name: string): string {
   return part.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-export function isAllowedAudioFile(file: { name: string; type: string; size: number }): {
+export function isAllowedAudioFile(file: { name: string; type: string; size: number; maxBytes?: number }): {
   ok: boolean;
   error?: string;
   ext: string;
@@ -82,7 +82,7 @@ export function isAllowedAudioFile(file: { name: string; type: string; size: num
   }
   const isWav = ext === "wav" || mime.includes("wav");
   const isLossless = isWav || ext === "flac" || mime.includes("flac");
-  const maxBytes = isLossless ? 100 * 1024 * 1024 : 40 * 1024 * 1024;
+  const maxBytes = file.maxBytes || (isLossless ? 100 * 1024 * 1024 : 40 * 1024 * 1024);
   if (file.size <= 0) {
     return { ok: false, ext: ext || "unknown", error: "The selected file is empty." };
   }
@@ -90,7 +90,9 @@ export function isAllowedAudioFile(file: { name: string; type: string; size: num
     return {
       ok: false,
       ext: ext || "unknown",
-      error: isLossless
+      error: file.maxBytes
+        ? `Audio must be ${Math.floor(file.maxBytes / 1024 / 1024)}MB or smaller.`
+        : isLossless
         ? "WAV/FLAC must be 100MB or smaller."
         : "Compressed audio (MP3/M4A/OGG/AAC) must be 40MB or smaller.",
     };

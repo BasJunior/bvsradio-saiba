@@ -1,13 +1,16 @@
 import type { MetadataRoute } from "next";
 import { blogPosts } from "@/lib/blog";
+import { getPublishedArtists, getPublishedProducers } from "@/lib/artist-content";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages = [
     { url: "https://bvsradio.com", lastModified: new Date(), priority: 1.0 },
     { url: "https://bvsradio.com/radio", lastModified: new Date(), priority: 0.9 },
     { url: "https://bvsradio.com/catalogue", lastModified: new Date(), priority: 0.8 },
     { url: "https://bvsradio.com/shows", lastModified: new Date(), priority: 0.8 },
     { url: "https://bvsradio.com/search", lastModified: new Date(), priority: 0.7 },
+    { url: "https://bvsradio.com/music/artists", lastModified: new Date(), priority: 0.8 },
+    { url: "https://bvsradio.com/music/producers", lastModified: new Date(), priority: 0.8 },
     { url: "https://bvsradio.com/library", lastModified: new Date(), priority: 0.6 },
     { url: "https://bvsradio.com/upload", lastModified: new Date(), priority: 0.7 },
     { url: "https://bvsradio.com/blog", lastModified: new Date(), priority: 0.8 },
@@ -18,6 +21,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: "https://bvsradio.com/contact", lastModified: new Date(), priority: 0.5 },
     { url: "https://bvsradio.com/privacy", lastModified: new Date(), priority: 0.3 },
     { url: "https://bvsradio.com/terms", lastModified: new Date(), priority: 0.3 },
+    { url: "https://bvsradio.com/refunds", lastModified: new Date(), priority: 0.3 },
     { url: "https://bvsradio.com/auth/signup", lastModified: new Date(), priority: 0.6 },
     { url: "https://bvsradio.com/auth/login", lastModified: new Date(), priority: 0.5 },
   ];
@@ -28,5 +32,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7 as const,
   }));
 
-  return [...staticPages, ...blogPages];
+  const [artists, producers] = await Promise.all([getPublishedArtists(), getPublishedProducers()]);
+  const creatorPages = [...artists, ...producers]
+    .filter((creator, index, list) => list.findIndex((item) => item.username === creator.username) === index)
+    .map((creator) => ({
+      url: `https://bvsradio.com/artist/${creator.username}`,
+      lastModified: new Date(),
+      priority: 0.7 as const,
+    }));
+
+  return [...staticPages, ...blogPages, ...creatorPages];
 }

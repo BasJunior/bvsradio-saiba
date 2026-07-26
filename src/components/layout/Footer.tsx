@@ -27,6 +27,7 @@ export default function Footer() {
               <Link href="/artists" className="text-sm text-text-secondary hover:text-brand transition-colors">Artist Access</Link>
               <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Upload Music</Link>
               <Link href="/catalogue?type=beat" className="text-sm text-text-secondary hover:text-brand transition-colors">Browse Beats</Link>
+              <Link href="/music/producers" className="text-sm text-text-secondary hover:text-brand transition-colors">Producers</Link>
               <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Mixing &amp; Mastering</Link>
             </div>
           </div>
@@ -38,6 +39,7 @@ export default function Footer() {
               <Link href="/contact" className="text-sm text-text-secondary hover:text-brand transition-colors">Contact</Link>
               <Link href="/privacy" className="text-sm text-text-secondary hover:text-brand transition-colors">Privacy</Link>
               <Link href="/terms" className="text-sm text-text-secondary hover:text-brand transition-colors">Terms</Link>
+              <Link href="/refunds" className="text-sm text-text-secondary hover:text-brand transition-colors">Refunds</Link>
               <a href="https://instagram.com/bvsradio" target="_blank" rel="noopener noreferrer" className="text-sm text-text-secondary hover:text-brand transition-colors">Instagram</a>
               <a href="https://twitter.com/bvsradio" target="_blank" rel="noopener noreferrer" className="text-sm text-text-secondary hover:text-brand transition-colors">Twitter / X</a>
               <a href="https://facebook.com/bvsradio" target="_blank" rel="noopener noreferrer" className="text-sm text-text-secondary hover:text-brand transition-colors">Facebook</a>

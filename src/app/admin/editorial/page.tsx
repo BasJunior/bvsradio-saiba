@@ -2,11 +2,12 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { roleLabels, type EditorialPermission, type EditorialRole } from '@/lib/editorial'
 import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 
-type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
+type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
 type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean }
 type Programme = { id: string; slug: string; title: string; host: string; day_label: string; start_time?: string; timezone: string; status: string }
 type Credit = { id: string; track_id: string; person_name: string; credit_role: string }
@@ -261,10 +262,11 @@ export default function EditorialDashboard() {
 
       <section id="ed-artists" className="mt-14 scroll-mt-36 grid gap-10 lg:grid-cols-2">
         <div>
-          <h2 className="text-2xl font-semibold">Artist publishing</h2>
+          <h2 className="text-2xl font-semibold">Creator publishing and BeatStore access</h2>
+          <p className="mt-2 text-sm text-text-secondary">Publishing controls public discovery. Producer access separately controls beat uploads and catalogue ownership.</p>
           <div className="mt-5 space-y-3">
             {data.profiles
-              .filter((profile) => ['artist', 'admin'].includes(profile.role))
+              .filter((profile) => ['artist', 'admin'].includes(profile.role) || profile.is_producer)
               .map((profile) => (
                 <div
                   key={profile.id}
@@ -286,6 +288,15 @@ export default function EditorialDashboard() {
                       >
                         Open profile ↗
                       </Link>
+                    )}
+                    {allowed('publish_artists') && (
+                      <button
+                        disabled={Boolean(busy)}
+                        onClick={() => act('set_producer', { profileId: profile.id, enabled: !profile.is_producer })}
+                        className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand"
+                      >
+                        {profile.is_producer ? 'Disable BeatStore' : 'Enable producer'}
+                      </button>
                     )}
                     {allowed('publish_artists') && (
                       <button
@@ -474,7 +485,7 @@ function BeatStoreEditorialPanel({
 
 function BeatReviewThread({ beat, messages, profiles, act, busy }: { beat: Beat; messages: BeatReviewMessage[]; profiles: Profile[]; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
   const [message, setMessage] = useState('')
-  const producerProfiles = profiles.filter((profile) => profile.is_producer || profile.role === 'artist' || profile.role === 'admin')
+  const producerProfiles = profiles.filter((profile) => profile.is_producer || profile.role === 'admin')
   return <div className="rounded-xl border border-white/10 bg-black/20 p-3">
     <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
     <div className="mt-2 max-h-44 space-y-2 overflow-y-auto">
@@ -501,7 +512,7 @@ function TrackCard({ track, credits, allowed, act, busy }: { track: Track; credi
   const [personName, setPersonName] = useState('')
   const [creditRole, setCreditRole] = useState('')
   const disabled = Boolean(busy)
-  return <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><h3 className="mt-1 text-xl font-semibold">{track.title}</h3><p className="text-sm text-text-secondary">{track.artist_name} · {track.genre} · {new Date(track.created_at).toLocaleDateString()}</p></div><audio controls preload="none" src={track.file_url} className="h-10 max-w-full" /></div>
+  return <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div className="flex min-w-0 gap-4">{track.artwork_url?<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed border-white/15 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><h3 className="mt-1 text-xl font-semibold">{track.title}</h3><p className="text-sm text-text-secondary">{track.artist_name} · {track.genre} · {new Date(track.created_at).toLocaleDateString()}</p><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><audio controls preload="none" src={track.file_url} className="h-10 max-w-full" /></div>
     {allowed('approve_submissions') && <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]"><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Private review notes" className="min-h-20 rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"/><div className="flex flex-wrap items-start gap-2"><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'approved', notes })} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'rejected', notes })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button>{track.editorial_status === 'approved' && <button disabled={disabled} onClick={() => act('publish_track', { trackId: track.id, publish: !track.is_public })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{track.is_public ? 'Unpublish track' : 'Publish track'}</button>}</div></div>}
     <div className="mt-5 grid gap-5 border-t border-white/10 pt-5 lg:grid-cols-3">
       <div><h4 className="text-sm font-semibold">Rotation</h4><p className="mt-1 text-xs text-text-secondary">{track.in_rotation ? 'Included in the station player' : 'Not in rotation'}</p>{allowed('manage_rotation') && <button disabled={disabled} onClick={() => act('set_rotation', { trackId: track.id, enabled: !track.in_rotation })} className="mt-3 rounded-full border border-white/20 px-4 py-2 text-xs">{track.in_rotation ? 'Remove' : 'Add to rotation'}</button>}</div>

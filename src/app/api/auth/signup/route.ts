@@ -19,6 +19,8 @@ function bad(msg: string, status = 400) {
 }
 
 async function ensureProfile(userId: string, username: string, fullName: string, role: string) {
+  const producer = role === 'producer'
+  const profileRole = producer ? 'listener' : role
   await supabaseAdmin('/rest/v1/profiles', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
@@ -27,7 +29,8 @@ async function ensureProfile(userId: string, username: string, fullName: string,
       username,
       display_name: fullName || username,
       full_name: fullName || username,
-      role: role || 'listener',
+      role: profileRole || 'listener',
+      is_producer: producer,
     }),
   })
 }
@@ -48,7 +51,10 @@ export async function POST(req: Request) {
     const password = body.password || ''
     const username = (body.username || '').trim()
     const fullName = (body.fullName || '').trim()
-    const role = (body.role || 'listener').trim() || 'listener'
+    const requestedRole = (body.role || 'listener').trim() || 'listener'
+    const allowedRoles = new Set(['listener', 'artist', 'producer', 'writer', 'show_creator'])
+    if (!allowedRoles.has(requestedRole)) return bad('Choose a valid account type.')
+    const role = requestedRole
     const resendOnly = Boolean(body.resendOnly)
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

@@ -22,7 +22,7 @@ export default function Navbar() {
   const [user, setUser] = useState<User | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
-  const [notificationDestination, setNotificationDestination] = useState('/account')
+  const [notificationDestination, setNotificationDestination] = useState('/notifications')
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
@@ -47,6 +47,12 @@ export default function Navbar() {
       void syncAccess(session?.user ?? null, session?.access_token)
     })
     return () => sub.subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    const seen = () => setNotificationCount(0)
+    window.addEventListener('bvs:notifications-seen', seen)
+    return () => window.removeEventListener('bvs:notifications-seen', seen)
   }, [])
 
   const signOut = async () => {

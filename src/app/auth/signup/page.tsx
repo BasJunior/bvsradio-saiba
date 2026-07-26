@@ -159,6 +159,7 @@ export default function SignupPage() {
               >
                 <option value="listener">Listener — discover, save and interact</option>
                 <option value="artist">Artist — submit music and use creator tools</option>
+                <option value="producer">Producer — upload and manage beats</option>
                 <option value="writer">Writer — pitch and publish stories</option>
                 <option value="show_creator">Show or podcast creator — upload weekly episodes</option>
               </select>

@@ -96,7 +96,7 @@ export async function isProducerCapable(profile?: {
   if (!profile) return false
   if (profile.is_producer === true) return true
   const role = String(profile.role || '')
-  return role === 'artist' || role === 'admin'
+  return role === 'admin'
 }
 
 export async function loadProducerProfile(userId: string) {
@@ -121,18 +121,8 @@ export async function loadProducerProfile(userId: string) {
 }
 
 export async function ensureProducerFlag(userId: string, profile: { role?: string; is_producer?: boolean }) {
-  if (profile.is_producer) return profile
-  if (!['artist', 'admin'].includes(String(profile.role || ''))) return profile
-  try {
-    await fetch(creatorUrl(`profiles?id=eq.${userId}`), {
-      method: 'PATCH',
-      headers: { ...creatorHeaders, Prefer: 'return=minimal' },
-      body: JSON.stringify({ is_producer: true }),
-    })
-    return { ...profile, is_producer: true }
-  } catch {
-    return profile
-  }
+  void userId
+  return profile
 }
 
 export async function listBeatsForProducer(userId: string) {

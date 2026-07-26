@@ -20,6 +20,9 @@ export type PublicArtist = {
   image: string
   tracks: PublicArtistTrack[]
   beats?: Array<{ id: string; title: string; genre?: string; artwork_url?: string; starting_price?: number }>
+  location?: string
+  links?: { instagram?: string; spotify?: string; website?: string }
+  joinedAt?: string
 }
 
 export type PublishedArtistSummary = {
@@ -123,11 +126,13 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
   if (!url || !key) return fallback[slug] || null
   const headers = { apikey: key, Authorization: `Bearer ${key}` }
   try {
-    const profileResponse = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(slug)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer&limit=1`, { headers, next: { revalidate: 60 } })
+    const profileResponse = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(slug)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,created_at&limit=1`, { headers, next: { revalidate: 60 } })
     if (!profileResponse.ok) return fallback[slug] || null
     const profiles = await profileResponse.json()
     const profile = profiles[0]
     if (!profile) return null
+    const waitlistResponse = await fetch(`${url}/rest/v1/artist_waitlist?onboarded_profile_id=eq.${profile.id}&select=country,city,links&order=updated_at.desc&limit=1`, { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY || key, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY || key}` }, next: { revalidate: 60 } })
+    const creatorDetails = waitlistResponse.ok ? (await waitlistResponse.json())[0] : null
     const tracksResponse = await fetch(`${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type&order=created_at.desc`, { headers, next: { revalidate: 60 } })
     const tracks = tracksResponse.ok ? await tracksResponse.json() : []
     const beatsResponse = await fetch(`${url}/rest/v1/beats?producer_user_id=eq.${profile.id}&is_public=eq.true&status=eq.published&select=id,title,genre,artwork_path,beat_licence_options(price_usd,is_active)&order=published_at.desc`, { headers, next: { revalidate: 60 } })
@@ -145,7 +150,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const trackArtwork = tracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url
     const beatArtwork = beats.find((beat: { artwork_url?: string }) => beat.artwork_url)?.artwork_url
     const role = profile.is_producer ? (profile.role === 'artist' ? 'BVS artist & producer' : 'BVS producer') : profile.role === 'artist' ? 'BVS artist' : profile.role
-    return { id: profile.id, username: profile.username, name: profile.display_name || profile.username, role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })), beats }
+    return { id: profile.id, username: profile.username, name: profile.display_name || profile.username, role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })), beats, location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '), links: creatorDetails?.links || {}, joinedAt: profile.created_at }
   } catch { return fallback[slug] || null }
 }
 

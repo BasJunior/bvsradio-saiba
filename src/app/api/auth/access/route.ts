@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     Boolean(staffRole) || ['editor', 'admin', 'moderator'].includes(profileRole) || Boolean(isOwner)
   const isArtist = profileRole === 'artist' || isAdmin
   // Wave A: artists + explicit is_producer + admins can use My BeatStore
-  const isProducer = isProducerFlag || isArtist || isAdmin
+  const isProducer = isProducerFlag || isAdmin
   // Creator Studio is available to every creator identity; only pure listeners are excluded.
   const isCreator = profileRole !== 'listener' || isProducerFlag || isEditorial
   return NextResponse.json({

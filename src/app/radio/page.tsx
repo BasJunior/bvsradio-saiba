@@ -19,7 +19,7 @@ export default async function RadioPage() {
       <div>
         <p className="mb-3 text-xs font-semibold uppercase tracking-[.22em] text-brand">Listen now</p>
         <h1 className="text-5xl font-semibold tracking-tight">Zimbabwean sound, always within reach.</h1>
-        <p className="mt-5 max-w-xl text-lg text-text-secondary">BVS currently runs an automated continuous rotation from our preserved music library. Hosted live programming is being prepared and will be clearly marked when it launches.</p>
+        <p className="mt-5 max-w-xl text-lg text-text-secondary">BVS runs a live continuous rotation combining approved artist releases with selected archive recordings. Hosted programmes are listed separately as upcoming until their first verified episodes are published.</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs text-brand">Automated rotation</span>
           <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-text-secondary">CAT / Harare</span>

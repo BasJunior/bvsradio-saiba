@@ -45,6 +45,10 @@ export default function AccountPage() {
   const [message, setMessage] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState('')
+  const [showDeletion, setShowDeletion] = useState(false)
+  const [deletionConfirmation, setDeletionConfirmation] = useState('')
+  const [deletionReason, setDeletionReason] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   const load = async (accessToken: string) => {
     const headers = { Authorization: `Bearer ${accessToken}` }
@@ -140,6 +144,49 @@ export default function AccountPage() {
     await createClient().auth.signOut()
     window.location.href = '/'
   }
+
+  const requestDeletion = async () => {
+    setDeleting(true)
+    setError('')
+    setMessage('')
+    try {
+      const response = await fetch('/api/account/deletion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ confirmation: deletionConfirmation, reason: deletionReason }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Could not request account deletion.')
+      setMessage(`${payload.message} Reference: ${payload.reference}`)
+      setShowDeletion(false)
+      setDeletionConfirmation('')
+      setDeletionReason('')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not request account deletion.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const exportData = async () => {
+    setError('')
+    try {
+      const response = await fetch('/api/account/export', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      if (!response.ok) {
+        const payload = await response.json()
+        throw new Error(payload.error || 'Could not export your data.')
+      }
+      const blob = await response.blob()
+      const href = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = href
+      anchor.download = `bvs-account-export-${new Date().toISOString().slice(0, 10)}.json`
+      anchor.click()
+      URL.revokeObjectURL(href)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not export your data.')
+    }
+  }
   const customAvatar = form.avatarUrl && !form.avatarUrl.includes('default-avatar') ? form.avatarUrl : ''
   const currentPhoto = avatarPreview || customAvatar || data?.profile?.display_avatar_url || '/assets/images/default-avatar.png'
 
@@ -189,6 +236,7 @@ export default function AccountPage() {
                 }} />
               </label>
               {avatarFile && <p className="mt-2 truncate text-xs text-text-secondary">{avatarFile.name} · saved when you press Save profile</p>}
+              {(customAvatar || avatarFile) && <button type="button" onClick={() => { setAvatarFile(null); setAvatarPreview(''); setForm({ ...form, avatarUrl: '/assets/images/default-avatar.png' }) }} className="ml-3 mt-3 text-sm text-text-secondary hover:text-red-300">Remove custom photo</button>}
             </div>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -209,16 +257,28 @@ export default function AccountPage() {
             <h2 className="text-2xl font-semibold">Privacy and account</h2>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/privacy" className="rounded-full border border-white/20 px-5 py-2 text-sm hover:border-brand">Privacy policy</Link>
-              <Link href="/contact?topic=account-deletion" className="rounded-full border border-white/20 px-5 py-2 text-sm hover:border-red-300">Request account deletion</Link>
+              <Link href="/refunds" className="rounded-full border border-white/20 px-5 py-2 text-sm hover:border-brand">Refund policy</Link>
+              <button type="button" onClick={() => void exportData()} className="rounded-full border border-white/20 px-5 py-2 text-sm hover:border-brand">Download my data</button>
+              <button type="button" onClick={() => setShowDeletion(true)} className="rounded-full border border-white/20 px-5 py-2 text-sm hover:border-red-300">Delete account</button>
               <button type="button" onClick={signOut} className="rounded-full border border-white/20 px-5 py-2 text-sm hover:border-brand">Sign out</button>
             </div>
           </section>
+          {showDeletion && <section className="rounded-2xl border border-red-400/30 bg-red-500/[.06] p-6">
+            <h2 className="text-2xl font-semibold">Request account deletion</h2>
+            <p className="mt-2 text-sm text-text-secondary">This starts an authenticated deletion request. Published creator content and active purchases are reviewed before removal so other people’s purchases and credits are not broken.</p>
+            <label className="mt-4 block text-sm font-medium">Reason (optional)<textarea value={deletionReason} onChange={(event) => setDeletionReason(event.target.value)} rows={3} className={field} /></label>
+            <label className="mt-4 block text-sm font-medium">Type DELETE to confirm<input value={deletionConfirmation} onChange={(event) => setDeletionConfirmation(event.target.value)} className={field} /></label>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button type="button" disabled={deleting || deletionConfirmation.trim().toUpperCase() !== 'DELETE'} onClick={() => void requestDeletion()} className="rounded-full bg-red-400 px-5 py-2 text-sm font-semibold text-black disabled:opacity-50">{deleting ? 'Submitting…' : 'Submit deletion request'}</button>
+              <button type="button" onClick={() => setShowDeletion(false)} className="rounded-full border border-white/20 px-5 py-2 text-sm">Cancel</button>
+            </div>
+          </section>}
         </div>
       </section>
 
       <section className="mt-12 rounded-2xl border border-white/10 bg-white/[.025] p-6">
         <div className="flex items-end justify-between gap-4"><div><h2 className="text-2xl font-semibold">Orders and purchases</h2><p className="mt-2 text-sm text-text-secondary">Orders placed while signed in appear here.</p></div><Link href="/shop" className="text-sm text-brand">Browse services →</Link></div>
-        {data.orders.length ? <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead className="text-xs uppercase text-text-secondary"><tr><th className="pb-3">Order</th><th className="pb-3">Items</th><th className="pb-3">Status</th><th className="pb-3">Total</th><th className="pb-3">Date</th></tr></thead><tbody>{data.orders.map((order) => <tr key={order.reference} className="border-t border-white/10"><td className="py-4 pr-4 font-medium text-brand">{order.reference}</td><td className="py-4 pr-4 text-text-secondary">{order.items?.map((item) => item.title).filter(Boolean).join(', ') || 'BVS order'}</td><td className="py-4 pr-4 capitalize text-text-secondary">{order.status.replaceAll('_', ' ')}</td><td className="py-4 pr-4">${Number(order.total || 0).toFixed(2)}</td><td className="py-4 text-text-secondary">{new Date(order.created_at).toLocaleDateString()}</td></tr>)}</tbody></table></div> : <p className="mt-5 rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">No signed-in orders yet.</p>}
+        {data.orders.length ? <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="text-xs uppercase text-text-secondary"><tr><th className="pb-3">Order</th><th className="pb-3">Items</th><th className="pb-3">Status</th><th className="pb-3">Delivery</th><th className="pb-3">Total</th><th className="pb-3">Date</th><th className="pb-3">Receipt</th></tr></thead><tbody>{data.orders.map((order) => <tr key={order.reference} className="border-t border-white/10"><td className="py-4 pr-4 font-medium text-brand">{order.reference}</td><td className="py-4 pr-4 text-text-secondary">{order.items?.map((item) => item.title).filter(Boolean).join(', ') || 'BVS order'}</td><td className="py-4 pr-4 capitalize text-text-secondary">{order.status.replaceAll('_', ' ')}</td><td className="py-4 pr-4 capitalize text-text-secondary">{order.delivery_status?.replaceAll('_', ' ') || 'pending'}</td><td className="py-4 pr-4">${Number(order.total || 0).toFixed(2)}</td><td className="py-4 pr-4 text-text-secondary">{new Date(order.created_at).toLocaleDateString()}</td><td className="py-4"><Link href={`/account/orders/${encodeURIComponent(order.reference)}`} className="text-brand hover:underline">View →</Link></td></tr>)}</tbody></table></div> : <p className="mt-5 rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">No signed-in orders yet.</p>}
       </section>
     </main>
   )

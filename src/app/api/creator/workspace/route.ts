@@ -50,6 +50,10 @@ export async function POST(request: Request) {
     }
     if (action === 'save_article') {
       if (!['writer','admin'].includes(identity.profile.role)) return NextResponse.json({ error: 'Writer access required.' }, { status: 403 })
+      if (identity.profile.role !== 'admin') {
+        const application = await creatorJson(await fetch(creatorUrl(`writer_applications?user_id=eq.${id}&status=eq.approved&select=id&limit=1`), { headers: creatorHeaders }))
+        if (!application[0]) return NextResponse.json({ error: 'Editorial must approve your writer application before you can submit articles.' }, { status: 403 })
+      }
       const title = clean(body.title, 180); const articleId = clean(body.id, 80); const submit = body.submit === true
       if (!title) return NextResponse.json({ error: 'Article title is required.' }, { status: 400 })
       const payload = { author_id: id, title, dek: clean(body.dek, 400), body: clean(body.body, 60000), sources: Array.isArray(body.sources) ? body.sources.slice(0, 20) : [], status: submit ? 'submitted' : 'draft', updated_at: new Date().toISOString() }
