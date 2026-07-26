@@ -21,6 +21,8 @@ export default function Navbar() {
   const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
+  const [notificationCount, setNotificationCount] = useState(0)
+  const [notificationDestination, setNotificationDestination] = useState('/account')
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
@@ -32,6 +34,13 @@ export default function Navbar() {
       if (!response.ok) return setAccess(null)
       const payload = await response.json() as { access?: Access }
       setAccess(payload.access ?? null)
+      const notifications = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      if (notifications.ok) {
+        const data = await notifications.json() as { destination?: string; events?: Array<{ created_at: string }> }
+        const seenAt = window.localStorage.getItem('bvs_notifications_seen_at') || ''
+        setNotificationDestination(data.destination || '/account')
+        setNotificationCount((data.events || []).filter(event => !seenAt || event.created_at > seenAt).length)
+      }
     }
     supabase.auth.getSession().then(({ data }) => void syncAccess(data.session?.user ?? null, data.session?.access_token))
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -45,6 +54,7 @@ export default function Navbar() {
     await createClient().auth.signOut()
     setUser(null)
     setAccess(null)
+    setNotificationCount(0)
     setIsMenuOpen(false)
     window.location.href = '/'
   }
@@ -68,6 +78,11 @@ export default function Navbar() {
   const showArtist = Boolean(access?.artist)
   const showCreator = Boolean(access?.creator)
   const showEditorial = Boolean(access?.editorial)
+  const openNotifications = () => {
+    window.localStorage.setItem('bvs_notifications_seen_at', new Date().toISOString())
+    setNotificationCount(0)
+    setIsMenuOpen(false)
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
@@ -130,6 +145,10 @@ export default function Navbar() {
           </Link>
           {user ? (
             <>
+              <Link href={notificationDestination} onClick={openNotifications} aria-label={`${notificationCount} new BVS notifications`} className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-lg text-text-secondary hover:border-brand hover:text-brand">
+                ♢
+                {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}
+              </Link>
               {showCreator && <Link href="/creator/studio" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>}
               {showEditorial && <Link href="/admin/editorial" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
               <Link href="/account" className="px-2.5 py-2 text-sm text-text-primary hover:text-brand transition-colors">Account</Link>
@@ -212,6 +231,7 @@ export default function Navbar() {
               <div className="pb-2"><ThemeToggle /></div>
               {user ? (
                 <>
+                  <Link href={notificationDestination} className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={openNotifications}><span>Notifications</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
                   <p className="py-1 text-sm text-text-secondary truncate">{user.email}</p>
                   <Link href="/account" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Account Centre</Link>
                   {showCreator && <Link href="/creator/studio" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Creator studio</Link>}
