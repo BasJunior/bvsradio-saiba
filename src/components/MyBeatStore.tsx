@@ -24,6 +24,12 @@ type Beat = {
   editorial_notes?: string | null
   created_at?: string
   beat_licence_options?: Licence[]
+  beat_review_messages?: Array<{
+    id: string
+    author_kind: 'producer' | 'editor'
+    message: string
+    created_at: string
+  }>
 }
 
 const field =
@@ -66,6 +72,7 @@ export default function MyBeatStore() {
   const [master, setMaster] = useState<File | null>(null)
   const [artwork, setArtwork] = useState<File | null>(null)
   const [rights, setRights] = useState(false)
+  const [reviewReplies, setReviewReplies] = useState<Record<string, string>>({})
 
   const load = useCallback(async (accessToken: string) => {
     const res = await fetch('/api/beats?scope=mine', {
@@ -196,6 +203,30 @@ export default function MyBeatStore() {
       await load(token)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submit failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sendReviewMessage = async (beatId: string) => {
+    if (!token) return
+    const reviewMessage = (reviewReplies[beatId] || '').trim()
+    if (!reviewMessage) return
+    setBusy(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/beats/${beatId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'message', message: reviewMessage }),
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(payload.error || 'Could not send message.')
+      setReviewReplies(current => ({ ...current, [beatId]: '' }))
+      setMessage('Message sent to BVS editorial.')
+      await load(token)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send message.')
     } finally {
       setBusy(false)
     }
@@ -361,6 +392,22 @@ export default function MyBeatStore() {
                   {beat.editorial_notes && (
                     <p className="mt-2 text-sm text-text-secondary">Editor: {beat.editorial_notes}</p>
                   )}
+                  <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
+                    <div className="mt-2 space-y-2">
+                      {(beat.beat_review_messages || []).map(item => (
+                        <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs">
+                          <span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}
+                          <span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span>
+                        </p>
+                      ))}
+                      {!beat.beat_review_messages?.length && <p className="text-xs text-text-secondary">Editorial messages will appear here.</p>}
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <input value={reviewReplies[beat.id] || ''} onChange={event => setReviewReplies(current => ({ ...current, [beat.id]: event.target.value }))} placeholder="Reply to editorial…" className={`${field} py-2 text-sm`} />
+                      <button type="button" disabled={busy || !(reviewReplies[beat.id] || '').trim()} onClick={() => void sendReviewMessage(beat.id)} className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40">Send</button>
+                    </div>
+                  </div>
                 </div>
                 {['draft', 'changes_requested', 'rejected'].includes(beat.status) && (
                   <button

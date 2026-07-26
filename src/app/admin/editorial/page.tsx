@@ -7,7 +7,7 @@ import { roleLabels, type EditorialPermission, type EditorialRole } from '@/lib/
 import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
-type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean }
+type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean }
 type Programme = { id: string; slug: string; title: string; host: string; day_label: string; start_time?: string; timezone: string; status: string }
 type Credit = { id: string; track_id: string; person_name: string; credit_role: string }
 type Staff = { user_id: string; role: EditorialRole; active: boolean }
@@ -21,7 +21,8 @@ type ReleaseTrack = { id: string; release_id: string; position: number; title: s
 type DistJob = { id: string; release_id: string; status: string; distributor?: string | null; notes?: string | null }
 type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
 type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
-type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; beats?: Beat[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
+type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' | 'editor'; message: string; created_at: string }
+type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
 const statusClass: Record<string, string> = { submitted: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary' }
 
@@ -218,6 +219,7 @@ export default function EditorialDashboard() {
       <section id="ed-beats" className="scroll-mt-36">
         <BeatStoreEditorialPanel
           beats={data.beats || []}
+          messages={data.beatReviewMessages || []}
           profiles={data.profiles}
           enabled={allowed('approve_submissions')}
           act={act}
@@ -352,12 +354,14 @@ export default function EditorialDashboard() {
 
 function BeatStoreEditorialPanel({
   beats,
+  messages,
   profiles,
   enabled,
   act,
   busy,
 }: {
   beats: Beat[]
+  messages: BeatReviewMessage[]
   profiles: Profile[]
   enabled: boolean
   act: (action: string, body: Record<string, unknown>) => Promise<void>
@@ -423,17 +427,19 @@ function BeatStoreEditorialPanel({
                 {audioSrc ? <audio controls preload="none" src={audioSrc} className="h-10 max-w-full" /> : null}
               </div>
               {enabled && (
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-4">
+                  <BeatReviewThread beat={beat} messages={messages.filter((message) => message.beat_id === beat.id)} profiles={profiles} act={act} busy={busy} />
+                  <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     disabled={Boolean(busy)}
-                    onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: beat.editorial_notes || '' })}
+                    onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: '' })}
                     className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
                   >
                     Approve
                   </button>
                   <button
                     disabled={Boolean(busy)}
-                    onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: beat.editorial_notes || 'Please revise and resubmit.' })}
+                    onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: 'Please review the editorial conversation and revise before resubmitting.' })}
                     className="rounded-full border border-white/20 px-4 py-2 text-xs"
                   >
                     Request changes
@@ -454,6 +460,7 @@ function BeatStoreEditorialPanel({
                       {beat.is_public ? 'Unpublish' : 'Publish to BeatStore'}
                     </button>
                   )}
+                  </div>
                 </div>
               )}
             </article>
@@ -463,6 +470,27 @@ function BeatStoreEditorialPanel({
       </div>
     </section>
   )
+}
+
+function BeatReviewThread({ beat, messages, profiles, act, busy }: { beat: Beat; messages: BeatReviewMessage[]; profiles: Profile[]; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
+  const [message, setMessage] = useState('')
+  const producerProfiles = profiles.filter((profile) => profile.is_producer || profile.role === 'artist' || profile.role === 'admin')
+  return <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+    <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
+    <div className="mt-2 max-h-44 space-y-2 overflow-y-auto">
+      {messages.map(item => <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs"><span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}<span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span></p>)}
+      {!messages.length && <p className="text-xs text-text-secondary">No messages yet.</p>}
+    </div>
+    <div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]">
+      <textarea value={message} onChange={event => setMessage(event.target.value)} placeholder="Message the producer about rights, files, artwork, pricing or changes…" className="min-h-20 rounded-lg border border-white/10 bg-black/20 p-2 text-sm" />
+      <button disabled={Boolean(busy) || !message.trim()} onClick={async () => { await act('message_beat', { beatId: beat.id, message }); setMessage('') }} className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40">Send note</button>
+    </div>
+    <label className="mt-3 block text-xs text-text-secondary">Assign/claim producer
+      <select value={beat.producer_user_id} onChange={event => act('assign_beat_producer', { beatId: beat.id, producerUserId: event.target.value })} className="mt-1 w-full rounded-lg border border-white/10 bg-bg-primary p-2">
+        {producerProfiles.map(profile => <option key={profile.id} value={profile.id}>{profile.display_name || profile.username}</option>)}
+      </select>
+    </label>
+  </div>
 }
 
 function TrackCard({ track, credits, allowed, act, busy }: { track: Track; credits: Credit[]; allowed: (p: EditorialPermission) => boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {

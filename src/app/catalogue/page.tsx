@@ -13,6 +13,7 @@ import {
 import { rankCollections, type CollectionCard } from '@/lib/catalogue-trending'
 import { trackEvent } from '@/lib/analytics'
 import PublishedArtistsShelf from '@/components/PublishedArtistsShelf'
+import PublishedProducersShelf from '@/components/PublishedProducersShelf'
 
 type TrackType = 'single' | 'beat' | 'mix'
 
@@ -459,11 +460,6 @@ const collectionCards: CollectionCard[] = [
   { name: 'Producer Picks', detail: 'Beats ready for artists · from $29', img: '/images/hero-studio.jpg', launchedAt: '2026-07-01' },
 ]
 
-const producerLibraries = [
-  { name: 'WolfBrx Library', producer: 'WolfBrx', detail: 'Trap, drill and melodic beats for artist placements.', query: 'WolfBrx', img: junePackArt, href: '/artist/wolfbrx' },
-  { name: 'Wolfbridges Projects', producer: 'Wolfbridges', detail: 'Albums and collaborations surfaced in the BVS catalogue.', query: 'Wolfbridges Projects', img: straighteninArt, href: '/artist/wolfbridges' },
-]
-
 function trackPrice(track: Track) {
   return catalogueUnitPrice(track)
 }
@@ -556,10 +552,11 @@ export default function CataloguePage() {
             artworkUrl?: string | null
             previewUrl?: string | null
             startingPrice?: number | null
+            producer?: string
           }, index: number) => ({
             id: b.id || `db-beat-${index}`,
             title: b.title || 'Untitled beat',
-            artist: 'BVS Producer',
+            artist: b.producer || 'BVS Producer',
             genre: b.genre || 'Beat',
             collection: 'Producer BeatStore',
             duration: b.bpm ? `${b.bpm} BPM` : 'Preview',
@@ -882,30 +879,7 @@ export default function CataloguePage() {
             Show all beats
           </button>
         </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          {producerLibraries.map((library) => (
-            <article
-              key={library.name}
-              className="group overflow-hidden rounded-2xl border border-white/10 bg-black/25 text-left transition hover:border-brand/40"
-            >
-              <div className="relative aspect-[16/9]">
-                <Image src={library.img} alt="" fill className="object-cover transition group-hover:scale-[1.02]" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-                <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-[10px] uppercase tracking-widest text-brand">
-                  {library.producer}
-                </span>
-              </div>
-              <div className="p-4">
-                <h3 className="text-lg font-semibold group-hover:text-brand">{library.name}</h3>
-                <p className="mt-2 text-sm text-text-secondary">{library.detail}</p>
-                <div className="mt-4 flex flex-wrap gap-3 text-sm font-medium">
-                  <button type="button" onClick={() => { setSearch(library.query); setGenreFilter('All'); setTypeFilter('beat') }} className="text-brand hover:underline">Browse beats →</button>
-                  <Link href={library.href} className="text-text-secondary hover:text-brand">Producer bio</Link>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
+        <PublishedProducersShelf onBrowse={(producer) => { setSearch(producer); setGenreFilter('All'); setTypeFilter('beat') }} />
       </section>
       )}
 

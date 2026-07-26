@@ -35,7 +35,7 @@ export async function GET(request: Request) {
   }
   const requests = [
     fetch(editorialUrl('tracks?select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
-    fetch(editorialUrl('profiles?select=id,username,display_name,role,is_verified,is_published&order=created_at.desc&limit=200'), { headers: serviceHeaders, cache: 'no-store' }),
+    fetch(editorialUrl('profiles?select=id,username,display_name,role,is_producer,is_verified,is_published&order=created_at.desc&limit=200'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('programmes?select=*&order=updated_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('track_credits?select=*&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('editorial_staff?select=user_id,role,active,created_at&order=created_at.desc'), { headers: serviceHeaders, cache: 'no-store' }),
@@ -47,6 +47,9 @@ export async function GET(request: Request) {
   const trackRequests = await optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100')
   const beats = await optionalJson(
     'beats?select=*,beat_licence_options(*)&order=updated_at.desc&limit=100',
+  )
+  const beatReviewMessages = await optionalJson(
+    'beat_review_messages?select=*&order=created_at.asc&limit=500',
   )
   const releases = await optionalJson('releases?select=*&order=created_at.desc&limit=100')
   const releaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
@@ -68,6 +71,7 @@ export async function GET(request: Request) {
     auditLog,
     trackRequests,
     beats,
+    beatReviewMessages,
     releases,
     releaseTracks,
     distributionJobs,
@@ -259,9 +263,61 @@ export async function PATCH(request: Request) {
             : {}),
           updated_at: new Date().toISOString(),
         })
+        const reviewNote = String(body.notes || '').trim().slice(0, 2000)
+        if (reviewNote) {
+          await jsonOrError(await fetch(editorialUrl('beat_review_messages'), {
+            method: 'POST',
+            headers: { ...serviceHeaders, Prefer: 'return=representation' },
+            body: JSON.stringify({
+              beat_id: beatId,
+              author_user_id: identity.user.id,
+              author_kind: 'editor',
+              message: reviewNote,
+            }),
+          }))
+        }
         await audit(identity.user.id, `beat_${status}`, 'beat', beatId, {
           notes: String(body.notes || '').slice(0, 300),
         })
+        return NextResponse.json({ result })
+      }
+      case 'message_beat': {
+        requirePermission('approve_submissions')
+        const beatId = String(body.beatId || '')
+        const message = String(body.message || '').trim().slice(0, 2000)
+        if (!beatId || !message) {
+          return NextResponse.json({ error: 'Beat and message are required.' }, { status: 400 })
+        }
+        const result = await jsonOrError(await fetch(editorialUrl('beat_review_messages'), {
+          method: 'POST',
+          headers: { ...serviceHeaders, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            beat_id: beatId,
+            author_user_id: identity.user.id,
+            author_kind: 'editor',
+            message,
+          }),
+        }))
+        await audit(identity.user.id, 'beat_message_sent', 'beat', beatId)
+        return NextResponse.json({ result })
+      }
+      case 'assign_beat_producer': {
+        requirePermission('approve_submissions')
+        const beatId = String(body.beatId || '')
+        const producerUserId = String(body.producerUserId || '')
+        if (!beatId || !producerUserId) {
+          return NextResponse.json({ error: 'Beat and producer are required.' }, { status: 400 })
+        }
+        const profiles = await optionalJson(
+          `profiles?id=eq.${encodeURIComponent(producerUserId)}&select=id,is_producer,role&limit=1`,
+        )
+        if (!profiles?.[0]) return NextResponse.json({ error: 'Producer profile not found.' }, { status: 404 })
+        await patchTable('profiles', `id=eq.${encodeURIComponent(producerUserId)}`, { is_producer: true })
+        const result = await patchTable('beats', `id=eq.${encodeURIComponent(beatId)}`, {
+          producer_user_id: producerUserId,
+          updated_at: new Date().toISOString(),
+        })
+        await audit(identity.user.id, 'beat_producer_assigned', 'beat', beatId, { producerUserId })
         return NextResponse.json({ result })
       }
       case 'publish_beat': {

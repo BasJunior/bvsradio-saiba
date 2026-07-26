@@ -19,6 +19,7 @@ export type PublicArtist = {
   bio: string
   image: string
   tracks: PublicArtistTrack[]
+  beats?: Array<{ id: string; title: string; genre?: string; artwork_url?: string; starting_price?: number }>
 }
 
 export type PublishedArtistSummary = {
@@ -29,6 +30,15 @@ export type PublishedArtistSummary = {
   bio: string
   image: string
   trackCount: number
+  genres: string[]
+}
+
+export type PublishedProducerSummary = {
+  id: string
+  username: string
+  name: string
+  image: string
+  beatCount: number
   genres: string[]
 }
 
@@ -63,7 +73,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
   const headers = { apikey: key, Authorization: `Bearer ${key}` }
   try {
     const profileResponse = await fetch(
-      `${url}/rest/v1/profiles?is_published=eq.true&is_verified=eq.true&select=id,username,display_name,bio,avatar_url,role&order=display_name.asc`,
+      `${url}/rest/v1/profiles?is_published=eq.true&is_verified=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer&order=display_name.asc`,
       { headers, next: { revalidate: 60 } },
     )
     if (!profileResponse.ok) return fallbackSummaries
@@ -74,7 +84,8 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
       bio?: string
       avatar_url?: string
       role: string
-    }>).filter((profile) => ['artist', 'admin'].includes(profile.role))
+      is_producer?: boolean
+    }>).filter((profile) => ['artist', 'admin'].includes(profile.role) || profile.is_producer)
     if (!profiles.length) return []
 
     const ids = profiles.map((profile) => profile.id)
@@ -112,13 +123,19 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
   if (!url || !key) return fallback[slug] || null
   const headers = { apikey: key, Authorization: `Bearer ${key}` }
   try {
-    const profileResponse = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(slug)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role&limit=1`, { headers, next: { revalidate: 60 } })
+    const profileResponse = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(slug)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer&limit=1`, { headers, next: { revalidate: 60 } })
     if (!profileResponse.ok) return fallback[slug] || null
     const profiles = await profileResponse.json()
     const profile = profiles[0]
     if (!profile) return null
     const tracksResponse = await fetch(`${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type&order=created_at.desc`, { headers, next: { revalidate: 60 } })
     const tracks = tracksResponse.ok ? await tracksResponse.json() : []
+    const beatsResponse = await fetch(`${url}/rest/v1/beats?producer_user_id=eq.${profile.id}&is_public=eq.true&status=eq.published&select=id,title,genre,artwork_path,beat_licence_options(price_usd,is_active)&order=published_at.desc`, { headers, next: { revalidate: 60 } })
+    const rawBeats = beatsResponse.ok ? await beatsResponse.json() : []
+    const beats = rawBeats.map((beat: { id: string; title: string; genre?: string; artwork_path?: string; beat_licence_options?: Array<{ price_usd: number; is_active: boolean }> }) => {
+      const prices = (beat.beat_licence_options || []).filter(option => option.is_active).map(option => Number(option.price_usd)).filter(Number.isFinite)
+      return { id: beat.id, title: beat.title, genre: beat.genre, artwork_url: beat.artwork_path ? `${url}/storage/v1/object/public/bvsradio-audio/${beat.artwork_path}` : undefined, starting_price: prices.length ? Math.min(...prices) : 29 }
+    })
     const ids = tracks.map((track: { id: string }) => track.id)
     let credits: Array<{ track_id: string; person_name: string; credit_role: string }> = []
     if (ids.length) {
@@ -126,6 +143,37 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       if (creditsResponse.ok) credits = await creditsResponse.json()
     }
     const trackArtwork = tracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url
-    return { id: profile.id, username: profile.username, name: profile.display_name || profile.username, role: profile.role === 'artist' ? 'BVS artist' : profile.role, bio: profile.bio || 'Verified artist on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })) }
+    const beatArtwork = beats.find((beat: { artwork_url?: string }) => beat.artwork_url)?.artwork_url
+    const role = profile.is_producer ? (profile.role === 'artist' ? 'BVS artist & producer' : 'BVS producer') : profile.role === 'artist' ? 'BVS artist' : profile.role
+    return { id: profile.id, username: profile.username, name: profile.display_name || profile.username, role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })), beats }
   } catch { return fallback[slug] || null }
+}
+
+export async function getPublishedProducers(): Promise<PublishedProducerSummary[]> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) return []
+  const headers = { apikey: key, Authorization: `Bearer ${key}` }
+  try {
+    const profilesResponse = await fetch(`${url}/rest/v1/profiles?is_published=eq.true&is_verified=eq.true&is_producer=eq.true&select=id,username,display_name,avatar_url&order=display_name.asc`, { headers, cache: 'no-store' })
+    if (!profilesResponse.ok) return []
+    const profiles = await profilesResponse.json() as Array<{ id: string; username: string; display_name?: string; avatar_url?: string }>
+    if (!profiles.length) return []
+    const beatsResponse = await fetch(`${url}/rest/v1/beats?producer_user_id=in.(${profiles.map(profile => profile.id).join(',')})&is_public=eq.true&status=eq.published&select=producer_user_id,genre,artwork_path`, { headers, cache: 'no-store' })
+    const beats = beatsResponse.ok ? await beatsResponse.json() as Array<{ producer_user_id: string; genre?: string; artwork_path?: string }> : []
+    return profiles.map(profile => {
+      const producerBeats = beats.filter(beat => beat.producer_user_id === profile.id)
+      const artworkPath = producerBeats.find(beat => beat.artwork_path)?.artwork_path
+      return {
+        id: profile.id,
+        username: profile.username,
+        name: profile.display_name || profile.username,
+        image: artistImage(profile.avatar_url, artworkPath ? `${url}/storage/v1/object/public/bvsradio-audio/${artworkPath}` : undefined),
+        beatCount: producerBeats.length,
+        genres: [...new Set(producerBeats.map(beat => beat.genre).filter(Boolean))] as string[],
+      }
+    }).filter(producer => producer.beatCount > 0)
+  } catch {
+    return []
+  }
 }

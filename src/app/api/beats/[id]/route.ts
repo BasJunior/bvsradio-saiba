@@ -33,6 +33,32 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const action = cleanText(body.action, 40) || 'update'
     const uid = identity.user.id
 
+    if (action === 'message') {
+      const message = cleanText(body.message, 2000)
+      if (!message) return NextResponse.json({ error: 'Write a message first.' }, { status: 400 })
+      const ownership = await fetch(
+        beatUrl(`beats?id=eq.${encodeURIComponent(beatId)}&producer_user_id=eq.${uid}&select=id&limit=1`),
+        { headers: beatHeaders, cache: 'no-store' },
+      )
+      const owned = ownership.ok ? await ownership.json() : []
+      if (!owned?.[0]) return NextResponse.json({ error: 'Beat not found.' }, { status: 404 })
+      const response = await fetch(beatUrl('beat_review_messages'), {
+        method: 'POST',
+        headers: { ...beatHeaders, Prefer: 'return=representation' },
+        body: JSON.stringify({
+          beat_id: beatId,
+          author_user_id: uid,
+          author_kind: 'producer',
+          message,
+        }),
+      })
+      if (!response.ok) {
+        console.error('producer beat message failed', response.status, await response.text())
+        return NextResponse.json({ error: 'Could not send message.' }, { status: 503 })
+      }
+      return NextResponse.json({ ok: true, message: (await response.json())[0] })
+    }
+
     if (action === 'submit') {
       const patch = {
         status: 'submitted',

@@ -50,6 +50,15 @@ export type BeatLicenceRow = {
   terms_summary?: string
 }
 
+export type BeatReviewMessage = {
+  id: string
+  beat_id: string
+  author_user_id: string
+  author_kind: 'producer' | 'editor'
+  message: string
+  created_at: string
+}
+
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
@@ -137,7 +146,18 @@ export async function listBeatsForProducer(userId: string) {
     // table may not exist yet
     return []
   }
-  return (await res.json()) as Array<BeatRow & { beat_licence_options?: BeatLicenceRow[] }>
+  const beats = (await res.json()) as Array<BeatRow & { beat_licence_options?: BeatLicenceRow[] }>
+  const ids = beats.map((beat) => beat.id)
+  if (!ids.length) return beats
+  const messages = await fetch(
+    creatorUrl(`beat_review_messages?beat_id=in.(${ids.join(',')})&select=*&order=created_at.asc`),
+    { headers: creatorHeaders, cache: 'no-store' },
+  )
+  const rows = messages.ok ? await messages.json() as BeatReviewMessage[] : []
+  return beats.map((beat) => ({
+    ...beat,
+    beat_review_messages: rows.filter((message) => message.beat_id === beat.id),
+  }))
 }
 
 export async function listPublishedBeats(limit = 48) {
