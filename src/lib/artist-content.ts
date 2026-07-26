@@ -51,6 +51,11 @@ const fallbackSummaries = Object.values(fallback).map((artist) => ({
   genres: [],
 }))
 
+function artistImage(avatarUrl: string | undefined, artworkUrl: string | undefined) {
+  const hasCustomAvatar = avatarUrl && !avatarUrl.includes('default-avatar')
+  return (hasCustomAvatar ? avatarUrl : artworkUrl) || '/assets/images/default-avatar.png'
+}
+
 export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -85,16 +90,13 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
       const artistTracks = tracks.filter((track) => track.user_id === profile.id)
       const genres = [...new Set(artistTracks.map((track) => track.genre).filter(Boolean))] as string[]
       const trackArtwork = artistTracks.find((track) => track.artwork_url)?.artwork_url
-      const avatar = profile.avatar_url && !profile.avatar_url.includes('default-avatar')
-        ? profile.avatar_url
-        : trackArtwork
       return {
         id: profile.id,
         username: profile.username,
         name: profile.display_name || profile.username,
         role: profile.role === 'artist' ? 'BVS artist' : profile.role,
         bio: profile.bio || 'Verified artist on BVS Radio.',
-        image: avatar || '/assets/images/default-avatar.png',
+        image: artistImage(profile.avatar_url, trackArtwork),
         trackCount: artistTracks.length,
         genres,
       }
@@ -123,6 +125,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       const creditsResponse = await fetch(`${url}/rest/v1/track_credits?track_id=in.(${ids.join(',')})&is_verified=eq.true&select=track_id,person_name,credit_role`, { headers, next: { revalidate: 60 } })
       if (creditsResponse.ok) credits = await creditsResponse.json()
     }
-    return { id: profile.id, username: profile.username, name: profile.display_name || profile.username, role: profile.role === 'artist' ? 'BVS artist' : profile.role, bio: profile.bio || 'Verified artist on BVS Radio.', image: profile.avatar_url || tracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url || '/assets/images/default-avatar.png', tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })) }
+    const trackArtwork = tracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url
+    return { id: profile.id, username: profile.username, name: profile.display_name || profile.username, role: profile.role === 'artist' ? 'BVS artist' : profile.role, bio: profile.bio || 'Verified artist on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })) }
   } catch { return fallback[slug] || null }
 }
