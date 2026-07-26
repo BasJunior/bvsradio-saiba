@@ -36,9 +36,20 @@ export async function GET(request: Request) {
   ])
   const profiles = profileResponse.ok ? await profileResponse.json() : []
   const orders = ordersResponse.ok ? await ordersResponse.json() : []
+  const profile = profiles[0] || null
+  let displayAvatarUrl = profile?.avatar_url || ''
+  if (!displayAvatarUrl || displayAvatarUrl.includes('default-avatar')) {
+    const [trackArtworkResponse, beatArtworkResponse] = await Promise.all([
+      fetch(`${url}/rest/v1/tracks?user_id=eq.${user.id}&artwork_url=not.is.null&select=artwork_url&order=created_at.desc&limit=1`, { headers: serviceHeaders, cache: 'no-store' }),
+      fetch(`${url}/rest/v1/beats?producer_user_id=eq.${user.id}&artwork_path=not.is.null&select=artwork_path&order=created_at.desc&limit=1`, { headers: serviceHeaders, cache: 'no-store' }),
+    ])
+    const trackArtwork = trackArtworkResponse.ok ? (await trackArtworkResponse.json())[0]?.artwork_url : null
+    const beatArtworkPath = beatArtworkResponse.ok ? (await beatArtworkResponse.json())[0]?.artwork_path : null
+    displayAvatarUrl = trackArtwork || (beatArtworkPath ? `${url}/storage/v1/object/public/bvsradio-audio/${beatArtworkPath}` : '') || displayAvatarUrl
+  }
   return NextResponse.json({
     user: { email: user.email || '', createdAt: user.created_at || null },
-    profile: profiles[0] || null,
+    profile: profile ? { ...profile, display_avatar_url: displayAvatarUrl } : null,
     orders,
   })
 }
