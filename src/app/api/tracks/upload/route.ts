@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
+import {
+  r2Configured,
+  r2MediaUrl,
+  r2ObjectExists,
+} from "@/lib/r2-storage";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const BUCKET = "bvsradio-audio";
 
 async function notifyOwnerNewUpload(
   track: { id?: string; title?: string; artist_name?: string; genre?: string },
@@ -55,27 +59,7 @@ function isOwnedTrackPath(path: string, userId: string, kind: "audio" | "artwork
 }
 
 async function objectExists(path: string) {
-  const res = await fetch(
-    `${SUPABASE_URL}/storage/v1/object/info/public/${BUCKET}/${path}`,
-    {
-      headers: {
-        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-        apikey: SUPABASE_SERVICE_KEY,
-      },
-      cache: "no-store",
-    },
-  );
-  if (res.ok) return true;
-  // Fallback: authenticated object probe
-  const authRes = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
-    method: "HEAD",
-    headers: {
-      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-      apikey: SUPABASE_SERVICE_KEY,
-    },
-    cache: "no-store",
-  });
-  return authRes.ok;
+  return r2ObjectExists(path);
 }
 
 /**
@@ -95,7 +79,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !r2Configured()) {
       return NextResponse.json(
         { error: "Upload service is temporarily unavailable. Contact BVS on WhatsApp." },
         { status: 503 },
@@ -204,12 +188,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const audioUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${audioPath}`;
+    const audioUrl = r2MediaUrl(audioPath);
     let artworkUrl = "/assets/images/default-artwork.jpg";
     if (artworkPath) {
       const artOk = await objectExists(artworkPath);
       if (artOk) {
-        artworkUrl = `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${artworkPath}`;
+        artworkUrl = r2MediaUrl(artworkPath);
       }
     }
 

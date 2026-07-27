@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { isAllowedAudioFile } from "@/lib/audio-formats";
+import { r2Bucket, r2Client, r2Configured } from "@/lib/r2-storage";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const BUCKET = "bvsradio-audio";
 
 type SlotInput = {
   name?: string;
@@ -22,42 +24,18 @@ async function authUser(token: string) {
   return (await userRes.json()) as { id: string };
 }
 
-/** Create a short-lived signed upload URL (service role) so the browser can PUT large files past Vercel’s 4.5MB body limit. */
-async function signedUpload(path: string) {
-  const res = await fetch(
-    `${SUPABASE_URL}/storage/v1/object/upload/sign/${BUCKET}/${path}`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-        apikey: SUPABASE_SERVICE_KEY,
-        "x-upsert": "true",
-      },
-      body: "{}",
-    },
+/** Short-lived direct-to-R2 upload URL; large media never crosses Vercel. */
+async function signedUpload(path: string, contentType: string) {
+  const signedUrl = await getSignedUrl(
+    r2Client(),
+    new PutObjectCommand({
+      Bucket: r2Bucket(),
+      Key: path,
+      ContentType: contentType,
+    }),
+    { expiresIn: 900 },
   );
-  if (!res.ok) {
-    const text = await res.text();
-    console.error("createSignedUploadUrl failed", res.status, text);
-    return null;
-  }
-  const data = (await res.json()) as { url?: string; token?: string };
-  // API returns relative url like /object/upload/sign/bucket/path?token=...
-  const relative = data.url || "";
-  const absolute = relative.startsWith("http")
-    ? relative
-    : `${SUPABASE_URL}/storage/v1${relative.startsWith("/") ? "" : "/"}${relative}`;
-  let token = data.token || "";
-  try {
-    token = token || new URL(absolute).searchParams.get("token") || "";
-  } catch {
-    /* keep token from body */
-  }
-  if (!token) {
-    console.error("createSignedUploadUrl missing token", data);
-    return null;
-  }
-  return { path, token, signedUrl: absolute };
+  return { path, signedUrl };
 }
 
 export async function POST(req: Request) {
@@ -70,7 +48,7 @@ export async function POST(req: Request) {
         { status: 401 },
       );
     }
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY || !r2Configured()) {
       return NextResponse.json(
         { error: "Upload service is temporarily unavailable. Contact BVS on WhatsApp." },
         { status: 503 },
@@ -106,7 +84,10 @@ export async function POST(req: Request) {
 
     const stamp = Date.now();
     const audioPath = `tracks/${user.id}/${stamp}-audio.${audioCheck.ext || "mp3"}`;
-    const audioSlot = await signedUpload(audioPath);
+    const audioContentType =
+      String(audio.type || "") ||
+      `audio/${audioCheck.ext === "mp3" ? "mpeg" : audioCheck.ext || "mpeg"}`;
+    const audioSlot = await signedUpload(audioPath, audioContentType);
     if (!audioSlot) {
       return NextResponse.json(
         { error: "Could not prepare audio upload. Try again or contact BVS." },
@@ -114,7 +95,7 @@ export async function POST(req: Request) {
       );
     }
 
-    let artworkSlot: { path: string; token: string; signedUrl: string } | null = null;
+    let artworkSlot: { path: string; signedUrl: string } | null = null;
     if (body.artwork && typeof body.artwork.size === "number" && body.artwork.size > 0) {
       if (body.artwork.size > 8 * 1024 * 1024) {
         return NextResponse.json(
@@ -126,7 +107,10 @@ export async function POST(req: Request) {
       const artExt =
         (artName.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
       const artPath = `tracks/${user.id}/${stamp}-artwork.${artExt}`;
-      artworkSlot = await signedUpload(artPath);
+      artworkSlot = await signedUpload(
+        artPath,
+        String(body.artwork.type || "image/jpeg"),
+      );
       if (!artworkSlot) {
         return NextResponse.json(
           { error: "Could not prepare artwork upload. Try again without cover art, or contact BVS." },
@@ -136,19 +120,16 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({
-      bucket: BUCKET,
+      provider: "r2",
+      bucket: r2Bucket(),
       audio: {
         path: audioSlot.path,
-        token: audioSlot.token,
         signedUrl: audioSlot.signedUrl,
-        contentType:
-          String(audio.type || "") ||
-          `audio/${audioCheck.ext === "mp3" ? "mpeg" : audioCheck.ext || "mpeg"}`,
+        contentType: audioContentType,
       },
       artwork: artworkSlot
         ? {
             path: artworkSlot.path,
-            token: artworkSlot.token,
             signedUrl: artworkSlot.signedUrl,
             contentType: String(body.artwork?.type || "image/jpeg"),
           }

@@ -10,39 +10,24 @@ import ReleaseSubmitForm from '@/components/ReleaseSubmitForm'
 
 type SignedSlot = {
   path: string
-  token: string
+  token?: string
   signedUrl: string
   contentType: string
 }
 
 async function putToSignedSlot(slot: SignedSlot, file: File) {
-  const supabase = createClient()
-  const { error } = await supabase.storage
-    .from('bvsradio-audio')
-    .uploadToSignedUrl(slot.path, slot.token, file, {
-      contentType: slot.contentType || file.type || 'application/octet-stream',
-      upsert: true,
-    })
-  if (error) {
-    // Fallback: raw PUT to signed URL (same endpoint the SDK uses)
-    const url = new URL(slot.signedUrl)
-    if (!url.searchParams.get('token')) url.searchParams.set('token', slot.token)
-    const body = new FormData()
-    body.append('cacheControl', '3600')
-    body.append('', file)
-    const res = await fetch(url.toString(), {
-      method: 'PUT',
-      headers: { 'x-upsert': 'true' },
-      body,
-    })
-    if (!res.ok) {
-      const text = await res.text().catch(() => '')
-      throw new Error(
-        error.message ||
-          `Storage rejected the file (${res.status}). ${text.slice(0, 120) || 'Try again or contact BVS.'}`,
-      )
-    }
-    return
+  const res = await fetch(slot.signedUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': slot.contentType || file.type || 'application/octet-stream',
+    },
+    body: file,
+  })
+  if (!res.ok) {
+    const text = await res.text().catch(() => '')
+    throw new Error(
+      `Storage rejected the file (${res.status}). ${text.slice(0, 120) || 'Try again or contact BVS.'}`,
+    )
   }
 }
 
