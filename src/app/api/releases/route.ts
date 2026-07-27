@@ -9,6 +9,7 @@ import {
 } from "@/lib/releases-server";
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
 import { creatorPublicName } from "@/lib/public-name";
+import { r2Configured, r2ObjectExists } from "@/lib/r2-storage";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -72,6 +73,9 @@ export async function POST(req: Request) {
 
     const user = await authUserId(SUPABASE_URL, SERVICE, token);
     if (!user?.id) return NextResponse.json({ error: "Session expired." }, { status: 401 });
+    if (!r2Configured()) {
+      return NextResponse.json({ error: "Media storage is unavailable." }, { status: 503 });
+    }
 
     // Ensure artist role
     await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
@@ -128,6 +132,17 @@ export async function POST(req: Request) {
       if (!p.startsWith(`releases/${user.id}/`)) {
         return NextResponse.json({ error: "Invalid audio path for this account." }, { status: 400 });
       }
+    }
+    const uploadedPaths = [
+      ...(coverPath ? [coverPath] : []),
+      ...tracks.map((track) => String(track.audioPath || "")),
+    ];
+    const objectChecks = await Promise.all(uploadedPaths.map((path) => r2ObjectExists(path)));
+    if (objectChecks.some((exists) => !exists)) {
+      return NextResponse.json(
+        { error: "One or more release files did not finish uploading. Please retry." },
+        { status: 400 },
+      );
     }
 
     const coverUrl = coverPath ? fileUrlForPath(coverPath) : "/assets/images/default-artwork.jpg";

@@ -1,5 +1,6 @@
 import 'server-only'
 import { creatorHeaders, creatorIdentity, creatorUrl } from '@/lib/creator-server'
+import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 export type BeatStatus =
   | 'draft'
@@ -80,9 +81,7 @@ export function cleanText(value: unknown, max = 2000) {
 }
 
 export function publicStorageUrl(path?: string | null) {
-  if (!path || !url) return null
-  if (path.startsWith('http')) return path
-  return `${url}/storage/v1/object/public/bvsradio-audio/${path}`
+  return mediaUrlForStoredValue(path)
 }
 
 export async function beatIdentity(request: Request) {

@@ -7,6 +7,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { roleLabels, type EditorialPermission, type EditorialRole } from '@/lib/editorial'
 import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 import { creatorPublicName } from '@/lib/public-name'
+import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
 type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string }
@@ -596,13 +597,7 @@ function BeatStoreEditorialPanel({
     profiles.find((p) => p.id === id)?.display_name ||
     profiles.find((p) => p.id === id)?.username ||
     id.slice(0, 8)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-  const publicUrl = (path?: string | null) =>
-    path
-      ? path.startsWith('http')
-        ? path
-        : `${supabaseUrl}/storage/v1/object/public/bvsradio-audio/${path}`
-      : ''
+  const publicUrl = (path?: string | null) => mediaUrlForStoredValue(path) || ''
   return (
     <section className="mt-12">
       <h2 className="text-2xl font-semibold">Producer BeatStore queue</h2>

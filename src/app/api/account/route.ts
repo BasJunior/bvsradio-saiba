@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
   const profiles = profileResponse.ok ? await profileResponse.json() : []
   const orders = ordersResponse.ok ? await ordersResponse.json() : []
   const profile = profiles[0] || null
-  let displayAvatarUrl = profile?.avatar_url || ''
+  let displayAvatarUrl = mediaUrlForStoredValue(profile?.avatar_url) || profile?.avatar_url || ''
   if (!displayAvatarUrl || displayAvatarUrl.includes('default-avatar')) {
     const [trackArtworkResponse, beatArtworkResponse] = await Promise.all([
       fetch(`${url}/rest/v1/tracks?user_id=eq.${user.id}&artwork_url=not.is.null&select=artwork_url&order=created_at.desc&limit=1`, { headers: serviceHeaders, cache: 'no-store' }),
@@ -50,7 +51,7 @@ export async function GET(request: Request) {
     ])
     const trackArtwork = trackArtworkResponse.ok ? (await trackArtworkResponse.json())[0]?.artwork_url : null
     const beatArtworkPath = beatArtworkResponse.ok ? (await beatArtworkResponse.json())[0]?.artwork_path : null
-    displayAvatarUrl = trackArtwork || (beatArtworkPath ? `${url}/storage/v1/object/public/bvsradio-audio/${beatArtworkPath}` : '') || displayAvatarUrl
+    displayAvatarUrl = mediaUrlForStoredValue(trackArtwork) || mediaUrlForStoredValue(beatArtworkPath) || displayAvatarUrl
   }
   return NextResponse.json({
     user: {

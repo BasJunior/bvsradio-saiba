@@ -35,24 +35,14 @@ type Beat = {
 const field =
   'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
 
-async function putSigned(slot: { signedUrl: string; token: string; path: string }, file: File) {
-  // Same path as ReleaseSubmitForm — uploadToSignedUrl sets content-type correctly.
-  // Raw PUT with Content-Type alone has corrupted some cover uploads in browsers.
-  const supabase = createClient()
+async function putSigned(slot: { signedUrl: string; path: string; contentType?: string }, file: File) {
   const contentType = file.type || (file.name.match(/\.png$/i) ? 'image/png' : file.name.match(/\.webp$/i) ? 'image/webp' : file.name.match(/\.(jpe?g)$/i) ? 'image/jpeg' : 'application/octet-stream')
-  const { error } = await supabase.storage.from('bvsradio-audio').uploadToSignedUrl(slot.path, slot.token, file, {
-    contentType,
-    upsert: true,
+  const res = await fetch(slot.signedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': slot.contentType || contentType },
+    body: file,
   })
-  if (error) {
-    const url = new URL(slot.signedUrl)
-    if (!url.searchParams.get('token')) url.searchParams.set('token', slot.token)
-    const body = new FormData()
-    body.append('cacheControl', '3600')
-    body.append('', file)
-    const res = await fetch(url.toString(), { method: 'PUT', headers: { 'x-upsert': 'true' }, body })
-    if (!res.ok) throw new Error(`Upload failed for ${file.name}`)
-  }
+  if (!res.ok) throw new Error(`Upload failed for ${file.name}`)
   return slot.path
 }
 

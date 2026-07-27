@@ -1,5 +1,6 @@
 import "server-only";
-import { publicObjectUrl, serviceHeaders } from "@/lib/storage-upload";
+import { serviceHeaders } from "@/lib/storage-upload";
+import { mediaUrlForStoredValue } from "@/lib/media-url";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -94,7 +95,7 @@ export async function restPatch<T>(
 }
 
 export function fileUrlForPath(path: string) {
-  return publicObjectUrl(url, path);
+  return mediaUrlForStoredValue(path) || path;
 }
 
 /** On approve/publish: create tracks rows + set rotation flags; optional distribution job. */

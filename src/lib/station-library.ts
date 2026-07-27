@@ -7,6 +7,7 @@ import {
   curatedRotationFilenames,
   projectNameForMusicSrc,
 } from "./music-projects";
+import { mediaUrlForStoredValue } from "@/lib/media-url";
 
 const AUDIO_EXTENSIONS = new Set([".mp3", ".wav", ".m4a", ".ogg"]);
 
@@ -84,15 +85,10 @@ function orderLocalFiles(files: string[]): string[] {
 
 function publicStorageUrl(fileUrl: string) {
   if (!fileUrl) return "";
-  if (/^https?:\/\//i.test(fileUrl)) return fileUrl;
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) return fileUrl;
   const cleaned = fileUrl.replace(/^\/+/, "");
-  if (cleaned.startsWith("api/media/")) return `/${cleaned}`;
-  if (cleaned.startsWith("storage/v1/")) return `${base}/${cleaned}`;
   // Local public path already hosted by Next
   if (cleaned.startsWith("music/")) return `/${cleaned}`;
-  return `${base}/storage/v1/object/public/bvsradio-audio/${cleaned}`;
+  return mediaUrlForStoredValue(fileUrl) || fileUrl;
 }
 
 function basenameFromUrl(url: string) {
@@ -184,7 +180,7 @@ export async function getStationTracks(): Promise<StationTrack[]> {
           title: track.title,
           artist: track.artist_name || "BVS Radio",
           src,
-          artwork: track.artwork_url || artworkForMusicSrc(src) || undefined,
+          artwork: mediaUrlForStoredValue(track.artwork_url) || artworkForMusicSrc(src) || undefined,
           project: track.release_id ? "Artist release" : "BVS Station",
           playCount: Number(track.play_count || 0),
           genre: track.genre || undefined,

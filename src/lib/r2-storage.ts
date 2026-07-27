@@ -3,9 +3,11 @@ import "server-only";
 import {
   GetObjectCommand,
   HeadObjectCommand,
+  PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { mediaUrlForKey } from "@/lib/media-url";
 
 const endpoint = process.env.R2_ENDPOINT || "";
 const bucket = process.env.R2_BUCKET || "bvsradio-media";
@@ -46,11 +48,25 @@ export async function signedR2DownloadUrl(key: string, seconds = 900) {
   );
 }
 
+export async function signedR2UploadUrl(
+  key: string,
+  contentType: string,
+  seconds = 900,
+) {
+  return getSignedUrl(
+    r2Client(),
+    new PutObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ContentType: contentType || "application/octet-stream",
+      CacheControl: "private, max-age=3600",
+    }),
+    { expiresIn: seconds },
+  );
+}
+
 export function r2MediaUrl(key: string) {
-  return `/api/media/${key
-    .split("/")
-    .map((part) => encodeURIComponent(part))
-    .join("/")}`;
+  return mediaUrlForKey(key);
 }
 
 export function r2KeyFromMediaUrl(value: string) {

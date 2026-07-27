@@ -139,8 +139,12 @@ export default function AccountPage() {
         })
         const prepared = await preparedResponse.json()
         if (!preparedResponse.ok) throw new Error(prepared.error || 'Could not prepare profile-picture upload.')
-        const { error: uploadError } = await createClient().storage.from(prepared.bucket).uploadToSignedUrl(prepared.slot.path, prepared.slot.token, avatarFile, { contentType: avatarFile.type || 'image/jpeg', upsert: true })
-        if (uploadError) throw new Error('Could not upload your profile picture.')
+        const uploadResponse = await fetch(prepared.slot.signedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': prepared.slot.contentType || avatarFile.type || 'image/jpeg' },
+          body: avatarFile,
+        })
+        if (!uploadResponse.ok) throw new Error('Could not upload your profile picture.')
         avatarUrl = prepared.publicUrl
       }
       const response = await fetch('/api/account', {

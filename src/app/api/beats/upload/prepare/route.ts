@@ -6,12 +6,9 @@ import {
   isProducerCapable,
   loadProducerProfile,
 } from '@/lib/beatstore-server'
-import { createSignedUploadSlot, storageBucket } from '@/lib/storage-upload'
+import { r2Bucket, r2Configured, signedR2UploadUrl } from '@/lib/r2-storage'
 
 export const runtime = 'nodejs'
-
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 type SlotInput = { name?: string; type?: string; size?: number }
 
@@ -32,7 +29,7 @@ export async function POST(req: Request) {
     if (!(await isProducerCapable(profile))) {
       return NextResponse.json({ error: 'Producer access required.' }, { status: 403 })
     }
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    if (!r2Configured()) {
       return NextResponse.json({ error: 'Upload service unavailable.' }, { status: 503 })
     }
 
@@ -45,7 +42,7 @@ export async function POST(req: Request) {
 
     const uid = identity.user.id
     const ts = Date.now()
-    const slots: Record<string, { path: string; token: string; signedUrl: string } | null> = {
+    const slots: Record<string, { path: string; signedUrl: string; contentType: string } | null> = {
       preview: null,
       master: null,
       artwork: null,
@@ -73,9 +70,12 @@ export async function POST(req: Request) {
       }
       const ext = extOf(name)
       const path = `beats/${uid}/${ts}-${kind}.${ext}`
-      const slot = await createSignedUploadSlot(SUPABASE_URL, SUPABASE_SERVICE_KEY, path)
-      if (!slot) throw new Error(`Could not prepare ${kind} upload.`)
-      return slot
+      const contentType = String(file?.type || '') || (kind === 'artwork' ? `image/${ext === 'jpg' ? 'jpeg' : ext}` : 'application/octet-stream')
+      return {
+        path,
+        signedUrl: await signedR2UploadUrl(path, contentType),
+        contentType,
+      }
     }
 
     try {
@@ -96,7 +96,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      bucket: storageBucket(),
+      provider: 'r2',
+      bucket: r2Bucket(),
       slots,
     })
   } catch (error) {

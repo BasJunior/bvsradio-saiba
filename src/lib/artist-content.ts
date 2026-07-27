@@ -1,5 +1,6 @@
 import 'server-only'
 import { creatorPublicName } from '@/lib/public-name'
+import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 export type PublicArtistTrack = {
   id: string
@@ -67,7 +68,7 @@ const fallbackSummaries = Object.values(fallback).map((artist) => ({
 
 function artistImage(avatarUrl: string | undefined, artworkUrl: string | undefined) {
   const hasCustomAvatar = avatarUrl && !avatarUrl.includes('default-avatar')
-  return (hasCustomAvatar ? avatarUrl : artworkUrl) || '/assets/images/default-avatar.png'
+  return mediaUrlForStoredValue(hasCustomAvatar ? avatarUrl : artworkUrl) || '/assets/images/default-avatar.png'
 }
 
 export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
@@ -145,7 +146,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const rawBeats = beatsResponse.ok ? await beatsResponse.json() : []
     const beats = rawBeats.map((beat: { id: string; title: string; genre?: string; artwork_path?: string; beat_licence_options?: Array<{ price_usd: number; is_active: boolean }> }) => {
       const prices = (beat.beat_licence_options || []).filter(option => option.is_active).map(option => Number(option.price_usd)).filter(Number.isFinite)
-      return { id: beat.id, title: beat.title, genre: beat.genre, artwork_url: beat.artwork_path ? `${url}/storage/v1/object/public/bvsradio-audio/${beat.artwork_path}` : undefined, starting_price: prices.length ? Math.min(...prices) : 29 }
+      return { id: beat.id, title: beat.title, genre: beat.genre, artwork_url: mediaUrlForStoredValue(beat.artwork_path) || undefined, starting_price: prices.length ? Math.min(...prices) : 29 }
     })
     const ids = tracks.map((track: { id: string }) => track.id)
     let credits: Array<{ track_id: string; person_name: string; credit_role: string }> = []
@@ -156,7 +157,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const trackArtwork = tracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url
     const beatArtwork = beats.find((beat: { artwork_url?: string }) => beat.artwork_url)?.artwork_url
     const role = profile.is_producer ? (profile.role === 'artist' ? 'BVS artist & producer' : 'BVS producer') : profile.role === 'artist' ? 'BVS artist' : profile.role
-    return { id: profile.id, username: profile.username, name: creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username }), role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })), beats, location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '), links: creatorDetails?.links || {}, joinedAt: profile.created_at }
+    return { id: profile.id, username: profile.username, name: creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username }), role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, artwork_url: mediaUrlForStoredValue(track.artwork_url) || undefined, credits: credits.filter(credit => credit.track_id === track.id) })), beats, location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '), links: creatorDetails?.links || {}, joinedAt: profile.created_at }
   } catch { return fallback[slug] || null }
 }
 
@@ -183,7 +184,7 @@ export async function getPublishedProducers(): Promise<PublishedProducerSummary[
           publicNameStatus: profile.creator_name_status,
           username: profile.username,
         }),
-        image: artistImage(profile.avatar_url, artworkPath ? `${url}/storage/v1/object/public/bvsradio-audio/${artworkPath}` : undefined),
+        image: artistImage(profile.avatar_url, artworkPath ? mediaUrlForStoredValue(artworkPath) || undefined : undefined),
         beatCount: producerBeats.length,
         genres: [...new Set(producerBeats.map(beat => beat.genre).filter(Boolean))] as string[],
       }

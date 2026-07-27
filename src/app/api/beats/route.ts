@@ -14,6 +14,7 @@ import {
   slugifyBeat,
 } from '@/lib/beatstore-server'
 import { creatorPublicName } from '@/lib/public-name'
+import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
 
 export const runtime = 'nodejs'
 
@@ -122,6 +123,9 @@ export async function POST(request: Request) {
     }
 
     const submit = body.submit === true
+    if (!r2Configured()) {
+      return NextResponse.json({ error: 'Media storage is unavailable.' }, { status: 503 })
+    }
     const slugBase = slugifyBeat(cleanText(body.slug, 80) || title) || `beat-${Date.now()}`
     const payload = {
       producer_user_id: identity.user.id,
@@ -146,6 +150,22 @@ export async function POST(request: Request) {
     if (submit && !payload.preview_path) {
       return NextResponse.json(
         { error: 'Upload a tagged preview audio before submitting for review.' },
+        { status: 400 },
+      )
+    }
+    const paths = [
+      payload.preview_path,
+      payload.master_path,
+      payload.artwork_path,
+      payload.stems_path,
+    ].filter((path): path is string => Boolean(path))
+    if (paths.some((path) => !path.startsWith(`beats/${identity.user.id}/`))) {
+      return NextResponse.json({ error: 'Invalid beat upload path.' }, { status: 400 })
+    }
+    const checks = await Promise.all(paths.map((path) => r2ObjectExists(path)))
+    if (checks.some((exists) => !exists)) {
+      return NextResponse.json(
+        { error: 'One or more beat files did not finish uploading. Please retry.' },
         { status: 400 },
       )
     }

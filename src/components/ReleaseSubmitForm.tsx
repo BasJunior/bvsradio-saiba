@@ -5,23 +5,15 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import { trackEvent } from '@/lib/analytics'
 
-type Slot = { path: string; token: string; signedUrl: string; contentType: string; index?: number }
+type Slot = { path: string; signedUrl: string; contentType: string; index?: number }
 
 async function putToSignedSlot(slot: Slot, file: File) {
-  const supabase = createClient()
-  const { error } = await supabase.storage.from('bvsradio-audio').uploadToSignedUrl(slot.path, slot.token, file, {
-    contentType: slot.contentType || file.type || 'application/octet-stream',
-    upsert: true,
+  const res = await fetch(slot.signedUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': slot.contentType || file.type || 'application/octet-stream' },
+    body: file,
   })
-  if (error) {
-    const url = new URL(slot.signedUrl)
-    if (!url.searchParams.get('token')) url.searchParams.set('token', slot.token)
-    const body = new FormData()
-    body.append('cacheControl', '3600')
-    body.append('', file)
-    const res = await fetch(url.toString(), { method: 'PUT', headers: { 'x-upsert': 'true' }, body })
-    if (!res.ok) throw new Error(error.message || `Upload failed (${res.status})`)
-  }
+  if (!res.ok) throw new Error(`Upload failed (${res.status})`)
 }
 
 const genres = [

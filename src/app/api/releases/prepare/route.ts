@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAllowedAudioFile } from "@/lib/audio-formats";
-import { authUserId, createSignedUploadSlot } from "@/lib/storage-upload";
+import { authUserId } from "@/lib/storage-upload";
+import { r2Configured, signedR2UploadUrl } from "@/lib/r2-storage";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
     if (!token) {
       return NextResponse.json({ error: "Sign in required to submit a release." }, { status: 401 });
     }
-    if (!SUPABASE_URL || !SERVICE) {
+    if (!SUPABASE_URL || !SERVICE || !r2Configured()) {
       return NextResponse.json({ error: "Upload service unavailable." }, { status: 503 });
     }
 
@@ -40,7 +41,6 @@ export async function POST(req: Request) {
     const trackSlots: Array<{
       index: number;
       path: string;
-      token: string;
       signedUrl: string;
       contentType: string;
       ext: string;
@@ -60,21 +60,19 @@ export async function POST(req: Request) {
         );
       }
       const path = `${releaseFolder}/track-${String(i + 1).padStart(2, "0")}.${check.ext || "mp3"}`;
-      const slot = await createSignedUploadSlot(SUPABASE_URL, SERVICE, path);
-      if (!slot) {
-        return NextResponse.json({ error: "Could not prepare audio upload slots." }, { status: 500 });
-      }
+      const contentType =
+        String(meta.type || "") ||
+        `audio/${check.ext === "mp3" ? "mpeg" : check.ext || "mpeg"}`;
       trackSlots.push({
         index: i,
-        ...slot,
-        contentType:
-          String(meta.type || "") ||
-          `audio/${check.ext === "mp3" ? "mpeg" : check.ext || "mpeg"}`,
+        path,
+        signedUrl: await signedR2UploadUrl(path, contentType),
+        contentType,
         ext: check.ext || "mp3",
       });
     }
 
-    let cover: { path: string; token: string; signedUrl: string; contentType: string } | null = null;
+    let cover: { path: string; signedUrl: string; contentType: string } | null = null;
     if (body.cover && Number(body.cover.size) > 0) {
       if (Number(body.cover.size) > 8 * 1024 * 1024) {
         return NextResponse.json({ error: "Cover must be 8MB or smaller." }, { status: 400 });
@@ -84,18 +82,17 @@ export async function POST(req: Request) {
           .toLowerCase()
           .replace(/[^a-z0-9]/g, "") || "jpg";
       const artPath = `${releaseFolder}/cover.${artExt}`;
-      const artSlot = await createSignedUploadSlot(SUPABASE_URL, SERVICE, artPath);
-      if (!artSlot) {
-        return NextResponse.json({ error: "Could not prepare cover upload." }, { status: 500 });
-      }
+      const contentType = String(body.cover.type || "image/jpeg");
       cover = {
-        ...artSlot,
-        contentType: String(body.cover.type || "image/jpeg"),
+        path: artPath,
+        signedUrl: await signedR2UploadUrl(artPath, contentType),
+        contentType,
       };
     }
 
     return NextResponse.json({
       releaseFolder,
+      provider: "r2",
       tracks: trackSlots,
       cover,
     });

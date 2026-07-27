@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { creatorHeaders, creatorIdentity, creatorJson, creatorUrl } from '@/lib/creator-server'
+import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
 
 const clean = (value: unknown, max = 5000) => String(value || '').trim().slice(0, max)
 const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
@@ -77,6 +78,9 @@ export async function POST(request: Request) {
       if (!['show_creator','admin'].includes(identity.profile.role)) return NextResponse.json({ error: 'Show creator access required.' }, { status: 403 })
       const showId = clean(body.showId, 80); const title = clean(body.title, 180); const audioPath = clean(body.audioPath, 1000)
       if (!showId || !title || !audioPath) return NextResponse.json({ error: 'Show, title and uploaded audio are required.' }, { status: 400 })
+      if (!r2Configured() || !audioPath.startsWith(`show-episodes/${id}/`) || !(await r2ObjectExists(audioPath))) {
+        return NextResponse.json({ error: 'Episode upload is missing or invalid. Please retry.' }, { status: 400 })
+      }
       const owned = await creatorJson(await fetch(creatorUrl(`show_creator_profiles?id=eq.${encodeURIComponent(showId)}&user_id=eq.${id}&status=eq.approved&select=id`), { headers: creatorHeaders }))
       if (!owned[0]) return NextResponse.json({ error: 'Episodes can be submitted only to your approved show.' }, { status: 403 })
       const data = await creatorJson(await fetch(creatorUrl('show_episodes'), { method: 'POST', headers: { ...creatorHeaders, Prefer: 'return=representation' }, body: JSON.stringify({ show_id: showId, creator_id: id, title, description: clean(body.description, 5000), episode_number: Number(body.episodeNumber) || null, audio_path: audioPath, explicit: body.explicit === true, status: 'submitted' }) }))
