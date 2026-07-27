@@ -92,7 +92,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
       avatar_url?: string
       role: string
       is_producer?: boolean
-    }>).filter((profile) => ['artist', 'admin'].includes(profile.role) || profile.is_producer)
+    }>).filter((profile) => ['artist', 'admin'].includes(profile.role))
     if (!profiles.length) return []
 
     const ids = profiles.map((profile) => profile.id)
@@ -132,7 +132,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
         trackCount: artistTracks.length,
         genres,
       }
-    })
+    }).filter((artist) => artist.trackCount > 0)
   } catch {
     return fallbackSummaries
   }

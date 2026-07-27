@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import {
   PRICE_SINGLE_DOWNLOAD,
   catalogueUnitPrice,
@@ -473,6 +474,7 @@ function rightsSummary(track: Track) {
 }
 
 export default function CataloguePage() {
+  const searchParams = useSearchParams()
   const [search, setSearch] = useState(() => {
     if (typeof window === 'undefined') return ''
     return new URLSearchParams(window.location.search).get('q') || ''
@@ -510,6 +512,27 @@ export default function CataloguePage() {
     }
   })
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  useEffect(() => {
+    const requestedType = searchParams.get('type')
+    setSearch(searchParams.get('q') || '')
+    if (requestedType === 'beat') {
+      setTypeFilter('beat')
+      window.requestAnimationFrame(() => {
+        document.getElementById('beatstore')?.scrollIntoView({ block: 'start' })
+      })
+      return
+    }
+    if (requestedType === 'single' || requestedType === 'mix') {
+      setTypeFilter(requestedType)
+      return
+    }
+    if (requestedType === 'all') {
+      setTypeFilter('all')
+      return
+    }
+    setTypeFilter('music')
+  }, [searchParams])
 
   useEffect(() => {
     localStorage.setItem('bvs_cart', JSON.stringify(cart))
