@@ -126,6 +126,20 @@ PACKS: dict[str, dict[str, Any]] = {
         "file": "supabase-profile-role-applications.sql",
         "tables": ["profile_role_applications"],
     },
+    "creator-identities": {
+        "step": 13,
+        "file": "supabase-creator-identities.sql",
+        "columns": {
+            "profiles": [
+                "creator_public_name",
+                "creator_name_request",
+                "creator_name_status",
+                "creator_name_review_notes",
+                "creator_name_reviewed_by",
+                "creator_name_reviewed_at",
+            ],
+        },
+    },
 }
 
 ORDER = sorted(PACKS.keys(), key=lambda k: PACKS[k]["step"])

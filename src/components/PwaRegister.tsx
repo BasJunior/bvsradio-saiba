@@ -93,7 +93,7 @@ export default function PwaRegister() {
     >
       <div className="flex items-start gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon-192.png" alt="" className="h-12 w-12 rounded-xl" width={48} height={48} />
+        <img src="/bvs-icon-v2-192.png" alt="" className="h-12 w-12 rounded-xl" width={48} height={48} />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-text-primary">Install BVS Radio</p>
           <p className="mt-1 text-xs text-text-secondary">

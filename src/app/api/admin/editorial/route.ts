@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   }
   const requests = [
     fetch(editorialUrl('tracks?select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
-    fetch(editorialUrl('profiles?select=id,username,display_name,role,is_producer,is_verified,is_published&order=created_at.desc&limit=200'), { headers: serviceHeaders, cache: 'no-store' }),
+    fetch(editorialUrl('profiles?select=id,username,display_name,role,is_producer,is_verified,is_published,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,creator_name_reviewed_at&order=created_at.desc&limit=200'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('programmes?select=*&order=updated_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('track_credits?select=*&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('editorial_staff?select=user_id,role,active,created_at&order=created_at.desc'), { headers: serviceHeaders, cache: 'no-store' }),
@@ -153,6 +153,44 @@ export async function PATCH(request: Request) {
         const enabled = body.enabled === true
         const result = await patchTable('profiles', `id=eq.${encodeURIComponent(profileId)}`, { is_producer: enabled })
         await audit(identity.user.id, enabled ? 'producer_enabled' : 'producer_disabled', 'profile', profileId)
+        return NextResponse.json({ result })
+      }
+      case 'review_creator_name': {
+        requirePermission('publish_artists')
+        const profileId = String(body.profileId || '')
+        const decision = String(body.decision || '')
+        const requestedPublicName = String(body.publicName || '').trim().slice(0, 120)
+        const notes = String(body.notes || '').trim().slice(0, 2000)
+        if (!profileId || !['approved', 'changes_requested', 'rejected'].includes(decision)) {
+          return NextResponse.json({ error: 'Choose a valid public-name review decision.' }, { status: 400 })
+        }
+        if (decision === 'approved' && !requestedPublicName) {
+          return NextResponse.json({ error: 'Enter the public artist or producer name to approve.' }, { status: 400 })
+        }
+        if (decision !== 'approved' && notes.length < 3) {
+          return NextResponse.json({ error: 'Add a note explaining what the creator should change.' }, { status: 400 })
+        }
+        const profile = (await optionalJson(
+          `profiles?id=eq.${encodeURIComponent(profileId)}&select=id,username,role,is_producer,creator_public_name,creator_name_request&limit=1`,
+        ))[0] as { id?: string; username?: string; role?: string; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string } | undefined
+        if (!profile) return NextResponse.json({ error: 'Creator profile not found.' }, { status: 404 })
+        if (profile.role !== 'artist' && !profile.is_producer) {
+          return NextResponse.json({ error: 'Public creator names are only available to artist or producer accounts.' }, { status: 409 })
+        }
+        const now = new Date().toISOString()
+        const result = await patchTable('profiles', `id=eq.${encodeURIComponent(profileId)}`, {
+          creator_name_request: requestedPublicName || profile.creator_name_request || null,
+          creator_name_status: decision,
+          creator_name_review_notes: notes || null,
+          creator_name_reviewed_by: identity.user.id,
+          creator_name_reviewed_at: now,
+          ...(decision === 'approved' ? { creator_public_name: requestedPublicName } : {}),
+          updated_at: now,
+        })
+        await audit(identity.user.id, `creator_name_${decision}`, 'profile', profileId, {
+          username: profile.username,
+          approvedPublicName: decision === 'approved' ? requestedPublicName : undefined,
+        })
         return NextResponse.json({ result })
       }
       case 'review_role_application': {

@@ -6,9 +6,10 @@ import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { roleLabels, type EditorialPermission, type EditorialRole } from '@/lib/editorial'
 import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
+import { creatorPublicName } from '@/lib/public-name'
 
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
-type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean }
+type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string }
 type Programme = { id: string; slug: string; title: string; host: string; day_label: string; start_time?: string; timezone: string; status: string }
 type Credit = { id: string; track_id: string; person_name: string; credit_role: string }
 type Staff = { user_id: string; role: EditorialRole; active: boolean }
@@ -26,7 +27,7 @@ type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' 
 type RoleApplication = { id: string; user_id: string; requested_role: string; status: string; message?: string; review_notes?: string; updated_at: string }
 type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; roleApplications?: RoleApplication[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
-const statusClass: Record<string, string> = { submitted: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary' }
+const statusClass: Record<string, string> = { submitted: 'text-amber-300', pending: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary', not_submitted: 'text-text-secondary' }
 
 export default function EditorialDashboard() {
   const [data, setData] = useState<EditorialData | null>(null)
@@ -141,6 +142,9 @@ export default function EditorialDashboard() {
   const roleQueue = (data.roleApplications || []).filter((application) =>
     ['submitted', 'information_requested'].includes(application.status),
   ).length
+  const identityQueue = data.profiles.filter((profile) =>
+    ['pending', 'changes_requested'].includes(profile.creator_name_status || ''),
+  ).length
   const releaseQueue = (data.releases || []).filter((r) =>
     ['submitted', 'in_review', 'approved'].includes(r.editorial_status),
   ).length
@@ -152,6 +156,7 @@ export default function EditorialDashboard() {
     { id: 'ed-tracks', label: `Singles${trackQueue ? ` (${trackQueue})` : ''}` },
     { id: 'ed-requests', label: `Requests${requestQueue ? ` (${requestQueue})` : ''}` },
     { id: 'ed-role-applications', label: `Role applications${roleQueue ? ` (${roleQueue})` : ''}` },
+    { id: 'ed-identities', label: `Public names${identityQueue ? ` (${identityQueue})` : ''}` },
     { id: 'ed-artists', label: 'Artists' },
     { id: 'ed-programmes', label: 'Programmes' },
     ...(allowed('manage_staff') ? [{ id: 'ed-staff', label: 'Staff' }] : []),
@@ -194,11 +199,12 @@ export default function EditorialDashboard() {
         </div>
       </nav>
 
-      <section id="ed-overview" className="mt-8 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      <section id="ed-overview" className="mt-8 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         {[
           ['Awaiting review', trackQueue],
           ['Artist requests', requestQueue],
           ['Role applications', roleQueue],
+          ['Public names', identityQueue],
           ['BeatStore queue', beatQueue],
           ['Published', data.tracks.filter((t) => t.is_public).length],
           ['In rotation', data.tracks.filter((t) => t.in_rotation).length],
@@ -276,6 +282,15 @@ export default function EditorialDashboard() {
         />
       </section>
 
+      <section id="ed-identities" className="mt-14 scroll-mt-36">
+        <IdentityReviewPanel
+          profiles={data.profiles}
+          enabled={allowed('publish_artists')}
+          act={act}
+          busy={busy}
+        />
+      </section>
+
       <section id="ed-artists" className="mt-14 scroll-mt-36 grid gap-10 lg:grid-cols-2">
         <div>
           <h2 className="text-2xl font-semibold">Creator publishing and BeatStore access</h2>
@@ -289,9 +304,9 @@ export default function EditorialDashboard() {
                   className="flex items-center justify-between gap-4 rounded-xl border border-white/10 p-4"
                 >
                   <div>
-                    <p className="font-medium">{profile.display_name || profile.username}</p>
+                    <p className="font-medium">{creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })}</p>
                     <p className="text-xs text-text-secondary">
-                      @{profile.username} · {profile.is_published ? 'Published and verified' : 'Not published'}
+                      @{profile.username} · member name: {profile.display_name || 'not set'} · {profile.is_published ? 'Published and verified' : 'Not published'}
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap justify-end gap-2">
@@ -376,6 +391,100 @@ export default function EditorialDashboard() {
         </div>
       </section>
     </main>
+  )
+}
+
+function IdentityReviewPanel({
+  profiles,
+  enabled,
+  act,
+  busy,
+}: {
+  profiles: Profile[]
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const creators = profiles.filter((profile) =>
+    ['artist', 'admin'].includes(profile.role) || profile.is_producer,
+  )
+  return (
+    <div>
+      <h2 className="text-2xl font-semibold">Creator public-name review</h2>
+      <p className="mt-2 text-sm text-text-secondary">
+        Legal names stay private. Public creator pages use only an approved artist/producer name, otherwise the permanent @username.
+      </p>
+      <div className="mt-5 space-y-4">
+        {creators.map((profile) => (
+          <IdentityReviewCard
+            key={profile.id}
+            profile={profile}
+            enabled={enabled}
+            act={act}
+            busy={busy}
+          />
+        ))}
+        {!creators.length && <Empty text="No creator identities are available yet." />}
+      </div>
+    </div>
+  )
+}
+
+function IdentityReviewCard({
+  profile,
+  enabled,
+  act,
+  busy,
+}: {
+  profile: Profile
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const [publicName, setPublicName] = useState(profile.creator_name_request || profile.creator_public_name || '')
+  const [notes, setNotes] = useState(profile.creator_name_review_notes || '')
+  const decide = (decision: 'approved' | 'changes_requested' | 'rejected') =>
+    act('review_creator_name', { profileId: profile.id, decision, publicName, notes })
+  const status = profile.creator_name_status || 'not_submitted'
+  return (
+    <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[status] || 'text-text-secondary'}`}>
+            {status.replaceAll('_', ' ')}
+          </p>
+          <h3 className="mt-1 text-xl font-semibold">@{profile.username}</h3>
+          <p className="text-sm text-text-secondary">Member display name: {profile.display_name || 'not set'}</p>
+          <p className="mt-1 text-sm text-text-secondary">
+            Current public output: {creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })}
+          </p>
+        </div>
+        {profile.creator_name_reviewed_at && <p className="text-xs text-text-secondary">{new Date(profile.creator_name_reviewed_at).toLocaleString()}</p>}
+      </div>
+      <label className="mt-4 block text-sm font-medium">
+        Artist / producer public name
+        <input
+          value={publicName}
+          onChange={(event) => setPublicName(event.target.value)}
+          maxLength={120}
+          placeholder={`@${profile.username}`}
+          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand"
+        />
+      </label>
+      <textarea
+        value={notes}
+        onChange={(event) => setNotes(event.target.value)}
+        placeholder="Editorial note or information request…"
+        className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"
+      />
+      {enabled && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button disabled={Boolean(busy) || !publicName.trim()} onClick={() => decide('approved')} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Approve public name</button>
+          <button disabled={Boolean(busy) || notes.trim().length < 3} onClick={() => decide('changes_requested')} className="rounded-full border border-amber-300 px-4 py-2 text-xs text-amber-200 disabled:opacity-40">Request changes</button>
+          <button disabled={Boolean(busy) || notes.trim().length < 3} onClick={() => decide('rejected')} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Reject</button>
+        </div>
+      )}
+    </article>
   )
 }
 

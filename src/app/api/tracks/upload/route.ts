@@ -4,6 +4,7 @@ import {
   r2MediaUrl,
   r2ObjectExists,
 } from "@/lib/r2-storage";
+import { creatorPublicName } from "@/lib/public-name";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -108,7 +109,7 @@ export async function POST(req: Request) {
       Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
     };
     const profileRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=username,display_name,role`,
+      `${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=username,display_name,role,creator_public_name,creator_name_status`,
       { headers: adminHeaders, cache: "no-store" },
     );
     const profiles = profileRes.ok ? await profileRes.json() : [];
@@ -197,8 +198,11 @@ export async function POST(req: Request) {
       }
     }
 
-    const artistName =
-      profile.display_name || profile.username || userData.email?.split("@")[0] || "Unknown Artist";
+    const artistName = creatorPublicName({
+      publicName: profile.creator_public_name,
+      publicNameStatus: profile.creator_name_status,
+      username: profile.username,
+    });
 
     const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/tracks`, {
       method: "POST",

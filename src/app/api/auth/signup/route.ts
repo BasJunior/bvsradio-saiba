@@ -22,7 +22,7 @@ function profileRoleFor(requestedRole: string) {
   return requestedRole === 'producer' ? 'listener' : requestedRole
 }
 
-async function ensureProfile(userId: string, username: string, fullName: string, role: string) {
+async function ensureProfile(userId: string, username: string, role: string) {
   const producer = role === 'producer'
   const profileRole = profileRoleFor(role)
   await supabaseAdmin('/rest/v1/profiles', {
@@ -31,8 +31,9 @@ async function ensureProfile(userId: string, username: string, fullName: string,
     body: JSON.stringify({
       id: userId,
       username,
-      display_name: fullName || username,
-      full_name: fullName || username,
+      // A legal/full name stays private in Auth metadata. Public/member identity
+      // starts from the chosen handle until the member edits it deliberately.
+      display_name: username,
       role: profileRole || 'listener',
       is_producer: producer,
     }),
@@ -117,7 +118,7 @@ export async function POST(req: Request) {
 
     const userId = create.data?.id as string | undefined
     if (userId) {
-      await ensureProfile(userId, username, fullName, role)
+      await ensureProfile(userId, username, role)
     }
 
     await sendSignupConfirm(email)

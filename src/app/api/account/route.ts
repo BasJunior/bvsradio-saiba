@@ -17,7 +17,12 @@ async function accountUser(request: Request) {
     cache: 'no-store',
   })
   if (!response.ok) return null
-  return response.json() as Promise<{ id: string; email?: string; created_at?: string }>
+  return response.json() as Promise<{
+    id: string
+    email?: string
+    created_at?: string
+    user_metadata?: Record<string, unknown>
+  }>
 }
 
 export async function GET(request: Request) {
@@ -26,7 +31,7 @@ export async function GET(request: Request) {
 
   const [profileResponse, ordersResponse] = await Promise.all([
     fetch(
-      `${url}/rest/v1/profiles?id=eq.${user.id}&select=id,username,display_name,avatar_url,bio,role,is_verified,is_published,created_at&limit=1`,
+      `${url}/rest/v1/profiles?id=eq.${user.id}&select=id,username,display_name,avatar_url,bio,role,is_producer,is_verified,is_published,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,created_at&limit=1`,
       { headers: serviceHeaders, cache: 'no-store' },
     ),
     fetch(
@@ -48,7 +53,11 @@ export async function GET(request: Request) {
     displayAvatarUrl = trackArtwork || (beatArtworkPath ? `${url}/storage/v1/object/public/bvsradio-audio/${beatArtworkPath}` : '') || displayAvatarUrl
   }
   return NextResponse.json({
-    user: { email: user.email || '', createdAt: user.created_at || null },
+    user: {
+      email: user.email || '',
+      createdAt: user.created_at || null,
+      fullName: String(user.user_metadata?.full_name || ''),
+    },
     profile: profile ? { ...profile, display_avatar_url: displayAvatarUrl } : null,
     orders,
   })
@@ -58,29 +67,71 @@ export async function PATCH(request: Request) {
   const user = await accountUser(request)
   if (!user) return NextResponse.json({ error: 'Sign in to update your account.' }, { status: 401 })
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
-  const username = String(body.username || '').trim().toLowerCase().slice(0, 50)
+  const requestedUsername = String(body.username || '').trim().toLowerCase().slice(0, 50)
   const displayName = String(body.displayName || '').trim().slice(0, 100)
+  const fullName = String(body.fullName || '').trim().slice(0, 160)
   const bio = String(body.bio || '').trim().slice(0, 1000)
   const avatarUrl = String(body.avatarUrl || '').trim().slice(0, 500)
+  const creatorNameRequest = String(body.creatorPublicName || '').trim().slice(0, 120)
 
+  const existingResponse = await fetch(
+    `${url}/rest/v1/profiles?id=eq.${user.id}&select=id,username,role,is_producer,creator_public_name,creator_name_request,creator_name_status&limit=1`,
+    { headers: serviceHeaders, cache: 'no-store' },
+  )
+  const existingRows = existingResponse.ok ? await existingResponse.json() : []
+  const existing = existingRows[0] as {
+    username?: string
+    role?: string
+    is_producer?: boolean
+    creator_public_name?: string
+    creator_name_request?: string
+    creator_name_status?: string
+  } | undefined
+  if (!existing) {
+    return NextResponse.json({ error: 'Your profile could not be loaded.' }, { status: 404 })
+  }
+  const username = String(existing.username || '').trim().toLowerCase()
   if (!/^[a-z0-9][a-z0-9._-]{2,49}$/.test(username)) {
     return NextResponse.json(
-      { error: 'Username must be 3–50 characters using letters, numbers, dots, dashes or underscores.' },
+      { error: 'Your existing username needs staff review before this profile can be updated.' },
       { status: 400 },
     )
   }
+  if (requestedUsername && requestedUsername !== username) {
+    return NextResponse.json(
+      { error: 'Usernames are permanent profile handles. Contact BVS if yours needs correcting.' },
+      { status: 409 },
+    )
+  }
   if (!displayName) return NextResponse.json({ error: 'Display name is required.' }, { status: 400 })
+  if (!fullName) return NextResponse.json({ error: 'Full/legal name is required and remains private.' }, { status: 400 })
+
+  const creatorCapable = existing.role === 'artist' || Boolean(existing.is_producer)
+  const creatorNameChanged =
+    creatorCapable &&
+    creatorNameRequest.length > 0 &&
+    creatorNameRequest !== String(existing.creator_name_request || '') &&
+    creatorNameRequest !== String(existing.creator_public_name || '')
+
+  const profilePatch: Record<string, unknown> = {
+    username,
+    display_name: displayName,
+    bio,
+    avatar_url: avatarUrl || '/assets/images/default-avatar.png',
+    updated_at: new Date().toISOString(),
+  }
+  if (creatorNameChanged) {
+    profilePatch.creator_name_request = creatorNameRequest
+    profilePatch.creator_name_status = 'pending'
+    profilePatch.creator_name_review_notes = null
+    profilePatch.creator_name_reviewed_by = null
+    profilePatch.creator_name_reviewed_at = null
+  }
 
   const response = await fetch(`${url}/rest/v1/profiles?id=eq.${user.id}`, {
     method: 'PATCH',
     headers: { ...serviceHeaders, Prefer: 'return=representation' },
-    body: JSON.stringify({
-      username,
-      display_name: displayName,
-      bio,
-      avatar_url: avatarUrl || '/assets/images/default-avatar.png',
-      updated_at: new Date().toISOString(),
-    }),
+    body: JSON.stringify(profilePatch),
   })
   const data = await response.json().catch(() => [])
   if (!response.ok) {
@@ -88,6 +139,24 @@ export async function PATCH(request: Request) {
     return NextResponse.json(
       { error: duplicate ? 'That username is already taken.' : 'Could not update your profile.' },
       { status: duplicate ? 409 : 500 },
+    )
+  }
+
+  const metadataResponse = await fetch(`${url}/auth/v1/admin/users/${user.id}`, {
+    method: 'PUT',
+    headers: serviceHeaders,
+    body: JSON.stringify({
+      user_metadata: {
+        ...(user.user_metadata || {}),
+        full_name: fullName,
+      },
+    }),
+  })
+  if (!metadataResponse.ok) {
+    console.error('Account full-name update failed:', metadataResponse.status)
+    return NextResponse.json(
+      { error: 'Your profile was saved, but the private account name could not be updated. Please retry.' },
+      { status: 502 },
     )
   }
   return NextResponse.json({ profile: data[0] || null })

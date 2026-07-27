@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     body: JSON.stringify({
       id: user.id,
       username,
-      display_name: user.user_metadata?.full_name || username,
+      display_name: username,
       role,
       avatar_url: '/assets/images/default-avatar.png',
     }),

@@ -12,8 +12,13 @@ type Profile = {
   display_avatar_url?: string
   bio?: string
   role: string
+  is_producer?: boolean
   is_verified?: boolean
   is_published?: boolean
+  creator_public_name?: string
+  creator_name_request?: string
+  creator_name_status?: 'not_submitted' | 'pending' | 'approved' | 'changes_requested' | 'rejected'
+  creator_name_review_notes?: string
   created_at?: string
 }
 type Order = {
@@ -35,7 +40,7 @@ type RoleApplication = {
   updated_at: string
 }
 type AccountData = {
-  user: { email: string; createdAt?: string | null }
+  user: { email: string; fullName?: string; createdAt?: string | null }
   profile: Profile | null
   orders: Order[]
 }
@@ -49,7 +54,7 @@ export default function AccountPage() {
   const [roleApplication, setRoleApplication] = useState<RoleApplication | null>(null)
   const [roleForm, setRoleForm] = useState({ requestedRole: 'artist', message: '' })
   const [applying, setApplying] = useState(false)
-  const [form, setForm] = useState({ username: '', displayName: '', avatarUrl: '', bio: '' })
+  const [form, setForm] = useState({ username: '', fullName: '', displayName: '', creatorPublicName: '', avatarUrl: '', bio: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -77,7 +82,9 @@ export default function AccountPage() {
     setRoleApplication(applicationPayload.application || null)
     setForm({
       username: account.profile?.username || '',
+      fullName: account.user?.fullName || '',
       displayName: account.profile?.display_name || '',
+      creatorPublicName: account.profile?.creator_name_request || account.profile?.creator_public_name || '',
       avatarUrl: account.profile?.avatar_url || '',
       bio: account.profile?.bio || '',
     })
@@ -234,6 +241,7 @@ export default function AccountPage() {
         : data?.profile?.role === 'show_creator'
           ? 'Show creator'
           : data?.profile?.role || 'Listener'
+  const creatorCapable = Boolean(access.artist || access.producer || data?.profile?.role === 'artist' || data?.profile?.is_producer)
 
   if (loading) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Loading Account Centre…</main>
   if (!token) return <main className="mx-auto min-h-[65vh] max-w-xl px-6 py-20 text-center"><p className="text-xs uppercase tracking-[.22em] text-brand">Account Centre</p><h1 className="mt-3 text-4xl">Sign in to continue</h1><p className="mt-4 text-text-secondary">Your profile, library, orders and role-specific tools live here.</p><Link href="/auth/login?next=/account" className="mt-7 inline-block rounded-full bg-brand px-6 py-3 font-semibold text-black">Sign in</Link></main>
@@ -263,7 +271,7 @@ export default function AccountPage() {
       <section className="mt-12 grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
         <form onSubmit={save} className="rounded-2xl border border-white/10 bg-white/[.025] p-6">
           <h2 className="text-2xl font-semibold">Profile</h2>
-          <p className="mt-2 text-sm text-text-secondary">These details appear across your BVS account and, when published, your public creator profile.</p>
+          <p className="mt-2 text-sm text-text-secondary">Account, member and creator names are kept separate so a private name is never used as an artist name by accident.</p>
           <div className="mt-6 flex flex-wrap items-center gap-5 rounded-2xl border border-white/10 bg-black/20 p-4">
             <div className="relative h-28 w-28 overflow-hidden rounded-full border border-white/15 bg-white/5">
               <Image src={currentPhoto} alt={`${form.displayName || form.username} profile`} fill unoptimized={/^https?:\/\//i.test(currentPhoto)} className="object-cover" />
@@ -285,10 +293,19 @@ export default function AccountPage() {
             </div>
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <label className="text-sm font-medium">Display name<input required value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} className={field} /></label>
-            <label className="text-sm font-medium">Username<input required value={form.username} onChange={(event) => setForm({ ...form, username: event.target.value })} className={field} /></label>
+            <label className="text-sm font-medium">Full/legal name <span className="text-xs font-normal text-text-secondary">· private</span><input required value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} autoComplete="name" className={field} /><span className="mt-1 block text-xs font-normal text-text-secondary">Used for account administration, contracts, payouts and invoices. Never shown on creator pages.</span></label>
+            <label className="text-sm font-medium">Member display name<input required value={form.displayName} onChange={(event) => setForm({ ...form, displayName: event.target.value })} className={field} /><span className="mt-1 block text-xs font-normal text-text-secondary">Shown in signed-in member areas such as community features.</span></label>
+            <label className="text-sm font-medium">Username (@handle)<input required readOnly value={form.username} className={`${field} cursor-not-allowed opacity-70`} /><span className="mt-1 block text-xs font-normal text-text-secondary">Your permanent login handle and profile URL. Contact BVS if it was entered incorrectly.</span></label>
+            {creatorCapable && <label className="text-sm font-medium">Artist / producer public name<input value={form.creatorPublicName} onChange={(event) => setForm({ ...form, creatorPublicName: event.target.value })} placeholder={`@${form.username}`} className={field} /><span className="mt-1 block text-xs font-normal text-text-secondary">Used on public creator pages, BeatStore and search after Editorial approval. Until then, we show @{form.username}. You may leave this blank.</span></label>}
             <label className="text-sm font-medium sm:col-span-2">Bio<textarea value={form.bio} onChange={(event) => setForm({ ...form, bio: event.target.value })} rows={5} className={field} /></label>
           </div>
+          {creatorCapable && data.profile.creator_name_status && data.profile.creator_name_status !== 'not_submitted' && (
+            <div className="mt-5 rounded-xl border border-white/10 bg-black/20 p-4 text-sm">
+              <p className="font-medium capitalize">Public-name review · {data.profile.creator_name_status.replaceAll('_', ' ')}</p>
+              {data.profile.creator_public_name && <p className="mt-1 text-text-secondary">Currently public: {data.profile.creator_public_name}</p>}
+              {data.profile.creator_name_review_notes && <p className="mt-2 text-text-secondary">Editorial: {data.profile.creator_name_review_notes}</p>}
+            </div>
+          )}
           <button disabled={saving} className="mt-6 rounded-full bg-brand px-6 py-3 font-semibold text-black disabled:opacity-60">{saving ? 'Saving…' : 'Save profile'}</button>
         </form>
 

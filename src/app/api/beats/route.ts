@@ -13,6 +13,7 @@ import {
   publicStorageUrl,
   slugifyBeat,
 } from '@/lib/beatstore-server'
+import { creatorPublicName } from '@/lib/public-name'
 
 export const runtime = 'nodejs'
 
@@ -44,9 +45,9 @@ export async function GET(request: Request) {
   const beats = await listPublishedBeats(60)
   const producerIds = [...new Set(beats.map(beat => beat.producer_user_id))]
   const producerResponse = producerIds.length
-    ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,display_name`), { headers: beatHeaders, cache: 'no-store' })
+    ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status`), { headers: beatHeaders, cache: 'no-store' })
     : null
-  const producers = producerResponse?.ok ? await producerResponse.json() as Array<{ id: string; username: string; display_name?: string }> : []
+  const producers = producerResponse?.ok ? await producerResponse.json() as Array<{ id: string; username: string; creator_public_name?: string; creator_name_status?: string }> : []
   const shaped = beats.map((b) => {
     const licences = (b.beat_licence_options || []).filter((l) => l.is_active !== false && !l.is_sold_out)
     const priced = licences
@@ -64,7 +65,11 @@ export async function GET(request: Request) {
       bpm: b.bpm,
       musical_key: b.musical_key,
       producer_user_id: b.producer_user_id,
-      producer: producers.find(producer => producer.id === b.producer_user_id)?.display_name || producers.find(producer => producer.id === b.producer_user_id)?.username || 'BVS Producer',
+      producer: creatorPublicName({
+        publicName: producers.find(producer => producer.id === b.producer_user_id)?.creator_public_name,
+        publicNameStatus: producers.find(producer => producer.id === b.producer_user_id)?.creator_name_status,
+        username: producers.find(producer => producer.id === b.producer_user_id)?.username,
+      }),
       producer_username: producers.find(producer => producer.id === b.producer_user_id)?.username,
       artworkUrl: publicStorageUrl(b.artwork_path),
       previewUrl: publicStorageUrl(b.preview_path),

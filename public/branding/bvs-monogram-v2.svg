@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">BVS Radio monogram</title>
+  <rect width="512" height="512" rx="104" fill="#FFE59B"/>
+  <g fill="#050505" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="154" font-weight="900" text-anchor="middle">
+    <text x="112" y="314">B</text>
+    <text x="256" y="314">V</text>
+    <text x="400" y="314">S</text>
+  </g>
+</svg>

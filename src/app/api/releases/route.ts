@@ -8,6 +8,7 @@ import {
   type ReleaseTrackRow,
 } from "@/lib/releases-server";
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
+import { creatorPublicName } from "@/lib/public-name";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -79,8 +80,8 @@ export async function POST(req: Request) {
       body: JSON.stringify({ role: "artist" }),
     }).catch(() => null);
 
-    const profiles = await restGet<Array<{ display_name?: string; username?: string }>>(
-      `profiles?id=eq.${user.id}&select=display_name,username`,
+    const profiles = await restGet<Array<{ username?: string; creator_public_name?: string; creator_name_status?: string }>>(
+      `profiles?id=eq.${user.id}&select=username,creator_public_name,creator_name_status`,
     );
     const profile = profiles?.[0];
 
@@ -112,11 +113,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const artistName =
-      profile?.display_name ||
-      profile?.username ||
-      user.email?.split("@")[0] ||
-      "Unknown Artist";
+    const artistName = creatorPublicName({
+      publicName: profile?.creator_public_name,
+      publicNameStatus: profile?.creator_name_status,
+      username: profile?.username,
+    });
 
     const coverPath = body.coverPath ? String(body.coverPath).trim() : "";
     if (coverPath && !coverPath.startsWith(`releases/${user.id}/`)) {

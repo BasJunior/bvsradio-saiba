@@ -34,10 +34,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon-v2.ico", sizes: "16x16 32x32 48x48", type: "image/x-icon" },
+      { url: "/bvs-favicon-v2-48.png", sizes: "48x48", type: "image/png" },
+      { url: "/bvs-icon-v2-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/bvs-icon-v2-512.png", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    shortcut: [{ url: "/favicon-v2.ico", type: "image/x-icon" }],
+    apple: [{ url: "/bvs-apple-touch-v2.png", sizes: "180x180", type: "image/png" }],
   },
   manifest: "/manifest.webmanifest",
   openGraph: {
