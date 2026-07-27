@@ -69,6 +69,10 @@ function artistImage(avatarUrl: string | undefined, artworkUrl: string | undefin
   return (hasCustomAvatar ? avatarUrl : artworkUrl) || '/assets/images/default-avatar.png'
 }
 
+function publicArtistName(publishingName: string | undefined, username: string) {
+  return publishingName?.trim() || `@${username.replace(/^@/, '')}`
+}
+
 export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -121,7 +125,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
       return {
         id: profile.id,
         username: profile.username,
-        name: publishingName || profile.username,
+        name: publicArtistName(publishingName, profile.username),
         role: profile.role === 'artist' ? 'BVS artist' : profile.role,
         bio: profile.bio || 'Verified artist on BVS Radio.',
         image: artistImage(profile.avatar_url, trackArtwork),
@@ -164,7 +168,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const trackArtwork = tracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url
     const beatArtwork = beats.find((beat: { artwork_url?: string }) => beat.artwork_url)?.artwork_url
     const role = profile.is_producer ? (profile.role === 'artist' ? 'BVS artist & producer' : 'BVS producer') : profile.role === 'artist' ? 'BVS artist' : profile.role
-    return { id: profile.id, username: profile.username, name: creatorDetails?.artist_name || profile.username, role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })), beats, location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '), links: creatorDetails?.links || {}, joinedAt: profile.created_at }
+    return { id: profile.id, username: profile.username, name: publicArtistName(creatorDetails?.artist_name, profile.username), role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, credits: credits.filter(credit => credit.track_id === track.id) })), beats, location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '), links: creatorDetails?.links || {}, joinedAt: profile.created_at }
   } catch { return fallback[slug] || null }
 }
 
@@ -201,7 +205,7 @@ export async function getPublishedProducers(): Promise<PublishedProducerSummary[
       return {
         id: profile.id,
         username: profile.username,
-        name: publishingName || profile.username,
+        name: publicArtistName(publishingName, profile.username),
         image: artistImage(profile.avatar_url, artworkPath ? `${url}/storage/v1/object/public/bvsradio-audio/${artworkPath}` : undefined),
         beatCount: producerBeats.length,
         genres: [...new Set(producerBeats.map(beat => beat.genre).filter(Boolean))] as string[],
