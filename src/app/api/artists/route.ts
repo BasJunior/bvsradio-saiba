@@ -5,6 +5,6 @@ export async function GET() {
   const artists = await getPublishedArtists()
   return NextResponse.json(
     { artists },
-    { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
+    { headers: { 'Cache-Control': 'no-store' } },
   )
 }

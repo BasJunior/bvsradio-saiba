@@ -111,7 +111,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
   try {
     const profileResponse = await fetch(
       `${url}/rest/v1/profiles?is_published=eq.true&is_verified=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status&order=username.asc`,
-      { headers, next: { revalidate: 60 } },
+      { headers, cache: 'no-store' },
     )
     if (!profileResponse.ok) return fallbackSummaries
     const profiles = (await profileResponse.json() as Array<{
@@ -130,7 +130,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
     const ids = profiles.map((profile) => profile.id)
     const tracksResponse = await fetch(
       `${url}/rest/v1/tracks?user_id=in.(${ids.join(',')})&is_public=eq.true&editorial_status=eq.approved&select=user_id,genre,artwork_url`,
-      { headers, next: { revalidate: 60 } },
+      { headers, cache: 'no-store' },
     )
     const tracks = tracksResponse.ok
       ? await tracksResponse.json() as Array<{ user_id: string; genre?: string; artwork_url?: string }>
