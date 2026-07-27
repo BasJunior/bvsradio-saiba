@@ -88,6 +88,7 @@ function publicStorageUrl(fileUrl: string) {
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!base) return fileUrl;
   const cleaned = fileUrl.replace(/^\/+/, "");
+  if (cleaned.startsWith("api/media/")) return `/${cleaned}`;
   if (cleaned.startsWith("storage/v1/")) return `${base}/${cleaned}`;
   // Local public path already hosted by Next
   if (cleaned.startsWith("music/")) return `/${cleaned}`;
