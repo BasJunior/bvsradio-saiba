@@ -26,7 +26,7 @@ export function mediaKeyFromStoredValue(value?: string | null) {
   if (episodeAt >= 0) {
     return `show-episodes/${decodeURIComponent(raw.slice(episodeAt + PRIVATE_EPISODE_MARKER.length))}`;
   }
-  if (/^https?:\/\//i.test(raw) || raw.startsWith("/assets/") || raw.startsWith("/music/")) {
+  if (/^https?:\/\//i.test(raw) || raw.startsWith("/")) {
     return null;
   }
   return raw.replace(/^\/+/, "");
