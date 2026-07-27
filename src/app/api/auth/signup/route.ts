@@ -18,9 +18,13 @@ function bad(msg: string, status = 400) {
   return NextResponse.json({ error: msg }, { status })
 }
 
+function profileRoleFor(requestedRole: string) {
+  return requestedRole === 'producer' ? 'listener' : requestedRole
+}
+
 async function ensureProfile(userId: string, username: string, fullName: string, role: string) {
   const producer = role === 'producer'
-  const profileRole = producer ? 'listener' : role
+  const profileRole = profileRoleFor(role)
   await supabaseAdmin('/rest/v1/profiles', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
@@ -55,6 +59,7 @@ export async function POST(req: Request) {
     const allowedRoles = new Set(['listener', 'artist', 'producer', 'writer', 'show_creator'])
     if (!allowedRoles.has(requestedRole)) return bad('Choose a valid account type.')
     const role = requestedRole
+    const profileRole = profileRoleFor(role)
     const resendOnly = Boolean(body.resendOnly)
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -85,7 +90,9 @@ export async function POST(req: Request) {
         user_metadata: {
           username,
           full_name: fullName,
-          role,
+          role: profileRole,
+          account_type: role,
+          is_producer: role === 'producer',
         },
       }),
     })
@@ -125,7 +132,8 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : 'Internal error'
     const safe = /SMTP|not configured|credentials/i.test(message)
       ? 'We could not send the confirmation email right now. Please try again in a minute.'
-      : message
+      : 'We could not create your account right now. Please try again in a minute.'
+    console.error('Signup failed:', message)
     return NextResponse.json({ error: safe }, { status: 500 })
   }
 }
