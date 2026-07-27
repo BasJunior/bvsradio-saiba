@@ -25,7 +25,15 @@ type Order = {
   items?: Array<{ title?: string; quantity?: number }>
   created_at: string
 }
-type Access = { creator?: boolean; artist?: boolean; editorial?: boolean; admin?: boolean }
+type Access = { creator?: boolean; artist?: boolean; producer?: boolean; writer?: boolean; showCreator?: boolean; editorial?: boolean; admin?: boolean }
+type RoleApplication = {
+  id: string
+  requested_role: 'artist' | 'producer' | 'writer' | 'show_creator'
+  status: 'submitted' | 'information_requested' | 'approved' | 'rejected'
+  message?: string
+  review_notes?: string
+  updated_at: string
+}
 type AccountData = {
   user: { email: string; createdAt?: string | null }
   profile: Profile | null
@@ -38,6 +46,9 @@ export default function AccountPage() {
   const [token, setToken] = useState('')
   const [data, setData] = useState<AccountData | null>(null)
   const [access, setAccess] = useState<Access>({})
+  const [roleApplication, setRoleApplication] = useState<RoleApplication | null>(null)
+  const [roleForm, setRoleForm] = useState({ requestedRole: 'artist', message: '' })
+  const [applying, setApplying] = useState(false)
   const [form, setForm] = useState({ username: '', displayName: '', avatarUrl: '', bio: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -52,15 +63,18 @@ export default function AccountPage() {
 
   const load = async (accessToken: string) => {
     const headers = { Authorization: `Bearer ${accessToken}` }
-    const [accountResponse, accessResponse] = await Promise.all([
+    const [accountResponse, accessResponse, applicationResponse] = await Promise.all([
       fetch('/api/account', { headers, cache: 'no-store' }),
       fetch('/api/auth/access', { headers, cache: 'no-store' }),
+      fetch('/api/account/role-application', { headers, cache: 'no-store' }),
     ])
     const account = await accountResponse.json()
     if (!accountResponse.ok) throw new Error(account.error || 'Could not load Account Centre.')
     const accessPayload = accessResponse.ok ? await accessResponse.json() : {}
+    const applicationPayload = applicationResponse.ok ? await applicationResponse.json() : {}
     setData(account)
     setAccess(accessPayload.access || {})
+    setRoleApplication(applicationPayload.application || null)
     setForm({
       username: account.profile?.username || '',
       displayName: account.profile?.display_name || '',
@@ -145,6 +159,28 @@ export default function AccountPage() {
     window.location.href = '/'
   }
 
+  const applyForRole = async (event: FormEvent) => {
+    event.preventDefault()
+    setApplying(true)
+    setError('')
+    setMessage('')
+    try {
+      const response = await fetch('/api/account/role-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(roleForm),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Could not submit your role application.')
+      setRoleApplication(payload.application)
+      setMessage('Your role application was sent to editorial.')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not submit your role application.')
+    } finally {
+      setApplying(false)
+    }
+  }
+
   const requestDeletion = async () => {
     setDeleting(true)
     setError('')
@@ -189,6 +225,15 @@ export default function AccountPage() {
   }
   const customAvatar = form.avatarUrl && !form.avatarUrl.includes('default-avatar') ? form.avatarUrl : ''
   const currentPhoto = avatarPreview || customAvatar || data?.profile?.display_avatar_url || '/assets/images/default-avatar.png'
+  const accountRole = access.admin
+    ? 'Administrator'
+    : access.editorial
+      ? 'Editorial'
+      : access.producer && data?.profile?.role === 'listener'
+        ? 'Producer'
+        : data?.profile?.role === 'show_creator'
+          ? 'Show creator'
+          : data?.profile?.role || 'Listener'
 
   if (loading) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Loading Account Centre…</main>
   if (!token) return <main className="mx-auto min-h-[65vh] max-w-xl px-6 py-20 text-center"><p className="text-xs uppercase tracking-[.22em] text-brand">Account Centre</p><h1 className="mt-3 text-4xl">Sign in to continue</h1><p className="mt-4 text-text-secondary">Your profile, library, orders and role-specific tools live here.</p><Link href="/auth/login?next=/account" className="mt-7 inline-block rounded-full bg-brand px-6 py-3 font-semibold text-black">Sign in</Link></main>
@@ -203,7 +248,7 @@ export default function AccountPage() {
           <p className="mt-3 text-text-secondary">{data.user.email}</p>
         </div>
         <div className="flex gap-2">
-          <span className="rounded-full border border-brand/40 px-4 py-2 text-sm capitalize text-brand">{data.profile.role.replaceAll('_', ' ')}</span>
+          <span className="rounded-full border border-brand/40 px-4 py-2 text-sm capitalize text-brand">{accountRole}</span>
           {data.profile.is_verified && <span className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">Verified</span>}
         </div>
       </div>
@@ -248,6 +293,28 @@ export default function AccountPage() {
         </form>
 
         <div className="space-y-6">
+          <section className="rounded-2xl border border-white/10 bg-white/[.025] p-6">
+            <h2 className="text-2xl font-semibold">Creator role</h2>
+            <p className="mt-2 text-sm text-text-secondary">Apply for creator access. Editorial reviews every request before account permissions change.</p>
+            {roleApplication && (
+              <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 text-sm">
+                <p className="font-medium capitalize">{roleApplication.requested_role.replaceAll('_', ' ')} · {roleApplication.status.replaceAll('_', ' ')}</p>
+                {roleApplication.review_notes && <p className="mt-2 text-text-secondary">Editorial: {roleApplication.review_notes}</p>}
+              </div>
+            )}
+            {(!roleApplication || ['information_requested', 'rejected'].includes(roleApplication.status)) && (
+              <form onSubmit={applyForRole} className="mt-4 space-y-3">
+                <select value={roleForm.requestedRole} onChange={(event) => setRoleForm({ ...roleForm, requestedRole: event.target.value })} className={field}>
+                  <option value="artist">Artist</option>
+                  <option value="producer">Producer</option>
+                  <option value="writer">Writer</option>
+                  <option value="show_creator">Show creator</option>
+                </select>
+                <textarea required minLength={20} value={roleForm.message} onChange={(event) => setRoleForm({ ...roleForm, message: event.target.value })} rows={4} placeholder="Tell editorial about your work and include useful profile, catalogue or portfolio links." className={field} />
+                <button disabled={applying} className="rounded-full border border-brand px-5 py-2 text-sm text-brand disabled:opacity-50">{applying ? 'Submitting…' : roleApplication ? 'Send updated information' : 'Apply for role'}</button>
+              </form>
+            )}
+          </section>
           <section className="rounded-2xl border border-white/10 bg-white/[.025] p-6">
             <h2 className="text-2xl font-semibold">Security</h2>
             <p className="mt-2 text-sm text-text-secondary">Password changes are confirmed through your account email.</p>

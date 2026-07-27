@@ -64,6 +64,9 @@ export async function GET(request: Request) {
   const releases = await optionalJson('releases?select=*&order=created_at.desc&limit=100')
   const releaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
   const distributionJobs = await optionalJson('distribution_jobs?select=*&order=updated_at.desc&limit=100')
+  const roleApplications = await optionalJson(
+    'profile_role_applications?select=*&order=updated_at.desc&limit=100',
+  )
   const [artistWaitlist, artistDeposits, artistPayoutRequests] = can(identity, 'manage_artist_wallet')
     ? await Promise.all([
       optionalJson('artist_waitlist?select=*&order=created_at.desc&limit=100'),
@@ -85,6 +88,7 @@ export async function GET(request: Request) {
     releases,
     releaseTracks,
     distributionJobs,
+    roleApplications,
     artistWaitlist,
     artistDeposits,
     artistPayoutRequests,
@@ -149,6 +153,44 @@ export async function PATCH(request: Request) {
         const enabled = body.enabled === true
         const result = await patchTable('profiles', `id=eq.${encodeURIComponent(profileId)}`, { is_producer: enabled })
         await audit(identity.user.id, enabled ? 'producer_enabled' : 'producer_disabled', 'profile', profileId)
+        return NextResponse.json({ result })
+      }
+      case 'review_role_application': {
+        requirePermission('publish_artists')
+        const applicationId = String(body.applicationId || '')
+        const decision = String(body.decision || '')
+        const notes = String(body.notes || '').trim().slice(0, 2000)
+        if (!applicationId || !['approved', 'rejected', 'information_requested'].includes(decision)) {
+          return NextResponse.json({ error: 'Choose a valid role-application decision.' }, { status: 400 })
+        }
+        if (decision !== 'approved' && notes.length < 3) {
+          return NextResponse.json({ error: 'Add a note explaining what the member needs to provide or why the request was rejected.' }, { status: 400 })
+        }
+        const application = (await optionalJson(
+          `profile_role_applications?id=eq.${encodeURIComponent(applicationId)}&select=id,user_id,requested_role,status&limit=1`,
+        ))[0] as { id: string; user_id: string; requested_role: string; status: string } | undefined
+        if (!application) return NextResponse.json({ error: 'Role application not found.' }, { status: 404 })
+
+        if (decision === 'approved') {
+          const profilePatch = application.requested_role === 'producer'
+            ? { is_producer: true }
+            : { role: application.requested_role }
+          const profiles = await patchTable('profiles', `id=eq.${encodeURIComponent(application.user_id)}`, profilePatch)
+          if (!profiles?.length) return NextResponse.json({ error: 'Member profile not found.' }, { status: 404 })
+        }
+
+        const now = new Date().toISOString()
+        const result = await patchTable('profile_role_applications', `id=eq.${encodeURIComponent(applicationId)}`, {
+          status: decision,
+          review_notes: notes || null,
+          reviewed_by: identity.user.id,
+          reviewed_at: now,
+          updated_at: now,
+        })
+        await audit(identity.user.id, `role_application_${decision}`, 'profile_role_application', applicationId, {
+          userId: application.user_id,
+          requestedRole: application.requested_role,
+        })
         return NextResponse.json({ result })
       }
       case 'manage_license': {

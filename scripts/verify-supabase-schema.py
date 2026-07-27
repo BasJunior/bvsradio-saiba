@@ -121,6 +121,11 @@ PACKS: dict[str, dict[str, Any]] = {
         },
         "rpcs": ["record_track_play"],
     },
+    "profile-role-applications": {
+        "step": 12,
+        "file": "supabase-profile-role-applications.sql",
+        "tables": ["profile_role_applications"],
+    },
 }
 
 ORDER = sorted(PACKS.keys(), key=lambda k: PACKS[k]["step"])

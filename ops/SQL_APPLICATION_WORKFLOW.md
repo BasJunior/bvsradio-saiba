@@ -92,6 +92,7 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 8 | `final-sprint` | `supabase-final-sprint-core.sql` | play events, tax cols, ledger index |
 | 10 | `beatstore-mvp` | `supabase-beatstore-mvp.sql` | producer beats, licences and ownership |
 | 11 | `producer-collaboration` | `supabase-producer-collaboration.sql` | producer/editor review conversations |
+| 12 | `profile-role-applications` | `supabase-profile-role-applications.sql` | account role requests + editorial decisions |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.

@@ -89,16 +89,6 @@ export async function POST(request: Request) {
   const artistName = String(body.artistName || user.user_metadata?.full_name || user.user_metadata?.username || '').trim().slice(0, 160)
   if (!artistName) return NextResponse.json({ error: 'Artist name is required.' }, { status: 400 })
 
-  // Mark profile as artist when they join the queue (no-op if already artist/admin).
-  const profilePatch = await fetch(editorialUrl(`profiles?id=eq.${encodeURIComponent(user.id)}`), {
-    method: 'PATCH',
-    headers: { ...serviceHeaders, Prefer: 'return=minimal' },
-    body: JSON.stringify({ role: 'artist', display_name: artistName }),
-  })
-  if (!profilePatch.ok) {
-    // Profile may already be artist; waitlist is still the source of truth for queue.
-  }
-
   const payload = {
     email: user.email,
     artist_name: artistName,

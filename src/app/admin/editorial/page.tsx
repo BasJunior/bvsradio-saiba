@@ -23,7 +23,8 @@ type DistJob = { id: string; release_id: string; status: string; distributor?: s
 type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
 type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
 type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' | 'editor'; message: string; created_at: string }
-type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
+type RoleApplication = { id: string; user_id: string; requested_role: string; status: string; message?: string; review_notes?: string; updated_at: string }
+type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; roleApplications?: RoleApplication[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
 const statusClass: Record<string, string> = { submitted: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary' }
 
@@ -137,6 +138,9 @@ export default function EditorialDashboard() {
   ).length
   const trackQueue = data.tracks.filter((t) => ['submitted', 'in_review'].includes(t.editorial_status)).length
   const requestQueue = data.trackRequests.filter((r) => ['open', 'reviewing'].includes(r.status)).length
+  const roleQueue = (data.roleApplications || []).filter((application) =>
+    ['submitted', 'information_requested'].includes(application.status),
+  ).length
   const releaseQueue = (data.releases || []).filter((r) =>
     ['submitted', 'in_review', 'approved'].includes(r.editorial_status),
   ).length
@@ -147,6 +151,7 @@ export default function EditorialDashboard() {
     { id: 'ed-beats', label: `BeatStore${beatQueue ? ` (${beatQueue})` : ''}` },
     { id: 'ed-tracks', label: `Singles${trackQueue ? ` (${trackQueue})` : ''}` },
     { id: 'ed-requests', label: `Requests${requestQueue ? ` (${requestQueue})` : ''}` },
+    { id: 'ed-role-applications', label: `Role applications${roleQueue ? ` (${roleQueue})` : ''}` },
     { id: 'ed-artists', label: 'Artists' },
     { id: 'ed-programmes', label: 'Programmes' },
     ...(allowed('manage_staff') ? [{ id: 'ed-staff', label: 'Staff' }] : []),
@@ -189,10 +194,11 @@ export default function EditorialDashboard() {
         </div>
       </nav>
 
-      <section id="ed-overview" className="mt-8 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section id="ed-overview" className="mt-8 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         {[
           ['Awaiting review', trackQueue],
           ['Artist requests', requestQueue],
+          ['Role applications', roleQueue],
           ['BeatStore queue', beatQueue],
           ['Published', data.tracks.filter((t) => t.is_public).length],
           ['In rotation', data.tracks.filter((t) => t.in_rotation).length],
@@ -255,6 +261,16 @@ export default function EditorialDashboard() {
           tracks={data.tracks}
           profiles={data.profiles}
           enabled={allowed('approve_submissions')}
+          act={act}
+          busy={busy}
+        />
+      </section>
+
+      <section id="ed-role-applications" className="mt-14 scroll-mt-36">
+        <RoleApplicationPanel
+          applications={data.roleApplications || []}
+          profiles={data.profiles}
+          enabled={allowed('publish_artists')}
           act={act}
           busy={busy}
         />
@@ -360,6 +376,95 @@ export default function EditorialDashboard() {
         </div>
       </section>
     </main>
+  )
+}
+
+function RoleApplicationPanel({
+  applications,
+  profiles,
+  enabled,
+  act,
+  busy,
+}: {
+  applications: RoleApplication[]
+  profiles: Profile[]
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  return (
+    <div>
+      <h2 className="text-2xl font-semibold">Account role applications</h2>
+      <p className="mt-2 text-sm text-text-secondary">
+        Members apply from Account Centre. Approval changes server-side access; editable signup metadata is never trusted.
+      </p>
+      <div className="mt-5 space-y-4">
+        {applications.map((application) => (
+          <RoleApplicationCard
+            key={application.id}
+            application={application}
+            profile={profiles.find((profile) => profile.id === application.user_id)}
+            enabled={enabled}
+            act={act}
+            busy={busy}
+          />
+        ))}
+        {!applications.length && <Empty text="No account role applications yet." />}
+      </div>
+    </div>
+  )
+}
+
+function RoleApplicationCard({
+  application,
+  profile,
+  enabled,
+  act,
+  busy,
+}: {
+  application: RoleApplication
+  profile?: Profile
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const [notes, setNotes] = useState(application.review_notes || '')
+  const decide = (decision: 'approved' | 'rejected' | 'information_requested') =>
+    act('review_role_application', { applicationId: application.id, decision, notes })
+  return (
+    <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[application.status] || 'text-text-secondary'}`}>
+            {application.status.replaceAll('_', ' ')}
+          </p>
+          <h3 className="mt-1 text-xl font-semibold">{profile?.display_name || profile?.username || 'BVS member'}</h3>
+          <p className="text-sm text-text-secondary">
+            @{profile?.username || application.user_id.slice(0, 8)} · requests {application.requested_role.replaceAll('_', ' ')}
+          </p>
+        </div>
+        <p className="text-xs text-text-secondary">{new Date(application.updated_at).toLocaleString()}</p>
+      </div>
+      {application.message && <p className="mt-4 whitespace-pre-wrap rounded-xl bg-black/20 p-4 text-sm">{application.message}</p>}
+      {enabled && application.status !== 'approved' && (
+        <div className="mt-4">
+          <textarea
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+            placeholder="Reply with requested information or a reason for rejection…"
+            className="min-h-20 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button disabled={Boolean(busy)} onClick={() => decide('approved')} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button>
+            <button disabled={Boolean(busy) || notes.trim().length < 3} onClick={() => decide('information_requested')} className="rounded-full border border-amber-300 px-4 py-2 text-xs text-amber-200 disabled:opacity-40">Request information</button>
+            <button disabled={Boolean(busy) || notes.trim().length < 3} onClick={() => decide('rejected')} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Reject</button>
+          </div>
+        </div>
+      )}
+      {application.review_notes && application.status === 'approved' && (
+        <p className="mt-3 text-sm text-text-secondary">Editorial note: {application.review_notes}</p>
+      )}
+    </article>
   )
 }
 
