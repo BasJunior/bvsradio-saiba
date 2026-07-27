@@ -19,13 +19,29 @@ export async function POST(req: Request) {
   const allowedRoles = new Set(['listener', 'artist', 'writer', 'show_creator'])
   const role = allowedRoles.has(requestedRole) ? requestedRole : 'listener'
 
-  const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?on_conflict=id`, {
+  const existingResponse = await fetch(
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=id&limit=1`,
+    {
+      headers: {
+        apikey: SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+      },
+      cache: 'no-store',
+    },
+  )
+  if (!existingResponse.ok) {
+    return NextResponse.json({ error: 'Profile setup failed' }, { status: 500 })
+  }
+  const existing = await existingResponse.json() as Array<{ id: string }>
+  if (existing.length) return NextResponse.json({ ok: true })
+
+  const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       apikey: SUPABASE_SERVICE_KEY,
       Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-      Prefer: 'resolution=merge-duplicates,return=minimal',
+      Prefer: 'return=minimal',
     },
     body: JSON.stringify({
       id: user.id,
