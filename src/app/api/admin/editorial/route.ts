@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { audit, can, editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial-server'
+import { sendMusicApprovalEmail } from '@/lib/approval-email'
 import type { EditorialPermission, EditorialRole } from '@/lib/editorial'
 
 async function jsonOrError(response: Response) {
@@ -18,6 +19,15 @@ async function optionalJson(path: string) {
   const response = await fetch(editorialUrl(path), { headers: serviceHeaders, cache: 'no-store' })
   if (!response.ok) return []
   return response.json()
+}
+
+async function notifyApproval(input: { userId?: string; title?: string; kind: 'track' | 'release' | 'beat' }) {
+  if (!input.userId || !input.title) return
+  try {
+    await sendMusicApprovalEmail({ userId: input.userId, title: input.title, kind: input.kind })
+  } catch (error) {
+    console.error('Approval email failed:', error instanceof Error ? error.message : error)
+  }
 }
 
 export async function GET(request: Request) {
@@ -96,8 +106,14 @@ export async function PATCH(request: Request) {
         requirePermission('approve_submissions')
         const trackId = String(body.trackId || '')
         const status = body.status === 'approved' ? 'approved' : body.status === 'rejected' ? 'rejected' : 'in_review'
+        const previous = (await optionalJson(
+          `tracks?id=eq.${encodeURIComponent(trackId)}&select=user_id,title,editorial_status&limit=1`,
+        ))[0] as { user_id?: string; title?: string; editorial_status?: string } | undefined
         const result = await patchTable('tracks', `id=eq.${encodeURIComponent(trackId)}`, { editorial_status: status, editorial_notes: String(body.notes || '').slice(0, 2000), reviewed_by: identity.user.id, reviewed_at: new Date().toISOString(), ...(status === 'rejected' ? { is_public: false, in_rotation: false } : {}) })
         await audit(identity.user.id, `track_${status}`, 'track', trackId, { notes: String(body.notes || '').slice(0, 300) })
+        if (status === 'approved' && previous?.editorial_status !== 'approved') {
+          await notifyApproval({ userId: previous?.user_id, title: previous?.title, kind: 'track' })
+        }
         return NextResponse.json({ result })
       }
       case 'publish_track': {
@@ -188,6 +204,9 @@ export async function PATCH(request: Request) {
         const inRotation = body.inRotation !== false
         const notes = String(body.notes || '').slice(0, 2000)
         if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
+        const previous = (await optionalJson(
+          `releases?id=eq.${encodeURIComponent(releaseId)}&select=user_id,title,editorial_status&limit=1`,
+        ))[0] as { user_id?: string; title?: string; editorial_status?: string } | undefined
         if (notes) {
           await patchTable('releases', `id=eq.${encodeURIComponent(releaseId)}`, { editorial_notes: notes })
         }
@@ -198,6 +217,9 @@ export async function PATCH(request: Request) {
         })
         if (!result.ok) return NextResponse.json({ error: result.error || 'Publish failed.' }, { status: 400 })
         await audit(identity.user.id, 'release_published', 'release', releaseId, { inRotation, trackCount: result.trackCount })
+        if (previous?.editorial_status !== 'approved') {
+          await notifyApproval({ userId: previous?.user_id, title: previous?.title, kind: 'release' })
+        }
         return NextResponse.json({ result })
       }
       case 'reject_release': {
@@ -262,6 +284,9 @@ export async function PATCH(request: Request) {
               : body.status === 'changes_requested'
                 ? 'changes_requested'
                 : 'in_review'
+        const previous = (await optionalJson(
+          `beats?id=eq.${encodeURIComponent(beatId)}&select=producer_user_id,title,status&limit=1`,
+        ))[0] as { producer_user_id?: string; title?: string; status?: string } | undefined
         const result = await patchTable('beats', `id=eq.${encodeURIComponent(beatId)}`, {
           status,
           editorial_notes: String(body.notes || '').slice(0, 2000),
@@ -288,6 +313,9 @@ export async function PATCH(request: Request) {
         await audit(identity.user.id, `beat_${status}`, 'beat', beatId, {
           notes: String(body.notes || '').slice(0, 300),
         })
+        if (status === 'approved' && previous?.status !== 'approved' && previous?.status !== 'published') {
+          await notifyApproval({ userId: previous?.producer_user_id, title: previous?.title, kind: 'beat' })
+        }
         return NextResponse.json({ result })
       }
       case 'message_beat': {
