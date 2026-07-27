@@ -55,6 +55,38 @@ const fallback: Record<string, PublicArtist> = {
   'i-ratty': { id: 'i-ratty', username: 'i-ratty', name: 'I Ratty', role: 'Artist', bio: 'Collaborator on Wolfbridges releases featured through BVS catalogue discovery, including WOLF BEEN BAD.', image: '/images/albums/wolf-been-bad.jpg', tracks: [] },
 }
 
+const legacyCreatorTracks: Record<string, PublicArtistTrack[]> = {
+  'wolf-bridges': [
+    {
+      id: 'legacy-straightenin',
+      title: 'STRAIGHTENIN',
+      genre: 'Streaming release · 8 tracks',
+      artwork_url: '/images/albums/straightenin.jpg',
+      is_downloadable: false,
+      licence_type: 'external_stream',
+      credits: [],
+    },
+    {
+      id: 'legacy-howling-in-the-hills-2',
+      title: 'HOWLING IN THE HILLS 2',
+      genre: 'Streaming release · 13 tracks',
+      artwork_url: '/images/albums/howling-in-the-hills-2.jpg',
+      is_downloadable: false,
+      licence_type: 'external_stream',
+      credits: [],
+    },
+    {
+      id: 'legacy-wolf-been-bad',
+      title: 'WOLF BEEN BAD',
+      genre: 'Streaming release · 4 tracks',
+      artwork_url: '/images/albums/wolf-been-bad.jpg',
+      is_downloadable: false,
+      licence_type: 'external_stream',
+      credits: [],
+    },
+  ],
+}
+
 const fallbackSummaries = Object.values(fallback).map((artist) => ({
   id: artist.id,
   username: artist.username,
@@ -105,8 +137,14 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
       : []
     return profiles.map((profile) => {
       const artistTracks = tracks.filter((track) => track.user_id === profile.id)
-      const genres = [...new Set(artistTracks.map((track) => track.genre).filter(Boolean))] as string[]
-      const trackArtwork = artistTracks.find((track) => track.artwork_url)?.artwork_url
+      const linkedTracks = legacyCreatorTracks[profile.username] || []
+      const genres = [...new Set([
+        ...artistTracks.map((track) => track.genre),
+        ...linkedTracks.map((track) => track.genre),
+      ].filter(Boolean))] as string[]
+      const trackArtwork =
+        artistTracks.find((track) => track.artwork_url)?.artwork_url ||
+        linkedTracks.find((track) => track.artwork_url)?.artwork_url
       return {
         id: profile.id,
         username: profile.username,
@@ -118,7 +156,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
         role: profile.role === 'artist' ? 'BVS artist' : profile.role,
         bio: profile.bio || 'Verified artist on BVS Radio.',
         image: artistImage(profile.avatar_url, trackArtwork),
-        trackCount: artistTracks.length,
+        trackCount: artistTracks.length + linkedTracks.length,
         genres,
       }
     }).filter((artist) => artist.trackCount > 0)
@@ -141,23 +179,31 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const waitlistResponse = await fetch(`${url}/rest/v1/artist_waitlist?onboarded_profile_id=eq.${profile.id}&select=country,city,links&order=updated_at.desc&limit=1`, { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY || key, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY || key}` }, next: { revalidate: 60 } })
     const creatorDetails = waitlistResponse.ok ? (await waitlistResponse.json())[0] : null
     const tracksResponse = await fetch(`${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type&order=created_at.desc`, { headers, next: { revalidate: 60 } })
-    const tracks = tracksResponse.ok ? await tracksResponse.json() : []
+    const databaseTracks = tracksResponse.ok ? await tracksResponse.json() : []
     const beatsResponse = await fetch(`${url}/rest/v1/beats?producer_user_id=eq.${profile.id}&is_public=eq.true&status=eq.published&select=id,title,genre,artwork_path,beat_licence_options(price_usd,is_active)&order=published_at.desc`, { headers, next: { revalidate: 60 } })
     const rawBeats = beatsResponse.ok ? await beatsResponse.json() : []
     const beats = rawBeats.map((beat: { id: string; title: string; genre?: string; artwork_path?: string; beat_licence_options?: Array<{ price_usd: number; is_active: boolean }> }) => {
       const prices = (beat.beat_licence_options || []).filter(option => option.is_active).map(option => Number(option.price_usd)).filter(Number.isFinite)
       return { id: beat.id, title: beat.title, genre: beat.genre, artwork_url: mediaUrlForStoredValue(beat.artwork_path) || undefined, starting_price: prices.length ? Math.min(...prices) : 29 }
     })
-    const ids = tracks.map((track: { id: string }) => track.id)
+    const ids = databaseTracks.map((track: { id: string }) => track.id)
     let credits: Array<{ track_id: string; person_name: string; credit_role: string }> = []
     if (ids.length) {
       const creditsResponse = await fetch(`${url}/rest/v1/track_credits?track_id=in.(${ids.join(',')})&is_verified=eq.true&select=track_id,person_name,credit_role`, { headers, next: { revalidate: 60 } })
       if (creditsResponse.ok) credits = await creditsResponse.json()
     }
-    const trackArtwork = tracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url
+    const linkedTracks = legacyCreatorTracks[profile.username] || []
+    const trackArtwork =
+      databaseTracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url ||
+      linkedTracks.find((track) => track.artwork_url)?.artwork_url
     const beatArtwork = beats.find((beat: { artwork_url?: string }) => beat.artwork_url)?.artwork_url
     const role = profile.is_producer ? (profile.role === 'artist' ? 'BVS artist & producer' : 'BVS producer') : profile.role === 'artist' ? 'BVS artist' : profile.role
-    return { id: profile.id, username: profile.username, name: creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username }), role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: tracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({ ...track, artwork_url: mediaUrlForStoredValue(track.artwork_url) || undefined, credits: credits.filter(credit => credit.track_id === track.id) })), beats, location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '), links: creatorDetails?.links || {}, joinedAt: profile.created_at }
+    const publicTracks = databaseTracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({
+      ...track,
+      artwork_url: mediaUrlForStoredValue(track.artwork_url) || undefined,
+      credits: credits.filter(credit => credit.track_id === track.id),
+    }))
+    return { id: profile.id, username: profile.username, name: creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username }), role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: [...publicTracks, ...linkedTracks], beats, location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '), links: creatorDetails?.links || {}, joinedAt: profile.created_at }
   } catch { return fallback[slug] || null }
 }
 
