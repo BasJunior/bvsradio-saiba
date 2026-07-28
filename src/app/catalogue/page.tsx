@@ -723,6 +723,11 @@ export default function CataloguePage() {
     setIsPlaying(true)
     setPreviewElapsed(0)
     setPreviewDuration(previewLimitSeconds)
+    trackEvent('player_start', {
+      track_id: track.id,
+      content_type: track.type,
+      source: track.producerBeat ? 'beatstore_preview' : 'catalogue_preview',
+    })
 
     audio.addEventListener('loadedmetadata', () => {
       setPreviewDuration(Math.min(audio.duration || previewLimitSeconds, previewLimitSeconds))
