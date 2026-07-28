@@ -464,6 +464,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         if (el && el.currentTime > 3) {
           el.currentTime = 0;
           setElapsed(0);
+          setNotice(`Restarted: ${nowRef.current?.track.title || "current recording"}`);
           return;
         }
         const prev = history[0];
@@ -474,8 +475,15 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
             return item;
           });
           setHistory((h) => h.slice(1));
+          setNotice(`Replaying: ${prev.title}`);
           return;
         }
+        if (el) {
+          el.currentTime = 0;
+          setElapsed(0);
+          setNotice(`Restarted: ${nowRef.current?.track.title || "current recording"}`);
+        }
+        return;
       }
 
       if (repeatRef.current === "one" && direction === 1 && !opts?.autoSkip) {
@@ -544,7 +552,6 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
         await audio.current.play();
         failStreak.current = 0;
-        pushHistory(current);
         recordListening({
           id: trackLibraryId(current),
           kind: "track",
@@ -561,7 +568,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "start" });
       setError("Playback could not start. Please try again.");
     }
-  }, [current, flushListening, isPlaying, pushHistory]);
+  }, [current, flushListening, isPlaying]);
 
   const seek = useCallback((ratio: number) => {
     const el = audio.current;
@@ -1060,8 +1067,14 @@ export function PersistentPlayer() {
           >
             ⇝
           </button>
-          <button type="button" onClick={player.previous} className="hidden rounded-full p-2 hover:bg-white/10 sm:block" aria-label="Previous recording">
-            ◀
+          <button
+            type="button"
+            onClick={player.previous}
+            className="rounded-full p-1.5 text-lg leading-none hover:bg-white/10 sm:p-2"
+            aria-label="Restart current or play previous recording"
+            title="Restart / previous"
+          >
+            ⏮
           </button>
           <button
             type="button"
@@ -1072,8 +1085,14 @@ export function PersistentPlayer() {
           >
             {player.isPlaying ? "Ⅱ" : "▶"}
           </button>
-          <button type="button" onClick={player.next} className="rounded-full p-2 hover:bg-white/10" aria-label="Next recording">
-            ▶
+          <button
+            type="button"
+            onClick={player.next}
+            className="rounded-full p-1.5 text-lg leading-none hover:bg-white/10 sm:p-2"
+            aria-label="Next recording"
+            title="Next"
+          >
+            ⏭
           </button>
           <button
             type="button"
