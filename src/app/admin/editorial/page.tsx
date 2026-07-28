@@ -8,6 +8,7 @@ import { roleLabels, type EditorialPermission, type EditorialRole } from '@/lib/
 import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 import { creatorPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
+import EditorialAnalytics from '@/components/EditorialAnalytics'
 
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
 type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string }
@@ -152,6 +153,7 @@ export default function EditorialDashboard() {
 
   const jump = [
     { id: 'ed-overview', label: 'Overview' },
+    { id: 'ed-analytics', label: 'Analytics' },
     { id: 'ed-releases', label: `Albums/EPs${releaseQueue ? ` (${releaseQueue})` : ''}` },
     { id: 'ed-beats', label: `BeatStore${beatQueue ? ` (${beatQueue})` : ''}` },
     { id: 'ed-tracks', label: `Singles${trackQueue ? ` (${trackQueue})` : ''}` },
@@ -216,6 +218,8 @@ export default function EditorialDashboard() {
           </div>
         ))}
       </section>
+
+      <EditorialAnalytics token={token} />
 
       <section id="ed-releases" className="mt-12 scroll-mt-36">
         <ReleaseEditorialPanel

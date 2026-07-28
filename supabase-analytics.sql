@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS public.analytics_events (
   event_name TEXT NOT NULL CHECK (event_name IN (
     'player_start', 'listening_duration', 'search_no_results', 'track_save',
     'upload_complete', 'checkout_started', 'checkout_redirect',
-    'checkout_complete', 'playback_error', 'payment_error'
+    'checkout_complete', 'playback_error', 'payment_error',
+    'queue_play_now', 'queue_play_next', 'queue_add'
   )),
   session_id TEXT,
   path TEXT,
@@ -13,6 +14,14 @@ CREATE TABLE IF NOT EXISTS public.analytics_events (
   source TEXT NOT NULL DEFAULT 'web' CHECK (source IN ('web', 'server')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE public.analytics_events DROP CONSTRAINT IF EXISTS analytics_events_event_name_check;
+ALTER TABLE public.analytics_events ADD CONSTRAINT analytics_events_event_name_check CHECK (event_name IN (
+  'player_start', 'listening_duration', 'search_no_results', 'track_save',
+  'upload_complete', 'checkout_started', 'checkout_redirect',
+  'checkout_complete', 'playback_error', 'payment_error',
+  'queue_play_now', 'queue_play_next', 'queue_add'
+));
 
 CREATE INDEX IF NOT EXISTS analytics_events_name_created_idx ON public.analytics_events(event_name, created_at DESC);
 CREATE INDEX IF NOT EXISTS analytics_events_created_idx ON public.analytics_events(created_at DESC);
