@@ -461,12 +461,6 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
       if (direction === -1) {
         const el = audio.current;
-        if (el && el.currentTime > 3) {
-          el.currentTime = 0;
-          setElapsed(0);
-          setNotice(`Restarted: ${nowRef.current?.track.title || "current recording"}`);
-          return;
-        }
         const prev = history[0];
         if (prev) {
           const item = makeQueueItem(prev, "user");
@@ -1071,8 +1065,8 @@ export function PersistentPlayer() {
             type="button"
             onClick={player.previous}
             className="rounded-full p-1.5 text-lg leading-none hover:bg-white/10 sm:p-2"
-            aria-label="Restart current or play previous recording"
-            title="Restart / previous"
+            aria-label="Replay previous recording"
+            title="Replay previous"
           >
             ⏮
           </button>
