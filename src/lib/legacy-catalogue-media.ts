@@ -1,5 +1,3 @@
-import { mediaUrlForKey } from "@/lib/media-url";
-
 export const LEGACY_CATALOGUE_FILES = [
   "bvs-radio-robert-gabriel-mugabe-international-airport.mp3",
   "bvs-radio-slide-mix.mp3",
@@ -45,7 +43,13 @@ export function legacyMasterKey(filename: string) {
 }
 
 export function legacyPreviewUrl(filename: string) {
-  return mediaUrlForKey(legacyPreviewKey(filename));
+  const base =
+    process.env.NEXT_PUBLIC_R2_PREVIEW_BASE_URL ||
+    "https://pub-2685a77641ae44d48d5c57eda51ee34c.r2.dev";
+  return `${base.replace(/\/+$/, "")}/${legacyPreviewKey(filename)
+    .split("/")
+    .map((part) => encodeURIComponent(part))
+    .join("/")}?v=1`;
 }
 
 function normalized(value: string) {
