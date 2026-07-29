@@ -52,6 +52,7 @@ PACKS: list[dict[str, str | int]] = [
     {"id": "producer-collaboration", "step": 11, "file": "supabase-producer-collaboration.sql"},
     {"id": "profile-role-applications", "step": 12, "file": "supabase-profile-role-applications.sql"},
     {"id": "creator-identities", "step": 13, "file": "supabase-creator-identities.sql"},
+    {"id": "track-reclassification", "step": 14, "file": "supabase-track-reclassification.sql"},
 ]
 
 BOOKKEEPING_SQL = """

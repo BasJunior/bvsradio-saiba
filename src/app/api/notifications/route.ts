@@ -26,8 +26,9 @@ export async function GET(request: Request) {
 
   let events: Event[] = []
   if (editorial) {
-    const [messages, beats, tracks, releases, requests, applications, articles, shows, episodes, payouts] = await Promise.all([
+    const [messages, trackMessages, beats, tracks, releases, requests, applications, articles, shows, episodes, payouts] = await Promise.all([
       rows('beat_review_messages?author_kind=eq.producer&select=id,beat_id,message,created_at&order=created_at.desc&limit=30'),
+      rows('track_review_messages?author_kind=eq.artist&select=id,track_id,message,created_at&order=created_at.desc&limit=30'),
       rows('beats?status=in.(submitted,changes_requested)&select=id,title,status,updated_at&order=updated_at.desc&limit=30'),
       rows('tracks?editorial_status=in.(submitted,in_review)&select=id,title,editorial_status,updated_at&order=updated_at.desc&limit=30'),
       rows('releases?editorial_status=in.(submitted,in_review)&select=id,title,editorial_status,updated_at&order=updated_at.desc&limit=30'),
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
     ])
     events = [
       ...messages.map(item => ({ id: `beat-message-${item.id}`, title: 'Producer reply', detail: String(item.message || ''), created_at: String(item.created_at), href: '/admin/editorial#ed-beats', kind: 'message' })),
+      ...trackMessages.map(item => ({ id: `track-message-${item.id}`, title: 'Artist reply', detail: String(item.message || ''), created_at: String(item.created_at), href: '/admin/editorial#ed-tracks', kind: 'message' })),
       ...beats.map(item => ({ id: `beat-${item.id}-${item.status}`, title: 'Beat needs review', detail: `${item.title} · ${String(item.status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/admin/editorial#ed-beats', kind: 'beat' })),
       ...tracks.map(item => ({ id: `track-${item.id}-${item.editorial_status}`, title: 'Track submission', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/admin/editorial#ed-tracks', kind: 'track' })),
       ...releases.map(item => ({ id: `release-${item.id}-${item.editorial_status}`, title: 'Release submission', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/admin/editorial#ed-releases', kind: 'release' })),
@@ -51,9 +53,10 @@ export async function GET(request: Request) {
       ...payouts.map(item => ({ id: `payout-${item.id}-${item.status}`, title: 'Payout request', detail: `${item.currency || 'USD'} ${item.requested_amount} · ${item.status}`, created_at: String(item.requested_at), href: '/admin/editorial#ed-wallet', kind: 'payout' })),
     ]
   } else {
-    const [beats, messages, tracks, releases, requests, applications, articles, shows, episodes, orders] = await Promise.all([
+    const [beats, messages, trackMessages, tracks, releases, requests, applications, articles, shows, episodes, orders] = await Promise.all([
       rows(`beats?producer_user_id=eq.${user.id}&select=id,title,status,updated_at&order=updated_at.desc&limit=50`),
       rows(`beat_review_messages?author_kind=eq.editor&beat_id=in.(${(await rows(`beats?producer_user_id=eq.${user.id}&select=id`)).map(item => item.id).join(',') || '00000000-0000-0000-0000-000000000000'})&select=id,beat_id,message,created_at&order=created_at.desc&limit=30`),
+      rows(`track_review_messages?author_kind=eq.editor&track_id=in.(${(await rows(`tracks?user_id=eq.${user.id}&select=id`)).map(item => item.id).join(',') || '00000000-0000-0000-0000-000000000000'})&select=id,track_id,message,created_at&order=created_at.desc&limit=30`),
       rows(`tracks?user_id=eq.${user.id}&select=id,title,editorial_status,updated_at&order=updated_at.desc&limit=40`),
       rows(`releases?user_id=eq.${user.id}&select=id,title,editorial_status,updated_at&order=updated_at.desc&limit=40`),
       rows(`track_review_requests?artist_user_id=eq.${user.id}&select=id,request_type,status,staff_notes,created_at&order=created_at.desc&limit=40`),
@@ -65,6 +68,7 @@ export async function GET(request: Request) {
     ])
     events = [
       ...messages.map(item => ({ id: `beat-message-${item.id}`, title: 'Editorial message', detail: String(item.message || ''), created_at: String(item.created_at), href: '/creator/studio', kind: 'message' })),
+      ...trackMessages.map(item => ({ id: `track-message-${item.id}`, title: 'Editorial message', detail: String(item.message || ''), created_at: String(item.created_at), href: '/creator/studio', kind: 'message' })),
       ...beats.filter(item => item.status !== 'draft').map(item => ({ id: `beat-${item.id}-${item.status}`, title: 'Beat status updated', detail: `${item.title} · ${String(item.status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/creator/studio', kind: 'beat' })),
       ...tracks.map(item => ({ id: `track-${item.id}-${item.editorial_status}`, title: 'Track status updated', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/creator/studio', kind: 'track' })),
       ...releases.map(item => ({ id: `release-${item.id}-${item.editorial_status}`, title: 'Release status updated', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/creator/studio', kind: 'release' })),

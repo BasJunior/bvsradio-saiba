@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     )
   }
   const requests = [
-    fetch(editorialUrl('tracks?select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
+    fetch(editorialUrl('tracks?reclassified_to_beat_id=is.null&select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('profiles?select=id,username,display_name,role,is_producer,is_verified,is_published,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,creator_name_reviewed_at&order=created_at.desc&limit=200'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('programmes?select=*&order=updated_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
     fetch(editorialUrl('track_credits?select=*&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
@@ -60,6 +60,9 @@ export async function GET(request: Request) {
   )
   const beatReviewMessages = await optionalJson(
     'beat_review_messages?select=*&order=created_at.asc&limit=500',
+  )
+  const trackReviewMessages = await optionalJson(
+    'track_review_messages?select=*&order=created_at.asc&limit=500',
   )
   const releases = await optionalJson('releases?select=*&order=created_at.desc&limit=100')
   const releaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
@@ -85,6 +88,7 @@ export async function GET(request: Request) {
     trackRequests,
     beats,
     beatReviewMessages,
+    trackReviewMessages,
     releases,
     releaseTracks,
     distributionJobs,
@@ -119,6 +123,47 @@ export async function PATCH(request: Request) {
           await notifyApproval({ userId: previous?.user_id, title: previous?.title, kind: 'track' })
         }
         return NextResponse.json({ result })
+      }
+      case 'message_track': {
+        requirePermission('approve_submissions')
+        const trackId = String(body.trackId || '')
+        const message = String(body.message || '').trim().slice(0, 2000)
+        if (!trackId || !message) {
+          return NextResponse.json({ error: 'Track and message are required.' }, { status: 400 })
+        }
+        const tracks = await optionalJson(
+          `tracks?id=eq.${encodeURIComponent(trackId)}&reclassified_to_beat_id=is.null&select=id&limit=1`,
+        )
+        if (!tracks[0]) return NextResponse.json({ error: 'Track submission not found.' }, { status: 404 })
+        const result = await jsonOrError(await fetch(editorialUrl('track_review_messages'), {
+          method: 'POST',
+          headers: { ...serviceHeaders, Prefer: 'return=representation' },
+          body: JSON.stringify({
+            track_id: trackId,
+            author_user_id: identity.user.id,
+            author_kind: 'editor',
+            message,
+          }),
+        }))
+        await audit(identity.user.id, 'track_message_sent', 'track', trackId)
+        return NextResponse.json({ result })
+      }
+      case 'reclassify_track_as_beat': {
+        requirePermission('approve_submissions')
+        const trackId = String(body.trackId || '')
+        if (!trackId) return NextResponse.json({ error: 'Track is required.' }, { status: 400 })
+        const source = (await optionalJson(
+          `tracks?id=eq.${encodeURIComponent(trackId)}&select=id,title,user_id,reclassified_to_beat_id&limit=1`,
+        ))[0] as { id?: string; title?: string; user_id?: string; reclassified_to_beat_id?: string } | undefined
+        if (!source) return NextResponse.json({ error: 'Track submission not found.' }, { status: 404 })
+        const result = await jsonOrError(await fetch(editorialUrl('rpc/reclassify_track_as_beat'), {
+          method: 'POST',
+          headers: { ...serviceHeaders, Prefer: 'return=representation' },
+          body: JSON.stringify({ p_track_id: trackId, p_editor_id: identity.user.id }),
+        }))
+        const beatId = typeof result === 'string' ? result : source.reclassified_to_beat_id
+        await audit(identity.user.id, 'track_reclassified_as_beat', 'track', trackId, { beatId })
+        return NextResponse.json({ beatId })
       }
       case 'publish_track': {
         requirePermission('approve_submissions')
