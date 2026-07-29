@@ -11,7 +11,7 @@ import {
 } from "@/lib/orders";
 import { getStripe, siteUrl, stripeEnabled } from "@/lib/stripe";
 import { getPaynow, normalizeZwPhone, paynowEnabled } from "@/lib/paynow";
-import { createDownloadToken, resolveProductFile } from "@/lib/products";
+import { createDownloadToken, resolveProductAsset } from "@/lib/products";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { calculateTax, stripeAutomaticTaxEnabled } from "@/lib/tax";
 
@@ -407,8 +407,8 @@ export async function POST(req: Request) {
     // Prepare download tokens once paid (preview links only after paid — stored for staff)
     const downloadHints: string[] = [];
     for (const item of order.items) {
-      const file = await resolveProductFile(item.id, item.title);
-      if (file) {
+      const asset = await resolveProductAsset(item.id, item.title);
+      if (asset) {
         const token = createDownloadToken(reference, String(item.id));
         downloadHints.push(`${item.title}: /api/download?token=${token}`);
       }

@@ -1,13 +1,13 @@
 /**
  * Album / project covers + member tracks for catalogue + station player.
- * Cover art is keyed by exact public/music filenames (decoded).
+ * Cover art is keyed by exact legacy catalogue filenames (decoded).
  */
 
 export type MusicProject = {
   id: string;
   name: string;
   artwork: string;
-  /** Exact filenames under public/music (not URL-encoded) */
+  /** Exact legacy catalogue filenames (not URL-encoded) */
   tracks: string[];
 };
 
@@ -148,7 +148,7 @@ export const externalProjectTracks: ExternalProjectTrack[] = [
 
 const DEFAULT_ARTWORK = coverArt;
 
-/** Resolve album/project cover for a local music filename or public /music/... src */
+/** Resolve album/project cover for a legacy filename or policy-controlled media src. */
 export function artworkForMusicSrc(src: string): string {
   const decoded = decodeURIComponent(src);
   const filename = decoded.split("/").pop() || decoded;

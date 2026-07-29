@@ -55,7 +55,7 @@ async function main() {
     process.exit(1);
   }
 
-  // Use a real public catalogue title so Vercel can resolve public/music file
+  // Use a real catalogue title so Vercel can resolve its private R2 master.
   const item = {
     id: "4-love-smoke",
     title: "4 love",

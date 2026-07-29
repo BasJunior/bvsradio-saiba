@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { authUserId, serviceHeaders } from '@/lib/storage-upload'
-import { createDownloadToken, resolveProductFile } from '@/lib/products'
+import { createDownloadToken, resolveProductAsset } from '@/lib/products'
 
 export const runtime = 'nodejs'
 
@@ -42,8 +42,8 @@ export async function GET(
     for (const item of items) {
       const id = String(item.id || '')
       if (!id) continue
-      const file = await resolveProductFile(id, item.title)
-      if (file) {
+      const asset = await resolveProductAsset(id, item.title)
+      if (asset) {
         downloads.push({
           itemId: id,
           title: item.title || 'BVS download',

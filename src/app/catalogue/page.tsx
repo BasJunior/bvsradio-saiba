@@ -15,6 +15,7 @@ import { rankCollections, type CollectionCard } from '@/lib/catalogue-trending'
 import { trackEvent } from '@/lib/analytics'
 import PublishedArtistsShelf from '@/components/PublishedArtistsShelf'
 import PublishedProducersShelf from '@/components/PublishedProducersShelf'
+import { legacyPreviewUrl } from '@/lib/legacy-catalogue-media'
 
 type TrackType = 'single' | 'beat' | 'mix'
 
@@ -57,7 +58,7 @@ function formatTime(seconds: number) {
 }
 
 function musicFile(filename: string) {
-  return `/music/${encodeURIComponent(filename)}`
+  return legacyPreviewUrl(filename)
 }
 
 const streamingReleaseSongs: Track[] = [

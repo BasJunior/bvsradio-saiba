@@ -30,18 +30,19 @@ check checkout_cfg "$BASE/api/checkout/config"
 check manifest "$BASE/manifest.webmanifest"
 check sw "$BASE/sw.js"
 
-# Sample local music path from public if known via m3u first entry basename — fall back skip
-MP3=$(curl -sS --max-time 15 "$BASE/music/playlist.m3u" 2>/dev/null | head -1 | xargs -r basename 2>/dev/null || true)
-if [[ -n "${MP3:-}" && "$MP3" != *' '* ]]; then
-  code=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Range: bytes=0-1023' --max-time 25 "$BASE/music/$MP3" || echo 000)
+# Sample the actual editorial station source, not a legacy public-file playlist.
+MEDIA=$(curl -sS --max-time 20 "$BASE/api/station/tracks" 2>/dev/null | jq -r '.tracks[0].src // empty' 2>/dev/null || true)
+if [[ -n "${MEDIA:-}" ]]; then
+  if [[ "$MEDIA" == http* ]]; then AUDIO_URL="$MEDIA"; else AUDIO_URL="$BASE$MEDIA"; fi
+  code=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Range: bytes=0-1023' --max-time 25 "$AUDIO_URL" || echo 000)
   if [[ "$code" != "206" && "$code" != "200" ]]; then
     FAIL=$((FAIL + 1))
-    report+="FAIL audio_range http=$code file=$MP3\n"
+    report+="FAIL audio_range http=$code source=$MEDIA\n"
   else
-    report+="OK   audio_range http=$code file=$MP3\n"
+    report+="OK   audio_range http=$code source=$MEDIA\n"
   fi
 else
-  report+="SKIP audio_range (no simple playlist entry)\n"
+  report+="SKIP audio_range (station returned no media)\n"
 fi
 
 echo -e "$STAMP\n$report" | tee "$STATE_DIR/last-synthetic.txt"

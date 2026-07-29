@@ -40,10 +40,20 @@ export async function r2ObjectExists(key: string) {
   }
 }
 
-export async function signedR2DownloadUrl(key: string, seconds = 900) {
+export async function signedR2DownloadUrl(
+  key: string,
+  seconds = 900,
+  filename?: string,
+) {
   return getSignedUrl(
     r2Client(),
-    new GetObjectCommand({ Bucket: bucket, Key: key }),
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+      ResponseContentDisposition: filename
+        ? `attachment; filename="${filename.replace(/["\r\n]/g, "_")}"`
+        : undefined,
+    }),
     { expiresIn: seconds },
   );
 }
@@ -97,6 +107,7 @@ export function safeR2Key(key: string) {
 
 export async function isPublicR2MediaKey(key: string) {
   if (key.startsWith("avatars/")) return true;
+  if (key.startsWith("legacy/previews/")) return true;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   if (!url || !service) return false;

@@ -1,6 +1,15 @@
 import { promises as fs } from "fs";
 import path from "path";
 import crypto from "crypto";
+import {
+  legacyFileForProductTitle,
+  legacyMasterKey,
+} from "@/lib/legacy-catalogue-media";
+import { r2Configured, r2ObjectExists } from "@/lib/r2-storage";
+
+export type ProductAsset =
+  | { kind: "file"; path: string; filename: string }
+  | { kind: "r2"; key: string; filename: string };
 
 export function productsDir() {
   return (
@@ -9,7 +18,7 @@ export function productsDir() {
   );
 }
 
-/** Map cart line id / title slug → product file (staged folder or public music for $2 singles) */
+/** Map cart line id / title slug → a locally staged product file. */
 export async function resolveProductFile(
   itemId: string | number,
   title?: string,
@@ -37,7 +46,8 @@ export async function resolveProductFile(
     );
   }
 
-  // Hosted catalogue singles live under public/music (album songs sold as $2 downloads)
+  // Compatibility lookup for a local product staging directory. Public deployment
+  // audio was evacuated to private R2 masters; resolveProductAsset handles those.
   const publicMusic = path.join(process.cwd(), "public", "music");
   if (title) {
     try {
@@ -65,6 +75,22 @@ export async function resolveProductFile(
     }
   }
   return null;
+}
+
+export async function resolveProductAsset(
+  itemId: string | number,
+  title?: string,
+): Promise<ProductAsset | null> {
+  const local = await resolveProductFile(itemId, title);
+  if (local) {
+    return { kind: "file", path: local, filename: path.basename(local) };
+  }
+
+  const filename = legacyFileForProductTitle(title);
+  if (!filename || !r2Configured()) return null;
+  const key = legacyMasterKey(filename);
+  if (!(await r2ObjectExists(key))) return null;
+  return { kind: "r2", key, filename };
 }
 
 const TOKEN_SECRET =
