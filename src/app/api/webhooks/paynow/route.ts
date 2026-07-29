@@ -4,6 +4,7 @@ import { loadOrder, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit } from "@/lib/artist-credit";
 import { sameMoney, verifyPaynowHash } from "@/lib/paynow-security";
+import { recordVerifiedPayment } from "@/lib/commerce-ledger";
 
 /**
  * Paynow result URL — they POST status updates here.
@@ -13,11 +14,13 @@ export async function POST(req: Request) {
   try {
     const contentType = req.headers.get("content-type") || "";
     let body: Record<string, string> = {};
+    let rawPayload = "";
     if (contentType.includes("application/json")) {
       body = (await req.json()) as Record<string, string>;
+      rawPayload = JSON.stringify(body);
     } else {
-      const text = await req.text();
-      body = Object.fromEntries(new URLSearchParams(text));
+      rawPayload = await req.text();
+      body = Object.fromEntries(new URLSearchParams(rawPayload));
     }
 
     const integrationKey = process.env.PAYNOW_INTEGRATION_KEY || "";
@@ -37,10 +40,6 @@ export async function POST(req: Request) {
     if (!order) {
       return NextResponse.json({ error: "Order not found." }, { status: 404 });
     }
-    if (order.status === "paid" || order.status === "fulfilled") {
-      return NextResponse.json({ ok: true, duplicate: true });
-    }
-
     let result: { status?: string; paid?: boolean; reference?: string; amount?: string | number };
     try {
       result = await paynow.pollTransaction(pollUrl) as typeof result;
@@ -59,6 +58,25 @@ export async function POST(req: Request) {
     }
 
     if (paid) {
+      const eventId = body.hash || body.Hash || `${reference}:${trustedStatus}`;
+      const transition = await recordVerifiedPayment({
+        provider: "paynow",
+        eventId,
+        reference,
+        eventType: "payment.result",
+        status: trustedStatus,
+        amount: Number(result.amount),
+        currency: "usd",
+        providerReference: result.reference || reference,
+        rawPayload,
+      });
+      if (!transition.accepted) {
+        await recordServerEvent("payment_error", { provider: "paynow", stage: "ledger_reconciliation_failed" });
+        return NextResponse.json({ error: "Payment could not be reconciled." }, { status: 409 });
+      }
+      if (!transition.transitioned) {
+        return NextResponse.json({ ok: true, duplicate: true });
+      }
       await recordServerEvent("checkout_complete", { provider: "paynow", status: "paid" });
       await creditPaidArtistDeposit(reference, "paynow");
       const updated = await updateOrder(reference, {

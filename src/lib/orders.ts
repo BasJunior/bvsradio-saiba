@@ -105,6 +105,7 @@ type SupabaseOrderRow = {
   tax_mode?: string | null;
   tax_country?: string | null;
   total?: number | null;
+  currency?: string | null;
   status?: string | null;
   delivery_status?: string | null;
   stripe_session_id?: string | null;
@@ -142,7 +143,7 @@ function rowToOrder(row: SupabaseOrderRow): StoredOrder {
     taxMode: row.tax_mode || "unknown",
     taxCountry: row.tax_country || undefined,
     total: Number(row.total || 0),
-    currency: "usd",
+    currency: row.currency || "usd",
     status,
     deliveryStatus: row.delivery_status || "awaiting_payment",
     stripeSessionId: row.stripe_session_id || undefined,
@@ -261,6 +262,7 @@ export async function saveOrderToSupabase(order: StoredOrder) {
         tax_mode: order.taxMode,
         tax_country: order.taxCountry || null,
         total: order.total,
+        currency: order.currency,
         status: order.status,
         delivery_status: order.deliveryStatus,
         stripe_session_id: order.stripeSessionId || null,

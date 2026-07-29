@@ -14,6 +14,7 @@ import { getPaynow, normalizeZwPhone, paynowEnabled } from "@/lib/paynow";
 import { createDownloadToken, resolveProductAsset } from "@/lib/products";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { calculateTax, stripeAutomaticTaxEnabled } from "@/lib/tax";
+import { recordOrderSnapshot, resolveCommerceItems } from "@/lib/commerce-ledger";
 
 function isOrderItem(item: unknown): item is OrderItem {
   if (!item || typeof item !== "object") return false;
@@ -39,53 +40,6 @@ type OrderBody = {
   vatId?: string;
   createStripeSession?: boolean;
 };
-
-const SERVICE_PRICES: Record<string, number> = {
-  "basic-mix": 89,
-  "pro-mix": 149,
-  "premium-mix": 199,
-  "standard-master": 69,
-  "premium-master": 99,
-  "album-master": 299,
-  "standard-bundle": 189,
-  "premium-bundle": 249,
-  "ultimate-bundle": 299,
-  "vocal-comping-tuning": 65,
-  "full-vocal-production": 129,
-  "custom-bvs-service": 69,
-};
-
-function slug(value: string) {
-  return value.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-}
-
-function trustedUnitPrice(item: OrderItem) {
-  const id = String(item.id);
-  const titleKey = slug(item.title);
-  if (id === "100" || titleKey === "lord-album") return 19;
-  if (id === "101" || titleKey === "album-16-bit") return 14;
-  if (item.type === "service") return SERVICE_PRICES[titleKey] ?? 69;
-  if (item.type === "beat") return 29;
-  if (item.type === "mix") return 4;
-  return 2;
-}
-
-function trustedQuantity(item: OrderItem) {
-  const quantity = Number(item.quantity);
-  if (!Number.isFinite(quantity) || quantity < 1) return 1;
-  return Math.min(Math.floor(quantity), 20);
-}
-
-function normalizeServerItem(item: OrderItem): OrderItem {
-  const quantity = trustedQuantity(item);
-  const price = trustedUnitPrice(item);
-  return {
-    ...item,
-    type: item.type || "single",
-    price,
-    quantity,
-  };
-}
 
 function parseBody(payload: unknown): OrderBody | null {
   if (!payload || typeof payload !== "object") return null;
@@ -125,7 +79,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Add at least one item before checkout." }, { status: 400 });
     }
 
-    const trustedItems = payload.items.map(normalizeServerItem);
+    let trustedItems;
+    try {
+      trustedItems = resolveCommerceItems(payload.items);
+    } catch {
+      return NextResponse.json({ error: "One or more products are no longer available." }, { status: 409 });
+    }
 
     // Net subtotal from line items (authoritative)
     const subtotal = Number(
@@ -189,6 +148,14 @@ export async function POST(req: Request) {
     }
 
     const supabase = await saveOrderToSupabase(order);
+    if (!supabase.saved) {
+      return NextResponse.json({ error: "Checkout is temporarily unavailable. No payment was started." }, { status: 503 });
+    }
+    try {
+      await recordOrderSnapshot(reference, trustedItems);
+    } catch {
+      return NextResponse.json({ error: "Checkout is temporarily unavailable. No payment was started." }, { status: 503 });
+    }
 
     // Card path: Stripe Checkout
     if (wantsCard && stripeEnabled()) {
