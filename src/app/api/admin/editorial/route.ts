@@ -486,6 +486,12 @@ export async function PATCH(request: Request) {
         requirePermission('approve_submissions')
         const beatId = String(body.beatId || '')
         const publish = Boolean(body.publish)
+        const beat = (await optionalJson(
+          `beats?id=eq.${encodeURIComponent(beatId)}&select=id,producer_user_id&limit=1`,
+        ))[0] as { id?: string; producer_user_id?: string } | undefined
+        if (!beat?.producer_user_id) {
+          return NextResponse.json({ error: 'Beat or producer profile not found.' }, { status: 404 })
+        }
         const result = await patchTable(
           'beats',
           `id=eq.${encodeURIComponent(beatId)}&status=in.(approved,published)`,
@@ -501,6 +507,21 @@ export async function PATCH(request: Request) {
             { error: 'Only approved beats can be published.' },
             { status: 409 },
           )
+        }
+        if (publish) {
+          const profiles = await patchTable(
+            'profiles',
+            `id=eq.${encodeURIComponent(beat.producer_user_id)}`,
+            {
+              is_producer: true,
+              is_published: true,
+              is_verified: true,
+              updated_at: new Date().toISOString(),
+            },
+          )
+          if (!profiles?.length) {
+            return NextResponse.json({ error: 'Producer profile could not be published.' }, { status: 409 })
+          }
         }
         await audit(identity.user.id, publish ? 'beat_published' : 'beat_unpublished', 'beat', beatId)
         return NextResponse.json({ result })

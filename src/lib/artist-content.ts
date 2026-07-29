@@ -213,12 +213,16 @@ export async function getPublishedProducers(): Promise<PublishedProducerSummary[
   if (!url || !key) return []
   const headers = { apikey: key, Authorization: `Bearer ${key}` }
   try {
-    const profilesResponse = await fetch(`${url}/rest/v1/profiles?is_published=eq.true&is_verified=eq.true&is_producer=eq.true&select=id,username,display_name,avatar_url,creator_public_name,creator_name_status&order=username.asc`, { headers, cache: 'no-store' })
+    // A published beat is the canonical eligibility signal for this shelf.
+    // Starting from profile flags can hide a producer whose beat editorial already published.
+    const beatsResponse = await fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&select=producer_user_id,genre,artwork_path`, { headers, cache: 'no-store' })
+    if (!beatsResponse.ok) return []
+    const beats = await beatsResponse.json() as Array<{ producer_user_id: string; genre?: string; artwork_path?: string }>
+    const producerIds = [...new Set(beats.map(beat => beat.producer_user_id).filter(Boolean))]
+    if (!producerIds.length) return []
+    const profilesResponse = await fetch(`${url}/rest/v1/profiles?id=in.(${producerIds.join(',')})&select=id,username,display_name,avatar_url,creator_public_name,creator_name_status&order=username.asc`, { headers, cache: 'no-store' })
     if (!profilesResponse.ok) return []
     const profiles = await profilesResponse.json() as Array<{ id: string; username: string; display_name?: string; avatar_url?: string; creator_public_name?: string; creator_name_status?: string }>
-    if (!profiles.length) return []
-    const beatsResponse = await fetch(`${url}/rest/v1/beats?producer_user_id=in.(${profiles.map(profile => profile.id).join(',')})&is_public=eq.true&status=eq.published&select=producer_user_id,genre,artwork_path`, { headers, cache: 'no-store' })
-    const beats = beatsResponse.ok ? await beatsResponse.json() as Array<{ producer_user_id: string; genre?: string; artwork_path?: string }> : []
     return profiles.map(profile => {
       const producerBeats = beats.filter(beat => beat.producer_user_id === profile.id)
       const artworkPath = producerBeats.find(beat => beat.artwork_path)?.artwork_path
