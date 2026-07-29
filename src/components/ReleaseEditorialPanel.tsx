@@ -38,6 +38,23 @@ type ReleaseContributor = {
   contribution_role: string
   rights_confirmed: boolean
 }
+type MediaProcessingJob = {
+  id: string
+  release_id: string
+  release_track_id: string
+  status: string
+  codec_name?: string
+  duration_seconds?: number
+  sample_rate?: number
+  channels?: number
+  loudness_lufs?: number
+  true_peak_db?: number
+  malware_status: string
+  blockers?: string[]
+  waveform_path?: string
+  preview_path?: string
+  error_code?: string
+}
 
 type DistJob = {
   id: string
@@ -51,6 +68,7 @@ export default function ReleaseEditorialPanel({
   releases,
   releaseTracks,
   releaseContributors,
+  mediaProcessingJobs,
   distributionJobs,
   canApprove,
   canRotate,
@@ -61,6 +79,7 @@ export default function ReleaseEditorialPanel({
   releases: Release[]
   releaseTracks: ReleaseTrack[]
   releaseContributors: ReleaseContributor[]
+  mediaProcessingJobs: MediaProcessingJob[]
   distributionJobs: DistJob[]
   canApprove: boolean
   canRotate: boolean
@@ -96,8 +115,12 @@ export default function ReleaseEditorialPanel({
         {releases.map((release) => {
           const members = releaseTracks.filter((t) => t.release_id === release.id)
           const contributors = releaseContributors.filter((item) => item.release_id === release.id)
+          const mediaJobs = mediaProcessingJobs.filter((item) => item.release_id === release.id)
           const job = distributionJobs.find((j) => j.release_id === release.id)
-          const publishable = ['ready', 'legacy_approved'].includes(release.preflight_status || '')
+          const rightsReady = ['ready', 'legacy_approved'].includes(release.preflight_status || '')
+          const mediaReady = release.passport_version === 0 ||
+            (members.length > 0 && mediaJobs.length === members.length && mediaJobs.every((item) => item.status === 'ready'))
+          const publishable = rightsReady && mediaReady
           return (
             <article key={release.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
               <div className="flex flex-wrap gap-4">
@@ -152,6 +175,27 @@ export default function ReleaseEditorialPanel({
                       </ul>
                     )}
                   </div>
+                  {release.passport_version ? (
+                    <div className={`mt-3 rounded-xl border p-3 text-xs ${mediaReady ? 'border-emerald-400/30 bg-emerald-400/5' : 'border-blue-300/30 bg-blue-300/5'}`}>
+                      <p className="font-semibold uppercase tracking-wider">Media preflight · {mediaReady ? 'ready' : 'processing / blocked'}</p>
+                      <div className="mt-2 space-y-2">
+                        {members.map((member) => {
+                          const media = mediaJobs.find((item) => item.release_track_id === member.id)
+                          return <div key={member.id} className="rounded-lg bg-black/20 p-2">
+                            <p>{member.position}. {member.title} · <strong>{media?.status || 'not queued'}</strong></p>
+                            {media?.codec_name && <p className="mt-1 text-text-secondary">{media.codec_name} · {Number(media.duration_seconds || 0).toFixed(1)}s · {media.sample_rate || 0} Hz · {media.channels || 0} ch · {media.loudness_lufs ?? '—'} LUFS · peak {media.true_peak_db ?? '—'} dB</p>}
+                            <p className="mt-1 text-text-secondary">Malware scan: {media?.malware_status || 'pending'}{media?.error_code ? ` · ${media.error_code}` : ''}</p>
+                            {Boolean(media?.blockers?.length) && <p className="mt-1 text-red-200">{media?.blockers?.join(' · ')}</p>}
+                            {media?.waveform_path && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={media.waveform_path} alt={`Waveform for ${member.title}`} className="mt-2 h-16 w-full rounded object-cover" />
+                            )}
+                            {media?.preview_path && <audio controls preload="none" src={media.preview_path} className="mt-2 h-8 max-w-full" />}
+                          </div>
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </div>
               {canApprove && (

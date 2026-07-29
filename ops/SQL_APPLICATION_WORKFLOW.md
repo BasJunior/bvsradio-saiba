@@ -97,6 +97,7 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 14 | `track-reclassification` | `supabase-track-reclassification.sql` | single-track review messages + atomic Track → BeatStore reclassification |
 | 15 | `commerce-ledger` | `supabase-commerce-ledger.sql` | canonical products, immutable prices/licences/order items + verified payment events |
 | 16 | `rights-passport` | `supabase-rights-passport.sql` | contributor permissions, ownership scope and deterministic release preflight |
+| 17 | `media-preflight` | `supabase-media-preflight.sql` | private audio analysis queue, derivatives, duplicate detection and publication gate |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.

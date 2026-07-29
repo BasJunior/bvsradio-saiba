@@ -237,6 +237,30 @@ export async function POST(req: Request) {
         { status: 500 },
       );
     }
+    const savedMembers = Array.isArray(members.data) ? members.data : [];
+    if (savedMembers.length !== memberRows.length) {
+      return NextResponse.json(
+        { error: "Release tracks were saved incompletely. Contact BVS before retrying." },
+        { status: 500 },
+      );
+    }
+    const mediaJobs = await restPost(
+      "media_processing_jobs",
+      savedMembers.map((member) => ({
+        release_id: release.id,
+        release_track_id: member.id,
+        owner_user_id: user.id,
+        source_path: member.audio_path,
+        status: "queued",
+      })),
+    );
+    if (!mediaJobs.ok) {
+      console.error("media processing enqueue", mediaJobs.status, mediaJobs.text);
+      return NextResponse.json(
+        { error: "Release was saved, but audio preflight could not be queued. Contact BVS." },
+        { status: 500 },
+      );
+    }
 
     const contributors = [
       { person_name: artistName, contribution_role: "primary_artist" },
@@ -275,7 +299,7 @@ export async function POST(req: Request) {
     void notifyNewRelease(title, artistName, user.id, tracks.length);
 
     return NextResponse.json({
-      message: "Release submitted for editorial review.",
+      message: "Release submitted. Audio preflight is queued before editorial publication.",
       release,
       preflight: preflight.data,
     });

@@ -128,6 +128,13 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         : "Complete the Rights Passport before publication.";
       return { ok: false, error: `Release preflight blocked: ${blockers}` };
     }
+    const media = await restPost<{ status?: string; tracks?: number }>(
+      "rpc/assert_release_media_ready",
+      { p_release_id: releaseId },
+    );
+    if (!media.ok) {
+      return { ok: false, error: "Media preflight is incomplete or blocked. Review the processing results before publication." };
+    }
   }
 
   const members = await restGet<ReleaseTrackRow[]>(

@@ -84,6 +84,12 @@ export async function GET(request: Request) {
   const releases = await optionalJson('releases?select=*&order=created_at.desc&limit=100')
   const releaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
   const releaseContributors = await optionalJson('release_contributors?select=*&order=created_at.asc&limit=1000')
+  const rawMediaProcessingJobs = await optionalJson('media_processing_jobs?select=*&order=created_at.asc&limit=1000')
+  const mediaProcessingJobs = await Promise.all((rawMediaProcessingJobs as Array<Record<string, unknown>>).map(async job => ({
+    ...job,
+    waveform_path: await signStoredMedia(String(job.waveform_path || '')),
+    preview_path: await signStoredMedia(String(job.preview_path || '')),
+  })))
   const distributionJobs = await optionalJson('distribution_jobs?select=*&order=updated_at.desc&limit=100')
   const roleApplications = await optionalJson(
     'profile_role_applications?select=*&order=updated_at.desc&limit=100',
@@ -110,6 +116,7 @@ export async function GET(request: Request) {
     releases,
     releaseTracks,
     releaseContributors,
+    mediaProcessingJobs,
     distributionJobs,
     roleApplications,
     artistWaitlist,
