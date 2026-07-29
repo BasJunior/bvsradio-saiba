@@ -149,6 +149,8 @@ def process(conn, client, bucket: str, job) -> None:
             blockers.append("MALWARE_DETECTED")
         if scan == "error":
             blockers.append("MALWARE_SCAN_ERROR")
+        if scan == "not_available":
+            blockers.append("MALWARE_SCANNER_UNAVAILABLE")
 
         waveform_key = f"derivatives/release-tracks/{job_id}/waveform.png"
         preview_key = f"derivatives/release-tracks/{job_id}/preview-64k.mp3"
@@ -226,4 +228,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
