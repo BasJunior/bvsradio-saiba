@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:safe-floor
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Reject newly tracked sensitive or oversized artifacts
+        run: |
+          test -z "$(git ls-files | grep -E '(^|/)(\\.env($|\\.)|.*\\.(pem|key|p12|jks|keystore)$)' || true)"
+          test -z "$(git ls-files -z | xargs -0 -r du -b | awk '$1 > 104857600 {print $2}' || true)"

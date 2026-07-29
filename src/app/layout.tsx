@@ -6,12 +6,8 @@ import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
-import { getStationTracks } from "@/lib/station-library";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import "./globals.css";
-
-/** Always resolve live editorial rotation — never bake house archive into static HTML. */
-export const dynamic = "force-dynamic";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com";
 
@@ -75,13 +71,6 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  // Prefer editorial-only list; empty is OK until client refresh if DB briefly fails
-  let stationTracks: Awaited<ReturnType<typeof getStationTracks>> = [];
-  try {
-    stationTracks = await getStationTracks();
-  } catch (error) {
-    console.error("layout getStationTracks", error);
-  }
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -89,7 +78,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
         <LibrarySyncProvider>
-        <StationPlayerProvider tracks={stationTracks}>
+        <StationPlayerProvider tracks={[]}>
           <Navbar />
           <AuthLinkRescue />
           <main className="pt-16 pb-28">{children}</main>

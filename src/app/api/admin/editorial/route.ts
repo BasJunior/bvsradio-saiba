@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { audit, can, editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial-server'
 import { sendMusicApprovalEmail } from '@/lib/approval-email'
 import type { EditorialPermission, EditorialRole } from '@/lib/editorial'
+import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 
 async function jsonOrError(response: Response) {
   if (!response.ok) throw new Error(await response.text())
@@ -19,6 +20,12 @@ async function optionalJson(path: string) {
   const response = await fetch(editorialUrl(path), { headers: serviceHeaders, cache: 'no-store' })
   if (!response.ok) return []
   return response.json()
+}
+
+async function signStoredMedia(value?: string | null) {
+  if (!value) return value
+  const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
+  return key ? signedR2DownloadUrl(key, 900) : value
 }
 
 async function notifyApproval(input: { userId?: string; title?: string; kind: 'track' | 'release' | 'beat' }) {
@@ -53,11 +60,21 @@ export async function GET(request: Request) {
   ]
   const responses = await Promise.all(requests)
   if (responses.some((response) => !response.ok)) return NextResponse.json({ error: 'Editorial migration is not ready. Run supabase-editorial-workflow.sql.' }, { status: 503 })
-  const [tracks, profiles, programmes, credits, staff, auditLog] = await Promise.all(responses.map((response) => response.json()))
+  const [rawTracks, profiles, programmes, credits, staff, auditLog] = await Promise.all(responses.map((response) => response.json()))
+  const tracks = await Promise.all((rawTracks as Array<Record<string, unknown>>).map(async track => ({
+    ...track,
+    file_url: await signStoredMedia(String(track.file_url || '')),
+    artwork_url: await signStoredMedia(String(track.artwork_url || '')),
+  })))
   const trackRequests = await optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100')
-  const beats = await optionalJson(
+  const rawBeats = await optionalJson(
     'beats?select=*,beat_licence_options(*)&order=updated_at.desc&limit=100',
   )
+  const beats = await Promise.all((rawBeats as Array<Record<string, unknown>>).map(async beat => ({
+    ...beat,
+    preview_path: await signStoredMedia(String(beat.preview_path || '')),
+    artwork_path: await signStoredMedia(String(beat.artwork_path || '')),
+  })))
   const beatReviewMessages = await optionalJson(
     'beat_review_messages?select=*&order=created_at.asc&limit=500',
   )

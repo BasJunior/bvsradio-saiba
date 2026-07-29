@@ -64,7 +64,7 @@ export const TAX_COUNTRIES: CountryTax[] = [
   { code: "GB", name: "United Kingdom", rate: 0.2, label: "VAT" },
   { code: "CH", name: "Switzerland", rate: 0.081, label: "VAT" },
   { code: "NO", name: "Norway", rate: 0.25, label: "VAT" },
-  { code: "ZW", name: "Zimbabwe", rate: 0.15, label: "VAT" },
+  { code: "ZW", name: "Zimbabwe", rate: 0.155, label: "VAT" },
   { code: "ZA", name: "South Africa", rate: 0.15, label: "VAT" },
   { code: "NG", name: "Nigeria", rate: 0.075, label: "VAT" },
   { code: "KE", name: "Kenya", rate: 0.16, label: "VAT" },
@@ -129,7 +129,7 @@ export function normalizeCountryCode(input?: string | null): string {
 
 /** Guess country from browser locale + timezone (client only). */
 export function detectBrowserCountry(): string {
-  if (typeof window === "undefined") return "DE";
+  if (typeof window === "undefined") return "OTHER";
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
     if (TZ_COUNTRY[tz]) return TZ_COUNTRY[tz];
@@ -139,7 +139,7 @@ export function detectBrowserCountry(): string {
   } catch {
     /* ignore */
   }
-  return "DE";
+  return "OTHER";
 }
 
 export function isEuCountry(code: string): boolean {
@@ -165,6 +165,7 @@ export function calculateTax(params: {
 
   // Simplified reverse charge: non-empty VAT-like id + EU buyer outside DE
   const reverseCharge =
+    stripeAutomaticTaxEnabled() &&
     Boolean(vatId) &&
     vatId.length >= 8 &&
     isEuCountry(countryCode) &&

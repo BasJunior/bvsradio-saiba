@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   r2Configured,
+  isPublicR2MediaKey,
   safeR2Key,
   signedR2DownloadUrl,
 } from "@/lib/r2-storage";
@@ -19,6 +20,9 @@ export async function GET(
   const key = (parts || []).join("/");
   if (!safeR2Key(key)) {
     return NextResponse.json({ error: "Invalid media path." }, { status: 400 });
+  }
+  if (!(await isPublicR2MediaKey(key))) {
+    return NextResponse.json({ error: "Media is not publicly available." }, { status: 403 });
   }
 
   try {

@@ -13,10 +13,17 @@ import {
   publicStorageUrl,
   slugifyBeat,
 } from '@/lib/beatstore-server'
+import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 import { creatorPublicName } from '@/lib/public-name'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
 
 export const runtime = 'nodejs'
+
+async function privateMediaUrl(value?: string | null) {
+  if (!value) return value
+  const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
+  return key ? signedR2DownloadUrl(key, 900) : value
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -38,7 +45,14 @@ export async function GET(request: Request) {
         { status: 403 },
       )
     }
-    const beats = await listBeatsForProducer(identity.user.id)
+    const rawBeats = await listBeatsForProducer(identity.user.id)
+    const beats = await Promise.all(rawBeats.map(async beat => ({
+      ...beat,
+      preview_path: await privateMediaUrl(beat.preview_path),
+      artwork_path: await privateMediaUrl(beat.artwork_path),
+      master_path: await privateMediaUrl(beat.master_path),
+      stems_path: await privateMediaUrl(beat.stems_path),
+    })))
     return NextResponse.json({ beats, profile })
   }
 

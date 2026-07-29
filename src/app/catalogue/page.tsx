@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
@@ -473,7 +473,7 @@ function rightsSummary(track: Track) {
   return pricingRightsSummary(track)
 }
 
-export default function CataloguePage() {
+function CataloguePageContent() {
   const searchParams = useSearchParams()
   const [search, setSearch] = useState(() => {
     if (typeof window === 'undefined') return ''
@@ -1398,5 +1398,13 @@ export default function CataloguePage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function CataloguePage() {
+  return (
+    <Suspense fallback={<main className="mx-auto min-h-screen max-w-7xl px-6 py-16 text-text-secondary">Loading catalogue…</main>}>
+      <CataloguePageContent />
+    </Suspense>
   )
 }
