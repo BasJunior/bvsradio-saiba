@@ -30,6 +30,22 @@ const client = new S3Client({
 });
 const bucket = process.env.R2_BUCKET;
 
+function objectName(filename) {
+  const extension = filename.toLowerCase().endsWith(".mp3") ? ".mp3" : "";
+  const slug = filename
+    .replace(/\.[^.]+$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 72);
+  let hash = 2166136261;
+  for (let index = 0; index < filename.length; index += 1) {
+    hash ^= filename.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${slug}-${(hash >>> 0).toString(16).padStart(8, "0")}${extension}`;
+}
+
 async function exists(key) {
   try {
     const result = await client.send(
@@ -86,8 +102,9 @@ let previews = 0;
 try {
   for (const [index, filename] of files.entries()) {
     const source = path.join(musicDir, filename);
-    const masterKey = `legacy/masters/${filename}`;
-    const previewKey = `legacy/previews/${filename}`;
+    const object = objectName(filename);
+    const masterKey = `legacy/masters/${object}`;
+    const previewKey = `legacy/previews/${object}`;
     const masterResult = await upload(masterKey, source);
     if (masterResult === "uploaded") masters += 1;
 

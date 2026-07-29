@@ -20,12 +20,28 @@ export const LEGACY_CATALOGUE_FILES = [
   "calm-beast.mp3",
 ] as const;
 
+function legacyObjectName(filename: string) {
+  const extension = filename.toLowerCase().endsWith(".mp3") ? ".mp3" : "";
+  const slug = filename
+    .replace(/\.[^.]+$/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 72);
+  let hash = 2166136261;
+  for (let index = 0; index < filename.length; index += 1) {
+    hash ^= filename.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `${slug}-${(hash >>> 0).toString(16).padStart(8, "0")}${extension}`;
+}
+
 export function legacyPreviewKey(filename: string) {
-  return `legacy/previews/${filename}`;
+  return `legacy/previews/${legacyObjectName(filename)}`;
 }
 
 export function legacyMasterKey(filename: string) {
-  return `legacy/masters/${filename}`;
+  return `legacy/masters/${legacyObjectName(filename)}`;
 }
 
 export function legacyPreviewUrl(filename: string) {
