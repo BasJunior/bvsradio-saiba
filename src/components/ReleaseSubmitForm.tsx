@@ -31,6 +31,13 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
   const [cover, setCover] = useState<File | null>(null)
   const [rights, setRights] = useState(false)
   const [explicit, setExplicit] = useState(false)
+  const [explicitDeclared, setExplicitDeclared] = useState(false)
+  const [copyrightYear, setCopyrightYear] = useState(String(new Date().getFullYear()))
+  const [masterOwner, setMasterOwner] = useState('')
+  const [compositionOwners, setCompositionOwners] = useState('')
+  const [songwriters, setSongwriters] = useState('')
+  const [producers, setProducers] = useState('')
+  const [featuredArtists, setFeaturedArtists] = useState('')
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -62,8 +69,12 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    if (!title.trim() || !genre || !files.length || !rights) {
-      setError('Title, genre, at least one track, and rights confirmation are required.')
+    if (!title.trim() || !genre || !files.length || !cover || !rights || !explicitDeclared) {
+      setError('Title, genre, cover art, tracks, rights confirmation and explicit-status declaration are required.')
+      return
+    }
+    if (!masterOwner.trim() || !compositionOwners.trim() || !songwriters.trim() || !producers.trim()) {
+      setError('Name the master owner, composition owner, songwriter and producer before submitting.')
       return
     }
     if (!isSupabaseConfigured()) {
@@ -115,6 +126,14 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
           releaseType,
           rightsConfirmed: true,
           explicit,
+          explicitDeclared: true,
+          copyrightYear: Number(copyrightYear),
+          masterOwnerName: masterOwner.trim(),
+          compositionOwnerNames: compositionOwners.split(',').map((value) => value.trim()).filter(Boolean),
+          territories: ['WORLD'],
+          songwriters: songwriters.split(',').map((value) => value.trim()).filter(Boolean),
+          producers: producers.split(',').map((value) => value.trim()).filter(Boolean),
+          featuredArtists: featuredArtists.split(',').map((value) => value.trim()).filter(Boolean),
           coverPath: prep.cover?.path || null,
           tracks: files.map((_, i) => ({
             title: (trackTitles[i] || `Track ${i + 1}`).trim(),
@@ -135,6 +154,12 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       setTrackTitles([])
       setCover(null)
       setRights(false)
+      setExplicitDeclared(false)
+      setMasterOwner('')
+      setCompositionOwners('')
+      setSongwriters('')
+      setProducers('')
+      setFeaturedArtists('')
       onSuccess?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submit failed')
@@ -203,6 +228,35 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
         />
       </label>
 
+      <section className="space-y-4 rounded-2xl border border-brand/20 bg-brand/[.03] p-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand">Rights Passport</p>
+          <h3 className="mt-1 text-lg font-semibold">Ownership and contributor details</h3>
+          <p className="mt-1 text-xs text-text-secondary">Use legal or professionally credited names. Separate multiple names with commas.</p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm">Copyright year *
+            <input value={copyrightYear} onChange={(e) => setCopyrightYear(e.target.value)} inputMode="numeric" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+          </label>
+          <label className="text-sm">Master recording owner *
+            <input value={masterOwner} onChange={(e) => setMasterOwner(e.target.value)} placeholder="Person or company" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+          </label>
+        </div>
+        <label className="block text-sm">Composition / publishing owner(s) *
+          <input value={compositionOwners} onChange={(e) => setCompositionOwners(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+        </label>
+        <label className="block text-sm">Songwriter(s) / composer(s) *
+          <input value={songwriters} onChange={(e) => setSongwriters(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+        </label>
+        <label className="block text-sm">Producer(s) *
+          <input value={producers} onChange={(e) => setProducers(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+        </label>
+        <label className="block text-sm">Featured artist(s)
+          <input value={featuredArtists} onChange={(e) => setFeaturedArtists(e.target.value)} placeholder="Optional; names separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+        </label>
+        <p className="text-xs text-text-secondary">Territory: worldwide for BVS review. Editorial must request changes before any narrower territory is published.</p>
+      </section>
+
       <div>
         <label className="mb-1.5 block text-sm font-medium">Audio tracks * (1–30)</label>
         <input type="file" multiple onChange={(e) => onFiles(e.target.files)} className="text-sm" />
@@ -228,7 +282,7 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium">Cover art (recommended)</label>
+        <label className="mb-1.5 block text-sm font-medium">Cover art *</label>
         <input type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} className="text-sm" />
         {cover && <p className="mt-1 text-xs text-text-secondary">{cover.name}</p>}
       </div>
@@ -241,6 +295,14 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
             I have permission for every recording and composition on this release for BVS streaming and, if I join
             Premium later, multi-platform distribution packaging.
           </span>
+        </span>
+      </label>
+
+      <label className="flex gap-3 rounded-xl border border-white/10 p-4 text-sm">
+        <input type="checkbox" checked={explicitDeclared} onChange={(e) => setExplicitDeclared(e.target.checked)} className="mt-1 accent-brand" />
+        <span>
+          <strong className="block">Explicit status declared *</strong>
+          <span className="text-text-secondary">I reviewed every track and the explicit-content choice below is accurate.</span>
         </span>
       </label>
 

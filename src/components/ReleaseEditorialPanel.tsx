@@ -15,6 +15,13 @@ type Release = {
   in_rotation: boolean
   track_count: number
   created_at: string
+  passport_version?: number
+  preflight_status?: string
+  preflight_blockers?: string[]
+  copyright_year?: number
+  master_owner_name?: string
+  composition_owner_names?: string[]
+  territories?: string[]
 }
 
 type ReleaseTrack = {
@@ -23,6 +30,13 @@ type ReleaseTrack = {
   position: number
   title: string
   file_url?: string
+}
+type ReleaseContributor = {
+  id: string
+  release_id: string
+  person_name: string
+  contribution_role: string
+  rights_confirmed: boolean
 }
 
 type DistJob = {
@@ -36,6 +50,7 @@ type DistJob = {
 export default function ReleaseEditorialPanel({
   releases,
   releaseTracks,
+  releaseContributors,
   distributionJobs,
   canApprove,
   canRotate,
@@ -45,6 +60,7 @@ export default function ReleaseEditorialPanel({
 }: {
   releases: Release[]
   releaseTracks: ReleaseTrack[]
+  releaseContributors: ReleaseContributor[]
   distributionJobs: DistJob[]
   canApprove: boolean
   canRotate: boolean
@@ -79,7 +95,9 @@ export default function ReleaseEditorialPanel({
       <div className="mt-5 space-y-4">
         {releases.map((release) => {
           const members = releaseTracks.filter((t) => t.release_id === release.id)
+          const contributors = releaseContributors.filter((item) => item.release_id === release.id)
           const job = distributionJobs.find((j) => j.release_id === release.id)
+          const publishable = ['ready', 'legacy_approved'].includes(release.preflight_status || '')
           return (
             <article key={release.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
               <div className="flex flex-wrap gap-4">
@@ -108,6 +126,32 @@ export default function ReleaseEditorialPanel({
                       </li>
                     ))}
                   </ol>
+                  <div className={`mt-4 rounded-xl border p-3 text-xs ${publishable ? 'border-emerald-400/30 bg-emerald-400/5' : 'border-amber-300/30 bg-amber-300/5'}`}>
+                    <p className="font-semibold uppercase tracking-wider">
+                      Rights Passport · {(release.preflight_status || 'not checked').replaceAll('_', ' ')}
+                    </p>
+                    {release.passport_version ? (
+                      <>
+                        <p className="mt-1 text-text-secondary">
+                          © {release.copyright_year || '—'} · Master: {release.master_owner_name || 'missing'} ·
+                          Composition: {release.composition_owner_names?.join(', ') || 'missing'} ·
+                          Territory: {release.territories?.join(', ') || 'missing'}
+                        </p>
+                        <p className="mt-1 text-text-secondary">
+                          {contributors.map((item) => `${item.person_name} (${item.contribution_role.replaceAll('_', ' ')})`).join(' · ') || 'No contributors recorded'}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="mt-1 text-text-secondary">Legacy approved release; recorded before Rights Passport v1.</p>
+                    )}
+                    {!publishable && Boolean(release.preflight_blockers?.length) && (
+                      <ul className="mt-2 list-disc pl-5 text-amber-100">
+                        {release.preflight_blockers?.map((blocker) => (
+                          <li key={blocker}>{blocker.toLowerCase().replaceAll('_', ' ')}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </div>
               {canApprove && (
@@ -121,7 +165,7 @@ export default function ReleaseEditorialPanel({
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      disabled={Boolean(busy)}
+                      disabled={Boolean(busy) || !publishable}
                       onClick={() =>
                         void act('publish_release', {
                           releaseId: release.id,
@@ -129,13 +173,13 @@ export default function ReleaseEditorialPanel({
                           notes: notes[release.id] || '',
                         })
                       }
-                      className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
+                      className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Publish + rotation
                     </button>
                     <button
                       type="button"
-                      disabled={Boolean(busy)}
+                      disabled={Boolean(busy) || !publishable}
                       onClick={() =>
                         void act('publish_release', {
                           releaseId: release.id,
@@ -143,7 +187,7 @@ export default function ReleaseEditorialPanel({
                           notes: notes[release.id] || '',
                         })
                       }
-                      className="rounded-full border border-brand px-4 py-2 text-xs text-brand"
+                      className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       Publish only
                     </button>

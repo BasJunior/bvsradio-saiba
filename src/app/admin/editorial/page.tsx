@@ -20,15 +20,16 @@ type TrackRequest = { id: string; track_id: string; artist_user_id: string; requ
 type ArtistWaitlist = { id: string; email: string; artist_name: string; country?: string; city?: string; status: string; source: string; created_at: string }
 type ArtistDeposit = { id: string; artist_user_id: string; amount: number | string; currency: string; status: string; source: string; created_at: string }
 type ArtistPayoutRequest = { id: string; artist_user_id: string; requested_amount: number | string; currency: string; status: string; requested_at: string }
-type Release = { id: string; title: string; artist_name: string; genre?: string; cover_url?: string; release_type?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; track_count: number; created_at: string }
+type Release = { id: string; title: string; artist_name: string; genre?: string; cover_url?: string; release_type?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; track_count: number; created_at: string; passport_version?: number; preflight_status?: string; preflight_blockers?: string[]; copyright_year?: number; master_owner_name?: string; composition_owner_names?: string[]; territories?: string[] }
 type ReleaseTrack = { id: string; release_id: string; position: number; title: string; file_url?: string }
+type ReleaseContributor = { id: string; release_id: string; person_name: string; contribution_role: string; rights_confirmed: boolean }
 type DistJob = { id: string; release_id: string; status: string; distributor?: string | null; notes?: string | null }
 type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
 type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
 type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' | 'editor'; message: string; created_at: string }
 type TrackReviewMessage = { id: string; track_id: string; author_kind: 'artist' | 'editor'; message: string; created_at: string }
 type RoleApplication = { id: string; user_id: string; requested_role: string; status: string; message?: string; review_notes?: string; updated_at: string }
-type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; roleApplications?: RoleApplication[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; trackReviewMessages?: TrackReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
+type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; roleApplications?: RoleApplication[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; trackReviewMessages?: TrackReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; releaseContributors?: ReleaseContributor[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
 const statusClass: Record<string, string> = { submitted: 'text-amber-300', pending: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary', not_submitted: 'text-text-secondary' }
 
@@ -226,6 +227,7 @@ export default function EditorialDashboard() {
         <ReleaseEditorialPanel
           releases={data.releases || []}
           releaseTracks={data.releaseTracks || []}
+          releaseContributors={data.releaseContributors || []}
           distributionJobs={data.distributionJobs || []}
           canApprove={allowed('approve_submissions')}
           canRotate={allowed('manage_rotation')}

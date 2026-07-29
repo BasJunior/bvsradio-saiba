@@ -23,6 +23,13 @@ export type ReleaseRow = {
   track_count: number;
   created_at: string;
   published_at?: string | null;
+  passport_version?: number;
+  preflight_status?: string;
+  preflight_blockers?: string[];
+  copyright_year?: number | null;
+  master_owner_name?: string | null;
+  composition_owner_names?: string[];
+  territories?: string[];
 };
 
 export type ReleaseTrackRow = {
@@ -109,6 +116,19 @@ export async function materializeReleaseTracks(releaseId: string, options: {
   );
   const release = releases?.[0];
   if (!release) return { ok: false, error: "Release not found" };
+
+  if (options.publish) {
+    const preflight = await restPost<{ status?: string; blockers?: string[] }>(
+      "rpc/assert_release_publishable",
+      { p_release_id: releaseId },
+    );
+    if (!preflight.ok) {
+      const blockers = Array.isArray(release.preflight_blockers)
+        ? release.preflight_blockers.join(", ")
+        : "Complete the Rights Passport before publication.";
+      return { ok: false, error: `Release preflight blocked: ${blockers}` };
+    }
+  }
 
   const members = await restGet<ReleaseTrackRow[]>(
     `release_tracks?release_id=eq.${releaseId}&select=*&order=position.asc`,

@@ -328,7 +328,7 @@ export default function UploadPage() {
                   3
                 </div>
                 <div>
-                  <strong className="mb-1 block">Add release details</strong> Title, genre, optional cover art and
+                  <strong className="mb-1 block">Add release details</strong> Title, genre, required cover art and
                   description (language, city, features).
                 </div>
               </div>

@@ -96,6 +96,14 @@ export async function POST(req: Request) {
       releaseType?: string;
       rightsConfirmed?: boolean;
       explicit?: boolean;
+      explicitDeclared?: boolean;
+      copyrightYear?: number;
+      masterOwnerName?: string;
+      compositionOwnerNames?: string[];
+      territories?: string[];
+      songwriters?: string[];
+      producers?: string[];
+      featuredArtists?: string[];
       coverPath?: string | null;
       tracks?: Array<{ title?: string; audioPath?: string; position?: number }>;
     };
@@ -110,9 +118,31 @@ export async function POST(req: Request) {
       : "album";
     const tracks = Array.isArray(body.tracks) ? body.tracks : [];
 
-    if (!title || !genre || !body.rightsConfirmed || tracks.length < 1) {
+    const copyrightYear = Number(body.copyrightYear);
+    const currentYear = new Date().getFullYear();
+    const cleanNames = (values: unknown) =>
+      Array.isArray(values)
+        ? [...new Set(values.map((value) => String(value).trim().slice(0, 160)).filter(Boolean))]
+        : [];
+    const compositionOwnerNames = cleanNames(body.compositionOwnerNames);
+    const songwriters = cleanNames(body.songwriters);
+    const producers = cleanNames(body.producers);
+    const featuredArtists = cleanNames(body.featuredArtists);
+    const masterOwnerName = String(body.masterOwnerName || "").trim().slice(0, 160);
+    const territories = cleanNames(body.territories).map((value) => value.toUpperCase());
+
+    if (!title || !genre || !body.rightsConfirmed || !body.explicitDeclared || tracks.length < 1) {
       return NextResponse.json(
-        { error: "Title, genre, rights confirmation and at least one track are required." },
+        { error: "Title, genre, rights and explicit-status declarations, and at least one track are required." },
+        { status: 400 },
+      );
+    }
+    if (
+      !Number.isInteger(copyrightYear) || copyrightYear < 1900 || copyrightYear > currentYear + 1 ||
+      !masterOwnerName || !compositionOwnerNames.length || !songwriters.length || !producers.length
+    ) {
+      return NextResponse.json(
+        { error: "Complete the Rights Passport: copyright year, master owner, composition owner, songwriter and producer." },
         { status: 400 },
       );
     }
@@ -124,7 +154,7 @@ export async function POST(req: Request) {
     });
 
     const coverPath = body.coverPath ? String(body.coverPath).trim() : "";
-    if (coverPath && !coverPath.startsWith(`releases/${user.id}/`)) {
+    if (!coverPath || !coverPath.startsWith(`releases/${user.id}/`)) {
       return NextResponse.json({ error: "Invalid cover path." }, { status: 400 });
     }
     for (const t of tracks) {
@@ -160,6 +190,13 @@ export async function POST(req: Request) {
       in_rotation: false,
       rights_confirmed: true,
       explicit_content: Boolean(body.explicit),
+      explicit_declared: true,
+      copyright_year: copyrightYear,
+      master_owner_name: masterOwnerName,
+      composition_owner_names: compositionOwnerNames,
+      territories: territories.length ? territories : ["WORLD"],
+      passport_version: 1,
+      preflight_status: "not_checked",
       track_count: tracks.length,
     });
 
@@ -201,11 +238,46 @@ export async function POST(req: Request) {
       );
     }
 
+    const contributors = [
+      { person_name: artistName, contribution_role: "primary_artist" },
+      ...featuredArtists.map((person_name) => ({ person_name, contribution_role: "featured_artist" })),
+      ...songwriters.map((person_name) => ({ person_name, contribution_role: "songwriter" })),
+      ...producers.map((person_name) => ({ person_name, contribution_role: "producer" })),
+    ].map((contributor) => ({
+      release_id: release.id,
+      ...contributor,
+      rights_confirmed: true,
+    }));
+    const savedContributors = await restPost("release_contributors", contributors);
+    if (!savedContributors.ok) {
+      console.error("release contributors insert", savedContributors.status, savedContributors.text);
+      return NextResponse.json(
+        { error: "Release files were saved, but the Rights Passport could not be completed. Contact BVS." },
+        { status: 500 },
+      );
+    }
+
+    const preflight = await restPost<{ status?: string; blockers?: string[] }>(
+      "rpc/refresh_release_preflight",
+      { p_release_id: release.id },
+    );
+    if (!preflight.ok || preflight.data?.status !== "ready") {
+      console.error("release preflight", preflight.status, preflight.text);
+      return NextResponse.json(
+        {
+          error: "Release saved, but preflight found missing rights information.",
+          blockers: preflight.data?.blockers || [],
+        },
+        { status: 409 },
+      );
+    }
+
     void notifyNewRelease(title, artistName, user.id, tracks.length);
 
     return NextResponse.json({
       message: "Release submitted for editorial review.",
       release,
+      preflight: preflight.data,
     });
   } catch (err) {
     console.error("release finalize", err);
