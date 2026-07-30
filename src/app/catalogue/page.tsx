@@ -604,14 +604,15 @@ function CataloguePageContent() {
 
   useEffect(() => {
     const requestedType = searchParams.get("type");
+    const requestedProducer = searchParams.get("producer") || "";
     setSearch(searchParams.get("q") || "");
-    setProducerFilter(searchParams.get("producer") || "");
+    setProducerFilter(requestedProducer);
     if (requestedType === "beat") {
       setTypeFilter("beat");
+      // Producer deep-links should land on the filtered crate, not the shelf chrome.
+      const anchor = requestedProducer ? "browse" : "beatstore";
       window.requestAnimationFrame(() => {
-        document
-          .getElementById("beatstore")
-          ?.scrollIntoView({ block: "start" });
+        document.getElementById(anchor)?.scrollIntoView({ block: "start" });
       });
       return;
     }
@@ -963,88 +964,164 @@ function CataloguePageContent() {
   const beatsMode = typeFilter === "beat";
   const musicCount = allTracks.filter(isMusicListing).length;
   const beatCount = allTracks.filter(isBeatListing).length;
+  const producerMode = Boolean(producerFilter && beatsMode);
+  const heroCount = producerMode
+    ? filteredTracks.length
+    : beatsMode
+      ? beatCount
+      : musicCount;
+
+  const clearProducerFilter = () => {
+    setTypeFilter("beat");
+    setSearch("");
+    setProducerFilter("");
+    setGenreFilter("All");
+    const url = new URL(window.location.href);
+    url.searchParams.set("type", "beat");
+    url.searchParams.delete("producer");
+    url.searchParams.delete("q");
+    window.history.replaceState(
+      {},
+      "",
+      `${url.pathname}?${url.searchParams.toString()}#beatstore`,
+    );
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 pb-28">
       <section className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-end mb-10">
         <div>
           <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
-            {beatsMode ? "BVS BeatStore" : "BVS Music"}
+            {producerMode
+              ? "Producer crate"
+              : beatsMode
+                ? "BVS BeatStore"
+                : "BVS Music"}
           </p>
           <h1 className="text-5xl font-semibold mb-4">
-            {beatsMode
-              ? "Beats for artists and producers."
-              : "Music from the BVS library."}
+            {producerMode
+              ? `@${producerFilter}`
+              : beatsMode
+                ? "Beats for artists and producers."
+                : "Music from the BVS library."}
           </h1>
           <p className="max-w-2xl text-text-secondary text-lg">
-            {beatsMode
-              ? "Producer beat licences only — no archive songs mixed in. Preview tagged clips on BVS, then lease when ready."
-              : "Songs, archive cuts, and streaming discovery. Beats live under Beats — not mixed into Music."}
+            {producerMode
+              ? `Only published BeatStore licences from @${producerFilter}. Other producers and album shelves are hidden on this view.`
+              : beatsMode
+                ? "Producer beat licences only — no archive songs mixed in. Preview tagged clips on BVS, then lease when ready."
+                : "Songs, archive cuts, and streaming discovery. Beats live under Beats — not mixed into Music."}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setTypeFilter("music");
-                setSearch("");
-                setGenreFilter("All");
-                if (typeof window !== "undefined") {
-                  const url = new URL(window.location.href);
-                  url.searchParams.delete("type");
-                  window.history.replaceState(
-                    {},
-                    "",
-                    url.pathname + (url.hash || ""),
-                  );
-                }
-              }}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${!beatsMode ? "bg-brand text-black" : "border border-white/15 text-text-secondary hover:bg-white/5"}`}
-            >
-              Music · {musicCount}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setTypeFilter("beat");
-                setSearch("");
-                setGenreFilter("All");
-                if (typeof window !== "undefined") {
-                  const url = new URL(window.location.href);
-                  url.searchParams.set("type", "beat");
-                  window.history.replaceState(
-                    {},
-                    "",
-                    `${url.pathname}?type=beat#beatstore`,
-                  );
-                }
-              }}
-              className={`rounded-full px-4 py-2 text-sm font-semibold ${beatsMode ? "bg-brand text-black" : "border border-white/15 text-text-secondary hover:bg-white/5"}`}
-            >
-              Beats · {beatCount}
-            </button>
+            {producerMode ? (
+              <>
+                <button
+                  type="button"
+                  onClick={clearProducerFilter}
+                  className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black hover:bg-brand-dark"
+                >
+                  Show all beats
+                </button>
+                <Link
+                  href={`/artist/${encodeURIComponent(producerFilter)}`}
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-white/5"
+                >
+                  Producer profile
+                </Link>
+                <Link
+                  href="/music/producers"
+                  className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-white/5"
+                >
+                  All producers
+                </Link>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTypeFilter("music");
+                    setSearch("");
+                    setProducerFilter("");
+                    setGenreFilter("All");
+                    if (typeof window !== "undefined") {
+                      const url = new URL(window.location.href);
+                      url.searchParams.delete("type");
+                      url.searchParams.delete("producer");
+                      window.history.replaceState(
+                        {},
+                        "",
+                        url.pathname + (url.hash || ""),
+                      );
+                    }
+                  }}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold ${!beatsMode ? "bg-brand text-black" : "border border-white/15 text-text-secondary hover:bg-white/5"}`}
+                >
+                  Music · {musicCount}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTypeFilter("beat");
+                    setSearch("");
+                    setProducerFilter("");
+                    setGenreFilter("All");
+                    if (typeof window !== "undefined") {
+                      const url = new URL(window.location.href);
+                      url.searchParams.set("type", "beat");
+                      url.searchParams.delete("producer");
+                      window.history.replaceState(
+                        {},
+                        "",
+                        `${url.pathname}?type=beat#beatstore`,
+                      );
+                    }
+                  }}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold ${beatsMode ? "bg-brand text-black" : "border border-white/15 text-text-secondary hover:bg-white/5"}`}
+                >
+                  Beats · {beatCount}
+                </button>
+              </>
+            )}
           </div>
         </div>
 
         <div className="relative aspect-[16/10] rounded-2xl overflow-hidden border border-white/10">
           <Image
-            src={beatsMode ? junePackArt : "/images/mic-closeup.jpg"}
+            src={
+              producerMode && filteredTracks[0]?.artwork
+                ? filteredTracks[0].artwork
+                : beatsMode
+                  ? junePackArt
+                  : "/images/mic-closeup.jpg"
+            }
             alt={
-              beatsMode
-                ? "WolfBrx June Pack beat artwork"
-                : "BVS music catalogue"
+              producerMode
+                ? `${producerFilter} BeatStore crate`
+                : beatsMode
+                  ? "WolfBrx June Pack beat artwork"
+                  : "BVS music catalogue"
             }
             fill
+            unoptimized={
+              producerMode &&
+              /^https?:\/\//i.test(filteredTracks[0]?.artwork || "")
+            }
             className="object-cover"
             priority
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
           <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
             <div>
-              <div className="text-3xl font-semibold">
-                {beatsMode ? beatCount : musicCount}
-              </div>
+              <div className="text-3xl font-semibold">{heroCount}</div>
               <div className="text-sm text-text-secondary">
-                {beatsMode ? "beat listings" : "music titles"}
+                {producerMode
+                  ? heroCount === 1
+                    ? "beat in this crate"
+                    : "beats in this crate"
+                  : beatsMode
+                    ? "beat listings"
+                    : "music titles"}
               </div>
             </div>
             <Link
@@ -1057,7 +1134,7 @@ function CataloguePageContent() {
         </div>
       </section>
 
-      {beatsMode && (
+      {beatsMode && !producerMode && (
         <section
           id="beatstore"
           className="mb-10 scroll-mt-24 rounded-3xl border border-white/10 bg-bg-card/45 p-5 sm:p-7"
@@ -1077,21 +1154,7 @@ function CataloguePageContent() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                setTypeFilter("beat");
-                setSearch("");
-                setProducerFilter("");
-                setGenreFilter("All");
-                const url = new URL(window.location.href);
-                url.searchParams.set("type", "beat");
-                url.searchParams.delete("producer");
-                url.searchParams.delete("q");
-                window.history.replaceState(
-                  {},
-                  "",
-                  `${url.pathname}?${url.searchParams.toString()}#beatstore`,
-                );
-              }}
+              onClick={clearProducerFilter}
               className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black hover:bg-brand-dark"
             >
               Show all beats
@@ -1122,8 +1185,30 @@ function CataloguePageContent() {
         </section>
       )}
 
+      {producerMode && (
+        <section
+          id="beatstore"
+          className="mb-6 scroll-mt-24 rounded-2xl border border-brand/30 bg-brand/10 px-4 py-3 sm:px-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-white">
+              Viewing <span className="font-semibold">@{producerFilter}</span>
+              's published BeatStore catalogue only.
+            </p>
+            <button
+              type="button"
+              onClick={clearProducerFilter}
+              className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black hover:bg-brand"
+            >
+              Clear producer filter
+            </button>
+          </div>
+        </section>
+      )}
+
       {!beatsMode && <PublishedArtistsShelf />}
 
+      {!producerMode && (
       <section className="mb-10">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -1203,6 +1288,7 @@ function CataloguePageContent() {
           })}
         </div>
       </section>
+      )}
 
       <section id="browse" className="scroll-mt-24">
         <div className="mb-5 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-3 shadow-2xl shadow-black/20 md:p-4">
@@ -1238,21 +1324,23 @@ function CataloguePageContent() {
                 </button>
               )}
             </label>
-            <select
-              value={collectionJump}
-              onChange={(event) => {
-                if (event.target.value) jumpToCollection(event.target.value);
-              }}
-              aria-label="Jump to a catalogue collection"
-              className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
-            >
-              <option value="">Jump to collection</option>
-              {collectionCards.map((collection) => (
-                <option key={collection.name} value={collection.name}>
-                  {collection.name} — {collection.detail}
-                </option>
-              ))}
-            </select>
+            {!producerMode && (
+              <select
+                value={collectionJump}
+                onChange={(event) => {
+                  if (event.target.value) jumpToCollection(event.target.value);
+                }}
+                aria-label="Jump to a catalogue collection"
+                className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
+              >
+                <option value="">Jump to collection</option>
+                {collectionCards.map((collection) => (
+                  <option key={collection.name} value={collection.name}>
+                    {collection.name} — {collection.detail}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               value={genreFilter}
               onChange={(event) => setGenreFilter(event.target.value)}
@@ -1276,20 +1364,28 @@ function CataloguePageContent() {
                 const value = event.target.value as
                   "music" | "beat" | "single" | "mix";
                 setTypeFilter(value);
+                if (value !== "beat") setProducerFilter("");
                 if (typeof window !== "undefined") {
                   const url = new URL(window.location.href);
                   if (value === "beat") {
                     url.searchParams.set("type", "beat");
+                    if (producerFilter) {
+                      url.searchParams.set("producer", producerFilter);
+                    } else {
+                      url.searchParams.delete("producer");
+                    }
                     window.history.replaceState(
                       {},
                       "",
-                      `${url.pathname}?type=beat#beatstore`,
+                      `${url.pathname}?${url.searchParams.toString()}#${producerFilter ? "browse" : "beatstore"}`,
                     );
                   } else if (value === "music") {
                     url.searchParams.delete("type");
+                    url.searchParams.delete("producer");
                     window.history.replaceState({}, "", url.pathname);
                   } else {
                     url.searchParams.set("type", value);
+                    url.searchParams.delete("producer");
                     window.history.replaceState(
                       {},
                       "",
