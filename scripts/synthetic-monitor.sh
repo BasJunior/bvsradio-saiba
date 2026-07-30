@@ -34,8 +34,12 @@ check sw "$BASE/sw.js"
 MEDIA=$(curl -sS --max-time 20 "$BASE/api/station/tracks" 2>/dev/null | jq -r '.tracks[0].src // empty' 2>/dev/null || true)
 if [[ -n "${MEDIA:-}" ]]; then
   if [[ "$MEDIA" == http* ]]; then AUDIO_URL="$MEDIA"; else AUDIO_URL="$BASE$MEDIA"; fi
-  code=$(curl -sS -o /dev/null -w '%{http_code}' -H 'Range: bytes=0-1023' --max-time 25 "$AUDIO_URL" || echo 000)
-  if [[ "$code" != "206" && "$code" != "200" ]]; then
+  # Public media routes intentionally redirect to short-lived signed R2 URLs.
+  # Follow HTTPS redirects so this check proves the object host honors Range.
+  code=$(curl -sS -L --max-redirs 5 --proto-redir '=https' \
+    -o /dev/null -w '%{http_code}' -H 'Range: bytes=0-1023' \
+    --max-time 25 "$AUDIO_URL" || echo 000)
+  if [[ "$code" != "206" ]]; then
     FAIL=$((FAIL + 1))
     report+="FAIL audio_range http=$code source=$MEDIA\n"
   else
