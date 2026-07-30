@@ -1552,43 +1552,53 @@ function CataloguePageContent() {
         )}
       </section>
 
-      <section className="mt-14 grid gap-6 border-t border-white/10 pt-10 md:grid-cols-[0.9fr_1.1fr] md:items-center">
-        <div>
-          <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
-            Visuals
-          </p>
-          <h2 className="text-3xl font-semibold mb-3">
-            Keep the video lane clean until real footage lands.
-          </h2>
-          <p className="text-text-secondary">
-            The page now uses real audio previews. Video cards are intentionally
-            held back to studio and live-session placeholders so the catalogue
-            does not pretend to have clips that are not ready yet.
-          </p>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { title: "Studio Sessions", img: "/images/hero-studio.jpg" },
-            { title: "Live Drops", img: "/images/festival-crowd.jpg" },
-          ].map((item) => (
-            <div key={item.title}>
-              <div className="relative aspect-video overflow-hidden rounded-xl border border-white/10">
-                <Image
-                  src={item.img}
-                  alt={item.title}
-                  fill
-                  className="object-cover"
-                />
-                <div className="absolute inset-0 bg-black/30" />
+      {!producerMode && (
+        <section className="mt-14 grid gap-6 border-t border-white/10 pt-10 md:grid-cols-[0.9fr_1.1fr] md:items-center">
+          <div>
+            <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
+              Coming soon
+            </p>
+            <h2 className="text-3xl font-semibold mb-3">
+              Video drops from the BVS studio.
+            </h2>
+            <p className="text-text-secondary">
+              Preview music and beats here today. Studio sessions and live drops
+              will land in this space as soon as the footage is ready to share.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              {
+                title: "Studio Sessions",
+                detail: "Behind-the-scenes soon",
+                img: "/images/hero-studio.jpg",
+              },
+              {
+                title: "Live Drops",
+                detail: "Show & stage moments soon",
+                img: "/images/festival-crowd.jpg",
+              },
+            ].map((item) => (
+              <div key={item.title}>
+                <div className="relative aspect-video overflow-hidden rounded-xl border border-white/10">
+                  <Image
+                    src={item.img}
+                    alt={item.title}
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/30" />
+                  <span className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                    Soon
+                  </span>
+                </div>
+                <div className="mt-2 text-sm font-medium">{item.title}</div>
+                <div className="text-xs text-text-secondary">{item.detail}</div>
               </div>
-              <div className="mt-2 text-sm font-medium">{item.title}</div>
-              <div className="text-xs text-text-secondary">
-                Coming from real BVS shoots
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+            ))}
+          </div>
+        </section>
+      )}
 
       {currentTrack && (
         <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/15 bg-black/95">
