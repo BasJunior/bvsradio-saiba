@@ -1,5 +1,5 @@
 import 'server-only'
-import { creatorPublicName } from '@/lib/public-name'
+import { creatorPublicName, resolvePublicHandle } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 export type PublicArtistTrack = {
@@ -168,10 +168,11 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
 export async function getPublicArtist(slug: string): Promise<PublicArtist | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return fallback[slug] || null
+  const resolvedSlug = resolvePublicHandle(slug) || slug
+  if (!url || !key) return fallback[resolvedSlug] || fallback[slug] || null
   const headers = { apikey: key, Authorization: `Bearer ${key}` }
   try {
-    const profileResponse = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(slug)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,created_at&limit=1`, { headers, next: { revalidate: 60 } })
+    const profileResponse = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(resolvedSlug)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,created_at&limit=1`, { headers, next: { revalidate: 60 } })
     if (!profileResponse.ok) return fallback[slug] || null
     const profiles = await profileResponse.json()
     const profile = profiles[0]

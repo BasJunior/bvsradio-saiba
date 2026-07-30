@@ -16,6 +16,10 @@ import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import { legacyPreviewUrl } from "@/lib/legacy-catalogue-media";
+import {
+  producerKeysMatch,
+  resolvePublicHandle,
+} from "@/lib/public-name";
 
 type TrackType = "single" | "beat" | "mix";
 
@@ -811,7 +815,11 @@ function CataloguePageContent() {
       const matchesGenre = genreFilter === "All" || track.genre === genreFilter;
       const matchesProducer =
         !producerFilter ||
-        track.producerUsername?.toLowerCase() === producerFilter.toLowerCase();
+        producerKeysMatch(
+          producerFilter,
+          track.producerUsername,
+          track.artist,
+        );
       // typeFilter music/beat already applied in scopeTracks; single/mix narrow further
       const matchesType =
         typeFilter === "all" ||
@@ -965,6 +973,15 @@ function CataloguePageContent() {
   const musicCount = allTracks.filter(isMusicListing).length;
   const beatCount = allTracks.filter(isBeatListing).length;
   const producerMode = Boolean(producerFilter && beatsMode);
+  const producerLabel =
+    resolvePublicHandle(
+      filteredTracks.find((track) => track.artist)?.artist ||
+        producerFilter,
+    ) || producerFilter;
+  const producerProfileSlug =
+    filteredTracks.find((track) => track.producerUsername)?.producerUsername ||
+    resolvePublicHandle(producerFilter) ||
+    producerFilter;
   const heroCount = producerMode
     ? filteredTracks.length
     : beatsMode
@@ -1000,14 +1017,14 @@ function CataloguePageContent() {
           </p>
           <h1 className="text-5xl font-semibold mb-4">
             {producerMode
-              ? `@${producerFilter}`
+              ? producerLabel
               : beatsMode
                 ? "Beats for artists and producers."
                 : "Music from the BVS library."}
           </h1>
           <p className="max-w-2xl text-text-secondary text-lg">
             {producerMode
-              ? `Only published BeatStore licences from @${producerFilter}. Other producers and album shelves are hidden on this view.`
+              ? `Only published BeatStore licences from ${producerLabel.startsWith("@") ? producerLabel : `@${producerLabel}`}. Other producers and album shelves are hidden on this view.`
               : beatsMode
                 ? "Producer beat licences only — no archive songs mixed in. Preview tagged clips on BVS, then lease when ready."
                 : "Songs, archive cuts, and streaming discovery. Beats live under Beats — not mixed into Music."}
@@ -1023,7 +1040,7 @@ function CataloguePageContent() {
                   Show all beats
                 </button>
                 <Link
-                  href={`/artist/${encodeURIComponent(producerFilter)}`}
+                  href={`/artist/${encodeURIComponent(producerProfileSlug)}`}
                   className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-text-secondary hover:bg-white/5"
                 >
                   Producer profile
@@ -1097,7 +1114,7 @@ function CataloguePageContent() {
             }
             alt={
               producerMode
-                ? `${producerFilter} BeatStore crate`
+                ? `${producerLabel} BeatStore crate`
                 : beatsMode
                   ? "WolfBrx June Pack beat artwork"
                   : "BVS music catalogue"
@@ -1163,12 +1180,16 @@ function CataloguePageContent() {
           <PublishedProducersShelf
             onBrowse={(producer) => {
               setSearch("");
-              setProducerFilter(producer.username);
+              const browseKey =
+                resolvePublicHandle(producer.name.replace(/^@/, "")) ||
+                resolvePublicHandle(producer.username) ||
+                producer.username;
+              setProducerFilter(browseKey);
               setGenreFilter("All");
               setTypeFilter("beat");
               const url = new URL(window.location.href);
               url.searchParams.set("type", "beat");
-              url.searchParams.set("producer", producer.username);
+              url.searchParams.set("producer", browseKey);
               url.searchParams.delete("q");
               window.history.replaceState(
                 {},
@@ -1192,7 +1213,12 @@ function CataloguePageContent() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-white">
-              Viewing <span className="font-semibold">@{producerFilter}</span>
+              Viewing{" "}
+              <span className="font-semibold">
+                {producerLabel.startsWith("@")
+                  ? producerLabel
+                  : `@${producerLabel}`}
+              </span>
               's published BeatStore catalogue only.
             </p>
             <button
@@ -1417,7 +1443,7 @@ function CataloguePageContent() {
             </p>
             <h2 className="mt-1 text-3xl font-semibold tracking-tight">
               {producerFilter
-                ? `Producer catalogue · @${producerFilter}`
+                ? `Producer catalogue · ${producerLabel.startsWith("@") ? producerLabel : `@${producerLabel}`}`
                 : search
                   ? `Results for “${search}”`
                   : beatsMode
