@@ -1,5 +1,5 @@
 'use client'
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import MyBeatStore from '@/components/MyBeatStore'
@@ -18,12 +18,34 @@ export default function CreatorStudio() {
   const artist=['artist','admin'].includes(data.profile.role), writer=['writer','admin'].includes(data.profile.role), showCreator=['show_creator','admin'].includes(data.profile.role)
   const producer = Boolean((data.profile as {is_producer?: boolean}).is_producer) || data.profile.role === 'admin'
   return <main className="mx-auto max-w-6xl px-6 py-12"><p className="text-xs uppercase tracking-[.22em] text-brand">Creator studio</p><h1 className="mt-2 text-4xl font-semibold">Welcome, {data.profile.display_name||'creator'}</h1><p className="mt-3 text-text-secondary">Draft privately, submit when ready, and follow the human editorial review.</p>{error&&<p className="mt-5 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}{message&&<p className="mt-5 rounded-xl bg-brand/10 p-4 text-brand">{message}</p>}
-    {(artist||producer)&&<CreatorInsights token={token}/>}
-    {producer&&<MyBeatStore/>}
-    {artist&&<ArtistReleases tracks={data.tracks||[]} requests={data.trackRequests||[]} act={act}/>}
-    {writer&&<><WriterApplication application={data.application} act={act}/>{(data.profile.role==='admin'||data.application?.status==='approved')&&<ArticleForm act={act}/>}<Queue title="Your articles" items={data.articles}/><Queue title="Assigned research briefs" items={data.briefs} note="Briefs provide sourced direction only. A human editor must approve them before drafting, and articles still require separate review."/></>}
-    {showCreator&&<><ShowForm act={act}/><EpisodeForm shows={data.shows} token={token} act={act}/><Queue title="Your shows" items={data.shows}/><Queue title="Your episodes" items={data.episodes}/></>}
+    {(artist||producer)&&<CreatorDropDown label="Performance and editorial insights" defaultOpen><CreatorInsights token={token}/></CreatorDropDown>}
+    {producer&&<CreatorDropDown label="My BeatStore"><MyBeatStore/></CreatorDropDown>}
+    {artist&&<CreatorDropDown label="Releases and artist requests" count={(data.tracks||[]).length} defaultOpen><ArtistReleases tracks={data.tracks||[]} requests={data.trackRequests||[]} act={act}/></CreatorDropDown>}
+    {writer&&<>
+      <CreatorDropDown label="Writer application" defaultOpen={!data.application||['submitted','information_requested'].includes(data.application.status)}><WriterApplication application={data.application} act={act}/></CreatorDropDown>
+      {(data.profile.role==='admin'||data.application?.status==='approved')&&<CreatorDropDown label="Create a new article"><ArticleForm act={act}/></CreatorDropDown>}
+      <CreatorDropDown label="Your articles" count={data.articles.length} defaultOpen={data.articles.some(item=>['submitted','in_review','changes_requested'].includes(item.status||''))}><Queue title="Your articles" items={data.articles}/></CreatorDropDown>
+      <CreatorDropDown label="Assigned research briefs" count={data.briefs.length}><Queue title="Assigned research briefs" items={data.briefs} note="Briefs provide sourced direction only. A human editor must approve them before drafting, and articles still require separate review."/></CreatorDropDown>
+    </>}
+    {showCreator&&<>
+      <CreatorDropDown label="Propose a weekly show"><ShowForm act={act}/></CreatorDropDown>
+      <CreatorDropDown label="Submit a weekly episode" defaultOpen={data.shows.some(show=>show.status==='approved')}><EpisodeForm shows={data.shows} token={token} act={act}/></CreatorDropDown>
+      <CreatorDropDown label="Your shows" count={data.shows.length} defaultOpen={data.shows.some(item=>['submitted','in_review','changes_requested'].includes(item.status||''))}><Queue title="Your shows" items={data.shows}/></CreatorDropDown>
+      <CreatorDropDown label="Your episodes" count={data.episodes.length} defaultOpen={data.episodes.some(item=>['submitted','in_review','changes_requested'].includes(item.status||''))}><Queue title="Your episodes" items={data.episodes}/></CreatorDropDown>
+    </>}
   </main>
+}
+
+function CreatorDropDown({label,count,defaultOpen=false,children}:{label:string;count?:number;defaultOpen?:boolean;children:ReactNode}){
+  const[open,setOpen]=useState(defaultOpen)
+  const panelId=`creator-${label.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`
+  return <section className="mt-8 rounded-2xl border border-white/10 bg-white/[.015]">
+    <button type="button" aria-expanded={open} aria-controls={panelId} onClick={()=>setOpen(value=>!value)} className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition hover:bg-white/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+      <span className="flex min-w-0 items-center gap-3"><span className="font-semibold">{label}</span>{typeof count==='number'&&<span className="rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-text-secondary">{count}</span>}</span>
+      <span className="flex shrink-0 items-center gap-2 text-xs text-text-secondary">{open?'Hide section':'Show section'}<svg viewBox="0 0 20 20" aria-hidden="true" className={`h-4 w-4 transition-transform ${open?'rotate-180':''}`} fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m5 7.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round"/></svg></span>
+    </button>
+    {open&&<div id={panelId} className="border-t border-white/10 px-5 pb-6 pt-1">{children}</div>}
+  </section>
 }
 function WriterApplication({application,act}:{application:Data['application'];act:(b:Record<string,unknown>)=>Promise<void>}){const[bio,setBio]=useState(''),[portfolio,setPortfolio]=useState(''),[beats,setBeats]=useState('Music, Culture');if(application)return <section className="mt-10 rounded-2xl border border-white/10 p-6"><h2 className="text-2xl">Writer application</h2><p className="mt-2 text-brand">{application.status.replaceAll('_',' ')}</p>{application.review_notes&&<p className="mt-2 text-sm text-text-secondary">Editor: {application.review_notes}</p>}</section>;return <form onSubmit={e=>{e.preventDefault();void act({action:'apply_writer',bio,portfolioUrl:portfolio,beats:beats.split(',')})}} className="mt-10 space-y-3 rounded-2xl border border-white/10 p-6"><h2 className="text-2xl">Apply to write</h2><textarea required minLength={40} value={bio} onChange={e=>setBio(e.target.value)} placeholder="Experience and what you want to cover" className={field}/><input value={beats} onChange={e=>setBeats(e.target.value)} placeholder="Beats, comma separated" className={field}/><input value={portfolio} onChange={e=>setPortfolio(e.target.value)} placeholder="Portfolio URL (optional)" className={field}/><button className="rounded-full bg-brand px-5 py-2 font-semibold text-black">Submit application</button></form>}
 function ArticleForm({act}:{act:(b:Record<string,unknown>)=>Promise<void>}){const[form,set]=useState({title:'',dek:'',body:'',sources:''});const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const submitter=(e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement;void act({action:'save_article',...form,sources:form.sources.split('\n').filter(Boolean),submit:submitter.value==='submit'})};return <form onSubmit={submit} className="mt-10 grid gap-3 rounded-2xl border border-white/10 p-6"><h2 className="text-2xl">New article</h2><input required value={form.title} onChange={e=>set({...form,title:e.target.value})} placeholder="Headline" className={field}/><input value={form.dek} onChange={e=>set({...form,dek:e.target.value})} placeholder="One-line summary" className={field}/><textarea value={form.body} onChange={e=>set({...form,body:e.target.value})} placeholder="Draft" className={`${field} min-h-64`}/><textarea value={form.sources} onChange={e=>set({...form,sources:e.target.value})} placeholder="Source URLs, one per line" className={field}/><div className="flex gap-3"><button value="draft" className="rounded-full border border-white/20 px-5 py-2">Save draft</button><button value="submit" className="rounded-full bg-brand px-5 py-2 font-semibold text-black">Submit for review</button></div></form>}
