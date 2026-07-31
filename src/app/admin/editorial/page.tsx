@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
@@ -224,7 +224,7 @@ export default function EditorialDashboard() {
 
       <EditorialAnalytics token={token} />
 
-      <section id="ed-releases" className="mt-12 scroll-mt-36">
+      <EditorialDropDown id="ed-releases" label="Albums and EPs" count={releaseQueue} defaultOpen={releaseQueue > 0}>
         <ReleaseEditorialPanel
           releases={data.releases || []}
           releaseTracks={data.releaseTracks || []}
@@ -237,9 +237,9 @@ export default function EditorialDashboard() {
           act={act}
           busy={busy}
         />
-      </section>
+      </EditorialDropDown>
 
-      <section id="ed-beats" className="scroll-mt-36">
+      <EditorialDropDown id="ed-beats" label="Producer BeatStore" count={beatQueue} defaultOpen={beatQueue > 0}>
         <BeatStoreEditorialPanel
           beats={data.beats || []}
           messages={data.beatReviewMessages || []}
@@ -248,9 +248,9 @@ export default function EditorialDashboard() {
           act={act}
           busy={busy}
         />
-      </section>
+      </EditorialDropDown>
 
-      <section id="ed-tracks" className="mt-12 scroll-mt-36">
+      <EditorialDropDown id="ed-tracks" label="Single-track submissions" count={trackQueue} defaultOpen={trackQueue > 0}>
         <h2 className="text-2xl font-semibold">Single-track submission queue</h2>
         <p className="mt-2 text-sm text-text-secondary">
           Legacy single uploads. Prefer Album/EP for multi-track. Approval does not automatically publish or
@@ -270,9 +270,9 @@ export default function EditorialDashboard() {
           ))}
           {data.tracks.length === 0 && <Empty text="No submissions yet." />}
         </div>
-      </section>
+      </EditorialDropDown>
 
-      <section id="ed-requests" className="scroll-mt-36">
+      <EditorialDropDown id="ed-requests" label="Artist requests" count={requestQueue} defaultOpen={requestQueue > 0}>
         <ArtistRequestPanel
           requests={data.trackRequests}
           tracks={data.tracks}
@@ -281,9 +281,9 @@ export default function EditorialDashboard() {
           act={act}
           busy={busy}
         />
-      </section>
+      </EditorialDropDown>
 
-      <section id="ed-role-applications" className="mt-14 scroll-mt-36">
+      <EditorialDropDown id="ed-role-applications" label="Role applications" count={roleQueue} defaultOpen={roleQueue > 0}>
         <RoleApplicationPanel
           applications={data.roleApplications || []}
           profiles={data.profiles}
@@ -291,18 +291,19 @@ export default function EditorialDashboard() {
           act={act}
           busy={busy}
         />
-      </section>
+      </EditorialDropDown>
 
-      <section id="ed-identities" className="mt-14 scroll-mt-36">
+      <EditorialDropDown id="ed-identities" label="Creator public names" count={identityQueue} defaultOpen={identityQueue > 0}>
         <IdentityReviewPanel
           profiles={data.profiles}
           enabled={allowed('publish_artists')}
           act={act}
           busy={busy}
         />
-      </section>
+      </EditorialDropDown>
 
-      <section id="ed-artists" className="mt-14 scroll-mt-36 grid gap-10 lg:grid-cols-2">
+      <EditorialDropDown id="ed-artists" label="Creator publishing and programmes">
+        <div className="grid gap-10 lg:grid-cols-2">
         <div>
           <h2 className="text-2xl font-semibold">Creator publishing and BeatStore access</h2>
           <p className="mt-2 text-sm text-text-secondary">Publishing controls public discovery. Producer access separately controls beat uploads and catalogue ownership.</p>
@@ -359,24 +360,25 @@ export default function EditorialDashboard() {
         <div id="ed-programmes" className="scroll-mt-36">
           <ProgrammePanel programmes={data.programmes} enabled={allowed('schedule_programmes')} act={act} />
         </div>
-      </section>
+        </div>
+      </EditorialDropDown>
 
       {allowed('manage_staff') && (
-        <section id="ed-staff" className="scroll-mt-36">
+        <EditorialDropDown id="ed-staff" label="Staff and permissions">
           <StaffPanel profiles={data.profiles} staff={data.staff} act={act} />
-        </section>
+        </EditorialDropDown>
       )}
       {allowed('manage_artist_wallet') && (
-        <section id="ed-wallet" className="scroll-mt-36">
+        <EditorialDropDown id="ed-wallet" label="Artist wallet operations">
           <ArtistWalletPanel
             waitlist={data.artistWaitlist}
             deposits={data.artistDeposits}
             payoutRequests={data.artistPayoutRequests}
             profiles={data.profiles}
           />
-        </section>
+        </EditorialDropDown>
       )}
-      <section id="ed-audit" className="mt-14 scroll-mt-36">
+      <EditorialDropDown id="ed-audit" label="Recent audit trail" count={data.auditLog.length}>
         <h2 className="text-2xl font-semibold">Recent audit trail</h2>
         <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10">
           <table className="w-full min-w-[650px] text-left text-sm">
@@ -400,8 +402,60 @@ export default function EditorialDashboard() {
             </tbody>
           </table>
         </div>
-      </section>
+      </EditorialDropDown>
     </main>
+  )
+}
+
+function EditorialDropDown({
+  id,
+  label,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  id: string
+  label: string
+  count?: number
+  defaultOpen?: boolean
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
+  const panelId = `${id}-panel`
+
+  return (
+    <section id={id} className="mt-10 scroll-mt-36 rounded-2xl border border-white/10 bg-white/[.015]">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((value) => !value)}
+        className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition hover:bg-white/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="font-semibold">{label}</span>
+          {typeof count === 'number' && (
+            <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-text-secondary">
+              {count}
+            </span>
+          )}
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-xs text-text-secondary">
+          {open ? 'Hide section' : 'Show section'}
+          <svg
+            viewBox="0 0 20 20"
+            aria-hidden="true"
+            className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+          >
+            <path d="m5 7.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </span>
+      </button>
+      {open && <div id={panelId} className="border-t border-white/10 px-5 pb-6 pt-1">{children}</div>}
+    </section>
   )
 }
 
