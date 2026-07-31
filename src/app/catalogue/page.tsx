@@ -16,10 +16,7 @@ import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import { legacyPreviewUrl } from "@/lib/legacy-catalogue-media";
-import {
-  producerKeysMatch,
-  resolvePublicHandle,
-} from "@/lib/public-name";
+import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 
 type TrackType = "single" | "beat" | "mix";
 
@@ -568,6 +565,7 @@ function CataloguePageContent() {
   const [shelfMode, setShelfMode] = useState<"featured" | "trending" | "new">(
     "featured",
   );
+  const [shelvesExpanded, setShelvesExpanded] = useState(true);
   const [trendingScores, setTrendingScores] = useState<
     Record<string, { score: number; plays: number }>
   >({});
@@ -815,11 +813,7 @@ function CataloguePageContent() {
       const matchesGenre = genreFilter === "All" || track.genre === genreFilter;
       const matchesProducer =
         !producerFilter ||
-        producerKeysMatch(
-          producerFilter,
-          track.producerUsername,
-          track.artist,
-        );
+        producerKeysMatch(producerFilter, track.producerUsername, track.artist);
       // typeFilter music/beat already applied in scopeTracks; single/mix narrow further
       const matchesType =
         typeFilter === "all" ||
@@ -975,8 +969,7 @@ function CataloguePageContent() {
   const producerMode = Boolean(producerFilter && beatsMode);
   const producerLabel =
     resolvePublicHandle(
-      filteredTracks.find((track) => track.artist)?.artist ||
-        producerFilter,
+      filteredTracks.find((track) => track.artist)?.artist || producerFilter,
     ) || producerFilter;
   const producerProfileSlug =
     filteredTracks.find((track) => track.producerUsername)?.producerUsername ||
@@ -1235,85 +1228,122 @@ function CataloguePageContent() {
       {!beatsMode && <PublishedArtistsShelf />}
 
       {!producerMode && (
-      <section className="mb-10">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-brand">
-              Catalogue shelves
-            </p>
-            <p className="mt-1 text-sm text-text-secondary">
-              Featured is editorial. Trending ranks by plays and checkout
-              activity.
-            </p>
-          </div>
-          <div className="inline-flex rounded-full border border-white/10 bg-black/30 p-1 text-xs font-medium">
-            {(
-              [
-                ["featured", "Featured"],
-                ["trending", "Trending"],
-                ["new", "New"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setShelfMode(id)}
-                className={`rounded-full px-3.5 py-1.5 transition ${shelfMode === id ? "bg-brand text-black" : "text-text-secondary hover:text-white"}`}
+        <section className="mb-10">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <button
+              type="button"
+              aria-expanded={shelvesExpanded}
+              aria-controls="catalogue-shelves-content"
+              onClick={() => setShelvesExpanded((expanded) => !expanded)}
+              className="group flex min-w-0 items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              <span
+                aria-hidden="true"
+                className={`flex h-8 w-8 flex-none items-center justify-center rounded-full border border-white/10 bg-black/30 text-brand transition-transform ${shelvesExpanded ? "rotate-180" : ""}`}
               >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {shelfCards.map((collection) => {
-            const isTop =
-              shelfMode === "trending" &&
-              collection.rank === 1 &&
-              (collection.score || 0) > 0;
-            const isActive = collectionJump === collection.name;
-            return (
-              <button
-                type="button"
-                key={collection.name}
-                onClick={() => jumpToCollection(collection.name)}
-                className={`group relative flex items-center gap-3 rounded-xl border bg-bg-card/40 p-3 text-left transition ${
-                  isTop || isActive
-                    ? "border-brand/70 ring-1 ring-brand/30"
-                    : "border-white/10 hover:border-brand/40"
-                }`}
-              >
-                {collection.badge && (
-                  <span className="absolute right-2 top-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
-                    {collection.badge}
-                  </span>
-                )}
-                <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
-                  <Image
-                    src={collection.img}
-                    alt=""
-                    fill
-                    className="object-cover transition-transform group-hover:scale-[1.03]"
+                <svg
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="h-4 w-4"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path
+                    d="m5 7.5 5 5 5-5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                   />
-                </div>
-                <div className="min-w-0 pr-8">
-                  <div className="truncate text-sm font-semibold">
-                    {collection.name}
-                  </div>
-                  <div className="truncate text-xs text-text-secondary">
-                    {collection.detail}
-                  </div>
-                  {shelfMode === "trending" && collection.statLine && (
-                    <div className="mt-0.5 truncate text-[11px] text-brand/90">
-                      {collection.statLine}
+                </svg>
+              </span>
+              <span className="min-w-0">
+                <span className="block text-xs uppercase tracking-[0.2em] text-brand">
+                  Catalogue shelves
+                </span>
+                <span className="mt-1 block text-sm text-text-secondary">
+                  {shelvesExpanded
+                    ? "Featured is editorial. Trending ranks by plays and checkout activity."
+                    : "Expand to browse featured, trending and new shelves."}
+                </span>
+              </span>
+            </button>
+            <span className="text-xs font-medium text-text-secondary">
+              {shelvesExpanded ? "Hide shelves" : "Show shelves"}
+            </span>
+            {shelvesExpanded && (
+              <div className="inline-flex rounded-full border border-white/10 bg-black/30 p-1 text-xs font-medium">
+                {(
+                  [
+                    ["featured", "Featured"],
+                    ["trending", "Trending"],
+                    ["new", "New"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setShelfMode(id)}
+                    className={`rounded-full px-3.5 py-1.5 transition ${shelfMode === id ? "bg-brand text-black" : "text-text-secondary hover:text-white"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          {shelvesExpanded && (
+            <div
+              id="catalogue-shelves-content"
+              className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+            >
+              {shelfCards.map((collection) => {
+                const isTop =
+                  shelfMode === "trending" &&
+                  collection.rank === 1 &&
+                  (collection.score || 0) > 0;
+                const isActive = collectionJump === collection.name;
+                return (
+                  <button
+                    type="button"
+                    key={collection.name}
+                    onClick={() => jumpToCollection(collection.name)}
+                    className={`group relative flex items-center gap-3 rounded-xl border bg-bg-card/40 p-3 text-left transition ${
+                      isTop || isActive
+                        ? "border-brand/70 ring-1 ring-brand/30"
+                        : "border-white/10 hover:border-brand/40"
+                    }`}
+                  >
+                    {collection.badge && (
+                      <span className="absolute right-2 top-2 rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
+                        {collection.badge}
+                      </span>
+                    )}
+                    <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg">
+                      <Image
+                        src={collection.img}
+                        alt=""
+                        fill
+                        className="object-cover transition-transform group-hover:scale-[1.03]"
+                      />
                     </div>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                    <div className="min-w-0 pr-8">
+                      <div className="truncate text-sm font-semibold">
+                        {collection.name}
+                      </div>
+                      <div className="truncate text-xs text-text-secondary">
+                        {collection.detail}
+                      </div>
+                      {shelfMode === "trending" && collection.statLine && (
+                        <div className="mt-0.5 truncate text-[11px] text-brand/90">
+                          {collection.statLine}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
 
       <section id="browse" className="scroll-mt-24">
