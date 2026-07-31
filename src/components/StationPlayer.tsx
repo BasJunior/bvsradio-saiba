@@ -563,6 +563,64 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     }
   }, [current, flushListening, isPlaying, pushHistory]);
 
+  // Keep lock-screen / notification controls attached to the real BVS queue.
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+
+    const setHandler = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+      try {
+        navigator.mediaSession.setActionHandler(action, handler);
+      } catch {
+        // Some Safari/embedded WebView versions expose Media Session partially.
+      }
+    };
+
+    setHandler("play", () => {
+      if (!isPlaying) void toggle();
+    });
+    setHandler("pause", () => {
+      if (isPlaying) void toggle();
+    });
+    setHandler("previoustrack", () => advance(-1));
+    setHandler("nexttrack", () => advance(1));
+
+    // Prefer track navigation over the platform's default ±10 second buttons.
+    setHandler("seekbackward", null);
+    setHandler("seekforward", null);
+
+    return () => {
+      setHandler("play", null);
+      setHandler("pause", null);
+      setHandler("previoustrack", null);
+      setHandler("nexttrack", null);
+    };
+  }, [advance, isPlaying, toggle]);
+
+  useEffect(() => {
+    if (!("mediaSession" in navigator) || !current || typeof MediaMetadata === "undefined") return;
+
+    try {
+      const artwork = current.artwork || "/bvs-apple-touch-v2.png";
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: current.title || "BVS Radio",
+        artist: current.artist || "BVS Radio",
+        album: current.project || playingFrom || "BVS Radio",
+        artwork: [{ src: new URL(artwork, window.location.origin).href }],
+      });
+    } catch {
+      // Metadata support varies between Safari, Android WebView and browsers.
+    }
+  }, [current, playingFrom]);
+
+  useEffect(() => {
+    if (!("mediaSession" in navigator)) return;
+    try {
+      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    } catch {
+      // Ignore partial Media Session implementations.
+    }
+  }, [isPlaying]);
+
   const seek = useCallback((ratio: number) => {
     const el = audio.current;
     if (!el || !el.duration || !Number.isFinite(el.duration)) return;
