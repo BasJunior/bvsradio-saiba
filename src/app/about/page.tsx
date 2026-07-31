@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "About BVS Radio",
-  description: "Learn about BVS Radio — Zimbabwe's premier online radio station celebrating sound, culture, and community.",
+  description: "Learn about BVS Radio — Zimbabwe's online radio and creative platform for listeners, artists, and producers.",
 };
 
 export default function AboutPage() {
@@ -69,10 +69,10 @@ export default function AboutPage() {
         <h2 className="text-3xl font-semibold mb-8 text-center">What Makes BVS Different</h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[
-            { title: "Authentic Curation", desc: "Every playlist and show is crafted by people who live and breathe Zimbabwean music and culture." },
-            { title: "Live & Local", desc: "Real DJs. Real conversations. Real connection — no automation, just heart." },
-            { title: "Artist First", desc: "Built by artists, made for artists — with upload, BeatStore, catalogue and service paths kept clear." },
-            { title: "Global Reach", desc: "Streaming to Zimbabweans and Africa lovers across 40+ countries." },
+            { title: "Editorial rotation", desc: "A live continuous stream of approved releases and curated tracks — always ready to play." },
+            { title: "Artist first", desc: "Clear submit, review, credits, BeatStore and service paths built from real creator workflows." },
+            { title: "Catalogue & commerce", desc: "Discover music, lease beats, and book mix/master work without mixing up what is free to hear and what is for sale." },
+            { title: "Harare roots", desc: "Born in Zimbabwe, built for listeners and artists at home and in the diaspora." },
           ].map((item, index) => (
             <div key={index} className="bg-bg-card/50 border border-white/10 rounded-2xl p-6">
               <h3 className="font-semibold text-lg mb-3 text-brand">{item.title}</h3>

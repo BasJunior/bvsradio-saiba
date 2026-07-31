@@ -535,7 +535,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, [advance, current, flushListening, tracks.length]);
 
   const toggle = useCallback(async () => {
-    if (!audio.current || !current) return setError("The rotation is being prepared.");
+    if (!audio.current || !current) return setError("No track is loaded. Open Listen or pick something from the catalogue.");
     try {
       if (isPlaying) {
         audio.current.pause();

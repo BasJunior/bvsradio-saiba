@@ -1612,26 +1612,27 @@ function CataloguePageContent() {
         <section className="mt-14 grid gap-6 border-t border-white/10 pt-10 md:grid-cols-[0.9fr_1.1fr] md:items-center">
           <div>
             <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
-              Coming soon
+              Next on video
             </p>
             <h2 className="text-3xl font-semibold mb-3">
-              Video drops from the BVS studio.
+              Studio sessions and live drops.
             </h2>
             <p className="text-text-secondary">
-              Preview music and beats here today. Studio sessions and live drops
-              will land in this space as soon as the footage is ready to share.
+              Music and beats are available to preview and buy here now. Video
+              from the BVS studio will join this space as each clip is cleared
+              for public release.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             {[
               {
                 title: "Studio Sessions",
-                detail: "Behind-the-scenes soon",
+                detail: "Behind-the-scenes when ready",
                 img: "/images/hero-studio.jpg",
               },
               {
                 title: "Live Drops",
-                detail: "Show & stage moments soon",
+                detail: "Show & stage moments when ready",
                 img: "/images/festival-crowd.jpg",
               },
             ].map((item) => (

@@ -49,7 +49,7 @@ export default function HomeListenPanel() {
               Playing from {player.playingFrom || "BVS continuous rotation"}
             </p>
             <h2 className="truncate text-lg font-semibold leading-snug sm:text-2xl">
-              {player.current?.title || "Library being prepared"}
+              {player.current?.title || "Start the BVS rotation"}
             </h2>
             <p className="mt-0.5 truncate text-sm text-white/70">
               {player.current?.artist || "BVS Radio"}

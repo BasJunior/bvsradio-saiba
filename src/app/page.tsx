@@ -48,7 +48,7 @@ export default async function HomePage() {
               Radio, music and tools for the people shaping Zimbabwean sound.
             </h1>
             <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-white/75 sm:mt-6 sm:text-lg">
-              Listen to the BVS rotation, discover artists and future programmes, or bring your own project to the platform for submission and audio services.
+              The continuous rotation is live. Browse the catalogue and BeatStore, submit music for review, or book mix and master services — all from one place.
             </p>
             <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
               <Link
@@ -105,7 +105,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div className="min-w-0">
-              <p className="mb-2 text-xs uppercase tracking-[0.15em] text-brand sm:tracking-[0.2em]">Programmes in development</p>
+              <p className="mb-2 text-xs uppercase tracking-[0.15em] text-brand sm:tracking-[0.2em]">Upcoming programmes</p>
               <h2 className="text-balance text-2xl font-semibold sm:text-3xl md:text-4xl">Shows built around the scene.</h2>
             </div>
             <Link href="/shows" className="text-sm text-brand hover:underline">
@@ -122,7 +122,7 @@ export default async function HomePage() {
                 <div className="relative aspect-[4/3]">
                   <Image src={show.image} alt="" fill className="object-cover transition group-hover:scale-[1.02]" />
                   <span className="absolute left-4 top-4 rounded-full bg-black/70 px-3 py-1 text-[10px] uppercase tracking-widest">
-                    Preview
+                    Upcoming
                   </span>
                 </div>
                 <div className="p-5">
