@@ -141,8 +141,9 @@ def process(conn, client, bucket: str, job) -> None:
             blockers.append("SAMPLE_RATE_TOO_LOW")
         if metadata["channels"] < 1:
             blockers.append("INVALID_CHANNEL_LAYOUT")
-        if peak is not None and peak > 0:
-            blockers.append("TRUE_PEAK_CLIPPING")
+        # Keep true-peak measurements visible to Editorial, but do not treat
+        # clipping as a security/publication failure. Editorial can still use
+        # true_peak_db when deciding whether to request a cleaner master.
         if duplicate:
             blockers.append("EXACT_AUDIO_DUPLICATE")
         if scan == "infected":
