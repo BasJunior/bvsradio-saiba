@@ -37,7 +37,7 @@ export default function PublishedArtistsShelf({ limit = 6 }: { limit?: number })
         {artists.slice(0, limit).map((artist) => (
           <Link key={artist.id} href={`/artist/${artist.username}`} className="group min-w-0">
             <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-              <Image src={artist.image} alt={artist.name} fill unoptimized={/^https?:\/\//i.test(artist.image)} className="object-cover transition group-hover:scale-[1.03]" />
+              <Image src={artist.image} alt={artist.name} fill unoptimized={/^https?:\/\//i.test(artist.image)} className="object-contain transition group-hover:scale-[1.03]" />
             </div>
             <h3 className="mt-3 truncate font-semibold group-hover:text-brand">{artist.name}</h3>
             <p className="truncate text-xs text-text-secondary">

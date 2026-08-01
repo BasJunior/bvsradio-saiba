@@ -66,7 +66,7 @@ export default async function ArtistPage({
             alt={profile.name}
             fill
             unoptimized={/^https?:\/\//i.test(profile.image)}
-            className="object-cover"
+            className="object-contain"
             priority
           />
         </div>

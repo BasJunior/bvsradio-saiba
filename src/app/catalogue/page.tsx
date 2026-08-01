@@ -15,6 +15,7 @@ import { rankCollections, type CollectionCard } from "@/lib/catalogue-trending";
 import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedProducersShelf from "@/components/PublishedProducersShelf";
+import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { legacyPreviewUrl } from "@/lib/legacy-catalogue-media";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 
@@ -1226,6 +1227,7 @@ function CataloguePageContent() {
       )}
 
       {!beatsMode && <PublishedArtistsShelf />}
+      {!beatsMode && <PublishedAlbumsShelf />}
 
       {!producerMode && (
         <section className="mb-10">

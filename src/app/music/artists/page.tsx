@@ -22,7 +22,7 @@ export default async function ArtistsDirectoryPage() {
           {artists.map((artist) => (
             <Link key={artist.id} href={`/artist/${artist.username}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]">
               <div className="relative aspect-square bg-white/5">
-                <Image src={artist.image} alt={artist.name} fill unoptimized={/^https?:\/\//i.test(artist.image)} className="object-cover transition group-hover:scale-[1.03]" />
+                <Image src={artist.image} alt={artist.name} fill unoptimized={/^https?:\/\//i.test(artist.image)} className="object-contain transition group-hover:scale-[1.03]" />
               </div>
               <div className="p-4">
                 <p className="text-[10px] uppercase tracking-[0.2em] text-brand">Verified {artist.role}</p>
