@@ -109,6 +109,7 @@ export function fileUrlForPath(path: string) {
 export async function materializeReleaseTracks(releaseId: string, options: {
   publish: boolean;
   inRotation: boolean;
+  rotationReleaseTrackIds?: string[];
   reviewedBy: string;
 }) {
   const releases = await restGet<ReleaseRow[]>(
@@ -144,9 +145,20 @@ export async function materializeReleaseTracks(releaseId: string, options: {
 
   const now = new Date().toISOString();
   const status = options.publish ? "approved" : release.editorial_status;
+  const selectedRotationIds = options.rotationReleaseTrackIds
+    ? new Set(options.rotationReleaseTrackIds)
+    : null;
+  const memberIds = new Set(members.map((member) => member.id));
+  if (selectedRotationIds && [...selectedRotationIds].some((id) => !memberIds.has(id))) {
+    return { ok: false, error: "One or more selected rotation tracks do not belong to this release." };
+  }
+  const shouldRotate = (memberId: string) => options.publish && (
+    selectedRotationIds ? selectedRotationIds.has(memberId) : options.inRotation
+  );
 
   for (const member of members) {
     const fileUrl = member.file_url || fileUrlForPath(member.audio_path);
+    const inRotation = shouldRotate(member.id);
     if (member.track_id) {
       await restPatch(`tracks?id=eq.${member.track_id}`, {
         title: member.title,
@@ -157,8 +169,8 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         artwork_url: release.cover_url || "/assets/images/default-artwork.jpg",
         editorial_status: status,
         is_public: options.publish,
-        in_rotation: options.inRotation && options.publish,
-        rotation_added_at: options.inRotation && options.publish ? now : null,
+        in_rotation: inRotation,
+        rotation_added_at: inRotation ? now : null,
         reviewed_by: options.reviewedBy,
         reviewed_at: now,
         release_id: releaseId,
@@ -179,8 +191,8 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         play_count: 0,
         like_count: 0,
         editorial_status: status,
-        in_rotation: options.inRotation && options.publish,
-        rotation_added_at: options.inRotation && options.publish ? now : null,
+        in_rotation: inRotation,
+        rotation_added_at: inRotation ? now : null,
         explicit_content: release.explicit_content,
         reviewed_by: options.reviewedBy,
         reviewed_at: now,
@@ -203,7 +215,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
   await restPatch(`releases?id=eq.${releaseId}`, {
     editorial_status: status,
     is_public: options.publish,
-    in_rotation: options.inRotation && options.publish,
+    in_rotation: options.publish && (selectedRotationIds ? selectedRotationIds.size > 0 : options.inRotation),
     reviewed_by: options.reviewedBy,
     reviewed_at: now,
     published_at: options.publish ? now : null,

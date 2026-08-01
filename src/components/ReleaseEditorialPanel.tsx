@@ -88,6 +88,7 @@ export default function ReleaseEditorialPanel({
   busy: string
 }) {
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [rotationSelections, setRotationSelections] = useState<Record<string, string[]>>({})
 
   if (!releases?.length) {
     return (
@@ -121,6 +122,16 @@ export default function ReleaseEditorialPanel({
           const mediaReady = release.passport_version === 0 ||
             (members.length > 0 && mediaJobs.length === members.length && mediaJobs.every((item) => item.status === 'ready'))
           const publishable = rightsReady && mediaReady
+          const selectedRotationIds = rotationSelections[release.id] || []
+          const toggleRotationTrack = (trackId: string) => {
+            const current = rotationSelections[release.id] || []
+            setRotationSelections({
+              ...rotationSelections,
+              [release.id]: current.includes(trackId)
+                ? current.filter((id) => id !== trackId)
+                : [...current, trackId],
+            })
+          }
           return (
             <article key={release.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
               <div className="flex flex-wrap gap-4">
@@ -139,16 +150,38 @@ export default function ReleaseEditorialPanel({
                     {release.artist_name} · {release.genre || '—'} · {release.track_count || members.length} tracks ·{' '}
                     {new Date(release.created_at).toLocaleString()}
                   </p>
-                  <ol className="mt-3 space-y-1 text-sm text-text-secondary">
+                  <ol className="mt-3 space-y-2 text-sm text-text-secondary">
                     {members.map((m) => (
-                      <li key={m.id}>
-                        {m.position}. {m.title}
+                      <li key={m.id} className="rounded-lg border border-white/10 p-2">
+                        <div className="flex items-center gap-3">
+                          {canRotate && !release.is_public && (
+                            <input
+                              type="checkbox"
+                              checked={selectedRotationIds.includes(m.id)}
+                              onChange={() => toggleRotationTrack(m.id)}
+                              aria-label={`Select ${m.title} for rotation`}
+                              className="h-4 w-4 accent-emerald-400"
+                            />
+                          )}
+                          <span>{m.position}. {m.title}</span>
+                        </div>
                         {m.file_url && (
                           <audio controls preload="none" src={m.file_url} className="mt-1 h-8 max-w-full" />
                         )}
                       </li>
                     ))}
                   </ol>
+                  {canRotate && !release.is_public && (
+                    <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs text-text-secondary">
+                      <p className="font-semibold text-text-primary">Rotation selection</p>
+                      <p className="mt-1">Choose only the songs you want in continuous rotation. The complete album will still be published to the catalogue.</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setRotationSelections({ ...rotationSelections, [release.id]: members.map((m) => m.id) })} className="rounded-full border border-white/15 px-3 py-1">Select all</button>
+                        <button type="button" onClick={() => setRotationSelections({ ...rotationSelections, [release.id]: [] })} className="rounded-full border border-white/15 px-3 py-1">Clear</button>
+                        <span className="px-2 py-1">{selectedRotationIds.length} of {members.length} selected</span>
+                      </div>
+                    </div>
+                  )}
                   <div className={`mt-4 rounded-xl border p-3 text-xs ${publishable ? 'border-emerald-400/30 bg-emerald-400/5' : 'border-amber-300/30 bg-amber-300/5'}`}>
                     <p className="font-semibold uppercase tracking-wider">
                       Rights Passport · {(release.preflight_status || 'not checked').replaceAll('_', ' ')}
@@ -213,13 +246,14 @@ export default function ReleaseEditorialPanel({
                       onClick={() =>
                         void act('publish_release', {
                           releaseId: release.id,
-                          inRotation: true,
+                          inRotation: selectedRotationIds.length > 0,
+                          rotationReleaseTrackIds: selectedRotationIds,
                           notes: notes[release.id] || '',
                         })
                       }
                       className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Publish + rotation
+                      Publish + selected rotation ({selectedRotationIds.length})
                     </button>
                     <button
                       type="button"

@@ -353,6 +353,9 @@ export async function PATCH(request: Request) {
         const { materializeReleaseTracks } = await import('@/lib/releases-server')
         const releaseId = String(body.releaseId || '')
         const inRotation = body.inRotation !== false
+        const rotationReleaseTrackIds = Array.isArray(body.rotationReleaseTrackIds)
+          ? body.rotationReleaseTrackIds.map(String).filter(Boolean).slice(0, 200)
+          : undefined
         const notes = String(body.notes || '').slice(0, 2000)
         if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
         const previous = (await optionalJson(
@@ -364,10 +367,15 @@ export async function PATCH(request: Request) {
         const result = await materializeReleaseTracks(releaseId, {
           publish: true,
           inRotation,
+          rotationReleaseTrackIds,
           reviewedBy: identity.user.id,
         })
         if (!result.ok) return NextResponse.json({ error: result.error || 'Publish failed.' }, { status: 400 })
-        await audit(identity.user.id, 'release_published', 'release', releaseId, { inRotation, trackCount: result.trackCount })
+        await audit(identity.user.id, 'release_published', 'release', releaseId, {
+          inRotation,
+          rotationTrackCount: rotationReleaseTrackIds?.length ?? (inRotation ? result.trackCount : 0),
+          trackCount: result.trackCount,
+        })
         if (previous?.editorial_status !== 'approved') {
           await notifyApproval({ userId: previous?.user_id, title: previous?.title, kind: 'release' })
         }
