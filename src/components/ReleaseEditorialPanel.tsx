@@ -125,7 +125,7 @@ export default function ReleaseEditorialPanel({
           const publishable = rightsReady && mediaReady
           const selectedRotationIds = rotationSelections[release.id] ?? members.filter((member) => member.in_rotation).map((member) => member.id)
           const toggleRotationTrack = (trackId: string) => {
-            const current = rotationSelections[release.id] || []
+            const current = rotationSelections[release.id] ?? members.filter((member) => member.in_rotation).map((member) => member.id)
             setRotationSelections({
               ...rotationSelections,
               [release.id]: current.includes(trackId)
