@@ -30,6 +30,7 @@ type ReleaseTrack = {
   position: number
   title: string
   file_url?: string
+  in_rotation?: boolean
 }
 type ReleaseContributor = {
   id: string
@@ -122,7 +123,7 @@ export default function ReleaseEditorialPanel({
           const mediaReady = release.passport_version === 0 ||
             (members.length > 0 && mediaJobs.length === members.length && mediaJobs.every((item) => item.status === 'ready'))
           const publishable = rightsReady && mediaReady
-          const selectedRotationIds = rotationSelections[release.id] || []
+          const selectedRotationIds = rotationSelections[release.id] ?? members.filter((member) => member.in_rotation).map((member) => member.id)
           const toggleRotationTrack = (trackId: string) => {
             const current = rotationSelections[release.id] || []
             setRotationSelections({
@@ -154,7 +155,7 @@ export default function ReleaseEditorialPanel({
                     {members.map((m) => (
                       <li key={m.id} className="rounded-lg border border-white/10 p-2">
                         <div className="flex items-center gap-3">
-                          {canRotate && !release.is_public && (
+                          {canRotate && (
                             <input
                               type="checkbox"
                               checked={selectedRotationIds.includes(m.id)}
@@ -171,15 +172,28 @@ export default function ReleaseEditorialPanel({
                       </li>
                     ))}
                   </ol>
-                  {canRotate && !release.is_public && (
+                  {canRotate && (
                     <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs text-text-secondary">
                       <p className="font-semibold text-text-primary">Rotation selection</p>
-                      <p className="mt-1">Choose only the songs you want in continuous rotation. The complete album will still be published to the catalogue.</p>
+                      <p className="mt-1">Choose only the songs you want in continuous rotation. You can edit this selection after the complete album is published.</p>
                       <div className="mt-2 flex flex-wrap gap-2">
                         <button type="button" onClick={() => setRotationSelections({ ...rotationSelections, [release.id]: members.map((m) => m.id) })} className="rounded-full border border-white/15 px-3 py-1">Select all</button>
                         <button type="button" onClick={() => setRotationSelections({ ...rotationSelections, [release.id]: [] })} className="rounded-full border border-white/15 px-3 py-1">Clear</button>
                         <span className="px-2 py-1">{selectedRotationIds.length} of {members.length} selected</span>
                       </div>
+                      {release.is_public && (
+                        <button
+                          type="button"
+                          disabled={Boolean(busy)}
+                          onClick={() => void act('update_release_rotation', {
+                            releaseId: release.id,
+                            rotationReleaseTrackIds: selectedRotationIds,
+                          })}
+                          className="mt-3 rounded-full bg-emerald-400 px-4 py-2 font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Save rotation changes
+                        </button>
+                      )}
                     </div>
                   )}
                   <div className={`mt-4 rounded-xl border p-3 text-xs ${publishable ? 'border-emerald-400/30 bg-emerald-400/5' : 'border-amber-300/30 bg-amber-300/5'}`}>
@@ -282,21 +296,6 @@ export default function ReleaseEditorialPanel({
                     >
                       Reject
                     </button>
-                    {canRotate && release.is_public && (
-                      <button
-                        type="button"
-                        disabled={Boolean(busy)}
-                        onClick={() =>
-                          void act('set_release_rotation', {
-                            releaseId: release.id,
-                            enabled: !release.in_rotation,
-                          })
-                        }
-                        className="rounded-full border border-white/20 px-4 py-2 text-xs"
-                      >
-                        {release.in_rotation ? 'Remove from rotation' : 'Add to rotation'}
-                      </button>
-                    )}
                   </div>
                 </div>
               )}

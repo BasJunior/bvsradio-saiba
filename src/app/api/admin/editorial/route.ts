@@ -82,7 +82,15 @@ export async function GET(request: Request) {
     'track_review_messages?select=*&order=created_at.asc&limit=500',
   )
   const releases = await optionalJson('releases?select=*&order=created_at.desc&limit=100')
-  const releaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
+  const rawReleaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
+  const releaseCatalogueTracks = await optionalJson('tracks?release_id=not.is.null&select=id,in_rotation&limit=1000')
+  const rotationByTrackId = new Map(
+    (releaseCatalogueTracks as Array<Record<string, unknown>>).map((track) => [String(track.id), Boolean(track.in_rotation)]),
+  )
+  const releaseTracks = (rawReleaseTracks as Array<Record<string, unknown>>).map((track) => ({
+    ...track,
+    in_rotation: track.track_id ? rotationByTrackId.get(String(track.track_id)) === true : false,
+  }))
   const releaseContributors = await optionalJson('release_contributors?select=*&order=created_at.asc&limit=1000')
   const rawMediaProcessingJobs = await optionalJson('media_processing_jobs?select=*&order=created_at.asc&limit=1000')
   const mediaProcessingJobs = await Promise.all((rawMediaProcessingJobs as Array<Record<string, unknown>>).map(async job => ({
@@ -380,6 +388,45 @@ export async function PATCH(request: Request) {
           await notifyApproval({ userId: previous?.user_id, title: previous?.title, kind: 'release' })
         }
         return NextResponse.json({ result })
+      }
+      case 'update_release_rotation': {
+        requirePermission('manage_rotation')
+        const releaseId = String(body.releaseId || '')
+        const selectedReleaseTrackIds = Array.isArray(body.rotationReleaseTrackIds)
+          ? [...new Set(body.rotationReleaseTrackIds.map(String).filter(Boolean).slice(0, 200))]
+          : []
+        if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
+
+        const releases = await optionalJson(
+          `releases?id=eq.${encodeURIComponent(releaseId)}&is_public=eq.true&select=id&limit=1`,
+        )
+        if (!releases[0]) return NextResponse.json({ error: 'Publish the album before editing its rotation.' }, { status: 409 })
+
+        const members = await optionalJson(
+          `release_tracks?release_id=eq.${encodeURIComponent(releaseId)}&select=id,track_id`,
+        ) as Array<{ id: string; track_id?: string | null }>
+        const memberIds = new Set(members.map((member) => member.id))
+        if (selectedReleaseTrackIds.some((id) => !memberIds.has(id))) {
+          return NextResponse.json({ error: 'One or more selected tracks do not belong to this album.' }, { status: 400 })
+        }
+
+        const selectedMemberIds = new Set(selectedReleaseTrackIds)
+        const now = new Date().toISOString()
+        await Promise.all(members.filter((member) => member.track_id).map((member) => {
+          const enabled = selectedMemberIds.has(member.id)
+          return patchTable('tracks', `id=eq.${encodeURIComponent(String(member.track_id))}&is_public=eq.true`, {
+            in_rotation: enabled,
+            rotation_added_at: enabled ? now : null,
+          })
+        }))
+        await patchTable('releases', `id=eq.${encodeURIComponent(releaseId)}`, {
+          in_rotation: selectedReleaseTrackIds.length > 0,
+          updated_at: now,
+        })
+        await audit(identity.user.id, 'release_rotation_updated', 'release', releaseId, {
+          rotationTrackCount: selectedReleaseTrackIds.length,
+        })
+        return NextResponse.json({ selected: selectedReleaseTrackIds.length })
       }
       case 'reject_release': {
         requirePermission('approve_submissions')
