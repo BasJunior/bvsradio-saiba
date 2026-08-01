@@ -515,10 +515,12 @@ export default function UploadPage() {
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium">Cover Artwork (optional)</label>
+              <label className="mb-1.5 block text-sm font-medium">Cover Artwork (required)</label>
               <div className="rounded-xl border border-white/10 p-4">
                 <input
                   type="file"
+                  required
+                  accept="image/jpeg,image/png,image/webp"
                   onChange={(e) => setArtworkFile(e.target.files?.[0] || null)}
                   className="hidden"
                   id="artwork"
@@ -526,7 +528,7 @@ export default function UploadPage() {
                 <label htmlFor="artwork" className="flex cursor-pointer items-center gap-3 text-sm">
                   <span className="rounded-lg border border-white/20 px-3 py-1.5 hover:bg-white/5">Choose image</span>
                   <span className="text-text-secondary">
-                    {artworkFile ? artworkFile.name : 'Recommended 1000×1000px · max 8MB'}
+                    {artworkFile ? artworkFile.name : 'Square JPG, PNG or WebP · recommended 3000×3000px · max 8MB'}
                   </span>
                 </label>
               </div>

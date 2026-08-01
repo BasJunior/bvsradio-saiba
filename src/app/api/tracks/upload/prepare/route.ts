@@ -96,6 +96,12 @@ export async function POST(req: Request) {
     }
 
     let artworkSlot: { path: string; signedUrl: string } | null = null;
+    if (!body.artwork || typeof body.artwork.size !== "number" || body.artwork.size <= 0) {
+      return NextResponse.json(
+        { error: "Cover artwork is required. Upload a square JPG, PNG or WebP image (recommended 3000×3000px, maximum 8MB)." },
+        { status: 400 },
+      );
+    }
     if (body.artwork && typeof body.artwork.size === "number" && body.artwork.size > 0) {
       if (body.artwork.size > 8 * 1024 * 1024) {
         return NextResponse.json(
@@ -106,14 +112,21 @@ export async function POST(req: Request) {
       const artName = String(body.artwork.name || "cover.jpg");
       const artExt =
         (artName.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+      const artType = String(body.artwork.type || "").toLowerCase();
+      if (!["jpg", "jpeg", "png", "webp"].includes(artExt) || !["image/jpeg", "image/png", "image/webp"].includes(artType)) {
+        return NextResponse.json(
+          { error: "Cover artwork must be a JPG, PNG or WebP image." },
+          { status: 400 },
+        );
+      }
       const artPath = `tracks/${user.id}/${stamp}-artwork.${artExt}`;
       artworkSlot = await signedUpload(
         artPath,
-        String(body.artwork.type || "image/jpeg"),
+        artType,
       );
       if (!artworkSlot) {
         return NextResponse.json(
-          { error: "Could not prepare artwork upload. Try again without cover art, or contact BVS." },
+          { error: "Could not prepare the required cover artwork upload. Please retry or contact BVS." },
           { status: 500 },
         );
       }

@@ -164,9 +164,9 @@ export async function POST(req: Request) {
     const rightsConfirmed = body.rightsConfirmed === true || body.rightsConfirmed === "true";
     const explicit = body.explicit === true || body.explicit === "true";
 
-    if (!title || !genre || !audioPath || !rightsConfirmed) {
+    if (!title || !genre || !audioPath || !artworkPath || !rightsConfirmed) {
       return NextResponse.json(
-        { error: "Title, genre, audio file and rights confirmation are required." },
+        { error: "Title, genre, audio file, cover artwork and rights confirmation are required." },
         { status: 400 },
       );
     }
@@ -190,13 +190,14 @@ export async function POST(req: Request) {
     }
 
     const audioUrl = r2MediaUrl(audioPath);
-    let artworkUrl = "/assets/images/default-artwork.jpg";
-    if (artworkPath) {
-      const artOk = await objectExists(artworkPath);
-      if (artOk) {
-        artworkUrl = r2MediaUrl(artworkPath);
-      }
+    const artOk = await objectExists(artworkPath);
+    if (!artOk) {
+      return NextResponse.json(
+        { error: "Cover artwork was not found in storage. Upload the image again." },
+        { status: 400 },
+      );
     }
+    const artworkUrl = r2MediaUrl(artworkPath);
 
     const artistName = creatorPublicName({
       publicName: profile.creator_public_name,
