@@ -2,15 +2,16 @@ import { NextResponse } from 'next/server'
 import { qrLoginConfigured, restUrl, serviceHeaders, tokenHash } from '@/lib/qr-login-server'
 
 export const dynamic = 'force-dynamic'
+const noStore = { headers: { 'Cache-Control': 'no-store' } }
 
 export async function POST(request: Request) {
   if (!qrLoginConfigured()) {
-    return NextResponse.json({ error: 'QR login is temporarily unavailable.' }, { status: 503 })
+    return NextResponse.json({ error: 'QR login is temporarily unavailable.' }, { status: 503, ...noStore })
   }
   const body = await request.json().catch(() => ({}))
   const id = typeof body.pairingId === 'string' ? body.pairingId : ''
   const pollToken = typeof body.pollToken === 'string' ? body.pollToken : ''
-  if (!id || !pollToken) return NextResponse.json({ error: 'Invalid login request.' }, { status: 400 })
+  if (!id || !pollToken) return NextResponse.json({ error: 'Invalid login request.' }, { status: 400, ...noStore })
 
   const hash = tokenHash(pollToken)
   const lookup = await fetch(
@@ -20,10 +21,10 @@ export async function POST(request: Request) {
   const rows = lookup.ok ? await lookup.json() : []
   const pairing = Array.isArray(rows) ? rows[0] : null
   if (!pairing || Date.parse(pairing.expires_at) <= Date.now()) {
-    return NextResponse.json({ status: 'expired' }, { status: 410 })
+    return NextResponse.json({ status: 'expired' }, { status: 410, ...noStore })
   }
-  if (pairing.status === 'pending') return NextResponse.json({ status: 'pending' })
-  if (pairing.status === 'consumed') return NextResponse.json({ status: 'expired' }, { status: 410 })
+  if (pairing.status === 'pending') return NextResponse.json({ status: 'pending' }, noStore)
+  if (pairing.status === 'consumed') return NextResponse.json({ status: 'expired' }, { status: 410, ...noStore })
 
   const consume = await fetch(restUrl('/rest/v1/rpc/consume_qr_login_pairing'), {
     method: 'POST',
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
   })
   const consumed = consume.ok ? await consume.json() : []
   const approved = Array.isArray(consumed) ? consumed[0] : null
-  if (!approved?.user_email) return NextResponse.json({ status: 'pending' }, { status: 409 })
+  if (!approved?.user_email) return NextResponse.json({ status: 'pending' }, { status: 409, ...noStore })
 
   const link = await fetch(restUrl('/auth/v1/admin/generate_link'), {
     method: 'POST',
@@ -51,11 +52,11 @@ export async function POST(request: Request) {
       body: JSON.stringify({ status: 'approved', consumed_at: null }),
       cache: 'no-store',
     }).catch(() => null)
-    return NextResponse.json({ error: 'Could not complete QR login.' }, { status: 503 })
+    return NextResponse.json({ error: 'Could not complete QR login.' }, { status: 503, ...noStore })
   }
 
   return NextResponse.json(
     { status: 'approved', tokenHash: generated.hashed_token, type: 'magiclink' },
-    { headers: { 'Cache-Control': 'no-store' } },
+    noStore,
   )
 }
