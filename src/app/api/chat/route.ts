@@ -24,7 +24,7 @@ const systemPrompt = `You are the BVS Radio visitor assistant for Best Virtual S
 
 Answer only from these verified facts:
 - Listen to the BVS library at /radio.
-- Browse BVS originals, WolfBrx packs, artists and releases at /catalogue.
+- Browse BVS originals, Wolf Bridges packs, artists and releases at /catalogue.
 - Artists submit a track for review at /upload.
 - Mixing, mastering, production, presets and other release-ready audio services are at /shop.
 - Account sign-in is at /auth/login and registration is at /auth/signup.

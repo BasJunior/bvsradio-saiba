@@ -92,7 +92,7 @@ export default function SearchPage() {
     <p className="mt-3 max-w-2xl text-text-secondary">Search only returns content currently published on BVS. New artist profiles and shows will appear here as they go live.</p>
     <label className="mt-8 block max-w-3xl">
       <span className="sr-only">Search BVS</span>
-      <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try “WolfBrx”, “gospel” or “June Pack”" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" />
+      <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try “Wolf Bridges”, “gospel” or “June Pack”" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" />
     </label>
     <div className="mt-5 flex flex-wrap gap-2" aria-label="Filter results">
       {filters.map(({ label, value }) => <button key={value} onClick={() => setFilter(value)} className={`rounded-full px-4 py-2 text-sm ${filter === value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{label}</button>)}

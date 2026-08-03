@@ -19,6 +19,8 @@ export function normalizeCreatorKey(value?: string | null) {
 const LEGACY_HANDLE_ALIASES: Record<string, string> = {
   bvsadmin: 'BasJunior',
   admin: 'BasJunior',
+  wolfbrx: 'wolf-bridges',
+  wolfbridges: 'wolf-bridges',
 }
 
 export function resolvePublicHandle(value?: string | null) {

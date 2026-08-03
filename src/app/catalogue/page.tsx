@@ -77,11 +77,11 @@ const streamingReleaseSongs: Track[] = [
   ].map(([title, duration, videoId], index) => ({
     id: 1100 + index,
     title,
-    artist: "Wolfbridges",
+    artist: "Wolf Bridges",
     genre: "Streaming Release",
     collection: "STRAIGHTENIN",
     duration,
-    description: `Track ${index + 1} from STRAIGHTENIN by Wolfbridges. Listed for BVS discovery with the project cover assigned.`,
+    description: `Track ${index + 1} from STRAIGHTENIN by Wolf Bridges. Listed for BVS discovery with the project cover assigned.`,
     type: "mix" as TrackType,
     src: "",
     artwork: straighteninArt,
@@ -106,11 +106,11 @@ const streamingReleaseSongs: Track[] = [
   ].map(([title, duration, videoId], index) => ({
     id: 1200 + index,
     title,
-    artist: "Wolfbridges x W.Hills",
+    artist: "Wolf Bridges x W.Hills",
     genre: "Streaming Release",
     collection: "HOWLING IN THE HILLS 2",
     duration,
-    description: `Track ${index + 1} from HOWLING IN THE HILLS 2 by Wolfbridges and W.Hills. Listed for BVS discovery with the project cover assigned.`,
+    description: `Track ${index + 1} from HOWLING IN THE HILLS 2 by Wolf Bridges and W.Hills. Listed for BVS discovery with the project cover assigned.`,
     type: "mix" as TrackType,
     src: "",
     artwork: howlingArt,
@@ -126,11 +126,11 @@ const streamingReleaseSongs: Track[] = [
   ].map(([title, duration, videoId], index) => ({
     id: 1300 + index,
     title,
-    artist: "Wolfbridges x I Ratty",
+    artist: "Wolf Bridges x I Ratty",
     genre: "Streaming Release",
     collection: "WOLF BEEN BAD",
     duration,
-    description: `Track ${index + 1} from WOLF BEEN BAD by Wolfbridges and I Ratty. Listed for BVS discovery with the project cover assigned.`,
+    description: `Track ${index + 1} from WOLF BEEN BAD by Wolf Bridges and I Ratty. Listed for BVS discovery with the project cover assigned.`,
     type: "mix" as TrackType,
     src: "",
     artwork: wolfBeenBadArt,
@@ -207,11 +207,11 @@ const tracks: Track[] = [
   {
     id: 6,
     title: "Mellisa",
-    artist: "WolfBrx",
+    artist: "Wolf Bridges",
     genre: "Hip-Hop",
     collection: "June Pack",
     duration: "2:54",
-    description: "A polished WolfBrx beat from the staged June pack.",
+    description: "A polished Wolf Bridges beat from the staged June pack.",
     type: "beat",
     bpm: "156 BPM",
     src: musicFile("mellisa - 156 bpm @wolfbrx.mp3"),
@@ -220,7 +220,7 @@ const tracks: Track[] = [
   {
     id: 7,
     title: "In My City",
-    artist: "WolfBrx",
+    artist: "Wolf Bridges",
     genre: "Hip-Hop",
     collection: "June Pack",
     duration: "2:41",
@@ -234,7 +234,7 @@ const tracks: Track[] = [
   {
     id: 8,
     title: "RGB",
-    artist: "WolfBrx",
+    artist: "Wolf Bridges",
     genre: "Trap",
     collection: "June Pack",
     duration: "3:05",
@@ -248,12 +248,12 @@ const tracks: Track[] = [
   {
     id: 9,
     title: "Fading Memories",
-    artist: "WolfBrx + Znayshi",
+    artist: "Wolf Bridges + Znayshi",
     genre: "Melodic Rap",
     collection: "March Pack",
     duration: "2:58",
     description:
-      "Melodic and reflective, pulled from the WolfBrx pack now sitting in the live catalogue.",
+      "Melodic and reflective, pulled from the Wolf Bridges pack now sitting in the live catalogue.",
     type: "beat",
     bpm: "167 BPM",
     src: musicFile("fading memories - 167 bpm @wolfbrx + znayshi.mp3"),
@@ -262,7 +262,7 @@ const tracks: Track[] = [
   {
     id: 10,
     title: "The Giant",
-    artist: "WolfBrx + Dannynevamiss",
+    artist: "Wolf Bridges + Dannynevamiss",
     genre: "Hip-Hop",
     collection: "March Pack",
     duration: "2:47",
@@ -276,7 +276,7 @@ const tracks: Track[] = [
   {
     id: 11,
     title: "Foreign Exchange",
-    artist: "WolfBrx + Thermo",
+    artist: "Wolf Bridges + Thermo",
     genre: "Trap",
     collection: "March Pack",
     duration: "3:11",
@@ -290,7 +290,7 @@ const tracks: Track[] = [
   {
     id: 12,
     title: "Chiraq Drillaz",
-    artist: "WolfBrx",
+    artist: "Wolf Bridges",
     genre: "Drill",
     collection: "January Pack",
     duration: "2:51",
@@ -304,7 +304,7 @@ const tracks: Track[] = [
   {
     id: 13,
     title: "Bottom Barre",
-    artist: "WolfBrx + Prodbygtp",
+    artist: "Wolf Bridges + Prodbygtp",
     genre: "Rap",
     collection: "January Pack",
     duration: "3:02",
@@ -318,12 +318,12 @@ const tracks: Track[] = [
   {
     id: 14,
     title: "Rockstar",
-    artist: "WolfBrx + Jhawk",
+    artist: "Wolf Bridges + Jhawk",
     genre: "Hip-Hop",
     collection: "February Pack",
     duration: "2:45",
     description:
-      "A catchy, accessible WolfBrx collaboration from the February pack.",
+      "A catchy, accessible Wolf Bridges collaboration from the February pack.",
     type: "beat",
     bpm: "125 BPM",
     src: musicFile("rockstar - 125 bpm @wolfbrx + jhawk.mp3"),
@@ -332,7 +332,7 @@ const tracks: Track[] = [
   {
     id: 15,
     title: "Grinder's Prayer",
-    artist: "WolfBrx",
+    artist: "Wolf Bridges",
     genre: "Trap",
     collection: "May Pack",
     duration: "3:00",
@@ -346,9 +346,9 @@ const tracks: Track[] = [
   {
     id: 16,
     title: "Eternity",
-    artist: "WolfBrx",
+    artist: "Wolf Bridges",
     genre: "Soul",
-    collection: "WolfBrx Library",
+    collection: "Wolf Bridges Library",
     duration: "2:39",
     description:
       "A slower, soulful beat to balance the harder drill and trap rows.",
@@ -389,12 +389,12 @@ const tracks: Track[] = [
   {
     id: 102,
     title: "STRAIGHTENIN",
-    artist: "Wolfbridges",
+    artist: "Wolf Bridges",
     genre: "Spotify Release",
-    collection: "Wolfbridges Projects",
+    collection: "Wolf Bridges Projects",
     duration: "Project",
     description:
-      "Spotify project from Wolfbridges, featured through the BVSRadio playlist.",
+      "Spotify project from Wolf Bridges, featured through the BVS Radio playlist.",
     type: "mix",
     src: "https://p.scdn.co/mp3-preview/a4c2906e4838d1513e71952936a5039c006c5cf9",
     artwork: straighteninArt,
@@ -405,12 +405,12 @@ const tracks: Track[] = [
   {
     id: 103,
     title: "HOWLING IN THE HILLS 2",
-    artist: "Wolfbridges x W.Hills",
+    artist: "Wolf Bridges x W.Hills",
     genre: "Spotify Release",
-    collection: "Wolfbridges Projects",
+    collection: "Wolf Bridges Projects",
     duration: "Project",
     description:
-      "A Wolfbridges and W.Hills project now surfaced in the BVS music catalogue with Spotify access.",
+      "A Wolf Bridges and W.Hills project now surfaced in the BVS music catalogue with Spotify access.",
     type: "mix",
     src: "https://p.scdn.co/mp3-preview/afec4b1200c2ca74cbb50d6b0cfa053ccd6a5e8d",
     artwork: howlingArt,
@@ -421,12 +421,12 @@ const tracks: Track[] = [
   {
     id: 104,
     title: "WOLF BEEN BAD",
-    artist: "Wolfbridges x I Ratty",
+    artist: "Wolf Bridges x I Ratty",
     genre: "Spotify Release",
-    collection: "Wolfbridges Projects",
+    collection: "Wolf Bridges Projects",
     duration: "Project",
     description:
-      "A Wolfbridges and I Ratty project added to BVS catalogue discovery with a Spotify listen-through path.",
+      "A Wolf Bridges and I Ratty project added to BVS catalogue discovery with a Spotify listen-through path.",
     type: "mix",
     src: "https://p.scdn.co/mp3-preview/625162a39886da9e1efec3c864f55238fbe6dd5c",
     artwork: wolfBeenBadArt,
@@ -502,7 +502,7 @@ const collectionCards: CollectionCard[] = [
     launchedAt: "2026-01-15",
   },
   {
-    name: "Wolfbridges Projects",
+    name: "Wolf Bridges Projects",
     detail: "Streaming discovery (regulated platforms)",
     img: straighteninArt,
     launchedAt: "2025-11-01",
@@ -515,13 +515,13 @@ const collectionCards: CollectionCard[] = [
   },
   {
     name: "June Pack",
-    detail: "WolfBrx beats · licence from $29",
+    detail: "Wolf Bridges beats · licence from $29",
     img: junePackArt,
     launchedAt: "2026-06-01",
   },
   {
     name: "May Pack",
-    detail: "WolfBrx beats · licence from $29",
+    detail: "Wolf Bridges beats · licence from $29",
     img: mayPackArt,
     launchedAt: "2026-05-01",
   },
@@ -1110,7 +1110,7 @@ function CataloguePageContent() {
               producerMode
                 ? `${producerLabel} BeatStore crate`
                 : beatsMode
-                  ? "WolfBrx June Pack beat artwork"
+                  ? "Wolf Bridges June Pack beat artwork"
                   : "BVS music catalogue"
             }
             fill
