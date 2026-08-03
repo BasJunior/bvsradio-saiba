@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { QRCodeSVG } from 'qrcode.react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import QrLoginPanel from '@/components/QrLoginPanel'
 
 function safeNextPath(raw: string | null): string {
   if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/'
@@ -19,8 +19,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [nextPath, setNextPath] = useState('/')
   const [alreadyIn, setAlreadyIn] = useState<string | null>(null)
-  const [qrLoginUrl, setQrLoginUrl] = useState('')
-  const [showQr, setShowQr] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
@@ -28,7 +26,6 @@ export default function LoginPage() {
     const params = new URLSearchParams(window.location.search)
     const destination = safeNextPath(params.get('next'))
     setNextPath(destination)
-    setQrLoginUrl(`${window.location.origin}/auth/login?next=${encodeURIComponent(destination)}&source=qr`)
     if (!isSupabaseConfigured()) return
     void createClient().auth.getSession().then(({ data }) => {
       const email = data.session?.user?.email
@@ -117,33 +114,7 @@ export default function LoginPage() {
           ) : null}
         </div>
 
-        <div className="mb-6 rounded-2xl border border-white/10 bg-white/[.025] p-4 text-center">
-          <button
-            type="button"
-            onClick={() => setShowQr((visible) => !visible)}
-            aria-expanded={showQr}
-            aria-controls="bvs-qr-login"
-            className="w-full rounded-full border border-white/15 px-4 py-2.5 text-sm font-semibold hover:border-brand hover:text-brand"
-          >
-            {showQr ? 'Hide QR code' : 'Sign in on your phone with a QR code'}
-          </button>
-          {showQr && qrLoginUrl ? (
-            <div id="bvs-qr-login" className="mt-4">
-              <div className="mx-auto w-fit rounded-2xl bg-white p-4">
-                <QRCodeSVG
-                  value={qrLoginUrl}
-                  size={190}
-                  level="M"
-                  marginSize={1}
-                  title="BVS Radio secure login QR code"
-                />
-              </div>
-              <p className="mx-auto mt-3 max-w-xs text-xs text-text-secondary">
-                Scan with your phone camera to open the official BVS Radio sign-in page. The code contains only a BVS URL—never your password or session.
-              </p>
-            </div>
-          ) : null}
-        </div>
+        <QrLoginPanel nextPath={nextPath} />
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>

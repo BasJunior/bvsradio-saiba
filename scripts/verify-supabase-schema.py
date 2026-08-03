@@ -140,6 +140,12 @@ PACKS: dict[str, dict[str, Any]] = {
             ],
         },
     },
+    "qr-login": {
+        "step": 18,
+        "file": "supabase-qr-login.sql",
+        "tables": ["qr_login_pairings"],
+        "rpcs": ["consume_qr_login_pairing"],
+    },
 }
 
 ORDER = sorted(PACKS.keys(), key=lambda k: PACKS[k]["step"])
