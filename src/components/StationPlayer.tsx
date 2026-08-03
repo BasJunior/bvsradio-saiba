@@ -216,6 +216,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     (seed: StationTrack | undefined, existing: QueueItem[], preferUserKeep = true) => {
       const pool = tracksRef.current;
       if (!pool.length) return existing;
+      // On station mode expose the entire circular rotation. On-demand mixes stay concise.
+      const queueTarget = modeRef.current === "station" ? Math.max(0, pool.length - 1) : UP_NEXT_TARGET;
       const userItems = preferUserKeep ? existing.filter((i) => i.source === "user") : [];
       const autoTail = existing.filter((i) => i.source !== "user");
       const exclude = new Set<string>();
@@ -223,7 +225,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       for (const i of userItems) exclude.add(trackKey(i.track));
       for (const i of autoTail) exclude.add(trackKey(i.track));
 
-      const need = Math.max(0, UP_NEXT_TARGET - userItems.length - autoTail.length);
+      const need = Math.max(0, queueTarget - userItems.length - autoTail.length);
       let additions: StationTrack[] = [];
 
       if (modeRef.current === "ondemand" && seed) {
@@ -261,7 +263,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         ...autoTail,
         ...additions.map((t) => makeQueueItem(t, modeRef.current === "ondemand" && similarScore(seed!, t) > 0 ? "mix" : source)),
       ];
-      return [...userItems, ...filledAuto].slice(0, UP_NEXT_TARGET + userItems.length);
+      return [...userItems, ...filledAuto].slice(0, queueTarget + userItems.length);
     },
     [],
   );
@@ -980,15 +982,26 @@ function CoverArt({
 
 function QueueSheet() {
   const player = useStationPlayer();
+  const [query, setQuery] = useState("");
+  const normalizedQuery = normalizeText(query);
+  const visibleQueue = normalizedQuery
+    ? player.upNext.filter((item) =>
+        normalizeText(`${item.track.title} ${item.track.artist} ${item.track.project || ""}`).includes(normalizedQuery),
+      )
+    : player.upNext;
   if (!player.queueOpen) return null;
   return (
-    <div className="fixed inset-x-0 bottom-20 z-[60] mx-auto max-h-[55vh] w-full max-w-3xl overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl sm:bottom-24">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+    <div className="fixed inset-x-0 bottom-20 z-[60] mx-auto flex max-h-[72svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl sm:bottom-24 sm:rounded-2xl">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">Up next</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
+            {player.mode === "station" ? "Full circular rotation" : "Up next"}
+          </p>
           <p className="text-sm text-text-secondary">
             Playing from <span className="text-white">{player.playingFrom}</span>
-            {player.mode === "ondemand" ? " · On demand" : " · Station"}
+            {player.mode === "ondemand"
+              ? ` · ${player.upNext.length} queued`
+              : ` · ${player.upNext.length + (player.current ? 1 : 0)} songs · wraps to the start`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1004,38 +1017,59 @@ function QueueSheet() {
               BVS station
             </button>
           )}
-          <button type="button" onClick={player.clearQueue} className="rounded-full px-2 py-1 text-xs text-text-secondary hover:text-white">
-            Clear
-          </button>
+          {player.mode === "ondemand" && (
+            <button type="button" onClick={player.clearQueue} className="rounded-full px-2 py-1 text-xs text-text-secondary hover:text-white">
+              Clear
+            </button>
+          )}
           <button type="button" onClick={() => player.setQueueOpen(false)} className="rounded-full px-2 py-1 text-sm text-text-secondary hover:text-white" aria-label="Close queue">
             ✕
           </button>
         </div>
       </div>
-      <ol className="max-h-[42vh] space-y-0 overflow-y-auto px-2 py-2">
+      <div className="border-b border-white/10 px-3 py-2.5">
+        <label htmlFor="rotation-search" className="sr-only">Find a song in the rotation</label>
+        <input
+          id="rotation-search"
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Find a song, artist or album…"
+          className="h-11 w-full rounded-full border border-white/10 bg-white/[0.06] px-4 text-base text-white outline-none placeholder:text-text-secondary focus:border-brand sm:text-sm"
+        />
+      </div>
+      <ol className="min-h-0 flex-1 space-y-0 overflow-y-auto overscroll-contain px-2 py-2" aria-label="BVS rotation songs">
         {player.upNext.length === 0 && (
           <li className="px-3 py-6 text-center text-sm text-text-secondary">
             Queue empty{player.autoplay ? " — auto-play will fill similar / station tracks." : "."}
           </li>
         )}
-        {player.upNext.map((item, i) => (
-          <li key={item.key} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5">
-            <span className="w-6 text-center text-xs text-text-secondary">{i + 1}</span>
-            <button type="button" onClick={() => player.jumpToQueueItem(item.key)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-              <CoverArt src={item.track.artwork} sizeClass="h-10 w-10" rounded="rounded-md" />
-              <span className="min-w-0">
-                <span className="block truncate text-sm font-medium">{item.track.title}</span>
-                <span className="block truncate text-xs text-text-secondary">
-                  {item.track.artist}
-                  {item.source === "user" ? " · You" : item.source === "mix" ? " · Similar" : item.source === "auto" ? " · Auto" : " · Station"}
+        {player.upNext.length > 0 && visibleQueue.length === 0 && (
+          <li className="px-3 py-8 text-center text-sm text-text-secondary">No rotation songs match “{query}”.</li>
+        )}
+        {visibleQueue.map((item) => {
+          const rotationIndex = player.upNext.findIndex((candidate) => candidate.key === item.key);
+          return (
+            <li key={item.key} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5">
+              <span className="w-7 text-center text-xs tabular-nums text-text-secondary">{rotationIndex + 1}</span>
+              <button type="button" onClick={() => player.jumpToQueueItem(item.key)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <CoverArt src={item.track.artwork} sizeClass="h-10 w-10" rounded="rounded-md" />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{item.track.title}</span>
+                  <span className="block truncate text-xs text-text-secondary">
+                    {item.track.artist}
+                    {item.source === "user" ? " · You" : item.source === "mix" ? " · Similar" : item.source === "auto" ? " · Auto" : " · Station"}
+                  </span>
                 </span>
-              </span>
-            </button>
-            <button type="button" onClick={() => player.removeFromQueue(item.key)} className="rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 hover:text-white" aria-label="Remove from queue">
-              ✕
-            </button>
-          </li>
-        ))}
+              </button>
+              {player.mode === "ondemand" && (
+                <button type="button" onClick={() => player.removeFromQueue(item.key)} className="rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 hover:text-white" aria-label="Remove from queue">
+                  ✕
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ol>
       {player.history.length > 0 && (
         <div className="border-t border-white/10 px-4 py-3">
