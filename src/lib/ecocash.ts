@@ -4,8 +4,17 @@
  * Official portal: https://developers.ecocash.co.zw
  * Sandbox base:   https://developers.ecocash.co.zw/api/ecocash_pay
  *
- * Credentials come only from env (never commit real keys):
- *   ECOCASH_API_KEY
+ * Auth (either style, depending on what EcoCash issued you):
+ *   1) API key:     ECOCASH_API_KEY          → header X-API-KEY
+ *   2) Basic auth:  ECOCASH_BASIC_USER
+ *                   ECOCASH_BASIC_PASSWORD   → Authorization: Basic …
+ *
+ * Optional merchant fields some EIP docs mention:
+ *   ECOCASH_MERCHANT_CODE
+ *   ECOCASH_MERCHANT_MSISDN
+ *   ECOCASH_PIN
+ *
+ * Mode:
  *   ECOCASH_MODE=sandbox|live   (default: sandbox)
  */
 
@@ -65,7 +74,33 @@ export function ecocashMode(): EcocashMode {
 }
 
 export function ecocashEnabled() {
-  return Boolean(process.env.ECOCASH_API_KEY && process.env.ECOCASH_API_KEY.length > 8);
+  const apiKey = process.env.ECOCASH_API_KEY;
+  const basicUser = process.env.ECOCASH_BASIC_USER;
+  const basicPass = process.env.ECOCASH_BASIC_PASSWORD;
+  if (apiKey && apiKey.length > 8) return true;
+  if (basicUser && basicPass) return true;
+  return false;
+}
+
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+
+  const apiKey = process.env.ECOCASH_API_KEY?.trim();
+  if (apiKey) {
+    headers["X-API-KEY"] = apiKey;
+  }
+
+  const user = process.env.ECOCASH_BASIC_USER?.trim();
+  const pass = process.env.ECOCASH_BASIC_PASSWORD?.trim();
+  if (user && pass) {
+    const token = Buffer.from(`${user}:${pass}`, "utf8").toString("base64");
+    headers.Authorization = `Basic ${token}`;
+  }
+
+  return headers;
 }
 
 export function normalizeEcocashMsisdn(input: string): string | null {
@@ -81,18 +116,19 @@ async function ecocashFetch<T>(
   url: string,
   body: unknown,
 ): Promise<EcocashResult<T>> {
-  const apiKey = process.env.ECOCASH_API_KEY;
-  if (!apiKey) {
-    return { ok: false, status: 0, error: "ECOCASH_API_KEY is not set" };
+  if (!ecocashEnabled()) {
+    return {
+      ok: false,
+      status: 0,
+      error:
+        "EcoCash credentials missing. Set ECOCASH_API_KEY and/or ECOCASH_BASIC_USER + ECOCASH_BASIC_PASSWORD",
+    };
   }
 
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-KEY": apiKey,
-      },
+      headers: authHeaders(),
       body: JSON.stringify(body),
     });
 
@@ -111,8 +147,8 @@ async function ecocashFetch<T>(
     const message =
       typeof data === "object" && data && "message" in data
         ? String((data as { message: unknown }).message)
-        : typeof data === "string"
-          ? data
+        : typeof data === "string" && data.length
+          ? data.slice(0, 500)
           : `EcoCash API error (${res.status})`;
 
     return { ok: false, status: res.status, error: message, details: data };
@@ -127,7 +163,21 @@ async function ecocashFetch<T>(
 
 export function initiateC2BPayment(req: EcocashPaymentRequest) {
   const mode = ecocashMode();
-  return ecocashFetch<unknown>(PATHS.payment[mode], req);
+  // Some EIP setups also accept merchant metadata in body; keep core fields stable.
+  const body: Record<string, unknown> = {
+    customerMsisdn: req.customerMsisdn,
+    amount: req.amount,
+    reason: req.reason,
+    currency: req.currency,
+    sourceReference: req.sourceReference,
+  };
+  if (process.env.ECOCASH_MERCHANT_CODE) {
+    body.merchantCode = process.env.ECOCASH_MERCHANT_CODE;
+  }
+  if (process.env.ECOCASH_MERCHANT_MSISDN) {
+    body.merchantMsisdn = process.env.ECOCASH_MERCHANT_MSISDN;
+  }
+  return ecocashFetch<unknown>(PATHS.payment[mode], body);
 }
 
 export function lookupC2BTransaction(req: EcocashLookupRequest) {
@@ -144,6 +194,12 @@ export function ecocashConfigPublic() {
   return {
     enabled: ecocashEnabled(),
     mode: ecocashMode(),
+    auth: {
+      apiKey: Boolean(process.env.ECOCASH_API_KEY),
+      basicAuth: Boolean(
+        process.env.ECOCASH_BASIC_USER && process.env.ECOCASH_BASIC_PASSWORD,
+      ),
+    },
     baseUrl: BASE,
     endpoints: {
       payment: PATHS.payment[ecocashMode()],

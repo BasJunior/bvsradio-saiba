@@ -24,12 +24,26 @@ You can use **both**. Sandbox here is the **direct EcoCash** API.
 
 ## 2. Local env (Mac / Vercel preview)
 
-Add to `.env.local` (gitignored):
+EcoCash sandbox emails often send **Basic auth** credentials (not only an API key).
+Support **either or both**.
+
+Add to `.env.local` (gitignored) — **never paste passwords into chat**:
 
 ```bash
 # EcoCash direct API — sandbox
-ECOCASH_API_KEY=paste-sandbox-key-here
 ECOCASH_MODE=sandbox
+
+# Style A — API key (portal application key)
+ECOCASH_API_KEY=paste-if-you-have-one
+
+# Style B — EIP Basic auth (from SANDBOX_CREDENTIALS email)
+ECOCASH_BASIC_USER=paste-basic-auth-username
+ECOCASH_BASIC_PASSWORD=paste-basic-auth-password
+
+# Optional merchant fields if the email/docs include them
+# ECOCASH_MERCHANT_CODE=
+# ECOCASH_MERCHANT_MSISDN=
+# ECOCASH_PIN=
 
 # Optional: protect the Next.js test route
 ECOCASH_SANDBOX_SECRET=pick-a-long-random-string
@@ -38,10 +52,22 @@ ECOCASH_SANDBOX_SECRET=pick-a-long-random-string
 Production live keys (later only):
 
 ```bash
-ECOCASH_API_KEY=live-key
 ECOCASH_MODE=live
+ECOCASH_API_KEY=live-key
+# or live basic user/pass
 # Never set ECOCASH_ALLOW_LIVE_VIA_SANDBOX_ROUTE unless intentional
 ```
+
+### Mapping the EcoCash email fields
+
+| Email field | Env var |
+|-------------|---------|
+| Basic auth username | `ECOCASH_BASIC_USER` |
+| Basic auth password | `ECOCASH_BASIC_PASSWORD` |
+| API key / X-API-KEY | `ECOCASH_API_KEY` |
+| Merchant code | `ECOCASH_MERCHANT_CODE` |
+| Merchant MSISDN | `ECOCASH_MERCHANT_MSISDN` |
+| PIN | `ECOCASH_PIN` |
 
 ## 3. API endpoints we use
 

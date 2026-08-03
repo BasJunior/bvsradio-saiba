@@ -37,18 +37,33 @@ function normalizeMsisdn(input) {
   return null;
 }
 
-async function post(url, body) {
+function buildHeaders() {
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
   const apiKey = process.env.ECOCASH_API_KEY;
-  if (!apiKey) {
-    console.error("Missing ECOCASH_API_KEY");
+  if (apiKey) headers["X-API-KEY"] = apiKey;
+
+  const user = process.env.ECOCASH_BASIC_USER;
+  const pass = process.env.ECOCASH_BASIC_PASSWORD;
+  if (user && pass) {
+    headers.Authorization = `Basic ${Buffer.from(`${user}:${pass}`).toString("base64")}`;
+  }
+
+  if (!apiKey && !(user && pass)) {
+    console.error(
+      "Missing credentials. Set ECOCASH_API_KEY and/or ECOCASH_BASIC_USER + ECOCASH_BASIC_PASSWORD",
+    );
     process.exit(1);
   }
+  return headers;
+}
+
+async function post(url, body) {
   const res = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-KEY": apiKey,
-    },
+    headers: buildHeaders(),
     body: JSON.stringify(body),
   });
   const text = await res.text();
@@ -71,7 +86,10 @@ if (!action || action === "config" || action === "help") {
     JSON.stringify(
       {
         mode: m,
-        hasKey: Boolean(process.env.ECOCASH_API_KEY),
+        hasApiKey: Boolean(process.env.ECOCASH_API_KEY),
+        hasBasicAuth: Boolean(
+          process.env.ECOCASH_BASIC_USER && process.env.ECOCASH_BASIC_PASSWORD,
+        ),
         paymentUrl: PATHS.payment[m],
         lookupUrl: PATHS.lookup[m],
         portal: "https://developers.ecocash.co.zw",
