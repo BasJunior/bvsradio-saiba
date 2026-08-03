@@ -109,6 +109,15 @@ export async function GET(request: Request) {
       optionalJson('artist_payout_requests?select=*&order=requested_at.desc&limit=100'),
     ])
     : [[], [], []]
+  const copyrightComplaints = can(identity, 'approve_submissions')
+    ? await optionalJson('copyright_complaints?select=id,docket_number,status,work_title,claimant_name,release_id,track_id,target_user_id,created_at,hold_applied_at&order=created_at.desc&limit=50')
+    : []
+  const releaseClearanceItems = can(identity, 'approve_submissions')
+    ? await optionalJson('release_clearance_items?select=id,release_id,material_type,risk_level,title,status,required,created_at&order=created_at.desc&limit=200')
+    : []
+  const releaseAttestations = can(identity, 'approve_submissions')
+    ? await optionalJson('release_rights_attestations?select=id,release_id,user_id,agreement_version,attested_at&order=attested_at.desc&limit=100')
+    : []
   return NextResponse.json({
     identity: { role: identity.role, permissions: identity.permissions, profile: identity.profile },
     tracks,
@@ -130,6 +139,9 @@ export async function GET(request: Request) {
     artistWaitlist,
     artistDeposits,
     artistPayoutRequests,
+    copyrightComplaints,
+    releaseClearanceItems,
+    releaseAttestations,
   })
 }
 
@@ -443,6 +455,44 @@ export async function PATCH(request: Request) {
           updated_at: new Date().toISOString(),
         })
         await audit(identity.user.id, 'release_rejected', 'release', releaseId, { notes: notes.slice(0, 200) })
+        return NextResponse.json({ result })
+      }
+      case 'hold_release_content': {
+        requirePermission('approve_submissions')
+        const releaseId = String(body.releaseId || '')
+        const reason = String(body.reason || 'Editorial content hold').slice(0, 500)
+        if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
+        const { unpublishForHold } = await import('@/lib/rights-compliance-server')
+        await unpublishForHold({
+          releaseId,
+          reason,
+          staffId: identity.user.id,
+        })
+        await audit(identity.user.id, 'release_content_hold', 'release', releaseId, { reason: reason.slice(0, 200) })
+        return NextResponse.json({ ok: true })
+      }
+      case 'review_clearance_item': {
+        requirePermission('approve_submissions')
+        const itemId = String(body.itemId || '')
+        const status = ['accepted', 'rejected', 'waived_by_staff', 'submitted'].includes(String(body.status))
+          ? String(body.status)
+          : ''
+        if (!itemId || !status) return NextResponse.json({ error: 'itemId and status required.' }, { status: 400 })
+        const result = await patchTable('release_clearance_items', `id=eq.${encodeURIComponent(itemId)}`, {
+          status,
+          staff_notes: String(body.notes || '').slice(0, 2000) || null,
+          reviewed_by: identity.user.id,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        if (Array.isArray(result) && result[0]?.release_id) {
+          await fetch(editorialUrl('rpc/refresh_release_preflight'), {
+            method: 'POST',
+            headers: serviceHeaders,
+            body: JSON.stringify({ p_release_id: result[0].release_id }),
+          })
+        }
+        await audit(identity.user.id, `clearance_${status}`, 'release_clearance_item', itemId)
         return NextResponse.json({ result })
       }
       case 'set_release_rotation': {

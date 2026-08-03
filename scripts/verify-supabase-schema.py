@@ -146,6 +146,43 @@ PACKS: dict[str, dict[str, Any]] = {
         "tables": ["qr_login_pairings"],
         "rpcs": ["consume_qr_login_pairing"],
     },
+    "apple-rights-compliance": {
+        "step": 19,
+        "file": "supabase-apple-rights-compliance.sql",
+        "tables": [
+            "rights_agreement_versions",
+            "release_rights_attestations",
+            "release_clearance_items",
+            "copyright_complaints",
+            "copyright_complaint_events",
+            "copyright_counter_notices",
+            "artist_rights_notices",
+            "copyright_policy_settings",
+            "copyright_strikes",
+            "account_rights_restrictions",
+        ],
+        "columns": {
+            "releases": [
+                "contains_cover",
+                "contains_remix",
+                "contains_samples",
+                "contains_leased_beats",
+                "contains_third_party",
+                "rights_attestation_id",
+                "content_hold",
+            ],
+            "profiles": [
+                "rights_upload_restricted",
+                "rights_publish_restricted",
+                "active_copyright_strikes",
+            ],
+        },
+        "rpcs": [
+            "refresh_release_preflight",
+            "assert_release_publishable",
+            "refresh_profile_copyright_strikes",
+        ],
+    },
 }
 
 ORDER = sorted(PACKS.keys(), key=lambda k: PACKS[k]["step"])

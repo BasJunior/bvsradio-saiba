@@ -38,6 +38,21 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
   const [songwriters, setSongwriters] = useState('')
   const [producers, setProducers] = useState('')
   const [featuredArtists, setFeaturedArtists] = useState('')
+  const [masterControl, setMasterControl] = useState(false)
+  const [compositionControl, setCompositionControl] = useState(false)
+  const [featuredCleared, setFeaturedCleared] = useState(false)
+  const [samplesCleared, setSamplesCleared] = useState(false)
+  const [grantHost, setGrantHost] = useState(false)
+  const [grantStream, setGrantStream] = useState(false)
+  const [grantCatalogue, setGrantCatalogue] = useState(false)
+  const [grantPromote, setGrantPromote] = useState(false)
+  const [accuracyConfirmed, setAccuracyConfirmed] = useState(false)
+  const [containsCover, setContainsCover] = useState(false)
+  const [containsRemix, setContainsRemix] = useState(false)
+  const [containsSamples, setContainsSamples] = useState(false)
+  const [containsLeasedBeats, setContainsLeasedBeats] = useState(false)
+  const [containsThirdParty, setContainsThirdParty] = useState(false)
+  const [clearanceNote, setClearanceNote] = useState('')
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -75,6 +90,26 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
     }
     if (!masterOwner.trim() || !compositionOwners.trim() || !songwriters.trim() || !producers.trim()) {
       setError('Name the master owner, composition owner, songwriter and producer before submitting.')
+      return
+    }
+    const attestationOk =
+      masterControl &&
+      compositionControl &&
+      featuredCleared &&
+      samplesCleared &&
+      grantHost &&
+      grantStream &&
+      grantCatalogue &&
+      grantPromote &&
+      accuracyConfirmed
+    if (!attestationOk) {
+      setError('Complete the versioned rights attestation (master, composition, contributors, samples/beats, and BVS grants).')
+      return
+    }
+    const needsClearance =
+      containsCover || containsRemix || containsSamples || containsLeasedBeats || containsThirdParty
+    if (needsClearance && clearanceNote.trim().length < 8) {
+      setError('Because this release includes third-party/derivative material, add a clearance reference (licence ID, permission note, or document path).')
       return
     }
     if (!isSupabaseConfigured()) {
@@ -140,6 +175,21 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
             audioPath: prep.tracks[i].path,
             position: i + 1,
           })),
+          containsCover,
+          containsRemix,
+          containsSamples,
+          containsLeasedBeats,
+          containsThirdParty,
+          masterControl: true,
+          compositionControl: true,
+          featuredContributorsCleared: true,
+          samplesBeatsCleared: true,
+          grantHost: true,
+          grantStream: true,
+          grantCatalogue: true,
+          grantPromote: true,
+          accuracyConfirmed: true,
+          clearanceNote: needsClearance ? clearanceNote.trim() : undefined,
         }),
       })
       const fin = await finRes.json()
@@ -287,13 +337,85 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
         {cover && <p className="mt-1 text-xs text-text-secondary">{cover.name}</p>}
       </div>
 
+      <section className="space-y-3 rounded-xl border border-white/10 p-4">
+        <h3 className="text-sm font-semibold text-text-primary">Versioned rights attestation *</h3>
+        <p className="text-xs text-text-secondary">
+          Agreement version <code className="text-brand">BVS-RIGHTS-ATTEST-2026-08-01</code>. Stored with timestamp,
+          your account, release/track identifiers, and an immutable snapshot.{" "}
+          <span className="text-amber-200/90">Lawyer-review placeholder for final counsel wording.</span>
+        </p>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={masterControl} onChange={(e) => setMasterControl(e.target.checked)} className="mt-1 accent-brand" />
+          <span>I control (or have written authority for) the <strong>master / sound recording</strong> rights.</span>
+        </label>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={compositionControl} onChange={(e) => setCompositionControl(e.target.checked)} className="mt-1 accent-brand" />
+          <span>I control (or have written authority for) the <strong>composition</strong> rights.</span>
+        </label>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={featuredCleared} onChange={(e) => setFeaturedCleared(e.target.checked)} className="mt-1 accent-brand" />
+          <span>All <strong>featured contributors</strong> have cleared this use on BVS.</span>
+        </label>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={samplesCleared} onChange={(e) => setSamplesCleared(e.target.checked)} className="mt-1 accent-brand" />
+          <span>Any <strong>samples / beats / third-party audio</strong> are original or cleared (evidence below if needed).</span>
+        </label>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={grantHost} onChange={(e) => setGrantHost(e.target.checked)} className="mt-1 accent-brand" />
+          <span>Grant BVS right to <strong>host</strong> this release.</span>
+        </label>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={grantStream} onChange={(e) => setGrantStream(e.target.checked)} className="mt-1 accent-brand" />
+          <span>Grant BVS right to <strong>stream</strong> this release.</span>
+        </label>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={grantCatalogue} onChange={(e) => setGrantCatalogue(e.target.checked)} className="mt-1 accent-brand" />
+          <span>Grant BVS right to list this release in the <strong>catalogue</strong>.</span>
+        </label>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={grantPromote} onChange={(e) => setGrantPromote(e.target.checked)} className="mt-1 accent-brand" />
+          <span>Grant BVS right to <strong>promote</strong> this release on BVS properties.</span>
+        </label>
+        <label className="flex gap-3 text-sm">
+          <input type="checkbox" checked={accuracyConfirmed} onChange={(e) => setAccuracyConfirmed(e.target.checked)} className="mt-1 accent-brand" />
+          <span>I confirm this attestation is accurate to the best of my knowledge.</span>
+        </label>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-white/10 p-4">
+        <h3 className="text-sm font-semibold text-text-primary">Clearance signals (covers, remixes, samples, leased beats)</h3>
+        <p className="text-xs text-text-secondary">
+          If any box is checked, publication is blocked until clearance evidence (licence reference or document path) is on file.
+        </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsCover} onChange={(e) => setContainsCover(e.target.checked)} className="accent-brand" /> Cover version</label>
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsRemix} onChange={(e) => setContainsRemix(e.target.checked)} className="accent-brand" /> Remix</label>
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsSamples} onChange={(e) => setContainsSamples(e.target.checked)} className="accent-brand" /> Samples</label>
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsLeasedBeats} onChange={(e) => setContainsLeasedBeats(e.target.checked)} className="accent-brand" /> Leased beat</label>
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsThirdParty} onChange={(e) => setContainsThirdParty(e.target.checked)} className="accent-brand" /> Other third-party material</label>
+        </div>
+        {(containsCover || containsRemix || containsSamples || containsLeasedBeats || containsThirdParty) && (
+          <label className="block text-sm">
+            Clearance evidence *
+            <textarea
+              value={clearanceNote}
+              onChange={(e) => setClearanceNote(e.target.value)}
+              rows={3}
+              placeholder="Licence ID, permission email summary, or storage path reference for the clearance document"
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3"
+            />
+          </label>
+        )}
+      </section>
+
       <label className="flex gap-3 rounded-xl border border-white/10 p-4 text-sm">
         <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-1 accent-brand" />
         <span>
-          <strong className="block">I control the necessary rights</strong>
+          <strong className="block">I control the necessary rights (summary)</strong>
           <span className="text-text-secondary">
             I have permission for every recording and composition on this release for BVS streaming and, if I join
-            Premium later, multi-platform distribution packaging.
+            Premium later, multi-platform distribution packaging. See also the versioned attestation above and our{" "}
+            <a href="/copyright" className="text-brand hover:underline">Copyright policy</a>.
           </span>
         </span>
       </label>

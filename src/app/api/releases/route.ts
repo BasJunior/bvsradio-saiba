@@ -10,6 +10,18 @@ import {
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
 import { creatorPublicName } from "@/lib/public-name";
 import { r2Configured, r2ObjectExists } from "@/lib/r2-storage";
+import {
+  accountUploadAllowed,
+  addClearanceItem,
+  recordReleaseAttestation,
+} from "@/lib/rights-compliance-server";
+import {
+  MATERIAL_TYPES,
+  sanitizeClientText,
+  type AttestationFlags,
+  type MaterialFlags,
+  type MaterialType,
+} from "@/lib/rights-compliance";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -76,6 +88,15 @@ export async function POST(req: Request) {
     if (!r2Configured()) {
       return NextResponse.json({ error: "Media storage is unavailable." }, { status: 503 });
     }
+    if (!(await accountUploadAllowed(user.id))) {
+      return NextResponse.json(
+        {
+          error:
+            "Uploads are restricted on this account due to rights enforcement. Content is not auto-deleted; contact BVS editorial.",
+        },
+        { status: 403 },
+      );
+    }
 
     // Ensure artist role
     await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
@@ -106,6 +127,29 @@ export async function POST(req: Request) {
       featuredArtists?: string[];
       coverPath?: string | null;
       tracks?: Array<{ title?: string; audioPath?: string; position?: number }>;
+      containsCover?: boolean;
+      containsRemix?: boolean;
+      containsSamples?: boolean;
+      containsLeasedBeats?: boolean;
+      containsThirdParty?: boolean;
+      masterControl?: boolean;
+      compositionControl?: boolean;
+      featuredContributorsCleared?: boolean;
+      samplesBeatsCleared?: boolean;
+      grantHost?: boolean;
+      grantStream?: boolean;
+      grantCatalogue?: boolean;
+      grantPromote?: boolean;
+      accuracyConfirmed?: boolean;
+      clearanceItems?: Array<{
+        materialType?: string;
+        riskLevel?: string;
+        title?: string;
+        description?: string;
+        licenceOrPermissionRef?: string;
+        documentStoragePath?: string;
+      }>;
+      clearanceNote?: string;
     };
 
     const title = String(body.title || "").trim().slice(0, 160);
@@ -177,6 +221,26 @@ export async function POST(req: Request) {
 
     const coverUrl = coverPath ? fileUrlForPath(coverPath) : "/assets/images/default-artwork.jpg";
 
+    const materialFlags: MaterialFlags = {
+      containsCover: body.containsCover === true,
+      containsRemix: body.containsRemix === true,
+      containsSamples: body.containsSamples === true,
+      containsLeasedBeats: body.containsLeasedBeats === true,
+      containsThirdParty: body.containsThirdParty === true,
+    };
+
+    const attestationFlags: AttestationFlags = {
+      masterControl: body.masterControl !== false,
+      compositionControl: body.compositionControl !== false,
+      featuredContributorsCleared: body.featuredContributorsCleared !== false,
+      samplesBeatsCleared: body.samplesBeatsCleared !== false,
+      grantHost: body.grantHost !== false,
+      grantStream: body.grantStream !== false,
+      grantCatalogue: body.grantCatalogue !== false,
+      grantPromote: body.grantPromote !== false,
+      accuracyConfirmed: body.accuracyConfirmed !== false,
+    };
+
     const created = await restPost<ReleaseRow[]>("releases", {
       user_id: user.id,
       title,
@@ -198,6 +262,11 @@ export async function POST(req: Request) {
       passport_version: 1,
       preflight_status: "not_checked",
       track_count: tracks.length,
+      contains_cover: materialFlags.containsCover,
+      contains_remix: materialFlags.containsRemix,
+      contains_samples: materialFlags.containsSamples,
+      contains_leased_beats: materialFlags.containsLeasedBeats,
+      contains_third_party: materialFlags.containsThirdParty,
     });
 
     if (!created.ok || !created.data) {
@@ -281,6 +350,81 @@ export async function POST(req: Request) {
       );
     }
 
+    // Versioned immutable rights attestation (Apple-compliance). Failures block "ready" preflight.
+    const attestation = await recordReleaseAttestation({
+      releaseId: release.id,
+      userId: user.id,
+      flags: attestationFlags,
+      materialFlags,
+      request: req,
+    });
+    if (!attestation.ok) {
+      console.error("release attestation", attestation.error);
+      // Release + tracks already saved; return 409 so client can finish attestation/clearance.
+      return NextResponse.json(
+        {
+          error: attestation.error || "Rights attestation could not be recorded.",
+          releaseId: release.id,
+          needsAttestation: true,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Structured clearance evidence before preflight (covers/remixes/samples/leased beats/third-party).
+    const clearanceFromBody = Array.isArray(body.clearanceItems) ? body.clearanceItems : [];
+    const clearanceNote = sanitizeClientText(body.clearanceNote, 2000);
+    const derivedTypes: MaterialType[] = [];
+    if (materialFlags.containsCover) derivedTypes.push("cover");
+    if (materialFlags.containsRemix) derivedTypes.push("remix");
+    if (materialFlags.containsSamples) derivedTypes.push("sample");
+    if (materialFlags.containsLeasedBeats) derivedTypes.push("leased_beat");
+    if (materialFlags.containsThirdParty) derivedTypes.push("third_party");
+
+    type ClearanceJob = {
+      materialType?: string;
+      riskLevel?: string;
+      title?: string;
+      description?: string;
+      licenceOrPermissionRef?: string;
+      documentStoragePath?: string;
+    };
+    const clearanceJobs: ClearanceJob[] =
+      clearanceFromBody.length > 0
+        ? clearanceFromBody
+        : derivedTypes.map((materialType) => ({
+            materialType,
+            riskLevel: "medium",
+            title: `${materialType} clearance — ${title}`,
+            description: clearanceNote,
+            licenceOrPermissionRef: clearanceNote,
+          }));
+
+    for (const item of clearanceJobs) {
+      const materialType = String(item.materialType || "") as MaterialType;
+      if (!MATERIAL_TYPES.includes(materialType)) continue;
+      const ref = sanitizeClientText(item.licenceOrPermissionRef || clearanceNote, 500);
+      const doc = item.documentStoragePath
+        ? sanitizeClientText(item.documentStoragePath, 500)
+        : null;
+      if (!ref && !doc) continue;
+      const clr = await addClearanceItem({
+        releaseId: release.id,
+        userId: user.id,
+        materialType,
+        riskLevel: ["low", "medium", "high", "critical"].includes(String(item.riskLevel))
+          ? String(item.riskLevel)
+          : "medium",
+        title: sanitizeClientText(item.title || `${materialType} clearance`, 200),
+        description: sanitizeClientText(item.description || clearanceNote, 4000),
+        licenceOrPermissionRef: ref || undefined,
+        documentStoragePath: doc,
+      });
+      if (!clr.ok) {
+        console.error("clearance insert", clr.error);
+      }
+    }
+
     const preflight = await restPost<{ status?: string; blockers?: string[] }>(
       "rpc/refresh_release_preflight",
       { p_release_id: release.id },
@@ -289,8 +433,11 @@ export async function POST(req: Request) {
       console.error("release preflight", preflight.status, preflight.text);
       return NextResponse.json(
         {
-          error: "Release saved, but preflight found missing rights information.",
+          error:
+            "Release and attestation saved, but preflight still needs information (often clearance evidence for covers/samples/beats).",
+          releaseId: release.id,
           blockers: preflight.data?.blockers || [],
+          agreementVersion: attestation.agreementVersion,
         },
         { status: 409 },
       );

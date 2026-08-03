@@ -39,6 +39,7 @@ export default function Footer() {
               <Link href="/contact" className="text-sm text-text-secondary hover:text-brand transition-colors">Contact</Link>
               <Link href="/privacy" className="text-sm text-text-secondary hover:text-brand transition-colors">Privacy</Link>
               <Link href="/terms" className="text-sm text-text-secondary hover:text-brand transition-colors">Terms</Link>
+              <Link href="/copyright" className="text-sm text-text-secondary hover:text-brand transition-colors">Copyright</Link>
               <Link href="/refunds" className="text-sm text-text-secondary hover:text-brand transition-colors">Refunds</Link>
               <a href="https://instagram.com/bvsradio" target="_blank" rel="noopener noreferrer" className="text-sm text-text-secondary hover:text-brand transition-colors">Instagram</a>
               <a href="https://twitter.com/bvsradio" target="_blank" rel="noopener noreferrer" className="text-sm text-text-secondary hover:text-brand transition-colors">Twitter / X</a>

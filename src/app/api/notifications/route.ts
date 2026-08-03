@@ -53,6 +53,9 @@ export async function GET(request: Request) {
       ...payouts.map(item => ({ id: `payout-${item.id}-${item.status}`, title: 'Payout request', detail: `${item.currency || 'USD'} ${item.requested_amount} · ${item.status}`, created_at: String(item.requested_at), href: '/admin/editorial#ed-wallet', kind: 'payout' })),
     ]
   } else {
+    const rightsNotices = await rows(
+      `artist_rights_notices?user_id=eq.${user.id}&select=id,title,body,notice_type,created_at&order=created_at.desc&limit=30`,
+    )
     const [beats, messages, trackMessages, tracks, releases, requests, applications, articles, shows, episodes, orders] = await Promise.all([
       rows(`beats?producer_user_id=eq.${user.id}&select=id,title,status,updated_at&order=updated_at.desc&limit=50`),
       rows(`beat_review_messages?author_kind=eq.editor&beat_id=in.(${(await rows(`beats?producer_user_id=eq.${user.id}&select=id`)).map(item => item.id).join(',') || '00000000-0000-0000-0000-000000000000'})&select=id,beat_id,message,created_at&order=created_at.desc&limit=30`),
@@ -67,6 +70,14 @@ export async function GET(request: Request) {
       rows(`orders?customer_user_id=eq.${user.id}&select=reference,status,delivery_status,updated_at&order=updated_at.desc&limit=30`),
     ])
     events = [
+      ...rightsNotices.map(item => ({
+        id: `rights-notice-${item.id}`,
+        title: String(item.title || 'Rights notice'),
+        detail: String(item.body || item.notice_type || ''),
+        created_at: String(item.created_at),
+        href: '/copyright',
+        kind: 'rights',
+      })),
       ...messages.map(item => ({ id: `beat-message-${item.id}`, title: 'Editorial message', detail: String(item.message || ''), created_at: String(item.created_at), href: '/creator/studio', kind: 'message' })),
       ...trackMessages.map(item => ({ id: `track-message-${item.id}`, title: 'Editorial message', detail: String(item.message || ''), created_at: String(item.created_at), href: '/creator/studio', kind: 'message' })),
       ...beats.filter(item => item.status !== 'draft').map(item => ({ id: `beat-${item.id}-${item.status}`, title: 'Beat status updated', detail: `${item.title} · ${String(item.status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/creator/studio', kind: 'beat' })),

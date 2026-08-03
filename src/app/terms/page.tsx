@@ -13,7 +13,7 @@ export default function TermsPage() {
       <section className="rounded-2xl border border-white/10 bg-bg-card/50 p-8 backdrop-blur md:p-12">
         <p className="mb-2 text-xs uppercase tracking-[3px] text-brand">Best Virtual Sound · Zimbabwe</p>
         <h1 className="mb-2 text-3xl font-bold md:text-4xl">Terms of Service</h1>
-        <p className="mb-8 text-text-secondary">Last updated: 20 July 2026 · Applies to bvsradio.com and related BVS apps</p>
+        <p className="mb-8 text-text-secondary">Last updated: 3 August 2026 · Applies to bvsradio.com and related BVS apps</p>
 
         <div className="max-w-none space-y-6 leading-relaxed text-text-secondary">
           <p>
@@ -58,15 +58,41 @@ export default function TermsPage() {
               permission from all featured artists, producers, and labels where required.
             </li>
             <li>
+              For album/EP releases, you complete a <strong className="text-text-primary">versioned rights attestation</strong>{" "}
+              (currently <code className="text-brand">BVS-RIGHTS-ATTEST-2026-08-01</code>) confirming master and composition
+              control, featured-contributor clearance, samples/beats clearance, and limited grants for BVS to host, stream,
+              catalogue, and promote that release. We store the agreement version, timestamp, account/release identifiers,
+              and an immutable audit snapshot (and may store IP/user-agent for security/audit).
+            </li>
+            <li>
+              Covers, remixes, samples, leased beats, and other third-party material must be declared with{" "}
+              <strong className="text-text-primary">clearance evidence</strong>. Server-side preflight blocks approval or
+              publication when required evidence is missing.
+            </li>
+            <li>
               Accepted audio for track submission includes common release formats (e.g. MP3, WAV, M4A, FLAC, OGG, AAC).
               Video files (e.g. MP4 camera exports) are not accepted on the music submission form.
             </li>
             <li>
-              BVS may reject, delay, or remove material that is unlawful, defamatory, hate speech, or outside programming
-              standards — including content that is not suitable for Zimbabwean family-friendly dayparts when marked for
-              rotation.
+              BVS may reject, delay, hold (unpublish), or remove material that is unlawful, defamatory, hate speech, outside
+              programming standards, or subject to a rights complaint — including content that is not suitable for
+              Zimbabwean family-friendly dayparts when marked for rotation.{" "}
+              <strong className="text-text-primary">Automated workflows do not delete your account or entire catalogue.</strong>
             </li>
           </ul>
+
+          <h2 className="mt-10 text-2xl font-semibold text-text-primary">4A. Copyright complaints &amp; repeat infringement</h2>
+          <p>
+            Rights holders may file a complaint using our public form at{" "}
+            <Link href="/copyright" className="text-brand hover:underline">
+              /copyright
+            </Link>
+            . Complaints receive a docket number and staff workflow. We may place content on hold (unpublish / remove from
+            rotation) while reviewing. Artists linked to a docket may receive an in-product notice and may submit a
+            counter-response. Upheld complaints can create strikes; repeated active strikes may restrict further uploads or
+            publishing at configurable thresholds, with staff override and audit trail. Full product description (and
+            lawyer-review markers) lives on the Copyright page — this Terms section only summarises behaviour.
+          </p>
 
           <h2 className="mt-10 text-2xl font-semibold text-text-primary">5. Purchases and services</h2>
           <p>
@@ -80,8 +106,10 @@ export default function TermsPage() {
           <p>
             The BVS brand, site design, software, and original BVS content remain property of Best Virtual Studios and its
             licensors. Artists retain ownership of their own music subject to any separate licence, release, or service
-            agreement. You grant BVS a limited licence to store, stream (if approved), and review submitted files for
-            platform operation.
+            agreement. Through the versioned release attestation, you grant BVS a limited non-exclusive licence to host,
+            stream (if approved), catalogue, promote, and review submitted files for platform operation — without transferring
+            copyright ownership.{" "}
+            <span className="text-amber-200/90">Lawyer review: final licence wording.</span>
           </p>
 
           <h2 className="mt-10 text-2xl font-semibold text-text-primary">7. Listening and fair use</h2>
