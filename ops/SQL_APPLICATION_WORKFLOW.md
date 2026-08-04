@@ -99,6 +99,7 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 16 | `rights-passport` | `supabase-rights-passport.sql` | contributor permissions, ownership scope and deterministic release preflight |
 | 17 | `media-preflight` | `supabase-media-preflight.sql` | private audio analysis queue, derivatives, duplicate detection and publication gate |
 | 18 | `qr-login` | `supabase-qr-login.sql` | five-minute, single-use phone → computer login pairings |
+| 19 | `release-clearance-evidence` | `supabase-release-clearance-evidence.sql` | versioned proof and publication gates for covers, remixes, samples, leased beats and third-party material |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.

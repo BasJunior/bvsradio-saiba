@@ -21,6 +21,15 @@ const genres = [
   'Gospel', 'Jazz', 'Pop', 'Sungura', 'Zimdancehall', 'Chimurenga', 'Other',
 ]
 
+const materialOptions = [
+  ['original', 'Fully original'],
+  ['cover', 'Cover song'],
+  ['remix', 'Remix'],
+  ['sample', 'Contains samples'],
+  ['leased_beat', 'Uses a leased beat'],
+  ['other_third_party', 'Other third-party material'],
+] as const
+
 export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => void }) {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
@@ -38,6 +47,9 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
   const [songwriters, setSongwriters] = useState('')
   const [producers, setProducers] = useState('')
   const [featuredArtists, setFeaturedArtists] = useState('')
+  const [materialTypes, setMaterialTypes] = useState<string[]>(['original'])
+  const [evidenceFiles, setEvidenceFiles] = useState<Record<string, File | null>>({})
+  const [evidenceNotes, setEvidenceNotes] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -77,6 +89,11 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       setError('Name the master owner, composition owner, songwriter and producer before submitting.')
       return
     }
+    const requiredEvidenceTypes = materialTypes.filter((type) => type !== 'original')
+    if (!materialTypes.length || requiredEvidenceTypes.some((type) => !evidenceFiles[type])) {
+      setError('Declare the material type and upload clearance evidence for every cover, remix, sample, leased beat or third-party element.')
+      return
+    }
     if (!isSupabaseConfigured()) {
       setError('Account service not configured.')
       return
@@ -92,6 +109,7 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
         Authorization: `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       }
+      const evidenceEntries = requiredEvidenceTypes.map((materialType) => ({ materialType, file: evidenceFiles[materialType] as File }))
 
       setProgress('Preparing secure upload slots…')
       const prepRes = await fetch('/api/releases/prepare', {
@@ -100,6 +118,7 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
         body: JSON.stringify({
           tracks: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
           cover: cover ? { name: cover.name, type: cover.type, size: cover.size } : null,
+          evidence: evidenceEntries.map(({ materialType, file }) => ({ materialType, name: file.name, type: file.type, size: file.size })),
         }),
       })
       const prep = await prepRes.json()
@@ -113,6 +132,10 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       if (cover && prep.cover) {
         setProgress('Uploading cover…')
         await putToSignedSlot(prep.cover as Slot, cover)
+      }
+      for (let i = 0; i < evidenceEntries.length; i++) {
+        setProgress(`Uploading clearance evidence ${i + 1} of ${evidenceEntries.length}…`)
+        await putToSignedSlot(prep.evidence[i] as Slot, evidenceEntries[i].file)
       }
 
       setProgress('Registering release for review…')
@@ -134,6 +157,15 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
           songwriters: songwriters.split(',').map((value) => value.trim()).filter(Boolean),
           producers: producers.split(',').map((value) => value.trim()).filter(Boolean),
           featuredArtists: featuredArtists.split(',').map((value) => value.trim()).filter(Boolean),
+          materialTypes,
+          evidence: evidenceEntries.map(({ materialType, file }, index) => ({
+            materialType,
+            path: prep.evidence[index].path,
+            originalFileName: file.name,
+            mimeType: file.type,
+            size: file.size,
+            artistNotes: evidenceNotes[materialType] || '',
+          })),
           coverPath: prep.cover?.path || null,
           tracks: files.map((_, i) => ({
             title: (trackTitles[i] || `Track ${i + 1}`).trim(),
@@ -160,6 +192,9 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       setSongwriters('')
       setProducers('')
       setFeaturedArtists('')
+      setMaterialTypes(['original'])
+      setEvidenceFiles({})
+      setEvidenceNotes({})
       onSuccess?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submit failed')
@@ -255,6 +290,50 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
           <input value={featuredArtists} onChange={(e) => setFeaturedArtists(e.target.value)} placeholder="Optional; names separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
         </label>
         <p className="text-xs text-text-secondary">Territory: worldwide for BVS review. Editorial must request changes before any narrower territory is published.</p>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-amber-300/20 bg-amber-300/[.03] p-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">Material and clearance evidence</p>
+          <h3 className="mt-1 text-lg font-semibold">Tell us what this release contains</h3>
+          <p className="mt-1 text-xs text-text-secondary">Select every applicable type. Covers, remixes, samples, leased beats and other third-party material cannot be published until editorial approves documentary evidence.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {materialOptions.map(([value, label]) => (
+            <label key={value} className="flex items-center gap-3 rounded-xl border border-white/10 p-3 text-sm">
+              <input
+                type="checkbox"
+                checked={materialTypes.includes(value)}
+                onChange={(event) => {
+                  setMaterialTypes(event.target.checked ? [...new Set([...materialTypes, value])] : materialTypes.filter((item) => item !== value))
+                }}
+                className="accent-brand"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        {materialTypes.filter((type) => type !== 'original').map((type) => {
+          const label = materialOptions.find(([value]) => value === type)?.[1] || type
+          return (
+            <div key={type} className="rounded-xl border border-amber-200/20 p-4">
+              <label className="block text-sm font-medium">{label} clearance document *</label>
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(event) => setEvidenceFiles({ ...evidenceFiles, [type]: event.target.files?.[0] || null })}
+                className="mt-2 text-sm"
+              />
+              <textarea
+                value={evidenceNotes[type] || ''}
+                onChange={(event) => setEvidenceNotes({ ...evidenceNotes, [type]: event.target.value })}
+                placeholder="Who granted permission, scope, territories, dates or licence reference"
+                className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 text-sm"
+              />
+              <p className="mt-2 text-xs text-text-secondary">PDF or image, maximum 10MB. Evidence remains private to the artist and authorized editorial staff.</p>
+            </div>
+          )
+        })}
       </section>
 
       <div>

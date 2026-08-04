@@ -104,6 +104,8 @@ export async function POST(req: Request) {
       songwriters?: string[];
       producers?: string[];
       featuredArtists?: string[];
+      materialTypes?: string[];
+      evidence?: Array<{ materialType?: string; path?: string; originalFileName?: string; mimeType?: string; size?: number; artistNotes?: string }>;
       coverPath?: string | null;
       tracks?: Array<{ title?: string; audioPath?: string; position?: number }>;
     };
@@ -130,6 +132,9 @@ export async function POST(req: Request) {
     const featuredArtists = cleanNames(body.featuredArtists);
     const masterOwnerName = String(body.masterOwnerName || "").trim().slice(0, 160);
     const territories = cleanNames(body.territories).map((value) => value.toUpperCase());
+    const allowedMaterialTypes = new Set(["original", "cover", "remix", "sample", "leased_beat", "other_third_party"]);
+    const materialTypes = cleanNames(body.materialTypes).filter((value) => allowedMaterialTypes.has(value));
+    const evidence = Array.isArray(body.evidence) ? body.evidence : [];
 
     if (!title || !genre || !body.rightsConfirmed || !body.explicitDeclared || tracks.length < 1) {
       return NextResponse.json(
@@ -145,6 +150,13 @@ export async function POST(req: Request) {
         { error: "Complete the Rights Passport: copyright year, master owner, composition owner, songwriter and producer." },
         { status: 400 },
       );
+    }
+    if (!materialTypes.length || materialTypes.length !== cleanNames(body.materialTypes).length) {
+      return NextResponse.json({ error: "Declare whether the release is original, a cover, remix, sampled work, leased beat, or other third-party material." }, { status: 400 });
+    }
+    const evidenceRequired = materialTypes.filter((value) => value !== "original");
+    if (evidenceRequired.some((value) => !evidence.some((item) => item.materialType === value))) {
+      return NextResponse.json({ error: "Upload clearance evidence for every declared third-party material type." }, { status: 400 });
     }
 
     const artistName = creatorPublicName({
@@ -166,7 +178,11 @@ export async function POST(req: Request) {
     const uploadedPaths = [
       ...(coverPath ? [coverPath] : []),
       ...tracks.map((track) => String(track.audioPath || "")),
+      ...evidence.map((item) => String(item.path || "")),
     ];
+    if (evidence.some((item) => !String(item.path || "").startsWith(`releases/${user.id}/`) || !evidenceRequired.includes(String(item.materialType || "")))) {
+      return NextResponse.json({ error: "Invalid clearance evidence path or type." }, { status: 400 });
+    }
     const objectChecks = await Promise.all(uploadedPaths.map((path) => r2ObjectExists(path)));
     if (objectChecks.some((exists) => !exists)) {
       return NextResponse.json(
@@ -196,6 +212,8 @@ export async function POST(req: Request) {
       composition_owner_names: compositionOwnerNames,
       territories: territories.length ? territories : ["WORLD"],
       passport_version: 1,
+      material_types: materialTypes,
+      clearance_declaration_version: 1,
       preflight_status: "not_checked",
       track_count: tracks.length,
     });
@@ -281,25 +299,45 @@ export async function POST(req: Request) {
       );
     }
 
+    if (evidence.length) {
+      const savedEvidence = await restPost("release_clearance_evidence", evidence.map((item) => ({
+        release_id: release.id,
+        owner_user_id: user.id,
+        material_type: String(item.materialType),
+        evidence_version: 1,
+        file_path: String(item.path),
+        original_file_name: String(item.originalFileName || "evidence").slice(0, 255),
+        mime_type: String(item.mimeType || "application/octet-stream").slice(0, 120),
+        file_size: Number(item.size || 0),
+        artist_notes: String(item.artistNotes || "").slice(0, 2000) || null,
+        review_status: "submitted",
+      })));
+      if (!savedEvidence.ok) {
+        console.error("release clearance evidence insert", savedEvidence.status, savedEvidence.text);
+        return NextResponse.json({ error: "Release saved, but clearance evidence could not be registered. Contact BVS." }, { status: 500 });
+      }
+    }
+
     const preflight = await restPost<{ status?: string; blockers?: string[] }>(
       "rpc/refresh_release_preflight",
       { p_release_id: release.id },
     );
-    if (!preflight.ok || preflight.data?.status !== "ready") {
+    if (!preflight.ok) {
       console.error("release preflight", preflight.status, preflight.text);
       return NextResponse.json(
         {
-          error: "Release saved, but preflight found missing rights information.",
-          blockers: preflight.data?.blockers || [],
+          error: "Release saved, but rights preflight could not be completed. Contact BVS.",
         },
-        { status: 409 },
+        { status: 500 },
       );
     }
 
     void notifyNewRelease(title, artistName, user.id, tracks.length);
 
     return NextResponse.json({
-      message: "Release submitted. Audio preflight is queued before editorial publication.",
+      message: preflight.data?.status === "ready"
+        ? "Release submitted. Audio preflight is queued before editorial publication."
+        : "Release submitted. Editorial must approve the clearance evidence before publication.",
       release,
       preflight: preflight.data,
     });

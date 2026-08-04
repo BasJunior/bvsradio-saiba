@@ -92,6 +92,11 @@ export async function GET(request: Request) {
     in_rotation: track.track_id ? rotationByTrackId.get(String(track.track_id)) === true : false,
   }))
   const releaseContributors = await optionalJson('release_contributors?select=*&order=created_at.asc&limit=1000')
+  const rawReleaseClearanceEvidence = await optionalJson('release_clearance_evidence?select=*&order=created_at.asc&limit=1000')
+  const releaseClearanceEvidence = await Promise.all((rawReleaseClearanceEvidence as Array<Record<string, unknown>>).map(async evidence => ({
+    ...evidence,
+    file_url: await signStoredMedia(String(evidence.file_path || '')),
+  })))
   const rawMediaProcessingJobs = await optionalJson('media_processing_jobs?select=*&order=created_at.asc&limit=1000')
   const mediaProcessingJobs = await Promise.all((rawMediaProcessingJobs as Array<Record<string, unknown>>).map(async job => ({
     ...job,
@@ -124,6 +129,7 @@ export async function GET(request: Request) {
     releases,
     releaseTracks,
     releaseContributors,
+    releaseClearanceEvidence,
     mediaProcessingJobs,
     distributionJobs,
     roleApplications,
@@ -387,6 +393,31 @@ export async function PATCH(request: Request) {
         if (previous?.editorial_status !== 'approved') {
           await notifyApproval({ userId: previous?.user_id, title: previous?.title, kind: 'release' })
         }
+        return NextResponse.json({ result })
+      }
+      case 'review_release_clearance_evidence': {
+        requirePermission('approve_submissions')
+        const evidenceId = String(body.evidenceId || '')
+        const status = String(body.status || '')
+        const notes = String(body.notes || '').slice(0, 2000)
+        if (!evidenceId || !['approved', 'rejected'].includes(status)) {
+          return NextResponse.json({ error: 'Evidence and a valid decision are required.' }, { status: 400 })
+        }
+        const existing = (await optionalJson(`release_clearance_evidence?id=eq.${encodeURIComponent(evidenceId)}&select=release_id,material_type&limit=1`))[0] as { release_id?: string; material_type?: string } | undefined
+        if (!existing?.release_id) return NextResponse.json({ error: 'Clearance evidence not found.' }, { status: 404 })
+        const result = await patchTable('release_clearance_evidence', `id=eq.${encodeURIComponent(evidenceId)}`, {
+          review_status: status,
+          review_notes: notes || null,
+          reviewed_by: identity.user.id,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        await jsonOrError(await fetch(editorialUrl('rpc/refresh_release_preflight'), {
+          method: 'POST', headers: serviceHeaders, body: JSON.stringify({ p_release_id: existing.release_id }),
+        }))
+        await audit(identity.user.id, `release_clearance_${status}`, 'release_clearance_evidence', evidenceId, {
+          releaseId: existing.release_id, materialType: existing.material_type,
+        })
         return NextResponse.json({ result })
       }
       case 'update_release_rotation': {

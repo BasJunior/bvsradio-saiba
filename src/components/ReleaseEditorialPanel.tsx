@@ -22,6 +22,7 @@ type Release = {
   master_owner_name?: string
   composition_owner_names?: string[]
   territories?: string[]
+  material_types?: string[]
 }
 
 type ReleaseTrack = {
@@ -56,6 +57,17 @@ type MediaProcessingJob = {
   preview_path?: string
   error_code?: string
 }
+type ReleaseClearanceEvidence = {
+  id: string
+  release_id: string
+  material_type: string
+  evidence_version: number
+  original_file_name: string
+  file_url?: string
+  artist_notes?: string
+  review_status: string
+  review_notes?: string
+}
 
 type DistJob = {
   id: string
@@ -69,6 +81,7 @@ export default function ReleaseEditorialPanel({
   releases,
   releaseTracks,
   releaseContributors,
+  releaseClearanceEvidence,
   mediaProcessingJobs,
   distributionJobs,
   canApprove,
@@ -80,6 +93,7 @@ export default function ReleaseEditorialPanel({
   releases: Release[]
   releaseTracks: ReleaseTrack[]
   releaseContributors: ReleaseContributor[]
+  releaseClearanceEvidence: ReleaseClearanceEvidence[]
   mediaProcessingJobs: MediaProcessingJob[]
   distributionJobs: DistJob[]
   canApprove: boolean
@@ -117,6 +131,7 @@ export default function ReleaseEditorialPanel({
         {releases.map((release) => {
           const members = releaseTracks.filter((t) => t.release_id === release.id)
           const contributors = releaseContributors.filter((item) => item.release_id === release.id)
+          const clearanceEvidence = releaseClearanceEvidence.filter((item) => item.release_id === release.id)
           const mediaJobs = mediaProcessingJobs.filter((item) => item.release_id === release.id)
           const job = distributionJobs.find((j) => j.release_id === release.id)
           const rightsReady = ['ready', 'legacy_approved'].includes(release.preflight_status || '')
@@ -220,6 +235,25 @@ export default function ReleaseEditorialPanel({
                           <li key={blocker}>{blocker.toLowerCase().replaceAll('_', ' ')}</li>
                         ))}
                       </ul>
+                    )}
+                    <p className="mt-2 text-text-secondary">Material: {release.material_types?.map((item) => item.replaceAll('_', ' ')).join(', ') || 'legacy / undeclared'}</p>
+                    {clearanceEvidence.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {clearanceEvidence.map((evidence) => (
+                          <div key={evidence.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                            <p className="font-semibold">{evidence.material_type.replaceAll('_', ' ')} · v{evidence.evidence_version} · {evidence.review_status}</p>
+                            <p className="mt-1 text-text-secondary">{evidence.original_file_name}{evidence.artist_notes ? ` · ${evidence.artist_notes}` : ''}</p>
+                            {evidence.file_url && <a href={evidence.file_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-brand underline">Open private evidence</a>}
+                            {evidence.review_notes && <p className="mt-2 text-text-secondary">Reviewer: {evidence.review_notes}</p>}
+                            {canApprove && evidence.review_status === 'submitted' && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button type="button" disabled={Boolean(busy)} onClick={() => void act('review_release_clearance_evidence', { evidenceId: evidence.id, status: 'approved', notes: notes[release.id] || '' })} className="rounded-full bg-emerald-400 px-3 py-1 font-semibold text-black">Approve evidence</button>
+                                <button type="button" disabled={Boolean(busy)} onClick={() => void act('review_release_clearance_evidence', { evidenceId: evidence.id, status: 'rejected', notes: notes[release.id] || '' })} className="rounded-full bg-red-400 px-3 py-1 font-semibold text-black">Reject evidence</button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                   {release.passport_version ? (
