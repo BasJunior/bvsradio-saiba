@@ -296,9 +296,9 @@ export default function UploadPage() {
           onClick={() => setUploadType('music')}
           className={`rounded-2xl border p-5 text-left transition ${uploadType === 'music' ? 'border-brand bg-brand/10' : 'border-white/10 bg-bg-card/30 hover:border-white/30'}`}
         >
-          <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-brand">Music</span>
+          <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand"><span aria-hidden="true" className="text-lg">♪</span> Music</span>
           <span className="mt-1 block text-xl font-semibold">Songs and releases</span>
-          <span className="mt-1 block text-sm text-text-secondary">Submit a single song, album or EP for BVS Radio and catalogue review.</span>
+          <span className="mt-1 block text-sm text-text-secondary">Radio, catalogue and rotation review.</span>
         </button>
         <button
           type="button"
@@ -307,9 +307,9 @@ export default function UploadPage() {
           onClick={() => setUploadType('beats')}
           className={`rounded-2xl border p-5 text-left transition ${uploadType === 'beats' ? 'border-brand bg-brand/10' : 'border-white/10 bg-bg-card/30 hover:border-white/30'}`}
         >
-          <span className="block text-xs font-semibold uppercase tracking-[0.2em] text-brand">Beats</span>
+          <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand"><span aria-hidden="true" className="text-lg">◒</span> Beats</span>
           <span className="mt-1 block text-xl font-semibold">BeatStore instrumentals</span>
-          <span className="mt-1 block text-sm text-text-secondary">Upload licensable beats with tagged previews, masters, artwork and pricing.</span>
+          <span className="mt-1 block text-sm text-text-secondary">BeatStore licensing and producer review.</span>
         </button>
       </div>
       <div className="grid gap-16 lg:grid-cols-2">

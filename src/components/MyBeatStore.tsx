@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import { isAllowedAudioFile } from '@/lib/audio-formats'
 
 type Licence = {
   id?: string
@@ -35,14 +36,26 @@ type Beat = {
 const field =
   'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
 
-async function putSigned(slot: { signedUrl: string; path: string; contentType?: string }, file: File) {
+function validateArtwork(file: File) {
+  if (!/\.(jpe?g|png|webp)$/i.test(file.name)) return 'Cover art must be JPG, PNG, or WebP.'
+  if (!file.size) return 'The selected cover art is empty.'
+  if (file.size > 8 * 1024 * 1024) return 'Cover art must be 8MB or smaller.'
+  return ''
+}
+
+async function putSigned(slot: { signedUrl: string; path: string; contentType?: string }, file: File, onProgress: (percent: number) => void) {
   const contentType = file.type || (file.name.match(/\.png$/i) ? 'image/png' : file.name.match(/\.webp$/i) ? 'image/webp' : file.name.match(/\.(jpe?g)$/i) ? 'image/jpeg' : 'application/octet-stream')
-  const res = await fetch(slot.signedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': slot.contentType || contentType },
-    body: file,
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', slot.signedUrl)
+    xhr.setRequestHeader('Content-Type', slot.contentType || contentType)
+    xhr.upload.onprogress = event => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100))
+    }
+    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed for ${file.name}.`))
+    xhr.onerror = () => reject(new Error(`Upload failed for ${file.name}. Check your connection and retry.`))
+    xhr.send(file)
   })
-  if (!res.ok) throw new Error(`Upload failed for ${file.name}`)
   return slot.path
 }
 
@@ -53,6 +66,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
   const [error, setError] = useState(supabaseReady ? '' : 'Supabase is not configured.')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [genre, setGenre] = useState('Hip-Hop')
@@ -102,6 +116,14 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
       if (!title.trim()) throw new Error('Title is required.')
       if (!rights) throw new Error('Confirm rights before saving.')
       if (submit && !preview) throw new Error('Upload a tagged preview before submitting.')
+      for (const file of [preview, master].filter((value): value is File => Boolean(value))) {
+        const check = isAllowedAudioFile(file)
+        if (!check.ok) throw new Error(check.error)
+      }
+      if (artwork) {
+        const artworkError = validateArtwork(artwork)
+        if (artworkError) throw new Error(artworkError)
+      }
 
       let previewPath: string | null = null
       let masterPath: string | null = null
@@ -129,11 +151,12 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
         const prep = await prepRes.json().catch(() => ({}))
         if (!prepRes.ok) throw new Error(prep.error || 'Could not prepare uploads.')
         const slots = prep.slots || {}
-        if (preview && slots.preview) previewPath = await putSigned(slots.preview, preview)
-        if (master && slots.master) masterPath = await putSigned(slots.master, master)
-        if (artwork && slots.artwork) artworkPath = await putSigned(slots.artwork, artwork)
+        if (preview && slots.preview) previewPath = await putSigned(slots.preview, preview, percent => setUploadProgress(`Tagged preview · ${preview.name}: ${percent}%`))
+        if (master && slots.master) masterPath = await putSigned(slots.master, master, percent => setUploadProgress(`Master · ${master.name}: ${percent}%`))
+        if (artwork && slots.artwork) artworkPath = await putSigned(slots.artwork, artwork, percent => setUploadProgress(`Cover · ${artwork.name}: ${percent}%`))
       }
 
+      setUploadProgress(submit ? 'Submitting for editorial review…' : 'Saving draft…')
       const createRes = await fetch('/api/beats', {
         method: 'POST',
         headers: {
@@ -171,6 +194,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
       setError(err instanceof Error ? err.message : 'Save failed.')
     } finally {
       setBusy(false)
+      setUploadProgress('')
     }
   }
 
@@ -365,6 +389,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
             {busy ? 'Working…' : 'Submit for review'}
           </button>
         </div>
+        {uploadProgress && <p className="text-sm text-brand" role="status">{uploadProgress}</p>}
         <p className="text-xs text-text-secondary">
           MVP uses one Standard lease tier. Full legal licence copy is finalized by BVS before
           multi-tier commerce.
