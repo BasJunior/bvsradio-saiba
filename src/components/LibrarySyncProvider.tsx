@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { DiscoveryItem } from '@/lib/discovery'
 import { readLibrary, writeLibrary, type LibrarySection } from '@/lib/library'
-import { createClient } from '@/lib/supabase'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
 type SyncState = 'device' | 'syncing' | 'synced' | 'error'
 type SyncContextValue = { state: SyncState; signedIn: boolean; syncNow: () => Promise<void> }
@@ -17,6 +17,7 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
   const [signedIn, setSignedIn] = useState(false)
 
   const request = useCallback(async (body: object) => {
+    if (!isSupabaseConfigured()) throw new Error('Account sync is unavailable in this environment')
     const supabase = createClient()
     const { data } = await supabase.auth.getSession()
     if (!data.session) throw new Error('Not signed in')
@@ -46,6 +47,11 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
       setSignedIn(true)
       setState('synced')
     } catch {
+      if (!isSupabaseConfigured()) {
+        setSignedIn(false)
+        setState('device')
+        return
+      }
       const { data } = await createClient().auth.getSession()
       setSignedIn(Boolean(data.session))
       setState(data.session ? 'error' : 'device')
@@ -53,6 +59,11 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
   }, [applyRemote, request])
 
   useEffect(() => {
+    if (!isSupabaseConfigured()) {
+      setSignedIn(false)
+      setState('device')
+      return
+    }
     const supabase = createClient()
     const initialSync = window.setTimeout(syncNow, 0)
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
