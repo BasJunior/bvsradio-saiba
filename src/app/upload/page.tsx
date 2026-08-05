@@ -8,6 +8,7 @@ import { trackEvent } from '@/lib/analytics'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import ReleaseSubmitForm from '@/components/ReleaseSubmitForm'
 import MyBeatStore from '@/components/MyBeatStore'
+import BeatPackUploadForm from '@/components/BeatPackUploadForm'
 
 type SignedSlot = {
   path: string
@@ -47,6 +48,7 @@ export default function UploadPage() {
   const [signedInAs, setSignedInAs] = useState<string | null>(null)
   const [uploadType, setUploadType] = useState<'music' | 'beats'>('music')
   const [mode, setMode] = useState<'single' | 'release'>('release')
+  const [beatMode, setBeatMode] = useState<'single' | 'pack'>('single')
 
   const genres = [
     'Hip-Hop', 'Trap', 'Afrobeats', 'Amapiano', 'R&B',
@@ -412,9 +414,10 @@ export default function UploadPage() {
             >
               Single song
             </button>
-            </> : (
-              <span className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-black">Single beat</span>
-            )}
+            </> : <>
+              <button type="button" onClick={() => setBeatMode('single')} className={`rounded-full px-4 py-2 text-sm font-medium ${beatMode === 'single' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}>Single beat</button>
+              <button type="button" onClick={() => setBeatMode('pack')} className={`rounded-full px-4 py-2 text-sm font-medium ${beatMode === 'pack' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}>Beat pack</button>
+            </>}
             <Link href="/artist/premium" className="rounded-full border border-white/20 px-4 py-2 text-sm text-text-secondary hover:border-brand">
               Premium
             </Link>
@@ -425,7 +428,7 @@ export default function UploadPage() {
               <p className="mb-5 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-xs text-text-secondary">
                 <strong className="text-text-primary">Where it goes:</strong> files upload directly to private BVS storage, then the listing goes to editorial review. Published beats appear in BeatStore; drafts and review messages remain in Creator Studio.
               </p>
-              <MyBeatStore creationOnly />
+              {beatMode === 'single' ? <MyBeatStore creationOnly /> : <BeatPackUploadForm />}
             </div>
           ) : mode === 'release' ? (
             <div className="rounded-2xl border border-white/10 bg-bg-card/30 p-8">

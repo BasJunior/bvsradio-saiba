@@ -47,9 +47,10 @@ async function putSigned(slot: { signedUrl: string; path: string; contentType?: 
 }
 
 export default function MyBeatStore({ creationOnly = false }: { creationOnly?: boolean }) {
+  const supabaseReady = isSupabaseConfigured()
   const [token, setToken] = useState('')
   const [beats, setBeats] = useState<Beat[]>([])
-  const [error, setError] = useState('')
+  const [error, setError] = useState(supabaseReady ? '' : 'Supabase is not configured.')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [title, setTitle] = useState('')
@@ -75,10 +76,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
   }, [])
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setError('Supabase is not configured.')
-      return
-    }
+    if (!supabaseReady) return
     createClient()
       .auth.getSession()
       .then(({ data }) => {
@@ -92,7 +90,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
           load(t).catch((e) => setError(e instanceof Error ? e.message : 'Load failed'))
         }
       })
-  }, [creationOnly, load])
+  }, [creationOnly, load, supabaseReady])
 
   const onSubmit = async (e: FormEvent, submit: boolean) => {
     e.preventDefault()

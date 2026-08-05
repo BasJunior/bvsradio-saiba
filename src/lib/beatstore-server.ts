@@ -35,6 +35,8 @@ export type BeatRow = {
   created_at?: string
   updated_at?: string
   published_at?: string | null
+  pack_id?: string | null
+  pack_position?: number | null
 }
 
 export type BeatLicenceRow = {
