@@ -46,7 +46,7 @@ async function putSigned(slot: { signedUrl: string; path: string; contentType?: 
   return slot.path
 }
 
-export default function MyBeatStore() {
+export default function MyBeatStore({ creationOnly = false }: { creationOnly?: boolean }) {
   const [token, setToken] = useState('')
   const [beats, setBeats] = useState<Beat[]>([])
   const [error, setError] = useState('')
@@ -88,9 +88,11 @@ export default function MyBeatStore() {
           return
         }
         setToken(t)
-        load(t).catch((e) => setError(e instanceof Error ? e.message : 'Load failed'))
+        if (!creationOnly) {
+          load(t).catch((e) => setError(e instanceof Error ? e.message : 'Load failed'))
+        }
       })
-  }, [load])
+  }, [creationOnly, load])
 
   const onSubmit = async (e: FormEvent, submit: boolean) => {
     e.preventDefault()
@@ -166,7 +168,7 @@ export default function MyBeatStore() {
       setMaster(null)
       setArtwork(null)
       setRights(false)
-      await load(token)
+      if (!creationOnly) await load(token)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.')
     } finally {
@@ -227,7 +229,7 @@ export default function MyBeatStore() {
       <section className="mt-10 rounded-2xl border border-white/10 p-6">
         <h2 className="text-2xl">My BeatStore</h2>
         <p className="mt-3 text-text-secondary">{error}</p>
-        <Link href="/auth/login?next=/creator/studio" className="mt-4 inline-block text-brand">
+        <Link href={`/auth/login?next=${creationOnly ? '/upload' : '/creator/studio'}`} className="mt-4 inline-block text-brand">
           Sign in →
         </Link>
       </section>
@@ -235,19 +237,25 @@ export default function MyBeatStore() {
   }
 
   return (
-    <section className="mt-10">
+    <section className={creationOnly ? '' : 'mt-10'}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-brand">Producer</p>
-          <h2 className="mt-1 text-2xl">My BeatStore</h2>
+          <h2 className="mt-1 text-2xl">{creationOnly ? 'Upload a single beat' : 'My BeatStore'}</h2>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
             Upload a tagged preview, set a Standard lease price, and submit for editorial. Published
             beats appear in Beats / BeatStore.
           </p>
         </div>
-        <Link href="/catalogue?type=beat#beatstore" className="text-sm text-brand">
-          View public BeatStore →
-        </Link>
+        {creationOnly ? (
+          <Link href="/creator/studio" className="text-sm text-brand">
+            Manage my beats →
+          </Link>
+        ) : (
+          <Link href="/catalogue?type=beat#beatstore" className="text-sm text-brand">
+            View public BeatStore →
+          </Link>
+        )}
       </div>
 
       {error && <p className="mt-4 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}
@@ -365,7 +373,7 @@ export default function MyBeatStore() {
         </p>
       </form>
 
-      <div className="mt-8 space-y-3">
+      {!creationOnly && <div className="mt-8 space-y-3">
         <h3 className="text-xl">Your beats</h3>
         {beats.map((beat) => {
           const priceUsd = beat.beat_licence_options?.[0]?.price_usd
@@ -418,7 +426,7 @@ export default function MyBeatStore() {
             No beats yet. Add your first listing above.
           </p>
         )}
-      </div>
+      </div>}
     </section>
   )
 }
