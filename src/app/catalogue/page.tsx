@@ -17,7 +17,7 @@ import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
-import { curatedCatalogueTracks } from "@/data/catalogue-curated-tracks";
+import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
 
 type TrackType = "single" | "beat" | "mix";
 
