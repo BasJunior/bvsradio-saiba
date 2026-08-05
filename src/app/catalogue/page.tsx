@@ -41,7 +41,22 @@ interface Track {
   /** DB-backed producer BeatStore listing */
   producerBeat?: boolean;
   producerUsername?: string;
+  packId?: string | null;
 }
+
+type ShelfAction =
+  | { type: "live-beatstore" }
+  | { type: "filter"; query: string; lane?: "music" | "beat" | "all" }
+  | { type: "pack"; packId: string }
+  | { type: "release"; releaseId: string }
+  | { type: "href"; href: string };
+
+type ShelfCard = CollectionCard & {
+  id?: string;
+  source?: "live" | "pack" | "release" | "curated";
+  itemCount?: number;
+  action?: ShelfAction;
+};
 
 const coverArt = "/music/Bvs-3000x3000%202.png";
 const junePackArt = "/images/music-packs/june-pack.jpg";
@@ -472,90 +487,127 @@ const LEGACY_LIVE_BEATSTORE_NAMES = new Set([
   "Producer BeatStore",
 ]);
 
-const collectionCards: CollectionCard[] = [
+/** Offline fallback if /api/catalogue/shelves is unavailable. */
+const fallbackCollectionCards: ShelfCard[] = [
   {
+    id: "live-beatstore",
     name: LIVE_BEATSTORE_NAME,
     detail: "Published producer beats · live from BeatStore",
     img: "/images/hero-studio.jpg",
     launchedAt: "2026-08-05",
     shelfKind: "live-beatstore",
+    source: "live",
+    action: { type: "live-beatstore" },
   },
   {
+    id: "curated-albums",
     name: "Albums",
     detail: `Full albums + $${PRICE_SINGLE_DOWNLOAD} singles`,
     img: "/images/albums/lord-album.jpg",
     launchedAt: "2026-06-01",
     shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "Albums", lane: "music" },
   },
   {
+    id: "curated-lord",
     name: "LORD Album",
     detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $19`,
     img: "/images/albums/lord-album.jpg",
     launchedAt: "2026-06-15",
     shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "LORD Album", lane: "music" },
   },
   {
+    id: "curated-16bit",
     name: "Album 16 Bit",
     detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $14`,
     img: "/images/albums/album-16-bit.jpg",
     launchedAt: "2026-06-20",
     shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "Album 16 Bit", lane: "music" },
   },
   {
+    id: "curated-straightenin",
     name: "STRAIGHTENIN",
     detail: "Stream only · no BVS download sale",
     img: straighteninArt,
     launchedAt: "2025-11-01",
     shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "STRAIGHTENIN", lane: "music" },
   },
   {
+    id: "curated-howling",
     name: "HOWLING IN THE HILLS 2",
     detail: "Stream only · no BVS download sale",
     img: howlingArt,
     launchedAt: "2025-12-01",
     shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "HOWLING IN THE HILLS 2", lane: "music" },
   },
   {
+    id: "curated-wolf-been-bad",
     name: "WOLF BEEN BAD",
     detail: "Stream only · no BVS download sale",
     img: wolfBeenBadArt,
     launchedAt: "2026-01-15",
     shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "WOLF BEEN BAD", lane: "music" },
   },
   {
+    id: "curated-wolf-projects",
     name: "Wolf Bridges Projects",
     detail: "Streaming discovery (regulated platforms)",
     img: straighteninArt,
     launchedAt: "2025-11-01",
     shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "Wolf Bridges Projects", lane: "music" },
   },
   {
+    id: "curated-bvs-archive",
     name: "BVS Archive",
     detail: `$${PRICE_SINGLE_DOWNLOAD} singles / archive downloads`,
     img: coverArt,
     launchedAt: "2025-10-01",
     shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "BVS Archive", lane: "music" },
   },
   {
+    id: "curated-june-pack",
     name: "June Pack",
     detail: "Sample pack · site listings (not full live crate)",
     img: junePackArt,
     launchedAt: "2026-06-01",
     shelfKind: "archive-sample",
+    source: "curated",
+    action: { type: "filter", query: "June Pack", lane: "all" },
   },
   {
+    id: "curated-may-pack",
     name: "May Pack",
     detail: "Sample pack · site listings (not full live crate)",
     img: mayPackArt,
     launchedAt: "2026-05-01",
     shelfKind: "archive-sample",
+    source: "curated",
+    action: { type: "filter", query: "May Pack", lane: "all" },
   },
   {
+    id: "curated-march-pack",
     name: "March Pack",
     detail: "Sample pack · site listings (not full live crate)",
     img: "/images/mic-closeup.jpg",
     launchedAt: "2026-03-01",
     shelfKind: "archive-sample",
+    source: "curated",
+    action: { type: "filter", query: "March Pack", lane: "all" },
   },
 ];
 
@@ -583,10 +635,15 @@ function CataloguePageContent() {
     return new URLSearchParams(window.location.search).get("producer") || "";
   });
   const [collectionJump, setCollectionJump] = useState("");
+  const [packFilter, setPackFilter] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("pack") || "";
+  });
   const [shelfMode, setShelfMode] = useState<"featured" | "trending" | "new">(
     "featured",
   );
   const [shelvesExpanded, setShelvesExpanded] = useState(true);
+  const [remoteShelves, setRemoteShelves] = useState<ShelfCard[] | null>(null);
   const [trendingScores, setTrendingScores] = useState<
     Record<string, { score: number; plays: number }>
   >({});
@@ -628,12 +685,14 @@ function CataloguePageContent() {
   useEffect(() => {
     const requestedType = searchParams.get("type");
     const requestedProducer = searchParams.get("producer") || "";
+    const requestedPack = searchParams.get("pack") || "";
     setSearch(searchParams.get("q") || "");
     setProducerFilter(requestedProducer);
-    if (requestedType === "beat") {
+    setPackFilter(requestedPack);
+    if (requestedType === "beat" || requestedPack) {
       setTypeFilter("beat");
       // Producer deep-links should land on the filtered crate, not the shelf chrome.
-      const anchor = requestedProducer ? "browse" : "beatstore";
+      const anchor = requestedProducer || requestedPack ? "browse" : "beatstore";
       window.requestAnimationFrame(() => {
         document.getElementById(anchor)?.scrollIntoView({ block: "start" });
       });
@@ -656,27 +715,30 @@ function CataloguePageContent() {
 
   useEffect(() => {
     let cancelled = false;
-    // Include both live + legacy names so trending rollups still match old play events.
-    const names = Array.from(
-      new Set([
-        ...collectionCards.map((c) => c.name),
-        ...LEGACY_LIVE_BEATSTORE_NAMES,
-      ]),
-    )
-      .map((name) => encodeURIComponent(name))
-      .join(",");
-    fetch(`/api/catalogue/trending?names=${names}`, { cache: "no-store" })
+    fetch("/api/catalogue/shelves", { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) return;
         const payload = await res.json().catch(() => ({}));
-        if (cancelled || !payload?.scores || typeof payload.scores !== "object")
-          return;
-        setTrendingScores(
-          payload.scores as Record<string, { score: number; plays: number }>,
+        const rows = Array.isArray(payload.shelves) ? payload.shelves : [];
+        if (cancelled || !rows.length) return;
+        setRemoteShelves(
+          rows.map(
+            (row: ShelfCard & { name?: string; detail?: string; img?: string }) => ({
+              id: row.id,
+              name: row.name || "Shelf",
+              detail: row.detail || "",
+              img: row.img || coverArt,
+              launchedAt: row.launchedAt,
+              shelfKind: row.shelfKind,
+              source: row.source,
+              itemCount: row.itemCount,
+              action: row.action,
+            }),
+          ),
         );
       })
       .catch(() => {
-        /* trending is optional */
+        /* shelves API optional — fallback cards remain */
       });
     return () => {
       cancelled = true;
@@ -706,6 +768,7 @@ function CataloguePageContent() {
                 startingPrice?: number | null;
                 producer?: string;
                 producer_username?: string;
+                packId?: string | null;
               },
               index: number,
             ) => ({
@@ -713,7 +776,7 @@ function CataloguePageContent() {
               title: b.title || "Untitled beat",
               artist: b.producer || "BVS Producer",
               genre: b.genre || "Beat",
-              collection: "Producer BeatStore",
+              collection: "Live BeatStore",
               duration: b.bpm ? `${b.bpm} BPM` : "Preview",
               description:
                 b.description ||
@@ -726,6 +789,7 @@ function CataloguePageContent() {
               price: b.startingPrice ?? 29,
               producerBeat: true,
               producerUsername: b.producer_username || undefined,
+              packId: b.packId || null,
             }),
           ),
         );
@@ -791,13 +855,21 @@ function CataloguePageContent() {
     };
   }, [dbBeats]);
 
-  const activeCollectionCards = useMemo((): CollectionCard[] => {
-    return collectionCards.map((card) => {
-      if (card.shelfKind !== "live-beatstore") return card;
+  const activeCollectionCards = useMemo((): ShelfCard[] => {
+    const base = remoteShelves?.length
+      ? remoteShelves
+      : fallbackCollectionCards;
+
+    return base.map((card) => {
+      const isLive =
+        card.shelfKind === "live-beatstore" ||
+        card.action?.type === "live-beatstore" ||
+        LEGACY_LIVE_BEATSTORE_NAMES.has(card.name);
+      if (!isLive || card.action?.type === "pack") return card;
       if (!liveBeatStats.count) {
         return {
           ...card,
-          detail: "Loading published BeatStore…",
+          detail: remoteShelves ? card.detail : "Loading published BeatStore…",
         };
       }
       const priceBit =
@@ -808,9 +880,40 @@ function CataloguePageContent() {
         ...card,
         detail: `${liveBeatStats.count} live beat${liveBeatStats.count === 1 ? "" : "s"} · ${liveBeatStats.producerCount} producer${liveBeatStats.producerCount === 1 ? "" : "s"}${priceBit}`,
         img: liveBeatStats.cover || card.img,
+        itemCount: liveBeatStats.count,
+        action: card.action || { type: "live-beatstore" },
       };
     });
-  }, [liveBeatStats]);
+  }, [remoteShelves, liveBeatStats]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const names = Array.from(
+      new Set([
+        ...activeCollectionCards.map((c) => c.name),
+        ...LEGACY_LIVE_BEATSTORE_NAMES,
+      ]),
+    )
+      .map((name) => encodeURIComponent(name))
+      .join(",");
+    if (!names) return;
+    fetch(`/api/catalogue/trending?names=${names}`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const payload = await res.json().catch(() => ({}));
+        if (cancelled || !payload?.scores || typeof payload.scores !== "object")
+          return;
+        setTrendingScores(
+          payload.scores as Record<string, { score: number; plays: number }>,
+        );
+      })
+      .catch(() => {
+        /* trending is optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCollectionCards]);
 
   const scopeTracks = useMemo(() => {
     // Beats lane: producer beats + typed beat licences only (never BVS archive songs)
@@ -842,15 +945,9 @@ function CataloguePageContent() {
   const jumpToCollection = (collectionName: string) => {
     const card =
       activeCollectionCards.find((entry) => entry.name === collectionName) ||
-      collectionCards.find((entry) => entry.name === collectionName);
-    const isLiveBeatstore =
-      card?.shelfKind === "live-beatstore" ||
-      LEGACY_LIVE_BEATSTORE_NAMES.has(collectionName);
-    const isArchiveSample = card?.shelfKind === "archive-sample";
+      fallbackCollectionCards.find((entry) => entry.name === collectionName);
+    const action = card?.action;
 
-    setCollectionJump(
-      isLiveBeatstore ? LIVE_BEATSTORE_NAME : collectionName,
-    );
     setGenreFilter("All");
     setProducerFilter("");
     try {
@@ -859,18 +956,34 @@ function CataloguePageContent() {
         source: "catalogue_shelf",
         shelf_mode: shelfMode,
         shelf_kind: card?.shelfKind || "music",
+        shelf_source: card?.source || "curated",
       });
     } catch {
       /* ignore */
     }
 
-    if (isLiveBeatstore) {
+    if (action?.type === "release") {
+      window.location.href = `/album/${encodeURIComponent(action.releaseId)}`;
+      return;
+    }
+    if (action?.type === "href") {
+      window.location.href = action.href;
+      return;
+    }
+
+    if (
+      action?.type === "live-beatstore" ||
+      (!action && LEGACY_LIVE_BEATSTORE_NAMES.has(collectionName))
+    ) {
+      setCollectionJump(LIVE_BEATSTORE_NAME);
+      setPackFilter("");
       setSearch("");
       setTypeFilter("beat");
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
         url.searchParams.set("type", "beat");
         url.searchParams.delete("producer");
+        url.searchParams.delete("pack");
         url.searchParams.delete("q");
         window.history.replaceState(
           {},
@@ -886,22 +999,51 @@ function CataloguePageContent() {
       return;
     }
 
-    // Archive sample packs + music projects: filter static listings only.
-    setSearch(collectionName);
-    if (isArchiveSample) {
-      setTypeFilter("all");
-    } else {
-      setTypeFilter("music");
+    if (action?.type === "pack") {
+      setCollectionJump(collectionName);
+      setPackFilter(action.packId);
+      setSearch("");
+      setTypeFilter("beat");
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("type", "beat");
+        url.searchParams.set("pack", action.packId);
+        url.searchParams.delete("producer");
+        url.searchParams.delete("q");
+        window.history.replaceState(
+          {},
+          "",
+          `${url.pathname}?${url.searchParams.toString()}#browse`,
+        );
+      }
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("browse")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
     }
+
+    const query =
+      action?.type === "filter" ? action.query : collectionName;
+    const lane =
+      action?.type === "filter"
+        ? action.lane || "music"
+        : card?.shelfKind === "archive-sample"
+          ? "all"
+          : "music";
+
+    setCollectionJump(collectionName);
+    setPackFilter("");
+    setSearch(query);
+    setTypeFilter(lane);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
-      if (isArchiveSample) {
-        url.searchParams.delete("type");
-      } else {
-        url.searchParams.delete("type");
-      }
+      if (lane === "music") url.searchParams.delete("type");
+      else url.searchParams.set("type", lane);
       url.searchParams.delete("producer");
-      url.searchParams.set("q", collectionName);
+      url.searchParams.delete("pack");
+      url.searchParams.set("q", query);
       window.history.replaceState(
         {},
         "",
@@ -929,15 +1071,22 @@ function CataloguePageContent() {
       const matchesProducer =
         !producerFilter ||
         producerKeysMatch(producerFilter, track.producerUsername, track.artist);
+      const matchesPack = !packFilter || track.packId === packFilter;
       // typeFilter music/beat already applied in scopeTracks; single/mix narrow further
       const matchesType =
         typeFilter === "all" ||
         typeFilter === "music" ||
         typeFilter === "beat" ||
         track.type === typeFilter;
-      return matchesSearch && matchesGenre && matchesProducer && matchesType;
+      return (
+        matchesSearch &&
+        matchesGenre &&
+        matchesProducer &&
+        matchesPack &&
+        matchesType
+      );
     });
-  }, [scopeTracks, genreFilter, producerFilter, search, typeFilter]);
+  }, [scopeTracks, genreFilter, producerFilter, packFilter, search, typeFilter]);
 
   const openExternalStream = (track: Track) => {
     if (!track.externalUrl) return;
@@ -1423,7 +1572,7 @@ function CataloguePageContent() {
                 return (
                   <button
                     type="button"
-                    key={collection.name}
+                    key={collection.id || collection.name}
                     onClick={() => jumpToCollection(collection.name)}
                     className={`group relative flex items-center gap-3 rounded-xl border bg-bg-card/40 p-3 text-left transition ${
                       isTop || isActive
@@ -1524,7 +1673,7 @@ function CataloguePageContent() {
               >
                 <option value="">Jump to collection</option>
                 {activeCollectionCards.map((collection) => (
-                  <option key={collection.name} value={collection.name}>
+                  <option key={collection.id || collection.name} value={collection.name}>
                     {collection.name} — {collection.detail}
                   </option>
                 ))}

@@ -4,6 +4,8 @@ export type CollectionCard = {
   name: string
   detail: string
   img: string
+  /** Stable shelf id when loaded from /api/catalogue/shelves */
+  id?: string
   /** Optional ISO date for "New" sort (project go-live / pack drop) */
   launchedAt?: string
   /**
@@ -12,6 +14,9 @@ export type CollectionCard = {
    * music — static or stream music collections.
    */
   shelfKind?: 'live-beatstore' | 'archive-sample' | 'music'
+  /** live | pack | release | curated */
+  source?: string
+  itemCount?: number
 }
 
 export type TrendingRow = {

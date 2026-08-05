@@ -89,6 +89,8 @@ export async function GET(request: Request) {
       artworkUrl: publicStorageUrl(b.artwork_path),
       previewUrl: publicStorageUrl(b.preview_path),
       startingPrice: starting,
+      packId: b.pack_id || null,
+      packPosition: b.pack_position ?? null,
       licences,
       published_at: b.published_at,
       created_at: b.created_at,
