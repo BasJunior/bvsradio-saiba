@@ -57,7 +57,7 @@ export async function GET(request: Request) {
   }
 
   // public published beats for catalogue / BeatStore
-  const beats = await listPublishedBeats(60)
+  const beats = await listPublishedBeats(120)
   const producerIds = [...new Set(beats.map(beat => beat.producer_user_id))]
   const producerResponse = producerIds.length
     ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status`), { headers: beatHeaders, cache: 'no-store' })
@@ -94,7 +94,16 @@ export async function GET(request: Request) {
       created_at: b.created_at,
     }
   })
-  return NextResponse.json({ beats: shaped, count: shaped.length })
+  const startingPrices = shaped
+    .map((beat) => Number(beat.startingPrice))
+    .filter((n) => Number.isFinite(n) && n > 0)
+  const summary = {
+    count: shaped.length,
+    producerCount: producerIds.length,
+    minPrice: startingPrices.length ? Math.min(...startingPrices) : null,
+    updatedAt: new Date().toISOString(),
+  }
+  return NextResponse.json({ beats: shaped, count: shaped.length, summary })
 }
 
 export async function POST(request: Request) {

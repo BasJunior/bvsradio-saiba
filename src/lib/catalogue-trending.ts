@@ -6,6 +6,12 @@ export type CollectionCard = {
   img: string
   /** Optional ISO date for "New" sort (project go-live / pack drop) */
   launchedAt?: string
+  /**
+   * live-beatstore — jump to published BeatStore crate (DB).
+   * archive-sample — static pack/project sample, not the full live catalogue.
+   * music — static or stream music collections.
+   */
+  shelfKind?: 'live-beatstore' | 'archive-sample' | 'music'
 }
 
 export type TrendingRow = {
