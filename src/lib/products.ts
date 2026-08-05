@@ -18,21 +18,31 @@ export function productsDir() {
   );
 }
 
+function normalizeProductId(itemId: string | number) {
+  const raw = String(itemId || "").trim();
+  // Live release packages use the release UUID; tolerate legacy prefixed cart ids.
+  if (raw.startsWith("release-package-")) return raw.slice("release-package-".length);
+  return raw;
+}
+
 /** Map cart line id / title slug → a locally staged product file. */
 export async function resolveProductFile(
   itemId: string | number,
   title?: string,
 ): Promise<string | null> {
   const root = productsDir();
+  const id = normalizeProductId(itemId);
   const candidates = [
-    path.join(root, "beats", `${itemId}.zip`),
-    path.join(root, "beats", `${itemId}.mp3`),
-    path.join(root, "beats", `${itemId}.wav`),
-    path.join(root, "albums", `${itemId}.zip`),
-    path.join(root, "albums", `${itemId}.mp3`),
-    path.join(root, "services", `${itemId}.zip`),
-    path.join(root, "singles", `${itemId}.mp3`),
-    path.join(root, "singles", `${itemId}.zip`),
+    path.join(root, "beats", `${id}.zip`),
+    path.join(root, "beats", `${id}.mp3`),
+    path.join(root, "beats", `${id}.wav`),
+    path.join(root, "albums", `${id}.zip`),
+    path.join(root, "albums", `${id}.mp3`),
+    path.join(root, "services", `${id}.zip`),
+    path.join(root, "singles", `${id}.mp3`),
+    path.join(root, "singles", `${id}.zip`),
+    // legacy prefixed filenames if ops staged them that way
+    path.join(root, "albums", `release-package-${id}.zip`),
   ];
   if (title) {
     const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");

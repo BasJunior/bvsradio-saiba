@@ -98,6 +98,9 @@ function priceFor(item: CartItem) {
 }
 
 function normalizeItem(item: CartItem): CartItem {
+  const albumPackage = Boolean(
+    (item as CartItem & { albumPackage?: boolean }).albumPackage,
+  );
   return {
     ...item,
     type: item.type || "single",
@@ -107,7 +110,9 @@ function normalizeItem(item: CartItem): CartItem {
       item.delivery ||
       (item.type === "service"
         ? "BVS contacts you for stems/brief, then delivers masters."
-        : "Download / license released after payment is confirmed."),
+        : albumPackage
+          ? "Full release package — download link after payment when the album zip is staged (albums/<release-id>.zip), otherwise BVS delivers via WhatsApp/email."
+          : "Download / license released after payment is confirmed."),
   };
 }
 

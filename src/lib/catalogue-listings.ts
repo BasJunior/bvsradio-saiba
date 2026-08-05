@@ -114,8 +114,10 @@ function releasePackageListing(row: ReleaseRow, trackCount: number): CatalogueLi
   const count = trackCount || Number(row.track_count) || 0
   // Bundle starting point: singles default $2, album packages historically $14–$19
   const packagePrice = count >= 8 ? 19 : count >= 2 ? 14 : PRICE_SINGLE_DOWNLOAD
+  const releaseId = String(row.id)
   return {
-    id: `release-package-${row.id}`,
+    // Cart/download id is the release UUID (products resolve albums/<uuid>.zip).
+    id: releaseId,
     title: String(row.title || 'Untitled release').trim(),
     artist: String(row.artist_name || 'BVS artist').trim(),
     genre: String(row.genre || row.release_type || 'Album'),
@@ -123,7 +125,7 @@ function releasePackageListing(row: ReleaseRow, trackCount: number): CatalogueLi
     duration: count ? `${count} tracks` : 'Full release',
     description:
       String(row.description || '').trim() ||
-      `Full ${String(row.release_type || 'release')} download package from the live BVS catalogue.`,
+      `Full ${String(row.release_type || 'release')} download package from the live BVS catalogue. After payment BVS delivers the album package (zip staged under albums/<release-id> or via support).`,
     type: 'mix',
     src: '',
     artwork:
@@ -132,7 +134,7 @@ function releasePackageListing(row: ReleaseRow, trackCount: number): CatalogueLi
       '/assets/images/default-artwork.jpg',
     price: packagePrice,
     albumPackage: true,
-    releaseId: String(row.id),
+    releaseId,
     source: 'release-package',
   }
 }

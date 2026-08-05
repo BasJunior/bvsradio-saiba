@@ -487,18 +487,32 @@ function CataloguePageContent() {
 
   const listingKey = (track: Track) =>
     `${String(track.title || "").trim().toLowerCase()}::${String(track.artist || "").trim().toLowerCase()}`;
+  const titleKey = (track: Track) =>
+    String(track.title || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
 
   const allTracks = useMemo(() => {
     // Live beats + live music first; curated fills gaps (archive/stream/sample packs).
     const merged: Track[] = [...dbBeats, ...dbMusic];
     const seen = new Set(merged.map(listingKey));
+    const seenTitles = new Set(
+      merged.filter((t) => t.type === "beat" || t.producerBeat).map(titleKey),
+    );
+    const liveBeatsReady = dbBeats.length > 0;
     for (const track of curatedCatalogueTracks as Track[]) {
-      // Prefer live DB beats over curated sample beat rows with same title.
+      const isCuratedBeat = track.type === "beat" || Boolean(track.producerBeat);
+      // When Live BeatStore is populated, skip curated sample beats that collide by title
+      // (artist credits often differ: "Wolf Bridges" vs "Wolf Bridges + X").
+      if (liveBeatsReady && isCuratedBeat && seenTitles.has(titleKey(track))) {
+        continue;
+      }
       const key = listingKey(track);
       if (seen.has(key)) continue;
-      // If live music loaded and this curated row is a sample beat pack item,
-      // still keep sample packs for shelf filters — only skip exact title dupes.
       seen.add(key);
+      if (isCuratedBeat) seenTitles.add(titleKey(track));
       merged.push(track);
     }
     return merged;
