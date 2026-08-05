@@ -3,24 +3,37 @@
 import { FormEvent, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import { isAllowedAudioFile } from '@/lib/audio-formats'
 
 type Slot = { signedUrl: string; path: string; contentType?: string }
-type PackBeat = { id: string; title: string; mood: string; bpm: string; price: string; preview: File | null; master: File | null }
+type PackBeat = { id: string; title: string; mood: string; bpm: string; musicalKey: string; price: string; preview: File | null; master: File | null }
 
 const field = 'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
-const newBeat = (): PackBeat => ({ id: crypto.randomUUID(), title: '', mood: '', bpm: '', price: '29', preview: null, master: null })
+const newBeat = (): PackBeat => ({ id: crypto.randomUUID(), title: '', mood: '', bpm: '', musicalKey: '', price: '29', preview: null, master: null })
 
-async function putSigned(slot: Slot, file: File) {
-  const res = await fetch(slot.signedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': slot.contentType || file.type || 'application/octet-stream' },
-    body: file,
+function validateArtwork(file: File) {
+  if (!/\.(jpe?g|png|webp)$/i.test(file.name)) return 'Cover art must be JPG, PNG, or WebP.'
+  if (!file.size) return 'The selected cover art is empty.'
+  if (file.size > 8 * 1024 * 1024) return 'Cover art must be 8MB or smaller.'
+  return ''
+}
+
+async function putSigned(slot: Slot, file: File, onProgress: (percent: number) => void) {
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', slot.signedUrl)
+    xhr.setRequestHeader('Content-Type', slot.contentType || file.type || 'application/octet-stream')
+    xhr.upload.onprogress = event => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100))
+    }
+    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed for ${file.name}.`))
+    xhr.onerror = () => reject(new Error(`Upload failed for ${file.name}. Check your connection and retry.`))
+    xhr.send(file)
   })
-  if (!res.ok) throw new Error(`Upload failed for ${file.name}.`)
   return slot.path
 }
 
-async function uploadFiles(token: string, files: { preview?: File | null; master?: File | null; artwork?: File | null }) {
+async function uploadFiles(token: string, files: { preview?: File | null; master?: File | null; artwork?: File | null }, onProgress: (label: string) => void) {
   const prepRes = await fetch('/api/beats/upload/prepare', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -35,7 +48,7 @@ async function uploadFiles(token: string, files: { preview?: File | null; master
   const paths: Record<string, string | null> = { preview: null, master: null, artwork: null }
   for (const kind of ['preview', 'master', 'artwork'] as const) {
     const file = files[kind]
-    if (file && prep.slots?.[kind]) paths[kind] = await putSigned(prep.slots[kind], file)
+    if (file && prep.slots?.[kind]) paths[kind] = await putSigned(prep.slots[kind], file, percent => onProgress(`${file.name}: ${percent}%`))
   }
   return paths
 }
@@ -67,16 +80,29 @@ export default function BeatPackUploadForm() {
     setBeats(current => current.map(beat => beat.id === id ? { ...beat, ...patch } : beat))
   }
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: FormEvent, submitForReview: boolean) => {
     event.preventDefault()
     setError('')
     setMessage('')
     if (!token) return setError('Sign in with an artist/producer account before uploading a pack.')
     if (!title.trim()) return setError('Enter a pack title.')
-    if (!rights) return setError('Confirm that you control the rights to every beat in the pack.')
+    if (submitForReview && !rights) return setError('Confirm that you control the rights to every beat in the pack.')
     if (beats.length < 2) return setError('A pack needs at least two beats.')
-    if (beats.some(beat => !beat.title.trim() || !beat.preview || Number(beat.price) < 1)) {
-      return setError('Every beat needs a title, tagged preview and Standard lease price of at least $1.')
+    if (beats.some(beat => !beat.title.trim() || Number(beat.price) < 1)) {
+      return setError('Every beat needs a title and Standard lease price of at least $1.')
+    }
+    if (submitForReview && beats.some(beat => !beat.preview)) {
+      return setError('Every beat needs a tagged preview before the pack can be submitted.')
+    }
+    for (const beat of beats) {
+      for (const file of [beat.preview, beat.master].filter((value): value is File => Boolean(value))) {
+        const check = isAllowedAudioFile(file)
+        if (!check.ok) return setError(`${beat.title}: ${check.error}`)
+      }
+    }
+    if (artwork) {
+      const artworkError = validateArtwork(artwork)
+      if (artworkError) return setError(artworkError)
     }
 
     setBusy(true)
@@ -84,27 +110,29 @@ export default function BeatPackUploadForm() {
       let artworkPath: string | null = null
       if (artwork) {
         setProgress('Uploading pack artwork…')
-        artworkPath = (await uploadFiles(token, { artwork })).artwork
+        artworkPath = (await uploadFiles(token, { artwork }, setProgress)).artwork
       }
       const items = []
       for (let index = 0; index < beats.length; index += 1) {
         const beat = beats[index]
         setProgress(`Uploading beat ${index + 1} of ${beats.length}: ${beat.title}…`)
-        const paths = await uploadFiles(token, { preview: beat.preview, master: beat.master })
+        const paths = beat.preview || beat.master
+          ? await uploadFiles(token, { preview: beat.preview, master: beat.master }, label => setProgress(`Beat ${index + 1}/${beats.length} · ${label}`))
+          : { preview: null, master: null, artwork: null }
         items.push({
-          title: beat.title.trim(), mood: beat.mood.trim(), bpm: beat.bpm || null,
+          title: beat.title.trim(), mood: beat.mood.trim(), bpm: beat.bpm || null, musicalKey: beat.musicalKey.trim(),
           priceUsd: Number(beat.price), previewPath: paths.preview, masterPath: paths.master,
         })
       }
-      setProgress('Submitting the ordered pack for editorial review…')
+      setProgress(submitForReview ? 'Submitting the ordered pack for editorial review…' : 'Saving the pack draft…')
       const response = await fetch('/api/beat-packs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ title: title.trim(), description: description.trim(), genre, artworkPath, items, rightsConfirmed: true }),
+        body: JSON.stringify({ title: title.trim(), description: description.trim(), genre, artworkPath, items, rightsConfirmed: rights, submit: submitForReview }),
       })
       const payload = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(payload.error || 'Could not submit beat pack.')
-      setMessage(`${payload.count} beats submitted together as “${title.trim()}” for editorial review.`)
+      setMessage(submitForReview ? `${payload.count} beats submitted together as “${title.trim()}” for editorial review.` : `Draft “${title.trim()}” saved with ${payload.count} beats.`)
       setTitle('')
       setDescription('')
       setArtwork(null)
@@ -126,7 +154,7 @@ export default function BeatPackUploadForm() {
     </div>
   }
 
-  return <form onSubmit={submit} noValidate className="grid gap-4 rounded-2xl border border-white/10 p-6">
+  return <form onSubmit={event => void submit(event, true)} noValidate className="grid gap-4 rounded-2xl border border-white/10 p-6">
     <div>
       <p className="text-xs uppercase tracking-[0.22em] text-brand">Producer</p>
       <h2 className="mt-1 text-2xl">Upload a beat pack</h2>
@@ -153,6 +181,7 @@ export default function BeatPackUploadForm() {
           <input value={beat.price} onChange={event => updateBeat(beat.id, { price: event.target.value })} type="number" min={1} step="0.01" placeholder="Lease price USD *" className={field} />
           <input value={beat.mood} onChange={event => updateBeat(beat.id, { mood: event.target.value })} placeholder="Mood tags" className={field} />
           <input value={beat.bpm} onChange={event => updateBeat(beat.id, { bpm: event.target.value })} inputMode="numeric" placeholder="BPM" className={field} />
+          <input value={beat.musicalKey} onChange={event => updateBeat(beat.id, { musicalKey: event.target.value })} placeholder="Key (for example C minor)" className={field} />
           <label className="text-sm text-text-secondary">Tagged preview *
             <input type="file" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac,.flac" onChange={event => updateBeat(beat.id, { preview: event.target.files?.[0] || null })} className={`${field} mt-1`} />
           </label>
@@ -168,6 +197,9 @@ export default function BeatPackUploadForm() {
       I own or control the rights to every beat in this pack and can offer Standard leases on BVS.
     </label>
     {progress && <p className="text-sm text-brand">{progress}</p>}
-    <button type="submit" disabled={busy} className="rounded-full bg-brand px-5 py-3 font-semibold text-black disabled:opacity-40">{busy ? 'Uploading pack…' : 'Submit beat pack for review'}</button>
+    <div className="flex flex-wrap gap-3">
+      <button type="button" disabled={busy} onClick={event => void submit(event as unknown as FormEvent, false)} className="rounded-full border border-white/20 px-5 py-3 disabled:opacity-40">{busy ? 'Working…' : 'Save draft'}</button>
+      <button type="submit" disabled={busy} className="rounded-full bg-brand px-5 py-3 font-semibold text-black disabled:opacity-40">{busy ? 'Uploading pack…' : 'Submit beat pack for review'}</button>
+    </div>
   </form>
 }

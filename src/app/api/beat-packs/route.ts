@@ -19,6 +19,7 @@ type PackItem = {
   description?: unknown
   mood?: unknown
   bpm?: unknown
+  musicalKey?: unknown
   priceUsd?: unknown
   previewPath?: unknown
   masterPath?: unknown
@@ -42,8 +43,9 @@ export async function POST(request: Request) {
     const genre = cleanText(body.genre, 80)
     const artworkPath = cleanText(body.artworkPath, 500) || null
     const items = Array.isArray(body.items) ? (body.items as PackItem[]) : []
+    const submit = body.submit === true
     if (!title) return NextResponse.json({ error: 'Pack title is required.' }, { status: 400 })
-    if (body.rightsConfirmed !== true) return NextResponse.json({ error: 'Confirm rights before submitting.' }, { status: 400 })
+    if (submit && body.rightsConfirmed !== true) return NextResponse.json({ error: 'Confirm rights before submitting.' }, { status: 400 })
     if (items.length < 2 || items.length > 20) {
       return NextResponse.json({ error: 'A beat pack must contain 2 to 20 beats.' }, { status: 400 })
     }
@@ -53,13 +55,17 @@ export async function POST(request: Request) {
       description: cleanText(item.description, 2000),
       mood: cleanText(item.mood, 120),
       bpm: Number(item.bpm) > 0 ? Math.round(Number(item.bpm)) : null,
+      musicalKey: cleanText(item.musicalKey, 20) || null,
       price: minBeatPrice(item.priceUsd),
       previewPath: cleanText(item.previewPath, 500),
       masterPath: cleanText(item.masterPath, 500) || null,
       position: index + 1,
     }))
-    if (normalized.some(item => !item.title || !item.previewPath || item.price === null)) {
-      return NextResponse.json({ error: 'Every beat needs a title, tagged preview and price of at least $1.' }, { status: 400 })
+    if (normalized.some(item => !item.title || item.price === null)) {
+      return NextResponse.json({ error: 'Every beat needs a title and price of at least $1.' }, { status: 400 })
+    }
+    if (submit && normalized.some(item => !item.previewPath)) {
+      return NextResponse.json({ error: 'Every beat needs a tagged preview before submission.' }, { status: 400 })
     }
     const paths = [artworkPath, ...normalized.flatMap(item => [item.previewPath, item.masterPath])]
       .filter((path): path is string => Boolean(path))
@@ -80,7 +86,7 @@ export async function POST(request: Request) {
         description,
         genre,
         artwork_path: artworkPath,
-        status: 'submitted',
+        status: submit ? 'submitted' : 'draft',
         is_public: false,
       }),
     })
@@ -103,11 +109,12 @@ export async function POST(request: Request) {
       genre,
       mood: item.mood,
       bpm: item.bpm,
+      musical_key: item.musicalKey,
       artwork_path: artworkPath,
       preview_path: item.previewPath,
       master_path: item.masterPath,
-      rights_confirmed: true,
-      status: 'submitted',
+      rights_confirmed: body.rightsConfirmed === true,
+      status: submit ? 'submitted' : 'draft',
       is_public: false,
     }))
     const beatsRes = await fetch(beatUrl('beats'), {
@@ -145,7 +152,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not create lease prices for this pack. Please retry.' }, { status: 503 })
     }
 
-    return NextResponse.json({ ok: true, packId, count: created.length, status: 'submitted' })
+    return NextResponse.json({ ok: true, packId, count: created.length, status: submit ? 'submitted' : 'draft' })
   } catch (error) {
     console.error('beat packs POST', error)
     return NextResponse.json({ error: 'Could not submit beat pack.' }, { status: 500 })
