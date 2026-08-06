@@ -102,6 +102,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Order total must be greater than zero." }, { status: 400 });
     }
 
+    // Customer checkout only accepts live rails (Paynow web + Stripe card).
+    // Manual WhatsApp / bank / PayPal / EcoCash-push labels are not orderable here.
+    const method = String(payload.paymentMethod || "").toLowerCase();
+    const allowedCheckout = new Set(["paynow", "paynow_redirect", "card", "stripe"]);
+    if (!allowedCheckout.has(method) && payload.createStripeSession !== true) {
+      return NextResponse.json(
+        {
+          error:
+            "Choose Paynow or international card to pay online. For invoices or studio bank details, contact BVS.",
+        },
+        { status: 400 },
+      );
+    }
+
     const countryCode =
       payload.countryCode ||
       payload.customer.country ||

@@ -48,42 +48,19 @@ interface OrderResult {
   total?: number;
 }
 
+/** Live checkout rails only — no WhatsApp cosplay methods. */
 const paymentMethodsBase = [
   {
     id: "paynow",
-    label: "Paynow (EcoCash, cards, OneMoney)",
-    detail: "Zimbabwe Paynow checkout — EcoCash and more on their secure page.",
-    needsPaynow: true,
-  },
-  {
-    id: "ecocash",
-    label: "EcoCash push (ZW number)",
-    detail: "Enter a Zimbabwe EcoCash number in WhatsApp field — Paynow sends a phone prompt.",
+    label: "Paynow (EcoCash, OneMoney & local)",
+    detail: "Pay on Paynow’s secure page — EcoCash, OneMoney, and local cards.",
     needsPaynow: true,
   },
   {
     id: "card",
     label: "International card (Stripe)",
-    detail: "Visa / Mastercard when Stripe is connected.",
+    detail: "Visa / Mastercard on Stripe’s secure checkout.",
     needsStripe: true,
-  },
-  {
-    id: "mobile_money",
-    label: "EcoCash / mobile money (manual)",
-    detail: "Place order, pay, WhatsApp proof with your reference to BVS.",
-    needsStripe: false,
-  },
-  {
-    id: "manual_bank",
-    label: "Bank transfer",
-    detail: "Larger service orders. BVS confirms details on WhatsApp.",
-    needsStripe: false,
-  },
-  {
-    id: "paypal",
-    label: "PayPal",
-    detail: "International. Confirm address with BVS on WhatsApp.",
-    needsStripe: false,
   },
 ];
 
@@ -139,7 +116,7 @@ export default function CheckoutPage() {
   const [hydrated, setHydrated] = useState(false);
   const [customer, setCustomer] = useState<Customer>({ name: "", email: "", whatsapp: "" });
   const [projectNotes, setProjectNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("mobile_money");
+  const [paymentMethod, setPaymentMethod] = useState("paynow");
   const [stripeReady, setStripeReady] = useState(false);
   const [paynowReady, setPaynowReady] = useState(false);
   const [whatsapp, setWhatsapp] = useState<string | null>("+491706580888");
@@ -210,10 +187,12 @@ export default function CheckoutPage() {
   const total = tax.total;
 
   const methods = paymentMethodsBase.filter((m) => {
-    if ("needsPaynow" in m && m.needsPaynow) return paynowReady;
-    if ("needsStripe" in m && m.needsStripe) return stripeReady;
-    return true;
+    if (m.needsPaynow) return paynowReady;
+    if (m.needsStripe) return stripeReady;
+    return false;
   });
+
+  const hasServiceItems = items.some((i) => i.type === "service" || i.type === "mix");
 
   const removeItem = (id: string | number) => setItems(items.filter((i) => i.id !== id));
 
@@ -223,6 +202,10 @@ export default function CheckoutPage() {
     setResult(null);
     if (items.length === 0) {
       setError("Add at least one item — music from Catalogue or a service from Shop.");
+      return;
+    }
+    if (methods.length === 0 || (paymentMethod !== "paynow" && paymentMethod !== "card")) {
+      setError("Choose Paynow or card to pay online.");
       return;
     }
     setIsSubmitting(true);
@@ -296,7 +279,7 @@ export default function CheckoutPage() {
         </p>
         {cancelled && (
           <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Card payment was cancelled. Your cart is still here — try again or choose EcoCash / bank.
+            Card payment was cancelled. Your cart is still here — try card again or Paynow.
           </p>
         )}
         <ol className="mt-8 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]" aria-label="Checkout progress">
@@ -442,34 +425,55 @@ export default function CheckoutPage() {
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
-            <h2 className="mb-2 text-xl font-semibold">Pay how you want</h2>
+            <h2 className="mb-2 text-xl font-semibold">Payment</h2>
             <p className="mb-4 text-sm text-text-secondary">
-              {paynowReady
-                ? "Paynow is live for EcoCash and local methods. International card optional via Stripe."
-                : stripeReady
-                  ? "Card is live. EcoCash manual still available until Paynow is set."
-                  : "Order now — EcoCash/bank/PayPal manual. Add Paynow Integration ID+Key for automatic EcoCash."}
+              {paynowReady && stripeReady
+                ? "Choose Paynow (EcoCash & local) or international card. Both finish online — no WhatsApp proof step."
+                : paynowReady
+                  ? "Pay securely on Paynow (EcoCash, OneMoney, local methods)."
+                  : stripeReady
+                    ? "Pay securely by card on Stripe."
+                    : "Online checkout is temporarily unavailable. Contact BVS to complete your order."}
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {methods.map((method) => (
-                <label
-                  key={method.id}
-                  className={`cursor-pointer rounded-xl border p-4 ${
-                    paymentMethod === method.id ? "border-brand bg-brand/10" : "border-white/10 bg-black/20"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    className="sr-only"
-                    checked={paymentMethod === method.id}
-                    onChange={() => setPaymentMethod(method.id)}
-                  />
-                  <span className="block font-semibold">{method.label}</span>
-                  <span className="mt-1 block text-xs text-text-secondary">{method.detail}</span>
-                </label>
-              ))}
-            </div>
+            {methods.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {methods.map((method) => (
+                  <label
+                    key={method.id}
+                    className={`cursor-pointer rounded-xl border p-4 ${
+                      paymentMethod === method.id ? "border-brand bg-brand/10" : "border-white/10 bg-black/20"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      className="sr-only"
+                      checked={paymentMethod === method.id}
+                      onChange={() => setPaymentMethod(method.id)}
+                    />
+                    <span className="block font-semibold">{method.label}</span>
+                    <span className="mt-1 block text-xs text-text-secondary">{method.detail}</span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
+                No online payment method is configured right now.{" "}
+                <Link href="/contact?topic=checkout" className="font-semibold text-brand underline">
+                  Contact BVS
+                </Link>{" "}
+                with your cart and we will help you finish.
+              </p>
+            )}
+            {hasServiceItems && (
+              <p className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs leading-relaxed text-text-secondary">
+                Studio / service jobs: prefer Paynow or card above. Need an invoice or bank details for a larger booking?{" "}
+                <Link href="/contact?topic=invoice" className="text-brand underline">
+                  Contact BVS
+                </Link>{" "}
+                — we will send payment instructions. This is not a separate checkout button.
+              </p>
+            )}
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
@@ -491,17 +495,14 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting || items.length === 0}
+            disabled={isSubmitting || items.length === 0 || methods.length === 0}
             className="w-full rounded-full bg-brand px-8 py-4 text-lg font-semibold text-black hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting
               ? "Working…"
-              : (paymentMethod === "card" && stripeReady) ||
-                  (paymentMethod === "paynow" && paynowReady)
-                ? `Pay $${total.toFixed(2)} securely`
-                : paymentMethod === "ecocash" && paynowReady
-                  ? `Send EcoCash prompt · $${total.toFixed(2)}`
-                  : `Place order · $${total.toFixed(2)}`}
+              : methods.length === 0
+                ? "Checkout unavailable"
+                : `Pay $${total.toFixed(2)} securely`}
           </button>
         </form>
 
