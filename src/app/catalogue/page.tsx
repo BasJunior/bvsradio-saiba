@@ -223,6 +223,74 @@ function rightsSummary(track: Track) {
   return pricingRightsSummary(track);
 }
 
+/** Compact same-shelf picker — collapsed by default when the shelf is large. */
+function CollapsibleCollection({
+  tracks,
+  selectedId,
+  onSelect,
+}: {
+  tracks: Track[];
+  selectedId: Track["id"];
+  onSelect: (track: Track) => void;
+}) {
+  const SMALL = 6;
+  const [open, setOpen] = useState(false);
+  if (tracks.length <= 1) return null;
+
+  const others = tracks.filter((t) => t.id !== selectedId);
+  if (others.length === 0) return null;
+
+  // Small shelves stay open; Live BeatStore-size lists start collapsed.
+  const large = others.length > SMALL;
+  const expanded = !large || open;
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02]">
+      <button
+        type="button"
+        onClick={() => large && setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+        aria-expanded={expanded}
+        disabled={!large}
+      >
+        <span className="text-sm font-semibold uppercase tracking-[2px] text-text-secondary">
+          Same collection
+          <span className="ml-2 font-normal normal-case tracking-normal text-text-secondary/80">
+            {others.length} other{others.length === 1 ? "" : "s"}
+          </span>
+        </span>
+        {large && (
+          <span className="shrink-0 rounded-full border border-brand/30 px-2.5 py-0.5 text-xs font-semibold text-brand">
+            {open ? "Hide" : "Browse"}
+          </span>
+        )}
+      </button>
+      {expanded && (
+        <div className="max-h-44 space-y-0.5 overflow-y-auto border-t border-white/10 px-1 py-1 overscroll-contain">
+          {others.map((track) => (
+            <button
+              key={String(track.id)}
+              type="button"
+              onClick={() => onSelect(track)}
+              className="flex w-full justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5"
+            >
+              <span className="min-w-0 truncate">{track.title}</span>
+              <span className="ml-4 flex-shrink-0 tabular-nums text-text-secondary">
+                {track.bpm || track.duration}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {large && !open && (
+        <p className="border-t border-white/10 px-3 py-2 text-xs text-text-secondary">
+          Actions stay above — open the shelf only when you want another beat.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CataloguePageContent() {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(() => {
@@ -1772,32 +1840,7 @@ function CataloguePageContent() {
                   )}
                 </div>
 
-                <div className="mt-7">
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-[2px]">
-                    Same collection
-                  </h3>
-                  <div className="space-y-1">
-                    {collectionTracks.map((track) => (
-                      <button
-                        key={track.id}
-                        type="button"
-                        onClick={() => setSelectedTrack(track)}
-                        className={`flex w-full justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5 ${
-                          track.id === selectedTrack.id
-                            ? "bg-brand/10 text-brand"
-                            : ""
-                        }`}
-                      >
-                        <span className="min-w-0 truncate">{track.title}</span>
-                        <span className="ml-4 flex-shrink-0 text-text-secondary">
-                          {track.bpm || track.duration}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-auto flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:flex-wrap">
+                <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:flex-wrap">
                   {selectedTrack.streamOnly ? (
                     <>
                       {selectedTrack.src ? (
@@ -1902,6 +1945,14 @@ function CataloguePageContent() {
                       </Link>
                     </>
                   )}
+                </div>
+
+                <div className="mt-5">
+                  <CollapsibleCollection
+                    tracks={collectionTracks}
+                    selectedId={selectedTrack.id}
+                    onSelect={setSelectedTrack}
+                  />
                 </div>
 
                 <Link
