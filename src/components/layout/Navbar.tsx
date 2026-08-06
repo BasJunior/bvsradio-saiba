@@ -77,6 +77,8 @@ export default function Navbar() {
   const artistLinks = [
     { href: '/artists', label: 'Artist access' },
     { href: '/upload', label: 'Submit music' },
+    { href: '/premium', label: 'Premium' },
+    { href: '/artist/premium', label: 'Premium desk' },
     { href: '/catalogue?type=beat#beatstore', label: 'BeatStore' },
     { href: '/shop', label: 'Services' },
   ]
@@ -112,7 +114,7 @@ export default function Navbar() {
             </Link>
           ))}
           <div
-            className={showArtist ? "relative" : "hidden"}
+            className="relative"
             onMouseEnter={() => setIsArtistMenuOpen(true)}
             onMouseLeave={() => setIsArtistMenuOpen(false)}
           >
@@ -222,7 +224,7 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
-            <div className={showArtist ? "pt-2" : "hidden"}>
+            <div className="pt-2">
               <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">For Artists</div>
               {artistLinks.map((link) => (
                 <Link key={link.href} href={link.href} className="block py-2 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
