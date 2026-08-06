@@ -281,17 +281,103 @@ export async function saveOrderToSupabase(order: StoredOrder) {
   }
 }
 
-/** Notify BVS owner (Telegram bot or custom webhook). Never throws. */
+function orderItemLines(order: StoredOrder): string[] {
+  return order.items.map(
+    (i) => `• ${i.title} ($${Number(i.price).toFixed(2)} × ${i.quantity}) [${i.type}]`,
+  );
+}
+
+/** Customer receipt after paid (or pending manual) order. Never throws. */
+export async function notifyCustomerOrderEmail(
+  order: StoredOrder,
+  kind: "paid" | "received" = "paid",
+) {
+  const to = (order.customer.email || "").trim();
+  if (!to) return;
+
+  try {
+    const { sendBvsEmail, wrapBvsEmailHtml } = await import("@/lib/mailer");
+    const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com").replace(/\/$/, "");
+    const orderUrl = `${site}/account/orders/${encodeURIComponent(order.reference)}`;
+    const isPaid = kind === "paid" || order.status === "paid" || order.status === "fulfilled";
+    const subject = isPaid
+      ? `BVS Radio — payment received · ${order.reference}`
+      : `BVS Radio — order received · ${order.reference}`;
+
+    const itemHtml = order.items
+      .map(
+        (i) =>
+          `<li style="margin:0 0 6px;color:#cfcfcf">${escapeHtml(String(i.title))} — $${Number(i.price).toFixed(2)} × ${i.quantity}</li>`,
+      )
+      .join("");
+
+    const deliveryNote = isPaid
+      ? order.deliveryStatus === "premium_active"
+        ? "Your Artist Premium period is active. Open Creator Studio → Premium desk for next steps."
+        : "Digital downloads unlock on your order page when files are staged. Studio services are confirmed by BVS on WhatsApp/email."
+      : "Complete payment to unlock delivery. If you already paid on Paynow, allow a minute for confirmation.";
+
+    const text = [
+      isPaid ? "Payment confirmed on BVS Radio." : "We received your BVS Radio order.",
+      "",
+      `Reference: ${order.reference}`,
+      `Status: ${order.status}`,
+      `Total: $${Number(order.total).toFixed(2)} ${order.currency || "USD"}`,
+      `Method: ${order.paymentMethod}`,
+      "",
+      "Items:",
+      ...orderItemLines(order),
+      "",
+      deliveryNote,
+      "",
+      `Order page: ${orderUrl}`,
+      "Questions: contact@bvsradio.com",
+    ].join("\n");
+
+    const bodyHtml = `
+      <p style="color:#cfcfcf;line-height:1.5;margin:0 0 14px">${
+        isPaid
+          ? "Thanks — <strong>payment is confirmed</strong>. Here is your receipt."
+          : "Thanks — we received your order. Complete payment if you have not already."
+      }</p>
+      <p style="margin:0 0 8px;color:#fafafa"><strong>Reference:</strong> ${escapeHtml(order.reference)}</p>
+      <p style="margin:0 0 8px;color:#cfcfcf"><strong>Total:</strong> $${Number(order.total).toFixed(2)} ${escapeHtml(String(order.currency || "USD"))} · ${escapeHtml(String(order.paymentMethod))} · ${escapeHtml(String(order.status))}</p>
+      <ul style="padding-left:18px;margin:12px 0 18px">${itemHtml}</ul>
+      <p style="color:#cfcfcf;line-height:1.5;margin:0 0 18px">${escapeHtml(deliveryNote)}</p>
+      <p style="margin:0"><a href="${orderUrl}" style="display:inline-block;background:#f5c518;color:#000;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">View order</a></p>`;
+
+    await sendBvsEmail({
+      to,
+      subject,
+      text,
+      html: wrapBvsEmailHtml({
+        title: isPaid ? "Payment confirmed" : "Order received",
+        bodyHtml,
+      }),
+    });
+  } catch (err) {
+    console.error("notifyCustomerOrderEmail", order.reference, err);
+  }
+}
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&" + "amp;")
+    .replace(/</g, "&" + "lt;")
+    .replace(/>/g, "&" + "gt;")
+    .replace(/\"/g, "&" + "quot;");
+}
+
+/** Notify BVS owner (Telegram + optional webhook + owner email). Never throws. */
 export async function notifyOwnerNewOrder(order: StoredOrder) {
   const lines = [
-    `🦅 BVS new order ${order.reference}`,
+    `🦅 BVS ${order.status === "paid" || order.status === "fulfilled" ? "PAID" : "new"} order ${order.reference}`,
     `${order.customer.name} · ${order.customer.email}`,
     order.customer.whatsapp ? `WhatsApp: ${order.customer.whatsapp}` : null,
     `Subtotal: $${order.subtotal.toFixed(2)} · Tax: $${(order.taxAmount || 0).toFixed(2)} (${order.taxCountry || "—"})`,
     `Total: $${order.total.toFixed(2)} · ${order.paymentMethod} · ${order.status}`,
-    ...order.items.map(
-      (i) => `• ${i.title} ($${i.price} × ${i.quantity}) [${i.type}]`,
-    ),
+    `Delivery: ${order.deliveryStatus}`,
+    ...orderItemLines(order),
     order.projectNotes ? `Notes: ${order.projectNotes.slice(0, 200)}` : null,
   ].filter(Boolean) as string[];
 
@@ -321,6 +407,28 @@ export async function notifyOwnerNewOrder(order: StoredOrder) {
       });
     } catch {
       /* ignore */
+    }
+  }
+
+  // Owner email copy (same inbox as SMTP_FROM / BVS_ORDER_EMAIL)
+  const ownerInbox =
+    (process.env.BVS_OWNER_NOTIFY_EMAIL || process.env.BVS_ORDER_EMAIL || "").trim();
+  if (ownerInbox) {
+    try {
+      const { sendBvsEmail, wrapBvsEmailHtml } = await import("@/lib/mailer");
+      const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com").replace(/\/$/, "");
+      await sendBvsEmail({
+        to: ownerInbox,
+        subject: `BVS ${order.status} · ${order.reference} · $${Number(order.total).toFixed(2)}`,
+        text,
+        html: wrapBvsEmailHtml({
+          title: `Order ${order.reference}`,
+          bodyHtml: `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:13px;color:#cfcfcf;margin:0">${escapeHtml(text)}</pre>
+            <p style="margin:18px 0 0"><a href="${site}/account/orders/${encodeURIComponent(order.reference)}" style="color:#f5c518">Open order page</a></p>`,
+        }),
+      });
+    } catch (err) {
+      console.error("notifyOwnerNewOrder email", order.reference, err);
     }
   }
 }

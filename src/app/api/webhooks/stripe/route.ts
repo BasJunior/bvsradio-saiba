@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { loadOrder, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
+import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit } from "@/lib/artist-credit";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
@@ -74,15 +74,16 @@ export async function POST(req: Request) {
       });
 
       if (updated) {
-        await notifyOwnerNewOrder({
-          ...updated,
-          status: "paid",
-        });
+        const paid = { ...updated, status: "paid" as const };
+        await notifyOwnerNewOrder(paid);
+        await notifyCustomerOrderEmail(paid, "paid");
       } else {
         // Order may only exist remotely if filesystem missed write
         const existing = await loadOrder(reference);
         if (existing) {
-          await notifyOwnerNewOrder({ ...existing, status: "paid" });
+          const paid = { ...existing, status: "paid" as const };
+          await notifyOwnerNewOrder(paid);
+          await notifyCustomerOrderEmail(paid, "paid");
         }
       }
     }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPaynow } from "@/lib/paynow";
-import { loadOrder, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
+import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit } from "@/lib/artist-credit";
 import { sameMoney, verifyPaynowHash } from "@/lib/paynow-security";
@@ -128,11 +128,13 @@ export async function POST(req: Request) {
         deliveryStatus: premiumLine ? "premium_active" : "paid_processing",
         paynowPollUrl: pollUrl || undefined,
       });
-      if (updated) {
-        await notifyOwnerNewOrder(updated);
-      } else {
-        await notifyOwnerNewOrder({ ...order, status: "paid" });
-      }
+      const paidOrder = updated || {
+        ...order,
+        status: "paid" as const,
+        deliveryStatus: premiumLine ? "premium_active" : "paid_processing",
+      };
+      await notifyOwnerNewOrder(paidOrder);
+      await notifyCustomerOrderEmail(paidOrder, "paid");
     }
 
     return NextResponse.json({ ok: true });

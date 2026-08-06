@@ -479,6 +479,7 @@ export async function GET(req: Request) {
   return NextResponse.json({
     reference: order.reference,
     status: order.status,
+    deliveryStatus: order.deliveryStatus,
     subtotal: order.subtotal,
     taxAmount: order.taxAmount || 0,
     taxRate: order.taxRate || 0,
@@ -486,7 +487,18 @@ export async function GET(req: Request) {
     taxCountry: order.taxCountry,
     taxNote: order.taxNote,
     total: order.total,
+    currency: order.currency || "USD",
     paymentMethod: order.paymentMethod,
-    items: order.items.map((i) => ({ title: i.title, price: i.price, quantity: i.quantity })),
+    customer: {
+      name: order.customer?.name,
+      email: order.customer?.email,
+    },
+    items: order.items.map((i) => ({
+      title: i.title,
+      price: i.price,
+      quantity: i.quantity,
+      type: i.type,
+      artist: i.artist,
+    })),
   });
 }

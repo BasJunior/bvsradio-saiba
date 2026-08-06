@@ -260,18 +260,20 @@ export default function CheckoutPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Checkout failed.");
 
+      // Always park the order + clear cart once the order is created.
+      // Paynow/Stripe redirect must not leave purchased lines in the badge.
+      window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
+      clearCartLines();
+      setItems([]);
+
       if (data.checkoutUrl) {
         trackEvent("checkout_redirect", { payment_method: data.paymentMode || paymentMethod, item_count: items.length, total });
-        window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
         window.location.href = data.checkoutUrl as string;
         return;
       }
 
       setResult(data);
       trackEvent("checkout_complete", { payment_method: data.paymentMode || paymentMethod, item_count: items.length, total, status: data.status || "pending_payment" });
-      window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
-      clearCartLines();
-      setItems([]);
     } catch (caught) {
       trackEvent("payment_error", { payment_method: paymentMethod, stage: "order_creation" });
       setError(caught instanceof Error ? caught.message : "Checkout failed.");
