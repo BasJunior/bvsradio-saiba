@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PREMIUM_TIERS, premiumPricingCopy } from "@/lib/premium-tiers";
+import {
+  PREMIUM_DISTRIBUTION_STORES,
+  PREMIUM_TIERS,
+  premiumPricingCopy,
+} from "@/lib/premium-tiers";
 
 export const metadata: Metadata = {
   title: "Premium Artist | BVS Radio",
@@ -100,6 +104,30 @@ export default function PremiumLandingPage() {
             </Link>
           </article>
         ))}
+      </section>
+
+      <section className="mt-14">
+        <h2 className="text-2xl font-semibold">Where Premium can take your music</h2>
+        <p className="mt-2 max-w-2xl text-sm text-text-secondary">
+          With Premium, approved releases enter BVS's multi-platform distribution path — targeting the major
+          stores artists expect worldwide ({pricing.storeCount}+ destinations). Exact live stores depend on
+          clearance, territory, and our delivery pipeline when each release ships. No aggregator brand is required
+          on your side; BVS coordinates the hand-off after editorial publish + Premium entitlement.
+        </p>
+        <ul className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+          {PREMIUM_DISTRIBUTION_STORES.map((store) => (
+            <li
+              key={store}
+              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-text-primary"
+            >
+              {store}
+            </li>
+          ))}
+        </ul>
+        <p className="mt-4 text-xs text-text-secondary">
+          Highlights: Spotify, Apple Music & iTunes, YouTube Music + Content ID, TikTok, Instagram / Meta,
+          Amazon Music, Deezer, TIDAL, Boomplay, Anghami, and more regional platforms.
+        </p>
       </section>
 
       <section className="mt-14">

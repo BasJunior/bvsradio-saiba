@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
-import { PREMIUM_TIERS, defaultPremiumMonthlyUsd, premiumPricingCopy } from "@/lib/premium-tiers";
+import {
+  PREMIUM_DISTRIBUTION_STORES,
+  PREMIUM_TIERS,
+  defaultPremiumMonthlyUsd,
+  premiumPricingCopy,
+} from "@/lib/premium-tiers";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -28,16 +33,17 @@ export async function GET(req: Request) {
     distributionEnabled: Boolean(profile.distribution_enabled),
     monthlyUsd: defaultPremiumMonthlyUsd(),
     tiers: PREMIUM_TIERS,
+    distributionStores: PREMIUM_DISTRIBUTION_STORES,
     pricing,
     priceNote: `Founding US$${pricing.foundingMonthly}/mo or US$${pricing.foundingYearly}/yr · Standard US$${pricing.standardMonthly}/mo or US$${pricing.standardYearly}/yr. ${pricing.distributionNote}`,
     copy: {
       title: "BVS Premium Artist",
       summary:
-        "Founding Premium US$9/month (US$90/year) for the first cohort; Standard US$12/month (US$120/year) after. Multi-platform distribution when a partner is configured. BVS rotation after editorial publish does not require premium.",
+        "Founding Premium US$9/month (US$90/year) for the first cohort; Standard US$12/month (US$120/year) after. Multi-platform distribution to major streaming and social stores. BVS rotation after editorial publish does not require premium.",
       includes: [
         "Founding: US$9/month or US$90/year (first 25–50 artists)",
         "Standard: US$12/month or US$120/year",
-        "Eligibility for multi-platform distribution queue (partner TBD — fees separate)",
+        `Distribution path covering ${PREMIUM_DISTRIBUTION_STORES.length}+ stores (Spotify, Apple Music, YouTube, TikTok, Boomplay, …)`,
         "Priority support for release packaging",
         "BVS catalogue + rotation still available on free artist path after approval",
       ],

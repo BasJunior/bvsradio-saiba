@@ -22,6 +22,7 @@ type PremiumState = {
   monthlyUsd: number | null
   priceNote: string
   tiers?: PremiumTier[]
+  distributionStores?: string[]
   copy: { title: string; summary: string; includes: string[] }
 }
 
@@ -123,6 +124,20 @@ export default function ArtistPremiumPage() {
           <p className="text-sm">
             <strong className="text-brand">Price:</strong> {data.priceNote}
           </p>
+          {data.distributionStores && data.distributionStores.length > 0 && (
+            <div>
+              <p className="text-sm font-medium text-text-primary">
+                Distribution destinations ({data.distributionStores.length})
+              </p>
+              <ul className="mt-2 grid max-h-48 grid-cols-2 gap-1 overflow-y-auto text-xs text-text-secondary sm:grid-cols-3">
+                {data.distributionStores.map((s) => (
+                  <li key={s} className="truncate rounded border border-white/5 px-2 py-1">
+                    {s}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <p className="text-sm text-text-secondary">
             Status:{' '}
             <strong className="text-text-primary">
