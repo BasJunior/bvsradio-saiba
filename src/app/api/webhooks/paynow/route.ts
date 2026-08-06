@@ -5,6 +5,7 @@ import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit } from "@/lib/artist-credit";
 import { sameMoney, verifyPaynowHash } from "@/lib/paynow-security";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
+import { activatePaidArtistPremium, parsePremiumOrderItem } from "@/lib/premium-billing";
 
 /**
  * Paynow result URL — they POST status updates here.
@@ -59,29 +60,71 @@ export async function POST(req: Request) {
 
     if (paid) {
       const eventId = body.hash || body.Hash || `${reference}:${trustedStatus}`;
-      const transition = await recordVerifiedPayment({
-        provider: "paynow",
-        eventId,
-        reference,
-        eventType: "payment.result",
-        status: trustedStatus,
-        amount: Number(result.amount),
-        currency: "usd",
-        providerReference: result.reference || reference,
-        rawPayload,
-      });
-      if (!transition.accepted) {
+      const isPremiumOrder = Boolean(parsePremiumOrderItem(order.items || []));
+      let transition: { accepted: boolean; transitioned?: boolean; duplicate?: boolean } = {
+        accepted: true,
+        transitioned: true,
+      };
+      try {
+        transition = await recordVerifiedPayment({
+          provider: "paynow",
+          eventId,
+          reference,
+          eventType: "payment.result",
+          status: trustedStatus,
+          amount: Number(result.amount),
+          currency: "usd",
+          providerReference: result.reference || reference,
+          rawPayload,
+        });
+      } catch (ledgerErr) {
+        // Premium prepaid orders may not have a commerce snapshot — still activate membership.
+        if (!isPremiumOrder) {
+          console.error("paynow ledger", ledgerErr);
+          await recordServerEvent("payment_error", { provider: "paynow", stage: "ledger_exception" });
+          return NextResponse.json({ error: "Payment could not be reconciled." }, { status: 409 });
+        }
+        console.warn("paynow ledger skipped for premium", reference);
+      }
+      if (!transition.accepted && !isPremiumOrder) {
         await recordServerEvent("payment_error", { provider: "paynow", stage: "ledger_reconciliation_failed" });
         return NextResponse.json({ error: "Payment could not be reconciled." }, { status: 409 });
       }
-      if (!transition.transitioned) {
+      if (!transition.transitioned && transition.accepted && !isPremiumOrder) {
         return NextResponse.json({ ok: true, duplicate: true });
       }
       await recordServerEvent("checkout_complete", { provider: "paynow", status: "paid" });
       await creditPaidArtistDeposit(reference, "paynow");
+
+      // Artist Premium prepaid period
+      const premiumLine = parsePremiumOrderItem(order.items || []);
+      if (premiumLine && order.customerUserId) {
+        const act = await activatePaidArtistPremium({
+          userId: order.customerUserId,
+          planId: premiumLine.planId,
+          interval: premiumLine.interval,
+          reference,
+          amountUsd: premiumLine.amount || Number(order.total) || 0,
+          provider: "paynow",
+        });
+        if (!act.ok) {
+          console.error("premium activate failed", act.reason, reference);
+          await recordServerEvent("payment_error", {
+            provider: "paynow",
+            stage: "premium_activate_failed",
+          });
+        } else {
+          await recordServerEvent("premium_activated", {
+            provider: "paynow",
+            planId: premiumLine.planId,
+            interval: premiumLine.interval,
+          });
+        }
+      }
+
       const updated = await updateOrder(reference, {
         status: "paid",
-        deliveryStatus: "paid_processing",
+        deliveryStatus: premiumLine ? "premium_active" : "paid_processing",
         paynowPollUrl: pollUrl || undefined,
       });
       if (updated) {
