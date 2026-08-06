@@ -6,6 +6,7 @@ import {
   entitlementsForPlan,
   type CatalogPlan,
 } from "@/lib/premium-catalog";
+import { resolveProducerBeatEntitlements } from "@/lib/producer-entitlements";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -71,17 +72,28 @@ function deskSectionsFor(
     const tier = String(ents.beatstore_tier || "free");
     const limit = ents.beat_live_limit;
     const bps = ents.marketplace_commission_bps;
+    const liveCount =
+      typeof ents.live_count === "number" ? Number(ents.live_count) : null;
+    const usageLine =
+      limit == null
+        ? liveCount != null
+          ? `Live beats: ${liveCount} (fair-use / unlimited)`
+          : "Live beat limit: fair-use / unlimited"
+        : liveCount != null
+          ? `Live beats: ${liveCount} / ${limit}${liveCount >= Math.ceil(Number(limit) * 0.8) ? " · near limit" : ""}`
+          : `Live beat limit: ${limit} (drafts & in-review do not count)`;
     sections.push({
       id: "beatstore",
       title: "BeatStore tools",
-      body: "Sell beats inside the BVS creator community under your Producer plan limits.",
+      body: "Sell beats inside the BVS creator community. Limits apply only when a beat goes live for sale — not on drafts or editorial review.",
       bullets: [
         `BeatStore tier: ${tier}`,
-        limit == null ? "Live beat limit: fair-use / unlimited" : `Live beat limit: ${limit}`,
+        usageLine,
         bps != null ? `Platform fee: ${(Number(bps) / 100).toFixed(1)}%` : "Platform fee: per catalogue",
         ents.licence_template_limit == null
           ? "Licence templates: unlimited (fair use)"
           : `Licence templates: up to ${ents.licence_template_limit}`,
+        "At the limit: new go-live is blocked; existing live beats stay up",
       ],
       href: "/creator/studio#beatstore",
       cta: "Open BeatStore section",
@@ -243,11 +255,26 @@ export async function GET(req: Request) {
   }
 
   const subscribed = memberships.length > 0;
+  const producerUsage = await resolveProducerBeatEntitlements(user.id);
   const desks = memberships.map((m) => {
     const plan = planMeta(m.plan_id);
+    const isProducerish =
+      m.family === "producer" ||
+      m.family === "creator_bundle" ||
+      String(m.plan_id).startsWith("producer") ||
+      String(m.plan_id).includes("creator_complete");
     const ents = {
       ...entitlementsForPlan(m.plan_id),
       ...(m.entitlements || {}),
+      ...(isProducerish
+        ? {
+            live_count: producerUsage.liveCount,
+            beat_live_limit:
+              m.entitlements?.beat_live_limit ??
+              entitlementsForPlan(m.plan_id).beat_live_limit ??
+              producerUsage.beatLiveLimit,
+          }
+        : {}),
     };
     return {
       membershipId: m.id,

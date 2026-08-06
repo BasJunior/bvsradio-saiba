@@ -16,6 +16,7 @@ import {
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 import { creatorPublicName } from '@/lib/public-name'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
+import { resolveProducerBeatEntitlements } from '@/lib/producer-entitlements'
 
 export const runtime = 'nodejs'
 
@@ -53,7 +54,8 @@ export async function GET(request: Request) {
       master_path: await privateMediaUrl(beat.master_path),
       stems_path: await privateMediaUrl(beat.stems_path),
     })))
-    return NextResponse.json({ beats, profile })
+    const entitlements = await resolveProducerBeatEntitlements(identity.user.id)
+    return NextResponse.json({ beats, profile, entitlements })
   }
 
   // public published beats for catalogue / BeatStore

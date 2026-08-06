@@ -33,6 +33,17 @@ type Beat = {
   }>
 }
 
+type BeatEntitlements = {
+  planId?: string
+  tier?: string
+  beatLiveLimit?: number | null
+  liveCount?: number
+  remaining?: number | null
+  softWarn?: boolean
+  canGoLive?: boolean
+  marketplaceCommissionBps?: number
+}
+
 const field =
   'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
 
@@ -63,6 +74,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
   const supabaseReady = isSupabaseConfigured()
   const [token, setToken] = useState('')
   const [beats, setBeats] = useState<Beat[]>([])
+  const [entitlements, setEntitlements] = useState<BeatEntitlements | null>(null)
   const [error, setError] = useState(supabaseReady ? '' : 'Supabase is not configured.')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -87,6 +99,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
     const payload = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(payload.error || 'Could not load BeatStore.')
     setBeats(payload.beats || [])
+    setEntitlements(payload.entitlements || null)
   }, [])
 
   useEffect(() => {
@@ -266,8 +279,38 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
           <h2 className="mt-1 text-2xl">{creationOnly ? 'Upload a single beat' : 'My BeatStore'}</h2>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
             Upload a tagged preview, set a Standard lease price, and submit for editorial. Published
-            beats appear in Beats / BeatStore.
+            beats appear in Beats / BeatStore. Live limits only apply when a beat goes public for sale
+            — drafts and in-review do not count.
           </p>
+          {entitlements && (
+            <div
+              className={`mt-3 rounded-xl border px-4 py-3 text-sm ${
+                entitlements.canGoLive === false
+                  ? 'border-amber-400/40 bg-amber-500/10 text-amber-50'
+                  : entitlements.softWarn
+                    ? 'border-brand/40 bg-brand/10 text-brand'
+                    : 'border-white/10 bg-white/[0.03] text-text-secondary'
+              }`}
+            >
+              <p className="font-medium text-white">
+                Live for sale:{' '}
+                {entitlements.beatLiveLimit == null
+                  ? `${entitlements.liveCount ?? 0} (fair-use / unlimited)`
+                  : `${entitlements.liveCount ?? 0} / ${entitlements.beatLiveLimit}`}
+              </p>
+              <p className="mt-1 text-xs opacity-90">
+                Tier: {entitlements.tier || 'free'}
+                {typeof entitlements.marketplaceCommissionBps === 'number'
+                  ? ` · platform fee ${(entitlements.marketplaceCommissionBps / 100).toFixed(0)}%`
+                  : ''}
+                {entitlements.canGoLive === false
+                  ? ' · Limit reached — archive a live beat or upgrade on Premium before new go-live.'
+                  : entitlements.softWarn
+                    ? ' · Near your live limit — upgrade anytime on /premium.'
+                    : ' · Growth-era free tier allows up to 25 live beats.'}
+              </p>
+            </div>
+          )}
         </div>
         {creationOnly ? (
           <Link href="/creator/studio" className="text-sm text-brand">

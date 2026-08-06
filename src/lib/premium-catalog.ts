@@ -163,9 +163,9 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     badge: "Pilot",
     status: "pilot",
     commissionPercent: 15,
-    summary: "List a starter catalogue inside the BVS artist community.",
+    summary: "List a real starter catalogue inside the BVS artist community.",
     includes: [
-      "Up to 5 live beats",
+      "List up to 25 live beats — enough to start selling",
       "One standard non-exclusive licence template",
       "Public producer profile and beat previews",
       "Basic sales and play totals",
@@ -184,7 +184,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     commissionPercent: 8,
     summary: "Scale catalogue, licences, and conversion analytics.",
     includes: [
-      "Up to 50 live beats",
+      "Up to 150 live beats + templates & lower fee",
       "Four reusable licence templates",
       "MP3/WAV product variants",
       "Coupons and bundle discounts",
@@ -203,7 +203,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     commissionPercent: 3,
     summary: "Unlimited catalogue (fair-use storage), stems/kits, lower take rate.",
     includes: [
-      "Unlimited live beats (fair-use storage)",
+      "Unlimited catalogue · lowest fee · kits/stems (fair-use storage)",
       "Stems, sound kits, custom service products",
       "Unlimited custom licence templates",
       "Advanced sales funnel analytics",
@@ -546,14 +546,15 @@ export function entitlementsForPlan(planId: string): Record<string, unknown> {
     case "producer_free":
       return {
         beatstore_tier: "free",
-        beat_live_limit: 5,
+        // Growth-era free storefront — count is live-for-sale only
+        beat_live_limit: 25,
         marketplace_commission_bps: 1500,
         licence_template_limit: 1,
       };
     case "producer_plus":
       return {
         beatstore_tier: "plus",
-        beat_live_limit: 50,
+        beat_live_limit: 150,
         marketplace_commission_bps: 800,
         licence_template_limit: 4,
       };

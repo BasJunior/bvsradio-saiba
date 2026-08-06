@@ -3,6 +3,7 @@ import { audit, can, editorialIdentity, editorialUrl, serviceHeaders } from '@/l
 import { sendMusicApprovalEmail } from '@/lib/approval-email'
 import type { EditorialPermission, EditorialRole } from '@/lib/editorial'
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
+import { assertCanPublishLiveBeat } from '@/lib/producer-entitlements'
 
 async function jsonOrError(response: Response) {
   if (!response.ok) throw new Error(await response.text())
@@ -599,10 +600,27 @@ export async function PATCH(request: Request) {
         const beatId = String(body.beatId || '')
         const publish = Boolean(body.publish)
         const beat = (await optionalJson(
-          `beats?id=eq.${encodeURIComponent(beatId)}&select=id,producer_user_id&limit=1`,
-        ))[0] as { id?: string; producer_user_id?: string } | undefined
+          `beats?id=eq.${encodeURIComponent(beatId)}&select=id,producer_user_id,is_public,status&limit=1`,
+        ))[0] as { id?: string; producer_user_id?: string; is_public?: boolean; status?: string } | undefined
         if (!beat?.producer_user_id) {
           return NextResponse.json({ error: 'Beat or producer profile not found.' }, { status: 404 })
+        }
+        if (publish) {
+          const alreadyLive = Boolean(beat.is_public) && String(beat.status) === 'published'
+          const gate = await assertCanPublishLiveBeat({
+            producerUserId: beat.producer_user_id,
+            beatId,
+            alreadyLive,
+          })
+          if (!gate.ok) {
+            return NextResponse.json(
+              {
+                error: gate.error,
+                entitlements: gate.entitlements,
+              },
+              { status: 409 },
+            )
+          }
         }
         const result = await patchTable(
           'beats',
