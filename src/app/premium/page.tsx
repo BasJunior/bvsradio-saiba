@@ -1,179 +1,236 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
+  FAMILY_LABELS,
+  PREMIUM_CATALOG,
   PREMIUM_DISTRIBUTION_STORES,
-  PREMIUM_TIERS,
   premiumPricingCopy,
-} from "@/lib/premium-tiers";
+  type MembershipFamily,
+  type CatalogPlan,
+} from "@/lib/premium-catalog";
 
-export const metadata: Metadata = {
-  title: "Premium Artist | BVS Radio",
-  description:
-    "BVS Premium Artist — Founding from US$9/month or US$90/year; Standard US$12/month or US$120/year. Distribution path when partners are ready; BVS rotation does not require Premium.",
-  openGraph: {
-    title: "Premium Artist | BVS Radio",
-    description:
-      "Founding Premium US$9/mo · Standard US$12/mo. Unlock distribution eligibility for approved releases.",
-    url: "https://bvsradio.com/premium",
-  },
-};
-
-const steps = [
-  { n: "1", title: "Create artist account", href: "/auth/signup", cta: "Join BVS" },
-  { n: "2", title: "Submit a release", href: "/upload", cta: "Upload music" },
-  { n: "3", title: "Choose Premium", href: "/artist/premium", cta: "Artist Premium desk" },
-  { n: "4", title: "Distribution when partner live", href: "/contact", cta: "Ask about distribution" },
+const FAMILIES: MembershipFamily[] = [
+  "artist",
+  "producer",
+  "creator_bundle",
+  "service",
+  "team",
+  "curator",
+  "supporter",
+  "brand",
 ];
 
-export default function PremiumLandingPage() {
+function statusClass(status: CatalogPlan["status"]) {
+  if (status === "live") return "border-emerald-400/40 bg-emerald-500/10 text-emerald-200";
+  if (status === "pilot") return "border-amber-400/40 bg-amber-500/10 text-amber-100";
+  return "border-violet-400/30 bg-violet-500/10 text-violet-100";
+}
+
+function priceLine(plan: CatalogPlan) {
+  if (plan.quoteOnly || plan.monthlyUsd == null) return "Quote";
+  if (plan.monthlyUsd === 0) return "US$0";
+  return `US$${plan.monthlyUsd}`;
+}
+
+export default function PremiumEcosystemPage() {
+  const [family, setFamily] = useState<MembershipFamily>("artist");
   const pricing = premiumPricingCopy();
+  const plans = useMemo(() => PREMIUM_CATALOG.filter((p) => p.family === family), [family]);
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-14">
-      <p className="text-xs uppercase tracking-[0.2em] text-brand">Artists · Subscription</p>
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">BVS Premium Artist</h1>
-      <p className="mt-4 max-w-2xl text-lg text-text-secondary">
-        Monthly (or yearly) subscription for creators who want the{" "}
-        <strong className="text-text-primary">distribution path</strong> when licences and a partner are
-        ready. Fans keep listening free on{" "}
-        <Link href="/radio" className="text-brand hover:underline">
-          Live Radio
-        </Link>
-        .
-      </p>
+    <main className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
+      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">BVS membership family</p>
+      <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight md:text-5xl">
+        One ecosystem. <span className="text-brand">Different paid outcomes.</span>
+      </h1>
+      <p className="mt-4 max-w-3xl text-lg text-text-secondary">{pricing.positioning}</p>
 
-      <div className="mt-8 rounded-2xl border border-brand/30 bg-brand/10 p-6">
-        <p className="text-xs uppercase tracking-wider text-brand">Published rates</p>
-        <p className="mt-1 text-3xl font-semibold text-text-primary">{pricing.headline}</p>
-        <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-          From the BVS compliance & pricing plan (28 Jul 2026): Founding first, then Standard.{" "}
-          {pricing.distributionNote}
-        </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Link
-            href="/artist/premium"
-            className="rounded-full bg-brand px-6 py-3 text-sm font-semibold text-black hover:bg-brand-dark"
-          >
-            Open Premium desk
-          </Link>
-          <Link
-            href="/auth/signup"
-            className="rounded-full border border-white/20 px-6 py-3 text-sm text-text-primary hover:border-brand"
-          >
-            Create account
-          </Link>
+      <div className="mt-8 grid gap-4 md:grid-cols-[1.4fr_.9fr]">
+        <div className="rounded-2xl border border-brand/30 bg-brand/10 p-6">
+          <p className="text-xs uppercase tracking-wider text-brand">Pipeline</p>
+          <p className="mt-2 text-xl font-semibold text-text-primary">
+            Submit → Publish → Rotate & sell → Premium ships wider
+          </p>
+          <p className="mt-2 text-sm text-text-secondary">
+            Listening, editorial publish, and BVS rotation stay free. Artist Premium is the commercial switch for
+            multi-platform distribution of <strong className="text-text-primary">approved</strong> releases.
+            Producer, Supporter, Team, and service plans are separate products — not one giant locked feature pile.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs text-text-secondary">
+            <span className="rounded-full border border-white/15 px-3 py-1">Listen free</span>
+            <span className="rounded-full border border-white/15 px-3 py-1">Publish through editorial</span>
+            <span className="rounded-full border border-white/15 px-3 py-1">Sell on BVS</span>
+            <span className="rounded-full border border-white/15 px-3 py-1">Premium ships wider</span>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          <p className="text-xs uppercase tracking-wider text-text-secondary">Artist list prices (locked)</p>
+          <p className="mt-2 text-3xl font-semibold">{pricing.headline}</p>
+          <p className="mt-2 text-sm text-text-secondary">
+            Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong> (first 25–50)
+            <br />
+            Standard <strong className="text-text-primary">US$12/mo · US$120/yr</strong>
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              href="/artist/premium"
+              className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black hover:bg-brand-dark"
+            >
+              Artist Premium desk
+            </Link>
+            <Link
+              href="/auth/signup"
+              className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand"
+            >
+              Create account
+            </Link>
+          </div>
         </div>
       </div>
 
-      <section className="mt-12 grid gap-6 md:grid-cols-2">
-        {PREMIUM_TIERS.map((tier) => (
-          <article
-            key={tier.id}
-            className={`rounded-2xl border p-6 ${
-              tier.featured ? "border-brand/40 bg-brand/5" : "border-white/10 bg-white/[0.03]"
+      {/* Role tabs */}
+      <div className="mt-12 flex flex-wrap gap-2">
+        {FAMILIES.map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setFamily(f)}
+            className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+              family === f
+                ? "bg-brand text-black"
+                : "border border-white/15 text-text-secondary hover:border-brand hover:text-text-primary"
             }`}
           >
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-xl font-semibold text-text-primary">{tier.name}</h2>
-              <span className="rounded-full border border-white/15 px-2.5 py-0.5 text-[11px] uppercase tracking-wide text-brand">
-                {tier.badge}
+            {FAMILY_LABELS[f]}
+          </button>
+        ))}
+      </div>
+
+      <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {plans.map((plan) => (
+          <article
+            key={plan.id}
+            className={`flex flex-col rounded-2xl border p-5 ${
+              plan.featured ? "border-brand/40 bg-brand/5" : "border-white/10 bg-white/[0.03]"
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{plan.name}</p>
+              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${statusClass(plan.status)}`}>
+                {plan.status}
               </span>
             </div>
-            <p className="mt-4 text-3xl font-semibold text-text-primary">
-              US${tier.monthlyUsd}
-              <span className="text-base font-normal text-text-secondary">/month</span>
+            <p className="mt-3 text-3xl font-semibold tracking-tight">
+              {priceLine(plan)}
+              {plan.monthlyUsd != null && plan.monthlyUsd > 0 && (
+                <span className="text-sm font-normal text-text-secondary">/mo</span>
+              )}
             </p>
-            <p className="mt-1 text-sm text-text-secondary">
-              or <strong className="text-text-primary">US${tier.yearlyUsd}/year</strong> (2 months free)
-            </p>
-            <p className="mt-3 text-sm text-text-secondary">{tier.summary}</p>
-            <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-text-secondary">
-              {tier.notes.map((line) => (
+            {plan.yearlyUsd != null && plan.yearlyUsd > 0 && (
+              <p className="text-xs text-text-secondary">or US${plan.yearlyUsd}/year</p>
+            )}
+            <p className="mt-1 text-[11px] uppercase tracking-wide text-brand">{plan.badge}</p>
+            <p className="mt-3 text-sm text-text-secondary">{plan.summary}</p>
+            {plan.commissionPercent != null && (
+              <p className="mt-2 text-xs text-amber-100/90">Marketplace fee: {plan.commissionPercent}%</p>
+            )}
+            <ul className="mt-4 flex-1 list-disc space-y-1.5 pl-4 text-sm text-text-secondary">
+              {plan.includes.map((line) => (
                 <li key={line}>{line}</li>
               ))}
             </ul>
-            <Link
-              href={`/artist/premium?tier=${tier.id}`}
-              className={`mt-6 inline-flex rounded-full px-5 py-2.5 text-sm font-semibold ${
-                tier.featured
-                  ? "bg-brand text-black hover:bg-brand-dark"
-                  : "border border-white/20 text-text-primary hover:border-brand"
-              }`}
-            >
-              Select {tier.name}
-            </Link>
+            <div className="mt-5">
+              {plan.family === "artist" && plan.id !== "artist_free" && plan.status === "live" ? (
+                <Link
+                  href={`/artist/premium?tier=${plan.id.replace("artist_", "")}`}
+                  className="inline-flex rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
+                >
+                  Open desk
+                </Link>
+              ) : plan.quoteOnly ? (
+                <Link href="/contact" className="inline-flex rounded-full border border-white/20 px-4 py-2 text-sm">
+                  Contact sales
+                </Link>
+              ) : plan.status === "live" || plan.status === "pilot" ? (
+                <Link
+                  href={plan.family === "producer" ? "/catalogue?type=beat#beatstore" : "/auth/signup"}
+                  className="inline-flex rounded-full border border-white/20 px-4 py-2 text-sm hover:border-brand"
+                >
+                  {plan.monthlyUsd === 0 ? "Start free" : "Join waitlist / desk"}
+                </Link>
+              ) : (
+                <span className="text-xs text-text-secondary">Ships after foundation products are stable</span>
+              )}
+            </div>
           </article>
         ))}
       </section>
 
-      <section className="mt-14">
-        <h2 className="text-2xl font-semibold">Where Premium can take your music</h2>
-        <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-          With Premium, approved releases enter BVS's multi-platform distribution path — targeting the major
-          stores artists expect worldwide ({pricing.storeCount}+ destinations). Exact live stores depend on
-          clearance, territory, and our delivery pipeline when each release ships. No aggregator brand is required
-          on your side; BVS coordinates the hand-off after editorial publish + Premium entitlement.
+      <section className="mt-16">
+        <h2 className="text-2xl font-semibold">Where Artist Premium can take your music</h2>
+        <p className="mt-2 max-w-3xl text-sm text-text-secondary">
+          {pricing.distributionNote} Store list is destination-facing — no middleman brands in public copy.
+          Availability varies by clearance, territory, and delivery readiness ({pricing.storeCount}+ targets).
         </p>
         <ul className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
           {PREMIUM_DISTRIBUTION_STORES.map((store) => (
-            <li
-              key={store}
-              className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-text-primary"
-            >
+            <li key={store} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">
               {store}
             </li>
           ))}
         </ul>
-        <p className="mt-4 text-xs text-text-secondary">
-          Highlights: Spotify, Apple Music & iTunes, YouTube Music + Content ID, TikTok, Instagram / Meta,
-          Amazon Music, Deezer, TIDAL, Boomplay, Anghami, and more regional platforms.
-        </p>
       </section>
 
-      <section className="mt-14">
-        <h2 className="text-2xl font-semibold">How it works</h2>
-        <ol className="mt-6 space-y-4">
-          {steps.map((s) => (
-            <li
-              key={s.n}
-              className="flex flex-col gap-3 rounded-xl border border-white/10 bg-bg-secondary/40 p-4 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="flex items-start gap-4">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand/20 text-sm font-bold text-brand">
-                  {s.n}
-                </span>
-                <p className="font-medium text-text-primary">{s.title}</p>
-              </div>
-              <Link href={s.href} className="text-sm font-medium text-brand hover:underline sm:shrink-0">
-                {s.cta} →
-              </Link>
+      <section className="mt-16 grid gap-6 md:grid-cols-2">
+        <div className="rounded-2xl border border-white/10 p-6">
+          <h2 className="text-xl font-semibold">What stays free</h2>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-secondary">
+            <li>BVS Radio continuous listening</li>
+            <li>Editorial submission and approved rotation</li>
+            <li>On-site catalogue and commerce participation</li>
+            <li>No paid editorial approval, chart rank, or guaranteed streams</li>
+          </ul>
+        </div>
+        <div className="rounded-2xl border border-amber-400/25 bg-amber-500/5 p-6">
+          <h2 className="text-xl font-semibold">Honest status labels</h2>
+          <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-secondary">
+            <li>
+              <strong className="text-emerald-200">Live</strong> — priced and productized on site (Artist Free /
+              Founding / Standard; Listener Free)
             </li>
-          ))}
-        </ol>
+            <li>
+              <strong className="text-amber-100">Pilot</strong> — published bands for Producer / Supporter; billing
+              & limits wiring next
+            </li>
+            <li>
+              <strong className="text-violet-100">Later</strong> — Team, Service Pro, Curator Pro, brands — after
+              delivery ops are dependable
+            </li>
+          </ul>
+        </div>
       </section>
 
-      <section className="mt-14 rounded-2xl border border-white/10 p-6">
-        <h2 className="text-xl font-semibold">What Premium is not</h2>
-        <ul className="mt-4 list-disc space-y-2 pl-5 text-sm text-text-secondary">
-          <li>Not required to stream on BVS Radio after editorial publish</li>
-          <li>Not a guarantee of a named DSP until the partner is contracted</li>
-          <li>Not automatic publish of unapproved or rights-uncleared material</li>
-          <li>Not inclusive of third-party distributor pass-through fees</li>
-        </ul>
-        <p className="mt-4 text-sm text-text-secondary">
-          Product path:{" "}
-          <span className="text-text-primary">Submit → Publish → Rotation → Premium distribution</span>. Card /
-          EcoCash checkout for subscriptions attaches next; desk toggle is the entitlement shell today.
-        </p>
+      <section className="mt-14 rounded-2xl border border-white/10 bg-gradient-to-br from-brand/10 to-cyan-500/5 p-6 md:p-8">
+        <h2 className="text-2xl font-semibold">Build order</h2>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-text-secondary">
+          <li>Artist Premium surface + distribution entitlement flags (this page + desk)</li>
+          <li>Paynow-first subscription billing + founding seat counter</li>
+          <li>Distribution jobs for approved + entitled releases</li>
+          <li>Producer BeatStore limits, licence templates, commission ledger</li>
+          <li>Supporter membership content that never buys editorial</li>
+          <li>Team / Service / Curator / Brand products only after the above is real</li>
+        </ol>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/upload" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">
             Submit music
           </Link>
-          <Link href="/artists" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">
-            Artist access
+          <Link href="/shop" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">
+            Services shop
           </Link>
           <Link href="/contact" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">
-            Contact
+            Partnerships
           </Link>
         </div>
       </section>

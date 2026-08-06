@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
 import {
+  PREMIUM_CATALOG,
   PREMIUM_DISTRIBUTION_STORES,
   PREMIUM_TIERS,
   defaultPremiumMonthlyUsd,
+  entitlementsForPlan,
   premiumPricingCopy,
-} from "@/lib/premium-tiers";
+} from "@/lib/premium-catalog";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -33,6 +35,8 @@ export async function GET(req: Request) {
     distributionEnabled: Boolean(profile.distribution_enabled),
     monthlyUsd: defaultPremiumMonthlyUsd(),
     tiers: PREMIUM_TIERS,
+    catalogHref: "/premium",
+    familyPlans: PREMIUM_CATALOG.filter((p) => p.family === "artist"),
     distributionStores: PREMIUM_DISTRIBUTION_STORES,
     pricing,
     priceNote: `Founding US$${pricing.foundingMonthly}/mo or US$${pricing.foundingYearly}/yr · Standard US$${pricing.standardMonthly}/mo or US$${pricing.standardYearly}/yr. ${pricing.distributionNote}`,
@@ -46,6 +50,7 @@ export async function GET(req: Request) {
         `Distribution path covering ${PREMIUM_DISTRIBUTION_STORES.length}+ stores (Spotify, Apple Music, YouTube, TikTok, Boomplay, …)`,
         "Priority support for release packaging",
         "BVS catalogue + rotation still available on free artist path after approval",
+        "Full membership family (Producer, Supporter, Team…) at /premium",
       ],
     },
   });
@@ -65,14 +70,23 @@ export async function POST(req: Request) {
   const user = await authUserId(SUPABASE_URL, SERVICE, token);
   if (!user?.id) return NextResponse.json({ error: "Session expired." }, { status: 401 });
 
-  const body = (await req.json()) as { enable?: boolean; distributionEnabled?: boolean };
+  const body = (await req.json()) as {
+    enable?: boolean;
+    distributionEnabled?: boolean;
+    planId?: string;
+  };
   const enable = Boolean(body.enable);
   const distributionEnabled =
     body.distributionEnabled === undefined ? enable : Boolean(body.distributionEnabled);
+  const planId =
+    body.planId === "artist_standard" || body.planId === "standard"
+      ? "artist_standard"
+      : "artist_founding";
 
   const premiumUntil = enable
     ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
     : null;
+  const ents = enable ? entitlementsForPlan(planId) : {};
 
   const res = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
     method: "PATCH",
@@ -81,6 +95,7 @@ export async function POST(req: Request) {
       premium_active: enable,
       premium_until: premiumUntil,
       distribution_enabled: enable && distributionEnabled,
+      premium_plan_id: enable ? planId : null,
       role: "artist",
     }),
   });
@@ -92,19 +107,48 @@ export async function POST(req: Request) {
       {
         error:
           text.includes("premium_active") || res.status === 400
-            ? "Premium columns missing. Run supabase-releases-pipeline.sql in Supabase."
+            ? "Premium columns missing. Run supabase-releases-pipeline.sql / premium-memberships pack."
             : "Could not update premium status.",
       },
       { status: 500 },
     );
   }
 
+  // Best-effort membership row (table may not exist until pack applied)
+  if (enable) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/bvs_memberships`, {
+        method: "POST",
+        headers: {
+          ...serviceHeaders(SERVICE),
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          plan_id: planId,
+          family: "artist",
+          status: "shell",
+          billing_interval: "month",
+          ends_at: premiumUntil,
+          founding_seat: planId === "artist_founding",
+          entitlements: ents,
+          provider: "shell",
+          notes: "Artist Premium shell until Paynow/Stripe subscription live",
+        }),
+      });
+    } catch {
+      /* ignore until schema pack applied */
+    }
+  }
+
   const rows = await res.json();
   return NextResponse.json({
     ok: true,
     profile: rows[0] || null,
+    planId: enable ? planId : null,
+    entitlements: ents,
     message: enable
-      ? "Premium artist flag enabled (shell). Billing provider + price TBD."
+      ? `Artist Premium shell on (${planId}). Billing (Paynow-first) still next.`
       : "Premium artist flag disabled.",
   });
 }
