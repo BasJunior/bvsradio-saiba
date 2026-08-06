@@ -110,13 +110,13 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     badge: "Launch · locked",
     status: "live",
     featured: true,
-    summary: "First 25–50 artists. Distribution path for approved releases.",
+    summary: "Founding rate through 27 Aug 2026. Distribution path for approved releases.",
     includes: [
       "Everything in Artist Free",
       "Distribution entitlement for approved releases",
       "Major streaming, social & regional store targets",
       "Priority release-packaging support",
-      "Founding rate while continuously subscribed (when billing is live)",
+      "Founding rate locked in if you join by 27 Aug 2026 and stay subscribed (when billing is live)",
     ],
   },
   {
@@ -127,7 +127,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     yearlyUsd: 120,
     badge: "Ongoing · locked",
     status: "live",
-    summary: "After founding seats fill or cost validation completes.",
+    summary: "After the founding window (27 Aug 2026) or when cost validation completes.",
     includes: [
       "Same distribution path as Founding",
       "Release status in artist desk as ops mature",
@@ -481,10 +481,10 @@ export const PREMIUM_TIERS: PremiumTier[] = [
     monthlyUsd: 9,
     yearlyUsd: 90,
     badge: "Launch offer",
-    summary: "Early artist rate — first 25–50 seats. Distribution path for approved releases.",
+    summary: "Early artist rate through 27 Aug 2026. Distribution path for approved releases.",
     featured: true,
     notes: [
-      "Limited to the first 25–50 artists (founding cohort).",
+      "Founding price available through 27 August 2026 (founding cohort).",
       "Multi-platform distribution path to major streaming & social stores.",
       "BVS submit → editorial → publish → rotation stays available without Premium.",
       "Pass-through distribution costs stay separate if they apply later.",
@@ -496,7 +496,7 @@ export const PREMIUM_TIERS: PremiumTier[] = [
     monthlyUsd: 12,
     yearlyUsd: 120,
     badge: "Ongoing",
-    summary: "After founding seats fill or cost validation completes.",
+    summary: "After the founding window (27 Aug 2026) or when cost validation completes.",
     featured: false,
     notes: [
       "Same multi-platform distribution path as Founding once delivery is live.",
@@ -510,6 +510,10 @@ export function defaultPremiumMonthlyUsd(): number {
   if (Number.isFinite(n) && n > 0) return n;
   return 9;
 }
+
+/** Public founding-window end (Europe/Berlin calendar date). */
+export const FOUNDING_WINDOW_ENDS = "2026-08-27";
+export const FOUNDING_WINDOW_LABEL = "27 Aug 2026";
 
 export function premiumPricingCopy() {
   return {

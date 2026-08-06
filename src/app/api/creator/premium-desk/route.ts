@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
 import {
+  FOUNDING_WINDOW_LABEL,
   PREMIUM_CATALOG,
   PREMIUM_DISTRIBUTION_STORES,
   entitlementsForPlan,
@@ -57,7 +58,7 @@ function deskSectionsFor(
           : "Distribution entitlement: pending ops flag",
         `Target destinations: ${PREMIUM_DISTRIBUTION_STORES.length}+ stores (Spotify, Apple Music, Boomplay, …)`,
         planId.includes("founding")
-          ? "Founding cohort rate while continuously subscribed"
+          ? `Founding rate (join by ${FOUNDING_WINDOW_LABEL}) while continuously subscribed`
           : "Standard Artist Premium path",
         String(ents.release_analytics_level || "basic") === "advanced"
           ? "Advanced release analytics (when live)"

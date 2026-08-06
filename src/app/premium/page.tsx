@@ -69,7 +69,7 @@ export default function PremiumEcosystemPage() {
           <p className="text-xs uppercase tracking-wider text-text-secondary">Artist list prices (locked)</p>
           <p className="mt-2 text-3xl font-semibold">{pricing.headline}</p>
           <p className="mt-2 text-sm text-text-secondary">
-            Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong> (first 25–50)
+            Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong> through {"27 Aug 2026"}
             <br />
             Standard <strong className="text-text-primary">US$12/mo · US$120/yr</strong>
           </p>
