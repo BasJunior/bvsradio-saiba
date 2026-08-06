@@ -554,9 +554,16 @@ export default function CheckoutPage() {
 
           {result && (
             <section className="rounded-2xl border border-brand/30 bg-brand/10 p-6">
-              <p className="text-xs uppercase tracking-[3px] text-brand">Order created</p>
+              <p className="text-xs uppercase tracking-[3px] text-brand">
+                {result.paymentMode === "manual" ? "Order created — finish payment" : "Order created"}
+              </p>
               <h2 className="mt-2 font-mono text-2xl font-semibold">{result.reference}</h2>
               <p className="mt-3 text-sm text-text-secondary">{result.persistenceMessage}</p>
+              {result.paymentMode === "manual" && (
+                <p className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-50">
+                  Online Paynow/card redirect was not used for this order (manual path). If you selected Paynow and only see WhatsApp steps, try again after a refresh — or WhatsApp BVS with this reference.
+                </p>
+              )}
               {typeof result.total === "number" && (
                 <div className="mt-4 space-y-1.5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm">
                   {typeof result.subtotal === "number" && (

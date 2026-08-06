@@ -10,7 +10,13 @@ import {
   type StoredOrder,
 } from "@/lib/orders";
 import { getStripe, siteUrl, stripeEnabled } from "@/lib/stripe";
-import { getPaynow, normalizeZwPhone, paynowEnabled } from "@/lib/paynow";
+import {
+  getPaynow,
+  humanizePaynowError,
+  normalizeZwPhone,
+  paynowAuthEmail,
+  paynowEnabled,
+} from "@/lib/paynow";
 import { createDownloadToken, resolveProductAsset } from "@/lib/products";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { calculateTax, stripeAutomaticTaxEnabled } from "@/lib/tax";
@@ -262,7 +268,12 @@ export async function POST(req: Request) {
       const paynow = getPaynow();
       if (paynow) {
         paynow.returnUrl = `${siteUrl()}/checkout/success?ref=${encodeURIComponent(reference)}`;
-        const payment = paynow.createPayment(reference, order.customer.email);
+        // Web redirect: omit customer email in test mode (see paynowAuthEmail).
+        // Mobile EcoCash still needs a valid email — pin merchant email when set.
+        const authEmail = wantsEcoCashPush
+          ? paynowAuthEmail(order.customer.email) || order.customer.email || ""
+          : paynowAuthEmail(order.customer.email);
+        const payment = paynow.createPayment(reference, authEmail);
         for (const item of order.items) {
           payment.add(
             `${item.title} (${item.type})`,
@@ -276,14 +287,16 @@ export async function POST(req: Request) {
           );
         }
 
+        let paynowFailure: string | null = null;
+
         try {
           if (wantsEcoCashPush) {
             const phone =
               normalizeZwPhone(order.customer.whatsapp || "") ||
               normalizeZwPhone((payload as { phone?: string }).phone || "");
-            if (phone) {
+            if (phone && authEmail) {
               const response = await paynow.sendMobile(payment, phone, "ecocash");
-              if (response.success) {
+              if (response?.success) {
                 order.paymentMethod = "ecocash";
                 order.paynowPollUrl = response.pollUrl;
                 order.paynowInstructions =
@@ -318,12 +331,22 @@ export async function POST(req: Request) {
                   paynowReady: true,
                 });
               }
+              paynowFailure =
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (response as any)?.error || "EcoCash push was not accepted by Paynow.";
+              console.error("Paynow sendMobile failed", paynowFailure);
             }
             // fall through to redirect checkout if push failed / no ZW phone
           }
 
           const response = await paynow.send(payment);
-          if (response.success && response.redirectUrl) {
+          const redirectUrl =
+            response?.redirectUrl ||
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (response as any)?.browserurl ||
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (response as any)?.browserUrl;
+          if (response?.success && redirectUrl) {
             order.paymentMethod = "paynow";
             order.paynowPollUrl = response.pollUrl;
             try {
@@ -338,7 +361,7 @@ export async function POST(req: Request) {
               savedLocal: Boolean(localPath),
               savedSupabase: supabase.saved,
               persistenceMessage: "Order saved. Redirecting to Paynow.",
-              checkoutUrl: response.redirectUrl,
+              checkoutUrl: String(redirectUrl),
               paymentMode: "paynow",
               pollUrl: response.pollUrl,
               subtotal: order.subtotal,
@@ -353,10 +376,41 @@ export async function POST(req: Request) {
               paynowReady: true,
             });
           }
+          paynowFailure =
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (response as any)?.error || paynowFailure || "Paynow did not return a payment link.";
+          console.error("Paynow send failed", paynowFailure, {
+            success: response?.success,
+            hasRedirect: Boolean(redirectUrl),
+          });
         } catch (paynowErr) {
           console.error("Paynow error", paynowErr);
+          paynowFailure =
+            paynowErr instanceof Error ? paynowErr.message : "Paynow request failed";
           await recordServerEvent("payment_error", { provider: "paynow", stage: "checkout_creation" });
-          // continue to manual
+        }
+
+        // Explicit Paynow/EcoCash choice must not silently become WhatsApp-only.
+        if (wantsPaynow || payload.paymentMethod === "paynow_ecocash" || payload.paymentMethod === "ecocash") {
+          await recordServerEvent("payment_error", {
+            provider: "paynow",
+            stage: "checkout_no_redirect",
+          });
+          try {
+            await saveOrderLocal(order);
+          } catch {
+            /* ignore */
+          }
+          return NextResponse.json(
+            {
+              error: humanizePaynowError(paynowFailure),
+              reference,
+              paymentMode: "paynow_failed",
+              paynowReady: true,
+              detail: process.env.NODE_ENV === "development" ? paynowFailure : undefined,
+            },
+            { status: 502 },
+          );
         }
       }
     }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
-import { getPaynow, paynowEnabled } from "@/lib/paynow";
+import { getPaynow, humanizePaynowError, paynowAuthEmail, paynowEnabled } from "@/lib/paynow";
 import { siteUrl } from "@/lib/stripe";
 import {
   artistPremiumPriceUsd,
@@ -69,7 +69,8 @@ export async function POST(req: Request) {
   paynow.resultUrl = `${siteUrl()}/api/webhooks/paynow`;
   paynow.returnUrl = `${siteUrl()}/artist/premium?checkout=return&ref=${encodeURIComponent(reference)}`;
 
-  const payment = paynow.createPayment(reference, email);
+  // Test-mode integrations reject non-merchant authemail — use paynowAuthEmail().
+  const payment = paynow.createPayment(reference, paynowAuthEmail(email));
   const title =
     planId === "artist_founding"
       ? `BVS Founding Artist Premium (${interval})`
@@ -80,14 +81,20 @@ export async function POST(req: Request) {
   let pollUrl: string | undefined;
   try {
     const response = await paynow.send(payment);
-    if (!response.success || !response.redirectUrl) {
-      console.error("paynow premium init failed", response.error);
+    const url =
+      response?.redirectUrl ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (response as any)?.browserurl ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (response as any)?.browserUrl;
+    if (!response?.success || !url) {
+      console.error("paynow premium init failed", response?.error);
       return NextResponse.json(
-        { error: "Could not start Paynow checkout. Try again or contact BVS." },
+        { error: humanizePaynowError(response?.error) },
         { status: 502 },
       );
     }
-    redirectUrl = response.redirectUrl;
+    redirectUrl = String(url);
     pollUrl = response.pollUrl;
   } catch (e) {
     console.error("paynow premium exception", e);
