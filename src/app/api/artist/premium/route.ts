@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
+import { PREMIUM_TIERS, defaultPremiumMonthlyUsd, premiumPricingCopy } from "@/lib/premium-tiers";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-
-/** Premium monthly price (USD). Override via env when business sets the fee. */
-function premiumMonthlyUsd() {
-  const n = Number(process.env.BVS_PREMIUM_MONTHLY_USD || "");
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
 
 export async function GET(req: Request) {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
@@ -26,21 +21,23 @@ export async function GET(req: Request) {
   const rows = res.ok ? await res.json() : [];
   const profile = rows[0] || {};
 
+  const pricing = premiumPricingCopy();
   return NextResponse.json({
     premiumActive: Boolean(profile.premium_active),
     premiumUntil: profile.premium_until || null,
     distributionEnabled: Boolean(profile.distribution_enabled),
-    monthlyUsd: premiumMonthlyUsd(),
-    priceNote:
-      premiumMonthlyUsd() == null
-        ? "Monthly price will be published when licence and distribution partner costs are confirmed."
-        : `$${premiumMonthlyUsd()}/month (configurable).`,
+    monthlyUsd: defaultPremiumMonthlyUsd(),
+    tiers: PREMIUM_TIERS,
+    pricing,
+    priceNote: `Founding US$${pricing.foundingMonthly}/mo or US$${pricing.foundingYearly}/yr · Standard US$${pricing.standardMonthly}/mo or US$${pricing.standardYearly}/yr. ${pricing.distributionNote}`,
     copy: {
       title: "BVS Premium Artist",
       summary:
-        "Monthly subscription for multi-platform distribution when a BVS distribution partner is configured. BVS continuous rotation after editorial publish does not require premium.",
+        "Founding Premium US$9/month (US$90/year) for the first cohort; Standard US$12/month (US$120/year) after. Multi-platform distribution when a partner is configured. BVS rotation after editorial publish does not require premium.",
       includes: [
-        "Eligibility for multi-platform distribution queue (partner TBD)",
+        "Founding: US$9/month or US$90/year (first 25–50 artists)",
+        "Standard: US$12/month or US$120/year",
+        "Eligibility for multi-platform distribution queue (partner TBD — fees separate)",
         "Priority support for release packaging",
         "BVS catalogue + rotation still available on free artist path after approval",
       ],

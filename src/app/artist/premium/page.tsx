@@ -4,12 +4,24 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
+type PremiumTier = {
+  id: string
+  name: string
+  monthlyUsd: number
+  yearlyUsd: number
+  badge: string
+  summary: string
+  featured: boolean
+  notes: string[]
+}
+
 type PremiumState = {
   premiumActive: boolean
   premiumUntil: string | null
   distributionEnabled: boolean
   monthlyUsd: number | null
   priceNote: string
+  tiers?: PremiumTier[]
   copy: { title: string; summary: string; includes: string[] }
 }
 
@@ -93,6 +105,21 @@ export default function ArtistPremiumPage() {
               <li key={line}>{line}</li>
             ))}
           </ul>
+          {data.tiers && data.tiers.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {data.tiers.map((tier) => (
+                <div key={tier.id} className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm">
+                  <p className="text-[11px] uppercase tracking-wide text-brand">{tier.badge}</p>
+                  <p className="mt-1 font-semibold">{tier.name}</p>
+                  <p className="mt-2 text-lg font-semibold">
+                    US${tier.monthlyUsd}
+                    <span className="text-xs font-normal text-text-secondary">/mo</span>
+                  </p>
+                  <p className="text-xs text-text-secondary">or US${tier.yearlyUsd}/year</p>
+                </div>
+              ))}
+            </div>
+          )}
           <p className="text-sm">
             <strong className="text-brand">Price:</strong> {data.priceNote}
           </p>
