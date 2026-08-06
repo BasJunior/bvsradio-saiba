@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import MyBeatStore from '@/components/MyBeatStore'
 import CreatorInsights from '@/components/CreatorInsights'
+import StudioPremiumDesk from '@/components/StudioPremiumDesk'
 
 type WorkflowItem={id:string;title?:string;topic?:string;status?:string;editor_notes?:string;review_notes?:string;scheduled_for?:string}; type ShowItem=WorkflowItem & {status:string}; type Release={id:string;title:string;genre?:string;editorial_status:string;editorial_notes?:string;is_public:boolean;in_rotation:boolean;is_downloadable:boolean;download_price:number;licence_type:string;play_count:number;like_count?:number;created_at:string}; type TrackRequest={id:string;track_id:string;request_type:string;status:string;message:string;created_at:string}; type Data = { profile:{role:string;display_name?:string}; application?:{status:string;review_notes?:string}; articles:WorkflowItem[]; briefs:WorkflowItem[]; shows:ShowItem[]; episodes:WorkflowItem[]; tracks:Release[]; trackRequests:TrackRequest[] }
 const field = 'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
@@ -17,9 +18,10 @@ export default function CreatorStudio() {
   if(!data)return <main className="p-20 text-center text-text-secondary">Loading creator workspace…</main>
   const artist=['artist','admin'].includes(data.profile.role), writer=['writer','admin'].includes(data.profile.role), showCreator=['show_creator','admin'].includes(data.profile.role)
   const producer = Boolean((data.profile as {is_producer?: boolean}).is_producer) || data.profile.role === 'admin'
-  return <main className="mx-auto max-w-6xl px-6 py-12"><p className="text-xs uppercase tracking-[.22em] text-brand">Creator studio</p><h1 className="mt-2 text-4xl font-semibold">Welcome, {data.profile.display_name||'creator'}</h1><p className="mt-3 text-text-secondary">Draft privately, submit when ready, and follow the human editorial review.</p>{error&&<p className="mt-5 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}{message&&<p className="mt-5 rounded-xl bg-brand/10 p-4 text-brand">{message}</p>}
+  return <main className="mx-auto max-w-6xl px-6 py-12"><p className="text-xs uppercase tracking-[.22em] text-brand">Creator studio</p><h1 className="mt-2 text-4xl font-semibold">Welcome, {data.profile.display_name||'creator'}</h1><p className="mt-3 text-text-secondary">Draft privately, submit when ready, and follow the human editorial review. Premium members get a plan-specific desk below.</p>{error&&<p className="mt-5 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}{message&&<p className="mt-5 rounded-xl bg-brand/10 p-4 text-brand">{message}</p>}
+    <div id="premium-desk"><CreatorDropDown label="Premium desk" defaultOpen><StudioPremiumDesk token={token}/></CreatorDropDown></div>
     {(artist||producer)&&<CreatorDropDown label="Performance and editorial insights" defaultOpen><CreatorInsights token={token}/></CreatorDropDown>}
-    {producer&&<CreatorDropDown label="My BeatStore"><MyBeatStore/></CreatorDropDown>}
+    {producer&&<div id="beatstore"><CreatorDropDown label="My BeatStore"><MyBeatStore/></CreatorDropDown></div>}
     {artist&&<CreatorDropDown label="Releases and artist requests" count={(data.tracks||[]).length} defaultOpen><ArtistReleases tracks={data.tracks||[]} requests={data.trackRequests||[]} act={act}/></CreatorDropDown>}
     {writer&&<>
       <CreatorDropDown label="Writer application" defaultOpen={!data.application||['submitted','information_requested'].includes(data.application.status)}><WriterApplication application={data.application} act={act}/></CreatorDropDown>
