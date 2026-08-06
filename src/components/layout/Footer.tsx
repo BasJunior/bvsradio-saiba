@@ -25,9 +25,10 @@ export default function Footer() {
             <h4 className="text-sm font-semibold text-text-primary mb-3">For artists</h4>
             <div className="flex flex-col gap-2">
               <Link href="/artists" className="text-sm text-text-secondary hover:text-brand transition-colors">Artist Access</Link>
-              <Link href="/premium" className="text-sm text-text-secondary hover:text-brand transition-colors">Premium Artist</Link>
-              <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Upload Music</Link>
-              <Link href="/catalogue?type=beat" className="text-sm text-text-secondary hover:text-brand transition-colors">Browse Beats</Link>
+              <Link href="/premium" className="text-sm text-text-secondary hover:text-brand transition-colors">Premium</Link>
+              <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Submit music</Link>
+              <Link href="/upload?type=beats" className="text-sm text-text-secondary hover:text-brand transition-colors">Submit beat</Link>
+              <Link href="/catalogue?type=beat#beatstore" className="text-sm text-text-secondary hover:text-brand transition-colors">Browse Beats</Link>
               <Link href="/music/producers" className="text-sm text-text-secondary hover:text-brand transition-colors">Producers</Link>
               <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Mixing &amp; Mastering</Link>
             </div>

@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
@@ -33,7 +34,8 @@ async function putToSignedSlot(slot: SignedSlot, file: File) {
   }
 }
 
-export default function UploadPage() {
+function UploadPageInner() {
+  const searchParams = useSearchParams()
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [description, setDescription] = useState('')
@@ -55,6 +57,21 @@ export default function UploadPage() {
     'Dancehall', 'Electronic', 'Lofi', 'Gospel', 'Jazz', 'Pop',
     'Sungura', 'Zimdancehall', 'Chimurenga', 'Other',
   ]
+
+  // Deep-link: /upload?type=beats | beat | pack | beat-pack
+  useEffect(() => {
+    const raw = (searchParams.get('type') || searchParams.get('mode') || '').toLowerCase()
+    if (!raw) return
+    if (raw === 'beats' || raw === 'beat' || raw === 'beatstore') {
+      setUploadType('beats')
+      setBeatMode('single')
+    } else if (raw === 'pack' || raw === 'beat-pack' || raw === 'beatpack') {
+      setUploadType('beats')
+      setBeatMode('pack')
+    } else if (raw === 'music' || raw === 'release' || raw === 'track') {
+      setUploadType('music')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
@@ -634,5 +651,13 @@ export default function UploadPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={<div className="p-16 text-center text-text-secondary">Loading upload…</div>}>
+      <UploadPageInner />
+    </Suspense>
   )
 }
