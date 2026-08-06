@@ -189,7 +189,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    writeCartLines(items as Array<Record<string, unknown>>);
+    writeCartLines(items as unknown as Array<Record<string, unknown>>);
   }, [items, hydrated]);
 
   const subtotal = useMemo(

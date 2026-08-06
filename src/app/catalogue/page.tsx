@@ -312,7 +312,7 @@ function CataloguePageContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    writeCartLines(cart as Array<Record<string, unknown>>);
+    writeCartLines(cart as unknown as Array<Record<string, unknown>>);
   }, [cart]);
 
   useEffect(() => {
