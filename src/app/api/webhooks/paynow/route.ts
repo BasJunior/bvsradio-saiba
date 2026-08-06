@@ -114,8 +114,9 @@ export async function POST(req: Request) {
             stage: "premium_activate_failed",
           });
         } else {
-          await recordServerEvent("premium_activated", {
+          await recordServerEvent("checkout_complete", {
             provider: "paynow",
+            status: "premium_activated",
             planId: premiumLine.planId,
             interval: premiumLine.interval,
           });
