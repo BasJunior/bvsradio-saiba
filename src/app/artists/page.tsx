@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import { writeCartLines } from '@/lib/cart-client'
 
 type WalletData = {
   profile: { username?: string; display_name?: string; role?: string; is_verified?: boolean; is_published?: boolean } | null
@@ -105,7 +106,7 @@ export default function ArtistsPage() {
       quantity: 1,
       delivery: 'Creditable BVS artist platform balance. Does not guarantee airplay or publication.',
     }
-    window.localStorage.setItem('bvs_cart', JSON.stringify([item]))
+    writeCartLines([item])
     router.push('/checkout')
   }
 

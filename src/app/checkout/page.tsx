@@ -11,6 +11,7 @@ import {
   detectBrowserCountry,
   type TaxBreakdown,
 } from "@/lib/tax";
+import { clearCartLines, writeCartLines } from "@/lib/cart-client";
 
 interface CartItem {
   id: string | number;
@@ -188,7 +189,7 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem("bvs_cart", JSON.stringify(items));
+    writeCartLines(items as Array<Record<string, unknown>>);
   }, [items, hydrated]);
 
   const subtotal = useMemo(
@@ -269,7 +270,7 @@ export default function CheckoutPage() {
       setResult(data);
       trackEvent("checkout_complete", { payment_method: data.paymentMode || paymentMethod, item_count: items.length, total, status: data.status || "pending_payment" });
       window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
-      window.localStorage.removeItem("bvs_cart");
+      clearCartLines();
       setItems([]);
     } catch (caught) {
       trackEvent("payment_error", { payment_method: paymentMethod, stage: "order_creation" });

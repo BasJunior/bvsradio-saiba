@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import ThemeToggle from '@/components/ThemeToggle'
+import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
 type Access = {
   artist: boolean
   creator: boolean
@@ -23,6 +24,7 @@ export default function Navbar() {
   const [access, setAccess] = useState<Access | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
   const [notificationDestination, setNotificationDestination] = useState('/notifications')
+  const [cartCount, setCartCount] = useState(0)
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
@@ -53,6 +55,35 @@ export default function Navbar() {
     const seen = () => setNotificationCount(0)
     window.addEventListener('bvs:notifications-seen', seen)
     return () => window.removeEventListener('bvs:notifications-seen', seen)
+  }, [])
+
+  useEffect(() => {
+    const syncCart = (detailCount?: number) => {
+      if (typeof detailCount === 'number' && Number.isFinite(detailCount)) {
+        setCartCount(Math.max(0, Math.floor(detailCount)))
+        return
+      }
+      setCartCount(cartItemCount())
+    }
+    syncCart()
+    const onCartEvent = (event: Event) => {
+      const custom = event as CustomEvent<{ count?: number }>
+      syncCart(custom.detail?.count)
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === BVS_CART_KEY || event.key === null) syncCart()
+    }
+    const onFocus = () => syncCart()
+    window.addEventListener(BVS_CART_EVENT, onCartEvent as EventListener)
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onFocus)
+    return () => {
+      window.removeEventListener(BVS_CART_EVENT, onCartEvent as EventListener)
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onFocus)
+    }
   }, [])
 
   const signOut = async () => {
@@ -148,8 +179,17 @@ export default function Navbar() {
           <Link href="/library" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
             Library
           </Link>
-          <Link href="/checkout" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
+          <Link
+            href="/checkout"
+            aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
+            className="relative px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors"
+          >
             Cart
+            {cartCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
           </Link>
           {user ? (
             <>
@@ -183,6 +223,21 @@ export default function Navbar() {
 
         {/* Mobile: keep Join one tap away (not only inside the drawer) */}
         <div className="flex items-center gap-1.5 md:hidden">
+          <Link
+            href="/checkout"
+            aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition hover:bg-white/5 hover:text-brand"
+            onClick={() => setIsMenuOpen(false)}
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l3-8H6.4M7 13 5.4 5M7 13l-1.2 6h12.4M10 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
+            </svg>
+            {cartCount > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 flex min-h-4.5 min-w-4.5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-none text-black">
+                {cartCount > 9 ? '9+' : cartCount}
+              </span>
+            )}
+          </Link>
           {!user && (
             <Link
               href="/auth/signup"
@@ -234,7 +289,12 @@ export default function Navbar() {
             </div>
             <Link href="/search" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Search</Link>
             <Link href="/library" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Library</Link>
-            <Link href="/checkout" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Cart</Link>
+            <Link href="/checkout" className="flex items-center justify-between py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
+              <span>Cart</span>
+              {cartCount > 0 && (
+                <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{cartCount > 9 ? '9+' : cartCount}</span>
+              )}
+            </Link>
             <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
               <div className="pb-2"><ThemeToggle /></div>
               {user ? (

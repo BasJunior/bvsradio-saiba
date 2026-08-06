@@ -18,6 +18,7 @@ import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
+import { writeCartLines } from "@/lib/cart-client";
 
 type TrackType = "single" | "beat" | "mix";
 
@@ -311,7 +312,7 @@ function CataloguePageContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    localStorage.setItem("bvs_cart", JSON.stringify(cart));
+    writeCartLines(cart as Array<Record<string, unknown>>);
   }, [cart]);
 
   useEffect(() => {
