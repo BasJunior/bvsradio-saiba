@@ -194,7 +194,7 @@ export default function PremiumEcosystemPage() {
           </ul>
         </div>
         <div className="rounded-2xl border border-amber-400/25 bg-amber-500/5 p-6">
-          <h2 className="text-xl font-semibold">Honest status labels</h2>
+          <h2 className="text-xl font-semibold">Status labels</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-secondary">
             <li>
               <strong className="text-emerald-200">Live</strong> — priced and productized on site (Artist Free /
