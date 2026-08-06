@@ -140,10 +140,24 @@ export default function EditorialDashboard() {
   }
   if (loading || !data) return <main className="p-20 text-center text-text-secondary">Loading editorial workflow…</main>
 
-  const beatQueue = (data.beats || []).filter((b) =>
-    ['submitted', 'in_review', 'changes_requested', 'approved', 'published', 'rejected'].includes(b.status),
+  // — Queue = needs editorial action (submitted / in review / changes requested) —
+  // — Processed = decided (approved / rejected) but not yet published —
+  const beatNeedsReview = (data.beats || []).filter((b) =>
+    ['submitted', 'in_review', 'changes_requested'].includes(b.status),
   ).length
-  const trackQueue = data.tracks.filter((t) => ['submitted', 'in_review'].includes(t.editorial_status)).length
+  const beatProcessed = (data.beats || []).filter((b) =>
+    ['approved', 'published', 'rejected'].includes(b.status),
+  ).length
+  const beatQueue = beatNeedsReview  // badge = items needing action
+
+  const trackNeedsReview = data.tracks.filter((t) =>
+    ['submitted', 'in_review'].includes(t.editorial_status),
+  ).length
+  const trackProcessed = data.tracks.filter((t) =>
+    ['approved', 'rejected'].includes(t.editorial_status),
+  ).length
+  const trackQueue = trackNeedsReview  // only badge items needing action
+
   const requestQueue = data.trackRequests.filter((r) => ['open', 'reviewing'].includes(r.status)).length
   const roleQueue = (data.roleApplications || []).filter((application) =>
     ['submitted', 'information_requested'].includes(application.status),
@@ -151,9 +165,14 @@ export default function EditorialDashboard() {
   const identityQueue = data.profiles.filter((profile) =>
     ['pending', 'changes_requested'].includes(profile.creator_name_status || ''),
   ).length
-  const releaseQueue = (data.releases || []).filter((r) =>
-    ['submitted', 'in_review', 'approved'].includes(r.editorial_status),
+
+  const releaseNeedsReview = (data.releases || []).filter((r) =>
+    ['submitted', 'in_review'].includes(r.editorial_status),
   ).length
+  const releaseProcessed = (data.releases || []).filter((r) =>
+    ['approved', 'published', 'rejected'].includes(r.editorial_status),
+  ).length
+  const releaseQueue = releaseNeedsReview  // only badge items needing action
 
   const jump = [
     { id: 'ed-overview', label: 'Overview' },
@@ -208,13 +227,13 @@ export default function EditorialDashboard() {
 
       <section id="ed-overview" className="mt-8 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         {[
-          ['Awaiting review', trackQueue],
-          ['Artist requests', requestQueue],
-          ['Role applications', roleQueue],
-          ['Public names', identityQueue],
-          ['BeatStore queue', beatQueue],
+          ['Tracks needing review', trackNeedsReview],
+          ['Tracks processed', trackProcessed],
+          ['Beats needing review', beatNeedsReview],
+          ['Beats processed', beatProcessed],
+          ['Releases needing review', releaseNeedsReview],
+          ['Releases processed', releaseProcessed],
           ['Published', data.tracks.filter((t) => t.is_public).length],
-          ['In rotation', data.tracks.filter((t) => t.in_rotation).length],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[.03] p-5">
             <p className="text-sm text-text-secondary">{label}</p>
