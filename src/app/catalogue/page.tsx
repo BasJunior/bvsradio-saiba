@@ -1009,21 +1009,33 @@ function CataloguePageContent() {
       ? beatCount
       : musicCount;
 
-  const clearProducerFilter = () => {
+  /** Clear producer/pack filters and jump to the full beats grid (esp. mobile). */
+  const showAllBeats = () => {
     setTypeFilter("beat");
     setSearch("");
     setProducerFilter("");
+    setPackFilter("");
     setGenreFilter("All");
+    setCollectionJump(LIVE_BEATSTORE_NAME);
+    if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     url.searchParams.set("type", "beat");
     url.searchParams.delete("producer");
+    url.searchParams.delete("pack");
     url.searchParams.delete("q");
     window.history.replaceState(
       {},
       "",
-      `${url.pathname}?${url.searchParams.toString()}#beatstore`,
+      `${url.pathname}?type=beat#browse`,
     );
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("browse")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
+
+  const clearProducerFilter = showAllBeats;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 pb-28">
