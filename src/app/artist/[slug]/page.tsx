@@ -60,13 +60,14 @@ export default async function ArtistPage({
         ← All BVS creators
       </Link>
       <div className="mt-8 flex flex-col gap-10 md:flex-row">
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-white/10 md:w-80">
+        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:w-80">
           <Image
             src={profile.image}
             alt={profile.name}
             fill
             unoptimized={/^https?:\/\//i.test(profile.image)}
-            className="object-contain"
+            sizes="(max-width:768px) 100vw, 320px"
+            className="object-cover object-center"
             priority
           />
         </div>
