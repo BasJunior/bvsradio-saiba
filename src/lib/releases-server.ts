@@ -223,29 +223,42 @@ export async function materializeReleaseTracks(releaseId: string, options: {
     updated_at: now,
   });
 
-  // Distribution shell: eligible if premium distribution enabled
+  // Full path: BVS publish first; multi-platform only if Premium distribution enabled.
+  // Private partner code stays internal — never surface aggregator brands on public UI.
+  const { distributionJobNotes, PRIVATE_DSP_PARTNER_CODE } = await import(
+    "@/lib/distribution-path",
+  );
   const profiles = await restGet<Array<{ distribution_enabled?: boolean; premium_active?: boolean }>>(
     `profiles?id=eq.${release.user_id}&select=distribution_enabled,premium_active`,
   );
   const profile = profiles?.[0];
   const distroOk = Boolean(profile?.premium_active && profile?.distribution_enabled);
   if (options.publish) {
-    const existing = await restGet<Array<{ id: string }>>(
-      `distribution_jobs?release_id=eq.${releaseId}&select=id&limit=1`,
+    const existing = await restGet<Array<{ id: string; status?: string }>>(
+      `distribution_jobs?release_id=eq.${releaseId}&select=id,status&limit=1`,
     );
+    const notes = distributionJobNotes({ distroOk, publish: true });
+    // Do not downgrade jobs already past eligible (queued/submitted/live).
+    const terminalOrProgress = new Set([
+      "queued",
+      "submitted",
+      "live_on_dsp",
+      "failed",
+      "cancelled",
+    ]);
     if (!existing?.length) {
       await restPost("distribution_jobs", {
         release_id: releaseId,
         artist_user_id: release.user_id,
         status: distroOk ? "eligible" : "not_eligible",
-        distributor: null,
-        notes: distroOk
-          ? "Premium + distribution enabled — queue when partner is configured."
-          : "BVS publish only. Premium distribution not active.",
+        distributor: distroOk ? PRIVATE_DSP_PARTNER_CODE : null,
+        notes,
       });
-    } else {
+    } else if (!terminalOrProgress.has(String(existing[0].status || ""))) {
       await restPatch(`distribution_jobs?id=eq.${existing[0].id}`, {
         status: distroOk ? "eligible" : "not_eligible",
+        distributor: distroOk ? PRIVATE_DSP_PARTNER_CODE : null,
+        notes,
         updated_at: now,
       });
     }

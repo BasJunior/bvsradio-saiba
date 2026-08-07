@@ -13,14 +13,32 @@ export async function GET(request: Request) {
   if (!identity.profile || !hasCreatorAccess(identity.profile)) return NextResponse.json({ error: 'This workspace requires a creator account.' }, { status: 403 })
   const id = identity.user.id
   const empty = { application: null, articles: [], briefs: [], shows: [], episodes: [] }
-  const [tracksResponse, requestsResponse] = await Promise.all([
-    fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,genre,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' }),
+  const [tracksResponse, requestsResponse, releasesResponse, jobsResponse, profileFlagsResponse] = await Promise.all([
+    fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,genre,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at,release_id,isrc,spotify_url&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`track_review_requests?artist_user_id=eq.${id}&select=*&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`releases?user_id=eq.${id}&select=id,title,artist_name,genre,editorial_status,editorial_notes,is_public,in_rotation,release_type,track_count,created_at,published_at&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`distribution_jobs?artist_user_id=eq.${id}&select=id,release_id,status,notes,updated_at,created_at&order=updated_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`profiles?id=eq.${id}&select=premium_active,premium_until,distribution_enabled,premium_plan_id&limit=1`), { headers: creatorHeaders, cache: 'no-store' }),
   ])
-  const tracks = tracksResponse.ok ? await tracksResponse.json() : []
+  let tracks = tracksResponse.ok ? await tracksResponse.json() : []
+  // Older DBs may lack isrc/spotify_url columns — fall back so studio still loads.
+  if (!tracksResponse.ok) {
+    const fallbackTracks = await fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,genre,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' })
+    tracks = fallbackTracks.ok ? await fallbackTracks.json() : []
+  }
   const trackRequests = requestsResponse.ok ? await requestsResponse.json() : []
+  const releases = releasesResponse.ok ? await releasesResponse.json() : []
+  const distributionJobs = jobsResponse.ok ? await jobsResponse.json() : []
+  const profileFlagsRow = profileFlagsResponse.ok ? (await profileFlagsResponse.json())[0] : null
+  const profileFlags = {
+    premiumActive: Boolean(profileFlagsRow?.premium_active),
+    premiumUntil: profileFlagsRow?.premium_until || null,
+    distributionEnabled: Boolean(profileFlagsRow?.distribution_enabled),
+    premiumPlanId: profileFlagsRow?.premium_plan_id || null,
+  }
+  const pathBundle = { releases, distributionJobs, profileFlags }
   if (!['writer', 'show_creator', 'admin'].includes(identity.profile.role)) {
-    return NextResponse.json({ profile: identity.profile, ...empty, tracks, trackRequests })
+    return NextResponse.json({ profile: identity.profile, ...empty, tracks, trackRequests, ...pathBundle })
   }
   const workflowRequests = [
     fetch(creatorUrl(`writer_applications?user_id=eq.${id}&select=*&limit=1`), { headers: creatorHeaders, cache: 'no-store' }),
@@ -32,7 +50,17 @@ export async function GET(request: Request) {
   const responses = await Promise.all(workflowRequests)
   if (responses.some(response => !response.ok)) return NextResponse.json({ error: 'Creator tables are not ready. Run supabase-creator-workflows.sql.' }, { status: 503 })
   const [applications, articles, briefs, shows, episodes] = await Promise.all(responses.map(response => response.json()))
-  return NextResponse.json({ profile: identity.profile, application: applications[0] || null, articles, briefs, shows, episodes, tracks, trackRequests })
+  return NextResponse.json({
+    profile: identity.profile,
+    application: applications[0] || null,
+    articles,
+    briefs,
+    shows,
+    episodes,
+    tracks,
+    trackRequests,
+    ...pathBundle,
+  })
 }
 
 export async function POST(request: Request) {

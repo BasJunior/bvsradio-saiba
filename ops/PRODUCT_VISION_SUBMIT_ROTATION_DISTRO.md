@@ -34,10 +34,18 @@ Artist account (role artist)
   → Optional: sell singles ($2 default) / full album packages on BVS
   → If premium artist subscription active:
        → Distribution entitlement ON
-       → Hand-off to a music distributor (TBD) for Spotify / other DSPs
+       → distribution_jobs: eligible → queued → submitted → live_on_dsp
+       → Hand-off via **private** DSP partner (internal code only; not a public brand)
+       → After partner/store approval → Spotify / Apple / Boomplay / etc.
   → If not premium:
        → BVS listen + on-site commerce only (no auto multi-platform publish)
 ```
+
+### User story (Premium artist — full path)
+
+> As a **Premium artist**, I upload a song to BVS. After **BVS editorial approval**, it is **live on BVS Radio**. BVS then queues **multi-platform distribution** through a **private partner** (not named in the product UI). When that partner and the stores approve the release, the same song is **live on Spotify and other major platforms**. Studio shows my path status the whole way.
+
+Implementation spine: `src/lib/distribution-path.ts` · Studio `/creator/studio#release-path` · editorial `distribution_jobs` controls · publish hook in `releases-server.ts`.
 
 Dropbox album folders Abias provided are the **UX/data shape reference** for “how submit should work,” not merely static Spotify deep-links.
 

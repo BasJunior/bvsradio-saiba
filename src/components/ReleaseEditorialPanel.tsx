@@ -1,6 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  PRIVATE_DSP_PARTNER_CODE,
+  editorialDistributionStatusLabel,
+} from '@/lib/distribution-path'
 
 type Release = {
   id: string
@@ -335,19 +339,50 @@ export default function ReleaseEditorialPanel({
               )}
               {job && (
                 <div className="mt-4 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                  Distribution job: <strong className="text-text-primary">{job.status}</strong>
-                  {job.distributor ? ` · ${job.distributor}` : ' · partner TBD'}
+                  <p className="text-[11px] uppercase tracking-wide text-brand">Multi-platform path</p>
+                  <p className="mt-1">
+                    Distribution job:{' '}
+                    <strong className="text-text-primary">{editorialDistributionStatusLabel(job.status)}</strong>
+                    {job.distributor ? ` · internal: ${job.distributor}` : ' · internal partner unset'}
+                  </p>
+                  {job.notes && <p className="mt-2 opacity-90">{job.notes}</p>}
+                  <p className="mt-2 text-[11px] opacity-80">
+                    Flow: eligible → queued (ops) → submitted (private partner) → live_on_dsp (stores live).
+                    Do not name aggregator brands in artist-facing copy.
+                  </p>
                   {canDistro && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {['eligible', 'queued', 'submitted', 'live_on_dsp', 'not_eligible'].map((status) => (
+                      {[
+                        ['eligible', 'Eligible'],
+                        ['queued', 'Queue partner hand-off'],
+                        ['submitted', 'Submitted to partner'],
+                        ['live_on_dsp', 'Live on DSPs'],
+                        ['failed', 'Failed'],
+                        ['not_eligible', 'Not eligible'],
+                      ].map(([status, label]) => (
                         <button
                           key={status}
                           type="button"
                           disabled={Boolean(busy)}
-                          onClick={() => void act('update_distribution_job', { jobId: job.id, status })}
+                          onClick={() =>
+                            void act('update_distribution_job', {
+                              jobId: job.id,
+                              status,
+                              distributor:
+                                status === 'not_eligible' ? null : PRIVATE_DSP_PARTNER_CODE,
+                              notes:
+                                status === 'queued'
+                                  ? 'Queued for private DSP partner hand-off after BVS publish.'
+                                  : status === 'submitted'
+                                    ? 'Delivered to private DSP partner — awaiting store approval.'
+                                    : status === 'live_on_dsp'
+                                      ? 'Live on major platforms. Link ISRC / Spotify URLs on tracks.'
+                                      : undefined,
+                            })
+                          }
                           className="rounded-full border border-white/15 px-3 py-1 hover:border-brand"
                         >
-                          {status}
+                          {label}
                         </button>
                       ))}
                     </div>
