@@ -108,20 +108,40 @@ export function safeR2Key(key: string) {
 export async function isPublicR2MediaKey(key: string) {
   if (key.startsWith("avatars/")) return true;
   if (key.startsWith("legacy/previews/")) return true;
+  // Shared catalogue beat-series covers are intentionally public assets.
+  if (key.startsWith("beats/shared/")) return true;
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   if (!url || !service) return false;
+
   const headers = { apikey: service, Authorization: `Bearer ${service}` };
   const mediaUrl = r2MediaUrl(key);
-  const [tracks, beats, episodes] = await Promise.all([
-    fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&select=file_url,artwork_url&limit=500`, { headers, cache: "no-store" }),
-    fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&select=preview_path,artwork_path&limit=500`, { headers, cache: "no-store" }),
-    fetch(`${url}/rest/v1/show_episodes?status=eq.published&select=audio_path,artwork_url&limit=500`, { headers, cache: "no-store" }),
+  const enc = encodeURIComponent(key);
+  const encUrl = encodeURIComponent(mediaUrl);
+
+  // Targeted lookups — avoid the old limit=500 scan that missed rows / shared keys.
+  const [trackByUrl, trackByKey, beatByPath, beatByUrl, episodeByPath, episodeByUrl] = await Promise.all([
+    fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&or=(file_url.eq.${encUrl},artwork_url.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&or=(file_url.eq.${enc},artwork_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&or=(preview_path.eq.${enc},artwork_path.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&or=(preview_path.eq.${encUrl},artwork_path.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/show_episodes?status=eq.published&or=(audio_path.eq.${enc},artwork_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/show_episodes?status=eq.published&or=(audio_path.eq.${encUrl},artwork_url.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
   ]);
-  const trackRows = tracks.ok ? await tracks.json() as Array<{ file_url?: string; artwork_url?: string }> : [];
-  const beatRows = beats.ok ? await beats.json() as Array<{ preview_path?: string; artwork_path?: string }> : [];
-  const episodeRows = episodes.ok ? await episodes.json() as Array<{ audio_path?: string; artwork_url?: string }> : [];
-  return trackRows.some(row => row.file_url === mediaUrl || row.artwork_url === mediaUrl || row.file_url === key || row.artwork_url === key)
-    || beatRows.some(row => row.preview_path === key || row.artwork_path === key || row.preview_path === mediaUrl || row.artwork_path === mediaUrl)
-    || episodeRows.some(row => row.audio_path === key || row.artwork_url === key || row.audio_path === mediaUrl || row.artwork_url === mediaUrl);
+
+  const nonempty = async (res: Response) => {
+    if (!res.ok) return false;
+    const rows = await res.json() as unknown[];
+    return Array.isArray(rows) && rows.length > 0;
+  };
+
+  return (
+    (await nonempty(trackByUrl))
+    || (await nonempty(trackByKey))
+    || (await nonempty(beatByPath))
+    || (await nonempty(beatByUrl))
+    || (await nonempty(episodeByPath))
+    || (await nonempty(episodeByUrl))
+  );
 }
