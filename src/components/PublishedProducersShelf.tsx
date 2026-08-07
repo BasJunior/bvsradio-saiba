@@ -57,13 +57,14 @@ export default function PublishedProducersShelf({
             key={producer.id}
             className="group overflow-hidden rounded-2xl border border-white/10 bg-black/25"
           >
-            <div className="relative aspect-square bg-black/30">
+            <div className="relative aspect-square overflow-hidden bg-black/40">
               <Image
                 src={producer.image}
-                alt=""
+                alt={producer.name}
                 fill
                 unoptimized={/^https?:\/\//i.test(producer.image)}
-                className="object-contain transition group-hover:scale-[1.02]"
+                sizes="(max-width:768px) 100vw, 33vw"
+                className="object-cover object-center transition duration-300 group-hover:scale-[1.04]"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
             </div>

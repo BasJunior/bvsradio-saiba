@@ -24,8 +24,8 @@ export default function PublishedAlbumsShelf() {
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {releases.map((release) => (
           <Link key={release.id} href={`/album/${release.id}`} className="group min-w-0">
-            <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/30">
-              <Image src={release.cover} alt={`${release.title} cover`} fill unoptimized={/^https?:\/\//i.test(release.cover)} className="object-contain" />
+            <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+              <Image src={release.cover} alt={`${release.title} cover`} fill unoptimized={/^https?:\/\//i.test(release.cover)} sizes="(max-width:768px) 50vw, 20vw" className="object-cover object-center transition duration-300 group-hover:scale-[1.04]" />
             </div>
             <h3 className="mt-3 truncate font-semibold group-hover:text-brand">{release.title}</h3>
             <p className="truncate text-xs text-text-secondary">{release.artist} · {release.tracks.length} tracks</p>

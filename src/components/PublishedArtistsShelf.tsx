@@ -36,8 +36,8 @@ export default function PublishedArtistsShelf({ limit = 6 }: { limit?: number })
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {artists.slice(0, limit).map((artist) => (
           <Link key={artist.id} href={`/artist/${artist.username}`} className="group min-w-0">
-            <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-              <Image src={artist.image} alt={artist.name} fill unoptimized={/^https?:\/\//i.test(artist.image)} className="object-contain transition group-hover:scale-[1.03]" />
+            <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+              <Image src={artist.image} alt={artist.name} fill unoptimized={/^https?:\/\//i.test(artist.image)} sizes="(max-width:768px) 50vw, 160px" className="object-cover object-center transition duration-300 group-hover:scale-[1.04]" />
             </div>
             <h3 className="mt-3 truncate font-semibold group-hover:text-brand">{artist.name}</h3>
             <p className="truncate text-xs text-text-secondary">

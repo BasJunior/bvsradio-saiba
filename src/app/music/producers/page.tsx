@@ -43,13 +43,14 @@ export default async function ProducersDirectoryPage() {
               className="overflow-hidden rounded-2xl border border-white/10 bg-white/[.03]"
             >
               <Link href={`/artist/${producer.username}`}>
-                <div className="relative aspect-square bg-black/30">
+                <div className="relative aspect-square overflow-hidden bg-black/40">
                   <Image
                     src={producer.image}
                     alt={producer.name}
                     fill
                     unoptimized={/^https?:\/\//i.test(producer.image)}
-                    className="object-contain"
+                    sizes="(max-width:768px) 100vw, 33vw"
+                    className="object-cover object-center transition duration-300 group-hover:scale-[1.04]"
                   />
                 </div>
                 <div className="p-5">
