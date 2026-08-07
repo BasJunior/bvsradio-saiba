@@ -13,10 +13,12 @@ import {
   publicStorageUrl,
   slugifyBeat,
 } from '@/lib/beatstore-server'
+// beat licence templates: src/lib/beat-licences.ts
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 import { creatorPublicName } from '@/lib/public-name'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
 import { resolveProducerBeatEntitlements } from '@/lib/producer-entitlements'
+import { licenceOptionSeed } from '@/lib/beat-licences'
 
 export const runtime = 'nodejs'
 
@@ -221,20 +223,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Beat create returned empty.' }, { status: 500 })
     }
 
+    const seed = licenceOptionSeed('standard_lease', price)
     const licenceRes = await fetch(beatUrl('beat_licence_options'), {
       method: 'POST',
       headers: { ...beatHeaders, Prefer: 'return=representation' },
       body: JSON.stringify({
         beat_id: beat.id,
-        licence_code: 'standard_lease',
-        licence_name: 'Standard lease',
-        price_usd: price,
-        currency: 'usd',
-        included_files: ['preview', 'master'],
-        is_active: true,
-        terms_version: 'mvp-v1',
-        terms_summary:
-          'Personal / non-exclusive lease. Full legal terms to be finalized by BVS; purchase will snapshot the version shown at checkout.',
+        licence_code: seed.licence_code,
+        licence_name: seed.licence_name,
+        price_usd: seed.price_usd,
+        currency: seed.currency,
+        included_files: seed.included_files,
+        is_active: seed.is_active,
+        terms_version: seed.terms_version,
+        terms_summary: seed.terms_summary,
       }),
     })
     if (!licenceRes.ok) {

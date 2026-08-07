@@ -87,7 +87,7 @@ export async function POST(req: Request) {
 
     let trustedItems;
     try {
-      trustedItems = resolveCommerceItems(payload.items);
+      trustedItems = await resolveCommerceItems(payload.items);
     } catch {
       return NextResponse.json({ error: "One or more products are no longer available." }, { status: 409 });
     }

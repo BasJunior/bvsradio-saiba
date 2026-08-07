@@ -11,6 +11,7 @@ import {
   slugifyBeat,
 } from '@/lib/beatstore-server'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
+import { licenceOptionSeed } from '@/lib/beat-licences'
 
 export const runtime = 'nodejs'
 
@@ -129,17 +130,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not register the beats in this pack.' }, { status: 503 })
     }
     const created = JSON.parse(beatsText || '[]') as Array<{ id: string }>
-    const licences = created.map((beat, index) => ({
-      beat_id: beat.id,
-      licence_code: 'standard_lease',
-      licence_name: 'Standard lease',
-      price_usd: normalized[index].price,
-      currency: 'usd',
-      included_files: ['preview', 'master'],
-      is_active: true,
-      terms_version: 'mvp-v1',
-      terms_summary: 'Personal / non-exclusive lease. Full legal terms are finalized by BVS before purchase.',
-    }))
+    const licences = created.map((beat, index) => {
+      const seed = licenceOptionSeed('standard_lease', normalized[index].price)
+      return {
+        beat_id: beat.id,
+        licence_code: seed.licence_code,
+        licence_name: seed.licence_name,
+        price_usd: seed.price_usd,
+        currency: seed.currency,
+        included_files: seed.included_files,
+        is_active: seed.is_active,
+        terms_version: seed.terms_version,
+        terms_summary: seed.terms_summary,
+      }
+    })
     const licenceRes = await fetch(beatUrl('beat_licence_options'), {
       method: 'POST',
       headers: { ...beatHeaders, Prefer: 'return=minimal' },

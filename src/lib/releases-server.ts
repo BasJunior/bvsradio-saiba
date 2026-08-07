@@ -110,6 +110,8 @@ export async function materializeReleaseTracks(releaseId: string, options: {
   publish: boolean;
   inRotation: boolean;
   rotationReleaseTrackIds?: string[];
+  /** Editorial ISRC assignments keyed by release_tracks.id */
+  trackIsrcs?: Array<{ releaseTrackId: string; isrc: string }>;
   reviewedBy: string;
 }) {
   const releases = await restGet<ReleaseRow[]>(
@@ -152,6 +154,14 @@ export async function materializeReleaseTracks(releaseId: string, options: {
   if (selectedRotationIds && [...selectedRotationIds].some((id) => !memberIds.has(id))) {
     return { ok: false, error: "One or more selected rotation tracks do not belong to this release." };
   }
+  const isrcByReleaseTrackId = new Map(
+    (options.trackIsrcs || [])
+      .map((row) => [row.releaseTrackId, String(row.isrc || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15)] as const)
+      .filter((entry) => entry[0] && entry[1]),
+  );
+  if ([...isrcByReleaseTrackId.keys()].some((id) => !memberIds.has(id))) {
+    return { ok: false, error: "One or more ISRC assignments do not belong to this release." };
+  }
   const shouldRotate = (memberId: string) => options.publish && (
     selectedRotationIds ? selectedRotationIds.has(memberId) : options.inRotation
   );
@@ -159,6 +169,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
   for (const member of members) {
     const fileUrl = member.file_url || fileUrlForPath(member.audio_path);
     const inRotation = shouldRotate(member.id);
+    const isrc = isrcByReleaseTrackId.get(member.id) || undefined;
     if (member.track_id) {
       await restPatch(`tracks?id=eq.${member.track_id}`, {
         title: member.title,
@@ -176,6 +187,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         release_id: releaseId,
         track_number: member.position,
         user_id: release.user_id,
+        ...(isrc ? { isrc } : {}),
       });
     } else {
       const inserted = await restPost<Array<{ id: string }>>("tracks", {
@@ -201,6 +213,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         licence_type: "personal_download",
         download_price: 2,
         is_downloadable: true,
+        ...(isrc ? { isrc } : {}),
       });
       const trackId = Array.isArray(inserted.data) ? inserted.data[0]?.id : null;
       if (trackId) {

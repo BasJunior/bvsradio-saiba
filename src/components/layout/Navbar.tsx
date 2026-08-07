@@ -16,12 +16,25 @@ type Access = {
   admin: boolean
 }
 
+type PremiumInfo = {
+  premiumActive: boolean
+  premiumUntil: string | null
+  premiumPlanLabel: string | null
+}
+
+function formatPremiumUntil(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
+  const [premium, setPremium] = useState<PremiumInfo | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
   const [notificationDestination, setNotificationDestination] = useState('/notifications')
   const [cartCount, setCartCount] = useState(0)
@@ -31,11 +44,29 @@ export default function Navbar() {
     const supabase = createClient()
     const syncAccess = async (nextUser: User | null, token?: string) => {
       setUser(nextUser)
-      if (!nextUser || !token) return setAccess(null)
+      if (!nextUser || !token) {
+        setAccess(null)
+        setPremium(null)
+        return
+      }
       const response = await fetch('/api/auth/access', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-      if (!response.ok) return setAccess(null)
-      const payload = await response.json() as { access?: Access }
+      if (!response.ok) {
+        setAccess(null)
+        setPremium(null)
+        return
+      }
+      const payload = await response.json() as {
+        access?: Access
+        premiumActive?: boolean
+        premiumUntil?: string | null
+        premiumPlanLabel?: string | null
+      }
       setAccess(payload.access ?? null)
+      setPremium({
+        premiumActive: Boolean(payload.premiumActive),
+        premiumUntil: payload.premiumUntil ?? null,
+        premiumPlanLabel: payload.premiumPlanLabel ?? null,
+      })
       const notifications = await fetch('/api/notifications', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       if (notifications.ok) {
         const data = await notifications.json() as { destination?: string; events?: Array<{ created_at: string }> }
@@ -91,6 +122,7 @@ export default function Navbar() {
     await createClient().auth.signOut()
     setUser(null)
     setAccess(null)
+    setPremium(null)
     setNotificationCount(0)
     setIsMenuOpen(false)
     window.location.href = '/'
@@ -117,6 +149,11 @@ export default function Navbar() {
   const showArtist = Boolean(access?.artist)
   const showCreator = Boolean(access?.creator)
   const showEditorial = Boolean(access?.editorial)
+  const premiumUntilLabel = formatPremiumUntil(premium?.premiumUntil ?? null)
+  const premiumBadge =
+    premium?.premiumActive
+      ? `Premium · ${premium.premiumPlanLabel || 'Standard'}${premiumUntilLabel ? ` · through ${premiumUntilLabel}` : ''}`
+      : null
   const openNotifications = () => {
     window.localStorage.setItem('bvs_notifications_seen_at', new Date().toISOString())
     setNotificationCount(0)
@@ -199,6 +236,15 @@ export default function Navbar() {
               </Link>
               {showCreator && <Link href="/creator/studio" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>}
               {showEditorial && <Link href="/admin/editorial" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
+              {premiumBadge && (
+                <Link
+                  href="/artist/premium"
+                  title={premiumBadge}
+                  className="max-w-[14rem] truncate rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-brand hover:bg-brand/20"
+                >
+                  {premiumBadge}
+                </Link>
+              )}
               <Link href="/account" className="px-2.5 py-2 text-sm text-text-primary hover:text-brand transition-colors">Account</Link>
               <button
                 type="button"
@@ -301,6 +347,15 @@ export default function Navbar() {
                 <>
                   <Link href={notificationDestination} className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={openNotifications}><span>Notifications</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
                   <p className="py-1 text-sm text-text-secondary truncate">{user.email}</p>
+                  {premiumBadge && (
+                    <Link
+                      href="/artist/premium"
+                      className="block rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-sm font-semibold text-brand"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      {premiumBadge}
+                    </Link>
+                  )}
                   <Link href="/account" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Account Centre</Link>
                   {showCreator && <Link href="/creator/studio" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Creator studio</Link>}
                   {showEditorial && <Link href="/admin/editorial" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Editorial dashboard</Link>}

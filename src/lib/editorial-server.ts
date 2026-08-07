@@ -11,16 +11,35 @@ export const serviceHeaders = {
   'Content-Type': 'application/json',
 }
 
-/** Platform owner emails that should always get administrator access. */
-function ownerEmails(): Set<string> {
-  const fromEnv = [process.env.BVS_OWNER_EMAILS || '', process.env.BVS_ORDER_EMAIL || '']
-    .join(',')
-    .split(',')
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-  // Known BVS owner accounts (Abias) — first-admin bootstrap when staff table is empty
-  const known = ['abiaschivago@gmail.com', 'abiaschivayo3@gmail.com']
-  return new Set([...fromEnv, ...known])
+/** Bootstrap owner when editorial_staff has zero rows (migration safety net). */
+function primaryOwnerEmail(): string {
+  return (process.env.BVS_PRIMARY_OWNER_EMAIL || '').trim().toLowerCase()
+}
+
+function isOwnerStaffRole(role: string | null | undefined): boolean {
+  const r = String(role || '').toLowerCase()
+  // 'owner' is the product name for platform owner; DB historically uses administrator
+  return r === 'owner' || r === 'administrator'
+}
+
+async function optionalJson(path: string): Promise<unknown[]> {
+  if (!url || !service) return []
+  try {
+    const response = await fetch(`${url}/rest/v1/${path}`, {
+      headers: serviceHeaders,
+      cache: 'no-store',
+    })
+    if (!response.ok) return []
+    const data = await response.json()
+    return Array.isArray(data) ? data : []
+  } catch {
+    return []
+  }
+}
+
+async function editorialStaffIsEmpty(): Promise<boolean> {
+  const rows = await optionalJson('editorial_staff?select=user_id&limit=1')
+  return rows.length === 0
 }
 
 function mapProfileRoleToStaff(profileRole: string | undefined): EditorialRole | null {
@@ -87,10 +106,12 @@ export async function editorialIdentity(request: Request) {
 
   let role: EditorialRole | null = null
 
-  // 1) Explicit staff assignment wins
-  const staffRole = staff?.[0]?.role as EditorialRole | undefined
-  if (staffRole && rolePermissions[staffRole]) {
-    role = staffRole
+  // 1) Explicit staff assignment wins (owner/administrator → full admin permissions)
+  const staffRoleRaw = staff?.[0]?.role ? String(staff[0].role) : null
+  if (isOwnerStaffRole(staffRoleRaw)) {
+    role = 'administrator'
+  } else if (staffRoleRaw && rolePermissions[staffRoleRaw as EditorialRole]) {
+    role = staffRoleRaw as EditorialRole
   }
 
   // 2) Profile role mapping (admin/editor)
@@ -98,11 +119,12 @@ export async function editorialIdentity(request: Request) {
     role = mapProfileRoleToStaff(profile?.role)
   }
 
-  // 3) Owner email bootstrap (fixes empty staff table / first login loop)
-  if (!role && email && ownerEmails().has(email)) {
-    role = 'administrator'
-    // Persist during the request so serverless does not drop the write
-    await ensureAdministrator(user.id)
+  // 3) Bootstrap only when editorial_staff is empty — env primary owner, no hard-coded emails
+  if (!role && email && primaryOwnerEmail() && email === primaryOwnerEmail()) {
+    if (await editorialStaffIsEmpty()) {
+      role = 'administrator'
+      await ensureAdministrator(user.id)
+    }
   }
 
   if (!role || !rolePermissions[role]) return null

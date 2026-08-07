@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   FAMILY_LABELS,
+  FOUNDING_WINDOW_LABEL,
   PREMIUM_CATALOG,
   PREMIUM_DISTRIBUTION_STORES,
+  foundingWindowPublicCopy,
   premiumPricingCopy,
   type MembershipFamily,
   type CatalogPlan,
@@ -37,6 +39,7 @@ function priceLine(plan: CatalogPlan) {
 export default function PremiumEcosystemPage() {
   const [family, setFamily] = useState<MembershipFamily>("artist");
   const pricing = premiumPricingCopy();
+  const foundingWindow = useMemo(() => foundingWindowPublicCopy(), []);
   const plans = useMemo(() => PREMIUM_CATALOG.filter((p) => p.family === family), [family]);
 
   return (
@@ -69,9 +72,18 @@ export default function PremiumEcosystemPage() {
           <p className="text-xs uppercase tracking-wider text-text-secondary">Artist list prices (locked)</p>
           <p className="mt-2 text-3xl font-semibold">{pricing.headline}</p>
           <p className="mt-2 text-sm text-text-secondary">
-            Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong> through {"27 Aug 2026"}
+            Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong>
+            <br />
+            <span className="text-text-primary">{foundingWindow.headline}</span>
+            {foundingWindow.open ? " · first 50 seats (date + seat gate)" : " · Standard pricing applies"}
             <br />
             Standard <strong className="text-text-primary">US$12/mo · US$120/yr</strong>
+            {!foundingWindow.open && (
+              <>
+                {" "}
+                (after {FOUNDING_WINDOW_LABEL})
+              </>
+            )}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
@@ -197,31 +209,42 @@ export default function PremiumEcosystemPage() {
           <h2 className="text-xl font-semibold">Status labels</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-secondary">
             <li>
-              <strong className="text-emerald-200">Live</strong> — priced and productized on site (Artist Free /
-              Founding / Standard; Listener Free)
+              <strong className="text-emerald-200">Live</strong> — Artist Free / Founding / Standard with Paynow
+              checkout, founding date+seat gate, and distribution entitlement flags
             </li>
             <li>
-              <strong className="text-amber-100">Pilot</strong> — published bands for Producer / Supporter; billing
-              & limits wiring next
+              <strong className="text-amber-100">Pilot</strong> — Producer / Supporter bands published; catalogue
+              limits and commission rules are active while we harden analytics UX
             </li>
             <li>
               <strong className="text-violet-100">Later</strong> — Team, Service Pro, Curator Pro, brands — after
-              delivery ops are dependable
+              partner economics and multi-seat ops are locked
             </li>
           </ul>
         </div>
       </section>
 
       <section className="mt-14 rounded-2xl border border-white/10 bg-gradient-to-br from-brand/10 to-cyan-500/5 p-6 md:p-8">
-        <h2 className="text-2xl font-semibold">Build order</h2>
-        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-text-secondary">
-          <li>Artist Premium surface + distribution entitlement flags (this page + desk)</li>
-          <li>Paynow-first subscription billing + founding seat counter</li>
-          <li>Distribution jobs for approved + entitled releases</li>
-          <li>Producer BeatStore limits, licence templates, commission ledger</li>
-          <li>Supporter membership content that never buys editorial</li>
-          <li>Team / Service / Curator / Brand products only after the above is real</li>
-        </ol>
+        <h2 className="text-2xl font-semibold">Shipped now · next milestones</h2>
+        <div className="mt-4 grid gap-6 md:grid-cols-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-200">Live today</p>
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-text-secondary">
+              <li>Artist Premium desk + Paynow subscription billing</li>
+              <li>Founding eligibility: through {FOUNDING_WINDOW_LABEL} and first 50 seats</li>
+              <li>Distribution entitlement on paid Artist Premium for approved releases</li>
+              <li>Producer BeatStore free/plus/pro limits and marketplace fee bands</li>
+            </ul>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-brand">Next up</p>
+            <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-text-secondary">
+              <li>Deeper release-status tracking in the artist desk as delivery ops scale</li>
+              <li>Supporter-only archive and community events (never buys editorial)</li>
+              <li>Team / Service / Curator / Brand products after partner cost validation</li>
+            </ul>
+          </div>
+        </div>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link href="/upload" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">
             Submit music

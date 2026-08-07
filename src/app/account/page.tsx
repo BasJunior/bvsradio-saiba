@@ -31,6 +31,7 @@ type Order = {
   created_at: string
 }
 type Access = { creator?: boolean; artist?: boolean; producer?: boolean; writer?: boolean; showCreator?: boolean; editorial?: boolean; admin?: boolean }
+type PremiumSnap = { premiumActive?: boolean; premiumUntil?: string | null; premiumPlanLabel?: string | null }
 type RoleApplication = {
   id: string
   requested_role: 'artist' | 'producer' | 'writer' | 'show_creator'
@@ -51,6 +52,7 @@ export default function AccountPage() {
   const [token, setToken] = useState('')
   const [data, setData] = useState<AccountData | null>(null)
   const [access, setAccess] = useState<Access>({})
+  const [premiumSnap, setPremiumSnap] = useState<PremiumSnap>({})
   const [roleApplication, setRoleApplication] = useState<RoleApplication | null>(null)
   const [roleForm, setRoleForm] = useState({ requestedRole: 'artist', message: '' })
   const [applying, setApplying] = useState(false)
@@ -79,6 +81,11 @@ export default function AccountPage() {
     const applicationPayload = applicationResponse.ok ? await applicationResponse.json() : {}
     setData(account)
     setAccess(accessPayload.access || {})
+    setPremiumSnap({
+      premiumActive: Boolean(accessPayload.premiumActive),
+      premiumUntil: accessPayload.premiumUntil ?? null,
+      premiumPlanLabel: accessPayload.premiumPlanLabel ?? null,
+    })
     setRoleApplication(applicationPayload.application || null)
     setForm({
       username: account.profile?.username || '',
@@ -259,9 +266,20 @@ export default function AccountPage() {
           <h1 className="mt-2 text-4xl font-semibold">Welcome, {data.profile.display_name || data.profile.username}</h1>
           <p className="mt-3 text-text-secondary">{data.user.email}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-brand/40 px-4 py-2 text-sm capitalize text-brand">{accountRole}</span>
           {data.profile.is_verified && <span className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">Verified</span>}
+          {premiumSnap.premiumActive && (
+            <Link
+              href="/artist/premium"
+              className="rounded-full border border-brand/50 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/20"
+            >
+              Premium · {premiumSnap.premiumPlanLabel || 'Standard'}
+              {premiumSnap.premiumUntil
+                ? ` · through ${new Date(premiumSnap.premiumUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`
+                : ''}
+            </Link>
+          )}
         </div>
       </div>
 

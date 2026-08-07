@@ -28,11 +28,24 @@ Submit → editorial publish → BVS rotation & on-site sell → **Artist Premiu
 | Artist shell | `src/app/api/artist/premium/route.ts` |
 | Schema | `supabase-premium-memberships.sql` (pack `premium-memberships`) |
 
-## Next (not this ship)
+## Producer live-beat limits (growth era · 2026-08-06)
+
+| Plan | Live-for-sale limit | Fee |
+|------|---------------------|-----|
+| Producer Store Free | **25** | 15% |
+| Producer Plus | **150** | 8% |
+| Producer Pro | unlimited (fair-use) | 3% |
+
+- Count = `is_public` + `status=published` only (drafts / in-review do not count)
+- Soft warn ≥80% usage; hard block only **new** go-live at 100%
+- Existing live beats are never auto-removed
+- Helper: `src/lib/producer-entitlements.ts` · gate on editorial `publish_beat`
+
+## Next (not fully this ship)
 
 1. Paynow subscription charge + founding seat counter  
 2. `distribution_jobs` hand-off for entitled + approved releases  
-3. Enforce `beat_live_limit` / commission_bps from memberships on BeatStore  
+3. Full commission ledger on BeatStore sales (bps already in entitlements)  
 4. Supporter content that never buys editorial  
 5. Team / Service / Curator / Brand only after 1–3  
 

@@ -434,8 +434,9 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
         </div>
         {uploadProgress && <p className="text-sm text-brand" role="status">{uploadProgress}</p>}
         <p className="text-xs text-text-secondary">
-          MVP uses one Standard lease tier. Full legal licence copy is finalized by BVS before
-          multi-tier commerce.
+          Licence tiers: Standard Lease ($15–$50), Premium Lease ($50–$200), Exclusive ($200–$2000).
+          Your listed price is authoritative at checkout (server-resolved from your licence option).
+          Full versioned terms are snapshotted at purchase so later template edits do not change what the buyer accepted.
         </p>
       </form>
 

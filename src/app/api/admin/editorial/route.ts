@@ -38,6 +38,174 @@ async function notifyApproval(input: { userId?: string; title?: string; kind: 't
   }
 }
 
+type EditorialSection =
+  | 'bootstrap'
+  | 'overview'
+  | 'tracks'
+  | 'beats'
+  | 'releases'
+  | 'profiles'
+  | 'programmes'
+  | 'wallet'
+  | 'all'
+
+async function loadStaffAndAudit() {
+  const [staffRes, auditRes] = await Promise.all([
+    fetch(editorialUrl('editorial_staff?select=user_id,role,active,created_at&order=created_at.desc'), {
+      headers: serviceHeaders,
+      cache: 'no-store',
+    }),
+    fetch(editorialUrl('editorial_audit_log?select=*&order=created_at.desc&limit=30'), {
+      headers: serviceHeaders,
+      cache: 'no-store',
+    }),
+  ])
+  if (!staffRes.ok || !auditRes.ok) {
+    throw new Error('MIGRATION')
+  }
+  const [staff, auditLog] = await Promise.all([staffRes.json(), auditRes.json()])
+  return { staff, auditLog }
+}
+
+async function loadTracksSection() {
+  const tracksRes = await fetch(
+    editorialUrl(
+      'tracks?reclassified_to_beat_id=is.null&select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100',
+    ),
+    { headers: serviceHeaders, cache: 'no-store' },
+  )
+  if (!tracksRes.ok) throw new Error('MIGRATION')
+  const rawTracks = await tracksRes.json()
+  const tracks = await Promise.all(
+    (rawTracks as Array<Record<string, unknown>>).map(async (track) => ({
+      ...track,
+      file_url: await signStoredMedia(String(track.file_url || '')),
+      artwork_url: await signStoredMedia(String(track.artwork_url || '')),
+    })),
+  )
+  const [trackRequests, trackReviewMessages, credits] = await Promise.all([
+    optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100'),
+    optionalJson('track_review_messages?select=*&order=created_at.asc&limit=500'),
+    optionalJson('track_credits?select=*&order=created_at.desc&limit=100'),
+  ])
+  return { tracks, trackRequests, trackReviewMessages, credits }
+}
+
+async function loadBeatsSection() {
+  const rawBeats = await optionalJson('beats?select=*,beat_licence_options(*)&order=updated_at.desc&limit=100')
+  const beats = await Promise.all(
+    (rawBeats as Array<Record<string, unknown>>).map(async (beat) => ({
+      ...beat,
+      preview_path: await signStoredMedia(String(beat.preview_path || '')),
+      artwork_path: await signStoredMedia(String(beat.artwork_path || '')),
+    })),
+  )
+  const beatReviewMessages = await optionalJson('beat_review_messages?select=*&order=created_at.asc&limit=500')
+  return { beats, beatReviewMessages }
+}
+
+async function loadReleasesSection() {
+  const [releases, rawReleaseTracks, releaseCatalogueTracks, knownIsrcMap, releaseContributors, rawReleaseClearanceEvidence, rawMediaProcessingJobs, distributionJobs] =
+    await Promise.all([
+      optionalJson('releases?select=*&order=created_at.desc&limit=100'),
+      optionalJson('release_tracks?select=*&order=position.asc&limit=500'),
+      optionalJson('tracks?release_id=not.is.null&select=id,in_rotation,isrc,spotify_url&limit=1000'),
+      optionalJson('known_isrc_map?select=isrc,title,artist_name,upc,spotify_album_url,source&order=title.asc&limit=2000'),
+      optionalJson('release_contributors?select=*&order=created_at.asc&limit=1000'),
+      optionalJson('release_clearance_evidence?select=*&order=created_at.asc&limit=1000'),
+      optionalJson('media_processing_jobs?select=*&order=created_at.asc&limit=1000'),
+      optionalJson('distribution_jobs?select=*&order=updated_at.desc&limit=100'),
+    ])
+  const rotationByTrackId = new Map(
+    (releaseCatalogueTracks as Array<Record<string, unknown>>).map((track) => [String(track.id), Boolean(track.in_rotation)]),
+  )
+  const isrcByTrackId = new Map(
+    (releaseCatalogueTracks as Array<Record<string, unknown>>)
+      .filter((track) => track.isrc)
+      .map((track) => [String(track.id), String(track.isrc)]),
+  )
+  const releaseTracks = (rawReleaseTracks as Array<Record<string, unknown>>).map((track) => ({
+    ...track,
+    in_rotation: track.track_id ? rotationByTrackId.get(String(track.track_id)) === true : false,
+    isrc: track.track_id ? isrcByTrackId.get(String(track.track_id)) || null : null,
+  }))
+  const releaseClearanceEvidence = await Promise.all(
+    (rawReleaseClearanceEvidence as Array<Record<string, unknown>>).map(async (evidence) => ({
+      ...evidence,
+      file_url: await signStoredMedia(String(evidence.file_path || '')),
+    })),
+  )
+  const mediaProcessingJobs = await Promise.all(
+    (rawMediaProcessingJobs as Array<Record<string, unknown>>).map(async (job) => ({
+      ...job,
+      waveform_path: await signStoredMedia(String(job.waveform_path || '')),
+      preview_path: await signStoredMedia(String(job.preview_path || '')),
+    })),
+  )
+  return {
+    releases,
+    releaseTracks,
+    releaseContributors,
+    releaseClearanceEvidence,
+    mediaProcessingJobs,
+    distributionJobs,
+    knownIsrcMap,
+  }
+}
+
+async function loadProfilesSection() {
+  const profilesRes = await fetch(
+    editorialUrl(
+      'profiles?select=id,username,display_name,role,is_producer,is_verified,is_published,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,creator_name_reviewed_at&order=created_at.desc&limit=200',
+    ),
+    { headers: serviceHeaders, cache: 'no-store' },
+  )
+  if (!profilesRes.ok) throw new Error('MIGRATION')
+  const profiles = await profilesRes.json()
+  const roleApplications = await optionalJson('profile_role_applications?select=*&order=updated_at.desc&limit=100')
+  return { profiles, roleApplications }
+}
+
+async function loadProgrammesSection() {
+  const programmesRes = await fetch(editorialUrl('programmes?select=*&order=updated_at.desc&limit=100'), {
+    headers: serviceHeaders,
+    cache: 'no-store',
+  })
+  if (!programmesRes.ok) throw new Error('MIGRATION')
+  return { programmes: await programmesRes.json() }
+}
+
+async function loadWalletSection(identity: Awaited<ReturnType<typeof editorialIdentity>>) {
+  if (!identity || !can(identity, 'manage_artist_wallet')) {
+    return { artistWaitlist: [], artistDeposits: [], artistPayoutRequests: [] }
+  }
+  const [artistWaitlist, artistDeposits, artistPayoutRequests] = await Promise.all([
+    optionalJson('artist_waitlist?select=*&order=created_at.desc&limit=100'),
+    optionalJson('artist_deposits?select=*&order=created_at.desc&limit=100'),
+    optionalJson('artist_payout_requests?select=*&order=requested_at.desc&limit=100'),
+  ])
+  return { artistWaitlist, artistDeposits, artistPayoutRequests }
+}
+
+async function lightCounts() {
+  // Cheap head-style counts via limited selects when full lists are not loaded.
+  const [tracks, beats, releases, profiles, programmes] = await Promise.all([
+    optionalJson('tracks?reclassified_to_beat_id=is.null&select=id&limit=1'),
+    optionalJson('beats?select=id&limit=1'),
+    optionalJson('releases?select=id&limit=1'),
+    optionalJson('profiles?select=id&limit=1'),
+    optionalJson('programmes?select=id&limit=1'),
+  ])
+  // PostgREST does not return total without Prefer count; expose presence flags + 0|1 sample.
+  return {
+    tracksSample: Array.isArray(tracks) ? tracks.length : 0,
+    beatsSample: Array.isArray(beats) ? beats.length : 0,
+    releasesSample: Array.isArray(releases) ? releases.length : 0,
+    profilesSample: Array.isArray(profiles) ? profiles.length : 0,
+    programmesSample: Array.isArray(programmes) ? programmes.length : 0,
+  }
+}
+
 export async function GET(request: Request) {
   const hasBearer = Boolean(request.headers.get('authorization')?.replace(/^Bearer\s+/i, ''))
   const identity = await editorialIdentity(request)
@@ -51,93 +219,87 @@ export async function GET(request: Request) {
       { status: hasBearer ? 403 : 401 },
     )
   }
-  const requests = [
-    fetch(editorialUrl('tracks?reclassified_to_beat_id=is.null&select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
-    fetch(editorialUrl('profiles?select=id,username,display_name,role,is_producer,is_verified,is_published,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,creator_name_reviewed_at&order=created_at.desc&limit=200'), { headers: serviceHeaders, cache: 'no-store' }),
-    fetch(editorialUrl('programmes?select=*&order=updated_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
-    fetch(editorialUrl('track_credits?select=*&order=created_at.desc&limit=100'), { headers: serviceHeaders, cache: 'no-store' }),
-    fetch(editorialUrl('editorial_staff?select=user_id,role,active,created_at&order=created_at.desc'), { headers: serviceHeaders, cache: 'no-store' }),
-    fetch(editorialUrl('editorial_audit_log?select=*&order=created_at.desc&limit=30'), { headers: serviceHeaders, cache: 'no-store' }),
-  ]
-  const responses = await Promise.all(requests)
-  if (responses.some((response) => !response.ok)) return NextResponse.json({ error: 'Editorial migration is not ready. Run supabase-editorial-workflow.sql.' }, { status: 503 })
-  const [rawTracks, profiles, programmes, credits, staff, auditLog] = await Promise.all(responses.map((response) => response.json()))
-  const tracks = await Promise.all((rawTracks as Array<Record<string, unknown>>).map(async track => ({
-    ...track,
-    file_url: await signStoredMedia(String(track.file_url || '')),
-    artwork_url: await signStoredMedia(String(track.artwork_url || '')),
-  })))
-  const trackRequests = await optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100')
-  const rawBeats = await optionalJson(
-    'beats?select=*,beat_licence_options(*)&order=updated_at.desc&limit=100',
-  )
-  const beats = await Promise.all((rawBeats as Array<Record<string, unknown>>).map(async beat => ({
-    ...beat,
-    preview_path: await signStoredMedia(String(beat.preview_path || '')),
-    artwork_path: await signStoredMedia(String(beat.artwork_path || '')),
-  })))
-  const beatReviewMessages = await optionalJson(
-    'beat_review_messages?select=*&order=created_at.asc&limit=500',
-  )
-  const trackReviewMessages = await optionalJson(
-    'track_review_messages?select=*&order=created_at.asc&limit=500',
-  )
-  const releases = await optionalJson('releases?select=*&order=created_at.desc&limit=100')
-  const rawReleaseTracks = await optionalJson('release_tracks?select=*&order=position.asc&limit=500')
-  const releaseCatalogueTracks = await optionalJson('tracks?release_id=not.is.null&select=id,in_rotation&limit=1000')
-  const rotationByTrackId = new Map(
-    (releaseCatalogueTracks as Array<Record<string, unknown>>).map((track) => [String(track.id), Boolean(track.in_rotation)]),
-  )
-  const releaseTracks = (rawReleaseTracks as Array<Record<string, unknown>>).map((track) => ({
-    ...track,
-    in_rotation: track.track_id ? rotationByTrackId.get(String(track.track_id)) === true : false,
-  }))
-  const releaseContributors = await optionalJson('release_contributors?select=*&order=created_at.asc&limit=1000')
-  const rawReleaseClearanceEvidence = await optionalJson('release_clearance_evidence?select=*&order=created_at.asc&limit=1000')
-  const releaseClearanceEvidence = await Promise.all((rawReleaseClearanceEvidence as Array<Record<string, unknown>>).map(async evidence => ({
-    ...evidence,
-    file_url: await signStoredMedia(String(evidence.file_path || '')),
-  })))
-  const rawMediaProcessingJobs = await optionalJson('media_processing_jobs?select=*&order=created_at.asc&limit=1000')
-  const mediaProcessingJobs = await Promise.all((rawMediaProcessingJobs as Array<Record<string, unknown>>).map(async job => ({
-    ...job,
-    waveform_path: await signStoredMedia(String(job.waveform_path || '')),
-    preview_path: await signStoredMedia(String(job.preview_path || '')),
-  })))
-  const distributionJobs = await optionalJson('distribution_jobs?select=*&order=updated_at.desc&limit=100')
-  const roleApplications = await optionalJson(
-    'profile_role_applications?select=*&order=updated_at.desc&limit=100',
-  )
-  const [artistWaitlist, artistDeposits, artistPayoutRequests] = can(identity, 'manage_artist_wallet')
-    ? await Promise.all([
-      optionalJson('artist_waitlist?select=*&order=created_at.desc&limit=100'),
-      optionalJson('artist_deposits?select=*&order=created_at.desc&limit=100'),
-      optionalJson('artist_payout_requests?select=*&order=requested_at.desc&limit=100'),
-    ])
-    : [[], [], []]
-  return NextResponse.json({
-    identity: { role: identity.role, permissions: identity.permissions, profile: identity.profile },
-    tracks,
-    profiles,
-    programmes,
-    credits,
-    staff,
-    auditLog,
-    trackRequests,
-    beats,
-    beatReviewMessages,
-    trackReviewMessages,
-    releases,
-    releaseTracks,
-    releaseContributors,
-    releaseClearanceEvidence,
-    mediaProcessingJobs,
-    distributionJobs,
-    roleApplications,
-    artistWaitlist,
-    artistDeposits,
-    artistPayoutRequests,
-  })
+
+  const url = new URL(request.url)
+  const rawSection = (url.searchParams.get('section') || 'all').toLowerCase().trim()
+  const section = (rawSection || 'all') as EditorialSection
+  const identityPayload = {
+    role: identity.role,
+    permissions: identity.permissions,
+    profile: identity.profile,
+  }
+
+  try {
+    if (section === 'bootstrap' || section === 'overview') {
+      const { staff, auditLog } = await loadStaffAndAudit()
+      const counts = section === 'overview' ? await lightCounts() : undefined
+      // Do not include empty list keys — client merges by presence and must not wipe loaded sections.
+      return NextResponse.json({
+        section,
+        identity: identityPayload,
+        staff,
+        auditLog,
+        ...(counts ? { counts } : {}),
+      })
+    }
+
+    if (section === 'tracks') {
+      const data = await loadTracksSection()
+      return NextResponse.json({ section, identity: identityPayload, ...data })
+    }
+    if (section === 'beats') {
+      const data = await loadBeatsSection()
+      return NextResponse.json({ section, identity: identityPayload, ...data })
+    }
+    if (section === 'releases') {
+      const data = await loadReleasesSection()
+      return NextResponse.json({ section, identity: identityPayload, ...data })
+    }
+    if (section === 'profiles') {
+      const data = await loadProfilesSection()
+      return NextResponse.json({ section, identity: identityPayload, ...data })
+    }
+    if (section === 'programmes') {
+      const data = await loadProgrammesSection()
+      return NextResponse.json({ section, identity: identityPayload, ...data })
+    }
+    if (section === 'wallet') {
+      const data = await loadWalletSection(identity)
+      return NextResponse.json({ section, identity: identityPayload, ...data })
+    }
+
+    // section=all or unknown → full backward-compatible payload
+    const [{ staff, auditLog }, tracksPart, beatsPart, releasesPart, profilesPart, programmesPart, walletPart] =
+      await Promise.all([
+        loadStaffAndAudit(),
+        loadTracksSection(),
+        loadBeatsSection(),
+        loadReleasesSection(),
+        loadProfilesSection(),
+        loadProgrammesSection(),
+        loadWalletSection(identity),
+      ])
+    return NextResponse.json({
+      section: 'all',
+      identity: identityPayload,
+      staff,
+      auditLog,
+      ...tracksPart,
+      ...beatsPart,
+      ...releasesPart,
+      ...profilesPart,
+      ...programmesPart,
+      ...walletPart,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.message === 'MIGRATION') {
+      return NextResponse.json(
+        { error: 'Editorial migration is not ready. Run supabase-editorial-workflow.sql.' },
+        { status: 503 },
+      )
+    }
+    throw error
+  }
 }
 
 type ActionBody = { action?: string; [key: string]: unknown }
@@ -321,8 +483,26 @@ export async function PATCH(request: Request) {
         requirePermission('manage_licensing')
         const trackId = String(body.trackId || '')
         const price = Math.max(0, Math.min(100000, Number(body.price) || 0))
-        const licenceType = ['not_for_sale', 'personal_download', 'standard_lease', 'exclusive', 'custom'].includes(String(body.licenceType)) ? String(body.licenceType) : 'not_for_sale'
-        const result = await patchTable('tracks', `id=eq.${encodeURIComponent(trackId)}`, { licence_type: licenceType, licence_summary: String(body.summary || '').slice(0, 1000), download_price: price, is_downloadable: licenceType !== 'not_for_sale' })
+        const allowedLicenceTypes = [
+          'not_for_sale',
+          'personal_download',
+          'standard_lease',
+          'premium_lease',
+          'exclusive',
+          'free_download',
+          'custom',
+        ]
+        const licenceType = allowedLicenceTypes.includes(String(body.licenceType))
+          ? String(body.licenceType)
+          : 'not_for_sale'
+        const result = await patchTable('tracks', `id=eq.${encodeURIComponent(trackId)}`, {
+          licence_type: licenceType,
+          licence_summary: String(body.summary || '').slice(0, 2000),
+          download_price: price,
+          is_downloadable: licenceType !== 'not_for_sale' && licenceType !== 'free_download'
+            ? true
+            : licenceType === 'free_download',
+        })
         await audit(identity.user.id, 'licence_updated', 'track', trackId, { licence_type: licenceType, price })
         return NextResponse.json({ result })
       }
@@ -366,10 +546,20 @@ export async function PATCH(request: Request) {
       case 'publish_release': {
         requirePermission('approve_submissions')
         const { materializeReleaseTracks } = await import('@/lib/releases-server')
+        const { normalizeIsrc } = await import('@/lib/known-isrc')
         const releaseId = String(body.releaseId || '')
         const inRotation = body.inRotation !== false
         const rotationReleaseTrackIds = Array.isArray(body.rotationReleaseTrackIds)
           ? body.rotationReleaseTrackIds.map(String).filter(Boolean).slice(0, 200)
+          : undefined
+        const trackIsrcs = Array.isArray(body.trackIsrcs)
+          ? (body.trackIsrcs as Array<Record<string, unknown>>)
+              .map((row) => ({
+                releaseTrackId: String(row.releaseTrackId || row.id || '').trim(),
+                isrc: normalizeIsrc(String(row.isrc || '')),
+              }))
+              .filter((row) => row.releaseTrackId && row.isrc)
+              .slice(0, 200)
           : undefined
         const notes = String(body.notes || '').slice(0, 2000)
         if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
@@ -383,6 +573,7 @@ export async function PATCH(request: Request) {
           publish: true,
           inRotation,
           rotationReleaseTrackIds,
+          trackIsrcs,
           reviewedBy: identity.user.id,
         })
         if (!result.ok) return NextResponse.json({ error: result.error || 'Publish failed.' }, { status: 400 })

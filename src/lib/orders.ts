@@ -10,6 +10,8 @@ export type OrderItem = {
   quantity: number;
   delivery?: string;
   sourceUrl?: string;
+  /** Selected beat_licence_options.id when purchasing a beat */
+  licence_option_id?: string;
 };
 
 export type Customer = {

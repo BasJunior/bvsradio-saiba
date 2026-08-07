@@ -116,7 +116,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "Distribution entitlement for approved releases",
       "Major streaming, social & regional store targets",
       "Priority release-packaging support",
-      "Founding rate locked in if you join by 27 Aug 2026 and stay subscribed (when billing is live)",
+      "Founding rate locked in if you join by 27 Aug 2026 (while seats remain) and stay subscribed",
     ],
   },
   {
@@ -514,6 +514,35 @@ export function defaultPremiumMonthlyUsd(): number {
 /** Public founding-window end (Europe/Berlin calendar date). */
 export const FOUNDING_WINDOW_ENDS = "2026-08-27";
 export const FOUNDING_WINDOW_LABEL = "27 Aug 2026";
+/** Inclusive end-of-day Europe/Berlin (CEST +02:00 on 27 Aug). */
+export const FOUNDING_WINDOW_ENDS_AT_ISO = `${FOUNDING_WINDOW_ENDS}T23:59:59+02:00`;
+
+/** Pure date gate — safe for client + server. Seat cap is enforced in premium-billing. */
+export function foundingWindowEndsAt(now?: Date): Date {
+  void now;
+  return new Date(FOUNDING_WINDOW_ENDS_AT_ISO);
+}
+
+export function isFoundingWindowOpen(at: Date = new Date()): boolean {
+  return at.getTime() < foundingWindowEndsAt().getTime();
+}
+
+export function foundingWindowPublicCopy(at: Date = new Date()): {
+  open: boolean;
+  label: string;
+  endsAt: string;
+  headline: string;
+} {
+  const open = isFoundingWindowOpen(at);
+  return {
+    open,
+    label: FOUNDING_WINDOW_LABEL,
+    endsAt: FOUNDING_WINDOW_ENDS_AT_ISO,
+    headline: open
+      ? `Founding available until ${FOUNDING_WINDOW_LABEL}`
+      : `Founding window closed ${FOUNDING_WINDOW_LABEL}`,
+  };
+}
 
 export function premiumPricingCopy() {
   return {
