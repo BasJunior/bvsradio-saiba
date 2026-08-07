@@ -9,6 +9,9 @@ import {
   loadProducerProfile,
   minBeatPrice,
 } from '@/lib/beatstore-server'
+import { ensureBeatArtworkPath } from '@/lib/beat-cover-autogen'
+import { creatorPublicName } from '@/lib/public-name'
+import { r2Configured } from '@/lib/r2-storage'
 
 export const runtime = 'nodejs'
 
@@ -60,11 +63,51 @@ export async function PATCH(request: Request, ctx: Ctx) {
     }
 
     if (action === 'submit') {
-      const patch = {
+      // Load current beat so we can fill missing artwork before submit.
+      const currentRes = await fetch(
+        beatUrl(
+          `beats?id=eq.${encodeURIComponent(beatId)}&producer_user_id=eq.${uid}&status=in.(draft,changes_requested,rejected)&select=id,title,artwork_path&limit=1`,
+        ),
+        { headers: beatHeaders, cache: 'no-store' },
+      )
+      const currentRows = currentRes.ok ? await currentRes.json() : []
+      const current = currentRows?.[0] as
+        | { id: string; title?: string; artwork_path?: string | null }
+        | undefined
+      if (!current?.id) {
+        return NextResponse.json(
+          { error: 'Only draft / changes-requested / rejected beats can be submitted.' },
+          { status: 409 },
+        )
+      }
+
+      const patch: Record<string, unknown> = {
         status: 'submitted',
         is_public: false,
         updated_at: new Date().toISOString(),
       }
+      let artworkGenerated = false
+      if (!String(current.artwork_path || '').trim() && r2Configured()) {
+        const producerLabel =
+          creatorPublicName({
+            publicName: (profile as { creator_public_name?: string }).creator_public_name,
+            username: profile.username,
+          }) ||
+          profile.display_name ||
+          profile.username ||
+          'BVS producer'
+        const ensured = await ensureBeatArtworkPath({
+          producerUserId: uid,
+          title: String(current.title || 'Untitled beat'),
+          producerName: producerLabel,
+          artworkPath: null,
+        })
+        if (ensured.path) {
+          patch.artwork_path = ensured.path
+          artworkGenerated = ensured.generated
+        }
+      }
+
       const res = await fetch(
         beatUrl(
           `beats?id=eq.${encodeURIComponent(beatId)}&producer_user_id=eq.${uid}&status=in.(draft,changes_requested,rejected)`,
@@ -82,7 +125,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
           { status: 409 },
         )
       }
-      return NextResponse.json({ ok: true, beat: rows[0] })
+      return NextResponse.json({ ok: true, beat: rows[0], artworkGenerated })
     }
 
     // metadata + optional licence price update while editable

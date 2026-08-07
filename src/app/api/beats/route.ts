@@ -19,6 +19,7 @@ import { creatorPublicName } from '@/lib/public-name'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
 import { resolveProducerBeatEntitlements } from '@/lib/producer-entitlements'
 import { licenceOptionSeed } from '@/lib/beat-licences'
+import { ensureBeatArtworkPath } from '@/lib/beat-cover-autogen'
 
 export const runtime = 'nodejs'
 
@@ -156,6 +157,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Media storage is unavailable.' }, { status: 503 })
     }
     const slugBase = slugifyBeat(cleanText(body.slug, 80) || title) || `beat-${Date.now()}`
+    let artworkPath = cleanText(body.artworkPath, 500) || null
+    let artworkGenerated = false
+    // On submit (or when no art provided), fill a BVS-branded placeholder cover.
+    if (!artworkPath) {
+      const producerLabel =
+        creatorPublicName({
+          publicName: (profile as { creator_public_name?: string }).creator_public_name,
+          username: profile.username,
+        }) ||
+        profile.display_name ||
+        profile.username ||
+        'BVS producer'
+      const ensured = await ensureBeatArtworkPath({
+        producerUserId: identity.user.id,
+        title,
+        producerName: producerLabel,
+        artworkPath: null,
+      })
+      artworkPath = ensured.path
+      artworkGenerated = ensured.generated
+    }
     const payload = {
       producer_user_id: identity.user.id,
       title,
@@ -165,7 +187,7 @@ export async function POST(request: Request) {
       mood: cleanText(body.mood, 120),
       bpm: Number(body.bpm) > 0 ? Math.round(Number(body.bpm)) : null,
       musical_key: cleanText(body.musicalKey, 20) || null,
-      artwork_path: cleanText(body.artworkPath, 500) || null,
+      artwork_path: artworkPath,
       preview_path: cleanText(body.previewPath, 500) || null,
       master_path: cleanText(body.masterPath, 500) || null,
       stems_path: cleanText(body.stemsPath, 500) || null,
@@ -243,7 +265,13 @@ export async function POST(request: Request) {
       console.error('licence create failed', await licenceRes.text())
     }
 
-    return NextResponse.json({ ok: true, beatId: beat.id, status: payload.status })
+    return NextResponse.json({
+      ok: true,
+      beatId: beat.id,
+      status: payload.status,
+      artworkPath: payload.artwork_path,
+      artworkGenerated,
+    })
   } catch (error) {
     console.error('beats POST', error)
     return NextResponse.json({ error: 'Could not save beat.' }, { status: 500 })
