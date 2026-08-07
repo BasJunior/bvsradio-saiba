@@ -109,9 +109,9 @@ export default async function ArtistPage({
                 href={external(profile.links.spotify)}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-full border border-white/20 px-4 py-2 text-sm hover:border-brand"
+                className="rounded-full border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/20"
               >
-                Spotify / DSP
+                Listen on Spotify
               </a>
             )}
             {profile.links?.website && (
@@ -172,13 +172,32 @@ export default async function ArtistPage({
                             {track.in_rotation ? " · In BVS rotation" : ""}
                           </p>
                         </div>
-                        <Link
-                          href={`/catalogue?q=${encodeURIComponent(track.title)}`}
-                          className="shrink-0 text-sm text-brand"
-                        >
-                          Open →
-                        </Link>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          {track.spotify_url && (
+                            <a
+                              href={external(track.spotify_url)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-sm text-brand"
+                            >
+                              Spotify →
+                            </a>
+                          )}
+                          <Link
+                            href={`/catalogue?q=${encodeURIComponent(track.title)}`}
+                            className="text-sm text-brand"
+                          >
+                            Open →
+                          </Link>
+                        </div>
                       </div>
+                      {(track.isrc || track.spotify_url) && (
+                        <p className="mt-2 text-xs text-text-secondary">
+                          {track.isrc ? `ISRC ${track.isrc}` : "DSP linked"}
+                          {track.isrc && track.spotify_url ? " · " : ""}
+                          {track.spotify_url ? "Also on Spotify" : ""}
+                        </p>
+                      )}
                       {track.credits.length > 0 && (
                         <p className="mt-3 border-t border-white/10 pt-2 text-xs text-text-secondary">
                           Verified credits:{" "}
