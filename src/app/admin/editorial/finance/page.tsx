@@ -99,6 +99,18 @@ const targets = [
   { quarter: 'Q2 2027', artists: 100, gmv: 5000, newsletter: 600, outcome: 'Two positive free-cash-flow months.' },
 ]
 
+const emptyExample: Example = {
+  id: 'unavailable',
+  label: 'No policy example available',
+  productType: 'future',
+  price: 0,
+  sellerPlanId: 'future',
+  revenueModel: 'future',
+  commissionBps: null,
+  processorAllocation: 'unknown',
+  note: 'Finance policy examples are unavailable.',
+}
+
 function usd(value: number | null | undefined) {
   return value == null ? 'Not connected' : new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 }).format(value)
 }
@@ -146,20 +158,20 @@ export default function EditorialFinancePage() {
 
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer) }, [load])
 
-  const selectedExample = data?.policy.examples.find((item) => item.id === calcExampleId) || data?.policy.examples[0]
-  const customerTotalForExample = selectedExample ? selectedExample.price * (1 + taxRate / 100) : 0
-  const presetFee = selectedExample ? processorFeeFromPreset(customerTotalForExample, processorPresetId) : null
+  const selectedExample: Example = data?.policy.examples.find((item) => item.id === calcExampleId) || data?.policy.examples[0] || emptyExample
+  const customerTotalForExample = selectedExample.price * (1 + taxRate / 100)
+  const presetFee = processorFeeFromPreset(customerTotalForExample, processorPresetId)
   const processorFee = manualProcessorFee == null ? (presetFee || 0) : manualProcessorFee
-  const sellerPays = selectedExample?.commissionBps != null
+  const sellerPays = selectedExample.commissionBps != null
     ? calculateMarketplaceEconomics({ productPrice: selectedExample.price, taxRatePercent: taxRate, commissionBps: selectedExample.commissionBps, processorFee, processorAllocatedToSeller: processorFee })
     : null
-  const bvsAbsorbs = selectedExample?.commissionBps != null
+  const bvsAbsorbs = selectedExample.commissionBps != null
     ? calculateMarketplaceEconomics({ productPrice: selectedExample.price, taxRatePercent: taxRate, commissionBps: selectedExample.commissionBps, processorFee, processorAllocatedToSeller: 0 })
     : null
 
   const processorMatrix = useMemo(() => {
     const example = selectedExample
-    if (!data || !example || example.commissionBps == null) return []
+    if (!data || example.commissionBps == null) return []
     const commissionBps = example.commissionBps
     const charge = example.price * (1 + taxRate / 100)
     return data.policy.processorPresets.map((preset) => {
@@ -237,8 +249,8 @@ export default function EditorialFinancePage() {
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[1.05fr_.95fr]">
           <div className="rounded-2xl border border-white/10 bg-black/15 p-5"><h3 className="text-xl font-semibold">Policy example calculator</h3><p className="mt-2 text-sm text-text-secondary">Select a product and processor. Estimates are labelled and never booked as real profit.</p><div className="mt-5 grid gap-3 sm:grid-cols-2"><label className="text-xs text-text-secondary">Product / plan<select value={calcExampleId} onChange={(event) => { setCalcExampleId(event.target.value); setManualProcessorFee(null) }} className="mt-1 w-full rounded-xl border border-white/10 bg-background px-3 py-2 text-sm text-text-primary">{data.policy.examples.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="text-xs text-text-secondary">Processor<select value={processorPresetId} onChange={(event) => { setProcessorPresetId(event.target.value); setManualProcessorFee(null) }} className="mt-1 w-full rounded-xl border border-white/10 bg-background px-3 py-2 text-sm text-text-primary">{data.policy.processorPresets.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></label><label className="text-xs text-text-secondary">VAT / sales tax %<input value={taxRate} onChange={(event) => setTaxRate(Number(event.target.value) || 0)} type="number" min="0" step="0.1" className="mt-1 w-full rounded-xl border border-white/10 bg-background px-3 py-2 text-sm" /></label><label className="text-xs text-text-secondary">Processor fee override (USD)<input value={manualProcessorFee ?? ''} onChange={(event) => setManualProcessorFee(event.target.value === '' ? null : Number(event.target.value))} type="number" min="0" step="0.01" placeholder={presetFee == null ? 'Not connected' : String(presetFee)} className="mt-1 w-full rounded-xl border border-white/10 bg-background px-3 py-2 text-sm" /></label></div>
-            {selectedExample?.note ? <p className="mt-4 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">{selectedExample.note}</p> : null}
-            {selectedExample?.revenueModel === 'future' || !sellerPays || !bvsAbsorbs ? <p className="mt-5 rounded-xl border border-amber-400/30 bg-amber-400/[.06] p-4 text-sm text-amber-100">No approved commercial rate exists for this future product. Finance must model fulfilment, shipping, returns and tax before launch.</p> : selectedExample.revenueModel === 'bvs_subscription' ? <div className="mt-5 grid gap-3 sm:grid-cols-2"><Metric label="Subscription price" value={usd(bvsAbsorbs.productPrice)} /><Metric label="Tax payable" value={usd(bvsAbsorbs.tax)} note="Not BVS revenue" /><Metric label="Processor fee" value={usd(bvsAbsorbs.processorFee)} note="BVS cost on its own subscription" /><Metric label="BVS contribution" value={usd(bvsAbsorbs.bvsContributionAfterProcessing)} note="Before fixed OPEX" /></div> : <div className="mt-5 grid gap-4 md:grid-cols-2"><div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.05] p-4"><p className="text-xs uppercase tracking-[.1em] text-emerald-300">Default · creator pays processing</p><div className="mt-3 space-y-2 text-sm"><Line label="Product price" value={usd(sellerPays.productPrice)} /><Line label="Tax payable" value={usd(sellerPays.tax)} /><Line label="BVS fee" value={usd(sellerPays.commission)} /><Line label="Processing" value={usd(sellerPays.processorFee)} /><Line label="Creator earns" value={usd(sellerPays.sellerNet)} strong /><Line label="BVS contribution" value={usd(sellerPays.bvsContributionAfterProcessing)} strong /></div></div><div className="rounded-xl border border-amber-400/20 bg-amber-400/[.05] p-4"><p className="text-xs uppercase tracking-[.1em] text-amber-200">Comparison · BVS absorbs processing</p><div className="mt-3 space-y-2 text-sm"><Line label="Product price" value={usd(bvsAbsorbs.productPrice)} /><Line label="Tax payable" value={usd(bvsAbsorbs.tax)} /><Line label="BVS fee" value={usd(bvsAbsorbs.commission)} /><Line label="Processing paid by BVS" value={usd(bvsAbsorbs.processorFee)} /><Line label="Creator earns" value={usd(bvsAbsorbs.sellerNet)} strong /><Line label="BVS contribution" value={usd(bvsAbsorbs.bvsContributionAfterProcessing)} strong /></div></div></div>}
+            {selectedExample.note ? <p className="mt-4 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">{selectedExample.note}</p> : null}
+            {selectedExample.revenueModel === 'future' || !sellerPays || !bvsAbsorbs ? <p className="mt-5 rounded-xl border border-amber-400/30 bg-amber-400/[.06] p-4 text-sm text-amber-100">No approved commercial rate exists for this future product. Finance must model fulfilment, shipping, returns and tax before launch.</p> : selectedExample.revenueModel === 'bvs_subscription' ? <div className="mt-5 grid gap-3 sm:grid-cols-2"><Metric label="Subscription price" value={usd(bvsAbsorbs.productPrice)} /><Metric label="Tax payable" value={usd(bvsAbsorbs.tax)} note="Not BVS revenue" /><Metric label="Processor fee" value={usd(bvsAbsorbs.processorFee)} note="BVS cost on its own subscription" /><Metric label="BVS contribution" value={usd(bvsAbsorbs.bvsContributionAfterProcessing)} note="Before fixed OPEX" /></div> : <div className="mt-5 grid gap-4 md:grid-cols-2"><div className="rounded-xl border border-emerald-400/20 bg-emerald-400/[.05] p-4"><p className="text-xs uppercase tracking-[.1em] text-emerald-300">Default · creator pays processing</p><div className="mt-3 space-y-2 text-sm"><Line label="Product price" value={usd(sellerPays.productPrice)} /><Line label="Tax payable" value={usd(sellerPays.tax)} /><Line label="BVS fee" value={usd(sellerPays.commission)} /><Line label="Processing" value={usd(sellerPays.processorFee)} /><Line label="Creator earns" value={usd(sellerPays.sellerNet)} strong /><Line label="BVS contribution" value={usd(sellerPays.bvsContributionAfterProcessing)} strong /></div></div><div className="rounded-xl border border-amber-400/20 bg-amber-400/[.05] p-4"><p className="text-xs uppercase tracking-[.1em] text-amber-200">Comparison · BVS absorbs processing</p><div className="mt-3 space-y-2 text-sm"><Line label="Product price" value={usd(bvsAbsorbs.productPrice)} /><Line label="Tax payable" value={usd(bvsAbsorbs.tax)} /><Line label="BVS fee" value={usd(bvsAbsorbs.commission)} /><Line label="Processing paid by BVS" value={usd(bvsAbsorbs.processorFee)} /><Line label="Creator earns" value={usd(bvsAbsorbs.sellerNet)} strong /><Line label="BVS contribution" value={usd(bvsAbsorbs.bvsContributionAfterProcessing)} strong /></div></div></div>}
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/15 p-5"><h3 className="text-xl font-semibold">Processor comparison</h3><p className="mt-2 text-sm text-text-secondary">For the selected product, compare the BVS position across Stripe / Paynow schedules. “Illustrative” is not booked profit.</p><div className="mt-4 overflow-x-auto"><table className="min-w-[620px] w-full text-xs"><thead className="text-left uppercase tracking-[.08em] text-text-secondary"><tr><th className="pb-3 pr-3">Processor</th><th className="pb-3 pr-3">Fee</th><th className="pb-3 pr-3">Creator net</th><th className="pb-3">BVS if absorbs</th></tr></thead><tbody>{processorMatrix.map((row) => <tr key={row.id} className="border-t border-white/10"><td className="py-3 pr-3"><div>{row.label}</div><div className="text-[10px] uppercase text-text-secondary">{row.status.replaceAll('_', ' ')}</div></td><td className="py-3 pr-3">{usd(row.fee)}</td><td className="py-3 pr-3 text-brand">{row.sellerPays ? usd(row.sellerPays.sellerNet) : 'N/A'}</td><td className={`py-3 ${row.bvsAbsorbs && row.bvsAbsorbs.bvsContributionAfterProcessing < 0 ? 'text-red-300' : ''}`}>{row.bvsAbsorbs ? usd(row.bvsAbsorbs.bvsContributionAfterProcessing) : 'N/A'}</td></tr>)}</tbody></table></div></div>
