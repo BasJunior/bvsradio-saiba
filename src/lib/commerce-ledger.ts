@@ -18,7 +18,7 @@ const SERVICE_PRICES: Record<string, number> = {
 export type CommerceItem = OrderItem & {
   sku: string;
   sourceId: string;
-  productType: "single" | "mix" | "album" | "beat" | "service";
+  productType: "single" | "mix" | "album" | "beat" | "creator_product" | "service";
   unitAmount: number;
   currency: "usd";
   taxClass: "digital" | "service";
@@ -95,6 +95,28 @@ type BeatLicenceRow = {
   terms_summary?: string | null;
 };
 
+type CreatorProductRow = {
+  id: string;
+  seller_user_id: string;
+  title: string;
+  price_usd: number | string;
+  licence_summary?: string | null;
+  licence_terms?: string | null;
+};
+
+async function fetchCreatorProduct(id: string): Promise<CreatorProductRow | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  let url: string;
+  let key: string;
+  try { ({ url, key } = config()); } catch { return null; }
+  const response = await fetch(
+    `${url}/rest/v1/creator_marketplace_listings?id=eq.${encodeURIComponent(id)}&listing_type=eq.digital_product&status=eq.published&select=id,seller_user_id,title,price_usd,licence_summary,licence_terms&limit=1`,
+    { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" },
+  );
+  if (!response.ok) return null;
+  return ((await response.json()) as CreatorProductRow[])[0] || null;
+}
+
 async function fetchBeatLicenceOption(
   beatId: string,
   licenceOptionId?: string,
@@ -169,8 +191,22 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
       let licenceTermsVersion: string | undefined;
       let licenceSummary: string | undefined;
       let licenceTerms: string | undefined;
+      let authoritativeTitle = item.title;
+      let authoritativeSellerUserId: string | undefined;
 
-      if (id === "100" || key === "lord-album") {
+      if (item.type === "creator_product") {
+        const product = await fetchCreatorProduct(id);
+        if (!product) throw new Error("UNKNOWN_CREATOR_PRODUCT");
+        const priced = parsePriceUsd(product.price_usd);
+        if (priced == null || priced < 1) throw new Error("INVALID_CREATOR_PRODUCT_PRICE");
+        productType = "creator_product";
+        unitAmount = priced;
+        sku = `creator-product:${product.id}`;
+        authoritativeTitle = product.title;
+        authoritativeSellerUserId = product.seller_user_id;
+        licenceSummary = product.licence_summary?.trim() || "Licensed digital creator product";
+        licenceTerms = product.licence_terms?.trim() || licenceSummary;
+      } else if (id === "100" || key === "lord-album") {
         productType = "album";
         unitAmount = 19;
         sku = "album:lord";
@@ -207,13 +243,14 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
         sku = `mix:${id}`;
       }
 
-      const sellerUserId = await resolveSellerUserId(productType, id, sku);
+      const sellerUserId = authoritativeSellerUserId || await resolveSellerUserId(productType, id, sku);
       const sellerPolicy = sellerUserId
         ? await resolveSellerMarketplacePolicy(sellerUserId, productType, unitAmount)
         : undefined;
 
       return {
         ...item,
+        title: authoritativeTitle,
         type: productType,
         price: unitAmount,
         quantity,

@@ -24,7 +24,7 @@ type MembershipRow = {
 }
 
 function defaultPlan(productType: MarketplaceProductType) {
-  if (productType === 'beat') return 'producer_free'
+  if (productType === 'beat' || productType === 'creator_product') return 'producer_free'
   if (productType === 'service') return 'service_free'
   return 'artist_free'
 }
@@ -52,7 +52,7 @@ export async function resolveSellerMarketplacePolicy(
       )
       const rows = response.ok ? await response.json() as MembershipRow[] : []
       const bundle = rows.find((row) => row.family === 'creator_bundle')
-      const wantedFamily = productType === 'beat' ? 'producer' : productType === 'service' ? 'service' : 'artist'
+      const wantedFamily = productType === 'beat' || productType === 'creator_product' ? 'producer' : productType === 'service' ? 'service' : 'artist'
       const selected = bundle || rows.find((row) => row.family === wantedFamily)
       if (selected?.plan_id) {
         planId = String(selected.plan_id)
@@ -66,7 +66,7 @@ export async function resolveSellerMarketplacePolicy(
 
   const policyBps = marketplaceCommissionBps({ productType, unitAmount, sellerPlanId: planId })
   const entitlementBps = Number(entitlements.marketplace_commission_bps)
-  const mayOverride = productType === 'beat' || productType === 'service'
+  const mayOverride = productType === 'beat' || productType === 'creator_product' || productType === 'service'
   const commissionBps = mayOverride && Number.isFinite(entitlementBps) && entitlementBps >= 0
     ? Math.floor(entitlementBps)
     : policyBps ?? 0

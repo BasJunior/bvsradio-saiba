@@ -355,6 +355,18 @@ export default function EditorialDashboard() {
           <span className="rounded-full border border-brand/40 px-4 py-2 text-sm text-brand">Open finance dashboard →</span>
         </Link>
 
+      <Link
+          href="/editorial/marketplace"
+          className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-5 transition hover:border-brand/50"
+        >
+          <span>
+            <span className="block text-xs uppercase tracking-[.18em] text-brand">Creator Marketplace</span>
+            <span className="mt-1 block text-lg font-semibold">Review creator profiles, accomplishments and listings</span>
+            <span className="mt-1 block text-sm text-text-secondary">Approval is evidence-based. Premium never buys publication, ranking or verified claims.</span>
+          </span>
+          <span className="rounded-full border border-white/20 px-4 py-2 text-sm text-brand">Open marketplace review →</span>
+        </Link>
+
       <EditorialAnalytics token={token} />
 
       <EditorialDropDown id="ed-releases" label="Albums and EPs" count={releaseQueue} defaultOpen={releaseQueue > 0}>

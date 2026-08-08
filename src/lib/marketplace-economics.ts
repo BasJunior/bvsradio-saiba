@@ -1,4 +1,4 @@
-export type MarketplaceProductType = 'single' | 'mix' | 'album' | 'beat' | 'service' | 'physical'
+export type MarketplaceProductType = 'single' | 'mix' | 'album' | 'beat' | 'creator_product' | 'service' | 'physical'
 
 export type ProcessorFeePreset = {
   id: string
@@ -101,7 +101,7 @@ export type CommissionPolicyInput = {
 export function marketplaceCommissionBps(input: CommissionPolicyInput): number | null {
   const plan = String(input.sellerPlanId || '').toLowerCase()
 
-  if (input.productType === 'beat') {
+  if (input.productType === 'beat' || input.productType === 'creator_product') {
     if (plan.includes('producer_pro') || plan.includes('creator_complete')) return 300
     if (plan.includes('producer_plus')) return 800
     return 1500

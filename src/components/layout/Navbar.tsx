@@ -132,7 +132,7 @@ export default function Navbar() {
   const navLinks = [
     { href: '/radio', label: 'Listen' },
     { href: '/catalogue', label: 'Music' },
-    { href: '/catalogue?type=beat#beatstore', label: 'Beats' },
+    { href: '/marketplace', label: 'Marketplace' },
     { href: '/shows', label: 'Shows' },
     { href: '/blog', label: 'Stories' },
   ]
@@ -143,7 +143,9 @@ export default function Navbar() {
     { href: '/upload?type=beats', label: 'Submit beat' },
     { href: '/premium', label: 'Premium' },
     { href: '/catalogue?type=beat#beatstore', label: 'BeatStore' },
-    { href: '/shop', label: 'Services' },
+    { href: '/marketplace', label: 'Creator Marketplace' },
+    { href: '/creator/marketplace', label: 'Marketplace desk' },
+    { href: '/shop', label: 'BVS Studio services' },
   ]
 
   const showArtist = Boolean(access?.artist)

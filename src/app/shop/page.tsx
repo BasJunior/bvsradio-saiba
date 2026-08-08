@@ -3,8 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Services | BVS Radio — Professional Audio Engineering",
-  description: "BVS Radio Services — Online mixing, mastering, and production by top engineers including Wolf Bridges. Upload your tracks and get industry-standard results.",
+  title: "BVS Studio Services — Official BVS | BVS Radio",
+  description: "Official BVS Studio Services for online mixing, mastering and vocal production, separate from independent Creator Marketplace listings.",
 };
 
 const engineers = [
@@ -85,13 +85,14 @@ export default function ServicesPage() {
       {/* Hero - Metropolis style */}
       <section className="mb-16 text-center">
         <div className="max-w-3xl mx-auto">
-          <p className="uppercase text-xs tracking-[3px] text-brand mb-2">HiFi Services • BVS Radio</p>
-          <h1 className="text-5xl font-semibold tracking-[-0.03em] mb-4">Professional Online Mixing &amp; Mastering</h1>
+          <p className="uppercase text-xs tracking-[3px] text-brand mb-2">Official BVS provider • Creator Marketplace</p>
+          <h1 className="text-5xl font-semibold tracking-[-0.03em] mb-4">BVS Studio Services</h1>
           <p className="text-xl text-text-secondary mb-8">
             Send your project from anywhere. BVS will review the files and confirm the engineer, scope, turnaround and final deliverables before production starts.
           </p>
           <div className="text-xs text-brand/80">Final formats and platform requirements are agreed for each order.</div>
           <div className="flex gap-4 justify-center">
+            <Link href="/marketplace" className="px-8 py-3 border border-brand/50 text-brand rounded-full hover:bg-white/5">Creator Marketplace</Link>
             <Link href="#engineers" className="px-8 py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark">How assignment works</Link>
             <Link href="#services" className="px-8 py-3 border border-white/30 rounded-full hover:bg-white/5">Browse Services</Link>
           </div>

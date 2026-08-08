@@ -7,6 +7,9 @@ import {
 } from "@/lib/legacy-catalogue-media";
 import { r2Configured, r2ObjectExists } from "@/lib/r2-storage";
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseService = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
 export type ProductAsset =
   | { kind: "file"; path: string; filename: string }
   | { kind: "r2"; key: string; filename: string };
@@ -94,6 +97,23 @@ export async function resolveProductAsset(
   const local = await resolveProductFile(itemId, title);
   if (local) {
     return { kind: "file", path: local, filename: path.basename(local) };
+  }
+
+  const normalizedId = normalizeProductId(itemId);
+  if (/^[0-9a-f-]{36}$/i.test(normalizedId) && supabaseUrl && supabaseService && r2Configured()) {
+    const response = await fetch(
+      `${supabaseUrl}/rest/v1/creator_marketplace_listings?id=eq.${encodeURIComponent(normalizedId)}&listing_type=eq.digital_product&status=eq.published&select=asset_path,title&limit=1`,
+      { headers: { apikey: supabaseService, Authorization: `Bearer ${supabaseService}` }, cache: "no-store" },
+    );
+    if (response.ok) {
+      const product = ((await response.json()) as Array<{ asset_path?: string; title?: string }>)[0];
+      const key = product?.asset_path?.trim();
+      if (key && key.startsWith("marketplace/") && await r2ObjectExists(key)) {
+        const extension = path.extname(key).replace(/[^.a-z0-9]/gi, "").slice(0, 12);
+        const base = (product.title || title || "bvs-creator-product").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "bvs-creator-product";
+        return { kind: "r2", key, filename: `${base}${extension}` };
+      }
+    }
   }
 
   const filename = legacyFileForProductTitle(title);

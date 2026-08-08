@@ -104,6 +104,7 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 23 | `founder-authority` | `supabase-founder-authority.sql` | single protected BVS Founder authority + BasJunior assignment |
 | 24 | `security-hardening` | `supabase-security-hardening.sql` | server-only operational tables and mutation RPCs |
 | 25 | `marketplace-economics` | `supabase-marketplace-economics.sql` | immutable seller fee snapshots, settlements, processor fees and refund reversals |
+| 26 | `creator-marketplace` | `supabase-creator-marketplace.sql` | multi-role creator profiles, accomplishments and moderated product/service listings |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.
