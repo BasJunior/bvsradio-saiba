@@ -32,6 +32,7 @@ create table if not exists public.commerce_seller_settlements (
   gross_product_revenue numeric(12,2) not null check (gross_product_revenue >= 0),
   platform_fee_bps integer not null check (platform_fee_bps between 0 and 10000),
   platform_fee_amount numeric(12,2) not null check (platform_fee_amount >= 0),
+  order_processor_fee_total numeric(12,2),
   processor_fee_allocated numeric(12,2) not null default 0 check (processor_fee_allocated >= 0),
   processor_fee_status text not null default 'not_connected'
     check (processor_fee_status in ('actual','schedule','estimated','not_connected')),
@@ -46,12 +47,14 @@ create table if not exists public.commerce_seller_settlements (
   unique(order_id, seller_user_id)
 );
 
+alter table public.commerce_seller_settlements
+  add column if not exists order_processor_fee_total numeric(12,2);
+
 create index if not exists commerce_seller_settlements_seller_idx
   on public.commerce_seller_settlements(seller_user_id, created_at desc);
 create index if not exists commerce_seller_settlements_order_idx
   on public.commerce_seller_settlements(order_id, settlement_status);
 
--- One refund/reversal debit per seller/order/reason family can be made idempotent in app code.
 create index if not exists artist_ledger_entries_sale_status_idx
   on public.artist_ledger_entries(artist_user_id, entry_type, status, effective_at desc);
 
@@ -59,7 +62,6 @@ alter table public.marketplace_fee_policy_versions enable row level security;
 alter table public.marketplace_fee_policy_audit enable row level security;
 alter table public.commerce_seller_settlements enable row level security;
 
--- Finance data is served through protected server APIs. Direct client mutation is intentionally denied.
 drop policy if exists "Editorial can read marketplace policy" on public.marketplace_fee_policy_versions;
 create policy "Editorial can read marketplace policy" on public.marketplace_fee_policy_versions
   for select using (public.is_artist_wallet_admin());
