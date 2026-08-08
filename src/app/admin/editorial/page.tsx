@@ -343,6 +343,20 @@ export default function EditorialDashboard() {
         ))}
       </section>
 
+      {allowed('manage_artist_wallet') ? (
+        <Link
+          href="/admin/editorial/finance"
+          className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand/[.06] p-5 transition hover:border-brand/60"
+        >
+          <span>
+            <span className="block text-xs uppercase tracking-[.18em] text-brand">Accounting & performance</span>
+            <span className="mt-1 block text-lg font-semibold">Quarterly goals versus live BVS statistics</span>
+            <span className="mt-1 block text-sm text-text-secondary">Open the separate finance workspace for GMV, MRR, artist liabilities, controls and target charts.</span>
+          </span>
+          <span className="rounded-full border border-brand/40 px-4 py-2 text-sm text-brand">Open finance dashboard →</span>
+        </Link>
+      ) : null}
+
       <EditorialAnalytics token={token} />
 
       <EditorialDropDown id="ed-releases" label="Albums and EPs" count={releaseQueue} defaultOpen={releaseQueue > 0}>
