@@ -5,6 +5,7 @@ import {
   getBeatLicenceTemplateOrDefault,
   licenceTermsVersionTag,
 } from "@/lib/beat-licences";
+import { resolveSellerMarketplacePolicy } from "@/lib/seller-marketplace-policy";
 
 const SERVICE_PRICES: Record<string, number> = {
   "basic-mix": 89, "pro-mix": 149, "premium-mix": 199,
@@ -23,15 +24,15 @@ export type CommerceItem = OrderItem & {
   taxClass: "digital" | "service";
   fulfillmentType: "download" | "service";
   licenceOptionId?: string;
-  /** Beat licence tier code, e.g. standard_lease */
   licenceCode?: string;
-  /** Numeric template version accepted at purchase */
   licenceTemplateVersion?: number;
-  /** e.g. standard_lease-v1 */
   licenceTermsVersion?: string;
   licenceSummary?: string;
   licenceTerms?: string;
   sellerUserId?: string;
+  sellerPlanId?: string;
+  marketplaceCommissionBps?: number;
+  marketplacePolicyVersion?: string;
 };
 
 const CURATED_SELLER_USERNAME: Record<string, string> = {
@@ -93,11 +94,7 @@ async function fetchBeatLicenceOption(
     return null;
   }
 
-  const headers = {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-  };
-
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
   const select = "id,beat_id,licence_code,price_usd,is_active,terms_version,terms_summary";
 
   if (licenceOptionId) {
@@ -108,13 +105,10 @@ async function fetchBeatLicenceOption(
     if (byId.ok) {
       const rows = (await byId.json()) as BeatLicenceRow[];
       const row = rows?.[0];
-      if (row && String(row.beat_id) === String(beatId) && row.is_active !== false) {
-        return row;
-      }
+      if (row && String(row.beat_id) === String(beatId) && row.is_active !== false) return row;
     }
   }
 
-  // Prefer active standard_lease for this beat
   const standard = await fetch(
     `${url}/rest/v1/beat_licence_options?beat_id=eq.${encodeURIComponent(beatId)}&licence_code=eq.standard_lease&is_active=eq.true&select=${select}&order=price_usd.asc&limit=1`,
     { headers, cache: "no-store" },
@@ -124,7 +118,6 @@ async function fetchBeatLicenceOption(
     if (rows?.[0]) return rows[0];
   }
 
-  // Any active option
   const anyActive = await fetch(
     `${url}/rest/v1/beat_licence_options?beat_id=eq.${encodeURIComponent(beatId)}&is_active=eq.true&select=${select}&order=price_usd.asc&limit=1`,
     { headers, cache: "no-store" },
@@ -143,10 +136,7 @@ function parsePriceUsd(value: number | string | null | undefined): number | null
   return Math.round(n * 100) / 100;
 }
 
-/**
- * Resolve authoritative unit prices for checkout.
- * Beat lines load `beat_licence_options` (standard_lease) from Supabase; fallback $29 only if missing.
- */
+/** Resolve authoritative products, seller ownership and economic policy at checkout time. */
 export async function resolveCommerceItems(items: OrderItem[]): Promise<CommerceItem[]> {
   return Promise.all(
     items.map(async (item) => {
@@ -205,6 +195,9 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
       }
 
       const sellerUserId = await resolveSellerUserId(productType, id, sku);
+      const sellerPolicy = sellerUserId
+        ? await resolveSellerMarketplacePolicy(sellerUserId, productType, unitAmount)
+        : undefined;
 
       return {
         ...item,
@@ -219,6 +212,9 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
         licenceSummary,
         licenceTerms,
         sellerUserId,
+        sellerPlanId: sellerPolicy?.planId,
+        marketplaceCommissionBps: sellerPolicy?.commissionBps,
+        marketplacePolicyVersion: sellerPolicy?.policyVersion,
         sku,
         sourceId: id,
         productType,
@@ -264,6 +260,9 @@ export async function recordOrderSnapshot(reference: string, items: CommerceItem
         licenceSummary,
         licenceTerms,
         sellerUserId,
+        sellerPlanId,
+        marketplaceCommissionBps,
+        marketplacePolicyVersion,
       }) => ({
         sku,
         sourceId,
@@ -274,7 +273,6 @@ export async function recordOrderSnapshot(reference: string, items: CommerceItem
         currency,
         taxClass,
         fulfillmentType,
-        // Snapshot accepted licence terms so later template edits do not rewrite history
         licenceOptionId: licenceOptionId ?? null,
         licenceCode: licenceCode ?? null,
         licenceTemplateVersion: licenceTemplateVersion ?? null,
@@ -282,6 +280,9 @@ export async function recordOrderSnapshot(reference: string, items: CommerceItem
         licenceSummary: licenceSummary ?? null,
         licenceTerms: licenceTerms ?? null,
         sellerUserId: sellerUserId ?? null,
+        sellerPlanId: sellerPlanId ?? null,
+        marketplaceCommissionBps: marketplaceCommissionBps ?? null,
+        marketplacePolicyVersion: marketplacePolicyVersion ?? null,
       }),
     ),
   });
