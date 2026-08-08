@@ -63,7 +63,7 @@ export default function EditorialFinancePage() {
       const supabase = createClient()
       const { data: session } = await supabase.auth.getSession()
       const token = session.session?.access_token
-      if (!token) throw new Error('Sign in with an Administrator or Commerce Manager account.')
+      if (!token) throw new Error('Sign in with an active Editorial staff account.')
       const response = await fetch('/api/admin/editorial/finance', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Could not load finance statistics.')
@@ -79,7 +79,7 @@ export default function EditorialFinancePage() {
   const quarterIndex = useMemo(() => data ? targets.findIndex((target) => target.quarter === data.period.quarter) : 0, [data])
 
   return <main className="mx-auto max-w-7xl px-6 py-12">
-    <div className="flex flex-wrap items-end justify-between gap-5"><div><Link href="/admin/editorial" className="text-sm text-brand hover:underline">← Editorial workflow</Link><p className="mt-5 text-xs uppercase tracking-[.22em] text-brand">Accounting & performance</p><h1 className="mt-2 text-4xl font-semibold">Quarterly management control</h1><p className="mt-3 max-w-3xl text-text-secondary">TOPSIM-style goals versus live BVS operating data. GMV, revenue, artist liabilities, tax and cash contribution remain separate.</p></div><button onClick={() => void load()} className="rounded-full border border-white/20 px-5 py-2 text-sm">Refresh live statistics</button></div>
+    <div className="flex flex-wrap items-end justify-between gap-5"><div><Link href="/editorial" className="text-sm text-brand hover:underline">← Editorial workflow</Link><p className="mt-5 text-xs uppercase tracking-[.22em] text-brand">Accounting & performance</p><h1 className="mt-2 text-4xl font-semibold">Quarterly management control</h1><p className="mt-3 max-w-3xl text-text-secondary">TOPSIM-style goals versus live BVS operating data. GMV, revenue, artist liabilities, tax and cash contribution remain separate.</p></div><button onClick={() => void load()} className="rounded-full border border-white/20 px-5 py-2 text-sm">Refresh live statistics</button></div>
 
     {loading && !data ? <div className="mt-8 animate-pulse rounded-2xl border border-white/10 p-10 text-text-secondary">Loading protected finance statistics…</div> : null}
     {error ? <div className="mt-8 rounded-2xl border border-red-400/30 bg-red-500/10 p-5 text-red-200">{error} <button onClick={() => void load()} className="ml-2 underline">Retry</button></div> : null}

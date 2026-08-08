@@ -26,6 +26,9 @@ import {
  * and requires ECOCASH_SANDBOX_SECRET header when set.
  */
 export async function GET() {
+  if (process.env.NODE_ENV === "production" && process.env.ECOCASH_ENABLE_SANDBOX_ROUTE !== "1") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   return NextResponse.json({
     service: "ecocash-sandbox",
     ...ecocashConfigPublic(),
@@ -34,6 +37,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV === "production" && process.env.ECOCASH_ENABLE_SANDBOX_ROUTE !== "1") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   if (!ecocashEnabled()) {
     return NextResponse.json(
       {
@@ -52,11 +59,9 @@ export async function POST(req: Request) {
   }
 
   const secret = process.env.ECOCASH_SANDBOX_SECRET;
-  if (secret) {
-    const header = req.headers.get("x-ecocash-sandbox-secret");
-    if (header !== secret) {
-      return NextResponse.json({ error: "Invalid sandbox secret" }, { status: 401 });
-    }
+  const header = req.headers.get("x-ecocash-sandbox-secret");
+  if (!secret || header !== secret) {
+    return NextResponse.json({ error: "Invalid sandbox secret" }, { status: 401 });
   }
 
   let body: Record<string, unknown>;

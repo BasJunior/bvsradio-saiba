@@ -292,7 +292,7 @@ function UploadPageInner() {
               Upload Another
             </button>
             <Link
-              href="/admin/editorial"
+              href="/editorial"
               className="rounded-full border border-white/20 px-6 py-3 transition-all hover:bg-white/5"
             >
               Open Editorial
@@ -469,7 +469,7 @@ function UploadPageInner() {
               <strong className="text-text-primary">Where it goes:</strong> Browser → Supabase bucket{' '}
               <code className="text-brand">bvsradio-audio</code> under{' '}
               <code className="text-brand">tracks/…</code>, then a <em>submitted</em> row for staff at{' '}
-              <Link href="/admin/editorial" className="text-brand hover:underline">
+              <Link href="/editorial" className="text-brand hover:underline">
                 Admin → Editorial
               </Link>
               . Not on radio until approved. Prefer <strong className="text-text-primary">Album / EP</strong> for multi-track projects.

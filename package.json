@@ -28,7 +28,7 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.2",
     "ai": "^6.0.226",
-    "next": "16.2.10",
+    "next": "16.3.0",
     "nodemailer": "^9.0.3",
     "paynow": "^2.2.2",
     "qrcode.react": "^4.2.0",
@@ -44,7 +44,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   },

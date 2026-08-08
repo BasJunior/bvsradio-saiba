@@ -229,7 +229,7 @@ export default function EditorialDashboard() {
             </>
           ) : (
             <Link
-              href="/auth/login?next=/admin/editorial"
+              href="/auth/login?next=/editorial"
               className="rounded-full bg-brand px-6 py-3 font-semibold text-black"
             >
               Sign in
@@ -343,9 +343,8 @@ export default function EditorialDashboard() {
         ))}
       </section>
 
-      {allowed('manage_artist_wallet') ? (
-        <Link
-          href="/admin/editorial/finance"
+      <Link
+          href="/editorial/finance"
           className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand/[.06] p-5 transition hover:border-brand/60"
         >
           <span>
@@ -355,7 +354,6 @@ export default function EditorialDashboard() {
           </span>
           <span className="rounded-full border border-brand/40 px-4 py-2 text-sm text-brand">Open finance dashboard →</span>
         </Link>
-      ) : null}
 
       <EditorialAnalytics token={token} />
 

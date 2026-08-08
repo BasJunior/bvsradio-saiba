@@ -6,6 +6,10 @@ import { NextResponse } from 'next/server'
  * Remove after auth is verified.
  */
 export async function POST(req: Request) {
+  if (process.env.NODE_ENV === 'production' && process.env.BVS_ENABLE_BOOTSTRAP_ROUTE !== '1') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
   const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
   const SECRET = process.env.BVS_BOOTSTRAP_SECRET || ''

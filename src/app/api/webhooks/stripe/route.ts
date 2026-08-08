@@ -25,9 +25,9 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, sig, secret);
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Invalid signature";
+    console.warn("Stripe webhook signature rejected:", err instanceof Error ? err.message : err);
     await recordServerEvent("payment_error", { provider: "stripe", stage: "webhook_signature" });
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
   if (event.type === "checkout.session.completed") {

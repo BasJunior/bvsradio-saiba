@@ -127,7 +127,7 @@ export default function AccountPage() {
     ]
     if (access.creator) items.push({ href: '/creator/studio', title: 'Creator Studio', copy: 'Manage submissions, releases and creator workflows.' })
     if (access.artist) items.push({ href: '/artists', title: 'Artist wallet', copy: 'View onboarding, deposits, balance and payout readiness.' })
-    if (access.editorial) items.push({ href: '/admin/editorial', title: 'Editorial', copy: 'Open the BVS editorial workspace.' })
+    if (access.editorial) items.push({ href: '/editorial', title: 'Editorial', copy: 'Open the BVS editorial workspace.' })
     return items
   }, [access])
 

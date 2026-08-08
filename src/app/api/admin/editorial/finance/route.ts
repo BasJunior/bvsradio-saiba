@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { can, editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial-server'
+import { editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial-server'
 
 type Row = Record<string, unknown>
 
@@ -58,8 +58,8 @@ function membershipMrr(row: Row) {
 
 export async function GET(request: Request) {
   const identity = await editorialIdentity(request)
-  if (!identity || !can(identity, 'manage_artist_wallet')) {
-    return NextResponse.json({ error: 'Finance access requires Administrator or Commerce Manager.' }, { status: 403 })
+  if (!identity) {
+    return NextResponse.json({ error: 'Active Editorial staff access is required.' }, { status: 403 })
   }
 
   const now = new Date()

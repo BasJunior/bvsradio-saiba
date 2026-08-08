@@ -140,9 +140,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true });
   } catch (e) {
-    const message = e instanceof Error ? e.message : "webhook error";
+    console.error("Paynow webhook failed:", e instanceof Error ? e.message : e);
     await recordServerEvent("payment_error", { provider: "paynow", stage: "webhook" });
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: "Payment notification could not be processed." }, { status: 500 });
   }
 }
 

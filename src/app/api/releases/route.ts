@@ -20,7 +20,7 @@ async function notifyNewRelease(title: string, artist: string, userId: string, c
     `${title} · ${artist}`,
     `Tracks: ${count}`,
     `Uploader: ${userId}`,
-    `Review: ${(process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com")}/admin/editorial`,
+    `Review: ${(process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com")}/editorial`,
   ].join("\n");
   const bot = process.env.BVS_ORDER_TELEGRAM_BOT_TOKEN;
   const chat = process.env.BVS_ORDER_TELEGRAM_CHAT_ID || "7030402014";

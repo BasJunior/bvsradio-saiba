@@ -140,7 +140,7 @@ export async function POST(req: Request) {
       },
     })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Internal error'
-    return NextResponse.json({ error: message }, { status: 500 })
+    console.error('Login request failed:', err instanceof Error ? err.message : err)
+    return NextResponse.json({ error: 'Login is temporarily unavailable.' }, { status: 500 })
   }
 }

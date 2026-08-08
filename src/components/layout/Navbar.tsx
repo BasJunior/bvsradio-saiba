@@ -235,7 +235,7 @@ export default function Navbar() {
                 {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}
               </Link>
               {showCreator && <Link href="/creator/studio" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>}
-              {showEditorial && <Link href="/admin/editorial" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
+              {showEditorial && <Link href="/editorial" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
               {premiumBadge && (
                 <Link
                   href="/artist/premium"
@@ -358,7 +358,7 @@ export default function Navbar() {
                   )}
                   <Link href="/account" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Account Centre</Link>
                   {showCreator && <Link href="/creator/studio" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Creator studio</Link>}
-                  {showEditorial && <Link href="/admin/editorial" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Editorial dashboard</Link>}
+                  {showEditorial && <Link href="/editorial" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Editorial dashboard</Link>}
                   <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
                     Sign out
                   </button>
