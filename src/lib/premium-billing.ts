@@ -273,6 +273,28 @@ export async function activatePaidArtistPremium(input: {
   return { ok: true, endsAt };
 }
 
+export async function deactivateStripeArtistPremium(subscriptionId: string, userId: string) {
+  const memberships = await restGet<Array<{ id: string; status: string }>>(
+    `bvs_memberships?provider=eq.stripe&provider_ref=eq.${encodeURIComponent(subscriptionId)}&user_id=eq.${userId}&select=id,status&limit=1`,
+  );
+  const membership = memberships?.[0];
+  if (!membership) return { ok: true, reason: "not_linked" };
+  const now = new Date().toISOString();
+  const membershipPatch = await restPatch(`bvs_memberships?id=eq.${membership.id}`, {
+    status: "canceled",
+    cancel_at: now,
+    ends_at: now,
+    updated_at: now,
+  });
+  const profilePatch = await restPatch(`profiles?id=eq.${userId}`, {
+    premium_active: false,
+    premium_until: null,
+    distribution_enabled: false,
+    premium_plan_id: null,
+  });
+  return { ok: membershipPatch.ok && profilePatch.ok };
+}
+
 export type DistributionJobSummary = {
   id: string;
   release_id: string | null;

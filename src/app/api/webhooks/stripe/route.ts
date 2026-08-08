@@ -4,7 +4,12 @@ import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder }
 import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit, creditPaidArtistSales } from "@/lib/artist-credit";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
-import { activatePaidArtistPremium, normalizeArtistPlanId, normalizeInterval } from "@/lib/premium-billing";
+import {
+  activatePaidArtistPremium,
+  deactivateStripeArtistPremium,
+  normalizeArtistPlanId,
+  normalizeInterval,
+} from "@/lib/premium-billing";
 
 export const runtime = "nodejs";
 
@@ -131,6 +136,14 @@ export async function POST(req: Request) {
         });
         if (!result.ok) return NextResponse.json({ error: "Premium synchronization failed." }, { status: 500 });
       }
+    }
+  }
+
+  if (event.type === "customer.subscription.deleted") {
+    const subscription = event.data.object;
+    if (subscription.metadata?.kind === "artist_premium" && subscription.metadata.user_id) {
+      const result = await deactivateStripeArtistPremium(subscription.id, subscription.metadata.user_id);
+      if (!result.ok) return NextResponse.json({ error: "Premium deactivation failed." }, { status: 500 });
     }
   }
 
