@@ -15,32 +15,22 @@ type SettlementRow = {
   settlement_status: string
 }
 
-export async function reverseMarketplaceSellerCredits(input: {
-  paymentIntentId: string
+type ReverseInput = {
+  provider: 'stripe' | 'paynow' | 'manual'
   providerEventId: string
-  reason: 'refund' | 'chargeback'
+  reason: 'refund' | 'chargeback' | 'manual_reversal'
   fraction?: number
   providerAmount?: number | null
   providerCurrency?: string | null
-}) {
-  if (!url || !service || !input.paymentIntentId || !input.providerEventId) {
-    return { reversed: false, reason: 'not_configured' }
-  }
+}
 
-  const orderResponse = await fetch(
-    `${url}/rest/v1/orders?stripe_payment_intent=eq.${encodeURIComponent(input.paymentIntentId)}&select=id,reference&limit=1`,
-    { headers, cache: 'no-store' },
-  )
-  if (!orderResponse.ok) return { reversed: false, reason: 'order_lookup_failed' }
-  const [order] = await orderResponse.json() as Array<{ id: string; reference: string }>
-  if (!order?.id) return { reversed: false, reason: 'order_not_found' }
-
+async function reverseForOrder(order: { id: string; reference: string }, input: ReverseInput) {
   const duplicateResponse = await fetch(
-    `${url}/rest/v1/commerce_refund_events?provider=eq.stripe&provider_event_id=eq.${encodeURIComponent(input.providerEventId)}&select=id&limit=1`,
+    `${url}/rest/v1/commerce_refund_events?provider=eq.${encodeURIComponent(input.provider)}&provider_event_id=eq.${encodeURIComponent(input.providerEventId)}&select=id&limit=1`,
     { headers, cache: 'no-store' },
   )
   if (duplicateResponse.ok && (await duplicateResponse.json() as Array<{ id: string }>).length) {
-    return { reversed: true, duplicate: true }
+    return { reversed: true, duplicate: true, reference: order.reference }
   }
 
   const settlementResponse = await fetch(
@@ -58,7 +48,7 @@ export async function reverseMarketplaceSellerCredits(input: {
     method: 'POST',
     headers: { ...headers, Prefer: 'return=representation' },
     body: JSON.stringify({
-      provider: 'stripe',
+      provider: input.provider,
       provider_event_id: input.providerEventId,
       order_id: order.id,
       order_reference: order.reference,
@@ -69,7 +59,7 @@ export async function reverseMarketplaceSellerCredits(input: {
     }),
   })
   if (!refundEventResponse.ok) {
-    if (refundEventResponse.status === 409) return { reversed: true, duplicate: true }
+    if (refundEventResponse.status === 409) return { reversed: true, duplicate: true, reference: order.reference }
     return { reversed: false, reason: 'refund_event_save_failed' }
   }
   const [refundEvent] = await refundEventResponse.json() as Array<{ id: string }>
@@ -91,10 +81,10 @@ export async function reverseMarketplaceSellerCredits(input: {
         status: 'posted',
         source_table: 'commerce_refund_events',
         source_id: refundEvent.id,
-        memo: `${input.reason === 'refund' ? 'Refund' : 'Chargeback'} reversal for ${order.reference}`,
+        memo: `${input.reason === 'refund' ? 'Refund' : input.reason === 'chargeback' ? 'Chargeback' : 'Manual reversal'} for ${order.reference}`,
         metadata: {
           reference: order.reference,
-          provider: 'stripe',
+          provider: input.provider,
           providerEventId: input.providerEventId,
           fraction,
           originalSellerNet: Number(settlement.seller_net) || 0,
@@ -114,4 +104,65 @@ export async function reverseMarketplaceSellerCredits(input: {
   }
 
   return { reversed: entries > 0, entries, fraction, reference: order.reference }
+}
+
+export async function reverseMarketplaceSellerCredits(input: {
+  paymentIntentId: string
+  providerEventId: string
+  reason: 'refund' | 'chargeback'
+  fraction?: number
+  providerAmount?: number | null
+  providerCurrency?: string | null
+}) {
+  if (!url || !service || !input.paymentIntentId || !input.providerEventId) {
+    return { reversed: false, reason: 'not_configured' }
+  }
+
+  const orderResponse = await fetch(
+    `${url}/rest/v1/orders?stripe_payment_intent=eq.${encodeURIComponent(input.paymentIntentId)}&select=id,reference&limit=1`,
+    { headers, cache: 'no-store' },
+  )
+  if (!orderResponse.ok) return { reversed: false, reason: 'order_lookup_failed' }
+  const [order] = await orderResponse.json() as Array<{ id: string; reference: string }>
+  if (!order?.id) return { reversed: false, reason: 'order_not_found' }
+
+  return reverseForOrder(order, {
+    provider: 'stripe',
+    providerEventId: input.providerEventId,
+    reason: input.reason,
+    fraction: input.fraction,
+    providerAmount: input.providerAmount,
+    providerCurrency: input.providerCurrency,
+  })
+}
+
+/** Restricted finance/admin path for Paynow refunds or exceptional manual corrections. */
+export async function reverseMarketplaceSellerCreditsByReference(input: {
+  reference: string
+  provider: 'paynow' | 'manual'
+  externalEventId: string
+  fraction?: number
+  providerAmount?: number | null
+  providerCurrency?: string | null
+}) {
+  if (!url || !service || !input.reference || !input.externalEventId) {
+    return { reversed: false, reason: 'not_configured' }
+  }
+
+  const orderResponse = await fetch(
+    `${url}/rest/v1/orders?reference=eq.${encodeURIComponent(input.reference)}&status=in.(paid,fulfilled)&select=id,reference&limit=1`,
+    { headers, cache: 'no-store' },
+  )
+  if (!orderResponse.ok) return { reversed: false, reason: 'order_lookup_failed' }
+  const [order] = await orderResponse.json() as Array<{ id: string; reference: string }>
+  if (!order?.id) return { reversed: false, reason: 'order_not_found' }
+
+  return reverseForOrder(order, {
+    provider: input.provider,
+    providerEventId: input.externalEventId,
+    reason: input.provider === 'paynow' ? 'refund' : 'manual_reversal',
+    fraction: input.fraction,
+    providerAmount: input.providerAmount,
+    providerCurrency: input.providerCurrency,
+  })
 }
