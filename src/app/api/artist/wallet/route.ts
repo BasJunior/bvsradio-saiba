@@ -36,6 +36,10 @@ function balance(entries: Array<{ direction: string; amount: number | string; st
     }, 0)
 }
 
+function sum(rows: Array<Record<string, unknown>>, key: string) {
+  return rows.reduce((total, row) => total + (Number(row[key]) || 0), 0)
+}
+
 /** Artist Access hub is an onboarding entry — any signed-in member may open it. */
 export async function GET(request: Request) {
   const user = await currentUser(request)
@@ -46,17 +50,23 @@ export async function GET(request: Request) {
 
   const email = encodeURIComponent(user.email || '')
   const userId = encodeURIComponent(user.id)
-  const [profile, waitlist, deposits, ledger, payoutMethods, payoutRequests, settings] = await Promise.all([
+  const [profile, waitlist, deposits, ledger, payoutMethods, payoutRequests, settings, sellerSettlements] = await Promise.all([
     getJson<Array<Record<string, unknown>>>(`profiles?id=eq.${userId}&select=id,username,display_name,role,is_verified,is_published`, []),
     user.email
       ? getJson<Array<Record<string, unknown>>>(`artist_waitlist?email=eq.${email}&select=*&order=created_at.desc&limit=1`, [])
       : Promise.resolve([]),
     getJson<Array<{ amount: number | string; status: string } & Record<string, unknown>>>(`artist_deposits?artist_user_id=eq.${userId}&select=*&order=created_at.desc&limit=20`, []),
-    getJson<Array<{ direction: string; amount: number | string; status: string } & Record<string, unknown>>>(`artist_ledger_entries?artist_user_id=eq.${userId}&select=*&order=effective_at.desc&limit=40`, []),
+    getJson<Array<{ direction: string; amount: number | string; status: string } & Record<string, unknown>>>(`artist_ledger_entries?artist_user_id=eq.${userId}&select=*&order=effective_at.desc&limit=80`, []),
     getJson<Array<Record<string, unknown>>>(`artist_payout_methods?artist_user_id=eq.${userId}&select=*&order=created_at.desc&limit=10`, []),
     getJson<Array<Record<string, unknown>>>(`artist_payout_requests?artist_user_id=eq.${userId}&select=*&order=requested_at.desc&limit=20`, []),
     getJson<Array<{ value?: { amount?: number | string; currency?: string } }>>(`artist_wallet_settings?key=eq.payout_minimum_usd&select=value&limit=1`, []),
+    getJson<Array<Record<string, unknown>>>(`commerce_seller_settlements?seller_user_id=eq.${userId}&select=id,order_reference,provider,policy_version,seller_plan_id,gross_product_revenue,platform_fee_bps,platform_fee_amount,processor_fee_allocated,processor_fee_status,processor_fee_native_amount,processor_fee_native_currency,seller_net,settlement_status,breakdown,created_at&order=created_at.desc&limit=60`, []),
   ])
+
+  const pendingSaleCredits = ledger
+    .filter((entry) => entry.status === 'pending' && entry.entry_type === 'sale_credit')
+    .reduce((total, entry) => total + (Number(entry.amount) || 0), 0)
+  const postedSettlements = sellerSettlements.filter((row) => row.settlement_status === 'posted')
 
   return NextResponse.json({
     profile: profile[0] || null,
@@ -65,6 +75,7 @@ export async function GET(request: Request) {
     ledger,
     payoutMethods,
     payoutRequests,
+    sellerSettlements,
     settings: {
       payoutMinimumUsd: Number(settings[0]?.value?.amount || 25),
       currency: settings[0]?.value?.currency || 'USD',
@@ -73,7 +84,16 @@ export async function GET(request: Request) {
       available: balance(ledger),
       pendingDeposits: deposits
         .filter((deposit) => ['pending', 'creditable'].includes(String(deposit.status)))
-        .reduce((sum, deposit) => sum + (Number(deposit.amount) || 0), 0),
+        .reduce((total, deposit) => total + (Number(deposit.amount) || 0), 0),
+      pendingEarnings: pendingSaleCredits,
+    },
+    earnings: {
+      lifetimeGrossSales: sum(sellerSettlements, 'gross_product_revenue'),
+      bvsPlatformFees: sum(sellerSettlements, 'platform_fee_amount'),
+      processorFees: sum(sellerSettlements, 'processor_fee_allocated'),
+      postedNetEarnings: sum(postedSettlements, 'seller_net'),
+      pendingNetEarnings: sum(sellerSettlements.filter((row) => row.settlement_status === 'pending_processor'), 'seller_net'),
+      settlementCount: sellerSettlements.length,
     },
   })
 }
@@ -106,7 +126,6 @@ export async function POST(request: Request) {
     onboarded_profile_id: user.id,
   }
 
-  // Prefer unique email column when present; fall back if schema only has lower(email) index.
   let response = await fetch(editorialUrl('artist_waitlist?on_conflict=email'), {
     method: 'POST',
     headers: { ...serviceHeaders, Prefer: 'resolution=merge-duplicates,return=representation' },
@@ -121,10 +140,10 @@ export async function POST(request: Request) {
   }
   if (!response.ok) {
     return NextResponse.json(
-      { error: 'Artist wallet schema is not ready. Run supabase-artist-wallet-ledger.sql in Supabase.' },
+      { error: 'Artist wallet schema is not ready. Run the wallet and marketplace economics SQL packs in Supabase.' },
       { status: 503 },
     )
   }
-  const [waitlist] = await response.json()
-  return NextResponse.json({ waitlist })
+  const [savedWaitlist] = await response.json()
+  return NextResponse.json({ waitlist: savedWaitlist })
 }
