@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         await recordServerEvent("payment_error", {
           provider: "stripe",
           stage: "refund_wallet_reversal",
-          reason: reversal.reason,
+          reason: String(reversal.reason || "unknown"),
         });
       }
     }
@@ -164,7 +164,7 @@ export async function POST(req: Request) {
         await recordServerEvent("payment_error", {
           provider: "stripe",
           stage: "chargeback_wallet_reversal",
-          reason: reversal.reason,
+          reason: String(reversal.reason || "unknown"),
         });
       }
     }
