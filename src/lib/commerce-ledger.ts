@@ -48,6 +48,19 @@ async function resolveSellerUserId(productType: CommerceItem["productType"], sou
     return undefined;
   }
   const headers = { apikey: key, Authorization: `Bearer ${key}` };
+
+  // Explicit commerce ownership is authoritative and supports albums/collaborative
+  // products without guessing a seller from a display artist name. Finance/admin can
+  // assign commerce_products.seller_user_id once rights ownership is confirmed.
+  const existingProduct = await fetch(
+    `${url}/rest/v1/commerce_products?sku=eq.${encodeURIComponent(sku)}&seller_user_id=not.is.null&select=seller_user_id&limit=1`,
+    { headers, cache: "no-store" },
+  );
+  if (existingProduct.ok) {
+    const seller = ((await existingProduct.json()) as Array<{ seller_user_id?: string }>)[0]?.seller_user_id;
+    if (seller) return seller;
+  }
+
   const curatedUsername = CURATED_SELLER_USERNAME[sku];
   if (curatedUsername) {
     const response = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(curatedUsername)}&select=id&limit=1`, { headers, cache: "no-store" });
