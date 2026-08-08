@@ -1,8 +1,16 @@
 import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
+import {
+  loadOrder,
+  notifyCustomerOrderEmail,
+  notifyOwnerNewOrder,
+  updateOrder,
+} from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
-import { creditPaidArtistDeposit, creditPaidArtistSales } from "@/lib/artist-credit";
+import {
+  creditPaidArtistDeposit,
+  creditPaidArtistSales,
+} from "@/lib/artist-credit";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
 import {
   activatePaidArtistPremium,
@@ -12,6 +20,7 @@ import {
 } from "@/lib/premium-billing";
 import { resolveStripeProcessorFee } from "@/lib/stripe-processor-fee";
 import { reverseMarketplaceSellerCredits } from "@/lib/marketplace-refunds";
+import { initializePaidCreatorServiceOrder } from "@/lib/creator-service-orders";
 
 export const runtime = "nodejs";
 
@@ -20,7 +29,10 @@ export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
 
   if (!stripe || !secret) {
-    return NextResponse.json({ error: "Stripe webhook not configured" }, { status: 503 });
+    return NextResponse.json(
+      { error: "Stripe webhook not configured" },
+      { status: 503 },
+    );
   }
 
   const body = await req.text();
@@ -33,8 +45,14 @@ export async function POST(req: Request) {
   try {
     event = stripe.webhooks.constructEvent(body, sig, secret);
   } catch (err) {
-    console.warn("Stripe webhook signature rejected:", err instanceof Error ? err.message : err);
-    await recordServerEvent("payment_error", { provider: "stripe", stage: "webhook_signature" });
+    console.warn(
+      "Stripe webhook signature rejected:",
+      err instanceof Error ? err.message : err,
+    );
+    await recordServerEvent("payment_error", {
+      provider: "stripe",
+      stage: "webhook_signature",
+    });
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -48,7 +66,13 @@ export async function POST(req: Request) {
       payment_status?: string | null;
       mode?: string | null;
       subscription?: string | null;
-      metadata?: { reference?: string; kind?: string; user_id?: string; plan_id?: string; interval?: string };
+      metadata?: {
+        reference?: string;
+        kind?: string;
+        user_id?: string;
+        plan_id?: string;
+        interval?: string;
+      };
     };
 
     if (
@@ -56,9 +80,12 @@ export async function POST(req: Request) {
       session.metadata?.kind === "artist_premium" &&
       session.metadata.user_id &&
       typeof session.subscription === "string" &&
-      (session.payment_status === "paid" || session.payment_status === "no_payment_required")
+      (session.payment_status === "paid" ||
+        session.payment_status === "no_payment_required")
     ) {
-      const subscription = await stripe.subscriptions.retrieve(session.subscription);
+      const subscription = await stripe.subscriptions.retrieve(
+        session.subscription,
+      );
       const periodEnd = subscription.items.data[0]?.current_period_end;
       const result = await activatePaidArtistPremium({
         userId: session.metadata.user_id,
@@ -67,9 +94,15 @@ export async function POST(req: Request) {
         reference: subscription.id,
         amountUsd: Number(session.amount_total || 0) / 100,
         provider: "stripe",
-        endsAt: periodEnd ? new Date(periodEnd * 1000).toISOString() : undefined,
+        endsAt: periodEnd
+          ? new Date(periodEnd * 1000).toISOString()
+          : undefined,
       });
-      if (!result.ok) return NextResponse.json({ error: "Premium activation failed." }, { status: 500 });
+      if (!result.ok)
+        return NextResponse.json(
+          { error: "Premium activation failed." },
+          { status: 500 },
+        );
       return NextResponse.json({ received: true });
     }
 
@@ -89,18 +122,38 @@ export async function POST(req: Request) {
         rawPayload: body,
       });
       if (!transition.accepted) {
-        await recordServerEvent("payment_error", { provider: "stripe", stage: "reconciliation_failed" });
-        return NextResponse.json({ error: "Payment could not be reconciled." }, { status: 409 });
+        await recordServerEvent("payment_error", {
+          provider: "stripe",
+          stage: "reconciliation_failed",
+        });
+        return NextResponse.json(
+          { error: "Payment could not be reconciled." },
+          { status: 409 },
+        );
       }
       if (!transition.transitioned) {
         return NextResponse.json({ received: true, duplicate: true });
       }
-      await recordServerEvent("checkout_complete", { provider: "stripe", status: "paid" });
+      await recordServerEvent("checkout_complete", {
+        provider: "stripe",
+        status: "paid",
+      });
       await creditPaidArtistDeposit(reference, "stripe");
 
-      const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
-      const processorFee = await resolveStripeProcessorFee(paymentIntentId, session.currency || "usd");
-      const settlement = await creditPaidArtistSales(reference, "stripe", processorFee);
+      const paymentIntentId =
+        typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : null;
+      const processorFee = await resolveStripeProcessorFee(
+        paymentIntentId,
+        session.currency || "usd",
+      );
+      const settlement = await creditPaidArtistSales(
+        reference,
+        "stripe",
+        processorFee,
+      );
+      await initializePaidCreatorServiceOrder(reference);
       if (settlement.pending) {
         await recordServerEvent("payment_error", {
           provider: "stripe",
@@ -133,9 +186,15 @@ export async function POST(req: Request) {
 
   if (event.type === "customer.subscription.updated") {
     const subscription = event.data.object;
-    if (subscription.metadata?.kind === "artist_premium" && subscription.metadata.user_id) {
+    if (
+      subscription.metadata?.kind === "artist_premium" &&
+      subscription.metadata.user_id
+    ) {
       const periodEnd = subscription.items.data[0]?.current_period_end;
-      if (["active", "trialing", "past_due"].includes(subscription.status) && periodEnd) {
+      if (
+        ["active", "trialing", "past_due"].includes(subscription.status) &&
+        periodEnd
+      ) {
         const result = await activatePaidArtistPremium({
           userId: subscription.metadata.user_id,
           planId: normalizeArtistPlanId(subscription.metadata.plan_id),
@@ -145,16 +204,30 @@ export async function POST(req: Request) {
           provider: "stripe",
           endsAt: new Date(periodEnd * 1000).toISOString(),
         });
-        if (!result.ok) return NextResponse.json({ error: "Premium synchronization failed." }, { status: 500 });
+        if (!result.ok)
+          return NextResponse.json(
+            { error: "Premium synchronization failed." },
+            { status: 500 },
+          );
       }
     }
   }
 
   if (event.type === "customer.subscription.deleted") {
     const subscription = event.data.object;
-    if (subscription.metadata?.kind === "artist_premium" && subscription.metadata.user_id) {
-      const result = await deactivateStripeArtistPremium(subscription.id, subscription.metadata.user_id);
-      if (!result.ok) return NextResponse.json({ error: "Premium deactivation failed." }, { status: 500 });
+    if (
+      subscription.metadata?.kind === "artist_premium" &&
+      subscription.metadata.user_id
+    ) {
+      const result = await deactivateStripeArtistPremium(
+        subscription.id,
+        subscription.metadata.user_id,
+      );
+      if (!result.ok)
+        return NextResponse.json(
+          { error: "Premium deactivation failed." },
+          { status: 500 },
+        );
     }
   }
 
@@ -165,12 +238,14 @@ export async function POST(req: Request) {
       currency?: string | null;
       payment_intent?: string | { id?: string } | null;
     };
-    const paymentIntentId = typeof charge.payment_intent === "string"
-      ? charge.payment_intent
-      : charge.payment_intent?.id || "";
+    const paymentIntentId =
+      typeof charge.payment_intent === "string"
+        ? charge.payment_intent
+        : charge.payment_intent?.id || "";
     const originalAmount = Number(charge.amount || 0);
     const refundedAmount = Number(charge.amount_refunded || 0);
-    const fraction = originalAmount > 0 ? Math.min(1, refundedAmount / originalAmount) : 1;
+    const fraction =
+      originalAmount > 0 ? Math.min(1, refundedAmount / originalAmount) : 1;
 
     if (paymentIntentId && refundedAmount > 0) {
       const reversal = await reverseMarketplaceSellerCredits({
@@ -186,7 +261,10 @@ export async function POST(req: Request) {
         await recordServerEvent("payment_error", {
           provider: "stripe",
           stage: "refund_wallet_reversal",
-          reason: "reason" in reversal ? String(reversal.reason || "unknown") : "unknown",
+          reason:
+            "reason" in reversal
+              ? String(reversal.reason || "unknown")
+              : "unknown",
         });
       }
     }
@@ -196,18 +274,27 @@ export async function POST(req: Request) {
     const dispute = event.data.object as {
       amount?: number | null;
       currency?: string | null;
-      charge?: string | { id?: string; amount?: number; payment_intent?: string | { id?: string } | null } | null;
+      charge?:
+        | string
+        | {
+            id?: string;
+            amount?: number;
+            payment_intent?: string | { id?: string } | null;
+          }
+        | null;
     };
     let charge = dispute.charge;
     if (typeof charge === "string") {
       charge = await stripe.charges.retrieve(charge);
     }
-    const paymentIntentId = typeof charge?.payment_intent === "string"
-      ? charge.payment_intent
-      : charge?.payment_intent?.id || "";
+    const paymentIntentId =
+      typeof charge?.payment_intent === "string"
+        ? charge.payment_intent
+        : charge?.payment_intent?.id || "";
     const chargeAmount = Number(charge?.amount || 0);
     const disputeAmount = Number(dispute.amount || 0);
-    const fraction = chargeAmount > 0 ? Math.min(1, disputeAmount / chargeAmount) : 1;
+    const fraction =
+      chargeAmount > 0 ? Math.min(1, disputeAmount / chargeAmount) : 1;
 
     if (paymentIntentId && disputeAmount > 0) {
       const reversal = await reverseMarketplaceSellerCredits({
@@ -223,7 +310,10 @@ export async function POST(req: Request) {
         await recordServerEvent("payment_error", {
           provider: "stripe",
           stage: "chargeback_wallet_reversal",
-          reason: "reason" in reversal ? String(reversal.reason || "unknown") : "unknown",
+          reason:
+            "reason" in reversal
+              ? String(reversal.reason || "unknown")
+              : "unknown",
         });
       }
     }

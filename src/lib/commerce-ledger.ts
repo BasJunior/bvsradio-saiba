@@ -8,17 +8,31 @@ import {
 import { resolveSellerMarketplacePolicy } from "@/lib/seller-marketplace-policy";
 
 const SERVICE_PRICES: Record<string, number> = {
-  "basic-mix": 89, "pro-mix": 149, "premium-mix": 199,
-  "standard-master": 69, "premium-master": 99, "album-master": 299,
-  "standard-bundle": 189, "premium-bundle": 249, "ultimate-bundle": 299,
-  "vocal-comping-tuning": 65, "full-vocal-production": 129,
+  "basic-mix": 89,
+  "pro-mix": 149,
+  "premium-mix": 199,
+  "standard-master": 69,
+  "premium-master": 99,
+  "album-master": 299,
+  "standard-bundle": 189,
+  "premium-bundle": 249,
+  "ultimate-bundle": 299,
+  "vocal-comping-tuning": 65,
+  "full-vocal-production": 129,
   "custom-bvs-service": 69,
 };
 
 export type CommerceItem = OrderItem & {
   sku: string;
   sourceId: string;
-  productType: "single" | "mix" | "album" | "beat" | "creator_product" | "service";
+  productType:
+    | "single"
+    | "mix"
+    | "album"
+    | "beat"
+    | "creator_product"
+    | "creator_service"
+    | "service";
   unitAmount: number;
   currency: "usd";
   taxClass: "digital" | "service";
@@ -39,7 +53,11 @@ const CURATED_SELLER_USERNAME: Record<string, string> = {
   "mix:3": "BasJunior",
 };
 
-async function resolveSellerUserId(productType: CommerceItem["productType"], sourceId: string, sku: string) {
+async function resolveSellerUserId(
+  productType: CommerceItem["productType"],
+  sourceId: string,
+  sku: string,
+) {
   let url: string;
   let key: string;
   try {
@@ -57,25 +75,45 @@ async function resolveSellerUserId(productType: CommerceItem["productType"], sou
     { headers, cache: "no-store" },
   );
   if (existingProduct.ok) {
-    const seller = ((await existingProduct.json()) as Array<{ seller_user_id?: string }>)[0]?.seller_user_id;
+    const seller = (
+      (await existingProduct.json()) as Array<{ seller_user_id?: string }>
+    )[0]?.seller_user_id;
     if (seller) return seller;
   }
 
   const curatedUsername = CURATED_SELLER_USERNAME[sku];
   if (curatedUsername) {
-    const response = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(curatedUsername)}&select=id&limit=1`, { headers, cache: "no-store" });
-    if (response.ok) return ((await response.json()) as Array<{ id: string }>)[0]?.id;
+    const response = await fetch(
+      `${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(curatedUsername)}&select=id&limit=1`,
+      { headers, cache: "no-store" },
+    );
+    if (response.ok)
+      return ((await response.json()) as Array<{ id: string }>)[0]?.id;
   }
-  const table = productType === "beat" ? "beats" : productType === "single" || productType === "mix" ? "tracks" : null;
+  const table =
+    productType === "beat"
+      ? "beats"
+      : productType === "single" || productType === "mix"
+        ? "tracks"
+        : null;
   const ownerColumn = productType === "beat" ? "producer_user_id" : "user_id";
   if (!table || !/^[0-9a-f-]{36}$/i.test(sourceId)) return undefined;
-  const response = await fetch(`${url}/rest/v1/${table}?id=eq.${encodeURIComponent(sourceId)}&select=${ownerColumn}&limit=1`, { headers, cache: "no-store" });
+  const response = await fetch(
+    `${url}/rest/v1/${table}?id=eq.${encodeURIComponent(sourceId)}&select=${ownerColumn}&limit=1`,
+    { headers, cache: "no-store" },
+  );
   if (!response.ok) return undefined;
-  return ((await response.json()) as Array<Record<string, string>>)[0]?.[ownerColumn];
+  return ((await response.json()) as Array<Record<string, string>>)[0]?.[
+    ownerColumn
+  ];
 }
 
 function slug(value: string) {
-  return value.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return value
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function config() {
@@ -102,16 +140,27 @@ type CreatorProductRow = {
   price_usd: number | string;
   licence_summary?: string | null;
   licence_terms?: string | null;
+  listing_type?: "digital_product" | "service";
 };
 
-async function fetchCreatorProduct(id: string): Promise<CreatorProductRow | null> {
+async function fetchCreatorListing(
+  id: string,
+  listingType: "digital_product" | "service",
+): Promise<CreatorProductRow | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   let url: string;
   let key: string;
-  try { ({ url, key } = config()); } catch { return null; }
+  try {
+    ({ url, key } = config());
+  } catch {
+    return null;
+  }
   const response = await fetch(
-    `${url}/rest/v1/creator_marketplace_listings?id=eq.${encodeURIComponent(id)}&listing_type=eq.digital_product&status=eq.published&select=id,seller_user_id,title,price_usd,licence_summary,licence_terms&limit=1`,
-    { headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: "no-store" },
+    `${url}/rest/v1/creator_marketplace_listings?id=eq.${encodeURIComponent(id)}&listing_type=eq.${listingType}&status=eq.published&select=id,seller_user_id,title,price_usd,licence_summary,licence_terms,listing_type&limit=1`,
+    {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      cache: "no-store",
+    },
   );
   if (!response.ok) return null;
   return ((await response.json()) as CreatorProductRow[])[0] || null;
@@ -130,7 +179,8 @@ async function fetchBeatLicenceOption(
   }
 
   const headers = { apikey: key, Authorization: `Bearer ${key}` };
-  const select = "id,beat_id,licence_code,price_usd,is_active,terms_version,terms_summary";
+  const select =
+    "id,beat_id,licence_code,price_usd,is_active,terms_version,terms_summary";
 
   if (licenceOptionId) {
     const byId = await fetch(
@@ -140,7 +190,12 @@ async function fetchBeatLicenceOption(
     if (byId.ok) {
       const rows = (await byId.json()) as BeatLicenceRow[];
       const row = rows?.[0];
-      if (row && String(row.beat_id) === String(beatId) && row.is_active !== false) return row;
+      if (
+        row &&
+        String(row.beat_id) === String(beatId) &&
+        row.is_active !== false
+      )
+        return row;
     }
   }
 
@@ -165,24 +220,32 @@ async function fetchBeatLicenceOption(
   return null;
 }
 
-function parsePriceUsd(value: number | string | null | undefined): number | null {
+function parsePriceUsd(
+  value: number | string | null | undefined,
+): number | null {
   const n = typeof value === "string" ? Number(value) : value;
   if (typeof n !== "number" || !Number.isFinite(n) || n < 0) return null;
   return Math.round(n * 100) / 100;
 }
 
 /** Resolve authoritative products, seller ownership and economic policy at checkout time. */
-export async function resolveCommerceItems(items: OrderItem[]): Promise<CommerceItem[]> {
+export async function resolveCommerceItems(
+  items: OrderItem[],
+): Promise<CommerceItem[]> {
   return Promise.all(
     items.map(async (item) => {
       const id = String(item.id);
       const key = slug(item.title);
-      const quantity = Math.min(20, Math.max(1, Math.floor(Number(item.quantity) || 1)));
+      const quantity = Math.min(
+        20,
+        Math.max(1, Math.floor(Number(item.quantity) || 1)),
+      );
       let productType: CommerceItem["productType"] = "single";
       let unitAmount = 2;
       let sku = `track:${id}`;
       let licenceOptionId: string | undefined =
-        typeof item.licence_option_id === "string" && item.licence_option_id.trim()
+        typeof item.licence_option_id === "string" &&
+        item.licence_option_id.trim()
           ? item.licence_option_id.trim()
           : undefined;
 
@@ -194,17 +257,26 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
       let authoritativeTitle = item.title;
       let authoritativeSellerUserId: string | undefined;
 
-      if (item.type === "creator_product") {
-        const product = await fetchCreatorProduct(id);
+      if (item.type === "creator_product" || item.type === "creator_service") {
+        const isService = item.type === "creator_service";
+        const product = await fetchCreatorListing(
+          id,
+          isService ? "service" : "digital_product",
+        );
         if (!product) throw new Error("UNKNOWN_CREATOR_PRODUCT");
         const priced = parsePriceUsd(product.price_usd);
-        if (priced == null || priced < 1) throw new Error("INVALID_CREATOR_PRODUCT_PRICE");
-        productType = "creator_product";
+        if (priced == null || priced < 1)
+          throw new Error("INVALID_CREATOR_PRODUCT_PRICE");
+        productType = isService ? "creator_service" : "creator_product";
         unitAmount = priced;
-        sku = `creator-product:${product.id}`;
+        sku = `${isService ? "creator-service" : "creator-product"}:${product.id}`;
         authoritativeTitle = product.title;
         authoritativeSellerUserId = product.seller_user_id;
-        licenceSummary = product.licence_summary?.trim() || "Licensed digital creator product";
+        licenceSummary =
+          product.licence_summary?.trim() ||
+          (isService
+            ? "Creator service package"
+            : "Licensed digital creator product");
         licenceTerms = product.licence_terms?.trim() || licenceSummary;
       } else if (id === "100" || key === "lord-album") {
         productType = "album";
@@ -215,7 +287,8 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
         unitAmount = 14;
         sku = "album:16-bit";
       } else if (item.type === "service") {
-        if (SERVICE_PRICES[key] === undefined) throw new Error("UNKNOWN_SERVICE");
+        if (SERVICE_PRICES[key] === undefined)
+          throw new Error("UNKNOWN_SERVICE");
         productType = "service";
         unitAmount = SERVICE_PRICES[key];
         sku = `service:${key}`;
@@ -230,10 +303,12 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
         const template = getBeatLicenceTemplateOrDefault(code);
         licenceTemplateVersion = template.version;
         licenceTermsVersion =
-          (typeof licence?.terms_version === "string" && licence.terms_version.trim()) ||
+          (typeof licence?.terms_version === "string" &&
+            licence.terms_version.trim()) ||
           licenceTermsVersionTag(template);
         licenceSummary =
-          (typeof licence?.terms_summary === "string" && licence.terms_summary.trim()) ||
+          (typeof licence?.terms_summary === "string" &&
+            licence.terms_summary.trim()) ||
           template.summary;
         licenceTerms = template.terms;
         sku = `beat:${id}:${code}${licenceOptionId ? `:${licenceOptionId}` : ""}:v${template.version}`;
@@ -243,9 +318,15 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
         sku = `mix:${id}`;
       }
 
-      const sellerUserId = authoritativeSellerUserId || await resolveSellerUserId(productType, id, sku);
+      const sellerUserId =
+        authoritativeSellerUserId ||
+        (await resolveSellerUserId(productType, id, sku));
       const sellerPolicy = sellerUserId
-        ? await resolveSellerMarketplacePolicy(sellerUserId, productType, unitAmount)
+        ? await resolveSellerMarketplacePolicy(
+            sellerUserId,
+            productType,
+            unitAmount,
+          )
         : undefined;
 
       return {
@@ -270,8 +351,14 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
         productType,
         unitAmount,
         currency: "usd" as const,
-        taxClass: productType === "service" ? ("service" as const) : ("digital" as const),
-        fulfillmentType: productType === "service" ? ("service" as const) : ("download" as const),
+        taxClass:
+          productType === "service" || productType === "creator_service"
+            ? ("service" as const)
+            : ("digital" as const),
+        fulfillmentType:
+          productType === "service" || productType === "creator_service"
+            ? ("service" as const)
+            : ("download" as const),
       };
     }),
   );
@@ -281,15 +368,23 @@ async function rpc<T>(name: string, body: unknown): Promise<T> {
   const { url, key } = config();
   const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", apikey: key, Authorization: `Bearer ${key}` },
+    headers: {
+      "Content-Type": "application/json",
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+    },
     body: JSON.stringify(body),
     cache: "no-store",
   });
-  if (!response.ok) throw new Error(`COMMERCE_LEDGER_FAILED:${response.status}`);
+  if (!response.ok)
+    throw new Error(`COMMERCE_LEDGER_FAILED:${response.status}`);
   return response.json() as Promise<T>;
 }
 
-export async function recordOrderSnapshot(reference: string, items: CommerceItem[]) {
+export async function recordOrderSnapshot(
+  reference: string,
+  items: CommerceItem[],
+) {
   return rpc<number>("record_commerce_order_snapshot", {
     p_order_reference: reference,
     p_items: items.map(
@@ -339,20 +434,36 @@ export async function recordOrderSnapshot(reference: string, items: CommerceItem
 }
 
 export type PaymentTransition = {
-  accepted: boolean; duplicate?: boolean; transitioned?: boolean;
-  reconciled?: boolean; error?: string; eventId?: string;
+  accepted: boolean;
+  duplicate?: boolean;
+  transitioned?: boolean;
+  reconciled?: boolean;
+  error?: string;
+  eventId?: string;
 };
 
 export async function recordVerifiedPayment(input: {
-  provider: "stripe" | "paynow"; eventId: string; reference: string;
-  eventType: string; status: string; amount: number; currency: string;
-  providerReference: string; rawPayload: string;
+  provider: "stripe" | "paynow";
+  eventId: string;
+  reference: string;
+  eventType: string;
+  status: string;
+  amount: number;
+  currency: string;
+  providerReference: string;
+  rawPayload: string;
 }) {
   return rpc<PaymentTransition>("record_verified_payment_event", {
-    p_provider: input.provider, p_provider_event_id: input.eventId,
-    p_order_reference: input.reference, p_event_type: input.eventType,
-    p_provider_status: input.status, p_amount: input.amount,
-    p_currency: input.currency.toLowerCase(), p_provider_reference: input.providerReference,
-    p_payload_sha256: createHash("sha256").update(input.rawPayload).digest("hex"),
+    p_provider: input.provider,
+    p_provider_event_id: input.eventId,
+    p_order_reference: input.reference,
+    p_event_type: input.eventType,
+    p_provider_status: input.status,
+    p_amount: input.amount,
+    p_currency: input.currency.toLowerCase(),
+    p_provider_reference: input.providerReference,
+    p_payload_sha256: createHash("sha256")
+      .update(input.rawPayload)
+      .digest("hex"),
   });
 }

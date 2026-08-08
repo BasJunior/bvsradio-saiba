@@ -20,7 +20,10 @@ import {
 import { createDownloadToken, resolveProductAsset } from "@/lib/products";
 import { recordServerEvent } from "@/lib/analytics-server";
 import { calculateTax, stripeAutomaticTaxEnabled } from "@/lib/tax";
-import { recordOrderSnapshot, resolveCommerceItems } from "@/lib/commerce-ledger";
+import {
+  recordOrderSnapshot,
+  resolveCommerceItems,
+} from "@/lib/commerce-ledger";
 
 function isOrderItem(item: unknown): item is OrderItem {
   if (!item || typeof item !== "object") return false;
@@ -64,14 +67,17 @@ function parseBody(payload: unknown): OrderBody | null {
 }
 
 async function currentUserId(req: Request) {
-  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!token || !url || !anon) return undefined
-  const response = await fetch(`${url}/auth/v1/user`, { headers: { apikey: anon, Authorization: `Bearer ${token}` }, cache: 'no-store' })
-  if (!response.ok) return undefined
-  const user = await response.json() as { id?: string }
-  return user.id
+  const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!token || !url || !anon) return undefined;
+  const response = await fetch(`${url}/auth/v1/user`, {
+    headers: { apikey: anon, Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!response.ok) return undefined;
+  const user = (await response.json()) as { id?: string };
+  return user.id;
 }
 
 export async function POST(req: Request) {
@@ -79,17 +85,55 @@ export async function POST(req: Request) {
     const customerUserId = await currentUserId(req);
     const payload = parseBody(await req.json());
     if (!payload) {
-      return NextResponse.json({ error: "Invalid order payload." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid order payload." },
+        { status: 400 },
+      );
     }
     if (payload.items.length === 0) {
-      return NextResponse.json({ error: "Add at least one item before checkout." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Add at least one item before checkout." },
+        { status: 400 },
+      );
     }
 
     let trustedItems;
     try {
       trustedItems = await resolveCommerceItems(payload.items);
     } catch {
-      return NextResponse.json({ error: "One or more products are no longer available." }, { status: 409 });
+      return NextResponse.json(
+        { error: "One or more products are no longer available." },
+        { status: 409 },
+      );
+    }
+    const creatorServices = trustedItems.filter(
+      (item) => item.productType === "creator_service",
+    );
+    if (creatorServices.length) {
+      if (!customerUserId)
+        return NextResponse.json(
+          { error: "Sign in before booking a creator service." },
+          { status: 401 },
+        );
+      if (trustedItems.length !== 1 || creatorServices.length !== 1)
+        return NextResponse.json(
+          {
+            error:
+              "Book one creator service per checkout so its brief and delivery remain separate.",
+          },
+          { status: 409 },
+        );
+      if (
+        !String(payload.projectNotes || "").trim() ||
+        String(payload.projectNotes).trim().length < 20
+      )
+        return NextResponse.json(
+          {
+            error:
+              "Add a project brief of at least 20 characters before booking this service.",
+          },
+          { status: 400 },
+        );
     }
 
     // Net subtotal from line items (authoritative)
@@ -99,13 +143,21 @@ export async function POST(req: Request) {
         .toFixed(2),
     );
     if (subtotal <= 0) {
-      return NextResponse.json({ error: "Order total must be greater than zero." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Order total must be greater than zero." },
+        { status: 400 },
+      );
     }
 
     // Customer checkout only accepts live rails (Paynow web + Stripe card).
     // Manual WhatsApp / bank / PayPal / EcoCash-push labels are not orderable here.
     const method = String(payload.paymentMethod || "").toLowerCase();
-    const allowedCheckout = new Set(["paynow", "paynow_redirect", "card", "stripe"]);
+    const allowedCheckout = new Set([
+      "paynow",
+      "paynow_redirect",
+      "card",
+      "stripe",
+    ]);
     if (!allowedCheckout.has(method) && payload.createStripeSession !== true) {
       return NextResponse.json(
         {
@@ -117,9 +169,7 @@ export async function POST(req: Request) {
     }
 
     const countryCode =
-      payload.countryCode ||
-      payload.customer.country ||
-      "OTHER";
+      payload.countryCode || payload.customer.country || "OTHER";
     const vatId = payload.vatId || payload.customer.vatId || "";
     const tax = calculateTax({
       subtotal,
@@ -169,12 +219,22 @@ export async function POST(req: Request) {
 
     const supabase = await saveOrderToSupabase(order);
     if (!supabase.saved) {
-      return NextResponse.json({ error: "Checkout is temporarily unavailable. No payment was started." }, { status: 503 });
+      return NextResponse.json(
+        {
+          error: "Checkout is temporarily unavailable. No payment was started.",
+        },
+        { status: 503 },
+      );
     }
     try {
       await recordOrderSnapshot(reference, trustedItems);
     } catch {
-      return NextResponse.json({ error: "Checkout is temporarily unavailable. No payment was started." }, { status: 503 });
+      return NextResponse.json(
+        {
+          error: "Checkout is temporarily unavailable. No payment was started.",
+        },
+        { status: 503 },
+      );
     }
 
     // Card path: Stripe Checkout
@@ -276,7 +336,8 @@ export async function POST(req: Request) {
 
     // Paynow EcoCash express (push to ZW phone)
     const wantsEcoCashPush =
-      payload.paymentMethod === "ecocash" || payload.paymentMethod === "paynow_ecocash";
+      payload.paymentMethod === "ecocash" ||
+      payload.paymentMethod === "paynow_ecocash";
 
     if (paynowEnabled() && (wantsPaynow || wantsEcoCashPush)) {
       const paynow = getPaynow();
@@ -309,7 +370,11 @@ export async function POST(req: Request) {
               normalizeZwPhone(order.customer.whatsapp || "") ||
               normalizeZwPhone((payload as { phone?: string }).phone || "");
             if (phone && authEmail) {
-              const response = await paynow.sendMobile(payment, phone, "ecocash");
+              const response = await paynow.sendMobile(
+                payment,
+                phone,
+                "ecocash",
+              );
               if (response?.success) {
                 order.paymentMethod = "ecocash";
                 order.paynowPollUrl = response.pollUrl;
@@ -328,7 +393,8 @@ export async function POST(req: Request) {
                   status: order.status,
                   savedLocal: Boolean(localPath),
                   savedSupabase: supabase.saved,
-                  persistenceMessage: "Order saved. Approve EcoCash on your phone.",
+                  persistenceMessage:
+                    "Order saved. Approve EcoCash on your phone.",
                   paymentMode: "paynow_ecocash",
                   pollUrl: response.pollUrl,
                   subtotal: order.subtotal,
@@ -339,15 +405,21 @@ export async function POST(req: Request) {
                   taxCountry: order.taxCountry,
                   taxNote: order.taxNote,
                   total: order.total,
-                  nextSteps: paymentInstructions("ecocash", reference, order.total, {
-                    paynowInstructions: order.paynowInstructions,
-                  }),
+                  nextSteps: paymentInstructions(
+                    "ecocash",
+                    reference,
+                    order.total,
+                    {
+                      paynowInstructions: order.paynowInstructions,
+                    },
+                  ),
                   paynowReady: true,
                 });
               }
               paynowFailure =
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (response as any)?.error || "EcoCash push was not accepted by Paynow.";
+                (response as any)?.error ||
+                "EcoCash push was not accepted by Paynow.";
               console.error("Paynow sendMobile failed", paynowFailure);
             }
             // fall through to redirect checkout if push failed / no ZW phone
@@ -392,7 +464,9 @@ export async function POST(req: Request) {
           }
           paynowFailure =
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (response as any)?.error || paynowFailure || "Paynow did not return a payment link.";
+            (response as any)?.error ||
+            paynowFailure ||
+            "Paynow did not return a payment link.";
           console.error("Paynow send failed", paynowFailure, {
             success: response?.success,
             hasRedirect: Boolean(redirectUrl),
@@ -400,12 +474,21 @@ export async function POST(req: Request) {
         } catch (paynowErr) {
           console.error("Paynow error", paynowErr);
           paynowFailure =
-            paynowErr instanceof Error ? paynowErr.message : "Paynow request failed";
-          await recordServerEvent("payment_error", { provider: "paynow", stage: "checkout_creation" });
+            paynowErr instanceof Error
+              ? paynowErr.message
+              : "Paynow request failed";
+          await recordServerEvent("payment_error", {
+            provider: "paynow",
+            stage: "checkout_creation",
+          });
         }
 
         // Explicit Paynow/EcoCash choice must not silently become WhatsApp-only.
-        if (wantsPaynow || payload.paymentMethod === "paynow_ecocash" || payload.paymentMethod === "ecocash") {
+        if (
+          wantsPaynow ||
+          payload.paymentMethod === "paynow_ecocash" ||
+          payload.paymentMethod === "ecocash"
+        ) {
           await recordServerEvent("payment_error", {
             provider: "paynow",
             stage: "checkout_no_redirect",
@@ -421,7 +504,10 @@ export async function POST(req: Request) {
               reference,
               paymentMode: "paynow_failed",
               paynowReady: true,
-              detail: process.env.NODE_ENV === "development" ? paynowFailure : undefined,
+              detail:
+                process.env.NODE_ENV === "development"
+                  ? paynowFailure
+                  : undefined,
             },
             { status: 502 },
           );
@@ -468,15 +554,28 @@ export async function POST(req: Request) {
       taxCountry: order.taxCountry,
       taxNote: order.taxNote,
       total: order.total,
-      nextSteps: paymentInstructions(order.paymentMethod, reference, order.total),
+      nextSteps: paymentInstructions(
+        order.paymentMethod,
+        reference,
+        order.total,
+      ),
       stripeReady: stripeEnabled(),
       paynowReady: paynowEnabled(),
       hasProductFiles: downloadHints.length > 0,
     });
   } catch (error: unknown) {
     console.error("Order creation failed", error);
-    await recordServerEvent("payment_error", { provider: "checkout", stage: "order_creation" });
-    return NextResponse.json({ error: "Order creation failed. Please try again or contact BVS with your cart." }, { status: 500 });
+    await recordServerEvent("payment_error", {
+      provider: "checkout",
+      stage: "order_creation",
+    });
+    return NextResponse.json(
+      {
+        error:
+          "Order creation failed. Please try again or contact BVS with your cart.",
+      },
+      { status: 500 },
+    );
   }
 }
 

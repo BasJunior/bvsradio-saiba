@@ -1,87 +1,159 @@
-import 'server-only'
+import "server-only";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const service = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-const headers = { apikey: service, Authorization: `Bearer ${service}`, 'Content-Type': 'application/json' }
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const headers = {
+  apikey: service,
+  Authorization: `Bearer ${service}`,
+  "Content-Type": "application/json",
+};
 
 function roundMoney(value: number) {
-  return Math.round(value * 100) / 100
+  return Math.round(value * 100) / 100;
 }
 
 type SettlementRow = {
-  id: string
-  seller_user_id: string
-  seller_net: number | string
-  settlement_status: string
-}
+  id: string;
+  seller_user_id: string;
+  seller_net: number | string;
+  settlement_status: string;
+};
 
 type ReverseInput = {
-  provider: 'stripe' | 'paynow' | 'manual'
-  providerEventId: string
-  reason: 'refund' | 'chargeback' | 'manual_reversal'
-  fraction?: number
-  providerAmount?: number | null
-  providerCurrency?: string | null
-}
+  provider: "stripe" | "paynow" | "manual";
+  providerEventId: string;
+  reason: "refund" | "chargeback" | "manual_reversal";
+  fraction?: number;
+  providerAmount?: number | null;
+  providerCurrency?: string | null;
+};
 
-async function reverseForOrder(order: { id: string; reference: string }, input: ReverseInput) {
+async function reverseForOrder(
+  order: { id: string; reference: string },
+  input: ReverseInput,
+) {
   const duplicateResponse = await fetch(
     `${url}/rest/v1/commerce_refund_events?provider=eq.${encodeURIComponent(input.provider)}&provider_event_id=eq.${encodeURIComponent(input.providerEventId)}&select=id&limit=1`,
-    { headers, cache: 'no-store' },
-  )
-  if (duplicateResponse.ok && (await duplicateResponse.json() as Array<{ id: string }>).length) {
-    return { reversed: true, duplicate: true, reference: order.reference }
+    { headers, cache: "no-store" },
+  );
+  if (
+    duplicateResponse.ok &&
+    ((await duplicateResponse.json()) as Array<{ id: string }>).length
+  ) {
+    return { reversed: true, duplicate: true, reference: order.reference };
   }
 
   const settlementResponse = await fetch(
-    `${url}/rest/v1/commerce_seller_settlements?order_id=eq.${order.id}&settlement_status=in.(posted,reversed)&select=id,seller_user_id,seller_net,settlement_status`,
-    { headers, cache: 'no-store' },
-  )
-  if (!settlementResponse.ok) return { reversed: false, reason: 'settlement_lookup_failed' }
-  const settlements = await settlementResponse.json() as SettlementRow[]
-  if (!settlements.length) return { reversed: false, reason: 'no_seller_settlement' }
+    `${url}/rest/v1/commerce_seller_settlements?order_id=eq.${order.id}&settlement_status=in.(held_service,posted,reversed)&select=id,seller_user_id,seller_net,settlement_status`,
+    { headers, cache: "no-store" },
+  );
+  if (!settlementResponse.ok)
+    return { reversed: false, reason: "settlement_lookup_failed" };
+  const settlements = (await settlementResponse.json()) as SettlementRow[];
+  if (!settlements.length)
+    return { reversed: false, reason: "no_seller_settlement" };
 
-  const fraction = Math.max(0, Math.min(1, Number(input.fraction ?? 1)))
-  if (fraction <= 0) return { reversed: false, reason: 'zero_fraction' }
+  const fraction = Math.max(0, Math.min(1, Number(input.fraction ?? 1)));
+  if (fraction <= 0) return { reversed: false, reason: "zero_fraction" };
 
-  const refundEventResponse = await fetch(`${url}/rest/v1/commerce_refund_events`, {
-    method: 'POST',
-    headers: { ...headers, Prefer: 'return=representation' },
-    body: JSON.stringify({
-      provider: input.provider,
-      provider_event_id: input.providerEventId,
-      order_id: order.id,
-      order_reference: order.reference,
-      event_type: input.reason,
-      provider_amount: input.providerAmount ?? null,
-      provider_currency: input.providerCurrency ?? null,
-      reversal_fraction: fraction,
-    }),
-  })
+  const refundEventResponse = await fetch(
+    `${url}/rest/v1/commerce_refund_events`,
+    {
+      method: "POST",
+      headers: { ...headers, Prefer: "return=representation" },
+      body: JSON.stringify({
+        provider: input.provider,
+        provider_event_id: input.providerEventId,
+        order_id: order.id,
+        order_reference: order.reference,
+        event_type: input.reason,
+        provider_amount: input.providerAmount ?? null,
+        provider_currency: input.providerCurrency ?? null,
+        reversal_fraction: fraction,
+      }),
+    },
+  );
   if (!refundEventResponse.ok) {
-    if (refundEventResponse.status === 409) return { reversed: true, duplicate: true, reference: order.reference }
-    return { reversed: false, reason: 'refund_event_save_failed' }
+    if (refundEventResponse.status === 409)
+      return { reversed: true, duplicate: true, reference: order.reference };
+    return { reversed: false, reason: "refund_event_save_failed" };
   }
-  const [refundEvent] = await refundEventResponse.json() as Array<{ id: string }>
+  const [refundEvent] = (await refundEventResponse.json()) as Array<{
+    id: string;
+  }>;
 
-  let entries = 0
+  let entries = 0;
   for (const settlement of settlements) {
-    const amount = roundMoney((Number(settlement.seller_net) || 0) * fraction)
-    if (amount <= 0) continue
+    const amount = roundMoney((Number(settlement.seller_net) || 0) * fraction);
+    if (amount <= 0) continue;
+
+    if (settlement.settlement_status === "held_service") {
+      const full = fraction >= 0.9999;
+      const remaining = roundMoney(
+        (Number(settlement.seller_net) || 0) - amount,
+      );
+      const settlementUpdate = await fetch(
+        `${url}/rest/v1/commerce_seller_settlements?id=eq.${settlement.id}`,
+        {
+          method: "PATCH",
+          headers: { ...headers, Prefer: "return=minimal" },
+          body: JSON.stringify(
+            full
+              ? {
+                  settlement_status: "reversed",
+                  updated_at: new Date().toISOString(),
+                }
+              : { seller_net: remaining, updated_at: new Date().toISOString() },
+          ),
+        },
+      );
+      const ledgerUpdate = await fetch(
+        `${url}/rest/v1/artist_ledger_entries?source_table=eq.orders&source_id=eq.${order.id}&artist_user_id=eq.${settlement.seller_user_id}&entry_type=eq.sale_credit&status=eq.pending`,
+        {
+          method: "PATCH",
+          headers: { ...headers, Prefer: "return=minimal" },
+          body: JSON.stringify(
+            full ? { status: "void" } : { amount: remaining },
+          ),
+        },
+      );
+      if (!settlementUpdate.ok || !ledgerUpdate.ok)
+        return {
+          reversed: false,
+          reason: "held_service_reversal_failed",
+          entries,
+        };
+      await fetch(
+        `${url}/rest/v1/creator_service_orders?order_id=eq.${order.id}`,
+        {
+          method: "PATCH",
+          headers: { ...headers, Prefer: "return=minimal" },
+          body: JSON.stringify({
+            status: full && input.reason === "refund" ? "refunded" : "disputed",
+            disputed_at:
+              input.reason === "chargeback" ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
+      entries += 1;
+      continue;
+    }
 
     const ledgerResponse = await fetch(`${url}/rest/v1/artist_ledger_entries`, {
-      method: 'POST',
-      headers: { ...headers, Prefer: 'return=minimal' },
+      method: "POST",
+      headers: { ...headers, Prefer: "return=minimal" },
       body: JSON.stringify({
         artist_user_id: settlement.seller_user_id,
-        direction: 'debit',
-        entry_type: input.reason === 'refund' ? 'refund_debit' : 'reversal_debit',
+        direction: "debit",
+        entry_type:
+          input.reason === "refund" ? "refund_debit" : "reversal_debit",
         amount,
-        currency: 'USD',
-        status: 'posted',
-        source_table: 'commerce_refund_events',
+        currency: "USD",
+        status: "posted",
+        source_table: "commerce_refund_events",
         source_id: refundEvent.id,
-        memo: `${input.reason === 'refund' ? 'Refund' : input.reason === 'chargeback' ? 'Chargeback' : 'Manual reversal'} for ${order.reference}`,
+        memo: `${input.reason === "refund" ? "Refund" : input.reason === "chargeback" ? "Chargeback" : "Manual reversal"} for ${order.reference}`,
         metadata: {
           reference: order.reference,
           provider: input.provider,
@@ -90,79 +162,99 @@ async function reverseForOrder(order: { id: string; reference: string }, input: 
           originalSellerNet: Number(settlement.seller_net) || 0,
         },
       }),
-    })
-    if (!ledgerResponse.ok) return { reversed: false, reason: 'ledger_debit_failed', entries }
-    entries += 1
+    });
+    if (!ledgerResponse.ok)
+      return { reversed: false, reason: "ledger_debit_failed", entries };
+    entries += 1;
 
-    if (fraction >= 0.9999 && settlement.settlement_status !== 'reversed') {
-      await fetch(`${url}/rest/v1/commerce_seller_settlements?id=eq.${settlement.id}`, {
-        method: 'PATCH',
-        headers: { ...headers, Prefer: 'return=minimal' },
-        body: JSON.stringify({ settlement_status: 'reversed', updated_at: new Date().toISOString() }),
-      })
+    if (fraction >= 0.9999 && settlement.settlement_status !== "reversed") {
+      await fetch(
+        `${url}/rest/v1/commerce_seller_settlements?id=eq.${settlement.id}`,
+        {
+          method: "PATCH",
+          headers: { ...headers, Prefer: "return=minimal" },
+          body: JSON.stringify({
+            settlement_status: "reversed",
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
     }
   }
 
-  return { reversed: entries > 0, entries, fraction, reference: order.reference }
+  return {
+    reversed: entries > 0,
+    entries,
+    fraction,
+    reference: order.reference,
+  };
 }
 
 export async function reverseMarketplaceSellerCredits(input: {
-  paymentIntentId: string
-  providerEventId: string
-  reason: 'refund' | 'chargeback'
-  fraction?: number
-  providerAmount?: number | null
-  providerCurrency?: string | null
+  paymentIntentId: string;
+  providerEventId: string;
+  reason: "refund" | "chargeback";
+  fraction?: number;
+  providerAmount?: number | null;
+  providerCurrency?: string | null;
 }) {
   if (!url || !service || !input.paymentIntentId || !input.providerEventId) {
-    return { reversed: false, reason: 'not_configured' }
+    return { reversed: false, reason: "not_configured" };
   }
 
   const orderResponse = await fetch(
     `${url}/rest/v1/orders?stripe_payment_intent=eq.${encodeURIComponent(input.paymentIntentId)}&select=id,reference&limit=1`,
-    { headers, cache: 'no-store' },
-  )
-  if (!orderResponse.ok) return { reversed: false, reason: 'order_lookup_failed' }
-  const [order] = await orderResponse.json() as Array<{ id: string; reference: string }>
-  if (!order?.id) return { reversed: false, reason: 'order_not_found' }
+    { headers, cache: "no-store" },
+  );
+  if (!orderResponse.ok)
+    return { reversed: false, reason: "order_lookup_failed" };
+  const [order] = (await orderResponse.json()) as Array<{
+    id: string;
+    reference: string;
+  }>;
+  if (!order?.id) return { reversed: false, reason: "order_not_found" };
 
   return reverseForOrder(order, {
-    provider: 'stripe',
+    provider: "stripe",
     providerEventId: input.providerEventId,
     reason: input.reason,
     fraction: input.fraction,
     providerAmount: input.providerAmount,
     providerCurrency: input.providerCurrency,
-  })
+  });
 }
 
 /** Restricted finance/admin path for Paynow refunds or exceptional manual corrections. */
 export async function reverseMarketplaceSellerCreditsByReference(input: {
-  reference: string
-  provider: 'paynow' | 'manual'
-  externalEventId: string
-  fraction?: number
-  providerAmount?: number | null
-  providerCurrency?: string | null
+  reference: string;
+  provider: "paynow" | "manual";
+  externalEventId: string;
+  fraction?: number;
+  providerAmount?: number | null;
+  providerCurrency?: string | null;
 }) {
   if (!url || !service || !input.reference || !input.externalEventId) {
-    return { reversed: false, reason: 'not_configured' }
+    return { reversed: false, reason: "not_configured" };
   }
 
   const orderResponse = await fetch(
     `${url}/rest/v1/orders?reference=eq.${encodeURIComponent(input.reference)}&status=in.(paid,fulfilled)&select=id,reference&limit=1`,
-    { headers, cache: 'no-store' },
-  )
-  if (!orderResponse.ok) return { reversed: false, reason: 'order_lookup_failed' }
-  const [order] = await orderResponse.json() as Array<{ id: string; reference: string }>
-  if (!order?.id) return { reversed: false, reason: 'order_not_found' }
+    { headers, cache: "no-store" },
+  );
+  if (!orderResponse.ok)
+    return { reversed: false, reason: "order_lookup_failed" };
+  const [order] = (await orderResponse.json()) as Array<{
+    id: string;
+    reference: string;
+  }>;
+  if (!order?.id) return { reversed: false, reason: "order_not_found" };
 
   return reverseForOrder(order, {
     provider: input.provider,
     providerEventId: input.externalEventId,
-    reason: input.provider === 'paynow' ? 'refund' : 'manual_reversal',
+    reason: input.provider === "paynow" ? "refund" : "manual_reversal",
     fraction: input.fraction,
     providerAmount: input.providerAmount,
     providerCurrency: input.providerCurrency,
-  })
+  });
 }

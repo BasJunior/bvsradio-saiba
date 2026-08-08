@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { getPaynow } from "@/lib/paynow";
-import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
+import {
+  loadOrder,
+  notifyCustomerOrderEmail,
+  notifyOwnerNewOrder,
+  updateOrder,
+} from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
-import { creditPaidArtistDeposit, creditPaidArtistSales } from "@/lib/artist-credit";
+import {
+  creditPaidArtistDeposit,
+  creditPaidArtistSales,
+} from "@/lib/artist-credit";
 import { sameMoney, verifyPaynowHash } from "@/lib/paynow-security";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
-import { activatePaidArtistPremium, parsePremiumOrderItem } from "@/lib/premium-billing";
+import {
+  activatePaidArtistPremium,
+  parsePremiumOrderItem,
+} from "@/lib/premium-billing";
+import { initializePaidCreatorServiceOrder } from "@/lib/creator-service-orders";
 
 /**
  * Paynow result URL — they POST status updates here.
@@ -26,42 +38,78 @@ export async function POST(req: Request) {
 
     const integrationKey = process.env.PAYNOW_INTEGRATION_KEY || "";
     if (!verifyPaynowHash(body, integrationKey)) {
-      await recordServerEvent("payment_error", { provider: "paynow", stage: "invalid_hash" });
-      return NextResponse.json({ error: "Invalid payment notification." }, { status: 401 });
+      await recordServerEvent("payment_error", {
+        provider: "paynow",
+        stage: "invalid_hash",
+      });
+      return NextResponse.json(
+        { error: "Invalid payment notification." },
+        { status: 401 },
+      );
     }
 
-    const reference = body.reference || body.Reference || body.merchantreference || "";
+    const reference =
+      body.reference || body.Reference || body.merchantreference || "";
     const pollUrl = body.pollurl || body.pollUrl || body.PollUrl || "";
     const paynow = getPaynow();
     if (!reference || !pollUrl || !paynow) {
-      return NextResponse.json({ error: "Incomplete payment notification." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Incomplete payment notification." },
+        { status: 400 },
+      );
     }
 
     const order = await loadOrder(reference);
     if (!order) {
       return NextResponse.json({ error: "Order not found." }, { status: 404 });
     }
-    let result: { status?: string; paid?: boolean; reference?: string; amount?: string | number };
+    let result: {
+      status?: string;
+      paid?: boolean;
+      reference?: string;
+      amount?: string | number;
+    };
     try {
-      result = await paynow.pollTransaction(pollUrl) as typeof result;
+      result = (await paynow.pollTransaction(pollUrl)) as typeof result;
     } catch {
-      await recordServerEvent("payment_error", { provider: "paynow", stage: "trusted_poll_failed" });
-      return NextResponse.json({ error: "Payment verification is pending." }, { status: 503 });
+      await recordServerEvent("payment_error", {
+        provider: "paynow",
+        stage: "trusted_poll_failed",
+      });
+      return NextResponse.json(
+        { error: "Payment verification is pending." },
+        { status: 503 },
+      );
     }
     const trustedStatus = String(result.status || "").toLowerCase();
-    const paid = trustedStatus === "paid" || trustedStatus === "awaiting delivery" || trustedStatus === "delivered" || result.paid === true;
-    const referenceMatches = !result.reference || result.reference === reference;
+    const paid =
+      trustedStatus === "paid" ||
+      trustedStatus === "awaiting delivery" ||
+      trustedStatus === "delivered" ||
+      result.paid === true;
+    const referenceMatches =
+      !result.reference || result.reference === reference;
     const amountMatches = sameMoney(result.amount, order.total);
 
     if (!paid || !referenceMatches || !amountMatches) {
-      await recordServerEvent("payment_error", { provider: "paynow", stage: "reconciliation_failed" });
-      return NextResponse.json({ error: "Payment could not be reconciled." }, { status: 409 });
+      await recordServerEvent("payment_error", {
+        provider: "paynow",
+        stage: "reconciliation_failed",
+      });
+      return NextResponse.json(
+        { error: "Payment could not be reconciled." },
+        { status: 409 },
+      );
     }
 
     if (paid) {
       const eventId = body.hash || body.Hash || `${reference}:${trustedStatus}`;
       const isPremiumOrder = Boolean(parsePremiumOrderItem(order.items || []));
-      let transition: { accepted: boolean; transitioned?: boolean; duplicate?: boolean } = {
+      let transition: {
+        accepted: boolean;
+        transitioned?: boolean;
+        duplicate?: boolean;
+      } = {
         accepted: true,
         transitioned: true,
       };
@@ -81,21 +129,37 @@ export async function POST(req: Request) {
         // Premium prepaid orders may not have a commerce snapshot — still activate membership.
         if (!isPremiumOrder) {
           console.error("paynow ledger", ledgerErr);
-          await recordServerEvent("payment_error", { provider: "paynow", stage: "ledger_exception" });
-          return NextResponse.json({ error: "Payment could not be reconciled." }, { status: 409 });
+          await recordServerEvent("payment_error", {
+            provider: "paynow",
+            stage: "ledger_exception",
+          });
+          return NextResponse.json(
+            { error: "Payment could not be reconciled." },
+            { status: 409 },
+          );
         }
         console.warn("paynow ledger skipped for premium", reference);
       }
       if (!transition.accepted && !isPremiumOrder) {
-        await recordServerEvent("payment_error", { provider: "paynow", stage: "ledger_reconciliation_failed" });
-        return NextResponse.json({ error: "Payment could not be reconciled." }, { status: 409 });
+        await recordServerEvent("payment_error", {
+          provider: "paynow",
+          stage: "ledger_reconciliation_failed",
+        });
+        return NextResponse.json(
+          { error: "Payment could not be reconciled." },
+          { status: 409 },
+        );
       }
       if (!transition.transitioned && transition.accepted && !isPremiumOrder) {
         return NextResponse.json({ ok: true, duplicate: true });
       }
-      await recordServerEvent("checkout_complete", { provider: "paynow", status: "paid" });
+      await recordServerEvent("checkout_complete", {
+        provider: "paynow",
+        status: "paid",
+      });
       await creditPaidArtistDeposit(reference, "paynow");
       await creditPaidArtistSales(reference, "paynow");
+      await initializePaidCreatorServiceOrder(reference);
 
       // Artist Premium prepaid period
       const premiumLine = parsePremiumOrderItem(order.items || []);
@@ -141,8 +205,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error("Paynow webhook failed:", e instanceof Error ? e.message : e);
-    await recordServerEvent("payment_error", { provider: "paynow", stage: "webhook" });
-    return NextResponse.json({ error: "Payment notification could not be processed." }, { status: 500 });
+    await recordServerEvent("payment_error", {
+      provider: "paynow",
+      stage: "webhook",
+    });
+    return NextResponse.json(
+      { error: "Payment notification could not be processed." },
+      { status: 500 },
+    );
   }
 }
 
