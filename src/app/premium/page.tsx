@@ -230,7 +230,7 @@ export default function PremiumEcosystemPage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-emerald-200">Live today</p>
             <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-text-secondary">
-              <li>Artist Premium desk + Paynow subscription billing</li>
+              <li>Artist Premium desk + Stripe auto-renew and Paynow prepaid billing</li>
               <li>Founding eligibility: through {FOUNDING_WINDOW_LABEL} and first 50 seats</li>
               <li>Distribution entitlement on paid Artist Premium for approved releases</li>
               <li>Producer BeatStore free/plus/pro limits and marketplace fee bands</li>
