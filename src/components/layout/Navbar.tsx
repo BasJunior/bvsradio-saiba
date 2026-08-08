@@ -313,7 +313,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-white/10 bg-bg-primary/95 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur md:hidden">
+        <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-white/10 bg-bg-primary/95 pb-[calc(7rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden">
           <div className="px-4 py-4 space-y-1">
             {navLinks.map((link) => (
               <Link
