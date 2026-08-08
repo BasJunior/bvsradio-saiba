@@ -192,6 +192,9 @@ CREATE INDEX IF NOT EXISTS artist_ledger_entries_source_idx
   ON public.artist_ledger_entries(source_table, source_id);
 CREATE INDEX IF NOT EXISTS artist_ledger_entries_deposit_idx
   ON public.artist_ledger_entries(deposit_id);
+CREATE UNIQUE INDEX IF NOT EXISTS artist_ledger_one_sale_credit_per_order
+  ON public.artist_ledger_entries(artist_user_id, source_table, source_id, entry_type)
+  WHERE source_table = 'orders' AND source_id IS NOT NULL AND entry_type = 'sale_credit';
 
 CREATE TABLE IF NOT EXISTS public.artist_payout_methods (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

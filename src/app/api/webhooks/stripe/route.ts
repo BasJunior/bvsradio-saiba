@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
-import { creditPaidArtistDeposit } from "@/lib/artist-credit";
+import { creditPaidArtistDeposit, creditPaidArtistSales } from "@/lib/artist-credit";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
 
 export const runtime = "nodejs";
@@ -65,6 +65,7 @@ export async function POST(req: Request) {
       }
       await recordServerEvent("checkout_complete", { provider: "stripe", status: "paid" });
       await creditPaidArtistDeposit(reference, "stripe");
+      await creditPaidArtistSales(reference, "stripe");
       const updated = await updateOrder(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",

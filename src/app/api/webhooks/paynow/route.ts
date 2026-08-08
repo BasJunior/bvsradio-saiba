@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getPaynow } from "@/lib/paynow";
 import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
-import { creditPaidArtistDeposit } from "@/lib/artist-credit";
+import { creditPaidArtistDeposit, creditPaidArtistSales } from "@/lib/artist-credit";
 import { sameMoney, verifyPaynowHash } from "@/lib/paynow-security";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
 import { activatePaidArtistPremium, parsePremiumOrderItem } from "@/lib/premium-billing";
@@ -95,6 +95,7 @@ export async function POST(req: Request) {
       }
       await recordServerEvent("checkout_complete", { provider: "paynow", status: "paid" });
       await creditPaidArtistDeposit(reference, "paynow");
+      await creditPaidArtistSales(reference, "paynow");
 
       // Artist Premium prepaid period
       const premiumLine = parsePremiumOrderItem(order.items || []);

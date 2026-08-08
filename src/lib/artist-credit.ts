@@ -37,3 +37,39 @@ export async function creditPaidArtistDeposit(reference: string, source: 'stripe
   if (!ledgerResponse.ok) return { credited: false, reason: 'ledger_save_failed' }
   return { credited: true, idempotent: false }
 }
+
+export async function creditPaidArtistSales(reference: string, source: 'stripe' | 'paynow') {
+  if (!url || !service || !reference) return { credited: false, reason: 'not_configured' }
+  const orderResponse = await fetch(`${url}/rest/v1/orders?reference=eq.${encodeURIComponent(reference)}&status=in.(paid,fulfilled)&select=id,reference&limit=1`, { headers, cache: 'no-store' })
+  if (!orderResponse.ok) return { credited: false, reason: 'order_lookup_failed' }
+  const [order] = await orderResponse.json() as Array<{ id: string; reference: string }>
+  if (!order?.id) return { credited: false, reason: 'order_not_paid' }
+  const itemResponse = await fetch(`${url}/rest/v1/commerce_order_items?order_id=eq.${order.id}&seller_user_id_snapshot=not.is.null&select=seller_user_id_snapshot,unit_amount,quantity,currency`, { headers, cache: 'no-store' })
+  if (!itemResponse.ok) return { credited: false, reason: 'items_lookup_failed' }
+  const items = await itemResponse.json() as Array<{ seller_user_id_snapshot: string; unit_amount: number | string; quantity: number; currency: string }>
+  const totals = new Map<string, { amount: number; currency: string }>()
+  for (const item of items) {
+    const amount = (Number(item.unit_amount) || 0) * (Number(item.quantity) || 0)
+    if (amount <= 0) continue
+    const key = `${item.seller_user_id_snapshot}:${String(item.currency || 'usd').toUpperCase()}`
+    const current = totals.get(key) || { amount: 0, currency: String(item.currency || 'usd').toUpperCase() }
+    current.amount += amount
+    totals.set(key, current)
+  }
+  let credited = 0
+  for (const [key, total] of totals) {
+    const artistUserId = key.split(':')[0]
+    const existingResponse = await fetch(`${url}/rest/v1/artist_ledger_entries?artist_user_id=eq.${artistUserId}&source_table=eq.orders&source_id=eq.${order.id}&entry_type=eq.sale_credit&select=id&limit=1`, { headers, cache: 'no-store' })
+    if (existingResponse.ok && (await existingResponse.json()).length) continue
+    const response = await fetch(`${url}/rest/v1/artist_ledger_entries`, {
+      method: 'POST', headers: { ...headers, Prefer: 'return=minimal' },
+      body: JSON.stringify({ artist_user_id: artistUserId, direction: 'credit', entry_type: 'sale_credit',
+        amount: Math.round(total.amount * 100) / 100, currency: total.currency, status: 'posted',
+        source_table: 'orders', source_id: order.id, memo: `Catalogue sale ${reference}`,
+        metadata: { reference, source, basis: 'item_subtotal_excluding_tax' } }),
+    })
+    if (!response.ok && response.status !== 409) return { credited: false, reason: 'ledger_save_failed' }
+    credited += 1
+  }
+  return { credited: credited > 0, entries: credited, reason: totals.size ? undefined : 'no_attributed_seller' }
+}

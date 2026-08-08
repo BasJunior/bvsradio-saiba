@@ -31,7 +31,34 @@ export type CommerceItem = OrderItem & {
   licenceTermsVersion?: string;
   licenceSummary?: string;
   licenceTerms?: string;
+  sellerUserId?: string;
 };
+
+const CURATED_SELLER_USERNAME: Record<string, string> = {
+  "mix:3": "BasJunior",
+};
+
+async function resolveSellerUserId(productType: CommerceItem["productType"], sourceId: string, sku: string) {
+  let url: string;
+  let key: string;
+  try {
+    ({ url, key } = config());
+  } catch {
+    return undefined;
+  }
+  const headers = { apikey: key, Authorization: `Bearer ${key}` };
+  const curatedUsername = CURATED_SELLER_USERNAME[sku];
+  if (curatedUsername) {
+    const response = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(curatedUsername)}&select=id&limit=1`, { headers, cache: "no-store" });
+    if (response.ok) return ((await response.json()) as Array<{ id: string }>)[0]?.id;
+  }
+  const table = productType === "beat" ? "beats" : productType === "single" || productType === "mix" ? "tracks" : null;
+  const ownerColumn = productType === "beat" ? "producer_user_id" : "user_id";
+  if (!table || !/^[0-9a-f-]{36}$/i.test(sourceId)) return undefined;
+  const response = await fetch(`${url}/rest/v1/${table}?id=eq.${encodeURIComponent(sourceId)}&select=${ownerColumn}&limit=1`, { headers, cache: "no-store" });
+  if (!response.ok) return undefined;
+  return ((await response.json()) as Array<Record<string, string>>)[0]?.[ownerColumn];
+}
 
 function slug(value: string) {
   return value.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -177,6 +204,8 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
         sku = `mix:${id}`;
       }
 
+      const sellerUserId = await resolveSellerUserId(productType, id, sku);
+
       return {
         ...item,
         type: productType,
@@ -189,6 +218,7 @@ export async function resolveCommerceItems(items: OrderItem[]): Promise<Commerce
         licenceTermsVersion,
         licenceSummary,
         licenceTerms,
+        sellerUserId,
         sku,
         sourceId: id,
         productType,
@@ -233,6 +263,7 @@ export async function recordOrderSnapshot(reference: string, items: CommerceItem
         licenceTermsVersion,
         licenceSummary,
         licenceTerms,
+        sellerUserId,
       }) => ({
         sku,
         sourceId,
@@ -250,6 +281,7 @@ export async function recordOrderSnapshot(reference: string, items: CommerceItem
         licenceTermsVersion: licenceTermsVersion ?? null,
         licenceSummary: licenceSummary ?? null,
         licenceTerms: licenceTerms ?? null,
+        sellerUserId: sellerUserId ?? null,
       }),
     ),
   });
