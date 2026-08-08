@@ -88,7 +88,7 @@ export async function GET(request: Request) {
     const checkoutStarts = countEvent('checkout_started')
     const paymentErrors = countEvent('payment_error')
     const checkoutCompletions = countEvent('checkout_complete')
-    const canSeeCommerce = ['administrator', 'commerce_manager'].includes(identity.role)
+    const canSeeCommerce = ['founder', 'administrator', 'commerce_manager'].includes(identity.role)
 
     const savedByTrack = events
       .filter((event) => event.event_name === 'track_save')

@@ -553,6 +553,12 @@ export async function PATCH(request: Request) {
           `editorial_staff?user_id=eq.${encodeURIComponent(userId)}&select=user_id,role,active&limit=1`,
         ) as Array<{ user_id: string; role: EditorialRole; active: boolean }>
         const current = currentRows[0]
+        if (current?.role === 'founder') {
+          return NextResponse.json(
+            { error: 'The Founder role is the protected highest-authority account and cannot be changed here.' },
+            { status: 403 },
+          )
+        }
         if (current?.active && current.role === 'administrator' && (!active || role !== 'administrator')) {
           const activeAdmins = await optionalJson(
             'editorial_staff?role=eq.administrator&active=eq.true&select=user_id&limit=2',

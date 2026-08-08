@@ -101,6 +101,7 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 18 | `qr-login` | `supabase-qr-login.sql` | five-minute, single-use phone → computer login pairings |
 | 19 | `release-clearance-evidence` | `supabase-release-clearance-evidence.sql` | versioned proof and publication gates for covers, remixes, samples, leased beats and third-party material |
 | 20 | `beat-packs` | `supabase-beat-packs.sql` | ordered producer BeatStore pack submissions |
+| 23 | `founder-authority` | `supabase-founder-authority.sql` | single protected BVS Founder authority + BasJunior assignment |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.

@@ -18,8 +18,7 @@ function primaryOwnerEmail(): string {
 
 function isOwnerStaffRole(role: string | null | undefined): boolean {
   const r = String(role || '').toLowerCase()
-  // 'owner' is the product name for platform owner; DB historically uses administrator
-  return r === 'owner' || r === 'administrator'
+  return r === 'founder' || r === 'owner' || r === 'administrator'
 }
 
 async function optionalJson(path: string): Promise<unknown[]> {
@@ -106,9 +105,11 @@ export async function editorialIdentity(request: Request) {
 
   let role: EditorialRole | null = null
 
-  // 1) Explicit staff assignment wins (owner/administrator → full admin permissions)
+  // 1) Explicit staff assignment wins. Founder is distinct but has all admin permissions.
   const staffRoleRaw = staff?.[0]?.role ? String(staff[0].role) : null
-  if (isOwnerStaffRole(staffRoleRaw)) {
+  if (staffRoleRaw === 'founder') {
+    role = 'founder'
+  } else if (isOwnerStaffRole(staffRoleRaw)) {
     role = 'administrator'
   } else if (staffRoleRaw && rolePermissions[staffRoleRaw as EditorialRole]) {
     role = staffRoleRaw as EditorialRole

@@ -23,8 +23,7 @@ function primaryOwnerEmail(): string {
 
 function isOwnerStaffRole(role: string | null | undefined): boolean {
   const r = String(role || '').toLowerCase()
-  // Product "owner" maps to DB administrator (and accepts literal owner if present)
-  return r === 'owner' || r === 'administrator'
+  return r === 'founder' || r === 'owner' || r === 'administrator'
 }
 
 export async function GET(request: Request) {
