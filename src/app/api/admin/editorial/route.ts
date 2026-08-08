@@ -530,9 +530,31 @@ export async function PATCH(request: Request) {
         requirePermission('manage_staff')
         const userId = String(body.userId || '')
         const role = String(body.role || '') as EditorialRole
+        const active = body.active !== false
+        if (!userId) return NextResponse.json({ error: 'Choose a staff account.' }, { status: 400 })
         if (!['administrator', 'editor', 'programmer', 'credits_editor', 'commerce_manager'].includes(role)) return NextResponse.json({ error: 'Invalid staff role.' }, { status: 400 })
-        const result = await jsonOrError(await fetch(editorialUrl('editorial_staff?on_conflict=user_id'), { method: 'POST', headers: { ...serviceHeaders, Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify({ user_id: userId, role, active: body.active !== false, appointed_by: identity.user.id, updated_at: new Date().toISOString() }) }))
-        await audit(identity.user.id, 'staff_assigned', 'profile', userId, { role, active: body.active !== false })
+        const currentRows = await optionalJson(
+          `editorial_staff?user_id=eq.${encodeURIComponent(userId)}&select=user_id,role,active&limit=1`,
+        ) as Array<{ user_id: string; role: EditorialRole; active: boolean }>
+        const current = currentRows[0]
+        if (current?.active && current.role === 'administrator' && (!active || role !== 'administrator')) {
+          const activeAdmins = await optionalJson(
+            'editorial_staff?role=eq.administrator&active=eq.true&select=user_id&limit=2',
+          ) as Array<{ user_id: string }>
+          if (activeAdmins.length <= 1) {
+            return NextResponse.json(
+              { error: 'Keep at least one active administrator before changing this role.' },
+              { status: 409 },
+            )
+          }
+        }
+        const result = await jsonOrError(await fetch(editorialUrl('editorial_staff?on_conflict=user_id'), { method: 'POST', headers: { ...serviceHeaders, Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify({ user_id: userId, role, active, appointed_by: identity.user.id, updated_at: new Date().toISOString() }) }))
+        await audit(identity.user.id, current ? 'staff_updated' : 'staff_assigned', 'profile', userId, {
+          previousRole: current?.role || null,
+          previousActive: current?.active ?? null,
+          role,
+          active,
+        })
         return NextResponse.json({ result })
       }
       case 'review_track_request': {
