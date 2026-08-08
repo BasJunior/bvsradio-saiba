@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server'
 import { editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial-server'
+import {
+  MARKETPLACE_POLICY_SUMMARY,
+  MARKETPLACE_POLICY_VERSION,
+  PROCESSOR_FEE_PRESETS,
+  marketplaceCommissionBps,
+  producerUpgradeBreakEvenUsd,
+} from '@/lib/marketplace-economics'
 
 type Row = Record<string, unknown>
 
@@ -56,6 +63,16 @@ function membershipMrr(row: Row) {
   return 0
 }
 
+function uniqueOrderProcessorFees(rows: Row[]) {
+  const byOrder = new Map<string, number>()
+  for (const row of rows) {
+    const key = String(row.order_id || row.order_reference || '')
+    const amount = money(row.order_processor_fee_total)
+    if (key && amount > 0 && !byOrder.has(key)) byOrder.set(key, amount)
+  }
+  return [...byOrder.values()].reduce((sum, amount) => sum + amount, 0)
+}
+
 export async function GET(request: Request) {
   const identity = await editorialIdentity(request)
   if (!identity) {
@@ -67,13 +84,15 @@ export async function GET(request: Request) {
   const quarterStart = isoStartOfQuarter(now)
 
   try {
-    const [orders, memberships, quarterLedger, allLedger, paymentEvents, newsletter] = await Promise.all([
+    const [orders, memberships, quarterLedger, allLedger, paymentEvents, newsletter, settlements, caseOrder] = await Promise.all([
       requiredRows(`orders?status=in.(paid,fulfilled)&created_at=gte.${encodeURIComponent(quarterStart)}&select=id,reference,subtotal,total,tax_amount,currency,status,payment_method,items,created_at,paid_at&order=created_at.asc&limit=5000`),
       optionalRows('bvs_memberships?family=eq.artist&status=in.(active,trialing)&select=id,user_id,plan_id,billing_interval,status,provider,starts_at,ends_at&limit=5000'),
-      optionalRows(`artist_ledger_entries?status=eq.posted&effective_at=gte.${encodeURIComponent(quarterStart)}&select=direction,entry_type,amount,currency,effective_at&limit=10000`),
+      optionalRows(`artist_ledger_entries?effective_at=gte.${encodeURIComponent(quarterStart)}&select=direction,entry_type,amount,currency,status,effective_at,source_id,metadata&limit=10000`),
       optionalRows('artist_ledger_entries?status=eq.posted&select=direction,entry_type,amount,currency&limit=20000'),
       optionalRows(`commerce_payment_events?received_at=gte.${encodeURIComponent(quarterStart)}&select=verified,reconciled,reconciliation_error,provider,amount,currency,received_at&limit=5000`),
       optionalRows('newsletter_subscribers?is_active=eq.true&select=id,subscribed_at&limit=10000'),
+      optionalRows(`commerce_seller_settlements?created_at=gte.${encodeURIComponent(quarterStart)}&select=id,order_id,order_reference,seller_user_id,provider,policy_version,seller_plan_id,gross_product_revenue,platform_fee_bps,platform_fee_amount,order_processor_fee_total,processor_fee_allocated,processor_fee_status,processor_fee_native_amount,processor_fee_native_currency,seller_net,settlement_status,breakdown,created_at&order=created_at.desc&limit=5000`),
+      optionalRows('orders?reference=eq.BVS-20260807-9MLIC&select=id,reference,subtotal,total,tax_amount,currency,status,payment_method,created_at&limit=1'),
     ])
 
     const monthOrders = orders.filter((order) => String(order.created_at || order.paid_at || '') >= monthStart)
@@ -90,15 +109,53 @@ export async function GET(request: Request) {
     const quarterCheckout = orders.reduce((sum, order) => sum + money(order.total), 0)
     const quarterTax = orders.reduce((sum, order) => sum + money(order.tax_amount), 0)
     const quarterArtistCredits = quarterLedger.rows
-      .filter((row) => row.direction === 'credit' && row.entry_type === 'sale_credit')
+      .filter((row) => row.direction === 'credit' && row.entry_type === 'sale_credit' && row.status === 'posted')
+      .reduce((sum, row) => sum + money(row.amount), 0)
+    const pendingArtistCredits = quarterLedger.rows
+      .filter((row) => row.direction === 'credit' && row.entry_type === 'sale_credit' && row.status === 'pending')
       .reduce((sum, row) => sum + money(row.amount), 0)
     const walletLiability = allLedger.rows.reduce((sum, row) => (
       sum + (row.direction === 'credit' ? money(row.amount) : -money(row.amount))
     ), 0)
     const reconciledEvents = paymentEvents.rows.filter((row) => row.verified === true && row.reconciled === true).length
 
+    const platformFees = settlements.rows
+      .filter((row) => row.settlement_status === 'posted')
+      .reduce((sum, row) => sum + money(row.platform_fee_amount), 0)
+    const sellerProcessorFees = settlements.rows
+      .filter((row) => row.settlement_status === 'posted')
+      .reduce((sum, row) => sum + money(row.processor_fee_allocated), 0)
+    const actualOrderProcessorFees = uniqueOrderProcessorFees(settlements.rows.filter((row) => row.processor_fee_status === 'actual' || row.processor_fee_status === 'schedule'))
+    const bvsAbsorbedProcessor = Math.max(0, actualOrderProcessorFees - sellerProcessorFees)
+
+    let legacyCaseCredit: Row | null = null
+    const caseOrderRow = caseOrder.rows[0]
+    if (caseOrderRow?.id) {
+      const legacy = await optionalRows(`artist_ledger_entries?source_table=eq.orders&source_id=eq.${caseOrderRow.id}&entry_type=eq.sale_credit&select=id,artist_user_id,amount,currency,status,metadata,effective_at&limit=5`)
+      legacyCaseCredit = legacy.rows[0] || null
+    }
+
+    const canMutatePolicy = ['founder', 'administrator', 'commerce_manager'].includes(String(identity.role))
+    const exampleCards = [
+      { id: 'single_2', label: '$2 single', productType: 'single', price: 2, sellerPlanId: 'artist_free' },
+      { id: 'track_4', label: '$4 track / archive / mix', productType: 'mix', price: 4, sellerPlanId: 'artist_free' },
+      { id: 'album_14', label: '$14 album', productType: 'album', price: 14, sellerPlanId: 'artist_free' },
+      { id: 'album_19', label: '$19 album', productType: 'album', price: 19, sellerPlanId: 'artist_free' },
+      { id: 'beat_free', label: '$29 beat · Free', productType: 'beat', price: 29, sellerPlanId: 'producer_free' },
+      { id: 'beat_plus', label: '$29 beat · Plus', productType: 'beat', price: 29, sellerPlanId: 'producer_plus' },
+      { id: 'beat_pro', label: '$29 beat · Pro', productType: 'beat', price: 29, sellerPlanId: 'producer_pro' },
+      { id: 'service_free', label: '$69 service · Free', productType: 'service', price: 69, sellerPlanId: 'service_free' },
+      { id: 'service_pro', label: '$69 service · Pro', productType: 'service', price: 69, sellerPlanId: 'service_pro' },
+      { id: 'studio', label: '$69 service · Studio', productType: 'service', price: 69, sellerPlanId: 'studio' },
+    ].map((item) => ({
+      ...item,
+      commissionBps: marketplaceCommissionBps({ productType: item.productType as 'single' | 'mix' | 'album' | 'beat' | 'service', unitAmount: item.price, sellerPlanId: item.sellerPlanId }),
+    }))
+
     return NextResponse.json({
       generatedAt: now.toISOString(),
+      role: identity.role,
+      canMutatePolicy,
       period: { monthStart, quarterStart, quarter: `Q${Math.floor(now.getUTCMonth() / 3) + 1} ${now.getUTCFullYear()}` },
       current: {
         paidArtists: memberships.available ? memberships.rows.filter((row) => Boolean(row.provider)).length : null,
@@ -117,9 +174,14 @@ export async function GET(request: Request) {
         quarterCheckout,
         quarterTax,
         quarterArtistSaleCredits: quarterLedger.available ? quarterArtistCredits : null,
-        contributionBeforeProcessor: quarterLedger.available ? quarterGmv - quarterArtistCredits : null,
+        pendingArtistSaleCredits: quarterLedger.available ? pendingArtistCredits : null,
+        contributionBeforeProcessor: settlements.available ? platformFees : (quarterLedger.available ? quarterGmv - quarterArtistCredits : null),
         walletLiability: allLedger.available ? walletLiability : null,
-        processorFees: null,
+        processorFees: settlements.available ? actualOrderProcessorFees : null,
+        sellerProcessorFees: settlements.available ? sellerProcessorFees : null,
+        bvsAbsorbedProcessor: settlements.available ? bvsAbsorbedProcessor : null,
+        bvsPlatformFees: settlements.available ? platformFees : null,
+        contributionAfterProcessor: settlements.available ? platformFees - bvsAbsorbedProcessor : null,
         grossProfit: null,
       },
       controls: {
@@ -127,13 +189,57 @@ export async function GET(request: Request) {
         verifiedPaymentEvents: paymentEvents.available ? paymentEvents.rows.filter((row) => row.verified === true).length : null,
         reconciledPaymentEvents: paymentEvents.available ? reconciledEvents : null,
         unresolvedPaymentEvents: paymentEvents.available ? paymentEvents.rows.filter((row) => row.reconciled !== true).length : null,
+        pendingProcessorSettlements: settlements.available ? settlements.rows.filter((row) => row.settlement_status === 'pending_processor').length : null,
+      },
+      policy: {
+        ...MARKETPLACE_POLICY_SUMMARY,
+        version: MARKETPLACE_POLICY_VERSION,
+        processorPresets: PROCESSOR_FEE_PRESETS,
+        examples: exampleCards,
+        producerBreakEven: {
+          freeToPlusMonthlyGmv: producerUpgradeBreakEvenUsd(5, 7),
+          plusToProMonthlyGmv: producerUpgradeBreakEvenUsd(10, 5),
+        },
+        creatorComplete: { monthlyUsd: 19, yearlyUsd: 190, status: 'later' },
+      },
+      recentSettlements: settlements.available ? settlements.rows.slice(0, 50) : [],
+      caseStudy: {
+        reference: 'BVS-20260807-9MLIC',
+        found: Boolean(caseOrderRow),
+        order: caseOrderRow || null,
+        knownHistorical: {
+          customerPaid: 4.76,
+          productPrice: 4,
+          vat: 0.76,
+          proposedCommissionBps: 2000,
+          bvsFee: 0.8,
+          stripeFeeNative: 0.39,
+          stripeFeeNativeCurrency: 'EUR',
+          stripeFeeApproxUsd: 0.45,
+          correctSellerNetApproxUsd: 2.75,
+          sourceLabel: 'Known BVS transaction pattern; USD conversion is approximate unless settlement FX is stored.',
+        },
+        existingLedgerCredit: legacyCaseCredit,
+        legacyWarning: legacyCaseCredit && money(legacyCaseCredit.amount) >= 3.99
+          ? 'Legacy full-price seller credit detected. Do not rewrite history automatically; record a Founder-authorized adjustment if adopted.'
+          : null,
+      },
+      guidance: {
+        moneyFlow: ['Customer payment', 'VAT / sales tax payable', 'Pre-tax product revenue', 'BVS marketplace fee', 'Processor cost allocation', 'Creator wallet', 'Payout'],
+        tax: [
+          'VAT / sales tax collected from the customer is a tax liability, not BVS revenue.',
+          'BVS marketplace commission is calculated only on pre-tax product revenue.',
+          'Creator personal income tax is normally the creator’s responsibility after earning or payout.',
+          'Do not deduct a guessed withholding percentage until qualified Zimbabwe / Germany advice confirms an obligation.',
+        ],
       },
       availability: {
         memberships: memberships.available,
         artistLedger: quarterLedger.available && allLedger.available,
         paymentEvents: paymentEvents.available,
         newsletter: newsletter.available,
-        processorFees: false,
+        sellerSettlements: settlements.available,
+        processorFees: settlements.available && settlements.rows.some((row) => row.processor_fee_status === 'actual' || row.processor_fee_status === 'schedule'),
       },
     })
   } catch (error) {
