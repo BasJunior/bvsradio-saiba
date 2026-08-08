@@ -50,17 +50,33 @@ create table if not exists public.commerce_seller_settlements (
 alter table public.commerce_seller_settlements
   add column if not exists order_processor_fee_total numeric(12,2);
 
+create table if not exists public.commerce_refund_events (
+  id uuid primary key default gen_random_uuid(),
+  provider text not null check (provider in ('stripe','paynow','manual')),
+  provider_event_id text not null,
+  order_id uuid not null references public.orders(id) on delete restrict,
+  order_reference text not null,
+  event_type text not null check (event_type in ('refund','chargeback','manual_reversal')),
+  provider_amount numeric(12,2),
+  provider_currency text,
+  reversal_fraction numeric(8,6) not null default 1 check (reversal_fraction > 0 and reversal_fraction <= 1),
+  created_at timestamptz not null default now(),
+  unique(provider, provider_event_id)
+);
+
 create index if not exists commerce_seller_settlements_seller_idx
   on public.commerce_seller_settlements(seller_user_id, created_at desc);
 create index if not exists commerce_seller_settlements_order_idx
   on public.commerce_seller_settlements(order_id, settlement_status);
-
+create index if not exists commerce_refund_events_order_idx
+  on public.commerce_refund_events(order_id, created_at desc);
 create index if not exists artist_ledger_entries_sale_status_idx
   on public.artist_ledger_entries(artist_user_id, entry_type, status, effective_at desc);
 
 alter table public.marketplace_fee_policy_versions enable row level security;
 alter table public.marketplace_fee_policy_audit enable row level security;
 alter table public.commerce_seller_settlements enable row level security;
+alter table public.commerce_refund_events enable row level security;
 
 drop policy if exists "Editorial can read marketplace policy" on public.marketplace_fee_policy_versions;
 create policy "Editorial can read marketplace policy" on public.marketplace_fee_policy_versions
@@ -76,6 +92,10 @@ create policy "Artists can read own seller settlements" on public.commerce_selle
 
 drop policy if exists "Finance staff can read seller settlements" on public.commerce_seller_settlements;
 create policy "Finance staff can read seller settlements" on public.commerce_seller_settlements
+  for select using (public.is_artist_wallet_admin());
+
+drop policy if exists "Finance staff can read refund events" on public.commerce_refund_events;
+create policy "Finance staff can read refund events" on public.commerce_refund_events
   for select using (public.is_artist_wallet_admin());
 
 insert into public.marketplace_fee_policy_versions(version,effective_at,status,policy,approved_at)
@@ -97,7 +117,8 @@ values(
     'service_pro_bps',800,
     'studio_bps',500,
     'tax_commissionable',false,
-    'historical_policy_snapshot',true
+    'historical_policy_snapshot',true,
+    'refunds_reverse_creator_wallet',true
   ),
   now()
 )
