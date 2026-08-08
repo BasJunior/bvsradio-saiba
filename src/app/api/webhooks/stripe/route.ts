@@ -4,6 +4,7 @@ import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder }
 import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit, creditPaidArtistSales } from "@/lib/artist-credit";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
+import { resolveStripeProcessorFee } from "@/lib/stripe-processor-fee";
 
 export const runtime = "nodejs";
 
@@ -41,8 +42,7 @@ export async function POST(req: Request) {
       metadata?: { reference?: string };
     };
 
-    const reference =
-      session.client_reference_id || session.metadata?.reference || "";
+    const reference = session.client_reference_id || session.metadata?.reference || "";
 
     if (reference && session.payment_status === "paid") {
       const transition = await recordVerifiedPayment({
@@ -63,15 +63,26 @@ export async function POST(req: Request) {
       if (!transition.transitioned) {
         return NextResponse.json({ received: true, duplicate: true });
       }
+
       await recordServerEvent("checkout_complete", { provider: "stripe", status: "paid" });
       await creditPaidArtistDeposit(reference, "stripe");
-      await creditPaidArtistSales(reference, "stripe");
+
+      const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
+      const processorFee = await resolveStripeProcessorFee(paymentIntentId, session.currency || "usd");
+      const settlement = await creditPaidArtistSales(reference, "stripe", processorFee);
+      if (settlement.pending) {
+        await recordServerEvent("payment_error", {
+          provider: "stripe",
+          stage: "processor_fee_pending",
+          reference,
+        });
+      }
+
       const updated = await updateOrder(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",
         stripeSessionId: session.id,
-        stripePaymentIntent:
-          typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+        stripePaymentIntent: paymentIntentId || undefined,
       });
 
       if (updated) {
@@ -79,7 +90,6 @@ export async function POST(req: Request) {
         await notifyOwnerNewOrder(paid);
         await notifyCustomerOrderEmail(paid, "paid");
       } else {
-        // Order may only exist remotely if filesystem missed write
         const existing = await loadOrder(reference);
         if (existing) {
           const paid = { ...existing, status: "paid" as const };
