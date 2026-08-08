@@ -7,6 +7,7 @@ export const analyticsEvents = [
   "checkout_started",
   "checkout_redirect",
   "checkout_complete",
+  "small_basket_nudge_shown",
   "playback_error",
   "payment_error",
   "queue_play_now",
