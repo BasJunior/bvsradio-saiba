@@ -30,7 +30,7 @@ export default function Footer() {
               <Link href="/upload?type=beats" className="text-sm text-text-secondary hover:text-brand transition-colors">Submit beat</Link>
               <Link href="/catalogue?type=beat#beatstore" className="text-sm text-text-secondary hover:text-brand transition-colors">Browse Beats</Link>
               <Link href="/marketplace" className="text-sm text-text-secondary hover:text-brand transition-colors">Creator Marketplace</Link>
-              <Link href="/creator/marketplace" className="text-sm text-text-secondary hover:text-brand transition-colors">Creator Marketplace desk</Link>
+              <Link href="/creator/studio#marketplace-desk" className="text-sm text-text-secondary hover:text-brand transition-colors">Manage marketplace</Link>
               <Link href="/music/producers" className="text-sm text-text-secondary hover:text-brand transition-colors">Producers</Link>
               <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Official BVS Studio Services</Link>
             </div>

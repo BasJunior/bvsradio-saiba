@@ -149,7 +149,7 @@ export default function Navbar() {
     { href: '/upload?type=beats', label: 'Submit beat' },
     { href: '/premium', label: 'Premium' },
     { href: '/catalogue?type=beat#beatstore', label: 'BeatStore' },
-    { href: '/creator/marketplace', label: 'Marketplace desk' },
+    { href: '/creator/studio#marketplace-desk', label: 'Manage marketplace' },
   ]
 
   const showArtist = Boolean(access?.artist)
