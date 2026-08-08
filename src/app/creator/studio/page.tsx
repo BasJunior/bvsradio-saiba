@@ -22,8 +22,8 @@ export default function CreatorStudio() {
   const artist=['artist','admin'].includes(data.profile.role), writer=['writer','admin'].includes(data.profile.role), showCreator=['show_creator','admin'].includes(data.profile.role)
   const producer = Boolean((data.profile as {is_producer?: boolean}).is_producer) || data.profile.role === 'admin'
   return <main className="mx-auto max-w-6xl px-6 py-12"><p className="text-xs uppercase tracking-[.22em] text-brand">Creator studio</p><h1 className="mt-2 text-4xl font-semibold">Welcome, {data.profile.display_name||'creator'}</h1><p className="mt-3 text-text-secondary">Draft privately, submit when ready, and follow the human editorial review. Premium members get multi-platform distribution after BVS publish.</p>{error&&<p className="mt-5 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}{message&&<p className="mt-5 rounded-xl bg-brand/10 p-4 text-brand">{message}</p>}
-    {artist&&<div id="release-path" className="mt-8"><ArtistPathBoard data={data} /></div>}
-    <div id="premium-desk"><CreatorDropDown label="Premium desk" defaultOpen><StudioPremiumDesk token={token}/></CreatorDropDown></div>
+    {artist&&<div id="release-path"><CreatorDropDown label="Release path"><ArtistPathBoard data={data} /></CreatorDropDown></div>}
+    <div id="premium-desk"><CreatorDropDown label="Premium desk"><StudioPremiumDesk token={token}/></CreatorDropDown></div>
     <div id="marketplace-desk"><CreatorDropDown label="Marketplace"><CreatorMarketplaceDesk accessToken={token} embedded /></CreatorDropDown></div>
     {(artist||producer)&&<CreatorDropDown label="Performance and editorial insights" defaultOpen><CreatorInsights token={token}/></CreatorDropDown>}
     {producer&&<div id="beatstore"><CreatorDropDown label="My BeatStore"><MyBeatStore/></CreatorDropDown></div>}
