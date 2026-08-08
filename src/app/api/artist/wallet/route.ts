@@ -10,6 +10,21 @@ type SupabaseUser = {
   user_metadata?: { full_name?: string; username?: string }
 }
 
+type SettlementRow = Record<string, unknown> & {
+  order_reference?: string
+  gross_product_revenue?: number | string
+  platform_fee_amount?: number | string
+  processor_fee_allocated?: number | string
+  seller_net?: number | string
+  settlement_status?: string
+}
+
+type SettlementView = SettlementRow & {
+  refunds: number
+  payout_net: number
+  tax_excluded: true
+}
+
 async function currentUser(request: Request): Promise<SupabaseUser | null> {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
   if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY || !serviceHeaders.apikey) return null
@@ -55,7 +70,7 @@ export async function GET(request: Request) {
     getJson<Array<Record<string, unknown>>>(`artist_payout_methods?artist_user_id=eq.${userId}&select=*&order=created_at.desc&limit=10`, []),
     getJson<Array<Record<string, unknown>>>(`artist_payout_requests?artist_user_id=eq.${userId}&select=*&order=requested_at.desc&limit=20`, []),
     getJson<Array<{ value?: { amount?: number | string; currency?: string } }>>(`artist_wallet_settings?key=eq.payout_minimum_usd&select=value&limit=1`, []),
-    getJson<Array<Record<string, unknown>>>(`commerce_seller_settlements?seller_user_id=eq.${userId}&select=id,order_reference,provider,policy_version,seller_plan_id,gross_product_revenue,platform_fee_bps,platform_fee_amount,processor_fee_allocated,processor_fee_status,processor_fee_native_amount,processor_fee_native_currency,seller_net,settlement_status,breakdown,created_at&order=created_at.desc&limit=60`, []),
+    getJson<SettlementRow[]>(`commerce_seller_settlements?seller_user_id=eq.${userId}&select=id,order_reference,provider,policy_version,seller_plan_id,gross_product_revenue,platform_fee_bps,platform_fee_amount,processor_fee_allocated,processor_fee_status,processor_fee_native_amount,processor_fee_native_currency,seller_net,settlement_status,breakdown,created_at&order=created_at.desc&limit=60`, []),
   ])
 
   const refundByReference = new Map<string, number>()
@@ -66,7 +81,7 @@ export async function GET(request: Request) {
     refundByReference.set(reference, (refundByReference.get(reference) || 0) + (Number(entry.amount) || 0))
   }
 
-  const sellerSettlements = rawSettlements.map((row) => {
+  const sellerSettlements: SettlementView[] = rawSettlements.map((row) => {
     const reference = String(row.order_reference || '')
     const refunds = Math.round((refundByReference.get(reference) || 0) * 100) / 100
     const sellerNet = Number(row.seller_net) || 0
