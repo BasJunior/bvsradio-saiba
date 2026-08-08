@@ -498,21 +498,8 @@ export async function GET(req: Request) {
     taxAmount: order.taxAmount || 0,
     taxRate: order.taxRate || 0,
     taxLabel: order.taxLabel,
-    taxCountry: order.taxCountry,
-    taxNote: order.taxNote,
     total: order.total,
     currency: order.currency || "USD",
     paymentMethod: order.paymentMethod,
-    customer: {
-      name: order.customer?.name,
-      email: order.customer?.email,
-    },
-    items: order.items.map((i) => ({
-      title: i.title,
-      price: i.price,
-      quantity: i.quantity,
-      type: i.type,
-      artist: i.artist,
-    })),
   });
 }

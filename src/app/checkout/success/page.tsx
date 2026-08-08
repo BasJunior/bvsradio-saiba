@@ -31,7 +31,7 @@ type OrderInfo = {
   currency?: string;
   paymentMethod?: string;
   payment_method?: string;
-  items: OrderItem[];
+  items?: OrderItem[];
   customer?: { name?: string; email?: string };
 };
 
