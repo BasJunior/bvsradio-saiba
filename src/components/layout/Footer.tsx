@@ -22,7 +22,7 @@ export default function Footer() {
             </div>
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-text-primary mb-3">For artists</h4>
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Artists &amp; BVS Services</h4>
             <div className="flex flex-col gap-2">
               <Link href="/artists" className="text-sm text-text-secondary hover:text-brand transition-colors">Artist Access</Link>
               <Link href="/premium" className="text-sm text-text-secondary hover:text-brand transition-colors">Premium</Link>
@@ -32,7 +32,7 @@ export default function Footer() {
               <Link href="/marketplace" className="text-sm text-text-secondary hover:text-brand transition-colors">Creator Marketplace</Link>
               <Link href="/creator/marketplace" className="text-sm text-text-secondary hover:text-brand transition-colors">Creator Marketplace desk</Link>
               <Link href="/music/producers" className="text-sm text-text-secondary hover:text-brand transition-colors">Producers</Link>
-              <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">BVS Studio Services</Link>
+              <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Official BVS Studio Services</Link>
             </div>
           </div>
           <div>

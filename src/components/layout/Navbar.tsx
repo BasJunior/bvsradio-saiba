@@ -32,6 +32,7 @@ function formatPremiumUntil(iso: string | null): string | null {
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
+  const [isServicesMenuOpen, setIsServicesMenuOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
   const [premium, setPremium] = useState<PremiumInfo | null>(null)
@@ -132,9 +133,14 @@ export default function Navbar() {
   const navLinks = [
     { href: '/radio', label: 'Listen' },
     { href: '/catalogue', label: 'Music' },
-    { href: '/marketplace', label: 'Marketplace' },
+    { href: '/catalogue?type=beat#beatstore', label: 'Beats' },
     { href: '/shows', label: 'Shows' },
     { href: '/blog', label: 'Stories' },
+  ]
+
+  const serviceLinks = [
+    { href: '/marketplace', label: 'Creator Marketplace', detail: 'Creator products and professional talent' },
+    { href: '/shop', label: 'BVS Studio Services', detail: 'Official BVS mixing, mastering and production' },
   ]
 
   const artistLinks = [
@@ -143,9 +149,7 @@ export default function Navbar() {
     { href: '/upload?type=beats', label: 'Submit beat' },
     { href: '/premium', label: 'Premium' },
     { href: '/catalogue?type=beat#beatstore', label: 'BeatStore' },
-    { href: '/marketplace', label: 'Creator Marketplace' },
     { href: '/creator/marketplace', label: 'Marketplace desk' },
-    { href: '/shop', label: 'BVS Studio services' },
   ]
 
   const showArtist = Boolean(access?.artist)
@@ -183,6 +187,32 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsServicesMenuOpen(true)}
+            onMouseLeave={() => setIsServicesMenuOpen(false)}
+          >
+            <button
+              type="button"
+              className="text-text-secondary hover:text-brand transition-colors"
+              aria-expanded={isServicesMenuOpen}
+              onClick={() => setIsServicesMenuOpen(!isServicesMenuOpen)}
+            >
+              BVS Services <span aria-hidden="true">⌄</span>
+            </button>
+            {isServicesMenuOpen && (
+              <div className="absolute left-1/2 top-full w-72 -translate-x-1/2 pt-3">
+                <div className="rounded-xl border border-white/10 bg-bg-primary p-2 shadow-2xl">
+                  {serviceLinks.map((link) => (
+                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 hover:bg-white/5">
+                      <span className="block text-text-primary hover:text-brand">{link.label}</span>
+                      <span className="mt-0.5 block text-xs text-text-secondary">{link.detail}</span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <div
             className="relative"
             onMouseEnter={() => setIsArtistMenuOpen(true)}
@@ -327,6 +357,15 @@ export default function Navbar() {
                 {link.label}
               </Link>
             ))}
+            <div className="pt-2">
+              <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">BVS Services</div>
+              {serviceLinks.map((link) => (
+                <Link key={link.href} href={link.href} className="block py-2 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
+                  <span className="block">{link.label}</span>
+                  <span className="block text-xs text-text-secondary/70">{link.detail}</span>
+                </Link>
+              ))}
+            </div>
             <div className="pt-2">
               <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">For Artists</div>
               {artistLinks.map((link) => (
