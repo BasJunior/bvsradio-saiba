@@ -103,6 +103,7 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 20 | `beat-packs` | `supabase-beat-packs.sql` | ordered producer BeatStore pack submissions |
 | 23 | `founder-authority` | `supabase-founder-authority.sql` | single protected BVS Founder authority + BasJunior assignment |
 | 24 | `security-hardening` | `supabase-security-hardening.sql` | server-only operational tables and mutation RPCs |
+| 25 | `marketplace-economics` | `supabase-marketplace-economics.sql` | immutable seller fee snapshots, settlements, processor fees and refund reversals |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.
