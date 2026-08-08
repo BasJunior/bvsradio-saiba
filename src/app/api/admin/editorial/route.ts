@@ -156,13 +156,29 @@ async function loadReleasesSection() {
 async function loadProfilesSection() {
   const profilesRes = await fetch(
     editorialUrl(
-      'profiles?select=id,username,display_name,role,is_producer,is_verified,is_published,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,creator_name_reviewed_at&order=created_at.desc&limit=200',
+      'profiles?select=id,username,display_name,avatar_url,bio,website_url,location,role,is_producer,is_verified,is_published,spotify_url,created_at,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,creator_name_reviewed_at&order=created_at.desc&limit=200',
     ),
     { headers: serviceHeaders, cache: 'no-store' },
   )
   if (!profilesRes.ok) throw new Error('MIGRATION')
-  const profiles = await profilesRes.json()
-  const roleApplications = await optionalJson('profile_role_applications?select=*&order=updated_at.desc&limit=100')
+  const rawProfiles = await profilesRes.json() as Array<Record<string, unknown>>
+  const [roleApplications, artistDetails] = await Promise.all([
+    optionalJson('profile_role_applications?select=*&order=updated_at.desc&limit=100'),
+    optionalJson('artist_waitlist?onboarded_profile_id=not.is.null&select=onboarded_profile_id,artist_name,country,city,links,status&order=updated_at.desc&limit=500'),
+  ])
+  const detailsByProfile = new Map(
+    (artistDetails as Array<Record<string, unknown>>).map((details) => [String(details.onboarded_profile_id), details]),
+  )
+  const profiles = rawProfiles.map((profile) => {
+    const details = detailsByProfile.get(String(profile.id))
+    return {
+      ...profile,
+      onboarding_artist_name: details?.artist_name || null,
+      onboarding_status: details?.status || null,
+      onboarding_location: [details?.city, details?.country].filter(Boolean).join(', ') || null,
+      social_links: details?.links || {},
+    }
+  })
   return { profiles, roleApplications }
 }
 

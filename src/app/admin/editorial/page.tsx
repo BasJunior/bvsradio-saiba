@@ -11,7 +11,7 @@ import { mediaUrlForStoredValue } from '@/lib/media-url'
 import EditorialAnalytics from '@/components/EditorialAnalytics'
 
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
-type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string }
+type Profile = { id: string; username: string; display_name?: string; avatar_url?: string; bio?: string; website_url?: string; location?: string; spotify_url?: string; created_at?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string; onboarding_artist_name?: string; onboarding_status?: string; onboarding_location?: string; social_links?: { instagram?: string; spotify?: string; website?: string } }
 type Programme = { id: string; slug: string; title: string; host: string; day_label: string; start_time?: string; timezone: string; status: string }
 type Credit = { id: string; track_id: string; person_name: string; credit_role: string }
 type Staff = { user_id: string; role: EditorialRole; active: boolean }
@@ -386,6 +386,7 @@ export default function EditorialDashboard() {
               track={track}
               credits={data.credits.filter((c) => c.track_id === track.id)}
               messages={(data.trackReviewMessages || []).filter((message) => message.track_id === track.id)}
+              profile={data.profiles.find((profile) => profile.id === track.user_id)}
               allowed={allowed}
               act={act}
               busy={busy}
@@ -439,7 +440,7 @@ export default function EditorialDashboard() {
                   className="flex items-center justify-between gap-4 rounded-xl border border-white/10 p-4"
                 >
                   <div>
-                    <p className="font-medium">{creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })}</p>
+                    <ArtistReviewLink profile={profile} className="font-medium" />
                     <p className="text-xs text-text-secondary">
                       @{profile.username} · member name: {profile.display_name || 'not set'} · {profile.is_published ? 'Published and verified' : 'Not published'}
                     </p>
@@ -900,7 +901,7 @@ function BeatReviewThread({ beat, messages, profiles, act, busy }: { beat: Beat;
   </div>
 }
 
-function TrackCard({ track, credits, messages, allowed, act, busy }: { track: Track; credits: Credit[]; messages: TrackReviewMessage[]; allowed: (p: EditorialPermission) => boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
+function TrackCard({ track, profile, credits, messages, allowed, act, busy }: { track: Track; profile?: Profile; credits: Credit[]; messages: TrackReviewMessage[]; allowed: (p: EditorialPermission) => boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
   const [notes, setNotes] = useState(track.editorial_notes || '')
   const [message, setMessage] = useState('')
   const [messageOpen, setMessageOpen] = useState(false)
@@ -910,7 +911,7 @@ function TrackCard({ track, credits, messages, allowed, act, busy }: { track: Tr
   const [personName, setPersonName] = useState('')
   const [creditRole, setCreditRole] = useState('')
   const disabled = Boolean(busy)
-  return <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div className="flex min-w-0 gap-4">{track.artwork_url?<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed border-white/15 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><h3 className="mt-1 text-xl font-semibold">{track.title}</h3><p className="text-sm text-text-secondary">{track.artist_name} · {track.genre} · {new Date(track.created_at).toLocaleDateString()}</p><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><audio controls preload="none" src={track.file_url} className="h-10 max-w-full" /></div>
+  return <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div className="flex min-w-0 gap-4">{track.artwork_url?<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed border-white/15 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><h3 className="mt-1 text-xl font-semibold">{track.title}</h3><p className="text-sm text-text-secondary">{profile ? <ArtistReviewLink profile={profile} label={track.artist_name} /> : track.artist_name} · {track.genre} · {new Date(track.created_at).toLocaleDateString()}</p><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><audio controls preload="none" src={track.file_url} className="h-10 max-w-full" /></div>
     {allowed('approve_submissions') && <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]"><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Private review notes" className="min-h-20 rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"/><div className="flex flex-wrap items-start gap-2"><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'in_review', notes })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Review</button><button disabled={disabled} onClick={() => setMessageOpen(open => !open)} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{messageOpen ? 'Close message' : 'Send message'}</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'approved', notes })} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'rejected', notes })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button><button disabled={disabled} onClick={async () => { if (!window.confirm(`Move “${track.title}” from Singles to the BeatStore review queue?`)) return; await act('reclassify_track_as_beat', { trackId: track.id }) }} className="rounded-full border border-amber-300/60 px-4 py-2 text-xs text-amber-200">Move to BeatStore</button>{track.editorial_status === 'approved' && <button disabled={disabled} onClick={() => act('publish_track', { trackId: track.id, publish: !track.is_public })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{track.is_public ? 'Unpublish track' : 'Publish track'}</button>}</div></div>}
     {messageOpen && <div className="mt-4 rounded-xl border border-brand/20 bg-black/20 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>{messages.length > 0 && <div className="mt-3 max-h-44 space-y-2 overflow-y-auto">{messages.map(item => <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs"><span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}<span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span></p>)}</div>}<div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><textarea autoFocus value={message} onChange={e => setMessage(e.target.value)} maxLength={2000} placeholder="Message the uploader about classification, rights, artwork or requested changes…" className="min-h-24 rounded-lg border border-white/10 bg-black/20 p-3 text-sm"/><button disabled={disabled || !message.trim()} onClick={async () => { await act('message_track', { trackId: track.id, message }); setMessage('') }} className="self-start rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Post message</button></div></div>}
     <div className="mt-5 grid gap-5 border-t border-white/10 pt-5 lg:grid-cols-3">
@@ -939,6 +940,45 @@ function StaffPanel({ profiles, staff, act }: { profiles: Profile[]; staff: Staf
   const save = (member: Staff, nextRole: EditorialRole, active: boolean) =>
     act('assign_staff', { userId: member.user_id, role: nextRole, active })
   return <section className="mt-14"><h2 className="text-2xl font-semibold">Staff roles</h2><p className="mt-2 text-sm text-text-secondary">Administrators can change roles or disable staff access. At least one active administrator must remain.</p><div className="mt-5 grid gap-3 md:grid-cols-2">{staff.map(member => { const p=profiles.find(profile=>profile.id===member.user_id); return <StaffRoleCard key={member.user_id} member={member} name={p?.display_name || p?.username || member.user_id} save={save} />})}</div><div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-white/10 p-4"><select value={userId} onChange={e=>setUserId(e.target.value)} className="min-w-56 rounded-lg border border-white/10 bg-bg-primary p-2 text-sm"><option value="">Select account</option>{profiles.filter(p=>!staff.some(member=>member.user_id===p.id)).map(p=><option key={p.id} value={p.id}>{p.display_name || p.username}</option>)}</select><select value={role} onChange={e=>setRole(e.target.value as EditorialRole)} className="rounded-lg border border-white/10 bg-bg-primary p-2 text-sm">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><button disabled={!userId} onClick={()=>act('assign_staff',{userId,role,active:true})} className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Add staff member</button></div></section>
+}
+
+function socialUrl(kind: 'instagram' | 'spotify' | 'website', value?: string) {
+  const clean = String(value || '').trim()
+  if (!clean) return ''
+  if (/^https?:\/\//i.test(clean)) return clean
+  if (kind === 'instagram') return `https://instagram.com/${clean.replace(/^@/, '')}`
+  return `https://${clean.replace(/^\/+/, '')}`
+}
+
+function ArtistReviewLink({ profile, label, className = '' }: { profile: Profile; label?: string; className?: string }) {
+  const [open, setOpen] = useState(false)
+  const publicName = creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })
+  const links = {
+    instagram: socialUrl('instagram', profile.social_links?.instagram),
+    spotify: socialUrl('spotify', profile.social_links?.spotify || profile.spotify_url),
+    website: socialUrl('website', profile.social_links?.website || profile.website_url),
+  }
+  const avatar = mediaUrlForStoredValue(profile.avatar_url) || ''
+  return <>
+    <button type="button" onClick={() => setOpen(true)} className={`text-left text-brand underline decoration-brand/40 underline-offset-4 hover:text-white ${className}`}>{label || publicName}</button>
+    {open && <div className="fixed inset-0 z-[100] grid place-items-center bg-black/80 p-4" role="dialog" aria-modal="true" aria-label={`Review ${publicName}`} onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false) }}>
+      <article className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/15 bg-bg-primary p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4"><div className="flex min-w-0 items-center gap-4">{avatar ? <Image src={avatar} alt={`${publicName} profile`} width={88} height={88} unoptimized={/^https?:\/\//i.test(avatar)} className="h-20 w-20 shrink-0 rounded-2xl object-cover ring-1 ring-white/15" /> : <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-white/5 text-2xl text-brand">{publicName.slice(0,1).toUpperCase()}</div>}<div className="min-w-0"><p className="text-xs uppercase tracking-[.2em] text-brand">Artist credibility review</p><h2 className="mt-1 truncate text-3xl font-semibold">{publicName}</h2><p className="text-sm text-text-secondary">@{profile.username}{profile.onboarding_artist_name && profile.onboarding_artist_name !== publicName ? ` · applied as ${profile.onboarding_artist_name}` : ''}</p></div></div><button type="button" onClick={() => setOpen(false)} className="rounded-full border border-white/20 px-3 py-1.5 text-sm">Close</button></div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3"><ReviewFact label="Account" value={profile.is_verified ? 'Verified' : 'Not verified'} /><ReviewFact label="Publishing" value={profile.is_published ? 'Published' : 'Not published'} /><ReviewFact label="Joined" value={profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'} /></div>
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[.025] p-5"><h3 className="font-semibold">Profile and location</h3><p className="mt-2 whitespace-pre-wrap text-sm text-text-secondary">{profile.bio || 'No artist biography supplied.'}</p><p className="mt-3 text-sm text-brand">{profile.onboarding_location || profile.location || 'No location supplied'}</p></div>
+        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[.025] p-5"><h3 className="font-semibold">Social presence</h3><p className="mt-1 text-xs text-text-secondary">Open each submitted account and check identity consistency, audience history, releases and engagement quality.</p><div className="mt-4 flex flex-wrap gap-3">{links.instagram && <ExternalReviewLink href={links.instagram} label="Instagram ↗" />}{links.spotify && <ExternalReviewLink href={links.spotify} label="Spotify / DSP ↗" />}{links.website && <ExternalReviewLink href={links.website} label="Website / link hub ↗" />}{!links.instagram && !links.spotify && !links.website && <p className="text-sm text-amber-200">No social or DSP links were submitted.</p>}</div></div>
+        {profile.is_published && <Link href={`/artist/${profile.username}`} target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Open public BVS profile ↗</Link>}
+      </article>
+    </div>}
+  </>
+}
+
+function ReviewFact({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl border border-white/10 p-3"><p className="text-[11px] uppercase tracking-wider text-text-secondary">{label}</p><p className="mt-1 text-sm font-medium">{value}</p></div>
+}
+
+function ExternalReviewLink({ href, label }: { href: string; label: string }) {
+  return <a href={href} target="_blank" rel="noopener noreferrer" className="rounded-full border border-brand/50 px-4 py-2 text-sm text-brand hover:bg-brand hover:text-black">{label}</a>
 }
 
 function StaffRoleCard({ member, name, save }: { member: Staff; name: string; save: (member: Staff, role: EditorialRole, active: boolean) => Promise<void> }) {
