@@ -10,6 +10,8 @@ import {
   normalizeArtistPlanId,
   normalizeInterval,
 } from "@/lib/premium-billing";
+import { resolveStripeProcessorFee } from "@/lib/stripe-processor-fee";
+import { reverseMarketplaceSellerCredits } from "@/lib/marketplace-refunds";
 
 export const runtime = "nodejs";
 
@@ -95,13 +97,22 @@ export async function POST(req: Request) {
       }
       await recordServerEvent("checkout_complete", { provider: "stripe", status: "paid" });
       await creditPaidArtistDeposit(reference, "stripe");
-      await creditPaidArtistSales(reference, "stripe");
+
+      const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
+      const processorFee = await resolveStripeProcessorFee(paymentIntentId, session.currency || "usd");
+      const settlement = await creditPaidArtistSales(reference, "stripe", processorFee);
+      if (settlement.pending) {
+        await recordServerEvent("payment_error", {
+          provider: "stripe",
+          stage: "processor_fee_pending",
+          reference,
+        });
+      }
       const updated = await updateOrder(reference, {
         status: "paid",
         deliveryStatus: "paid_processing",
         stripeSessionId: session.id,
-        stripePaymentIntent:
-          typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+        stripePaymentIntent: paymentIntentId || undefined,
       });
 
       if (updated) {
@@ -144,6 +155,77 @@ export async function POST(req: Request) {
     if (subscription.metadata?.kind === "artist_premium" && subscription.metadata.user_id) {
       const result = await deactivateStripeArtistPremium(subscription.id, subscription.metadata.user_id);
       if (!result.ok) return NextResponse.json({ error: "Premium deactivation failed." }, { status: 500 });
+    }
+  }
+
+  if (event.type === "charge.refunded") {
+    const charge = event.data.object as {
+      amount?: number | null;
+      amount_refunded?: number | null;
+      currency?: string | null;
+      payment_intent?: string | { id?: string } | null;
+    };
+    const paymentIntentId = typeof charge.payment_intent === "string"
+      ? charge.payment_intent
+      : charge.payment_intent?.id || "";
+    const originalAmount = Number(charge.amount || 0);
+    const refundedAmount = Number(charge.amount_refunded || 0);
+    const fraction = originalAmount > 0 ? Math.min(1, refundedAmount / originalAmount) : 1;
+
+    if (paymentIntentId && refundedAmount > 0) {
+      const reversal = await reverseMarketplaceSellerCredits({
+        paymentIntentId,
+        providerEventId: event.id,
+        reason: "refund",
+        fraction,
+        providerAmount: refundedAmount / 100,
+        providerCurrency: charge.currency || null,
+      });
+      const duplicate = "duplicate" in reversal && reversal.duplicate === true;
+      if (!reversal.reversed && !duplicate) {
+        await recordServerEvent("payment_error", {
+          provider: "stripe",
+          stage: "refund_wallet_reversal",
+          reason: "reason" in reversal ? String(reversal.reason || "unknown") : "unknown",
+        });
+      }
+    }
+  }
+
+  if (event.type === "charge.dispute.created") {
+    const dispute = event.data.object as {
+      amount?: number | null;
+      currency?: string | null;
+      charge?: string | { id?: string; amount?: number; payment_intent?: string | { id?: string } | null } | null;
+    };
+    let charge = dispute.charge;
+    if (typeof charge === "string") {
+      charge = await stripe.charges.retrieve(charge);
+    }
+    const paymentIntentId = typeof charge?.payment_intent === "string"
+      ? charge.payment_intent
+      : charge?.payment_intent?.id || "";
+    const chargeAmount = Number(charge?.amount || 0);
+    const disputeAmount = Number(dispute.amount || 0);
+    const fraction = chargeAmount > 0 ? Math.min(1, disputeAmount / chargeAmount) : 1;
+
+    if (paymentIntentId && disputeAmount > 0) {
+      const reversal = await reverseMarketplaceSellerCredits({
+        paymentIntentId,
+        providerEventId: event.id,
+        reason: "chargeback",
+        fraction,
+        providerAmount: disputeAmount / 100,
+        providerCurrency: dispute.currency || null,
+      });
+      const duplicate = "duplicate" in reversal && reversal.duplicate === true;
+      if (!reversal.reversed && !duplicate) {
+        await recordServerEvent("payment_error", {
+          provider: "stripe",
+          stage: "chargeback_wallet_reversal",
+          reason: "reason" in reversal ? String(reversal.reason || "unknown") : "unknown",
+        });
+      }
     }
   }
 

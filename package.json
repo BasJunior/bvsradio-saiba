@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:safe-floor": "node --experimental-strip-types scripts/safe-floor-tests.mjs",
+    "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
     "typecheck": "tsc --noEmit",
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",

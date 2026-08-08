@@ -12,6 +12,7 @@ import {
   type TaxBreakdown,
 } from "@/lib/tax";
 import { clearCartLines, writeCartLines } from "@/lib/cart-client";
+import { MARKETPLACE_BASKET_TARGET_USD } from "@/lib/marketplace-economics";
 
 interface CartItem {
   id: string | number;
@@ -23,6 +24,8 @@ interface CartItem {
   src?: string;
   delivery?: string;
   artwork?: string;
+  /** Selected beat_licence_options.id — preserved so server can resolve the authoritative licence SKU/price. */
+  licence_option_id?: string;
 }
 
 interface Customer {
@@ -65,13 +68,12 @@ const paymentMethodsBase = [
 ];
 
 function priceFor(item: CartItem) {
-  // Prefer price stamped at add-to-cart from catalogue (singles $2, albums explicit, beats $29…)
+  // Client display only. /api/orders always resolves the authoritative server price.
   if (typeof item.price === "number" && Number.isFinite(item.price)) return item.price;
   if (item.price !== undefined && Number.isFinite(Number(item.price))) return Number(item.price);
   if (item.type === "beat") return 29;
   if (item.type === "mix") return 4;
   if (item.type === "service") return 69;
-  // Album / archive single default
   return 2;
 }
 
@@ -144,8 +146,6 @@ export default function CheckoutPage() {
     } else if (!savedCart && queryItem) {
       initial = [queryItem];
     }
-    // Hydrate browser-owned cart state after mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(initial);
     setCountryCode(detectBrowserCountry());
     setCancelled(new URLSearchParams(window.location.search).has("cancelled"));
@@ -174,6 +174,21 @@ export default function CheckoutPage() {
     [items],
   );
 
+  const lowTicketDigitalOnly = useMemo(
+    () => items.length > 0 && items.every((item) => ["single", "mix"].includes(item.type || "single")),
+    [items],
+  );
+  const belowBasketTarget = lowTicketDigitalOnly && subtotal > 0 && subtotal < MARKETPLACE_BASKET_TARGET_USD;
+
+  useEffect(() => {
+    if (!belowBasketTarget) return;
+    trackEvent("small_basket_nudge_shown", {
+      subtotal,
+      target: MARKETPLACE_BASKET_TARGET_USD,
+      item_count: items.length,
+    });
+  }, [belowBasketTarget, items.length, subtotal]);
+
   const tax: TaxBreakdown = useMemo(
     () =>
       calculateTax({
@@ -192,7 +207,7 @@ export default function CheckoutPage() {
     return false;
   });
 
-  const hasServiceItems = items.some((i) => i.type === "service" || i.type === "mix");
+  const hasServiceItems = items.some((i) => i.type === "service");
 
   const removeItem = (id: string | number) => setItems(items.filter((i) => i.id !== id));
 
@@ -209,7 +224,12 @@ export default function CheckoutPage() {
       return;
     }
     setIsSubmitting(true);
-    trackEvent("checkout_started", { payment_method: paymentMethod, item_count: items.length, total });
+    trackEvent("checkout_started", {
+      payment_method: paymentMethod,
+      item_count: items.length,
+      total,
+      small_basket: belowBasketTarget,
+    });
     try {
       const session = isSupabaseConfigured() ? (await createClient().auth.getSession()).data.session : null;
       const response = await fetch("/api/orders", {
@@ -230,6 +250,7 @@ export default function CheckoutPage() {
             quantity: item.quantity || 1,
             delivery: item.delivery,
             sourceUrl: item.src,
+            licence_option_id: item.licence_option_id,
           })),
           paymentMethod,
           projectNotes,
@@ -243,8 +264,6 @@ export default function CheckoutPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Checkout failed.");
 
-      // Always park the order + clear cart once the order is created.
-      // Paynow/Stripe redirect must not leave purchased lines in the badge.
       window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
       clearCartLines();
       setItems([]);
@@ -298,339 +317,84 @@ export default function CheckoutPage() {
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Your cart</h2>
               <div className="flex gap-2 text-sm">
-                <Link href="/catalogue" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">
-                  + Music
-                </Link>
-                <Link href="/shop" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">
-                  + Services
-                </Link>
+                <Link href="/catalogue" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">+ Music</Link>
+                <Link href="/shop" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">+ Services</Link>
               </div>
             </div>
 
             {items.length > 0 ? (
               <div className="space-y-3">
                 {items.map((item) => (
-                  <div
-                    key={String(item.id)}
-                    className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/20 p-4"
-                  >
+                  <div key={String(item.id)} className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/20 p-4">
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
-                        {item.artwork ? (
-                          <Image src={item.artwork} alt="" fill className="object-cover" />
-                        ) : (
-                          <span className="grid h-full place-items-center text-lg text-brand">♪</span>
-                        )}
+                        {item.artwork ? <Image src={item.artwork} alt="" fill className="object-cover" /> : <span className="grid h-full place-items-center text-lg text-brand">♪</span>}
                       </div>
                       <div className="min-w-0">
                         <div className="truncate font-semibold">{item.title}</div>
-                        <div className="text-sm capitalize text-text-secondary">
-                          {item.artist || "BVS"} · {item.type === "beat" ? "Beat licence" : item.type === "service" ? "Studio service" : "Digital download"}
-                        </div>
+                        <div className="text-sm capitalize text-text-secondary">{item.artist || "BVS"} · {item.type === "beat" ? "Beat licence" : item.type === "service" ? "Studio service" : "Digital download"}</div>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-brand">${priceFor(item).toFixed(2)}</div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(item.id)}
-                        className="text-xs text-red-300 hover:text-red-200"
-                      >
-                        Remove
-                      </button>
-                    </div>
+                    <div className="text-right"><div className="font-semibold text-brand">${priceFor(item).toFixed(2)}</div><button type="button" onClick={() => removeItem(item.id)} className="text-xs text-red-300 hover:text-red-200">Remove</button></div>
                   </div>
                 ))}
+                {belowBasketTarget && (
+                  <div className="rounded-xl border border-brand/25 bg-brand/[.06] p-4 text-sm">
+                    <strong>Small basket tip:</strong>{" "}
+                    <span className="text-text-secondary">Add another track if you can. Combining low-ticket music into one checkout spreads fixed payment costs across more music and leaves more value in the creator economy. BVS is measuring this before enforcing a hard minimum.</span>
+                    <div className="mt-3 flex flex-wrap items-center gap-3"><Link href="/catalogue" className="rounded-full border border-brand/50 px-4 py-2 text-brand">Add more music</Link><span className="text-xs text-text-secondary">Current ${subtotal.toFixed(2)} · target ${MARKETPLACE_BASKET_TARGET_USD.toFixed(2)}</span></div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-white/15 px-5 py-10 text-center text-text-secondary">
-                Cart is empty.{" "}
-                <Link href="/catalogue" className="text-brand underline">
-                  Browse catalogue
-                </Link>{" "}
-                or{" "}
-                <Link href="/shop" className="text-brand underline">
-                  order a mix/master
-                </Link>
-                .
-              </div>
+              <div className="rounded-xl border border-dashed border-white/15 px-5 py-10 text-center text-text-secondary">Cart is empty. <Link href="/catalogue" className="text-brand underline">Browse catalogue</Link> or <Link href="/shop" className="text-brand underline">order a mix/master</Link>.</div>
             )}
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
             <h2 className="mb-4 text-xl font-semibold">Your details</h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="block text-sm sm:col-span-1">
-                <span className="mb-1.5 block text-text-secondary">Name</span>
-                <input
-                  required
-                  value={customer.name}
-                  onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-                  placeholder="Your name"
-                />
-              </label>
-              <label className="block text-sm">
-                <span className="mb-1.5 block text-text-secondary">Email</span>
-                <input
-                  required
-                  type="email"
-                  value={customer.email}
-                  onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-                  placeholder="you@email.com"
-                />
-              </label>
-              <label className="block text-sm sm:col-span-2">
-                <span className="mb-1.5 block text-text-secondary">WhatsApp (recommended)</span>
-                <input
-                  value={customer.whatsapp}
-                  onChange={(e) => setCustomer({ ...customer, whatsapp: e.target.value })}
-                  className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-                  placeholder="+263…"
-                />
-              </label>
-              <label className="block text-sm sm:col-span-1">
-                <span className="mb-1.5 block text-text-secondary">Billing country / region</span>
-                <select
-                  required
-                  value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-                  aria-label="Billing country for tax"
-                >
-                  {TAX_COUNTRIES.map((c) => (
-                    <option key={c.code} value={c.code}>
-                      {c.name}
-                      {c.rate > 0 ? ` · ${Math.round(c.rate * 1000) / 10}% ${c.label}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="block text-sm sm:col-span-1">
-                <span className="mb-1.5 block text-text-secondary">EU VAT ID (optional, B2B)</span>
-                <input
-                  value={vatId}
-                  onChange={(e) => setVatId(e.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-                  placeholder="e.g. DE123456789"
-                  autoComplete="off"
-                />
-              </label>
+              <label className="block text-sm sm:col-span-1"><span className="mb-1.5 block text-text-secondary">Name</span><input required value={customer.name} onChange={(e) => setCustomer({ ...customer, name: e.target.value })} className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand" placeholder="Your name" /></label>
+              <label className="block text-sm"><span className="mb-1.5 block text-text-secondary">Email</span><input required type="email" value={customer.email} onChange={(e) => setCustomer({ ...customer, email: e.target.value })} className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand" placeholder="you@email.com" /></label>
+              <label className="block text-sm sm:col-span-2"><span className="mb-1.5 block text-text-secondary">WhatsApp (recommended)</span><input value={customer.whatsapp} onChange={(e) => setCustomer({ ...customer, whatsapp: e.target.value })} className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand" placeholder="+263…" /></label>
+              <label className="block text-sm sm:col-span-1"><span className="mb-1.5 block text-text-secondary">Billing country / region</span><select required value={countryCode} onChange={(e) => setCountryCode(e.target.value)} className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand" aria-label="Billing country for tax">{TAX_COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}{c.rate > 0 ? ` · ${Math.round(c.rate * 1000) / 10}% ${c.label}` : ""}</option>)}</select></label>
+              <label className="block text-sm sm:col-span-1"><span className="mb-1.5 block text-text-secondary">EU VAT ID (optional, B2B)</span><input value={vatId} onChange={(e) => setVatId(e.target.value)} className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand" placeholder="e.g. DE123456789" autoComplete="off" /></label>
             </div>
-            <p className="mt-3 text-xs text-text-secondary">
-              Tax is estimated from your billing country. Prices are net (ex-tax); the total includes calculated tax for your region.
-              {tax.note ? ` ${tax.note}` : ""}
-            </p>
+            <p className="mt-3 text-xs text-text-secondary">Tax is estimated from your billing country. Prices are net (ex-tax); the total includes calculated tax for your region.{tax.note ? ` ${tax.note}` : ""}</p>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
             <h2 className="mb-2 text-xl font-semibold">Payment</h2>
-            <p className="mb-4 text-sm text-text-secondary">
-              {paynowReady && stripeReady
-                ? "Choose Paynow (EcoCash & local) or international card. Both finish online — no WhatsApp proof step."
-                : paynowReady
-                  ? "Pay securely on Paynow (EcoCash, OneMoney, local methods)."
-                  : stripeReady
-                    ? "Pay securely by card on Stripe."
-                    : "Online checkout is temporarily unavailable. Contact BVS to complete your order."}
-            </p>
-            {methods.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {methods.map((method) => (
-                  <label
-                    key={method.id}
-                    className={`cursor-pointer rounded-xl border p-4 ${
-                      paymentMethod === method.id ? "border-brand bg-brand/10" : "border-white/10 bg-black/20"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      className="sr-only"
-                      checked={paymentMethod === method.id}
-                      onChange={() => setPaymentMethod(method.id)}
-                    />
-                    <span className="block font-semibold">{method.label}</span>
-                    <span className="mt-1 block text-xs text-text-secondary">{method.detail}</span>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
-                No online payment method is configured right now.{" "}
-                <Link href="/contact?topic=checkout" className="font-semibold text-brand underline">
-                  Contact BVS
-                </Link>{" "}
-                with your cart and we will help you finish.
-              </p>
-            )}
-            {hasServiceItems && (
-              <p className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs leading-relaxed text-text-secondary">
-                Studio / service jobs: prefer Paynow or card above. Need an invoice or bank details for a larger booking?{" "}
-                <Link href="/contact?topic=invoice" className="text-brand underline">
-                  Contact BVS
-                </Link>{" "}
-                — we will send payment instructions. This is not a separate checkout button.
-              </p>
-            )}
+            <p className="mb-4 text-sm text-text-secondary">{paynowReady && stripeReady ? "Choose Paynow (EcoCash & local) or international card. Both finish online — no WhatsApp proof step." : paynowReady ? "Pay securely on Paynow (EcoCash, OneMoney, local methods)." : stripeReady ? "Pay securely by card on Stripe." : "Online checkout is temporarily unavailable. Contact BVS to complete your order."}</p>
+            {methods.length > 0 ? <div className="grid gap-3 sm:grid-cols-2">{methods.map((method) => <label key={method.id} className={`cursor-pointer rounded-xl border p-4 ${paymentMethod === method.id ? "border-brand bg-brand/10" : "border-white/10 bg-black/20"}`}><input type="radio" name="paymentMethod" className="sr-only" checked={paymentMethod === method.id} onChange={() => setPaymentMethod(method.id)} /><span className="block font-semibold">{method.label}</span><span className="mt-1 block text-xs text-text-secondary">{method.detail}</span></label>)}</div> : <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">No online payment method is configured right now. <Link href="/contact?topic=checkout" className="font-semibold text-brand underline">Contact BVS</Link> with your cart and we will help you finish.</p>}
+            {hasServiceItems && <p className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs leading-relaxed text-text-secondary">Studio / service jobs: prefer Paynow or card above. Need an invoice or bank details for a larger booking? <Link href="/contact?topic=invoice" className="text-brand underline">Contact BVS</Link> — we will send payment instructions.</p>}
           </section>
 
-          <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
-            <h2 className="mb-2 text-xl font-semibold">Project notes</h2>
-            <textarea
-              value={projectNotes}
-              onChange={(e) => setProjectNotes(e.target.value)}
-              rows={4}
-              className="w-full resize-y rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-              placeholder="References, deadlines, license type, Dropbox/Drive link to stems…"
-            />
-          </section>
+          <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6"><h2 className="mb-2 text-xl font-semibold">Project notes</h2><textarea value={projectNotes} onChange={(e) => setProjectNotes(e.target.value)} rows={4} className="w-full resize-y rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand" placeholder="References, deadlines, license type, Dropbox/Drive link to stems…" /></section>
 
-          {error && (
-            <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-              {error}
-            </div>
-          )}
+          {error && <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>}
 
-          <button
-            type="submit"
-            disabled={isSubmitting || items.length === 0 || methods.length === 0}
-            className="w-full rounded-full bg-brand px-8 py-4 text-lg font-semibold text-black hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSubmitting
-              ? "Working…"
-              : methods.length === 0
-                ? "Checkout unavailable"
-                : `Pay $${total.toFixed(2)} securely`}
-          </button>
+          <button type="submit" disabled={isSubmitting || items.length === 0 || methods.length === 0} className="w-full rounded-full bg-brand px-8 py-4 text-lg font-semibold text-black hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50">{isSubmitting ? "Working…" : methods.length === 0 ? "Checkout unavailable" : `Pay $${total.toFixed(2)} securely`}</button>
         </form>
 
         <aside className="space-y-6">
           <section className="sticky top-24 rounded-2xl border border-white/10 bg-bg-card/45 p-6">
             <h2 className="mb-4 text-xl font-semibold">Summary</h2>
-            {items.length > 0 && (
-              <div className="mb-4 space-y-2 border-b border-white/10 pb-4">
-                {items.map((item) => (
-                  <div key={`summary-${item.id}`} className="flex justify-between gap-4 text-sm">
-                    <span className="min-w-0 truncate text-text-secondary">{item.title}</span>
-                    <span className="flex-shrink-0">${(priceFor(item) * (item.quantity || 1)).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
+            {items.length > 0 && <div className="mb-4 space-y-2 border-b border-white/10 pb-4">{items.map((item) => <div key={`summary-${item.id}`} className="flex justify-between gap-4 text-sm"><span className="min-w-0 truncate text-text-secondary">{item.title}</span><span className="flex-shrink-0">${(priceFor(item) * (item.quantity || 1)).toFixed(2)}</span></div>)}</div>}
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between text-text-secondary">
-                <span>Items</span>
-                <span>{items.length}</span>
-              </div>
-              <div className="flex justify-between text-text-secondary">
-                <span>Subtotal (ex-tax)</span>
-                <span>${subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-text-secondary">
-                <span>
-                  {tax.taxLabel}
-                  {tax.ratePercent > 0 ? ` (${tax.ratePercent}%)` : ""}
-                  <span className="block text-[11px] text-text-secondary/80">{tax.countryName}</span>
-                </span>
-                <span>${tax.taxAmount.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-t border-white/10 pt-3 text-xl font-semibold">
-                <span>Total incl. tax</span>
-                <span className="text-brand">${total.toFixed(2)} USD</span>
-              </div>
-              {tax.mode === "reverse_charge" && (
-                <p className="pt-1 text-xs text-brand/90">{tax.note}</p>
-              )}
-              {(tax.mode === "unknown_region" || tax.mode === "zero_rated") && tax.taxAmount === 0 && (
-                <p className="pt-1 text-xs text-text-secondary">{tax.note}</p>
-              )}
+              <div className="flex justify-between text-text-secondary"><span>Items</span><span>{items.length}</span></div>
+              <div className="flex justify-between text-text-secondary"><span>Subtotal (ex-tax)</span><span>${subtotal.toFixed(2)}</span></div>
+              <div className="flex justify-between text-text-secondary"><span>{tax.taxLabel}{tax.ratePercent > 0 ? ` (${tax.ratePercent}%)` : ""}<span className="block text-[11px] text-text-secondary/80">{tax.countryName}</span></span><span>${tax.taxAmount.toFixed(2)}</span></div>
+              <div className="flex justify-between border-t border-white/10 pt-3 text-xl font-semibold"><span>Total incl. tax</span><span className="text-brand">${total.toFixed(2)} USD</span></div>
+              {tax.mode === "reverse_charge" && <p className="pt-1 text-xs text-brand/90">{tax.note}</p>}
+              {(tax.mode === "unknown_region" || tax.mode === "zero_rated") && tax.taxAmount === 0 && <p className="pt-1 text-xs text-text-secondary">{tax.note}</p>}
             </div>
-            <ul className="mt-6 space-y-2 text-xs text-text-secondary">
-              <li>✓ Beats & tracks from catalogue</li>
-              <li>✓ Mix / master services from shop</li>
-              <li>✓ Tax estimated by billing country</li>
-              <li>✓ Digital delivery after payment confirmed</li>
-            </ul>
+            <ul className="mt-6 space-y-2 text-xs text-text-secondary"><li>✓ Beats & tracks from catalogue</li><li>✓ Mix / master services from shop</li><li>✓ Tax estimated by billing country</li><li>✓ Digital delivery after payment confirmed</li></ul>
           </section>
 
-          {result && (
-            <section className="rounded-2xl border border-brand/30 bg-brand/10 p-6">
-              <p className="text-xs uppercase tracking-[3px] text-brand">
-                {result.paymentMode === "manual" ? "Order created — finish payment" : "Order created"}
-              </p>
-              <h2 className="mt-2 font-mono text-2xl font-semibold">{result.reference}</h2>
-              <p className="mt-3 text-sm text-text-secondary">{result.persistenceMessage}</p>
-              {result.paymentMode === "manual" && (
-                <p className="mt-3 rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-50">
-                  Online Paynow/card redirect was not used for this order (manual path). If you selected Paynow and only see WhatsApp steps, try again after a refresh — or WhatsApp BVS with this reference.
-                </p>
-              )}
-              {typeof result.total === "number" && (
-                <div className="mt-4 space-y-1.5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm">
-                  {typeof result.subtotal === "number" && (
-                    <div className="flex justify-between text-text-secondary">
-                      <span>Subtotal</span>
-                      <span>${Number(result.subtotal).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {typeof result.taxAmount === "number" && (
-                    <div className="flex justify-between text-text-secondary">
-                      <span>
-                        {result.taxLabel || "Tax"}
-                        {result.taxCountry ? ` (${result.taxCountry})` : ""}
-                      </span>
-                      <span>${Number(result.taxAmount).toFixed(2)}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between border-t border-white/10 pt-2 font-semibold">
-                    <span>Total paid / due</span>
-                    <span className="text-brand">${Number(result.total).toFixed(2)}</span>
-                  </div>
-                  {result.taxNote && (
-                    <p className="pt-1 text-xs text-text-secondary">{result.taxNote}</p>
-                  )}
-                </div>
-              )}
-              <div className="mt-4 space-y-2 text-sm">
-                {result.nextSteps?.map((step) => (
-                  <div key={step} className="rounded-lg bg-black/20 px-3 py-2">
-                    {step}
-                  </div>
-                ))}
-              </div>
-              {result.whatsappLink && (
-                <a
-                  href={result.whatsappLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black"
-                >
-                  WhatsApp BVS with this order
-                </a>
-              )}
-              <Link
-                href={`/checkout/success?ref=${encodeURIComponent(result.reference)}`}
-                className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm"
-              >
-                View confirmation
-              </Link>
-            </section>
-          )}
+          {result && <section className="rounded-2xl border border-brand/30 bg-brand/10 p-6"><p className="text-xs uppercase tracking-[3px] text-brand">{result.paymentMode === "manual" ? "Order created — finish payment" : "Order created"}</p><h2 className="mt-2 font-mono text-2xl font-semibold">{result.reference}</h2><p className="mt-3 text-sm text-text-secondary">{result.persistenceMessage}</p>{typeof result.total === "number" && <div className="mt-4 space-y-1.5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm">{typeof result.subtotal === "number" && <div className="flex justify-between text-text-secondary"><span>Subtotal</span><span>${Number(result.subtotal).toFixed(2)}</span></div>}{typeof result.taxAmount === "number" && <div className="flex justify-between text-text-secondary"><span>{result.taxLabel || "Tax"}{result.taxCountry ? ` (${result.taxCountry})` : ""}</span><span>${Number(result.taxAmount).toFixed(2)}</span></div>}<div className="flex justify-between border-t border-white/10 pt-2 font-semibold"><span>Total paid / due</span><span className="text-brand">${Number(result.total).toFixed(2)}</span></div>{result.taxNote && <p className="pt-1 text-xs text-text-secondary">{result.taxNote}</p>}</div>}<div className="mt-4 space-y-2 text-sm">{result.nextSteps?.map((step) => <div key={step} className="rounded-lg bg-black/20 px-3 py-2">{step}</div>)}</div>{result.whatsappLink && <a href={result.whatsappLink} target="_blank" rel="noreferrer" className="mt-5 inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black">WhatsApp BVS with this order</a>}<Link href={`/checkout/success?ref=${encodeURIComponent(result.reference)}`} className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm">View confirmation</Link></section>}
 
-          {!result && (
-            <p className="text-center text-xs text-text-secondary">
-              Questions? WhatsApp{" "}
-              <a className="text-brand" href={`https://wa.me/${(whatsapp || "").replace(/\D/g, "")}`}>
-                {whatsapp}
-              </a>
-              {" · "}
-              <a className="text-brand" href={`mailto:${orderEmail}`}>
-                {orderEmail}
-              </a>
-            </p>
-          )}
+          {!result && <p className="text-center text-xs text-text-secondary">Questions? WhatsApp <a className="text-brand" href={`https://wa.me/${(whatsapp || "").replace(/\D/g, "")}`}>{whatsapp}</a>{" · "}<a className="text-brand" href={`mailto:${orderEmail}`}>{orderEmail}</a></p>}
         </aside>
       </div>
     </div>
