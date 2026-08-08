@@ -4,6 +4,7 @@ import { loadOrder, notifyCustomerOrderEmail, notifyOwnerNewOrder, updateOrder }
 import { recordServerEvent } from "@/lib/analytics-server";
 import { creditPaidArtistDeposit, creditPaidArtistSales } from "@/lib/artist-credit";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
+import { activatePaidArtistPremium, normalizeArtistPlanId, normalizeInterval } from "@/lib/premium-billing";
 
 export const runtime = "nodejs";
 
@@ -38,8 +39,32 @@ export async function POST(req: Request) {
       amount_total?: number | null;
       currency?: string | null;
       payment_status?: string | null;
-      metadata?: { reference?: string };
+      mode?: string | null;
+      subscription?: string | null;
+      metadata?: { reference?: string; kind?: string; user_id?: string; plan_id?: string; interval?: string };
     };
+
+    if (
+      session.mode === "subscription" &&
+      session.metadata?.kind === "artist_premium" &&
+      session.metadata.user_id &&
+      typeof session.subscription === "string" &&
+      (session.payment_status === "paid" || session.payment_status === "no_payment_required")
+    ) {
+      const subscription = await stripe.subscriptions.retrieve(session.subscription);
+      const periodEnd = subscription.items.data[0]?.current_period_end;
+      const result = await activatePaidArtistPremium({
+        userId: session.metadata.user_id,
+        planId: normalizeArtistPlanId(session.metadata.plan_id),
+        interval: normalizeInterval(session.metadata.interval),
+        reference: subscription.id,
+        amountUsd: Number(session.amount_total || 0) / 100,
+        provider: "stripe",
+        endsAt: periodEnd ? new Date(periodEnd * 1000).toISOString() : undefined,
+      });
+      if (!result.ok) return NextResponse.json({ error: "Premium activation failed." }, { status: 500 });
+      return NextResponse.json({ received: true });
+    }
 
     const reference =
       session.client_reference_id || session.metadata?.reference || "";
@@ -86,6 +111,25 @@ export async function POST(req: Request) {
           await notifyOwnerNewOrder(paid);
           await notifyCustomerOrderEmail(paid, "paid");
         }
+      }
+    }
+  }
+
+  if (event.type === "customer.subscription.updated") {
+    const subscription = event.data.object;
+    if (subscription.metadata?.kind === "artist_premium" && subscription.metadata.user_id) {
+      const periodEnd = subscription.items.data[0]?.current_period_end;
+      if (["active", "trialing", "past_due"].includes(subscription.status) && periodEnd) {
+        const result = await activatePaidArtistPremium({
+          userId: subscription.metadata.user_id,
+          planId: normalizeArtistPlanId(subscription.metadata.plan_id),
+          interval: normalizeInterval(subscription.metadata.interval),
+          reference: subscription.id,
+          amountUsd: 0,
+          provider: "stripe",
+          endsAt: new Date(periodEnd * 1000).toISOString(),
+        });
+        if (!result.ok) return NextResponse.json({ error: "Premium synchronization failed." }, { status: 500 });
       }
     }
   }

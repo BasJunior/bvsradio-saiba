@@ -9,6 +9,7 @@ import {
 } from "@/lib/premium-catalog";
 import { getArtistPremiumStatus } from "@/lib/premium-billing";
 import { paynowEnabled } from "@/lib/paynow";
+import { stripeEnabled } from "@/lib/stripe";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -40,6 +41,7 @@ export async function GET(req: Request) {
     founding: status.founding,
     billingReady,
     paynowEnabled: billingReady,
+    stripeEnabled: stripeEnabled(),
     monthlyUsd: defaultPremiumMonthlyUsd(),
     tiers: PREMIUM_TIERS,
     catalogHref: "/premium",
@@ -50,7 +52,7 @@ export async function GET(req: Request) {
     copy: {
       title: "BVS Premium Artist",
       summary:
-        "Pay with Paynow (EcoCash, cards, OneMoney). Prepaid month or year activates distribution entitlement for approved releases. Not auto-renew yet — you re-subscribe when the period ends. BVS rotation after editorial publish does not require Premium.",
+        "Choose Stripe auto-renew or Paynow prepaid. Either activates distribution entitlement for approved releases. BVS rotation after editorial publish does not require Premium.",
       includes: [
         "Founding: US$9/month or US$90/year (first 50 seats, then Standard)",
         "Standard: US$12/month or US$120/year",
@@ -61,6 +63,7 @@ export async function GET(req: Request) {
     },
     endpoints: {
       subscribe: "/api/artist/premium/subscribe",
+      subscribeStripe: "/api/artist/premium/subscribe/stripe",
       cancel: "/api/artist/premium/cancel",
     },
   });

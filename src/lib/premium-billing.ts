@@ -5,6 +5,7 @@ import {
   FOUNDING_WINDOW_LABEL,
   isFoundingWindowOpen,
 } from "@/lib/premium-catalog";
+import { getStripe } from "@/lib/stripe";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -175,11 +176,12 @@ export async function activatePaidArtistPremium(input: {
   reference: string;
   amountUsd: number;
   provider?: string;
+  endsAt?: string;
 }): Promise<{ ok: boolean; reason?: string; endsAt?: string }> {
   if (!url || !service) return { ok: false, reason: "not_configured" };
   if (!input.userId) return { ok: false, reason: "missing_user" };
 
-  const endsAt = periodEndIso(input.interval);
+  const endsAt = input.endsAt || periodEndIso(input.interval);
   const ents = entitlementsForPlan(input.planId);
   const foundingSeat = input.planId === "artist_founding";
 
@@ -188,7 +190,30 @@ export async function activatePaidArtistPremium(input: {
     `bvs_memberships?provider_ref=eq.${encodeURIComponent(input.reference)}&select=id,status&limit=1`,
   );
   if (existing?.[0]?.status === "active") {
+    await restPatch(`bvs_memberships?id=eq.${existing[0].id}`, { ends_at: endsAt, updated_at: new Date().toISOString() });
+    await restPatch(`profiles?id=eq.${input.userId}`, {
+      premium_active: true,
+      premium_until: endsAt,
+      distribution_enabled: true,
+      premium_plan_id: input.planId,
+    });
     return { ok: true, reason: "idempotent", endsAt };
+  }
+
+  if (existing?.[0] && existing[0].status !== "active") {
+    await restPatch(`bvs_memberships?id=eq.${existing[0].id}`, {
+      status: "active",
+      ends_at: endsAt,
+      cancel_at: null,
+      updated_at: new Date().toISOString(),
+    });
+    await restPatch(`profiles?id=eq.${input.userId}`, {
+      premium_active: true,
+      premium_until: endsAt,
+      distribution_enabled: true,
+      premium_plan_id: input.planId,
+    });
+    return { ok: true, reason: "reactivated", endsAt };
   }
 
   const profilePatch = await restPatch(`profiles?id=eq.${input.userId}`, {
@@ -368,13 +393,25 @@ export async function cancelArtistPremium(
   if (!url || !service) return { ok: false as const, reason: "not_configured" };
 
   const mems = await restGet<
-    Array<{ id: string; ends_at: string | null; plan_id: string; status: string }>
+    Array<{ id: string; ends_at: string | null; plan_id: string; status: string; provider: string | null; provider_ref: string | null }>
   >(
-    `bvs_memberships?user_id=eq.${userId}&family=eq.artist&status=in.(active,trialing,shell)&order=starts_at.desc&select=id,ends_at,plan_id,status`,
+    `bvs_memberships?user_id=eq.${userId}&family=eq.artist&status=in.(active,trialing,shell)&order=starts_at.desc&select=id,ends_at,plan_id,status,provider,provider_ref`,
   );
   const active = mems?.[0];
   const now = new Date().toISOString();
   const jobs = await listArtistDistributionJobs(userId);
+
+  if (active?.provider === "stripe" && active.provider_ref) {
+    const stripe = getStripe();
+    if (!stripe) return { ok: false as const, reason: "stripe_not_configured" };
+    try {
+      if (mode === "immediate") await stripe.subscriptions.cancel(active.provider_ref);
+      else await stripe.subscriptions.update(active.provider_ref, { cancel_at_period_end: true });
+    } catch (error) {
+      console.error("stripe premium cancellation failed", error);
+      return { ok: false as const, reason: "stripe_cancel_failed" };
+    }
+  }
 
   if (mode === "immediate") {
     await restPatch(`profiles?id=eq.${userId}`, {

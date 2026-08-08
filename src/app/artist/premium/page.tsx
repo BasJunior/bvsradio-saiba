@@ -30,6 +30,7 @@ type PremiumState = {
   founding?: { used: number; cap: number; available: boolean }
   billingReady?: boolean
   paynowEnabled?: boolean
+  stripeEnabled?: boolean
   monthlyUsd: number | null
   priceNote: string
   tiers?: PremiumTier[]
@@ -95,12 +96,12 @@ function ArtistPremiumInner() {
     return interval === 'year' ? 'US$90/year' : 'US$9/month'
   }, [planChoice, interval])
 
-  const subscribe = async () => {
+  const subscribe = async (provider: 'paynow' | 'stripe') => {
     setBusy(true)
     setInfo('')
     setError('')
     try {
-      const res = await fetch('/api/artist/premium/subscribe', {
+      const res = await fetch(provider === 'stripe' ? '/api/artist/premium/subscribe/stripe' : '/api/artist/premium/subscribe', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ planId: planChoice, interval }),
@@ -112,7 +113,7 @@ function ArtistPremiumInner() {
         window.location.href = payload.redirectUrl as string
         return
       }
-      throw new Error('Paynow did not return a checkout URL.')
+      throw new Error('Payment provider did not return a checkout URL.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Checkout failed')
     } finally {
@@ -146,7 +147,7 @@ function ArtistPremiumInner() {
       <p className="text-xs uppercase tracking-[.2em] text-brand">Artists</p>
       <h1 className="mt-2 text-4xl font-semibold">Premium Artist</h1>
       <p className="mt-3 text-text-secondary">
-        Paynow prepaid membership for multi-platform distribution of{' '}
+        Stripe auto-renew or Paynow prepaid membership for multi-platform distribution of{' '}
         <strong className="text-text-primary">approved</strong> releases. Continuous BVS rotation after editorial
         publish does <strong className="text-text-primary">not</strong> require Premium.
       </p>
@@ -259,16 +260,36 @@ function ArtistPremiumInner() {
 
           <div className="flex flex-wrap gap-3">
             {!data.premiumActive ? (
+              <>
               <button
                 type="button"
-                disabled={busy || !token || data.billingReady === false}
-                onClick={() => void subscribe()}
+                disabled={busy || !token || data.stripeEnabled === false}
+                onClick={() => void subscribe('stripe')}
                 className="rounded-full bg-brand px-6 py-3 font-semibold text-black disabled:opacity-50"
               >
-                {busy ? 'Starting Paynow…' : `Pay ${priceLabel} with Paynow`}
+                {busy ? 'Starting checkout…' : `Auto-renew ${priceLabel} with Stripe`}
               </button>
+              <button
+                type="button"
+                disabled={busy || !token || data.paynowEnabled === false}
+                onClick={() => void subscribe('paynow')}
+                className="rounded-full border border-white/20 px-6 py-3 text-sm disabled:opacity-50"
+              >
+                Pay once with Paynow
+              </button>
+              </>
             ) : (
               <>
+                {data.provider !== 'stripe' && data.stripeEnabled !== false && (
+                  <button
+                    type="button"
+                    disabled={busy || !token}
+                    onClick={() => void subscribe('stripe')}
+                    className="rounded-full bg-brand px-6 py-3 text-sm font-semibold text-black disabled:opacity-50"
+                  >
+                    Connect Stripe auto-renew
+                  </button>
+                )}
                 <button
                   type="button"
                   disabled={busy}
@@ -296,9 +317,8 @@ function ArtistPremiumInner() {
           </div>
 
           <p className="text-xs text-text-secondary">
-            Prepaid period via Paynow (EcoCash, cards, OneMoney). Not auto-renew yet — re-subscribe when the period
-            ends. Payment never buys editorial approval or BVS rotation. Billing ready:{' '}
-            {data.billingReady ? 'yes' : 'waiting on Paynow env'}.
+            Stripe renews automatically until cancelled. Paynow (EcoCash, cards, OneMoney) is prepaid and must be
+            renewed manually when the period ends. Payment never buys editorial approval or BVS rotation.
           </p>
         </section>
       )}
