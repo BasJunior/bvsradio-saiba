@@ -1,10 +1,7 @@
 import 'server-only'
 
-import {
-  MARKETPLACE_POLICY_VERSION,
-  marketplaceCommissionBps,
-  type MarketplaceProductType,
-} from '@/lib/marketplace-economics'
+import { MARKETPLACE_POLICY_VERSION, type MarketplaceProductType } from '@/lib/marketplace-economics'
+import { resolveSellerMarketplacePolicy } from '@/lib/seller-marketplace-policy'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -21,6 +18,9 @@ type ProcessorFeeInput = {
 
 type CommerceItemRow = {
   seller_user_id_snapshot?: string | null
+  seller_plan_id_snapshot?: string | null
+  commission_bps_snapshot?: number | string | null
+  marketplace_policy_version_snapshot?: string | null
   product_type_snapshot: MarketplaceProductType
   unit_amount: number | string
   quantity: number
@@ -29,51 +29,33 @@ type CommerceItemRow = {
   title_snapshot?: string | null
 }
 
-type MembershipRow = {
-  plan_id?: string | null
-  family?: string | null
-  entitlements?: Record<string, unknown> | null
-  starts_at?: string | null
-}
-
 function roundMoney(value: number) {
   return Math.round(value * 100) / 100
 }
 
-async function sellerPlanForProduct(userId: string, productType: MarketplaceProductType) {
-  const response = await fetch(
-    `${url}/rest/v1/bvs_memberships?user_id=eq.${encodeURIComponent(userId)}&status=in.(active,trialing,shell)&select=plan_id,family,entitlements,starts_at&order=starts_at.desc&limit=10`,
-    { headers, cache: 'no-store' },
-  )
-  const rows = response.ok ? await response.json() as MembershipRow[] : []
-  const bundle = rows.find((row) => row.family === 'creator_bundle')
-  if (bundle?.plan_id) return { planId: String(bundle.plan_id), entitlements: bundle.entitlements || {} }
-
-  const wantedFamily = productType === 'beat' ? 'producer' : productType === 'service' ? 'service' : 'artist'
-  const row = rows.find((item) => item.family === wantedFamily)
-  if (row?.plan_id) return { planId: String(row.plan_id), entitlements: row.entitlements || {} }
-
-  return {
-    planId: productType === 'beat' ? 'producer_free' : productType === 'service' ? 'service_free' : 'artist_free',
-    entitlements: {},
+async function policyForOrderLine(sellerId: string, item: CommerceItemRow) {
+  const frozenBps = Number(item.commission_bps_snapshot)
+  if (Number.isFinite(frozenBps) && frozenBps >= 0 && item.seller_plan_id_snapshot) {
+    return {
+      planId: String(item.seller_plan_id_snapshot),
+      bps: Math.floor(frozenBps),
+      policyVersion: String(item.marketplace_policy_version_snapshot || MARKETPLACE_POLICY_VERSION),
+      source: 'order_snapshot' as const,
+    }
   }
-}
 
-async function commissionForItem(userId: string, item: CommerceItemRow) {
-  const seller = await sellerPlanForProduct(userId, item.product_type_snapshot)
-  const entitlementBps = Number(seller.entitlements.marketplace_commission_bps)
-  const policyBps = marketplaceCommissionBps({
-    productType: item.product_type_snapshot,
-    unitAmount: Number(item.unit_amount) || 0,
-    sellerPlanId: seller.planId,
-  })
-  // Beat/service plans can carry explicit per-membership overrides. Artist music uses
-  // the product policy so Creator Complete remains 15% music / 3% beats.
-  const mayUseEntitlementOverride = item.product_type_snapshot === 'beat' || item.product_type_snapshot === 'service'
-  const bps = mayUseEntitlementOverride && Number.isFinite(entitlementBps) && entitlementBps >= 0
-    ? Math.floor(entitlementBps)
-    : policyBps
-  return { planId: seller.planId, bps: bps == null ? 0 : bps }
+  // Backward compatibility only for orders created before marketplace policy snapshots shipped.
+  const fallback = await resolveSellerMarketplacePolicy(
+    sellerId,
+    item.product_type_snapshot,
+    Number(item.unit_amount) || 0,
+  )
+  return {
+    planId: fallback.planId,
+    bps: fallback.commissionBps,
+    policyVersion: fallback.policyVersion,
+    source: 'legacy_fallback' as const,
+  }
 }
 
 export async function creditPaidArtistDeposit(reference: string, source: 'stripe' | 'paynow') {
@@ -109,9 +91,8 @@ export async function creditPaidArtistDeposit(reference: string, source: 'stripe
 }
 
 /**
- * Marketplace settlement policy:
- * pre-tax product revenue - BVS commission - allocated processor cost = seller net.
- * If processor cost is not yet known, the seller credit stays pending and is not payout-available.
+ * pre-tax product revenue - frozen BVS commission - allocated processor cost = seller net.
+ * Unknown processor cost leaves the seller credit pending and not payout-available.
  */
 export async function creditPaidArtistSales(
   reference: string,
@@ -125,7 +106,7 @@ export async function creditPaidArtistSales(
   if (!order?.id) return { credited: false, reason: 'order_not_paid' }
 
   const itemResponse = await fetch(
-    `${url}/rest/v1/commerce_order_items?order_id=eq.${order.id}&select=seller_user_id_snapshot,product_type_snapshot,unit_amount,quantity,currency,sku_snapshot,title_snapshot&order=line_number.asc`,
+    `${url}/rest/v1/commerce_order_items?order_id=eq.${order.id}&select=seller_user_id_snapshot,seller_plan_id_snapshot,commission_bps_snapshot,marketplace_policy_version_snapshot,product_type_snapshot,unit_amount,quantity,currency,sku_snapshot,title_snapshot&order=line_number.asc`,
     { headers, cache: 'no-store' },
   )
   if (!itemResponse.ok) return { credited: false, reason: 'items_lookup_failed' }
@@ -145,15 +126,17 @@ export async function creditPaidArtistSales(
   for (const [sellerId, rows] of bySeller) {
     let gross = 0
     let platformFee = 0
-    let sellerPlanId = ''
+    const sellerPlanIds = new Set<string>()
+    const policyVersions = new Set<string>()
     const lineBreakdown: Array<Record<string, unknown>> = []
 
     for (const item of rows) {
       const lineGross = roundMoney((Number(item.unit_amount) || 0) * (Number(item.quantity) || 0))
       if (lineGross <= 0) continue
-      const commission = await commissionForItem(sellerId, item)
-      sellerPlanId = sellerPlanId || commission.planId
-      const lineFee = roundMoney(lineGross * commission.bps / 10000)
+      const policy = await policyForOrderLine(sellerId, item)
+      sellerPlanIds.add(policy.planId)
+      policyVersions.add(policy.policyVersion)
+      const lineFee = roundMoney(lineGross * policy.bps / 10000)
       gross = roundMoney(gross + lineGross)
       platformFee = roundMoney(platformFee + lineFee)
       lineBreakdown.push({
@@ -161,9 +144,11 @@ export async function creditPaidArtistSales(
         title: item.title_snapshot,
         productType: item.product_type_snapshot,
         gross: lineGross,
-        planId: commission.planId,
-        commissionBps: commission.bps,
+        planId: policy.planId,
+        commissionBps: policy.bps,
         platformFee: lineFee,
+        policyVersion: policy.policyVersion,
+        policySource: policy.source,
       })
     }
 
@@ -175,6 +160,8 @@ export async function creditPaidArtistSales(
     const effectiveBps = gross > 0 ? Math.round(platformFee / gross * 10000) : 0
     const settlementStatus = processorFee ? 'posted' : 'pending_processor'
     const processorStatus = processorFee?.status || 'not_connected'
+    const sellerPlanId = sellerPlanIds.size === 1 ? [...sellerPlanIds][0] : 'mixed'
+    const policyVersion = policyVersions.size === 1 ? [...policyVersions][0] : MARKETPLACE_POLICY_VERSION
 
     const settlementResponse = await fetch(`${url}/rest/v1/commerce_seller_settlements?on_conflict=order_id,seller_user_id`, {
       method: 'POST',
@@ -184,7 +171,7 @@ export async function creditPaidArtistSales(
         order_reference: reference,
         seller_user_id: sellerId,
         provider: source,
-        policy_version: MARKETPLACE_POLICY_VERSION,
+        policy_version: policyVersion,
         seller_plan_id: sellerPlanId || null,
         gross_product_revenue: gross,
         platform_fee_bps: effectiveBps,
@@ -210,8 +197,8 @@ export async function creditPaidArtistSales(
       ? (await existingResponse.json() as Array<{ id: string; amount: number | string; status: string; metadata?: Record<string, unknown> }>)[0]
       : undefined
 
-    if (existing?.status === 'posted' && existing.metadata?.policyVersion !== MARKETPLACE_POLICY_VERSION) {
-      // Preserve historical ledger. Finance flags legacy gross credits for explicit Founder-authorized adjustment.
+    if (existing?.status === 'posted' && existing.metadata?.policyVersion !== policyVersion) {
+      // Preserve historical ledger. Finance flags legacy credits for explicit Founder-authorized adjustment.
       continue
     }
 
@@ -228,7 +215,7 @@ export async function creditPaidArtistSales(
       metadata: {
         reference,
         source,
-        policyVersion: MARKETPLACE_POLICY_VERSION,
+        policyVersion,
         grossProductRevenue: gross,
         platformFee,
         orderProcessorFeeTotal: processorFee?.amountOrderCurrency ?? null,
@@ -236,6 +223,7 @@ export async function creditPaidArtistSales(
         processorFeeStatus: processorStatus,
         sellerNet,
         sellerPlanId,
+        lines: lineBreakdown,
       },
     }
 
