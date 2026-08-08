@@ -124,11 +124,12 @@ export async function POST(req: Request) {
         providerAmount: refundedAmount / 100,
         providerCurrency: charge.currency || null,
       });
-      if (!reversal.reversed && !reversal.duplicate) {
+      const duplicate = "duplicate" in reversal && reversal.duplicate === true;
+      if (!reversal.reversed && !duplicate) {
         await recordServerEvent("payment_error", {
           provider: "stripe",
           stage: "refund_wallet_reversal",
-          reason: String(reversal.reason || "unknown"),
+          reason: "reason" in reversal ? String(reversal.reason || "unknown") : "unknown",
         });
       }
     }
@@ -160,11 +161,12 @@ export async function POST(req: Request) {
         providerAmount: disputeAmount / 100,
         providerCurrency: dispute.currency || null,
       });
-      if (!reversal.reversed && !reversal.duplicate) {
+      const duplicate = "duplicate" in reversal && reversal.duplicate === true;
+      if (!reversal.reversed && !duplicate) {
         await recordServerEvent("payment_error", {
           provider: "stripe",
           stage: "chargeback_wallet_reversal",
-          reason: String(reversal.reason || "unknown"),
+          reason: "reason" in reversal ? String(reversal.reason || "unknown") : "unknown",
         });
       }
     }
