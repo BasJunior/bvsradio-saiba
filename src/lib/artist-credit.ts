@@ -67,7 +67,10 @@ async function commissionForItem(userId: string, item: CommerceItemRow) {
     unitAmount: Number(item.unit_amount) || 0,
     sellerPlanId: seller.planId,
   })
-  const bps = Number.isFinite(entitlementBps) && entitlementBps >= 0
+  // Beat/service plans can carry explicit per-membership overrides. Artist music uses
+  // the product policy so Creator Complete remains 15% music / 3% beats.
+  const mayUseEntitlementOverride = item.product_type_snapshot === 'beat' || item.product_type_snapshot === 'service'
+  const bps = mayUseEntitlementOverride && Number.isFinite(entitlementBps) && entitlementBps >= 0
     ? Math.floor(entitlementBps)
     : policyBps
   return { planId: seller.planId, bps: bps == null ? 0 : bps }
@@ -186,6 +189,7 @@ export async function creditPaidArtistSales(
         gross_product_revenue: gross,
         platform_fee_bps: effectiveBps,
         platform_fee_amount: platformFee,
+        order_processor_fee_total: processorFee?.amountOrderCurrency ?? null,
         processor_fee_allocated: processorAllocated,
         processor_fee_status: processorStatus,
         processor_fee_native_amount: processorFee?.nativeAmount ?? null,
@@ -227,6 +231,7 @@ export async function creditPaidArtistSales(
         policyVersion: MARKETPLACE_POLICY_VERSION,
         grossProductRevenue: gross,
         platformFee,
+        orderProcessorFeeTotal: processorFee?.amountOrderCurrency ?? null,
         processorFeeAllocated: processorAllocated,
         processorFeeStatus: processorStatus,
         sellerNet,
