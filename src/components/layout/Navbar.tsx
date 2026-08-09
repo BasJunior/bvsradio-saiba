@@ -39,6 +39,7 @@ export default function Navbar() {
   const [notificationCount, setNotificationCount] = useState(0)
   const [notificationDestination, setNotificationDestination] = useState('/notifications')
   const [cartCount, setCartCount] = useState(0)
+  const [pwaInstallAvailable, setPwaInstallAvailable] = useState(false)
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
@@ -81,6 +82,17 @@ export default function Navbar() {
       void syncAccess(session?.user ?? null, session?.access_token)
     })
     return () => sub.subscription.unsubscribe()
+  }, [])
+
+  useEffect(() => {
+    const showInstall = () => setPwaInstallAvailable(true)
+    const hideInstall = () => setPwaInstallAvailable(false)
+    window.addEventListener('bvs:pwa-install-available', showInstall)
+    window.addEventListener('appinstalled', hideInstall)
+    return () => {
+      window.removeEventListener('bvs:pwa-install-available', showInstall)
+      window.removeEventListener('appinstalled', hideInstall)
+    }
   }, [])
 
   useEffect(() => {
@@ -301,6 +313,19 @@ export default function Navbar() {
 
         {/* Mobile: keep Join one tap away (not only inside the drawer) */}
         <div className="flex items-center gap-1.5 md:hidden">
+          {pwaInstallAvailable && (
+            <button
+              type="button"
+              aria-label="Install BVS Radio app"
+              title="Install BVS Radio"
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-brand transition hover:bg-white/5 active:scale-95"
+              onClick={() => window.dispatchEvent(new CustomEvent('bvs:pwa-install-request'))}
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
+              </svg>
+            </button>
+          )}
           <Link
             href="/checkout"
             aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}

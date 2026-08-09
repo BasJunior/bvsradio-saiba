@@ -42,6 +42,7 @@ export default function PwaRegister() {
     const onBip = (e: Event) => {
       e.preventDefault();
       setDeferred(e as BeforeInstallPromptEvent);
+      window.dispatchEvent(new CustomEvent("bvs:pwa-install-available"));
       if (!wasDismissed) setDismissed(false);
     };
     window.addEventListener("beforeinstallprompt", onBip);
@@ -50,18 +51,29 @@ export default function PwaRegister() {
     const ua = navigator.userAgent;
     const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
-    if (isIos && isSafari && !wasDismissed) {
-      window.setTimeout(() => {
-        setShowIosHint(true);
-        setDismissed(false);
-      }, 60_000);
+    if (isIos && isSafari) {
+      window.dispatchEvent(new CustomEvent("bvs:pwa-install-available"));
+      if (!wasDismissed) {
+        window.setTimeout(() => {
+          setShowIosHint(true);
+          setDismissed(false);
+        }, 60_000);
+      }
     }
+
+    const onInstallRequest = () => {
+      setEngaged(true);
+      setDismissed(false);
+      if (isIos && isSafari) setShowIosHint(true);
+    };
+    window.addEventListener("bvs:pwa-install-request", onInstallRequest);
 
     return () => {
       window.clearTimeout(engagementTimer);
       window.removeEventListener("beforeinstallprompt", onBip);
       window.removeEventListener("bvs:player-open", onEngagement);
       window.removeEventListener("bvs:library-change", onEngagement);
+      window.removeEventListener("bvs:pwa-install-request", onInstallRequest);
     };
   }, []);
 
@@ -82,6 +94,14 @@ export default function PwaRegister() {
     await deferred.userChoice;
     close();
   };
+
+  useEffect(() => {
+    const onInstallRequest = () => {
+      if (deferred) void install();
+    };
+    window.addEventListener("bvs:pwa-install-request", onInstallRequest);
+    return () => window.removeEventListener("bvs:pwa-install-request", onInstallRequest);
+  });
 
   if (dismissed || !engaged || (!deferred && !showIosHint)) return null;
 
