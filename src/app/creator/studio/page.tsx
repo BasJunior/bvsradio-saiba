@@ -13,7 +13,7 @@ import MyBeatStore from "@/components/MyBeatStore";
 import CreatorInsights from "@/components/CreatorInsights";
 import StudioPremiumDesk from "@/components/StudioPremiumDesk";
 import DistributionPathTimeline from "@/components/DistributionPathTimeline";
-import CreatorMarketplaceDesk from "@/app/creator/marketplace/page";
+import { CreatorMarketplaceDesk } from "@/components/CreatorMarketplaceDesk";
 import CreatorServiceOrders from "@/components/CreatorServiceOrders";
 import {
   buildArtistPathSteps,
