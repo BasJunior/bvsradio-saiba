@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { readCartLines, writeCartLines } from "@/lib/cart-client";
+import { mediaUrlForStoredValue } from "@/lib/media-url";
 
 type Listing = {
   id: string;
@@ -11,6 +12,7 @@ type Listing = {
   title: string;
   description: string;
   price_usd: number;
+  artwork_path?: string;
   licence_summary?: string;
   compatibility?: string;
   turnaround_days?: number;
@@ -141,8 +143,16 @@ export default function MarketplacePage() {
             {data.listings.map((item) => (
               <article
                 key={item.id}
-                className="rounded-2xl border border-white/10 bg-white/[.03] p-6"
+                className="overflow-hidden rounded-2xl border border-white/10 bg-white/[.03]"
               >
+                {item.artwork_path ? (
+                  <img
+                    src={mediaUrlForStoredValue(item.artwork_path) || undefined}
+                    alt={`${item.title} cover`}
+                    className="aspect-square w-full object-cover"
+                  />
+                ) : null}
+                <div className="p-6">
                 <div className="flex justify-between gap-4">
                   <span className="text-xs uppercase text-brand">
                     {item.listing_type.replaceAll("_", " ")} ·{" "}
@@ -191,6 +201,7 @@ export default function MarketplacePage() {
                       Checkout
                     </Link>
                   ) : null}
+                </div>
                 </div>
               </article>
             ))}
