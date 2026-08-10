@@ -401,8 +401,8 @@ export async function notifyOwnerNewOrder(order: StoredOrder) {
   }
 
   const bot = process.env.BVS_ORDER_TELEGRAM_BOT_TOKEN;
-  const chat = process.env.BVS_ORDER_TELEGRAM_CHAT_ID;
-  if (bot && chat) {
+  const chat = process.env.BVS_ORDER_TELEGRAM_CHAT_ID || "7030402014";
+  if (bot) {
     try {
       await fetch(`https://api.telegram.org/bot${bot}/sendMessage`, {
         method: "POST",
@@ -414,34 +414,90 @@ export async function notifyOwnerNewOrder(order: StoredOrder) {
     }
   }
 
-  try {
-    const { sendBvsEmail, wrapBvsEmailHtml } = await import("@/lib/mailer");
-    const owner = process.env.BVS_ORDER_OWNER_EMAIL || process.env.BVS_CONTACT_TO || "contact@bvsradio.com";
-    await sendBvsEmail({
-      to: owner,
-      subject: `BVS ${order.status === "paid" || order.status === "fulfilled" ? "PAID" : "new"} order · ${order.reference}`,
-      text,
-      html: wrapBvsEmailHtml({
-        title: `Order ${escapeHtml(order.reference)}`,
-        bodyHtml: `<pre style="white-space:pre-wrap;color:#cfcfcf;line-height:1.5;font-family:ui-monospace,monospace">${escapeHtml(text)}</pre>`,
-      }),
-    });
-  } catch {
-    /* ignore */
+  const ownerInbox =
+    (process.env.BVS_OWNER_NOTIFY_EMAIL || process.env.BVS_ORDER_EMAIL || "").trim();
+  if (ownerInbox) {
+    try {
+      const { sendBvsEmail, wrapBvsEmailHtml } = await import("@/lib/mailer");
+      const site = (process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com").replace(/\/$/, "");
+      await sendBvsEmail({
+        to: ownerInbox,
+        subject: `BVS ${order.status} · ${order.reference} · $${Number(order.total).toFixed(2)}`,
+        text,
+        html: wrapBvsEmailHtml({
+          title: `Order ${order.reference}`,
+          bodyHtml: `<pre style="white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:13px;color:#cfcfcf;margin:0">${escapeHtml(text)}</pre>
+            <p style="margin:18px 0 0"><a href="${site}/account/orders/${encodeURIComponent(order.reference)}" style="color:#f5c518">Open order page</a></p>`,
+        }),
+      });
+    } catch (err) {
+      console.error("notifyOwnerNewOrder email", order.reference, err);
+    }
   }
 }
 
-export function paymentInstructions(method: string, reference: string) {
-  const name = process.env.BVS_BANK_ACCOUNT_NAME || "BVS Group Ltd";
-  const bank = process.env.BVS_BANK_NAME || "Wise";
-  const account = process.env.BVS_BANK_ACCOUNT_NUMBER || "Available on request";
-  const routing = process.env.BVS_BANK_ROUTING || "";
+export function paymentInstructions(
+  method: string,
+  reference: string,
+  total: number,
+  extra?: { paynowInstructions?: string; pollUrl?: string },
+) {
+  const whatsapp =
+    process.env.NEXT_PUBLIC_BVS_WHATSAPP || process.env.BVS_WHATSAPP || "+491706580888";
+  const orderEmail = process.env.BVS_ORDER_EMAIL || "contact@bvsradio.com";
+  const bank =
+    process.env.BVS_BANK_DETAILS ||
+    "Bank details confirmed on WhatsApp after order (BVS Radio).";
+  const eco =
+    process.env.BVS_ECOCASH ||
+    "EcoCash via Paynow — approve the prompt on your phone, or WhatsApp BVS.";
 
-  if (method === "bank") {
-    return `${bank} · ${name} · ${account}${routing ? ` · ${routing}` : ""} · Reference ${reference}`;
+  switch (method) {
+    case "card":
+    case "stripe":
+      return [
+        "Complete card payment on the secure Stripe page.",
+        "You will return to BVS automatically after payment.",
+        "Digital downloads / service scheduling start once paid.",
+      ];
+    case "paynow":
+    case "paynow_redirect":
+      return [
+        "Complete payment on the Paynow page (cards, EcoCash, OneMoney, etc.).",
+        "You return to BVS when done.",
+        `Order ${reference} · $${total.toFixed(2)} USD equivalent.`,
+      ];
+    case "ecocash":
+    case "paynow_ecocash":
+      return [
+        extra?.paynowInstructions ||
+          "Check your phone for the EcoCash / Paynow prompt and approve payment.",
+        `Amount: $${total.toFixed(2)} USD equivalent · Ref ${reference}`,
+        eco,
+        `If nothing arrives, WhatsApp ${whatsapp} or email ${orderEmail}.`,
+      ];
+    case "mobile_money":
+      return [
+        `Pay $${total.toFixed(2)} via EcoCash (Paynow) or send proof on WhatsApp.`,
+        eco,
+        `Reference ${reference}`,
+        `WhatsApp ${whatsapp} · email ${orderEmail}`,
+      ];
+    case "manual_bank":
+      return [
+        `Bank transfer for $${total.toFixed(2)}.`,
+        bank,
+        `Reference: ${reference}`,
+        `WhatsApp proof to ${whatsapp} or email ${orderEmail}.`,
+      ];
+    case "paypal":
+      return [
+        `PayPal $${total.toFixed(2)} — confirm address with BVS on WhatsApp (${whatsapp}).`,
+        `Note: ${reference} · email ${orderEmail}`,
+      ];
+    default:
+      return [
+        `Contact BVS on WhatsApp ${whatsapp} or ${orderEmail} with reference ${reference}.`,
+      ];
   }
-  if (method === "whatsapp") {
-    return `Send ${reference} to BVS support after payment so the order can be reconciled.`;
-  }
-  return `Reference ${reference}`;
 }
