@@ -18,6 +18,14 @@ import {
   normalizeArtistPlanId,
   normalizeInterval,
 } from "@/lib/premium-billing";
+import {
+  activatePaidServicePremium,
+  deactivateStripeServicePremium,
+} from "@/lib/service-premium-billing";
+import {
+  normalizeServiceBillingInterval,
+  parseServicePremiumPlanId,
+} from "@/lib/service-premium-plans";
 import { resolveStripeProcessorFee } from "@/lib/stripe-processor-fee";
 import { reverseMarketplaceSellerCredits } from "@/lib/marketplace-refunds";
 import { initializePaidCreatorServiceOrder } from "@/lib/creator-service-orders";
@@ -106,6 +114,48 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true });
     }
 
+    if (
+      session.mode === "subscription" &&
+      session.metadata?.kind === "service_premium" &&
+      session.metadata.user_id &&
+      typeof session.subscription === "string" &&
+      (session.payment_status === "paid" ||
+        session.payment_status === "no_payment_required")
+    ) {
+      const planId = parseServicePremiumPlanId(session.metadata.plan_id);
+      if (!planId)
+        return NextResponse.json(
+          { error: "Unknown service membership plan." },
+          { status: 400 },
+        );
+      const subscription = await stripe.subscriptions.retrieve(
+        session.subscription,
+      );
+      const periodEnd = subscription.items.data[0]?.current_period_end;
+      const result = await activatePaidServicePremium({
+        userId: session.metadata.user_id,
+        planId,
+        interval: normalizeServiceBillingInterval(session.metadata.interval),
+        reference: subscription.id,
+        amountUsd: Number(session.amount_total || 0) / 100,
+        provider: "stripe",
+        endsAt: periodEnd
+          ? new Date(periodEnd * 1000).toISOString()
+          : undefined,
+      });
+      if (!result.ok)
+        return NextResponse.json(
+          { error: "Service membership activation failed." },
+          { status: 500 },
+        );
+      await recordServerEvent("checkout_complete", {
+        provider: "stripe",
+        status: "service_premium_activated",
+        planId,
+      });
+      return NextResponse.json({ received: true });
+    }
+
     const reference =
       session.client_reference_id || session.metadata?.reference || "";
 
@@ -173,7 +223,6 @@ export async function POST(req: Request) {
         await notifyOwnerNewOrder(paid);
         await notifyCustomerOrderEmail(paid, "paid");
       } else {
-        // Order may only exist remotely if filesystem missed write
         const existing = await loadOrder(reference);
         if (existing) {
           const paid = { ...existing, status: "paid" as const };
@@ -186,30 +235,54 @@ export async function POST(req: Request) {
 
   if (event.type === "customer.subscription.updated") {
     const subscription = event.data.object;
+    const periodEnd = subscription.items.data[0]?.current_period_end;
     if (
       subscription.metadata?.kind === "artist_premium" &&
-      subscription.metadata.user_id
+      subscription.metadata.user_id &&
+      ["active", "trialing", "past_due"].includes(subscription.status) &&
+      periodEnd
     ) {
-      const periodEnd = subscription.items.data[0]?.current_period_end;
-      if (
-        ["active", "trialing", "past_due"].includes(subscription.status) &&
-        periodEnd
-      ) {
-        const result = await activatePaidArtistPremium({
-          userId: subscription.metadata.user_id,
-          planId: normalizeArtistPlanId(subscription.metadata.plan_id),
-          interval: normalizeInterval(subscription.metadata.interval),
-          reference: subscription.id,
-          amountUsd: 0,
-          provider: "stripe",
-          endsAt: new Date(periodEnd * 1000).toISOString(),
-        });
-        if (!result.ok)
-          return NextResponse.json(
-            { error: "Premium synchronization failed." },
-            { status: 500 },
-          );
-      }
+      const result = await activatePaidArtistPremium({
+        userId: subscription.metadata.user_id,
+        planId: normalizeArtistPlanId(subscription.metadata.plan_id),
+        interval: normalizeInterval(subscription.metadata.interval),
+        reference: subscription.id,
+        amountUsd: 0,
+        provider: "stripe",
+        endsAt: new Date(periodEnd * 1000).toISOString(),
+      });
+      if (!result.ok)
+        return NextResponse.json(
+          { error: "Premium synchronization failed." },
+          { status: 500 },
+        );
+    }
+    if (
+      subscription.metadata?.kind === "service_premium" &&
+      subscription.metadata.user_id &&
+      ["active", "trialing", "past_due"].includes(subscription.status) &&
+      periodEnd
+    ) {
+      const planId = parseServicePremiumPlanId(subscription.metadata.plan_id);
+      if (!planId)
+        return NextResponse.json(
+          { error: "Unknown service membership plan." },
+          { status: 400 },
+        );
+      const result = await activatePaidServicePremium({
+        userId: subscription.metadata.user_id,
+        planId,
+        interval: normalizeServiceBillingInterval(subscription.metadata.interval),
+        reference: subscription.id,
+        amountUsd: 0,
+        provider: "stripe",
+        endsAt: new Date(periodEnd * 1000).toISOString(),
+      });
+      if (!result.ok)
+        return NextResponse.json(
+          { error: "Service membership synchronization failed." },
+          { status: 500 },
+        );
     }
   }
 
@@ -226,6 +299,20 @@ export async function POST(req: Request) {
       if (!result.ok)
         return NextResponse.json(
           { error: "Premium deactivation failed." },
+          { status: 500 },
+        );
+    }
+    if (
+      subscription.metadata?.kind === "service_premium" &&
+      subscription.metadata.user_id
+    ) {
+      const result = await deactivateStripeServicePremium(
+        subscription.id,
+        subscription.metadata.user_id,
+      );
+      if (!result.ok)
+        return NextResponse.json(
+          { error: "Service membership deactivation failed." },
           { status: 500 },
         );
     }
