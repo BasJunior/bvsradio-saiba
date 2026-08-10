@@ -27,7 +27,6 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   return NextResponse.json({
-    ok: true,
     ...result,
     message:
       mode === "immediate"
