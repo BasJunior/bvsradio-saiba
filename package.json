@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "vercel-build": "next build",
+    "vercel-build": "npm run test:service-premium && next build",
     "start": "next start",
     "lint": "eslint",
     "test:safe-floor": "node --experimental-strip-types scripts/safe-floor-tests.mjs",
