@@ -58,10 +58,8 @@ export default function MarketplacePage() {
   }, []);
   function addProduct(item: Listing) {
     const current = readCartLines();
-    const cartType =
-      item.listing_type === "service" ? "creator_service" : "creator_product";
     const existing = current.findIndex(
-      (line) => String(line.id) === item.id && line.type === cartType,
+      (line) => String(line.id) === item.id && line.type === "creator_product",
     );
     const next = [...current];
     if (existing >= 0) next[existing] = { ...next[existing], quantity: 1 };
@@ -74,14 +72,11 @@ export default function MarketplacePage() {
           item.profiles?.display_name ||
           item.profiles?.username ||
           "BVS creator",
-        type: cartType,
+        type: "creator_product",
         price: Number(item.price_usd),
         quantity: 1,
         delivery:
-          item.listing_type === "service"
-            ? `${item.turnaround_days || 7} day target · ${item.revisions_included || 0} revision(s)`
-            : item.licence_summary ||
-              "Private download after confirmed payment",
+          item.licence_summary || "Private download after confirmed payment",
       });
     writeCartLines(next);
     setAdded(item.id);
@@ -153,55 +148,60 @@ export default function MarketplacePage() {
                   />
                 ) : null}
                 <div className="p-6">
-                <div className="flex justify-between gap-4">
-                  <span className="text-xs uppercase text-brand">
-                    {item.listing_type.replaceAll("_", " ")} ·{" "}
-                    {item.category.replaceAll("_", " ")}
-                  </span>
-                  <strong>${Number(item.price_usd).toFixed(2)}</strong>
-                </div>
-                <h3 className="mt-3 text-xl font-semibold">{item.title}</h3>
-                <p className="mt-2 text-sm text-text-secondary">
-                  {item.description}
-                </p>
-                <p className="mt-4 text-xs text-text-secondary">
-                  by{" "}
-                  {item.profiles?.creator_public_name ||
-                    item.profiles?.display_name ||
-                    item.profiles?.username ||
-                    "BVS creator"}
-                </p>
-                {item.listing_type === "service" ? (
-                  <p className="mt-3 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                    Target: {item.turnaround_days || 7} days ·{" "}
-                    {item.revisions_included || 0} included revision(s)
+                  <div className="flex justify-between gap-4">
+                    <span className="text-xs uppercase text-brand">
+                      {item.listing_type.replaceAll("_", " ")} ·{" "}
+                      {item.category.replaceAll("_", " ")}
+                    </span>
+                    <strong>from ${Number(item.price_usd).toFixed(2)}</strong>
+                  </div>
+                  <h3 className="mt-3 text-xl font-semibold">{item.title}</h3>
+                  <p className="mt-2 text-sm text-text-secondary">
+                    {item.description}
                   </p>
-                ) : item.licence_summary ? (
-                  <p className="mt-3 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                    Licence: {item.licence_summary}
+                  <p className="mt-4 text-xs text-text-secondary">
+                    by{" "}
+                    {item.profiles?.creator_public_name ||
+                      item.profiles?.display_name ||
+                      item.profiles?.username ||
+                      "BVS creator"}
                   </p>
-                ) : null}
-                <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => addProduct(item)}
-                    className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
-                  >
-                    {added === item.id
-                      ? "Added to basket"
-                      : item.listing_type === "service"
-                        ? "Book service"
-                        : "Add to basket"}
-                  </button>
-                  {added === item.id ? (
-                    <Link
-                      href="/checkout"
-                      className="rounded-full border border-white/20 px-4 py-2 text-sm"
-                    >
-                      Checkout
-                    </Link>
+                  {item.listing_type === "service" ? (
+                    <p className="mt-3 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
+                      Target: {item.turnaround_days || 7} days ·{" "}
+                      {item.revisions_included || 0} included revision(s)
+                    </p>
+                  ) : item.licence_summary ? (
+                    <p className="mt-3 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
+                      Licence: {item.licence_summary}
+                    </p>
                   ) : null}
-                </div>
+                  <div className="mt-4 flex gap-2">
+                    {item.listing_type === "service" ? (
+                      <Link
+                        href={`/marketplace/service/${item.id}`}
+                        className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
+                      >
+                        View packages
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => addProduct(item)}
+                        className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
+                      >
+                        {added === item.id ? "Added to basket" : "Add to basket"}
+                      </button>
+                    )}
+                    {item.listing_type !== "service" && added === item.id ? (
+                      <Link
+                        href="/checkout"
+                        className="rounded-full border border-white/20 px-4 py-2 text-sm"
+                      >
+                        Checkout
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             ))}
