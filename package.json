@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test:safe-floor": "node --experimental-strip-types scripts/safe-floor-tests.mjs",
     "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
+    "test:service-premium": "node --experimental-strip-types scripts/service-premium-tests.mjs",
     "typecheck": "tsc --noEmit",
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
