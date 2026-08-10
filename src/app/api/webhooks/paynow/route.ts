@@ -17,6 +17,8 @@ import {
   activatePaidArtistPremium,
   parsePremiumOrderItem,
 } from "@/lib/premium-billing";
+import { activatePaidServicePremium } from "@/lib/service-premium-billing";
+import { parseServicePremiumOrderItem } from "@/lib/service-premium-plans";
 import { initializePaidCreatorServiceOrder } from "@/lib/creator-service-orders";
 
 /**
@@ -104,7 +106,9 @@ export async function POST(req: Request) {
 
     if (paid) {
       const eventId = body.hash || body.Hash || `${reference}:${trustedStatus}`;
-      const isPremiumOrder = Boolean(parsePremiumOrderItem(order.items || []));
+      const premiumLine = parsePremiumOrderItem(order.items || []);
+      const servicePremiumLine = parseServicePremiumOrderItem(order.items || []);
+      const isMembershipOrder = Boolean(premiumLine || servicePremiumLine);
       let transition: {
         accepted: boolean;
         transitioned?: boolean;
@@ -126,8 +130,8 @@ export async function POST(req: Request) {
           rawPayload,
         });
       } catch (ledgerErr) {
-        // Premium prepaid orders may not have a commerce snapshot — still activate membership.
-        if (!isPremiumOrder) {
+        // Prepaid membership orders may not have a commerce snapshot.
+        if (!isMembershipOrder) {
           console.error("paynow ledger", ledgerErr);
           await recordServerEvent("payment_error", {
             provider: "paynow",
@@ -138,9 +142,9 @@ export async function POST(req: Request) {
             { status: 409 },
           );
         }
-        console.warn("paynow ledger skipped for premium", reference);
+        console.warn("paynow ledger skipped for membership", reference);
       }
-      if (!transition.accepted && !isPremiumOrder) {
+      if (!transition.accepted && !isMembershipOrder) {
         await recordServerEvent("payment_error", {
           provider: "paynow",
           stage: "ledger_reconciliation_failed",
@@ -150,19 +154,20 @@ export async function POST(req: Request) {
           { status: 409 },
         );
       }
-      if (!transition.transitioned && transition.accepted && !isPremiumOrder) {
+      if (!transition.transitioned && transition.accepted && !isMembershipOrder) {
         return NextResponse.json({ ok: true, duplicate: true });
       }
       await recordServerEvent("checkout_complete", {
         provider: "paynow",
         status: "paid",
       });
-      await creditPaidArtistDeposit(reference, "paynow");
-      await creditPaidArtistSales(reference, "paynow");
-      await initializePaidCreatorServiceOrder(reference);
 
-      // Artist Premium prepaid period
-      const premiumLine = parsePremiumOrderItem(order.items || []);
+      if (!isMembershipOrder) {
+        await creditPaidArtistDeposit(reference, "paynow");
+        await creditPaidArtistSales(reference, "paynow");
+        await initializePaidCreatorServiceOrder(reference);
+      }
+
       if (premiumLine && order.customerUserId) {
         const act = await activatePaidArtistPremium({
           userId: order.customerUserId,
@@ -188,15 +193,41 @@ export async function POST(req: Request) {
         }
       }
 
+      if (servicePremiumLine && order.customerUserId) {
+        const act = await activatePaidServicePremium({
+          userId: order.customerUserId,
+          planId: servicePremiumLine.planId,
+          interval: servicePremiumLine.interval,
+          reference,
+          amountUsd: servicePremiumLine.amount || Number(order.total) || 0,
+          provider: "paynow",
+        });
+        if (!act.ok) {
+          console.error("service premium activate failed", act.reason, reference);
+          await recordServerEvent("payment_error", {
+            provider: "paynow",
+            stage: "service_premium_activate_failed",
+          });
+        } else {
+          await recordServerEvent("checkout_complete", {
+            provider: "paynow",
+            status: "service_premium_activated",
+            planId: servicePremiumLine.planId,
+            interval: servicePremiumLine.interval,
+          });
+        }
+      }
+
+      const membershipActive = Boolean(premiumLine || servicePremiumLine);
       const updated = await updateOrder(reference, {
         status: "paid",
-        deliveryStatus: premiumLine ? "premium_active" : "paid_processing",
+        deliveryStatus: membershipActive ? "premium_active" : "paid_processing",
         paynowPollUrl: pollUrl || undefined,
       });
       const paidOrder = updated || {
         ...order,
         status: "paid" as const,
-        deliveryStatus: premiumLine ? "premium_active" : "paid_processing",
+        deliveryStatus: membershipActive ? "premium_active" : "paid_processing",
       };
       await notifyOwnerNewOrder(paidOrder);
       await notifyCustomerOrderEmail(paidOrder, "paid");
