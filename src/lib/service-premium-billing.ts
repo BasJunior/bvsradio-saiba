@@ -1,6 +1,7 @@
 import "server-only";
 
 import { entitlementsForPlan } from "@/lib/premium-catalog";
+import { getStripe } from "@/lib/stripe";
 import {
   servicePremiumPeriodEndIso,
   type ServiceBillingInterval,
@@ -152,6 +153,7 @@ export async function getServicePremiumStatus(userId: string) {
     (!membership?.ends_at || new Date(membership.ends_at).getTime() > Date.now());
   return {
     active: valid,
+    membershipId: membership?.id || null,
     planId: valid ? membership?.plan_id || null : null,
     billingInterval: membership?.billing_interval || null,
     endsAt: membership?.ends_at || null,
@@ -160,4 +162,52 @@ export async function getServicePremiumStatus(userId: string) {
     providerRef: membership?.provider_ref || null,
     entitlements: membership?.entitlements || {},
   };
+}
+
+export async function cancelServicePremium(
+  userId: string,
+  mode: "period_end" | "immediate" = "period_end",
+) {
+  if (!url || !service) return { ok: false as const, reason: "not_configured" };
+  const status = await getServicePremiumStatus(userId);
+  if (!status.membershipId)
+    return { ok: true as const, reason: "no_active_membership" };
+
+  const now = new Date().toISOString();
+  if (status.provider === "stripe" && status.providerRef) {
+    const stripe = getStripe();
+    if (!stripe) return { ok: false as const, reason: "stripe_not_configured" };
+    try {
+      if (mode === "immediate") await stripe.subscriptions.cancel(status.providerRef);
+      else
+        await stripe.subscriptions.update(status.providerRef, {
+          cancel_at_period_end: true,
+        });
+    } catch (error) {
+      console.error("stripe service premium cancellation failed", error);
+      return { ok: false as const, reason: "stripe_cancel_failed" };
+    }
+  }
+
+  if (mode === "immediate") {
+    const patch = await restPatch(`bvs_memberships?id=eq.${status.membershipId}`, {
+      status: "canceled",
+      cancel_at: now,
+      ends_at: now,
+      notes: "Service membership canceled immediately by user",
+      updated_at: now,
+    });
+    return patch.ok
+      ? { ok: true as const, mode, endsAt: now }
+      : { ok: false as const, reason: "membership_patch_failed" };
+  }
+
+  const patch = await restPatch(`bvs_memberships?id=eq.${status.membershipId}`, {
+    cancel_at: now,
+    notes: "Service membership cancellation requested for period end",
+    updated_at: now,
+  });
+  return patch.ok
+    ? { ok: true as const, mode, endsAt: status.endsAt }
+    : { ok: false as const, reason: "membership_patch_failed" };
 }
