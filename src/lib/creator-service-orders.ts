@@ -19,7 +19,7 @@ export async function initializePaidCreatorServiceOrder(reference: string) {
   if (!order?.id || !order.customer_user_id)
     return { created: false, reason: "order_not_ready" };
   const lineResponse = await fetch(
-    `${url}/rest/v1/commerce_order_items?order_id=eq.${order.id}&product_type_snapshot=eq.creator_service&select=unit_amount,quantity,title_snapshot,seller_user_id_snapshot,commerce_products!inner(source_id)&limit=1`,
+    `${url}/rest/v1/commerce_order_items?order_id=eq.${order.id}&product_type_snapshot=eq.creator_service&select=unit_amount,quantity,title_snapshot,seller_user_id_snapshot,service_package_snapshot,commerce_products!inner(source_id)&limit=1`,
     { headers, cache: "no-store" },
   );
   const line = lineResponse.ok ? (await lineResponse.json())[0] : null;
@@ -27,11 +27,15 @@ export async function initializePaidCreatorServiceOrder(reference: string) {
   if (!line?.seller_user_id_snapshot || !listingId)
     return { created: false, reason: "not_creator_service" };
   const listingResponse = await fetch(
-    `${url}/rest/v1/creator_marketplace_listings?id=eq.${listingId}&select=id,packages,turnaround_days,revisions_included&limit=1`,
+    `${url}/rest/v1/creator_marketplace_listings?id=eq.${listingId}&select=id,turnaround_days,revisions_included&limit=1`,
     { headers, cache: "no-store" },
   );
   const listing = listingResponse.ok ? (await listingResponse.json())[0] : null;
   if (!listing) return { created: false, reason: "listing_missing" };
+  const packageSnapshot =
+    line.service_package_snapshot && typeof line.service_package_snapshot === "object"
+      ? line.service_package_snapshot
+      : {};
   const response = await fetch(
     `${url}/rest/v1/creator_service_orders?on_conflict=order_id`,
     {
@@ -47,9 +51,7 @@ export async function initializePaidCreatorServiceOrder(reference: string) {
         buyer_user_id: order.customer_user_id,
         seller_user_id: line.seller_user_id_snapshot,
         title_snapshot: line.title_snapshot,
-        package_snapshot: Array.isArray(listing.packages)
-          ? listing.packages[0] || {}
-          : {},
+        package_snapshot: packageSnapshot,
         brief: String(order.project_notes || "").slice(0, 5000),
         amount_usd: Number(line.unit_amount) * Number(line.quantity || 1),
         revisions_included: Number(listing.revisions_included || 0),
