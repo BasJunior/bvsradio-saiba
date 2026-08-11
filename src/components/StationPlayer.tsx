@@ -197,7 +197,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     const seconds = Math.round((Date.now() - startedAt.current) / 1000);
     startedAt.current = null;
     const bucket = listeningBucket(seconds);
-    if (bucket > 0) trackEvent("listening_duration", { track_id: `rotation-${current.src}`, seconds_bucket: bucket });
+    if (bucket > 0) trackEvent("listening_duration", { track_id: trackLibraryId(current), seconds_bucket: bucket });
   }, [current]);
 
   const pushHistory = useCallback((track: StationTrack) => {
@@ -422,7 +422,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           }
         })
         .catch(() => {
-          trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "track_change" });
+          trackEvent("playback_error", { track_id: trackLibraryId(current), stage: "track_change" });
           setPlaying(false);
           setError("This recording could not be played.");
         });
@@ -521,7 +521,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     flushListening();
     failStreak.current += 1;
     trackEvent("playback_error", {
-      track_id: current ? `rotation-${current.src}` : "unknown",
+      track_id: current ? trackLibraryId(current) : "unknown",
       stage: "media",
       fail_streak: failStreak.current,
     });
@@ -560,7 +560,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setNotice(null);
     } catch {
       setPlaying(false);
-      trackEvent("playback_error", { track_id: `rotation-${current.src}`, stage: "start" });
+      trackEvent("playback_error", { track_id: trackLibraryId(current), stage: "start" });
       setError("Playback could not start. Please try again.");
     }
   }, [current, flushListening, isPlaying, pushHistory]);

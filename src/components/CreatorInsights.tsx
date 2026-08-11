@@ -55,6 +55,7 @@ export default function CreatorInsights({ token }: { token: string }) {
   const [data, setData] = useState<Insights | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -67,6 +68,7 @@ export default function CreatorInsights({ token }: { token: string }) {
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Could not load creator insights.')
       setData(payload)
+      setLastUpdated(new Date())
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load creator insights.')
     } finally {
@@ -75,8 +77,12 @@ export default function CreatorInsights({ token }: { token: string }) {
   }, [days, token])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
+    const initial = window.setTimeout(() => void load(), 0)
+    const refresh = window.setInterval(() => void load(), 60_000)
+    return () => {
+      window.clearTimeout(initial)
+      window.clearInterval(refresh)
+    }
   }, [load])
 
   const chart = useMemo(() => {
@@ -96,6 +102,7 @@ export default function CreatorInsights({ token }: { token: string }) {
           <p className="text-xs uppercase tracking-[.22em] text-brand">Your insights</p>
           <h2 className="mt-2 text-2xl font-semibold">Catalogue performance</h2>
           <p className="mt-2 text-sm text-text-secondary">Only activity tied to your own tracks and beats is included. Listener identities are never shown.</p>
+          <p className="mt-1 text-[11px] text-text-secondary">Refreshes every 60 seconds{lastUpdated ? ` · updated ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
         </div>
         <div className="flex gap-2">
           {[7, 30, 90].map((range) => (
@@ -112,8 +119,8 @@ export default function CreatorInsights({ token }: { token: string }) {
       {data ? (
         <>
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <Card label="Plays" value={data.summary.plays} note={`${data.summary.playGrowthPercent >= 0 ? '+' : ''}${data.summary.playGrowthPercent}% vs previous period`} />
-            <Card label="Listening sessions" value={data.summary.uniqueSessions} />
+            <Card label="Playback starts" value={data.summary.plays} note={`${data.summary.playGrowthPercent >= 0 ? '+' : ''}${data.summary.playGrowthPercent}% vs previous period`} />
+            <Card label="Listening sessions" value={data.summary.uniqueSessions} note="Sessions with at least one start" />
             <Card label="Listening minutes" value={data.summary.listeningMinutes} note="Privacy-safe estimate" />
             <Card label="Saves" value={data.summary.saves} note={`${data.summary.saveRate}% save-to-play rate`} />
             <Card label="Published" value={data.catalogue.published} />
@@ -126,7 +133,7 @@ export default function CreatorInsights({ token }: { token: string }) {
               <div className="flex gap-2">
                 {(['plays', 'saves', 'minutes'] as MetricKey[]).map((value) => (
                   <button key={value} onClick={() => setMetric(value)} className={`rounded-full px-3 py-1 text-xs capitalize ${metric === value ? 'bg-brand text-black' : 'border border-white/10 text-text-secondary'}`}>
-                    {value}
+                    {value === 'plays' ? 'starts' : value}
                   </button>
                 ))}
               </div>
@@ -148,7 +155,7 @@ export default function CreatorInsights({ token }: { token: string }) {
                       <p className="truncate text-sm font-medium">{item.title}</p>
                       <p className="text-xs capitalize text-text-secondary">{item.kind} · {item.status.replaceAll('_', ' ')}{item.inRotation ? ' · in rotation' : ''}</p>
                     </div>
-                    <p className="text-xs text-text-secondary">{item.plays} plays · {item.saves} saves</p>
+                    <p className="text-xs text-text-secondary">{item.plays} starts · {item.saves} save actions</p>
                   </div>
                 ))}
                 {!data.topItems.length ? <p className="text-sm text-text-secondary">Your submitted catalogue will appear here.</p> : null}
@@ -168,10 +175,10 @@ export default function CreatorInsights({ token }: { token: string }) {
               <div className="rounded-2xl border border-white/10 p-5">
                 <h3 className="font-semibold">Playback health</h3>
                 <p className="mt-3 text-2xl text-brand">{data.summary.playbackErrors}</p>
-                <p className="text-xs text-text-secondary">failures · {data.summary.playbackErrorRate}% of plays</p>
+                <p className="text-xs text-text-secondary">audio failures · {data.summary.playbackErrorRate}% of starts</p>
               </div>
               <div className="rounded-2xl border border-white/10 p-5">
-                <h3 className="font-semibold">Genres by plays</h3>
+                <h3 className="font-semibold">Genres by playback starts</h3>
                 <div className="mt-3 space-y-2">
                   {data.genres.map((genre) => <p key={genre.genre} className="flex justify-between text-sm text-text-secondary"><span>{genre.genre}</span><span className="text-brand">{genre.plays}</span></p>)}
                   {!data.genres.length ? <p className="text-sm text-text-secondary">No genre activity yet.</p> : null}

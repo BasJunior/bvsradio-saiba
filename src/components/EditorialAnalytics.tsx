@@ -73,6 +73,7 @@ export default function EditorialAnalytics({ token }: { token: string }) {
   const [data, setData] = useState<Analytics | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -85,6 +86,7 @@ export default function EditorialAnalytics({ token }: { token: string }) {
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Could not load analytics.')
       setData(payload)
+      setLastUpdated(new Date())
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not load analytics.')
     } finally {
@@ -93,8 +95,12 @@ export default function EditorialAnalytics({ token }: { token: string }) {
   }, [days, token])
 
   useEffect(() => {
-    const timer = window.setTimeout(() => void load(), 0)
-    return () => window.clearTimeout(timer)
+    const initial = window.setTimeout(() => void load(), 0)
+    const refresh = window.setInterval(() => void load(), 60_000)
+    return () => {
+      window.clearTimeout(initial)
+      window.clearInterval(refresh)
+    }
   }, [load])
 
   const chart = useMemo(() => {
@@ -130,6 +136,7 @@ export default function EditorialAnalytics({ token }: { token: string }) {
           <p className="text-xs uppercase tracking-[.2em] text-brand">Staff analytics</p>
           <h2 className="mt-2 text-2xl font-semibold">Site health and growth</h2>
           <p className="mt-2 text-sm text-text-secondary">Aggregated first-party activity. No member emails, IP addresses or payment details.</p>
+          <p className="mt-1 text-[11px] text-text-secondary">Refreshes every 60 seconds{lastUpdated ? ` · updated ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</p>
         </div>
         <div className="flex gap-2">
           {[7, 30, 90].map((range) => (
@@ -201,11 +208,11 @@ export default function EditorialAnalytics({ token }: { token: string }) {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Metric label="Listening sessions" value={data.activity.uniqueSessions} />
-              <Metric label="Player starts" value={data.activity.playerStarts} />
+              <Metric label="Listening sessions" value={data.activity.uniqueSessions} note="Sessions with at least one playback start" />
+              <Metric label="Playback starts" value={data.activity.playerStarts} />
               <Metric label="Listening minutes" value={data.activity.listeningMinutes.toLocaleString()} note="Estimated from privacy-safe duration buckets" />
-              <Metric label="Track saves" value={data.activity.trackSaves} />
-              <Metric label="Uploads" value={data.activity.uploads} />
+              <Metric label="Save actions" value={data.activity.trackSaves} note="Not unique listeners" />
+              <Metric label="Recorded uploads" value={data.activity.uploads} note="Analytics-enabled completions" />
               <Metric label="Awaiting review" value={data.pipeline.awaitingReview} />
             </div>
           </div>
@@ -218,9 +225,9 @@ export default function EditorialAnalytics({ token }: { token: string }) {
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
-            <RankedList title="Most played catalogue" rows={data.performance.topPlayed.map((item) => ({ label: item.label, value: item.plays }))} />
+            <RankedList title={`Most playback starts · ${data.rangeDays} days`} rows={data.performance.topPlayed.map((item) => ({ label: item.label, value: item.plays }))} />
             <RankedList title="Most saved this period" rows={data.performance.topSaved.map((item) => ({ label: item.label, value: item.saves }))} />
-            <RankedList title="Genres by catalogue plays" rows={data.performance.popularGenres.map((item) => ({ label: item.genre, value: item.plays }))} />
+            <RankedList title={`Genres by playback starts · ${data.rangeDays} days`} rows={data.performance.popularGenres.map((item) => ({ label: item.genre, value: item.plays }))} />
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[.025] p-5">
@@ -228,8 +235,8 @@ export default function EditorialAnalytics({ token }: { token: string }) {
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric label="Playback failures" value={data.reliability.playbackErrors} note={`${data.reliability.playbackErrorRate}% of player starts`} />
               <Metric label="Editorial queue" value={data.pipeline.awaitingReview} />
-              {data.permissions.commerce ? <Metric label="Checkout completions" value={data.reliability.checkoutCompletions || 0} /> : null}
-              {data.permissions.commerce ? <Metric label="Payment failures" value={data.reliability.paymentErrors || 0} note={`${data.reliability.paymentErrorRate || 0}% of checkout starts`} /> : null}
+              {data.permissions.commerce ? <Metric label="Verified payments" value={data.reliability.checkoutCompletions || 0} note="Server-confirmed paid events" /> : null}
+              {data.permissions.commerce ? <Metric label="Payment error events" value={data.reliability.paymentErrors || 0} note={`${data.reliability.paymentErrorRate || 0}% of checkout starts; may include repeated attempts`} /> : null}
             </div>
           </div>
         </>

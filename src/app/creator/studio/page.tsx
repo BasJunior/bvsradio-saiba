@@ -819,7 +819,7 @@ function ArtistReleases({
           ["In rotation", tracks.filter((t) => t.in_rotation).length],
           ["Album releases", releases.length],
           [
-            "Total plays",
+            "Lifetime playback starts",
             tracks.reduce((sum, t) => sum + Number(t.play_count || 0), 0),
           ],
         ].map(([label, value]) => (
@@ -906,7 +906,7 @@ function ArtistReleases({
                     <p className="text-lg text-brand">
                       {Number(track.play_count || 0)}
                     </p>
-                    <p>plays</p>
+                    <p>playback starts</p>
                   </div>
                 </div>
                 {track.editorial_notes && (
