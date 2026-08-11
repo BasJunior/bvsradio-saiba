@@ -98,14 +98,29 @@ export default function EditorialAnalytics({ token }: { token: string }) {
   }, [load])
 
   const chart = useMemo(() => {
-    if (!data) return ''
+    if (!data) return null
     const points = data.registrations.daily
+    const width = 760
+    const height = 220
+    const left = 44
+    const right = 16
+    const top = 18
+    const bottom = 34
+    const plotWidth = width - left - right
+    const plotHeight = height - top - bottom
     const max = Math.max(1, ...points.map((point) => point.count))
-    return points.map((point, index) => {
-      const x = points.length === 1 ? 0 : (index / (points.length - 1)) * 100
-      const y = 92 - (point.count / max) * 80
-      return `${x},${y}`
-    }).join(' ')
+    const plotted = points.map((point, index) => ({
+      ...point,
+      x: points.length === 1 ? left + plotWidth / 2 : left + (index / (points.length - 1)) * plotWidth,
+      y: top + plotHeight - (point.count / max) * plotHeight,
+    }))
+    const line = plotted.map((point) => `${point.x},${point.y}`).join(' ')
+    const area = plotted.length
+      ? `${left},${top + plotHeight} ${line} ${left + plotWidth},${top + plotHeight}`
+      : ''
+    const labelIndexes = Array.from(new Set([0, Math.floor((points.length - 1) / 2), points.length - 1])).filter((index) => index >= 0)
+
+    return { width, height, left, top, plotWidth, plotHeight, max, points: plotted, line, area, labelIndexes }
   }, [data])
 
   return (
@@ -145,16 +160,39 @@ export default function EditorialAnalytics({ token }: { token: string }) {
                   {data.registrations.growthPercent >= 0 ? '+' : ''}{data.registrations.growthPercent}% vs previous period
                 </p>
               </div>
-              <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="mt-5 h-44 w-full" role="img" aria-label={`Daily new members over ${data.rangeDays} days`}>
-                <line x1="0" y1="92" x2="100" y2="92" stroke="currentColor" className="text-white/10" />
-                <polyline points={chart} fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" className="text-brand" />
-                {data.registrations.daily.map((point, index) => {
-                  const max = Math.max(1, ...data.registrations.daily.map((item) => item.count))
-                  const x = data.registrations.daily.length === 1 ? 0 : (index / (data.registrations.daily.length - 1)) * 100
-                  const y = 92 - (point.count / max) * 80
-                  return <circle key={point.day} cx={x} cy={y} r="1.2" fill="currentColor" className="text-brand"><title>{point.day}: {point.count}</title></circle>
-                })}
-              </svg>
+              {chart ? (
+                <div className="mt-5 overflow-hidden rounded-xl border border-white/[.06] bg-black/20 px-2 py-3">
+                  <svg viewBox={`0 0 ${chart.width} ${chart.height}`} className="h-52 w-full" role="img" aria-label={`Daily new members over ${data.rangeDays} days`}>
+                    <defs>
+                      <linearGradient id="memberGrowthFill" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="currentColor" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    {[0, 0.5, 1].map((ratio) => {
+                      const y = chart.top + chart.plotHeight * ratio
+                      const value = Math.round(chart.max * (1 - ratio))
+                      return (
+                        <g key={ratio}>
+                          <line x1={chart.left} y1={y} x2={chart.left + chart.plotWidth} y2={y} stroke="currentColor" strokeDasharray="4 7" className="text-white/10" />
+                          <text x={chart.left - 10} y={y + 4} textAnchor="end" fill="currentColor" className="text-[11px] text-text-secondary">{value}</text>
+                        </g>
+                      )
+                    })}
+                    {chart.area ? <polygon points={chart.area} fill="url(#memberGrowthFill)" className="text-brand" /> : null}
+                    <polyline points={chart.line} fill="none" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" className="text-brand" />
+                    {chart.points.map((point, index) => (
+                      <circle key={point.day} cx={point.x} cy={point.y} r={index === chart.points.length - 1 ? 5 : 3} fill="currentColor" stroke="#111" strokeWidth="2" className="text-brand">
+                        <title>{point.day}: {point.count} new member{point.count === 1 ? '' : 's'}</title>
+                      </circle>
+                    ))}
+                    {chart.labelIndexes.map((index) => {
+                      const point = chart.points[index]
+                      return point ? <text key={point.day} x={point.x} y={chart.height - 9} textAnchor={index === 0 ? 'start' : index === chart.points.length - 1 ? 'end' : 'middle'} fill="currentColor" className="text-[11px] text-text-secondary">{new Date(`${point.day}T00:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</text> : null
+                    })}
+                  </svg>
+                </div>
+              ) : null}
               <div className="mt-3 flex flex-wrap gap-2">
                 {Object.entries(data.registrations.byRole).map(([role, count]) => (
                   <span key={role} className="rounded-full border border-white/10 px-3 py-1 text-xs capitalize text-text-secondary">{role}: {count}</span>
