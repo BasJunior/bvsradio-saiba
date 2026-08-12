@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Capacitor } from "@capacitor/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { StationTrack } from "@/lib/station";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
@@ -129,13 +130,20 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   // Live editorial rotation — bypasses any stale SSR/layout bake-in
   useEffect(() => {
     let cancelled = false;
+    const nativePlatform = Capacitor.getPlatform();
+    const mobileSurface = nativePlatform === "ios" || nativePlatform === "android"
+      ? nativePlatform
+      : window.location.pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1];
+    const endpoint = mobileSurface
+      ? `/api/station/tracks?surface=${encodeURIComponent(mobileSurface)}`
+      : "/api/station/tracks";
     const load = () => {
-      fetch("/api/station/tracks", { cache: "no-store" })
+      fetch(endpoint, { cache: "no-store" })
         .then(async (res) => {
           if (!res.ok) return;
           const payload = await res.json().catch(() => ({}));
           const next = Array.isArray(payload.tracks) ? (payload.tracks as StationTrack[]) : [];
-          if (!cancelled && next.length) setTracks(next);
+          if (!cancelled) setTracks(next);
         })
         .catch(() => {});
     };

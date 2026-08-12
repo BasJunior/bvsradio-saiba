@@ -126,7 +126,9 @@ function isBlockedHouseTitle(title: string) {
  * 1) ONLY approved + public + in_rotation Supabase tracks when any exist
  * 2) Tiny house fallback only if rotation is empty (and still filter demos)
  */
-export async function getStationTracks(): Promise<StationTrack[]> {
+export type MobileSurface = "ios" | "android";
+
+export async function getStationTracks(surface?: MobileSurface): Promise<StationTrack[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -150,14 +152,17 @@ export async function getStationTracks(): Promise<StationTrack[]> {
       Authorization: `Bearer ${key}`,
       Accept: "application/json",
     };
+    const mobileJoin = surface
+      ? `,mobile_distribution_clearances!inner(surface,status)&mobile_distribution_clearances.surface=eq.${surface}&mobile_distribution_clearances.status=eq.cleared`
+      : "";
     const rotationRes = await fetch(
-      `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre&order=rotation_added_at.desc&limit=500`,
+      `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre${mobileJoin}&order=rotation_added_at.desc&limit=500`,
       { headers, cache: "no-store" },
     );
 
     if (!rotationRes.ok) {
       console.error("getStationTracks rotation query failed", rotationRes.status, await rotationRes.text().catch(() => ""));
-      return shuffleDaily(localFallback);
+      return surface ? [] : shuffleDaily(localFallback);
     }
 
     const remote = (await rotationRes.json()) as Array<{
@@ -193,7 +198,10 @@ export async function getStationTracks(): Promise<StationTrack[]> {
       return shuffleDaily(remoteTracks);
     }
 
-    // Empty rotation — filter house against rejected DB titles
+    // Mobile surfaces fail closed: never expose house/archive content without a clearance row.
+    if (surface) return [];
+
+    // Empty website rotation — filter house against rejected DB titles
     const blockRes = await fetch(
       `${url}/rest/v1/tracks?or=(editorial_status.eq.rejected,in_rotation.eq.false)&select=title,file_url&limit=1000`,
       { headers, cache: "no-store" },
@@ -220,6 +228,6 @@ export async function getStationTracks(): Promise<StationTrack[]> {
     return shuffleDaily(filteredLocal);
   } catch (error) {
     console.error("getStationTracks", error);
-    return shuffleDaily(localFallback);
+    return surface ? [] : shuffleDaily(localFallback);
   }
 }

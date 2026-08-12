@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { usePathname } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -30,6 +31,9 @@ function formatPremiumUntil(iso: string | null): string | null {
 }
 
 export default function Navbar() {
+  const pathname = usePathname()
+  const routeSurface = pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1] as 'ios' | 'android' | undefined
+  const [mobileSurface] = useState<'ios' | 'android' | null>(routeSurface || null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
   const [isServicesMenuOpen, setIsServicesMenuOpen] = useState(false)
@@ -164,6 +168,25 @@ export default function Navbar() {
     window.localStorage.setItem('bvs_notifications_seen_at', new Date().toISOString())
     setNotificationCount(0)
     setIsMenuOpen(false)
+  }
+
+  if (mobileSurface) {
+    const appHome = `/app/${mobileSurface}`
+    return (
+      <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+          <Link href={appHome} className="flex items-center gap-2" aria-label="BVS Radio app home">
+            <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-10 w-auto rounded-md object-contain" priority />
+            <span className="hidden text-xs uppercase tracking-[.18em] text-brand sm:inline">App edition</span>
+          </Link>
+          <div className="flex items-center gap-1 text-xs">
+            <Link href={`${appHome}#listen`} className="rounded-full px-3 py-2 text-text-secondary hover:text-brand">Listen</Link>
+            <Link href={`${appHome}#catalogue`} className="rounded-full px-3 py-2 text-text-secondary hover:text-brand">Music</Link>
+            <Link href="/account" className="rounded-full border border-white/15 px-3 py-2">Account</Link>
+          </div>
+        </div>
+      </nav>
+    )
   }
 
   return (

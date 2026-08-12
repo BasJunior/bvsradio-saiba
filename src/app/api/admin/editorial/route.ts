@@ -68,17 +68,21 @@ async function loadStaffAndAudit() {
 }
 
 async function loadTracksSection() {
-  const tracksRes = await fetch(
-    editorialUrl(
-      'tracks?reclassified_to_beat_id=is.null&select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100',
+  const [tracksRes, mobileClearances] = await Promise.all([
+    fetch(
+      editorialUrl(
+        'tracks?reclassified_to_beat_id=is.null&select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100',
+      ),
+      { headers: serviceHeaders, cache: 'no-store' },
     ),
-    { headers: serviceHeaders, cache: 'no-store' },
-  )
+    optionalJson('mobile_distribution_clearances?select=id,track_id,surface,status,rights_basis,evidence_reference,review_notes,reviewed_at&limit=1000'),
+  ])
   if (!tracksRes.ok) throw new Error('MIGRATION')
   const rawTracks = await tracksRes.json()
   const tracks = await Promise.all(
     (rawTracks as Array<Record<string, unknown>>).map(async (track) => ({
       ...track,
+      mobile_clearances: (mobileClearances as Array<Record<string, unknown>>).filter((row) => row.track_id === track.id),
       file_url: await signStoredMedia(String(track.file_url || '')),
       artwork_url: await signStoredMedia(String(track.artwork_url || '')),
     })),
@@ -400,6 +404,50 @@ export async function PATCH(request: Request) {
         const result = await patchTable('tracks', `id=eq.${encodeURIComponent(trackId)}&editorial_status=eq.approved&is_public=eq.true`, { in_rotation: enabled, rotation_added_at: enabled ? new Date().toISOString() : null })
         if (!result?.length) return NextResponse.json({ error: 'Publish an approved track before adding it to rotation.' }, { status: 409 })
         await audit(identity.user.id, enabled ? 'rotation_added' : 'rotation_removed', 'track', trackId)
+        return NextResponse.json({ result })
+      }
+      case 'set_mobile_clearance': {
+        requirePermission('approve_submissions')
+        const trackId = String(body.trackId || '')
+        const surface = String(body.surface || '')
+        const status = String(body.status || '')
+        const rightsBasis = String(body.rightsBasis || '').trim().slice(0, 120)
+        const evidenceReference = String(body.evidenceReference || '').trim().slice(0, 500)
+        const notes = String(body.notes || '').trim().slice(0, 2000)
+        if (!trackId || !['ios', 'android'].includes(surface) || !['not_reviewed', 'cleared', 'blocked'].includes(status)) {
+          return NextResponse.json({ error: 'Track, surface and valid clearance status are required.' }, { status: 400 })
+        }
+        if (status === 'cleared' && (!rightsBasis || !evidenceReference)) {
+          return NextResponse.json({ error: 'A rights basis and evidence reference are required before mobile clearance.' }, { status: 400 })
+        }
+        const track = (await optionalJson(
+          `tracks?id=eq.${encodeURIComponent(trackId)}&select=id,title,editorial_status,is_public&limit=1`,
+        ))[0] as { id?: string; title?: string; editorial_status?: string; is_public?: boolean } | undefined
+        if (!track) return NextResponse.json({ error: 'Track not found.' }, { status: 404 })
+        if (status === 'cleared' && (track.editorial_status !== 'approved' || !track.is_public)) {
+          return NextResponse.json({ error: 'Approve and publish the track before clearing it for a mobile store.' }, { status: 409 })
+        }
+        const now = new Date().toISOString()
+        const result = await jsonOrError(await fetch(editorialUrl('mobile_distribution_clearances?on_conflict=track_id,surface'), {
+          method: 'POST',
+          headers: { ...serviceHeaders, Prefer: 'resolution=merge-duplicates,return=representation' },
+          body: JSON.stringify({
+            track_id: trackId,
+            surface,
+            status,
+            rights_basis: rightsBasis,
+            evidence_reference: evidenceReference,
+            review_notes: notes,
+            reviewed_by: identity.user.id,
+            reviewed_at: now,
+            updated_at: now,
+          }),
+        }))
+        await audit(identity.user.id, `mobile_${surface}_${status}`, 'track', trackId, {
+          title: track.title,
+          rightsBasis,
+          evidenceReference,
+        })
         return NextResponse.json({ result })
       }
       case 'publish_artist': {

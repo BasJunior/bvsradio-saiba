@@ -1,6 +1,23 @@
+'use client'
+
+import { useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 export default function Footer() {
+  const pathname = usePathname()
+  const routeSurface = pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1] as 'ios' | 'android' | undefined
+  const [mobileSurface] = useState<'ios' | 'android' | null>(routeSurface || null)
+
+  if (mobileSurface) {
+    return (
+      <footer className="mt-12 border-t border-white/10 px-4 py-8 text-center text-xs text-text-secondary">
+        <p>Curated mobile catalogue · Rights reviewed by BVS Editorial</p>
+        <div className="mt-3 flex justify-center gap-4"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/contact">Support</Link></div>
+        <p className="mt-4">&copy; {new Date().getFullYear()} BVS Radio</p>
+      </footer>
+    )
+  }
   return (
     <footer className="border-t border-white/10 bg-bg-secondary/50 mt-20">
       <div className="max-w-7xl mx-auto px-4 py-12">
