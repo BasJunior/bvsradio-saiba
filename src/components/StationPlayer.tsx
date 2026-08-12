@@ -37,6 +37,9 @@ type PlayerContextValue = {
   autoplay: boolean;
   queueOpen: boolean;
   setQueueOpen: (open: boolean) => void;
+  nowPlayingOpen: boolean;
+  openNowPlaying: () => void;
+  closeNowPlaying: () => void;
   toggle: () => void;
   next: () => void;
   previous: () => void;
@@ -177,6 +180,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const [playingFrom, setPlayingFrom] = useState("BVS Station");
   const [autoplay, setAutoplay] = useState(true);
   const [queueOpen, setQueueOpen] = useState(false);
+  const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
+  const openNowPlaying = useCallback(() => setNowPlayingOpen(true), []);
+  const closeNowPlaying = useCallback(() => setNowPlayingOpen(false), []);
 
   const current = nowPlaying?.track;
   const tracksRef = useRef(tracks);
@@ -845,6 +851,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       autoplay,
       queueOpen,
       setQueueOpen,
+      nowPlayingOpen,
+      openNowPlaying,
+      closeNowPlaying,
       toggle,
       next: () => advance(1),
       previous: () => advance(-1),
@@ -883,6 +892,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       upNext,
       autoplay,
       queueOpen,
+      nowPlayingOpen,
+      openNowPlaying,
+      closeNowPlaying,
       toggle,
       advance,
       seek,
@@ -1106,28 +1118,28 @@ function QueueSheet() {
 
 export function PersistentPlayer() {
   const player = useStationPlayer();
-  const [worldOpen, setWorldOpen] = useState(false);
+  const { nowPlayingOpen, closeNowPlaying } = player;
   const art = player.current?.artwork;
   const repeatLabel = player.repeat === "off" ? "Repeat off" : player.repeat === "all" ? "Repeat all" : "Repeat one";
 
   useEffect(() => {
-    if (!worldOpen) return;
+    if (!nowPlayingOpen) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setWorldOpen(false);
+      if (event.key === "Escape") closeNowPlaying();
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [worldOpen]);
+  }, [nowPlayingOpen, closeNowPlaying]);
 
   return (
     <>
       <QueueSheet />
-      {worldOpen && (
+      {nowPlayingOpen && (
         <section className="fixed inset-0 z-[70] overflow-y-auto bg-[#090909] text-white" role="dialog" aria-modal="true" aria-label="Now Playing World">
           {art ? (
             // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
@@ -1136,12 +1148,12 @@ export function PersistentPlayer() {
           <div className="fixed inset-0 bg-gradient-to-b from-black/25 via-[#090909]/80 to-[#090909]" aria-hidden="true" />
           <div className="relative mx-auto flex min-h-full max-w-6xl flex-col px-5 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8">
             <header className="flex items-center justify-between">
-              <button type="button" onClick={() => setWorldOpen(false)} className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/20 text-xl backdrop-blur" aria-label="Close Now Playing">⌄</button>
+              <button type="button" onClick={player.closeNowPlaying} className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/20 text-xl backdrop-blur" aria-label="Close Now Playing">⌄</button>
               <div className="text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Now Playing World</p>
                 <p className="mt-1 text-xs text-white/60">{player.playingFrom || "BVS Radio"}</p>
               </div>
-              <button type="button" onClick={() => { setWorldOpen(false); player.setQueueOpen(true); }} className="grid h-11 min-w-11 place-items-center rounded-full border border-white/15 bg-black/20 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
+              <button type="button" onClick={() => { player.closeNowPlaying(); player.setQueueOpen(true); }} className="grid h-11 min-w-11 place-items-center rounded-full border border-white/15 bg-black/20 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
             </header>
 
             <div className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:gap-16">
@@ -1172,11 +1184,11 @@ export function PersistentPlayer() {
                 </div>
 
                 <div className="mt-10 grid gap-3 sm:grid-cols-2">
-                  <Link href={`/search?q=${encodeURIComponent(player.current?.artist || "")}`} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
-                    <span className="text-[10px] uppercase tracking-[.18em] text-brand">Go deeper</span><span className="mt-1 block font-medium">Explore artist and credits →</span>
+                  <Link href={`/search?q=${encodeURIComponent(player.current?.artist || "")}`} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
+                    <span className="text-[10px] uppercase tracking-[.18em] text-brand">Go deeper</span><span className="mt-1 block font-medium">Explore artist and credits</span>
                   </Link>
-                  <button type="button" onClick={() => { setWorldOpen(false); player.setQueueOpen(true); }} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left hover:border-brand/40">
-                    <span className="text-[10px] uppercase tracking-[.18em] text-brand">Coming next</span><span className="mt-1 block font-medium">Open queue · {player.upNext.length} tracks →</span>
+                  <button type="button" onClick={() => { player.closeNowPlaying(); player.setQueueOpen(true); }} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left hover:border-brand/40">
+                    <span className="text-[10px] uppercase tracking-[.18em] text-brand">Coming next</span><span className="mt-1 block font-medium">Open queue · {player.upNext.length} tracks</span>
                   </button>
                 </div>
                 <p className="mt-6 text-sm leading-relaxed text-white/50">Playback stays continuous while you move through artists, credits, stories and BeatStore.</p>
@@ -1195,7 +1207,7 @@ export function PersistentPlayer() {
         <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-2 px-2.5 sm:h-20 sm:gap-4 sm:px-6">
           <button
             type="button"
-            onClick={() => setWorldOpen(true)}
+            onClick={player.openNowPlaying}
             className="flex min-w-0 flex-1 items-center gap-2.5 text-left sm:gap-3"
           >
             <CoverArt src={art} sizeClass="h-11 w-11 sm:h-12 sm:w-12" rounded="rounded-md sm:rounded-lg" />

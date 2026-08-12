@@ -36,14 +36,14 @@ export default function HomeListenPanel() {
       </div>
       <div className="p-4 sm:p-6">
         <div className="flex items-center gap-3 sm:gap-4">
-          <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] sm:h-20 sm:w-20 sm:rounded-2xl">
+          <button type="button" onClick={player.openNowPlaying} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] sm:h-20 sm:w-20 sm:rounded-2xl" aria-label="Open full player">
             {art ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={art} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center" />
             ) : (
               <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold text-white/50">BVS</span>
             )}
-          </span>
+          </button>
 
           <div className="min-w-0 flex-1">
             <p className="mb-1 truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-brand sm:text-[11px] sm:tracking-[0.18em]">

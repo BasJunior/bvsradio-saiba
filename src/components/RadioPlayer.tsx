@@ -55,10 +55,12 @@ export default function RadioPlayer() {
           </p>
 
           <div className="flex min-w-0 items-center gap-3 sm:block sm:gap-0">
-            <Cover
-              src={player.current?.artwork}
-              className="aspect-square h-20 w-20 rounded-xl sm:mb-5 sm:h-40 sm:w-40 sm:rounded-2xl"
-            />
+            <button type="button" onClick={player.openNowPlaying} className="shrink-0 text-left sm:block" aria-label="Open full player">
+              <Cover
+                src={player.current?.artwork}
+                className="aspect-square h-20 w-20 rounded-xl sm:mb-5 sm:h-40 sm:w-40 sm:rounded-2xl"
+              />
+            </button>
             <div className="min-w-0 flex-1 overflow-hidden text-left">
               <h2 className="truncate text-base font-semibold leading-snug sm:text-2xl">
                 {player.current?.title || "BVS Radio rotation"}
