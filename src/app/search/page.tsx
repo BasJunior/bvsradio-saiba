@@ -8,6 +8,7 @@ import { discoveryItems } from '@/lib/discovery'
 import { recordListening } from '@/lib/library'
 import { trackEvent } from '@/lib/analytics'
 import type { PublishedArtistSummary, PublishedProducerSummary } from '@/lib/artist-content'
+import { blogPosts } from '@/lib/blog'
 
 type SearchKind = 'track' | 'release' | 'artist' | 'producer' | 'beat' | 'show' | 'story' | 'service'
 type SearchItem = { id: string; kind: SearchKind; title: string; subtitle: string; href: string; image?: string; tags?: string[] }
@@ -81,6 +82,7 @@ export default function SearchPage() {
       ...beats.map(item => ({ id: `beat-${item.id}`, kind: 'beat' as const, title: item.title, subtitle: `${item.producer} · ${item.genre || 'BeatStore'}${item.bpm ? ` · ${item.bpm} BPM` : ''}`, href: `/catalogue?type=beat&q=${encodeURIComponent(item.title)}#beatstore`, image: item.artworkUrl, tags: [item.genre || '', item.mood || ''] })),
       ...releases.map(item => ({ id: `release-${item.id}`, kind: 'release' as const, title: item.title, subtitle: `${item.artist || 'BVS creator'} · Release`, href: `/album/${item.id}`, image: item.cover })),
       ...services.map(item => ({ id: `service-${item.id}`, kind: 'service' as const, title: item.title, subtitle: `${item.category?.replaceAll('_', ' ') || 'Creator service'}${item.price_usd ? ` · $${item.price_usd}` : ''}`, href: `/marketplace?listing=${encodeURIComponent(item.slug)}`, image: imageUrl(item.artwork_path), tags: [item.category || '', item.description || ''] })),
+      ...blogPosts.map(item => ({ id: `story-${item.slug}`, kind: 'story' as const, title: item.title, subtitle: `${item.readTime} · BVS story`, href: `/blog/${item.slug}`, tags: [item.description] })),
     ]
   }, [artists, beats, producers, releases, services])
 
