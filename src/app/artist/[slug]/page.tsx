@@ -61,7 +61,7 @@ export default async function ArtistPage({
         ← All BVS creators
       </Link>
       <div className="mt-8 flex flex-col gap-10 md:flex-row">
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:w-80">
+        <div className="relative aspect-square w-full shrink-0 self-start overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:h-80 md:w-80">
           <Image
             src={profile.image}
             alt={profile.name}
