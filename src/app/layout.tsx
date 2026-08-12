@@ -7,6 +7,7 @@ import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
+import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com";
@@ -78,16 +79,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
         <LibrarySyncProvider>
-        <StationPlayerProvider tracks={[]}>
-          <Navbar />
-          <AuthLinkRescue />
-          <main className="pt-16 pb-28">{children}</main>
-          <Footer />
-          <VisitorAssistant />
-          <PwaRegister />
-          <ClientErrorBeacon />
-          <PersistentPlayer />
-        </StationPlayerProvider>
+          <StationPlayerProvider tracks={[]}>
+            <FlowNavigationProvider>
+              <Navbar />
+              <AuthLinkRescue />
+              <main className="pt-16 pb-28">{children}</main>
+              <Footer />
+              <VisitorAssistant />
+              <PwaRegister />
+              <ClientErrorBeacon />
+              <PersistentPlayer />
+            </FlowNavigationProvider>
+          </StationPlayerProvider>
         </LibrarySyncProvider>
       </body>
     </html>
