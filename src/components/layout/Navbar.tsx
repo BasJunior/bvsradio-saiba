@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
-import ThemeToggle from '@/components/ThemeToggle'
+import HeaderSearch from '@/components/layout/HeaderSearch'
 import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
 type Access = {
   artist: boolean
@@ -85,18 +85,6 @@ export default function Navbar() {
     })
     return () => sub.subscription.unsubscribe()
   }, [])
-
-  useEffect(() => {
-    const openSearch = (event: KeyboardEvent) => {
-      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return
-      const target = event.target as HTMLElement | null
-      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
-      event.preventDefault()
-      router.push('/search')
-    }
-    window.addEventListener('keydown', openSearch)
-    return () => window.removeEventListener('keydown', openSearch)
-  }, [router])
 
   useEffect(() => {
     const seen = () => setNotificationCount(0)
@@ -225,10 +213,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden md:flex items-center gap-2">
-          <ThemeToggle />
-          <Link href="/search" aria-label="Search BVS" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-text-secondary hover:border-brand/40 hover:text-brand transition-colors">
-            Search BVS <span className="ml-2 text-xs text-white/40">/</span>
-          </Link>
+          <HeaderSearch />
           <Link
             href="/checkout"
             aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
@@ -243,11 +228,7 @@ export default function Navbar() {
           </Link>
           {user ? (
             <>
-              <Link href={notificationDestination} onClick={openNotifications} aria-label={`${notificationCount} new BVS notifications`} className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-lg text-text-secondary hover:border-brand hover:text-brand">
-                ♢
-                {notificationCount > 0 && <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}
-              </Link>
-              {showCreator && <Link href="/creator/studio" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>}
+              {showCreator && <Link href={notificationDestination || '/creator/studio'} onClick={openNotifications} className="relative px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio{notificationCount > 0 && <span className="absolute -right-1 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
               {showEditorial && <Link href="/editorial" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
               {premiumBadge && (
                 <Link
@@ -258,7 +239,7 @@ export default function Navbar() {
                   {premiumBadge}
                 </Link>
               )}
-              <Link href="/account" className="px-2.5 py-2 text-sm text-text-primary hover:text-brand transition-colors">Account</Link>
+              <Link href={showCreator ? '/account' : notificationDestination || '/account'} onClick={showCreator ? undefined : openNotifications} className="relative px-2.5 py-2 text-sm text-text-primary hover:text-brand transition-colors">Account{!showCreator && notificationCount > 0 && <span className="absolute -right-1 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
               <button
                 type="button"
                 onClick={signOut}
@@ -364,10 +345,8 @@ export default function Navbar() {
               )}
             </Link>
             <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
-              <div className="pb-2"><ThemeToggle /></div>
               {user ? (
                 <>
-                  <Link href={notificationDestination} className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={openNotifications}><span>Notifications</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
                   <p className="py-1 text-sm text-text-secondary truncate">{user.email}</p>
                   {premiumBadge && (
                     <Link
@@ -378,8 +357,8 @@ export default function Navbar() {
                       {premiumBadge}
                     </Link>
                   )}
-                  <Link href="/account" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Account Centre</Link>
-                  {showCreator && <Link href="/creator/studio" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Creator studio</Link>}
+                  <Link href={showCreator ? '/account' : notificationDestination || '/account'} className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={showCreator ? () => setIsMenuOpen(false) : openNotifications}><span>Account Centre</span>{!showCreator && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
+                  {showCreator && <Link href={notificationDestination || '/creator/studio'} className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={openNotifications}><span>Creator studio</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
                   {showEditorial && <Link href="/editorial" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Editorial dashboard</Link>}
                   <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
                     Sign out

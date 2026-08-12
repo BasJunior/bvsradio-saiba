@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import ThemeToggle from '@/components/ThemeToggle'
 
 type Profile = {
   username: string
@@ -288,6 +289,11 @@ export default function AccountPage() {
 
       <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {shortcuts.map((item) => <Link key={item.href} href={item.href} className="rounded-2xl border border-white/10 bg-white/[.025] p-5 transition hover:border-brand/50"><h2 className="text-lg font-semibold">{item.title}</h2><p className="mt-2 text-sm text-text-secondary">{item.copy}</p></Link>)}
+      </section>
+
+      <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.025] p-5">
+        <div><h2 className="text-lg font-semibold">Appearance</h2><p className="mt-1 text-sm text-text-secondary">Choose the BVS light or dark theme for this device.</p></div>
+        <ThemeToggle />
       </section>
 
       <section className="mt-12 grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
