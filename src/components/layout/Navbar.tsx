@@ -182,6 +182,7 @@ export default function Navbar() {
           <div className="flex items-center gap-1 text-xs">
             <Link href={`${appHome}#listen`} className="rounded-full px-3 py-2 text-text-secondary hover:text-brand">Listen</Link>
             <Link href={`${appHome}#catalogue`} className="rounded-full px-3 py-2 text-text-secondary hover:text-brand">Music</Link>
+            <Link href={`${appHome}#beats`} className="rounded-full px-3 py-2 text-text-secondary hover:text-brand">Beats</Link>
             <Link href="/account" className="rounded-full border border-white/15 px-3 py-2">Account</Link>
           </div>
         </div>

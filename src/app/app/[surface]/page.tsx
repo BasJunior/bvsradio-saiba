@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import RadioPlayer from "@/components/RadioPlayer";
+import { beatHeaders, beatUrl, listPublishedBeats, publicStorageUrl } from "@/lib/beatstore-server";
+import { creatorPublicName } from "@/lib/public-name";
 import { getStationTracks, type MobileSurface } from "@/lib/station-library";
 
 export const dynamic = "force-dynamic";
@@ -12,11 +14,44 @@ export const metadata: Metadata = {
   description: "The curated BVS Radio mobile edition.",
 };
 
+async function getPublishedBeats() {
+  const beats = await listPublishedBeats(12);
+  const producerIds = [...new Set(beats.map((beat) => beat.producer_user_id))];
+  const response = producerIds.length
+    ? await fetch(
+        beatUrl(`profiles?id=in.(${producerIds.join(",")})&select=id,username,creator_public_name,creator_name_status`),
+        { headers: beatHeaders, cache: "no-store" },
+      )
+    : null;
+  const producers = response?.ok
+    ? await response.json() as Array<{ id: string; username?: string; creator_public_name?: string; creator_name_status?: string }>
+    : [];
+
+  return beats.map((beat) => {
+    const producer = producers.find((item) => item.id === beat.producer_user_id);
+    const prices = (beat.beat_licence_options || [])
+      .filter((licence) => licence.is_active !== false && !licence.is_sold_out)
+      .map((licence) => Number(licence.price_usd))
+      .filter((price) => Number.isFinite(price) && price > 0);
+    return {
+      ...beat,
+      producer: creatorPublicName({
+        publicName: producer?.creator_public_name,
+        publicNameStatus: producer?.creator_name_status,
+        username: producer?.username,
+      }),
+      artworkUrl: publicStorageUrl(beat.artwork_path),
+      previewUrl: publicStorageUrl(beat.preview_path),
+      startingPrice: prices.length ? Math.min(...prices) : 29,
+    };
+  });
+}
+
 export default async function MobileAppPage({ params }: { params: Promise<{ surface: string }> }) {
   const { surface: rawSurface } = await params;
   if (rawSurface !== "ios" && rawSurface !== "android") notFound();
   const surface = rawSurface as MobileSurface;
-  const tracks = await getStationTracks(surface);
+  const [tracks, beats] = await Promise.all([getStationTracks(surface), getPublishedBeats()]);
   const isIos = surface === "ios";
 
   return (
@@ -71,6 +106,46 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
           <div className="mt-5 rounded-2xl border border-dashed border-white/15 p-8 text-center">
             <h3 className="font-medium">More music is on the way</h3>
             <p className="mt-2 text-sm text-text-secondary">The BVS team is preparing the next selection for this edition.</p>
+          </div>
+        )}
+      </section>
+
+      <section id="beats" className="mt-10 scroll-mt-24">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[.2em] text-brand">BVS BeatStore</p>
+            <h2 className="mt-1 text-3xl font-semibold">Beats from BVS producers</h2>
+            <p className="mt-2 max-w-2xl text-sm text-text-secondary">Preview published instrumentals and open the full listing to review licence options.</p>
+          </div>
+          <Link href="/catalogue?type=beat#beatstore" className="hidden rounded-full border border-white/15 px-4 py-2 text-xs text-text-secondary sm:block">All beats</Link>
+        </div>
+
+        {beats.length ? (
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            {beats.map((beat) => (
+              <article key={beat.id} className="overflow-hidden rounded-2xl border border-white/10 bg-white/[.025] p-4">
+                <div className="flex min-w-0 gap-4">
+                  <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-white/5">
+                    {beat.artworkUrl ? <Image src={beat.artworkUrl} alt="" fill unoptimized className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs text-brand">BEAT</span>}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="truncate font-medium">{beat.title}</h3>
+                    <p className="truncate text-sm text-text-secondary">{beat.producer || "BVS producer"}</p>
+                    <p className="mt-1 text-xs text-text-secondary">
+                      {[beat.genre, beat.mood, beat.bpm ? `${beat.bpm} BPM` : null].filter(Boolean).join(" · ") || "Published beat"}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-200">Licences from ${beat.startingPrice.toFixed(2)}</p>
+                  </div>
+                </div>
+                {beat.previewUrl && <audio controls preload="none" src={beat.previewUrl} className="mt-4 h-10 w-full" aria-label={`Preview ${beat.title}`} />}
+                <Link href={`/catalogue?type=beat&q=${encodeURIComponent(beat.title)}#beatstore`} className="mt-4 block rounded-full border border-brand/50 px-4 py-2 text-center text-sm font-semibold text-brand">View licence</Link>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-5 rounded-2xl border border-dashed border-white/15 p-8 text-center">
+            <h3 className="font-medium">Published beats will appear here</h3>
+            <p className="mt-2 text-sm text-text-secondary">BeatStore listings are added after BVS Editorial approval.</p>
           </div>
         )}
       </section>
