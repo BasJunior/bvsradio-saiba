@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import LibraryAction from "@/components/LibraryAction";
 import ShareCreatorButton from "@/components/ShareCreatorButton";
 import FlowRelationships from "@/components/flow/FlowRelationships";
@@ -11,6 +12,13 @@ function external(value: string) {
 }
 import type { DiscoveryItem } from "@/lib/discovery";
 import { getPublicArtist } from "@/lib/artist-content";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const profile = await getPublicArtist((await params).slug.toLowerCase());
+  if (!profile) return { title: "Creator profile" };
+  const description = `${profile.role} on BVS Radio. ${profile.bio}`.slice(0, 180);
+  return { title: profile.name, description, openGraph: { title: `${profile.name} | BVS Radio`, description, images: profile.image && !profile.image.includes("default-avatar") ? [profile.image] : ["/logo.png"] } };
+}
 
 export default async function ArtistPage({
   params,
@@ -55,6 +63,10 @@ export default async function ArtistPage({
     href: `/artist/${profile.username}`,
     image: profile.image,
   };
+  const hasMusic = profile.tracks.length > 0;
+  const hasConnections = profile.tracks.some(track => track.credits.length > 0);
+  const hasBeats = Boolean(profile.beats?.length);
+  const producerFirst = /producer/i.test(profile.role) && hasBeats;
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
       <Link href="/music/artists" className="text-sm text-brand">
@@ -134,12 +146,15 @@ export default async function ArtistPage({
           )}
 
           <nav className="mt-8 flex gap-2 overflow-x-auto pb-1 text-sm" aria-label="Creator profile sections" data-flow-scroll-key={`creator-tabs:${profile.id}`}>
-            <a href="#music" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Music</a>
-            <a href="#connections" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Connections</a>
-            {profile.beats?.length ? <a href="#connections" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Beats</a> : null}
+            {producerFirst ? <a href="#beats" className="shrink-0 rounded-full border border-brand/35 bg-brand/10 px-4 py-2 text-brand">Beats</a> : null}
+            {hasMusic ? <a href="#music" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Music</a> : null}
+            {hasConnections ? <a href="#connections" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Credits & Connections</a> : null}
+            {hasBeats && !producerFirst ? <a href="#beats" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Beats</a> : null}
           </nav>
 
-          <section id="music" className="mt-8 scroll-mt-24 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          {producerFirst ? <section id="beats" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="beats" /></section> : null}
+
+          {hasMusic ? <section id="music" className="mt-8 scroll-mt-24 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-brand">
@@ -232,11 +247,10 @@ export default async function ArtistPage({
                 No tracks have been published for this artist yet.
               </p>
             )}
-          </section>
+          </section> : null}
 
-          <section id="connections" className="scroll-mt-24">
-            <FlowRelationships kind="creator" id={profile.id} />
-          </section>
+          {hasConnections ? <section id="connections" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="connections" /></section> : null}
+          {hasBeats && !producerFirst ? <section id="beats" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="beats" /></section> : null}
         </div>
       </div>
     </main>

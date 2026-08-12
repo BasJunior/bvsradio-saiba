@@ -87,7 +87,7 @@ function beatObject(beat: PublicBeat): BvsObject {
   };
 }
 
-export default function FlowRelationships({ kind, id, compact = false }: { kind: "track" | "creator"; id?: string | null; compact?: boolean }) {
+export default function FlowRelationships({ kind, id, compact = false, view = "all" }: { kind: "track" | "creator"; id?: string | null; compact?: boolean; view?: "all" | "connections" | "beats" }) {
   const [graphState, setGraphState] = useState<{ id: string; payload: GraphPayload } | null>(null);
   const [beatsState, setBeatsState] = useState<{ id: string; beats: PublicBeat[] } | null>(null);
   const [producerState, setProducerState] = useState<{ id: string; edges: GraphEdge[] } | null>(null);
@@ -149,10 +149,12 @@ export default function FlowRelationships({ kind, id, compact = false }: { kind:
     );
   }
 
-  if (!producerEdges.length && !beats.length) return null;
+  const showConnections = view !== "beats" && producerEdges.length > 0;
+  const showBeats = view !== "connections" && beats.length > 0;
+  if (!showConnections && !showBeats) return null;
   return (
     <div className="mt-8 space-y-8">
-      {producerEdges.length ? (
+      {showConnections ? (
         <section>
           <div className="mb-4">
             <p className="text-xs uppercase tracking-[.18em] text-brand">Verified relationships</p>
@@ -163,7 +165,7 @@ export default function FlowRelationships({ kind, id, compact = false }: { kind:
           </div>
         </section>
       ) : null}
-      {beats.length ? (
+      {showBeats ? (
         <section>
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
