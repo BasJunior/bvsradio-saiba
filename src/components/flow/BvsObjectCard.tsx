@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BvsAction, BvsCardVariant, BvsObject } from "@/lib/bvs-object";
 import { objectKindLabel } from "@/lib/bvs-object";
 import { recordFlowOpen } from "@/lib/flow-session";
@@ -43,6 +43,7 @@ export default function BvsObjectCard({
   relationship?: string;
 }) {
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [artworkFailed, setArtworkFailed] = useState(false);
   const overflowRef = useRef<HTMLButtonElement>(null);
   const compact = variant === "compact-row" || variant === "relationship-card";
   const feature = variant === "feature-card";
@@ -61,14 +62,20 @@ export default function BvsObjectCard({
     if (["play", "play-next", "queue"].includes(action.intent)) runQueueAction(action, object);
   }
 
-  const image = object.artwork ? (
+  useEffect(() => {
+    setArtworkFailed(false);
+  }, [object.artwork]);
+
+  const hasUsableArtwork = Boolean(object.artwork && !object.artwork.includes("default-avatar"));
+  const image = hasUsableArtwork && !artworkFailed ? (
     <Image
-      src={object.artwork}
+      src={object.artwork!}
       alt=""
       fill
-      unoptimized={/^https?:\/\//i.test(object.artwork)}
+      unoptimized={/^https?:\/\//i.test(object.artwork!)}
       sizes={compact ? "72px" : feature ? "(max-width:768px) 100vw, 50vw" : "(max-width:768px) 78vw, 320px"}
       className="object-cover transition duration-300 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none"
+      onError={() => setArtworkFailed(true)}
     />
   ) : (
     <span className="absolute inset-0 grid place-items-center text-xs font-semibold uppercase tracking-[.18em] text-brand">BVS</span>
