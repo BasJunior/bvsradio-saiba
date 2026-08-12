@@ -13,6 +13,10 @@ export const analyticsEvents = [
   "queue_play_now",
   "queue_play_next",
   "queue_add",
+  "flow_object_open",
+  "flow_relationship_open",
+  "flow_back_restore",
+  "flow_action_sheet_open",
 ] as const
 
 export type AnalyticsEvent = (typeof analyticsEvents)[number]
