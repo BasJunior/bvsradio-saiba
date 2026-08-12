@@ -15,6 +15,7 @@ type SearchItem = { id: string; kind: SearchKind; title: string; subtitle: strin
 type PublicBeat = { id: string; title: string; producer: string; producer_username?: string; genre?: string; mood?: string; artworkUrl?: string; bpm?: number }
 type PublicRelease = { id: string; title: string; artist?: string; cover?: string }
 type MarketplaceListing = { id: string; listing_type: string; title: string; slug: string; category?: string; description?: string; artwork_path?: string; price_usd?: number; profiles?: { username?: string; display_name?: string } }
+type CatalogueTrack = { id: string; title: string; artist: string; genre?: string; collection?: string; artwork?: string; type: string; source: string }
 
 const filters: Array<{ label: string; value: 'all' | SearchKind }> = [
   { label: 'All', value: 'all' }, { label: 'Tracks', value: 'track' }, { label: 'Releases', value: 'release' },
@@ -37,6 +38,7 @@ export default function SearchPage() {
   const [beats, setBeats] = useState<PublicBeat[]>([])
   const [releases, setReleases] = useState<PublicRelease[]>([])
   const [services, setServices] = useState<MarketplaceListing[]>([])
+  const [catalogueTracks, setCatalogueTracks] = useState<CatalogueTrack[]>([])
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -59,10 +61,13 @@ export default function SearchPage() {
       fetch('/api/beats').then(r => r.ok ? r.json() : { beats: [] }),
       fetch('/api/releases/public').then(r => r.ok ? r.json() : { releases: [] }),
       fetch('/api/marketplace').then(r => r.ok ? r.json() : { listings: [] }),
-    ]).then(([a, p, b, r, m]) => {
+      fetch('/api/catalogue/listings').then(r => r.ok ? r.json() : { listings: [] }),
+    ]).then(([a, p, b, r, m, c]) => {
       if (!active) return
       setArtists(a.artists || []); setProducers(p.producers || []); setBeats(b.beats || []); setReleases(r.releases || [])
       setServices((m.listings || []).filter((item: MarketplaceListing) => item.listing_type === 'service'))
+      const liveTracks = (c.listings || []).filter((item: CatalogueTrack) => item.source === 'track' && item.type !== 'beat')
+      setCatalogueTracks([...liveTracks].sort(() => Math.random() - 0.5))
       setLoaded(true)
     }).catch(() => setLoaded(true))
     return () => { active = false }
@@ -76,7 +81,8 @@ export default function SearchPage() {
       return { ...item, kind: isRelease ? 'release' : isBeat ? 'beat' : item.kind }
     })
     return [
-      ...local.filter(item => item.kind !== 'artist'),
+      ...local.filter(item => item.kind !== 'artist' && (item.kind !== 'track' || catalogueTracks.length === 0)),
+      ...catalogueTracks.map(item => ({ id: `track-${item.id}`, kind: 'track' as const, title: item.title, subtitle: `${item.artist} · ${item.collection || 'Published on BVS'}`, href: `/catalogue?q=${encodeURIComponent(item.title)}`, image: imageUrl(item.artwork), tags: [item.genre || '', item.artist] })),
       ...artists.filter(item => !producerIds.has(item.id)).map(item => ({ id: `artist-${item.id}`, kind: 'artist' as const, title: item.name, subtitle: `${item.role} · ${item.trackCount} published ${item.trackCount === 1 ? 'track' : 'tracks'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
       ...producers.map(item => ({ id: `producer-${item.id}`, kind: 'producer' as const, title: item.name, subtitle: `Producer · ${item.beatCount} published ${item.beatCount === 1 ? 'beat' : 'beats'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
       ...beats.map(item => ({ id: `beat-${item.id}`, kind: 'beat' as const, title: item.title, subtitle: `${item.producer} · ${item.genre || 'BeatStore'}${item.bpm ? ` · ${item.bpm} BPM` : ''}`, href: `/catalogue?type=beat&q=${encodeURIComponent(item.title)}#beatstore`, image: item.artworkUrl, tags: [item.genre || '', item.mood || ''] })),
@@ -84,7 +90,7 @@ export default function SearchPage() {
       ...services.map(item => ({ id: `service-${item.id}`, kind: 'service' as const, title: item.title, subtitle: `${item.category?.replaceAll('_', ' ') || 'Creator service'}${item.price_usd ? ` · $${item.price_usd}` : ''}`, href: `/marketplace?listing=${encodeURIComponent(item.slug)}`, image: imageUrl(item.artwork_path), tags: [item.category || '', item.description || ''] })),
       ...blogPosts.map(item => ({ id: `story-${item.slug}`, kind: 'story' as const, title: item.title, subtitle: `${item.readTime} · BVS story`, href: `/blog/${item.slug}`, tags: [item.description] })),
     ]
-  }, [artists, beats, producers, releases, services])
+  }, [artists, beats, catalogueTracks, producers, releases, services])
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase()
