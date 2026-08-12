@@ -1,10 +1,18 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import AlbumPlayer from '@/components/AlbumPlayer'
 import { getPublicRelease } from '@/lib/public-releases'
 
 export const dynamic = 'force-dynamic'
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const release = await getPublicRelease(decodeURIComponent((await params).slug))
+  if (!release) return { title: 'Release' }
+  const description = `${release.title} by ${release.artist}. ${release.description || `A published ${release.releaseType} on BVS Radio.`}`.slice(0, 180)
+  return { title: `${release.title} — ${release.artist}`, description, openGraph: { title: `${release.title} — ${release.artist} | BVS Radio`, description, images: release.cover ? [release.cover] : ['/logo.png'] } }
+}
 
 export default async function AlbumPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
