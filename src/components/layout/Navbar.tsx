@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -32,11 +32,10 @@ function formatPremiumUntil(iso: string | null): string | null {
 
 export default function Navbar() {
   const pathname = usePathname()
+  const router = useRouter()
   const routeSurface = pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1] as 'ios' | 'android' | undefined
   const [mobileSurface] = useState<'ios' | 'android' | null>(routeSurface || null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [isArtistMenuOpen, setIsArtistMenuOpen] = useState(false)
-  const [isServicesMenuOpen, setIsServicesMenuOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
   const [premium, setPremium] = useState<PremiumInfo | null>(null)
@@ -88,6 +87,18 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
+    const openSearch = (event: KeyboardEvent) => {
+      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return
+      const target = event.target as HTMLElement | null
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return
+      event.preventDefault()
+      router.push('/search')
+    }
+    window.addEventListener('keydown', openSearch)
+    return () => window.removeEventListener('keydown', openSearch)
+  }, [router])
+
+  useEffect(() => {
     const seen = () => setNotificationCount(0)
     window.addEventListener('bvs:notifications-seen', seen)
     return () => window.removeEventListener('bvs:notifications-seen', seen)
@@ -130,16 +141,17 @@ export default function Navbar() {
     setPremium(null)
     setNotificationCount(0)
     setIsMenuOpen(false)
-    window.location.href = '/'
+    router.push('/')
+    router.refresh()
   }
 
-  // Keep primary nav short — secondary paths live in footer / artist menu / search.
+  // BVS Flow keeps listener movement short. Creator and operational paths live
+  // behind the workspace/account surfaces instead of competing with discovery.
   const navLinks = [
-    { href: '/radio', label: 'Listen' },
-    { href: '/catalogue', label: 'Music' },
+    { href: '/', label: 'Home' },
+    { href: '/search', label: 'Explore' },
     { href: '/catalogue?type=beat#beatstore', label: 'Beats' },
-    { href: '/shows', label: 'Shows' },
-    { href: '/blog', label: 'Stories' },
+    { href: '/library', label: 'Library' },
   ]
 
   const serviceLinks = [
@@ -156,7 +168,6 @@ export default function Navbar() {
     { href: '/creator/studio#marketplace-desk', label: 'Manage marketplace' },
   ]
 
-  const showArtist = Boolean(access?.artist)
   const showCreator = Boolean(access?.creator)
   const showEditorial = Boolean(access?.editorial)
   const premiumUntilLabel = formatPremiumUntil(premium?.premiumUntil ?? null)
@@ -205,72 +216,18 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-5 text-sm font-medium tracking-wide">
+        <div className="hidden md:flex items-center gap-7 text-sm font-medium tracking-wide">
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href} className="text-text-secondary hover:text-brand transition-colors">
               {link.label}
             </Link>
           ))}
-          <div
-            className="relative"
-            onMouseEnter={() => setIsServicesMenuOpen(true)}
-            onMouseLeave={() => setIsServicesMenuOpen(false)}
-          >
-            <button
-              type="button"
-              className="text-text-secondary hover:text-brand transition-colors"
-              aria-expanded={isServicesMenuOpen}
-              onClick={() => setIsServicesMenuOpen(!isServicesMenuOpen)}
-            >
-              BVS Services <span aria-hidden="true">⌄</span>
-            </button>
-            {isServicesMenuOpen && (
-              <div className="absolute left-1/2 top-full w-72 -translate-x-1/2 pt-3">
-                <div className="rounded-xl border border-white/10 bg-bg-primary p-2 shadow-2xl">
-                  {serviceLinks.map((link) => (
-                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 hover:bg-white/5">
-                      <span className="block text-text-primary hover:text-brand">{link.label}</span>
-                      <span className="mt-0.5 block text-xs text-text-secondary">{link.detail}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-          <div
-            className="relative"
-            onMouseEnter={() => setIsArtistMenuOpen(true)}
-            onMouseLeave={() => setIsArtistMenuOpen(false)}
-          >
-            <button
-              type="button"
-              className="text-text-secondary hover:text-brand transition-colors"
-              aria-expanded={isArtistMenuOpen}
-              onClick={() => setIsArtistMenuOpen(!isArtistMenuOpen)}
-            >
-              For Artists <span aria-hidden="true">⌄</span>
-            </button>
-            {isArtistMenuOpen && (
-              <div className="absolute left-1/2 top-full w-56 -translate-x-1/2 pt-3">
-                <div className="rounded-xl border border-white/10 bg-bg-primary p-2 shadow-2xl">
-                  {artistLinks.map((link) => (
-                    <Link key={link.href} href={link.href} className="block rounded-lg px-3 py-2 text-text-secondary hover:bg-white/5 hover:text-brand">
-                      {link.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         <div className="hidden md:flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/search" aria-label="Search BVS" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
-            Search
-          </Link>
-          <Link href="/library" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">
-            Library
+          <Link href="/search" aria-label="Search BVS" className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-text-secondary hover:border-brand/40 hover:text-brand transition-colors">
+            Search BVS <span className="ml-2 text-xs text-white/40">/</span>
           </Link>
           <Link
             href="/checkout"

@@ -999,7 +999,7 @@ function QueueSheet() {
     : player.upNext;
   if (!player.queueOpen) return null;
   return (
-    <div className="fixed inset-x-0 bottom-20 z-[60] mx-auto flex max-h-[72svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl sm:bottom-24 sm:rounded-2xl">
+    <div className="fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
@@ -1106,12 +1106,86 @@ function QueueSheet() {
 
 export function PersistentPlayer() {
   const player = useStationPlayer();
+  const [worldOpen, setWorldOpen] = useState(false);
   const art = player.current?.artwork;
   const repeatLabel = player.repeat === "off" ? "Repeat off" : player.repeat === "all" ? "Repeat all" : "Repeat one";
+
+  useEffect(() => {
+    if (!worldOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setWorldOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [worldOpen]);
+
   return (
     <>
       <QueueSheet />
-      <section className="fixed inset-x-0 bottom-0 z-50 border-t border-white/10 bg-[#181818]/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl" aria-label="BVS rotation player">
+      {worldOpen && (
+        <section className="fixed inset-0 z-[70] overflow-y-auto bg-[#090909] text-white" role="dialog" aria-modal="true" aria-label="Now Playing World">
+          {art ? (
+            // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
+            <img src={art} alt="" className="pointer-events-none fixed inset-0 h-full w-full scale-110 object-cover opacity-25 blur-3xl" />
+          ) : null}
+          <div className="fixed inset-0 bg-gradient-to-b from-black/25 via-[#090909]/80 to-[#090909]" aria-hidden="true" />
+          <div className="relative mx-auto flex min-h-full max-w-6xl flex-col px-5 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8">
+            <header className="flex items-center justify-between">
+              <button type="button" onClick={() => setWorldOpen(false)} className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/20 text-xl backdrop-blur" aria-label="Close Now Playing">⌄</button>
+              <div className="text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Now Playing World</p>
+                <p className="mt-1 text-xs text-white/60">{player.playingFrom || "BVS Radio"}</p>
+              </div>
+              <button type="button" onClick={() => { setWorldOpen(false); player.setQueueOpen(true); }} className="grid h-11 min-w-11 place-items-center rounded-full border border-white/15 bg-black/20 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
+            </header>
+
+            <div className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:gap-16">
+              <div className="mx-auto w-full max-w-[34rem]">
+                <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_35px_100px_rgba(0,0,0,.55)]">
+                  {art ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
+                    <img src={art} alt={`Artwork for ${player.current?.title || "BVS Radio"}`} className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="grid h-full place-items-center bg-gradient-to-br from-brand/25 via-white/5 to-black text-4xl font-semibold tracking-[.2em] text-brand">BVS</div>
+                  )}
+                </div>
+                <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} className="mt-7 overflow-hidden rounded-full" />
+                <div className="mt-2 flex justify-between text-xs tabular-nums text-white/50"><span>{formatTime(player.elapsed)}</span><span>{formatTime(player.duration)}</span></div>
+              </div>
+
+              <div className="mx-auto w-full max-w-xl">
+                <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">{player.current?.project || "Continuous rotation"}</p>
+                <h2 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">{player.current?.title || "BVS Radio rotation"}</h2>
+                <Link href={`/search?q=${encodeURIComponent(player.current?.artist || "BVS Radio")}`} className="mt-3 inline-block text-lg text-white/65 hover:text-brand">{player.current?.artist || "BVS Radio"}</Link>
+
+                <div className="mt-8 flex items-center justify-between gap-3 sm:justify-start sm:gap-6">
+                  <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-full px-4 text-sm ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60"}`}>Shuffle</button>
+                  <button type="button" onClick={player.previous} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Previous recording">◀</button>
+                  <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-16 w-16 place-items-center rounded-full bg-brand text-xl font-bold text-black disabled:opacity-40" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
+                  <button type="button" onClick={player.next} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Next recording">▶</button>
+                  <button type="button" onClick={player.toggleLike} aria-pressed={player.liked} className={`grid h-11 w-11 place-items-center rounded-full text-2xl ${player.liked ? "bg-brand/15 text-brand" : "text-white/60"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥" : "♡"}</button>
+                </div>
+
+                <div className="mt-10 grid gap-3 sm:grid-cols-2">
+                  <Link href={`/search?q=${encodeURIComponent(player.current?.artist || "")}`} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
+                    <span className="text-[10px] uppercase tracking-[.18em] text-brand">Go deeper</span><span className="mt-1 block font-medium">Explore artist and credits →</span>
+                  </Link>
+                  <button type="button" onClick={() => { setWorldOpen(false); player.setQueueOpen(true); }} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left hover:border-brand/40">
+                    <span className="text-[10px] uppercase tracking-[.18em] text-brand">Coming next</span><span className="mt-1 block font-medium">Open queue · {player.upNext.length} tracks →</span>
+                  </button>
+                </div>
+                <p className="mt-6 text-sm leading-relaxed text-white/50">Playback stays continuous while you move through artists, credits, stories and BeatStore.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+      <section className="fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
         <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
         {(player.error || player.notice) && (
           <p className={`px-4 py-1 text-center text-xs ${player.error ? "bg-red-500/15 text-red-200" : "bg-brand/10 text-brand"}`} role="status">
@@ -1121,7 +1195,7 @@ export function PersistentPlayer() {
         <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-2 px-2.5 sm:h-20 sm:gap-4 sm:px-6">
           <button
             type="button"
-            onClick={() => player.setQueueOpen(!player.queueOpen)}
+            onClick={() => setWorldOpen(true)}
             className="flex min-w-0 flex-1 items-center gap-2.5 text-left sm:gap-3"
           >
             <CoverArt src={art} sizeClass="h-11 w-11 sm:h-12 sm:w-12" rounded="rounded-md sm:rounded-lg" />
@@ -1151,6 +1225,7 @@ export function PersistentPlayer() {
           >
             {player.liked ? "♥" : "♡"}
           </button>
+          <button type="button" onClick={() => player.setQueueOpen(!player.queueOpen)} className="hidden rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 sm:block" aria-label="Open queue">Queue</button>
           <button
             type="button"
             onClick={player.toggleShuffle}

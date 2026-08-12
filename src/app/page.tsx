@@ -1,6 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
+import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
+import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
+import HomeBeatRail from "@/components/flow/HomeBeatRail";
 import { getPublicProgrammes } from "@/lib/station-content";
 
 const listenerPaths = [
@@ -76,6 +79,18 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16" aria-label="Discover BVS music">
+        <div className="mb-8 max-w-3xl">
+          <p className="text-xs uppercase tracking-[.2em] text-brand">Inside BVS now</p>
+          <h2 className="mt-2 text-balance text-3xl sm:text-4xl md:text-5xl">Start with the sound. Follow where it leads.</h2>
+          <p className="mt-3 text-text-secondary">Open an artist or release, follow verified credits and keep the original music playing while you explore.</p>
+        </div>
+        <PublishedArtistsShelf limit={6} />
+        <PublishedAlbumsShelf />
+      </section>
+
+      <HomeBeatRail />
 
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
