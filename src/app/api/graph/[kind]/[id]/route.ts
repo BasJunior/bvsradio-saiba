@@ -115,8 +115,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ kin
   const producerCredits = credits.filter((credit) => /producer|production/i.test(credit.credit_role));
   const matchedProducers = producerCredits.flatMap((credit) => {
     const needle = norm(credit.person_name);
-    const profile = producers.find((candidate) => [profileName(candidate), candidate.display_name, candidate.username].some((name) => norm(name) === needle));
-    return profile ? [{ credit, profile }] : [];
+    const matches = producers.filter((candidate) => [profileName(candidate), candidate.display_name, candidate.username].some((name) => norm(name) === needle));
+    // A verified credit plus a verified profile is not enough when the public
+    // name is ambiguous. Fail closed until Editorial links a stable identity.
+    return matches.length === 1 ? [{ credit, profile: matches[0] }] : [];
   });
   return NextResponse.json({
     node: { id: track.id, kind: "track", route: `/catalogue?q=${encodeURIComponent(track.title)}`, title: track.title, artwork: mediaUrlForStoredValue(track.artwork_url) || undefined, metadata: [track.genre].filter(Boolean), verified: true },

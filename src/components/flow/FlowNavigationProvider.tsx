@@ -17,6 +17,15 @@ export default function FlowNavigationProvider({ children }: { children: React.R
   useEffect(() => {
     const onPopState = () => {
       restoreOnNextRoute.current = true;
+      // Search/hash-only Back navigation does not change usePathname. Give the
+      // route time to settle, then restore that state as a fallback.
+      window.setTimeout(() => {
+        if (!restoreOnNextRoute.current) return;
+        restoreOnNextRoute.current = false;
+        const route = currentRoute();
+        const restored = restoreFlowScroll(route);
+        if (restored) trackEvent("flow_back_restore", { route });
+      }, 250);
     };
     const onClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

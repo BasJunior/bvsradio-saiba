@@ -88,30 +88,27 @@ function beatObject(beat: PublicBeat): BvsObject {
 }
 
 export default function FlowRelationships({ kind, id, compact = false }: { kind: "track" | "creator"; id?: string | null; compact?: boolean }) {
-  const [graph, setGraph] = useState<GraphPayload | null>(null);
-  const [beats, setBeats] = useState<PublicBeat[]>([]);
-  const [producerEdges, setProducerEdges] = useState<GraphEdge[]>([]);
+  const [graphState, setGraphState] = useState<{ id: string; payload: GraphPayload } | null>(null);
+  const [beatsState, setBeatsState] = useState<{ id: string; beats: PublicBeat[] } | null>(null);
+  const [producerState, setProducerState] = useState<{ id: string; edges: GraphEdge[] } | null>(null);
 
   useEffect(() => {
     if (!id) {
-      setGraph(null);
-      setBeats([]);
-      setProducerEdges([]);
       return;
     }
     let active = true;
     const load = async () => {
-      const response = await fetch(`/api/graph/${kind}/${encodeURIComponent(id)}`, { cache: "no-store" });
-      if (!response.ok) return;
+      const response = await fetch(`/api/graph/${kind}/${encodeURIComponent(id)}`, { cache: "no-store" }).catch(() => null);
+      if (!response?.ok) return;
       const payload = (await response.json()) as GraphPayload;
       if (!active) return;
-      setGraph(payload);
+      setGraphState({ id, payload });
       if (kind !== "creator") return;
 
       const beatResponse = await fetch("/api/beats", { cache: "no-store" }).catch(() => null);
       if (beatResponse?.ok) {
         const beatPayload = (await beatResponse.json()) as { beats?: PublicBeat[] };
-        if (active) setBeats((beatPayload.beats || []).filter((beat) => beat.producer_user_id === id));
+        if (active) setBeatsState({ id, beats: (beatPayload.beats || []).filter((beat) => beat.producer_user_id === id) });
       }
 
       const trackIds = (payload.edges || []).filter((edge) => edge.verified && edge.node.kind === "track").slice(0, 6).map((edge) => edge.node.id);
@@ -126,12 +123,17 @@ export default function FlowRelationships({ kind, id, compact = false }: { kind:
           if (edge.verified && edge.relationship === "produced_by" && edge.node.kind === "creator" && edge.node.id !== id) unique.set(edge.node.id, edge);
         }
       }
-      setProducerEdges([...unique.values()]);
+      setProducerState({ id, edges: [...unique.values()] });
     };
     void load();
     return () => { active = false; };
   }, [id, kind]);
 
+  // Key every asynchronous result to the requested object so a slow or failed
+  // request can never leave the previous track's relationships on screen.
+  const graph = graphState && graphState.id === id ? graphState.payload : null;
+  const beats = beatsState && beatsState.id === id ? beatsState.beats : [];
+  const producerEdges = producerState && producerState.id === id ? producerState.edges : [];
   const trackCreators = useMemo(() => (graph?.edges || []).filter((edge) => edge.verified && edge.node.kind === "creator"), [graph]);
 
   if (!id) return null;
