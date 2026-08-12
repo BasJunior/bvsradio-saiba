@@ -6,28 +6,6 @@ import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import HomeBeatRail from "@/components/flow/HomeBeatRail";
 import { getPublicProgrammes } from "@/lib/station-content";
 
-const listenerPaths = [
-  { title: "Listen", copy: "Start the continuous BVS music rotation and keep it playing while you browse.", href: "/radio", cta: "Open radio" },
-  { title: "BeatStore", copy: "Browse producer libraries and find beats ready for artist placements.", href: "/catalogue?type=beat#beatstore", cta: "Browse BeatStore" },
-  { title: "Discover", copy: "Search real tracks, artists, programmes and stories from one place.", href: "/search", cta: "Search BVS" },
-  { title: "Your library", copy: "Save music, follow programmes and return to your recent listening on this device.", href: "/library", cta: "View library" },
-];
-
-const faqHighlights = [
-  {
-    question: "How does talent make money?",
-    answer: "Through approved original content sales, creative services, BVS platform streams, and wider distribution revenue where eligible.",
-  },
-  {
-    question: "Is BVS a fixed job listing?",
-    answer: "No. It is a media, music, and creative commerce platform where the path depends on what the talent offers.",
-  },
-  {
-    question: "Does approval matter?",
-    answer: "Yes. Publication, rotation, sales, and wider streaming routes depend on review, rights clearance, and platform fit.",
-  },
-];
-
 export default async function HomePage() {
   const shows = await getPublicProgrammes();
   return (
@@ -92,30 +70,6 @@ export default async function HomePage() {
 
       <HomeBeatRail />
 
-      <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <p className="mb-2 text-xs uppercase tracking-[0.15em] text-brand sm:tracking-[0.2em]">Choose your path</p>
-            <h2 className="text-balance text-2xl font-semibold tracking-tight sm:text-3xl md:text-4xl">
-              Easy to enter. Clear where to go next.
-            </h2>
-          </div>
-        </div>
-        <div className="grid gap-4 sm:gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {listenerPaths.map((item) => (
-            <Link
-              key={item.title}
-              href={item.href}
-              className="group rounded-3xl border border-white/10 bg-bg-card/45 p-6 transition hover:border-brand/40 sm:p-7"
-            >
-              <h3 className="text-xl font-semibold group-hover:text-brand sm:text-2xl">{item.title}</h3>
-              <p className="mt-3 text-sm text-text-secondary sm:min-h-16 sm:text-base">{item.copy}</p>
-              <span className="mt-6 inline-block text-sm font-medium text-brand">{item.cta} →</span>
-            </Link>
-          ))}
-        </div>
-      </section>
-
       <section className="border-y border-white/10 bg-bg-secondary py-12 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -151,9 +105,9 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-12 sm:gap-8 sm:px-6 sm:py-16 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-3xl border border-white/10 bg-bg-card/40">
-          <div className="relative aspect-[3/2]">
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
+        <div className="grid overflow-hidden rounded-3xl border border-white/10 bg-bg-card/40 md:grid-cols-[17rem_1fr]">
+          <div className="relative min-h-52 md:min-h-full">
             <Image
               src="/images/editorial/audio-engineering-work.webp"
               alt="Audio engineer working at a mixing console"
@@ -161,62 +115,11 @@ export default async function HomePage() {
               className="object-cover"
             />
           </div>
-          <div className="p-6 sm:p-7">
-            <p className="text-xs uppercase tracking-[0.15em] text-brand sm:tracking-[0.2em]">Audio services</p>
-            <h2 className="mt-2 text-balance text-2xl font-semibold sm:text-3xl">Bring the project. Confirm the scope.</h2>
-            <p className="mt-3 text-sm text-text-secondary sm:text-base">
-              Mixing, mastering and vocal production start with a file review. Engineer, delivery and timetable are confirmed before work begins.
-            </p>
-            <Link href="/shop" className="mt-6 inline-block font-medium text-brand hover:underline">
-              Explore services →
-            </Link>
-          </div>
-        </div>
-        <div className="rounded-3xl border border-white/10 bg-bg-card/40 p-6 sm:p-8 lg:p-10">
-          <p className="text-xs uppercase tracking-[0.15em] text-brand sm:tracking-[0.2em]">For artists</p>
-          <h2 className="mt-2 text-balance text-2xl font-semibold sm:text-3xl md:text-4xl">
-            Submit music without guessing what happens next.
-          </h2>
-          <p className="mt-4 text-base text-text-secondary sm:text-lg">
-            Read the requirements, send a real track for editorial review, and keep licensing or engineering orders separate from radio consideration.
-          </p>
-          <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <Link href="/upload" className="rounded-full bg-brand px-6 py-3 text-center font-semibold text-black hover:bg-brand-dark">
-              Submission guide
-            </Link>
-            <Link href="/catalogue" className="rounded-full border border-white/20 px-6 py-3 text-center font-semibold hover:bg-white/5">
-              Browse BeatStore
-            </Link>
-          </div>
-          <p className="mt-6 text-sm text-text-secondary">
-            Buying a service never guarantees radio placement. Verified public credits and testimonials will appear only when approved.
-          </p>
-        </div>
-      </section>
-
-      <section className="border-y border-white/10 bg-bg-secondary/60 px-4 py-12 sm:px-6 sm:py-16">
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-wrap items-end justify-between gap-5">
-            <div className="max-w-2xl">
-              <p className="text-xs uppercase tracking-[0.15em] text-brand sm:tracking-[0.2em]">FAQ</p>
-              <h2 className="mt-2 text-balance text-2xl font-semibold sm:text-3xl md:text-4xl">
-                Clear answers for talent enquiries.
-              </h2>
-              <p className="mt-3 text-text-secondary">
-                Explain BVS opportunities, earning paths, approvals and distribution routes before a new artist or media professional applies.
-              </p>
-            </div>
-            <Link href="/faq" className="rounded-full border border-white/20 px-6 py-3 text-center font-semibold hover:bg-white/5">
-              Read all FAQs
-            </Link>
-          </div>
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {faqHighlights.map((item) => (
-              <article key={item.question} className="rounded-3xl border border-white/10 bg-bg-card/45 p-6">
-                <h3 className="text-xl font-semibold">{item.question}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-text-secondary">{item.answer}</p>
-              </article>
-            ))}
+          <div className="p-6 sm:p-8">
+            <p className="text-xs uppercase tracking-[0.2em] text-brand">Build on BVS</p>
+            <h2 className="mt-2 text-balance text-2xl font-semibold sm:text-3xl">Submit music or bring the project to the studio.</h2>
+            <p className="mt-3 max-w-2xl text-sm text-text-secondary sm:text-base">Creator submissions and professional services have clear review, scope and delivery paths away from the listening flow.</p>
+            <div className="mt-6 flex flex-wrap gap-3"><Link href="/upload" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Submit music</Link><Link href="/shop" className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold">Studio services</Link><Link href="/faq" className="rounded-full px-4 py-2.5 text-sm text-brand">Creator FAQs →</Link></div>
           </div>
         </div>
       </section>
