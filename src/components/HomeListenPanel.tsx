@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useStationPlayer } from "@/components/StationPlayer";
+import FlowRelationships from "@/components/flow/FlowRelationships";
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -86,6 +87,7 @@ export default function HomeListenPanel() {
             Full player →
           </Link>
         </div>
+        <FlowRelationships kind="track" id={player.current?.id} compact />
       </div>
     </div>
   );
