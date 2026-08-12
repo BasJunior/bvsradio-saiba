@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { officialBvsServices } from "@/lib/official-services";
 
 export const metadata: Metadata = {
   title: "BVS Studio Services — Official BVS | BVS Radio",
@@ -15,60 +16,6 @@ const engineers = [
     bio: "Send BVS your track, references and release plans. We confirm the engineer, scope, delivery format and schedule before work begins, so the order matches what your project actually needs.",
     specialties: ["Mixing", "Mastering", "Vocal Production", "Stem Work"],
     turnaround: "Confirmed after file review",
-  }
-];
-
-const services = [
-  {
-    title: "Mixing",
-    engineer: "BVS Audio Services",
-    price: "From $89",
-    tiers: [
-      { name: "Basic Mix", price: "$89", desc: "Mix from supplied stems, 1 revision" },
-      { name: "Pro Mix", price: "$149", desc: "Detailed mix, delivery master + instrumental, 2 revisions" },
-      { name: "Premium Mix", price: "$199", desc: "Complex session review and priority scheduling; scope confirmed first" }
-    ],
-    desc: "Professional mixing that brings your track to life. Reference tracks welcome."
-  },
-  {
-    title: "Mastering",
-    engineer: "BVS Audio Services",
-    price: "From $69",
-    tiers: [
-      { name: "Standard Master", price: "$69", desc: "Release-format master, 1 revision" },
-      { name: "Premium Master", price: "$99", desc: "Stem review where supplied, 2 revisions" },
-      { name: "Album Master", price: "$299", desc: "Up to 14 tracks, consistent loudness across project" }
-    ],
-    desc: "Industry-standard mastering for Spotify, Apple Music and all platforms."
-  },
-  {
-    title: "Mix + Master Bundle",
-    engineer: "BVS Audio Services",
-    price: "From $189",
-    tiers: [
-      { name: "Standard Bundle", price: "$189", desc: "Pro mix + standard master" },
-      { name: "Premium Bundle", price: "$249", desc: "Premium mix + premium master; deliverables confirmed first" }
-    ],
-    desc: "Complete post-production package with one clear scope and delivery plan."
-  },
-  {
-    title: "Ultimate Bundle",
-    engineer: "BVS Audio Services",
-    price: "From $299",
-    tiers: [
-      { name: "Ultimate Bundle", price: "$299", desc: "Professional mix + release-format master + publishing setup support" }
-    ],
-    desc: "Take one song from final stems to a release-ready master with publishing setup support in one coordinated package."
-  },
-  {
-    title: "Vocal Production",
-    engineer: "BVS Audio Services",
-    price: "From $65",
-    tiers: [
-      { name: "Vocal Comping & Tuning", price: "$65", desc: "Full comp + pitch correction. 1 revision." },
-      { name: "Full Vocal Production", price: "$129", desc: "Editing and arrangement support from supplied takes. 2 revisions." }
-    ],
-    desc: "Bring your vocals to professional level."
   }
 ];
 
@@ -140,8 +87,8 @@ export default function ServicesPage() {
         <p className="text-text-secondary mb-8 max-w-2xl">Transparent starting packages for your own recordings. Your music rights remain yours; the service fee covers the agreed production work and deliverables.</p>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {services.map((service, index) => (
-            <div key={index} className="bg-bg-card/40 border border-white/5 rounded-3xl p-8">
+          {officialBvsServices.map((service) => (
+            <div key={service.id} className="bg-bg-card/40 border border-white/5 rounded-3xl p-8">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-2xl font-semibold">{service.title}</h3>
