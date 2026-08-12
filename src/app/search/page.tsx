@@ -62,6 +62,15 @@ export default function SearchPage() {
   }, [query, filter, indexedItems])
 
   useEffect(() => {
+    const syncQueryFromUrl = () => {
+      setQuery(new URLSearchParams(window.location.search).get('q') || '')
+    }
+    syncQueryFromUrl()
+    window.addEventListener('popstate', syncQueryFromUrl)
+    return () => window.removeEventListener('popstate', syncQueryFromUrl)
+  }, [])
+
+  useEffect(() => {
     let active = true
     Promise.all([
       fetch('/api/artists').then((response) => response.ok ? response.json() : Promise.reject()),
