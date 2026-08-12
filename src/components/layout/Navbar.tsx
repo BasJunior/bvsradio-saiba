@@ -148,7 +148,7 @@ export default function Navbar() {
   ]
 
   const artistLinks = [
-    { href: '/artists', label: 'Artist access' },
+    { href: '/creator/studio#artist-access', label: 'Artist access in Studio' },
     { href: '/upload', label: 'Submit music' },
     { href: '/upload?type=beats', label: 'Submit beat' },
     { href: '/premium', label: 'Premium' },
