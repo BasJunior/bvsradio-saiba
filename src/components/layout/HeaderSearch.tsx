@@ -66,6 +66,7 @@ export default function HeaderSearch() {
       return matches;
     }).slice(0, 6);
   }, [query, remoteSuggestions]);
+  const expanded = focused || Boolean(query.trim());
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -78,10 +79,10 @@ export default function HeaderSearch() {
     <form
       ref={formRef}
       onSubmit={submit}
-      className="relative flex h-10 w-64 items-center rounded-full border border-white/15 bg-white/5 transition-colors focus-within:border-brand/60 focus-within:bg-white/[.07]"
+      className={`relative flex h-10 items-center rounded-full border bg-white/5 transition-[width,border-color,background-color] duration-300 ${expanded ? "w-72 border-brand/50 bg-white/[.07]" : "w-36 border-white/15"}`}
       role="search"
     >
-      <button type="submit" className="grid h-10 w-10 shrink-0 place-items-center text-lg text-text-secondary hover:text-brand" aria-label="Search BVS">⌕</button>
+      <button type="button" onClick={() => { if (expanded && query.trim()) formRef.current?.requestSubmit(); else inputRef.current?.focus(); }} className="grid h-10 w-10 shrink-0 place-items-center text-lg text-text-secondary hover:text-brand" aria-label={expanded && query.trim() ? "Submit search" : "Open search"}>⌕</button>
       <input
         ref={inputRef}
         value={query}
