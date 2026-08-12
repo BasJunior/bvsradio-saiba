@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { captureFlowScroll, restoreFlowScroll } from "@/lib/flow-session";
+import { trackEvent } from "@/lib/analytics";
 
 function currentRoute() {
   if (typeof window === "undefined") return "/";
@@ -44,7 +45,10 @@ export default function FlowNavigationProvider({ children }: { children: React.R
   useEffect(() => {
     if (!restoreOnNextRoute.current) return;
     restoreOnNextRoute.current = false;
-    const timer = window.setTimeout(() => restoreFlowScroll(currentRoute()), 0);
+    const timer = window.setTimeout(() => {
+      const restored = restoreFlowScroll(currentRoute());
+      if (restored) trackEvent("flow_back_restore", { route: currentRoute() });
+    }, 0);
     return () => window.clearTimeout(timer);
   }, [pathname]);
 
