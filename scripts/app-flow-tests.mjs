@@ -10,6 +10,12 @@ import {
   parseSurfaceFromPath,
   resolveAppChrome,
 } from "../src/lib/app-surface.ts";
+import {
+  clearCurrentTransientLayer,
+  currentTransientLayer,
+  dismissTransientLayer,
+  openTransientLayer,
+} from "../src/lib/transient-navigation.ts";
 
 
 assert.equal(parseSurfaceFromPath("/app/ios"), "ios");
@@ -51,5 +57,35 @@ assert.equal(matchPrimaryDestination("beats", "/catalogue", "q=hello"), false);
 assert.equal(matchPrimaryDestination("explore", "/search"), true);
 
 assert.equal(hrefForAppSurface("/radio", "android"), "/app/android#listen");
+
+const navigationOperations = [];
+globalThis.window = {
+  location: { pathname: "/app/ios", search: "?q=Heavy", hash: "" },
+  history: {
+    state: null,
+    pushState(state, _title, url) {
+      this.state = state;
+      navigationOperations.push(["push", url]);
+    },
+    replaceState(state, _title, url) {
+      this.state = state;
+      navigationOperations.push(["replace", url]);
+    },
+    back() {
+      navigationOperations.push(["back"]);
+    },
+  },
+};
+openTransientLayer("action-sheet");
+assert.equal(currentTransientLayer(), "action-sheet");
+assert.deepEqual(navigationOperations.at(-1), ["push", "/app/ios?q=Heavy#bvs-action-sheet"]);
+openTransientLayer("queue");
+assert.equal(currentTransientLayer(), "queue");
+assert.deepEqual(navigationOperations.at(-1), ["replace", "/app/ios?q=Heavy#bvs-queue"]);
+assert.equal(dismissTransientLayer("queue"), true);
+assert.deepEqual(navigationOperations.at(-1), ["back"]);
+assert.equal(clearCurrentTransientLayer("queue"), true);
+assert.deepEqual(navigationOperations.at(-1), ["replace", "/app/ios?q=Heavy"]);
+delete globalThis.window;
 
 console.log("App flow navigation checks passed");

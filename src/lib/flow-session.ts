@@ -96,7 +96,8 @@ export function restoreFlowScroll(route: string) {
   if (typeof window === "undefined") return false;
   const state = safeRead<FlowScrollState | null>(`${RESTORE_PREFIX}${routeKey(route)}`, null);
   if (!state) return false;
-  window.requestAnimationFrame(() => {
+  let attempt = 0;
+  const apply = () => {
     window.requestAnimationFrame(() => {
       window.scrollTo({ left: state.x, top: state.y, behavior: "auto" });
       Object.entries(state.scrollers || {}).forEach(([key, position]) => {
@@ -109,7 +110,14 @@ export function restoreFlowScroll(route: string) {
       if (state.focusId) {
         document.querySelector<HTMLElement>(`[data-flow-focus-id="${CSS.escape(state.focusId)}"]`)?.focus({ preventScroll: true });
       }
+      attempt += 1;
+      // Async rails and artwork can increase the document height after the
+      // route first paints. Retry only while the saved position is unreachable.
+      if (Math.abs(window.scrollY - state.y) > 2 && attempt < 5) {
+        window.setTimeout(apply, attempt * 140);
+      }
     });
-  });
+  };
+  apply();
   return true;
 }
