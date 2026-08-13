@@ -4,10 +4,11 @@ import Capacitor
 import WebKit
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
 
     var window: UIWindow?
     private var webViewURLObservation: NSKeyValueObservation?
+    private let navigationRouteHandler = "bvsNavigationRoute"
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Allow HTML5 / WebView audio to continue when the screen locks (radio use case).
@@ -69,13 +70,50 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
               let bridge = window?.rootViewController as? CAPBridgeViewController else { return }
         bridge.loadViewIfNeeded()
         guard let webView = bridge.webView else { return }
+        let routeBridge = WKUserScript(
+            source: """
+            (() => {
+              if (window.__bvsNativeRouteBridgeInstalled) return;
+              window.__bvsNativeRouteBridgeInstalled = true;
+              const emit = () => window.webkit?.messageHandlers?.bvsNavigationRoute?.postMessage(window.location.href);
+              for (const name of ['pushState', 'replaceState']) {
+                const original = window.history[name];
+                window.history[name] = function(...args) {
+                  const result = original.apply(this, args);
+                  emit();
+                  return result;
+                };
+              }
+              window.addEventListener('popstate', emit);
+              emit();
+            })();
+            """,
+            injectionTime: .atDocumentEnd,
+            forMainFrameOnly: true
+        )
+        webView.configuration.userContentController.addUserScript(routeBridge)
+        webView.configuration.userContentController.add(self, name: navigationRouteHandler)
+        webView.evaluateJavaScript(routeBridge.source)
         webViewURLObservation = webView.observe(\.url, options: [.initial, .new]) { [weak self] observedWebView, _ in
             self?.updateNavigationGestures(for: observedWebView)
         }
     }
 
+    func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard message.name == navigationRouteHandler,
+              let route = message.body as? String,
+              let url = URL(string: route),
+              let bridge = window?.rootViewController as? CAPBridgeViewController,
+              let webView = bridge.webView else { return }
+        updateNavigationGestures(for: webView, routeURL: url)
+    }
+
     private func updateNavigationGestures(for webView: WKWebView) {
-        guard let url = webView.url else {
+        updateNavigationGestures(for: webView, routeURL: webView.url)
+    }
+
+    private func updateNavigationGestures(for webView: WKWebView, routeURL url: URL?) {
+        guard let url else {
             webView.allowsBackForwardNavigationGestures = false
             return
         }
@@ -89,7 +127,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             "/app/android", "/app/android/explore", "/app/android/beats", "/app/android/library"
         ]
         let hasDismissibleLayer = url.fragment?.hasPrefix("bvs-") == true
-        webView.allowsBackForwardNavigationGestures = hasDismissibleLayer || !primaryRoots.contains(url.path)
+        let gestureEnabled = hasDismissibleLayer || !primaryRoots.contains(url.path)
+        webView.allowsBackForwardNavigationGestures = gestureEnabled
+        #if DEBUG
+        print("BVS navigation route=\(url.path) layer=\(url.fragment ?? "none") gesture=\(gestureEnabled)")
+        #endif
     }
 
 }
