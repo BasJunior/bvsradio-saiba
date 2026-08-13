@@ -7,6 +7,7 @@ import type { StationTrack } from "@/lib/station";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
 import { listeningBucket, trackEvent } from "@/lib/analytics";
 import { useAppSurface } from "@/components/app/AppSurfaceProvider";
+import { useAppShellMeasurement } from "@/components/app/useAppShellMeasurement";
 import { appExplore, appLibrary, hrefForAppSurface } from "@/lib/app-surface";
 import {
   BVS_DISMISS_TRANSIENTS_EVENT,
@@ -1057,7 +1058,7 @@ function QueueSheet() {
     : player.upNext;
   if (!player.queueOpen) return null;
   return (
-    <div className="fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
+    <div className="bvs-queue-sheet fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
@@ -1189,6 +1190,8 @@ function ArtistSearchLink({
 
 export function PersistentPlayer() {
   const player = useStationPlayer();
+  const { appChrome } = useAppSurface();
+  const playerRef = useAppShellMeasurement<HTMLElement>("--bvs-app-player-height-measured", appChrome);
   const { nowPlayingOpen, closeNowPlaying } = player;
   const art = player.current?.artwork;
   const repeatLabel = player.repeat === "off" ? "Repeat off" : player.repeat === "all" ? "Repeat all" : "Repeat one";
@@ -1268,14 +1271,14 @@ export function PersistentPlayer() {
           </div>
         </section>
       )}
-      <section className="fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
+      <section ref={playerRef} className="bvs-persistent-player fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
         <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
         {(player.error || player.notice) && (
           <p className={`px-4 py-1 text-center text-xs ${player.error ? "bg-red-500/15 text-red-200" : "bg-brand/10 text-brand"}`} role="status">
             {player.error || player.notice}
           </p>
         )}
-        <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center gap-2 px-2.5 sm:h-20 sm:gap-4 sm:px-6">
+        <div className="bvs-persistent-player-inner mx-auto flex h-[4.5rem] max-w-7xl items-center gap-2 sm:h-20 sm:gap-4">
           <button
             type="button"
             onClick={player.openNowPlaying}

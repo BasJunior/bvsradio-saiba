@@ -8,6 +8,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import HeaderSearch from '@/components/layout/HeaderSearch'
 import { useAppSurface } from '@/components/app/AppSurfaceProvider'
+import { useAppShellMeasurement } from '@/components/app/useAppShellMeasurement'
 import { appExplore, appHome, isAppPrimaryRoot, primaryAppDestinations } from '@/lib/app-surface'
 import { readFlowBackTarget } from '@/lib/flow-session'
 import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
@@ -37,6 +38,7 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const { surface, appChrome } = useAppSurface()
+  const appHeaderRef = useAppShellMeasurement<HTMLElement>('--bvs-app-header-height-measured', appChrome)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
@@ -191,8 +193,8 @@ export default function Navbar() {
       }
     }
     return (
-      <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4">
+      <nav ref={appHeaderRef} className="bvs-app-header fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
+        <div className="bvs-app-header-inner mx-auto flex h-16 max-w-5xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-1">
             {showBack ? (
               <button

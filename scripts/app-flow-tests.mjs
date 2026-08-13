@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   appBeats,
   appExplore,
@@ -87,5 +88,21 @@ assert.deepEqual(navigationOperations.at(-1), ["back"]);
 assert.equal(clearCurrentTransientLayer("queue"), true);
 assert.deepEqual(navigationOperations.at(-1), ["replace", "/app/ios?q=Heavy"]);
 delete globalThis.window;
+
+const [shellCss, rootLayout, appNavbar, bottomNav, stationPlayer] = await Promise.all([
+  readFile(new URL("../src/app/globals.css", import.meta.url), "utf8"),
+  readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/layout/Navbar.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/layout/MobileFlowNav.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../src/components/StationPlayer.tsx", import.meta.url), "utf8"),
+]);
+assert.match(shellCss, /--bvs-app-safe-top:\s*env\(safe-area-inset-top/);
+assert.match(shellCss, /--bvs-app-bottom-stack-height:/);
+assert.match(shellCss, /html\[data-bvs-surface\] \.bvs-persistent-player\s*{[^}]*bottom:\s*var\(--bvs-app-bottom-nav-height\)/s);
+assert.match(shellCss, /html\[data-bvs-surface\] \.bvs-app-bottom-spacer\s*{[^}]*height:\s*calc\(var\(--bvs-app-bottom-stack-height\)/s);
+assert.match(rootLayout, /className="bvs-app-bottom-spacer"/);
+assert.match(appNavbar, /bvs-app-header/);
+assert.match(bottomNav, /bvs-app-bottom-nav/);
+assert.match(stationPlayer, /bvs-persistent-player/);
 
 console.log("App flow navigation checks passed");

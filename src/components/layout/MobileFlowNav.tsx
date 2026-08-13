@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useAppSurface } from "@/components/app/AppSurfaceProvider";
+import { useAppShellMeasurement } from "@/components/app/useAppShellMeasurement";
 import { matchPrimaryDestination, primaryAppDestinations } from "@/lib/app-surface";
 
 function Icon({ id, active }: { id: "home" | "explore" | "beats" | "library"; active: boolean }) {
@@ -40,12 +41,13 @@ export default function MobileFlowNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { surface, appChrome } = useAppSurface();
+  const navRef = useAppShellMeasurement<HTMLElement>("--bvs-app-bottom-nav-height-measured", appChrome);
   const destinations = primaryAppDestinations(appChrome ? surface : null);
   const search = searchParams.toString();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl md:hidden" aria-label="Primary">
-      <div className="mx-auto grid h-16 max-w-lg grid-cols-4 px-2">
+    <nav ref={navRef} className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 backdrop-blur-2xl md:hidden" aria-label="Primary">
+      <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-4">
         {destinations.map((item) => {
           const active = matchPrimaryDestination(item.id, pathname, search);
           return (

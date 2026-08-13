@@ -19,6 +19,17 @@
   --bvs-motion-immersive: 420ms;
   --bvs-ease-enter: cubic-bezier(.16, 1, .3, 1);
   --bvs-ease-exit: cubic-bezier(.7, 0, .84, 0);
+  --bvs-app-safe-top: env(safe-area-inset-top, 0px);
+  --bvs-app-safe-right: env(safe-area-inset-right, 0px);
+  --bvs-app-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bvs-app-safe-left: env(safe-area-inset-left, 0px);
+  --bvs-app-header-bar-height: 4rem;
+  --bvs-app-bottom-nav-bar-height: 4rem;
+  --bvs-app-player-bar-height: 4.5rem;
+  --bvs-app-header-height: var(--bvs-app-header-height-measured, calc(var(--bvs-app-header-bar-height) + var(--bvs-app-safe-top)));
+  --bvs-app-bottom-nav-height: var(--bvs-app-bottom-nav-height-measured, calc(var(--bvs-app-bottom-nav-bar-height) + var(--bvs-app-safe-bottom)));
+  --bvs-app-player-height: var(--bvs-app-player-height-measured, var(--bvs-app-player-bar-height));
+  --bvs-app-bottom-stack-height: calc(var(--bvs-app-bottom-nav-height) + var(--bvs-app-player-height));
 }
 
 :root[data-theme="light"] {
@@ -50,6 +61,92 @@ body {
   font-feature-settings: "tnum";
   -webkit-font-smoothing: antialiased;
   letter-spacing: -0.005em;
+}
+
+/*
+ * Listener-shell chrome owns the safe-area and fixed-layer geometry. Runtime
+ * measurements replace these token fallbacks whenever notices or orientation
+ * changes alter a rendered layer's height.
+ */
+.bvs-app-header {
+  padding-top: var(--bvs-app-safe-top);
+}
+
+.bvs-app-header-inner {
+  padding-left: max(1rem, var(--bvs-app-safe-left));
+  padding-right: max(1rem, var(--bvs-app-safe-right));
+}
+
+.bvs-app-bottom-nav {
+  padding-bottom: var(--bvs-app-safe-bottom);
+}
+
+.bvs-app-bottom-nav-inner {
+  padding-left: max(.5rem, var(--bvs-app-safe-left));
+  padding-right: max(.5rem, var(--bvs-app-safe-right));
+}
+
+.bvs-persistent-player-inner {
+  padding-left: max(.625rem, var(--bvs-app-safe-left));
+  padding-right: max(.625rem, var(--bvs-app-safe-right));
+}
+
+.bvs-app-bottom-spacer {
+  display: none;
+}
+
+html[data-bvs-surface] {
+  scroll-padding-top: calc(var(--bvs-app-header-height) + 1rem);
+  scroll-padding-bottom: calc(var(--bvs-app-bottom-stack-height) + 1rem);
+}
+
+html[data-bvs-surface] .bvs-page-main {
+  padding-top: var(--bvs-app-header-height);
+  padding-bottom: 1.5rem;
+}
+
+html[data-bvs-surface] .bvs-app-bottom-spacer {
+  display: block;
+  height: calc(var(--bvs-app-bottom-stack-height) + 1rem);
+}
+
+html[data-bvs-surface] .bvs-persistent-player {
+  bottom: var(--bvs-app-bottom-nav-height);
+}
+
+html[data-bvs-surface] .bvs-queue-sheet {
+  bottom: calc(var(--bvs-app-bottom-stack-height) + .75rem);
+  max-height: min(68svh, calc(100dvh - var(--bvs-app-header-height) - var(--bvs-app-bottom-stack-height) - 1.5rem));
+}
+
+html[data-bvs-surface] :where(a, button, input, select, textarea, [tabindex]):focus {
+  scroll-margin-top: calc(var(--bvs-app-header-height) + 1rem);
+  scroll-margin-bottom: calc(var(--bvs-app-bottom-stack-height) + 1rem);
+}
+
+@media (min-width: 640px) {
+  :root {
+    --bvs-app-player-bar-height: 5rem;
+  }
+
+  .bvs-persistent-player-inner {
+    padding-left: max(1.5rem, var(--bvs-app-safe-left));
+    padding-right: max(1.5rem, var(--bvs-app-safe-right));
+  }
+}
+
+@media (min-width: 768px) {
+  :root {
+    --bvs-app-bottom-nav-height: var(--bvs-app-bottom-nav-height-measured, 0px);
+  }
+
+  html[data-bvs-surface] .bvs-persistent-player {
+    padding-bottom: var(--bvs-app-safe-bottom);
+  }
+
+  html[data-bvs-surface] .bvs-queue-sheet {
+    max-height: min(72svh, calc(100dvh - var(--bvs-app-header-height) - var(--bvs-app-player-height) - 1.5rem));
+  }
 }
 
 /* Prevent iOS WebView from overflowing wide words / tracking */

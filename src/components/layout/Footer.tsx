@@ -8,7 +8,7 @@ export default function Footer() {
 
   if (appChrome) {
     return (
-      <footer className="border-t border-white/10 px-4 py-8 text-center text-xs text-text-secondary">
+      <footer className="bvs-app-footer border-t border-white/10 px-4 py-8 text-center text-xs text-text-secondary">
         <p>Focused listening edition · rights reviewed by BVS Editorial</p>
         <div className="mt-3 flex flex-wrap justify-center gap-4">
           <Link href="/privacy">Privacy</Link>
