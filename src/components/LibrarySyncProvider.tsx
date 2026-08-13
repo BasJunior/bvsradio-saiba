@@ -59,11 +59,7 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
   }, [applyRemote, request])
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setSignedIn(false)
-      setState('device')
-      return
-    }
+    if (!isSupabaseConfigured()) return
     const supabase = createClient()
     const initialSync = window.setTimeout(syncNow, 0)
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {

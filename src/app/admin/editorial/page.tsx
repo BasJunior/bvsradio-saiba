@@ -171,7 +171,8 @@ export default function EditorialDashboard() {
   }, [configured, load])
 
   useEffect(() => {
-    void boot()
+    const timer = window.setTimeout(() => void boot(), 0)
+    return () => window.clearTimeout(timer)
   }, [boot])
 
   const allowed = (permission: EditorialPermission) => Boolean(data?.identity.permissions.includes(permission))

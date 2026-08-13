@@ -40,11 +40,18 @@ type PremiumState = {
 
 function ArtistPremiumInner() {
   const searchParams = useSearchParams()
+  const configured = isSupabaseConfigured()
+  const checkoutReference = searchParams.get('ref')
+  const returnedFromCheckout = searchParams.get('checkout') === 'return'
   const [data, setData] = useState<PremiumState | null>(null)
   const [token, setToken] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(configured ? '' : 'Account service not configured.')
   const [busy, setBusy] = useState(false)
-  const [info, setInfo] = useState('')
+  const [info, setInfo] = useState(() => returnedFromCheckout
+    ? checkoutReference
+      ? `Returned from Paynow (ref ${checkoutReference}). If you paid, Premium activates within a minute — refresh this page.`
+      : 'Returned from Paynow. If you paid, refresh in a moment to see active Premium.'
+    : '')
   const [interval, setInterval] = useState<'month' | 'year'>('month')
   const [planChoice, setPlanChoice] = useState<'founding' | 'standard'>('founding')
 
@@ -61,10 +68,7 @@ function ArtistPremiumInner() {
   }, [])
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setError('Account service not configured.')
-      return
-    }
+    if (!configured) return
     createClient()
       .auth.getSession()
       .then(({ data: s }) => {
@@ -76,20 +80,13 @@ function ArtistPremiumInner() {
         setToken(t)
         load(t).catch((e: Error) => setError(e.message))
       })
-  }, [load])
+  }, [configured, load])
 
   useEffect(() => {
-    const checkout = searchParams.get('checkout')
-    const ref = searchParams.get('ref')
-    if (checkout === 'return') {
-      setInfo(
-        ref
-          ? `Returned from Paynow (ref ${ref}). If you paid, Premium activates within a minute — refresh this page.`
-          : 'Returned from Paynow. If you paid, refresh in a moment to see active Premium.',
-      )
-      if (token) void load(token)
-    }
-  }, [searchParams, token, load])
+    if (!returnedFromCheckout || !token) return
+    const timer = window.setTimeout(() => void load(token), 0)
+    return () => window.clearTimeout(timer)
+  }, [returnedFromCheckout, token, load])
 
   const priceLabel = useMemo(() => {
     if (planChoice === 'standard') return interval === 'year' ? 'US$120/year' : 'US$12/month'

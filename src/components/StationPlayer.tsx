@@ -160,10 +160,6 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     };
   }, []);
 
-  useEffect(() => {
-    if (initialTracks.length) setTracks((prev) => (prev.length ? prev : initialTracks));
-  }, [initialTracks]);
-
   const [nowPlaying, setNowPlaying] = useState<QueueItem | null>(() =>
     initialTracks[0] ? makeQueueItem(initialTracks[0], "station") : null,
   );
@@ -194,13 +190,16 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const autoplayRef = useRef(autoplay);
   const shuffleRef = useRef(shuffle);
   const repeatRef = useRef(repeat);
-  tracksRef.current = tracks;
-  nowRef.current = nowPlaying;
-  upNextRef.current = upNext;
-  modeRef.current = mode;
-  autoplayRef.current = autoplay;
-  shuffleRef.current = shuffle;
-  repeatRef.current = repeat;
+
+  useEffect(() => {
+    tracksRef.current = tracks;
+    nowRef.current = nowPlaying;
+    upNextRef.current = upNext;
+    modeRef.current = mode;
+    autoplayRef.current = autoplay;
+    shuffleRef.current = shuffle;
+    repeatRef.current = repeat;
+  }, [autoplay, mode, nowPlaying, repeat, shuffle, tracks, upNext]);
 
   const index = useMemo(() => {
     if (!current) return 0;
@@ -287,6 +286,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   // Hydrate + seed queue when tracks arrive; drop anything not in live library
   useEffect(() => {
     if (!tracks.length) return;
+    const timer = window.setTimeout(() => {
     try {
       localStorage.removeItem("bvs.player.queue.v1");
       localStorage.removeItem("bvs.pl…e.v1");
@@ -359,6 +359,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         : tracks[0];
       return fillUpNext(seed, kept);
     });
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [tracks, fillUpNext]);
 
   // Persist queue prefs
@@ -399,14 +401,14 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, [flushListening, isPlaying]);
 
   useEffect(() => {
-    if (!current) {
-      setLiked(false);
-      return;
-    }
-    setLiked(hasLibraryItem("favourites", trackLibraryId(current)));
-    const sync = () => setLiked(hasLibraryItem("favourites", trackLibraryId(current)));
+    const sync = () => setLiked(current ? hasLibraryItem("favourites", trackLibraryId(current)) : false);
+    const timer = window.setTimeout(sync, 0);
+    if (!current) return () => window.clearTimeout(timer);
     window.addEventListener("bvs:library-change", sync);
-    return () => window.removeEventListener("bvs:library-change", sync);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("bvs:library-change", sync);
+    };
   }, [current]);
 
   useEffect(() => {

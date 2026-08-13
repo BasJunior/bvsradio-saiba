@@ -4,6 +4,22 @@ import { sendBvsEmail, wrapBvsEmailHtml } from '@/lib/mailer'
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
+type SupabaseAdminPayload = {
+  [key: string]: unknown
+  msg?: string
+  message?: string
+  id?: string
+  action_link?: string
+  hashed_token?: string
+  verification_type?: string
+  properties?: {
+    [key: string]: unknown
+    action_link?: string
+    hashed_token?: string
+    verification_type?: string
+  }
+}
+
 export async function supabaseAdmin(path: string, init: RequestInit = {}) {
   if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
     throw new Error('Account service is not configured')
@@ -18,9 +34,10 @@ export async function supabaseAdmin(path: string, init: RequestInit = {}) {
     },
   })
   const text = await res.text()
-  let data: any = null
+  let data: SupabaseAdminPayload = {}
   try {
-    data = text ? JSON.parse(text) : null
+    const parsed: unknown = text ? JSON.parse(text) : {}
+    data = parsed && typeof parsed === 'object' ? parsed as SupabaseAdminPayload : { message: String(parsed) }
   } catch {
     data = { message: text }
   }
@@ -44,11 +61,17 @@ function mapVerifyType(raw: unknown, fallback: string): string {
   return fallback || 'signup'
 }
 
-function buildFirstPartyUrl(data: any, requestedType: string, safeRedirect: string): string | null {
-  const props = data?.properties || data || {}
-  const tokenHash = props.hashed_token || data?.hashed_token
+function objectRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' ? value as Record<string, unknown> : {}
+}
+
+function buildFirstPartyUrl(data: SupabaseAdminPayload, requestedType: string, safeRedirect: string): string | null {
+  const root = objectRecord(data)
+  const properties = objectRecord(root.properties)
+  const props = Object.keys(properties).length ? properties : root
+  const tokenHash = props.hashed_token || root.hashed_token
   if (!tokenHash) return null
-  const type = mapVerifyType(props.verification_type || data?.verification_type, requestedType)
+  const type = mapVerifyType(props.verification_type || root.verification_type, requestedType)
   const url = new URL(safeRedirect)
   url.searchParams.set('token_hash', String(tokenHash))
   url.searchParams.set('type', type)

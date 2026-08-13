@@ -22,7 +22,7 @@ export default function ContactForm() {
   useEffect(() => {
     const requested = new URLSearchParams(window.location.search).get('topic')?.replaceAll('-', '_')
     if (requested && topicOptions.some(([value]) => value === requested)) {
-      setForm((current) => ({ ...current, topic: requested }))
+      queueMicrotask(() => setForm((current) => ({ ...current, topic: requested })))
     }
   }, [])
 

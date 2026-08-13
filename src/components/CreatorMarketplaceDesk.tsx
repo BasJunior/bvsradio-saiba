@@ -100,9 +100,9 @@ export function CreatorMarketplaceDesk({
   };
   useEffect(() => {
     if (accessToken) {
-      setToken(accessToken);
-      void load(accessToken);
-      return;
+      queueMicrotask(() => setToken(accessToken));
+      const timer = window.setTimeout(() => void load(accessToken), 0);
+      return () => window.clearTimeout(timer);
     }
     if (!isSupabaseConfigured()) return;
     void createClient()

@@ -17,15 +17,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [nextPath, setNextPath] = useState('/')
+  const [nextPath] = useState(() => typeof window === 'undefined'
+    ? '/'
+    : safeNextPath(new URLSearchParams(window.location.search).get('next')))
   const [alreadyIn, setAlreadyIn] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const params = new URLSearchParams(window.location.search)
-    const destination = safeNextPath(params.get('next'))
-    setNextPath(destination)
     if (!isSupabaseConfigured()) return
     void createClient().auth.getSession().then(({ data }) => {
       const email = data.session?.user?.email

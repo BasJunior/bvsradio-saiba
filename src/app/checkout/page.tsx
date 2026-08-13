@@ -152,10 +152,12 @@ export default function CheckoutPage() {
     } else if (!savedCart && queryItem) {
       initial = [queryItem];
     }
-    setItems(initial);
-    setCountryCode(detectBrowserCountry());
-    setCancelled(new URLSearchParams(window.location.search).has("cancelled"));
-    setHydrated(true);
+    queueMicrotask(() => {
+      setItems(initial);
+      setCountryCode(detectBrowserCountry());
+      setCancelled(new URLSearchParams(window.location.search).has("cancelled"));
+      setHydrated(true);
+    });
 
     fetch("/api/checkout/config")
       .then((r) => r.json())

@@ -45,16 +45,13 @@ function statusClass(status: string) {
 
 export default function OrderReceiptPage() {
   const params = useParams<{ reference: string }>()
+  const configured = isSupabaseConfigured()
   const [order, setOrder] = useState<Receipt | null>(null)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(configured ? '' : 'Account service unavailable.')
+  const [loading, setLoading] = useState(configured)
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setError('Account service unavailable.')
-      setLoading(false)
-      return
-    }
+    if (!configured) return
     createClient().auth.getSession().then(async ({ data }) => {
       const token = data.session?.access_token
       if (!token) {
@@ -71,7 +68,7 @@ export default function OrderReceiptPage() {
       else setOrder(payload.order)
       setLoading(false)
     })
-  }, [params.reference])
+  }, [configured, params.reference])
 
   if (loading) {
     return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Loading receipt…</main>

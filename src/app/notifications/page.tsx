@@ -7,16 +7,13 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 type NotificationEvent = { id: string; title: string; detail: string; created_at: string; href: string; kind: string }
 
 export default function NotificationsPage() {
+  const configured = isSupabaseConfigured()
   const [events, setEvents] = useState<NotificationEvent[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(configured)
+  const [error, setError] = useState(configured ? '' : 'Notification service unavailable.')
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setError('Notification service unavailable.')
-      setLoading(false)
-      return
-    }
+    if (!configured) return
     createClient().auth.getSession().then(async ({ data }) => {
       const token = data.session?.access_token
       if (!token) {
@@ -34,7 +31,7 @@ export default function NotificationsPage() {
       }
       setLoading(false)
     })
-  }, [])
+  }, [configured])
 
   return <main className="mx-auto min-h-[70vh] max-w-4xl px-6 py-12">
     <p className="text-xs uppercase tracking-[.22em] text-brand">Your BVS</p>

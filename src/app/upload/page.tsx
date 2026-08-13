@@ -62,15 +62,17 @@ function UploadPageInner() {
   useEffect(() => {
     const raw = (searchParams.get('type') || searchParams.get('mode') || '').toLowerCase()
     if (!raw) return
-    if (raw === 'beats' || raw === 'beat' || raw === 'beatstore') {
-      setUploadType('beats')
-      setBeatMode('single')
-    } else if (raw === 'pack' || raw === 'beat-pack' || raw === 'beatpack') {
-      setUploadType('beats')
-      setBeatMode('pack')
-    } else if (raw === 'music' || raw === 'release' || raw === 'track') {
-      setUploadType('music')
-    }
+    queueMicrotask(() => {
+      if (raw === 'beats' || raw === 'beat' || raw === 'beatstore') {
+        setUploadType('beats')
+        setBeatMode('single')
+      } else if (raw === 'pack' || raw === 'beat-pack' || raw === 'beatpack') {
+        setUploadType('beats')
+        setBeatMode('pack')
+      } else if (raw === 'music' || raw === 'release' || raw === 'track') {
+        setUploadType('music')
+      }
+    })
   }, [searchParams])
 
   useEffect(() => {

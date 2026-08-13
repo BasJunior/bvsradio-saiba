@@ -70,7 +70,8 @@ export default function StudioPremiumDesk({ token }: { token: string }) {
   }, [token]);
 
   useEffect(() => {
-    void load();
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => window.clearTimeout(timer);
   }, [load]);
 
   if (loading) {

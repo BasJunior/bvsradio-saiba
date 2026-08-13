@@ -10,12 +10,13 @@ type Message = Answer & { role: "user" | "assistant" };
 export default function VisitorAssistant() {
   const { appChrome } = useAppSurface();
   const [open, setOpen] = useState(false);
-  if (appChrome) return null;
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", reply: "Hi — I’m the BVS guide. Ask me about listening live, music submissions, artists, or audio services." },
   ]);
+
+  if (appChrome) return null;
 
   async function send(event?: FormEvent, prompt = input) {
     event?.preventDefault();

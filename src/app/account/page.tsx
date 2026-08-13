@@ -50,6 +50,7 @@ type AccountData = {
 const field = 'mt-1.5 w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
 
 export default function AccountPage() {
+  const configured = isSupabaseConfigured()
   const [token, setToken] = useState('')
   const [data, setData] = useState<AccountData | null>(null)
   const [access, setAccess] = useState<Access>({})
@@ -58,9 +59,9 @@ export default function AccountPage() {
   const [roleForm, setRoleForm] = useState({ requestedRole: 'artist', message: '' })
   const [applying, setApplying] = useState(false)
   const [form, setForm] = useState({ username: '', fullName: '', displayName: '', creatorPublicName: '', avatarUrl: '', bio: '' })
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(configured)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(configured ? '' : 'Account service is unavailable.')
   const [message, setMessage] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState('')
@@ -99,11 +100,7 @@ export default function AccountPage() {
   }
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setError('Account service is unavailable.')
-      setLoading(false)
-      return
-    }
+    if (!configured) return
     createClient().auth.getSession().then(async ({ data: sessionData }) => {
       const accessToken = sessionData.session?.access_token
       if (!accessToken) {
@@ -119,7 +116,7 @@ export default function AccountPage() {
         setLoading(false)
       }
     })
-  }, [])
+  }, [configured])
 
   const shortcuts = useMemo(() => {
     const items = [

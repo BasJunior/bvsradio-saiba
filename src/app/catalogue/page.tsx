@@ -356,27 +356,24 @@ function CataloguePageContent() {
     const requestedType = searchParams.get("type");
     const requestedProducer = searchParams.get("producer") || "";
     const requestedPack = searchParams.get("pack") || "";
-    setSearch(searchParams.get("q") || "");
-    setProducerFilter(requestedProducer);
-    setPackFilter(requestedPack);
-    if (requestedType === "beat" || requestedPack) {
-      setTypeFilter("beat");
-      // Producer deep-links should land on the filtered crate, not the shelf chrome.
-      const anchor = requestedProducer || requestedPack ? "browse" : "beatstore";
-      window.requestAnimationFrame(() => {
-        document.getElementById(anchor)?.scrollIntoView({ block: "start" });
-      });
-      return;
-    }
-    if (requestedType === "single" || requestedType === "mix") {
-      setTypeFilter(requestedType);
-      return;
-    }
-    if (requestedType === "all") {
-      setTypeFilter("all");
-      return;
-    }
-    setTypeFilter("music");
+    queueMicrotask(() => {
+      setSearch(searchParams.get("q") || "");
+      setProducerFilter(requestedProducer);
+      setPackFilter(requestedPack);
+      if (requestedType === "beat" || requestedPack) {
+        setTypeFilter("beat");
+        const anchor = requestedProducer || requestedPack ? "browse" : "beatstore";
+        window.requestAnimationFrame(() => {
+          document.getElementById(anchor)?.scrollIntoView({ block: "start" });
+        });
+      } else if (requestedType === "single" || requestedType === "mix") {
+        setTypeFilter(requestedType);
+      } else if (requestedType === "all") {
+        setTypeFilter("all");
+      } else {
+        setTypeFilter("music");
+      }
+    });
   }, [searchParams]);
 
   useEffect(() => {
@@ -727,11 +724,11 @@ function CataloguePageContent() {
     }
 
     if (action?.type === "release") {
-      window.location.href = `/album/${encodeURIComponent(action.releaseId)}`;
+      window.location.assign(`/album/${encodeURIComponent(action.releaseId)}`);
       return;
     }
     if (action?.type === "href") {
-      window.location.href = action.href;
+      window.location.assign(action.href);
       return;
     }
 
@@ -1255,7 +1252,7 @@ function CataloguePageContent() {
                   ? producerLabel
                   : `@${producerLabel}`}
               </span>
-              's published BeatStore catalogue only.
+              &apos;s published BeatStore catalogue only.
             </p>
             <button
               type="button"
