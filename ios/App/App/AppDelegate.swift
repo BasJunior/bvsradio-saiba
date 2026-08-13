@@ -66,10 +66,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
     }
 
     private func configureNavigationGesturesIfNeeded() {
-        guard webViewURLObservation == nil,
-              let bridge = window?.rootViewController as? CAPBridgeViewController else { return }
+        guard webViewURLObservation == nil else { return }
+        guard let bridge = window?.rootViewController as? CAPBridgeViewController else {
+            #if DEBUG
+            NSLog("BVS navigation bridge unavailable root=%@", String(describing: window?.rootViewController))
+            #endif
+            return
+        }
         bridge.loadViewIfNeeded()
-        guard let webView = bridge.webView else { return }
+        guard let webView = bridge.webView else {
+            #if DEBUG
+            NSLog("BVS navigation web view unavailable")
+            #endif
+            return
+        }
         let routeBridge = WKUserScript(
             source: """
             (() => {
@@ -130,7 +140,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
         let gestureEnabled = hasDismissibleLayer || !primaryRoots.contains(url.path)
         webView.allowsBackForwardNavigationGestures = gestureEnabled
         #if DEBUG
-        print("BVS navigation route=\(url.path) layer=\(url.fragment ?? "none") gesture=\(gestureEnabled)")
+        NSLog("BVS navigation route=%@ layer=%@ gesture=%@", url.path, url.fragment ?? "none", gestureEnabled.description)
         #endif
     }
 
