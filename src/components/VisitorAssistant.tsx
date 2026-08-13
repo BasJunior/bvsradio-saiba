@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 
 type Answer = { reply: string; links?: Array<{ label: string; href: string }> };
 type Message = Answer & { role: "user" | "assistant" };
 
 export default function VisitorAssistant() {
+  const { appChrome } = useAppSurface();
   const [open, setOpen] = useState(false);
+  if (appChrome) return null;
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Message[]>([

@@ -6,6 +6,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { StationTrack } from "@/lib/station";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
 import { listeningBucket, trackEvent } from "@/lib/analytics";
+import { useAppSurface } from "@/components/app/AppSurfaceProvider";
+import { appExplore, appLibrary, hrefForAppSurface } from "@/lib/app-surface";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -1116,6 +1118,31 @@ function QueueSheet() {
   );
 }
 
+function LibraryLink() {
+  const { surface, appChrome } = useAppSurface();
+  return (
+    <Link href={appChrome && surface ? appLibrary(surface) : "/library"} className="hidden text-sm text-brand hover:underline sm:block">
+      Library
+    </Link>
+  );
+}
+
+function ArtistSearchLink({
+  artist,
+  className,
+  children,
+  onClick,
+}: {
+  artist: string;
+  className?: string;
+  children: React.ReactNode;
+  onClick?: () => void;
+}) {
+  const { surface, appChrome } = useAppSurface();
+  const href = hrefForAppSurface(`/search?q=${encodeURIComponent(artist)}`, appChrome ? surface : null);
+  return <Link href={href || appExplore(surface || "ios")} className={className} onClick={onClick}>{children}</Link>;
+}
+
 export function PersistentPlayer() {
   const player = useStationPlayer();
   const { nowPlayingOpen, closeNowPlaying } = player;
@@ -1173,7 +1200,7 @@ export function PersistentPlayer() {
               <div className="mx-auto w-full max-w-xl">
                 <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">{player.current?.project || "Continuous rotation"}</p>
                 <h2 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">{player.current?.title || "BVS Radio rotation"}</h2>
-                <Link href={`/search?q=${encodeURIComponent(player.current?.artist || "BVS Radio")}`} className="mt-3 inline-block text-lg text-white/65 hover:text-brand">{player.current?.artist || "BVS Radio"}</Link>
+                <ArtistSearchLink artist={player.current?.artist || "BVS Radio"} className="mt-3 inline-block text-lg text-white/65 hover:text-brand">{player.current?.artist || "BVS Radio"}</ArtistSearchLink>
 
                 <div className="mt-8 flex items-center justify-between gap-3 sm:justify-start sm:gap-6">
                   <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-full px-4 text-sm ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60"}`}>Shuffle</button>
@@ -1184,9 +1211,9 @@ export function PersistentPlayer() {
                 </div>
 
                 <div className="mt-10 grid gap-3 sm:grid-cols-2">
-                  <Link href={`/search?q=${encodeURIComponent(player.current?.artist || "")}`} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
+                  <ArtistSearchLink artist={player.current?.artist || ""} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Go deeper</span><span className="mt-1 block font-medium">Explore artist and credits</span>
-                  </Link>
+                  </ArtistSearchLink>
                   <button type="button" onClick={() => { player.closeNowPlaying(); player.setQueueOpen(true); }} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left hover:border-brand/40">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Coming next</span><span className="mt-1 block font-medium">Open queue · {player.upNext.length} tracks</span>
                   </button>
@@ -1283,9 +1310,7 @@ export function PersistentPlayer() {
               className="w-24 accent-brand"
             />
           </label>
-          <Link href="/library" className="hidden text-sm text-brand hover:underline sm:block">
-            Library
-          </Link>
+          <LibraryLink />
         </div>
       </section>
     </>

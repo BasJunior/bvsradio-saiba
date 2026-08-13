@@ -117,7 +117,7 @@ export default function SearchPage() {
     return () => window.clearTimeout(timer)
   }, [filter, query, results.length])
 
-  return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 py-12 sm:px-6">
+  return <div className="mx-auto min-h-[70vh] max-w-7xl px-4 py-12 sm:px-6">
     <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Explore BVS</p>
     <h1 className="text-4xl md:text-5xl">Music, creators and the scene around them</h1>
     <p className="mt-3 max-w-2xl text-text-secondary">Search published BVS content or move through recent music, verified creators, BeatStore and programmes.</p>
@@ -130,5 +130,5 @@ export default function SearchPage() {
       {loaded && results.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 px-6 py-14 text-center"><h3 className="text-xl">Nothing published under that search yet</h3><p className="mt-2 text-text-secondary">Try another term or clear the active category.</p><button onClick={() => { setQuery(''); setFilter('all') }} className="mt-5 rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Explore everything</button></div> : null}
       {!loaded ? <div className="grid gap-3 md:grid-cols-2" aria-label="Loading discovery"><div className="h-24 animate-pulse rounded-2xl bg-white/5"/><div className="h-24 animate-pulse rounded-2xl bg-white/5"/></div> : null}
     </div>
-  </main>
+  </div>
 }

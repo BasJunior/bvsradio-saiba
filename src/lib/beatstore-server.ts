@@ -152,6 +152,10 @@ export async function listBeatsForProducer(userId: string) {
 }
 
 export async function listPublishedBeats(limit = 48) {
+  if (!url || !service) {
+    console.warn("listPublishedBeats: missing Supabase env — returning no beats")
+    return []
+  }
   // Prefer embed with licences; fall back if relationship/filter fails so published beats still show.
   const withLicences = await fetch(
     creatorUrl(

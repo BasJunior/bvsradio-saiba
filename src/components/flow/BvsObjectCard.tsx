@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { BvsAction, BvsCardVariant, BvsObject } from "@/lib/bvs-object";
 import { objectKindLabel } from "@/lib/bvs-object";
 import { recordFlowOpen } from "@/lib/flow-session";
@@ -43,8 +43,9 @@ export default function BvsObjectCard({
   relationship?: string;
 }) {
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [artworkFailed, setArtworkFailed] = useState(false);
+  const [failedArtwork, setFailedArtwork] = useState<string | null>(null);
   const overflowRef = useRef<HTMLButtonElement>(null);
+  const artworkFailed = Boolean(object.artwork && failedArtwork === object.artwork);
   const compact = variant === "compact-row" || variant === "relationship-card";
   const feature = variant === "feature-card";
 
@@ -59,12 +60,20 @@ export default function BvsObjectCard({
   }
 
   function primary(action: BvsAction) {
-    if (["play", "play-next", "queue"].includes(action.intent)) runQueueAction(action, object);
+    if (["play", "play-next", "queue"].includes(action.intent)) {
+      runQueueAction(action, object);
+      recordFlowOpen(object, relationship);
+      trackEvent("flow_object_play", { object_id: object.id, object_kind: object.kind, source: variant });
+    }
   }
 
-  useEffect(() => {
-    setArtworkFailed(false);
-  }, [object.artwork]);
+  function activateCard() {
+    if (object.primaryAction && ["play", "play-next", "queue"].includes(object.primaryAction.intent)) {
+      primary(object.primaryAction);
+      return;
+    }
+    openObject();
+  }
 
   const hasUsableArtwork = Boolean(object.artwork && !object.artwork.includes("default-avatar"));
   const image = hasUsableArtwork && !artworkFailed ? (
@@ -75,7 +84,7 @@ export default function BvsObjectCard({
       unoptimized={/^https?:\/\//i.test(object.artwork!)}
       sizes={compact ? "72px" : feature ? "(max-width:768px) 100vw, 50vw" : "(max-width:768px) 78vw, 320px"}
       className="object-cover transition duration-300 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none"
-      onError={() => setArtworkFailed(true)}
+      onError={() => setFailedArtwork(object.artwork || "")}
     />
   ) : (
     <span className="absolute inset-0 grid place-items-center text-xs font-semibold uppercase tracking-[.18em] text-brand">BVS</span>
@@ -95,15 +104,35 @@ export default function BvsObjectCard({
     <article className={`group ${surfaceByVariant[variant]}`} data-flow-focus-id={`${object.kind}:${object.id}`} tabIndex={-1}>
       {compact ? (
         <>
-          <Link href={object.route} onClick={openObject} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{image}</Link>
-          <Link href={object.route} onClick={openObject} className="min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link>
+          {object.primaryAction && ["play", "play-next", "queue"].includes(object.primaryAction.intent) ? (
+            <>
+              <button type="button" onClick={activateCard} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{image}</button>
+              <button type="button" onClick={activateCard} className="min-w-0 flex-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</button>
+            </>
+          ) : (
+            <>
+              <Link href={object.route} onClick={openObject} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{image}</Link>
+              <Link href={object.route} onClick={openObject} className="min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link>
+            </>
+          )}
         </>
       ) : (
         <>
-          <Link href={object.route} onClick={openObject} className={`relative block overflow-hidden bg-white/5 ${feature ? "aspect-[16/9] sm:aspect-[2/1]" : "aspect-square"}`}>{image}</Link>
-          <div className={feature ? "p-6 sm:p-8" : "p-4 sm:p-5"}>
-            <Link href={object.route} onClick={openObject} className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link>
-          </div>
+          {object.primaryAction && ["play", "play-next", "queue"].includes(object.primaryAction.intent) ? (
+            <>
+              <button type="button" onClick={activateCard} className={`relative block w-full overflow-hidden bg-white/5 text-left ${feature ? "aspect-[16/9] sm:aspect-[2/1]" : "aspect-square"}`}>{image}</button>
+              <div className={feature ? "p-6 sm:p-8" : "p-4 sm:p-5"}>
+                <button type="button" onClick={activateCard} className="block w-full text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <Link href={object.route} onClick={openObject} className={`relative block overflow-hidden bg-white/5 ${feature ? "aspect-[16/9] sm:aspect-[2/1]" : "aspect-square"}`}>{image}</Link>
+              <div className={feature ? "p-6 sm:p-8" : "p-4 sm:p-5"}>
+                <Link href={object.route} onClick={openObject} className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link>
+              </div>
+            </>
+          )}
         </>
       )}
 

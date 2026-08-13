@@ -1,19 +1,21 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useAppSurface } from '@/components/app/AppSurfaceProvider'
 
 export default function Footer() {
-  const pathname = usePathname()
-  const routeSurface = pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1] as 'ios' | 'android' | undefined
-  const [mobileSurface] = useState<'ios' | 'android' | null>(routeSurface || null)
+  const { appChrome, isNative, exitAppChrome } = useAppSurface()
 
-  if (mobileSurface) {
+  if (appChrome) {
     return (
-      <footer className="mt-12 border-t border-white/10 px-4 py-8 text-center text-xs text-text-secondary">
-        <p>Curated mobile catalogue · Rights reviewed by BVS Editorial</p>
-        <div className="mt-3 flex justify-center gap-4"><Link href="/privacy">Privacy</Link><Link href="/terms">Terms</Link><Link href="/contact">Support</Link></div>
+      <footer className="border-t border-white/10 px-4 py-8 text-center text-xs text-text-secondary">
+        <p>Focused listening edition · rights reviewed by BVS Editorial</p>
+        <div className="mt-3 flex flex-wrap justify-center gap-4">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/contact">Support</Link>
+          {!isNative && <button type="button" onClick={exitAppChrome} className="text-brand hover:underline">Full website</button>}
+        </div>
         <p className="mt-4">&copy; {new Date().getFullYear()} BVS Radio</p>
       </footer>
     )

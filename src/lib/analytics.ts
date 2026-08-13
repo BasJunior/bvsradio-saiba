@@ -20,6 +20,7 @@ export const analyticsEvents = [
   "queue_play_next",
   "queue_add",
   "flow_object_open",
+  "flow_object_play",
   "flow_relationship_open",
   "flow_back_restore",
   "flow_action_sheet_open",

@@ -4,11 +4,14 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { discoveryItems } from "@/lib/discovery";
+import { useAppSurface } from "@/components/app/AppSurfaceProvider";
+import { appExplore } from "@/lib/app-surface";
 
 type Suggestion = { id: string; title: string; subtitle: string; href: string; kind: string };
 
 export default function HeaderSearch() {
   const router = useRouter();
+  const { surface, appChrome } = useAppSurface();
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const [query, setQuery] = useState("");
@@ -71,7 +74,8 @@ export default function HeaderSearch() {
   const submit = (event: FormEvent) => {
     event.preventDefault();
     const value = query.trim();
-    router.push(value ? `/search?q=${encodeURIComponent(value)}` : "/search");
+    const base = appChrome && surface ? appExplore(surface) : "/search";
+    router.push(value ? `${base}?q=${encodeURIComponent(value)}` : base);
     setFocused(false);
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -8,6 +9,7 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 export default function PwaRegister() {
+  const { appChrome } = useAppSurface();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [engaged, setEngaged] = useState(false);
@@ -103,7 +105,7 @@ export default function PwaRegister() {
     return () => window.removeEventListener("bvs:pwa-install-request", onInstallRequest);
   });
 
-  if (dismissed || !engaged || (!deferred && !showIosHint)) return null;
+  if (appChrome || dismissed || !engaged || (!deferred && !showIosHint)) return null;
 
   return (
     <div

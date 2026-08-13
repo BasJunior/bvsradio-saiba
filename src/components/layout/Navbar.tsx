@@ -7,6 +7,8 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import HeaderSearch from '@/components/layout/HeaderSearch'
+import { useAppSurface } from '@/components/app/AppSurfaceProvider'
+import { appExplore, appHome, primaryAppDestinations } from '@/lib/app-surface'
 import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
 type Access = {
   artist: boolean
@@ -33,8 +35,7 @@ function formatPremiumUntil(iso: string | null): string | null {
 export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
-  const routeSurface = pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1] as 'ios' | 'android' | undefined
-  const [mobileSurface] = useState<'ios' | 'android' | null>(routeSurface || null)
+  const { surface, appChrome } = useAppSurface()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
@@ -177,20 +178,34 @@ export default function Navbar() {
     </Link>
   ) : null
 
-  if (mobileSurface) {
-    const appHome = `/app/${mobileSurface}`
+  if (appChrome && surface) {
+    const destinations = primaryAppDestinations(surface)
     return (
       <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-          <Link href={appHome} className="flex items-center gap-2" aria-label="BVS Radio app home">
+        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4">
+          <Link href={appHome(surface)} className="flex min-w-0 items-center gap-2" aria-label="BVS Radio app home">
             <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-10 w-auto rounded-md object-contain" priority />
-            <span className="hidden text-xs uppercase tracking-[.18em] text-brand sm:inline">App edition</span>
           </Link>
-          <div className="flex items-center gap-1 text-xs">
-            <Link href={`${appHome}#listen`} className="rounded-full px-3 py-2 text-text-secondary hover:text-brand">Listen</Link>
-            <Link href={`${appHome}#catalogue`} className="rounded-full px-3 py-2 text-text-secondary hover:text-brand">Music</Link>
-            <Link href={`${appHome}#beats`} className="rounded-full px-3 py-2 text-text-secondary hover:text-brand">Beats</Link>
-            <Link href="/account" className="rounded-full border border-white/15 px-3 py-2">Account</Link>
+          <div className="hidden items-center gap-5 text-sm font-medium md:flex">
+            {destinations.map((item) => (
+              <Link key={item.id} href={item.href} className={`transition-colors ${pathname === item.href.split('?')[0] ? 'text-brand' : 'text-text-secondary hover:text-brand'}`}>
+                {item.label}
+              </Link>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="hidden md:block"><HeaderSearch /></div>
+            <Link
+              href={appExplore(surface)}
+              aria-label="Search BVS"
+              className="grid h-10 w-10 place-items-center rounded-full text-text-secondary hover:bg-white/5 hover:text-brand md:hidden"
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" />
+                <path strokeLinecap="round" d="m16 16 4 4" />
+              </svg>
+            </Link>
+            <Link href="/account" className="rounded-full border border-white/15 px-3 py-2 text-xs sm:text-sm">Account</Link>
           </div>
         </div>
       </nav>
@@ -344,8 +359,6 @@ export default function Navbar() {
                 </Link>
               ))}
             </div>
-            <Link href="/search" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Search</Link>
-            <Link href="/library" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Library</Link>
             <Link href="/checkout" className="flex items-center justify-between py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
               <span>Cart</span>
               {cartCount > 0 && (

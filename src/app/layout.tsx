@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import VisitorAssistant from "@/components/VisitorAssistant";
@@ -8,6 +9,7 @@ import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
+import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
 import MobileFlowNav from "@/components/layout/MobileFlowNav";
 import "./globals.css";
 
@@ -81,17 +83,21 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
         <LibrarySyncProvider>
           <StationPlayerProvider tracks={[]}>
-            <FlowNavigationProvider>
-              <Navbar />
-              <AuthLinkRescue />
-              <main className="pt-16 pb-44 md:pb-28">{children}</main>
-              <Footer />
-              <VisitorAssistant />
-              <PwaRegister />
-              <ClientErrorBeacon />
-              <MobileFlowNav />
-              <PersistentPlayer />
-            </FlowNavigationProvider>
+            <AppSurfaceProvider>
+              <FlowNavigationProvider>
+                <Navbar />
+                <AuthLinkRescue />
+                <main className="pt-16 pb-44 md:pb-28">{children}</main>
+                <Footer />
+                <VisitorAssistant />
+                <PwaRegister />
+                <ClientErrorBeacon />
+                <Suspense fallback={null}>
+                  <MobileFlowNav />
+                </Suspense>
+                <PersistentPlayer />
+              </FlowNavigationProvider>
+            </AppSurfaceProvider>
           </StationPlayerProvider>
         </LibrarySyncProvider>
       </body>

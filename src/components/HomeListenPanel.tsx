@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useStationPlayer } from "@/components/StationPlayer";
 import FlowRelationships from "@/components/flow/FlowRelationships";
 
@@ -83,9 +82,9 @@ export default function HomeListenPanel() {
           >
             Open queue
           </button>
-          <Link href="/radio" className="font-medium text-brand hover:underline">
-            Full player →
-          </Link>
+          <button type="button" onClick={player.openNowPlaying} className="text-left font-medium text-brand hover:underline">
+            Open Now Playing
+          </button>
         </div>
         <FlowRelationships kind="track" id={player.current?.id} compact />
       </div>
