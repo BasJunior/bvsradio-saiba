@@ -1,5 +1,5 @@
 import 'server-only'
-import { creatorPublicName, resolvePublicHandle } from '@/lib/public-name'
+import { creatorPublicName, publicHandleAccountCandidates, resolvePublicHandle } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 export type PublicArtistTrack = {
@@ -10,6 +10,8 @@ export type PublicArtistTrack = {
   in_rotation?: boolean
   is_downloadable?: boolean
   licence_type?: string
+  isrc?: string
+  spotify_url?: string
   credits: Array<{ person_name: string; credit_role: string }>
 }
 
@@ -24,7 +26,16 @@ export type PublicArtist = {
   beats?: Array<{ id: string; title: string; genre?: string; artwork_url?: string; starting_price?: number }>
   location?: string
   links?: { instagram?: string; spotify?: string; website?: string }
+  spotifyArtistId?: string
   joinedAt?: string
+}
+
+/** Known DSP identity overrides (public profile only — not a named BVS partner). */
+const CREATOR_DSP_LINKS: Record<string, { spotify?: string; spotifyArtistId?: string }> = {
+  basjunior: {
+    spotify: 'https://open.spotify.com/artist/6YFW80yi3gjIqoXtOErObH',
+    spotifyArtistId: '6YFW80yi3gjIqoXtOErObH',
+  },
 }
 
 export type PublishedArtistSummary = {
@@ -49,10 +60,20 @@ export type PublishedProducerSummary = {
 
 const fallback: Record<string, PublicArtist> = {
   'bvs-radio': { id: 'bvs-radio', username: 'bvs-radio', name: 'BVS Radio', role: 'Station artist', bio: 'Original recordings and restored cuts from the BVS archive. Credits and release details will be expanded as the archive is documented.', image: '/music/Bvs-3000x3000%202.png', tracks: [] },
-  wolfbrx: { id: 'wolfbrx', username: 'wolfbrx', name: 'WolfBrx', role: 'Producer', bio: 'Producer behind beats currently available in the BVS catalogue. This profile will grow with verified credits, releases and artist-provided links.', image: '/images/musicians.jpg', tracks: [] },
-  wolfbridges: { id: 'wolfbridges', username: 'wolfbridges', name: 'Wolfbridges', role: 'Artist', bio: 'Artist behind STRAIGHTENIN, HOWLING IN THE HILLS 2, WOLF BEEN BAD and related BVSRadio playlist features now surfaced in catalogue discovery.', image: '/images/albums/straightenin.jpg', tracks: [] },
-  whills: { id: 'whills', username: 'whills', name: 'W.Hills', role: 'Artist', bio: 'Collaborator on Wolfbridges projects featured in the BVS catalogue, including HOWLING IN THE HILLS 2.', image: '/images/albums/howling-in-the-hills-2.jpg', tracks: [] },
-  'i-ratty': { id: 'i-ratty', username: 'i-ratty', name: 'I Ratty', role: 'Artist', bio: 'Collaborator on Wolfbridges releases featured through BVS catalogue discovery, including WOLF BEEN BAD.', image: '/images/albums/wolf-been-bad.jpg', tracks: [] },
+  basjunior: {
+    id: 'basjunior',
+    username: 'basjunior',
+    name: 'BasJunior',
+    role: 'BVS artist',
+    bio: 'BasJunior on BVS Radio — listen on the station and on major platforms.',
+    image: '/assets/images/default-avatar.png',
+    tracks: [],
+    links: { spotify: CREATOR_DSP_LINKS.basjunior.spotify },
+    spotifyArtistId: CREATOR_DSP_LINKS.basjunior.spotifyArtistId,
+  },
+  'wolf-bridges': { id: 'wolf-bridges', username: 'wolf-bridges', name: 'Wolf Bridges', role: 'Artist & producer', bio: 'Artist and producer behind the Wolf Bridges BeatStore catalogue, STRAIGHTENIN, HOWLING IN THE HILLS 2, WOLF BEEN BAD and related BVS Radio features.', image: '/images/artists/wolf-bridges.jpg', tracks: [] },
+  whills: { id: 'whills', username: 'whills', name: 'W.Hills', role: 'Artist', bio: 'Collaborator on Wolf Bridges projects featured in the BVS catalogue, including HOWLING IN THE HILLS 2.', image: '/images/albums/howling-in-the-hills-2.jpg', tracks: [] },
+  'i-ratty': { id: 'i-ratty', username: 'i-ratty', name: 'I Ratty', role: 'Artist', bio: 'Collaborator on Wolf Bridges releases featured through BVS catalogue discovery, including WOLF BEEN BAD.', image: '/images/albums/wolf-been-bad.jpg', tracks: [] },
 }
 
 const legacyCreatorTracks: Record<string, PublicArtistTrack[]> = {
@@ -169,43 +190,145 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   const resolvedSlug = resolvePublicHandle(slug) || slug
-  if (!url || !key) return fallback[resolvedSlug] || fallback[slug] || null
+  const handleKey = resolvedSlug.toLowerCase().replace(/[^a-z0-9-]+/g, '')
+  const dsp = CREATOR_DSP_LINKS[handleKey] || CREATOR_DSP_LINKS[resolvedSlug.toLowerCase()]
+  if (!url || !key) {
+    const local = fallback[resolvedSlug] || fallback[handleKey] || fallback[slug] || null
+    if (!local || !dsp) return local
+    return {
+      ...local,
+      links: { ...(local.links || {}), spotify: local.links?.spotify || dsp.spotify },
+      spotifyArtistId: local.spotifyArtistId || dsp.spotifyArtistId,
+    }
+  }
   const headers = { apikey: key, Authorization: `Bearer ${key}` }
   try {
-    const profileResponse = await fetch(`${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(resolvedSlug)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,created_at&limit=1`, { headers, next: { revalidate: 60 } })
-    if (!profileResponse.ok) return fallback[slug] || null
-    const profiles = await profileResponse.json()
-    const profile = profiles[0]
-    if (!profile) return null
+    const candidates = publicHandleAccountCandidates(slug)
+    let profile: {
+      id: string
+      username: string
+      display_name?: string
+      bio?: string
+      avatar_url?: string
+      role: string
+      is_producer?: boolean
+      creator_public_name?: string
+      creator_name_status?: string
+      spotify_artist_id?: string
+      spotify_url?: string
+      created_at?: string
+    } | null = null
+
+    for (const candidate of candidates) {
+      const profileResponse = await fetch(
+        `${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(candidate)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,spotify_artist_id,spotify_url,created_at&limit=1`,
+        { headers, next: { revalidate: 60 } },
+      )
+      if (!profileResponse.ok) continue
+      const profiles = await profileResponse.json()
+      if (profiles[0]) {
+        profile = profiles[0]
+        break
+      }
+    }
+
+    // Older DBs may not have spotify_* columns yet — retry without them.
+    if (!profile) {
+      for (const candidate of candidates) {
+        const profileResponse = await fetch(
+          `${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(candidate)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,created_at&limit=1`,
+          { headers, next: { revalidate: 60 } },
+        )
+        if (!profileResponse.ok) continue
+        const profiles = await profileResponse.json()
+        if (profiles[0]) {
+          profile = profiles[0]
+          break
+        }
+      }
+    }
+
+    if (!profile) return fallback[resolvedSlug] || fallback[handleKey] || fallback[slug] || null
+
     const waitlistResponse = await fetch(`${url}/rest/v1/artist_waitlist?onboarded_profile_id=eq.${profile.id}&select=country,city,links&order=updated_at.desc&limit=1`, { headers: { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY || key, Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY || key}` }, next: { revalidate: 60 } })
     const creatorDetails = waitlistResponse.ok ? (await waitlistResponse.json())[0] : null
-    const tracksResponse = await fetch(`${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type&order=created_at.desc`, { headers, next: { revalidate: 60 } })
-    const databaseTracks = tracksResponse.ok ? await tracksResponse.json() : []
+
+    let databaseTracks: Array<Omit<PublicArtistTrack, 'credits'> & { artwork_url?: string }> = []
+    const trackSelectWithDsp = 'id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type,isrc,spotify_url'
+    const trackSelectBase = 'id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type'
+    for (const select of [trackSelectWithDsp, trackSelectBase]) {
+      const tracksResponse = await fetch(
+        `${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=${select}&order=created_at.desc`,
+        { headers, next: { revalidate: 60 } },
+      )
+      if (tracksResponse.ok) {
+        databaseTracks = await tracksResponse.json()
+        break
+      }
+    }
+
     const beatsResponse = await fetch(`${url}/rest/v1/beats?producer_user_id=eq.${profile.id}&is_public=eq.true&status=eq.published&select=id,title,genre,artwork_path,beat_licence_options(price_usd,is_active)&order=published_at.desc`, { headers, next: { revalidate: 60 } })
     const rawBeats = beatsResponse.ok ? await beatsResponse.json() : []
     const beats = rawBeats.map((beat: { id: string; title: string; genre?: string; artwork_path?: string; beat_licence_options?: Array<{ price_usd: number; is_active: boolean }> }) => {
       const prices = (beat.beat_licence_options || []).filter(option => option.is_active).map(option => Number(option.price_usd)).filter(Number.isFinite)
       return { id: beat.id, title: beat.title, genre: beat.genre, artwork_url: mediaUrlForStoredValue(beat.artwork_path) || undefined, starting_price: prices.length ? Math.min(...prices) : 29 }
     })
-    const ids = databaseTracks.map((track: { id: string }) => track.id)
+    const ids = databaseTracks.map((track) => track.id)
     let credits: Array<{ track_id: string; person_name: string; credit_role: string }> = []
     if (ids.length) {
       const creditsResponse = await fetch(`${url}/rest/v1/track_credits?track_id=in.(${ids.join(',')})&is_verified=eq.true&select=track_id,person_name,credit_role`, { headers, next: { revalidate: 60 } })
       if (creditsResponse.ok) credits = await creditsResponse.json()
     }
-    const linkedTracks = legacyCreatorTracks[profile.username] || []
+    const publicUsername = resolvePublicHandle(profile.username) || profile.username
+    const linkedTracks =
+      legacyCreatorTracks[profile.username] ||
+      legacyCreatorTracks[publicUsername] ||
+      legacyCreatorTracks[handleKey] ||
+      []
     const trackArtwork =
-      databaseTracks.find((track: { artwork_url?: string }) => track.artwork_url)?.artwork_url ||
+      databaseTracks.find((track) => track.artwork_url)?.artwork_url ||
       linkedTracks.find((track) => track.artwork_url)?.artwork_url
     const beatArtwork = beats.find((beat: { artwork_url?: string }) => beat.artwork_url)?.artwork_url
     const role = profile.is_producer ? (profile.role === 'artist' ? 'BVS artist & producer' : 'BVS producer') : profile.role === 'artist' ? 'BVS artist' : profile.role
-    const publicTracks = databaseTracks.map((track: Omit<PublicArtistTrack, 'credits'>) => ({
+    const publicTracks = databaseTracks.map((track) => ({
       ...track,
       artwork_url: mediaUrlForStoredValue(track.artwork_url) || undefined,
+      isrc: track.isrc || undefined,
+      spotify_url: track.spotify_url || undefined,
       credits: credits.filter(credit => credit.track_id === track.id),
     }))
-    return { id: profile.id, username: profile.username, name: creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username }), role, bio: profile.bio || 'Verified creator on BVS Radio.', image: artistImage(profile.avatar_url, trackArtwork || beatArtwork), tracks: [...publicTracks, ...linkedTracks], beats, location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '), links: creatorDetails?.links || {}, joinedAt: profile.created_at }
-  } catch { return fallback[slug] || null }
+    const waitlistLinks = (creatorDetails?.links || {}) as { instagram?: string; spotify?: string; website?: string }
+    const links = {
+      ...waitlistLinks,
+      spotify:
+        waitlistLinks.spotify ||
+        profile.spotify_url ||
+        dsp?.spotify ||
+        undefined,
+      instagram: waitlistLinks.instagram || undefined,
+      website: waitlistLinks.website || undefined,
+    }
+    return {
+      id: profile.id,
+      username: publicUsername,
+      name: creatorPublicName({
+        publicName: profile.creator_public_name,
+        publicNameStatus: profile.creator_name_status,
+        username: profile.username,
+      }),
+      role,
+      bio: profile.bio || 'Verified creator on BVS Radio.',
+      image: artistImage(profile.avatar_url, trackArtwork || beatArtwork),
+      tracks: [...publicTracks, ...linkedTracks],
+      beats,
+      location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '),
+      links,
+      spotifyArtistId: profile.spotify_artist_id || dsp?.spotifyArtistId,
+      joinedAt: profile.created_at,
+    }
+  } catch {
+    return fallback[resolvedSlug] || fallback[handleKey] || fallback[slug] || null
+  }
 }
 
 export async function getPublishedProducers(): Promise<PublishedProducerSummary[]> {

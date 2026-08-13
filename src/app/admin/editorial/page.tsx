@@ -10,8 +10,9 @@ import { creatorPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 import EditorialAnalytics from '@/components/EditorialAnalytics'
 
-type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string }
-type Profile = { id: string; username: string; display_name?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string }
+type MobileClearance = { id?: string; track_id: string; surface: 'ios' | 'android'; status: 'not_reviewed' | 'cleared' | 'blocked'; rights_basis?: string; evidence_reference?: string; review_notes?: string; reviewed_at?: string }
+type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string; mobile_clearances?: MobileClearance[] }
+type Profile = { id: string; username: string; display_name?: string; avatar_url?: string; bio?: string; website_url?: string; location?: string; spotify_url?: string; created_at?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string; onboarding_artist_name?: string; onboarding_status?: string; onboarding_location?: string; social_links?: { instagram?: string; spotify?: string; website?: string } }
 type Programme = { id: string; slug: string; title: string; host: string; day_label: string; start_time?: string; timezone: string; status: string }
 type Credit = { id: string; track_id: string; person_name: string; credit_role: string }
 type Staff = { user_id: string; role: EditorialRole; active: boolean }
@@ -20,9 +21,11 @@ type TrackRequest = { id: string; track_id: string; artist_user_id: string; requ
 type ArtistWaitlist = { id: string; email: string; artist_name: string; country?: string; city?: string; status: string; source: string; created_at: string }
 type ArtistDeposit = { id: string; artist_user_id: string; amount: number | string; currency: string; status: string; source: string; created_at: string }
 type ArtistPayoutRequest = { id: string; artist_user_id: string; requested_amount: number | string; currency: string; status: string; requested_at: string }
-type Release = { id: string; title: string; artist_name: string; genre?: string; cover_url?: string; release_type?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; track_count: number; created_at: string; passport_version?: number; preflight_status?: string; preflight_blockers?: string[]; copyright_year?: number; master_owner_name?: string; composition_owner_names?: string[]; territories?: string[] }
-type ReleaseTrack = { id: string; release_id: string; position: number; title: string; file_url?: string; in_rotation?: boolean }
+type Release = { id: string; title: string; artist_name: string; genre?: string; cover_url?: string; release_type?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; track_count: number; created_at: string; passport_version?: number; preflight_status?: string; preflight_blockers?: string[]; copyright_year?: number; master_owner_name?: string; composition_owner_names?: string[]; territories?: string[]; material_types?: string[] }
+type ReleaseTrack = { id: string; release_id: string; position: number; title: string; file_url?: string; in_rotation?: boolean; isrc?: string | null; track_id?: string | null }
+type KnownIsrcMapEntry = { isrc: string; title?: string | null; artist_name?: string | null; upc?: string | null; spotify_album_url?: string | null; source?: string | null }
 type ReleaseContributor = { id: string; release_id: string; person_name: string; contribution_role: string; rights_confirmed: boolean }
+type ReleaseClearanceEvidence = { id: string; release_id: string; material_type: string; evidence_version: number; original_file_name: string; file_url?: string; artist_notes?: string; review_status: string; review_notes?: string }
 type MediaProcessingJob = { id: string; release_id: string; release_track_id: string; status: string; codec_name?: string; duration_seconds?: number; sample_rate?: number; channels?: number; loudness_lufs?: number; true_peak_db?: number; malware_status: string; blockers?: string[]; waveform_path?: string; preview_path?: string; error_code?: string }
 type DistJob = { id: string; release_id: string; status: string; distributor?: string | null; notes?: string | null }
 type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
@@ -30,7 +33,7 @@ type Beat = { id: string; producer_user_id: string; title: string; genre?: strin
 type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' | 'editor'; message: string; created_at: string }
 type TrackReviewMessage = { id: string; track_id: string; author_kind: 'artist' | 'editor'; message: string; created_at: string }
 type RoleApplication = { id: string; user_id: string; requested_role: string; status: string; message?: string; review_notes?: string; updated_at: string }
-type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; roleApplications?: RoleApplication[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; trackReviewMessages?: TrackReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; releaseContributors?: ReleaseContributor[]; mediaProcessingJobs?: MediaProcessingJob[]; distributionJobs?: DistJob[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
+type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; roleApplications?: RoleApplication[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; trackReviewMessages?: TrackReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; releaseContributors?: ReleaseContributor[]; releaseClearanceEvidence?: ReleaseClearanceEvidence[]; mediaProcessingJobs?: MediaProcessingJob[]; distributionJobs?: DistJob[]; knownIsrcMap?: KnownIsrcMapEntry[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
 const statusClass: Record<string, string> = { submitted: 'text-amber-300', pending: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary', not_submitted: 'text-text-secondary' }
 
@@ -43,8 +46,36 @@ export default function EditorialDashboard() {
   const [busy, setBusy] = useState('')
   const [loading, setLoading] = useState(configured)
 
-  const load = useCallback(async (accessToken: string) => {
-    const response = await fetch('/api/admin/editorial', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
+  const emptyData = useCallback((identity: EditorialData['identity']): EditorialData => ({
+    identity,
+    tracks: [],
+    profiles: [],
+    programmes: [],
+    credits: [],
+    staff: [],
+    auditLog: [],
+    trackRequests: [],
+    roleApplications: [],
+    beats: [],
+    beatReviewMessages: [],
+    trackReviewMessages: [],
+    releases: [],
+    releaseTracks: [],
+    releaseContributors: [],
+    releaseClearanceEvidence: [],
+    mediaProcessingJobs: [],
+    distributionJobs: [],
+    knownIsrcMap: [],
+    artistWaitlist: [],
+    artistDeposits: [],
+    artistPayoutRequests: [],
+  }), [])
+
+  const fetchSection = useCallback(async (accessToken: string, section: string) => {
+    const response = await fetch(`/api/admin/editorial?section=${encodeURIComponent(section)}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    })
     let payload: { error?: string } & Partial<EditorialData> = {}
     try {
       payload = await response.json()
@@ -52,9 +83,66 @@ export default function EditorialDashboard() {
       throw new Error(`Editorial server error (${response.status}). Try again in a moment.`)
     }
     if (!response.ok) throw new Error(payload.error || 'Could not load editorial dashboard.')
-    setData(payload as EditorialData)
-    setError('')
+    return payload
   }, [])
+
+  const mergeSection = useCallback((prev: EditorialData | null, payload: Partial<EditorialData>): EditorialData => {
+    const base = prev || emptyData(payload.identity as EditorialData['identity'])
+    const pick = <K extends keyof EditorialData>(key: K): EditorialData[K] =>
+      (Object.prototype.hasOwnProperty.call(payload, key) ? payload[key] : base[key]) as EditorialData[K]
+    return {
+      identity: payload.identity || base.identity,
+      tracks: pick('tracks') || [],
+      profiles: pick('profiles') || [],
+      programmes: pick('programmes') || [],
+      credits: pick('credits') || [],
+      staff: pick('staff') || [],
+      auditLog: pick('auditLog') || [],
+      trackRequests: pick('trackRequests') || [],
+      roleApplications: pick('roleApplications') || [],
+      beats: pick('beats') || [],
+      beatReviewMessages: pick('beatReviewMessages') || [],
+      trackReviewMessages: pick('trackReviewMessages') || [],
+      releases: pick('releases') || [],
+      releaseTracks: pick('releaseTracks') || [],
+      releaseContributors: pick('releaseContributors') || [],
+      releaseClearanceEvidence: pick('releaseClearanceEvidence') || [],
+      mediaProcessingJobs: pick('mediaProcessingJobs') || [],
+      distributionJobs: pick('distributionJobs') || [],
+      knownIsrcMap: pick('knownIsrcMap') || [],
+      artistWaitlist: pick('artistWaitlist') || [],
+      artistDeposits: pick('artistDeposits') || [],
+      artistPayoutRequests: pick('artistPayoutRequests') || [],
+    }
+  }, [emptyData])
+
+  const loadSections = useCallback(async (accessToken: string, sections: string[]) => {
+    const results = await Promise.all(sections.map((section) => fetchSection(accessToken, section)))
+    setData((prev) => {
+      let next = prev
+      for (const payload of results) {
+        next = mergeSection(next, payload)
+      }
+      return next
+    })
+    setError('')
+  }, [fetchSection, mergeSection])
+
+  const load = useCallback(async (accessToken: string, sections?: string[]) => {
+    if (sections?.length) {
+      await loadSections(accessToken, sections)
+      return
+    }
+    // Full parallel section load (default after bootstrap)
+    const bootstrap = await fetchSection(accessToken, 'bootstrap')
+    if (!bootstrap.identity) throw new Error('Could not load editorial identity.')
+    setData(mergeSection(null, bootstrap))
+    setError('')
+    const permissions = bootstrap.identity.permissions || []
+    const walletAllowed = permissions.includes('manage_artist_wallet')
+    const parallel = ['tracks', 'beats', 'releases', 'profiles', 'programmes', ...(walletAllowed ? ['wallet'] : [])]
+    await loadSections(accessToken, parallel)
+  }, [fetchSection, loadSections, mergeSection])
 
   const boot = useCallback(async () => {
     if (!configured) return
@@ -87,6 +175,17 @@ export default function EditorialDashboard() {
   }, [boot])
 
   const allowed = (permission: EditorialPermission) => Boolean(data?.identity.permissions.includes(permission))
+
+  const sectionsForAction = (action: string): string[] => {
+    if (/track|credit|rotation|licence|reclassif/i.test(action) && !/beat/i.test(action)) return ['tracks', 'bootstrap']
+    if (/beat/i.test(action)) return ['beats', 'bootstrap']
+    if (/release|clearance|dist|isrc|media_job|passport|preflight/i.test(action)) return ['releases', 'bootstrap']
+    if (/profile|publish_artist|verify|creator_name|role_app|staff/i.test(action)) return ['profiles', 'bootstrap']
+    if (/programme|schedule/i.test(action)) return ['programmes', 'bootstrap']
+    if (/wallet|deposit|payout|waitlist/i.test(action)) return ['wallet', 'bootstrap']
+    return ['tracks', 'beats', 'releases', 'profiles', 'programmes', 'bootstrap']
+  }
+
   const act = async (action: string, body: Record<string, unknown>) => {
     setBusy(`${action}-${String(body.trackId || body.beatId || body.profileId || body.slug || body.userId || '')}`)
     setError('')
@@ -94,7 +193,11 @@ export default function EditorialDashboard() {
       const response = await fetch('/api/admin/editorial', { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action, ...body }) })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'Editorial action failed.')
-      await load(token)
+      const secs = sectionsForAction(action)
+      if (allowed('manage_artist_wallet') && secs.includes('wallet') === false && /wallet|deposit|payout|waitlist/i.test(action)) {
+        secs.push('wallet')
+      }
+      await load(token, secs)
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Editorial action failed.') }
     finally { setBusy('') }
   }
@@ -127,7 +230,7 @@ export default function EditorialDashboard() {
             </>
           ) : (
             <Link
-              href="/auth/login?next=/admin/editorial"
+              href="/auth/login?next=/editorial"
               className="rounded-full bg-brand px-6 py-3 font-semibold text-black"
             >
               Sign in
@@ -139,10 +242,24 @@ export default function EditorialDashboard() {
   }
   if (loading || !data) return <main className="p-20 text-center text-text-secondary">Loading editorial workflow…</main>
 
-  const beatQueue = (data.beats || []).filter((b) =>
-    ['submitted', 'in_review', 'changes_requested', 'approved', 'published', 'rejected'].includes(b.status),
+  // — Queue = needs editorial action (submitted / in review / changes requested) —
+  // — Processed = decided (approved / rejected) but not yet published —
+  const beatNeedsReview = (data.beats || []).filter((b) =>
+    ['submitted', 'in_review', 'changes_requested'].includes(b.status),
   ).length
-  const trackQueue = data.tracks.filter((t) => ['submitted', 'in_review'].includes(t.editorial_status)).length
+  const beatProcessed = (data.beats || []).filter((b) =>
+    ['approved', 'published', 'rejected'].includes(b.status),
+  ).length
+  const beatQueue = beatNeedsReview  // badge = items needing action
+
+  const trackNeedsReview = data.tracks.filter((t) =>
+    ['submitted', 'in_review'].includes(t.editorial_status),
+  ).length
+  const trackProcessed = data.tracks.filter((t) =>
+    ['approved', 'rejected'].includes(t.editorial_status),
+  ).length
+  const trackQueue = trackNeedsReview  // only badge items needing action
+
   const requestQueue = data.trackRequests.filter((r) => ['open', 'reviewing'].includes(r.status)).length
   const roleQueue = (data.roleApplications || []).filter((application) =>
     ['submitted', 'information_requested'].includes(application.status),
@@ -150,9 +267,14 @@ export default function EditorialDashboard() {
   const identityQueue = data.profiles.filter((profile) =>
     ['pending', 'changes_requested'].includes(profile.creator_name_status || ''),
   ).length
-  const releaseQueue = (data.releases || []).filter((r) =>
-    ['submitted', 'in_review', 'approved'].includes(r.editorial_status),
+
+  const releaseNeedsReview = (data.releases || []).filter((r) =>
+    ['submitted', 'in_review'].includes(r.editorial_status),
   ).length
+  const releaseProcessed = (data.releases || []).filter((r) =>
+    ['approved', 'published', 'rejected'].includes(r.editorial_status),
+  ).length
+  const releaseQueue = releaseNeedsReview  // only badge items needing action
 
   const jump = [
     { id: 'ed-overview', label: 'Overview' },
@@ -188,6 +310,17 @@ export default function EditorialDashboard() {
         <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}</p>
       )}
 
+      <Link
+        href="/admin/creator-workflows"
+        className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand/[.06] p-5 transition hover:border-brand/60"
+      >
+        <div>
+          <p className="font-semibold">Writing &amp; Research Review</p>
+          <p className="mt-1 text-sm text-text-secondary">Approve research briefs for drafting and review articles returned by the BVS Editorial Desk.</p>
+        </div>
+        <span className="text-sm font-semibold text-brand">Open queue →</span>
+      </Link>
+
       <nav
         aria-label="Editorial sections"
         className="sticky top-16 z-30 -mx-2 mt-8 overflow-x-auto rounded-2xl border border-white/10 bg-bg-primary/90 px-2 py-2 backdrop-blur-md"
@@ -207,13 +340,13 @@ export default function EditorialDashboard() {
 
       <section id="ed-overview" className="mt-8 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
         {[
-          ['Awaiting review', trackQueue],
-          ['Artist requests', requestQueue],
-          ['Role applications', roleQueue],
-          ['Public names', identityQueue],
-          ['BeatStore queue', beatQueue],
+          ['Tracks needing review', trackNeedsReview],
+          ['Tracks processed', trackProcessed],
+          ['Beats needing review', beatNeedsReview],
+          ['Beats processed', beatProcessed],
+          ['Releases needing review', releaseNeedsReview],
+          ['Releases processed', releaseProcessed],
           ['Published', data.tracks.filter((t) => t.is_public).length],
-          ['In rotation', data.tracks.filter((t) => t.in_rotation).length],
         ].map(([label, value]) => (
           <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[.03] p-5">
             <p className="text-sm text-text-secondary">{label}</p>
@@ -222,6 +355,30 @@ export default function EditorialDashboard() {
         ))}
       </section>
 
+      <Link
+          href="/editorial/finance"
+          className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand/[.06] p-5 transition hover:border-brand/60"
+        >
+          <span>
+            <span className="block text-xs uppercase tracking-[.18em] text-brand">Accounting & performance</span>
+            <span className="mt-1 block text-lg font-semibold">Quarterly goals versus live BVS statistics</span>
+            <span className="mt-1 block text-sm text-text-secondary">Open the separate finance workspace for GMV, MRR, artist liabilities, controls and target charts.</span>
+          </span>
+          <span className="rounded-full border border-brand/40 px-4 py-2 text-sm text-brand">Open finance dashboard →</span>
+        </Link>
+
+      <Link
+          href="/editorial/marketplace"
+          className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-5 transition hover:border-brand/50"
+        >
+          <span>
+            <span className="block text-xs uppercase tracking-[.18em] text-brand">Creator Marketplace</span>
+            <span className="mt-1 block text-lg font-semibold">Review creator profiles, accomplishments and listings</span>
+            <span className="mt-1 block text-sm text-text-secondary">Approval is evidence-based. Premium never buys publication, ranking or verified claims.</span>
+          </span>
+          <span className="rounded-full border border-white/20 px-4 py-2 text-sm text-brand">Open marketplace review →</span>
+        </Link>
+
       <EditorialAnalytics token={token} />
 
       <EditorialDropDown id="ed-releases" label="Albums and EPs" count={releaseQueue} defaultOpen={releaseQueue > 0}>
@@ -229,8 +386,10 @@ export default function EditorialDashboard() {
           releases={data.releases || []}
           releaseTracks={data.releaseTracks || []}
           releaseContributors={data.releaseContributors || []}
+          releaseClearanceEvidence={data.releaseClearanceEvidence || []}
           mediaProcessingJobs={data.mediaProcessingJobs || []}
           distributionJobs={data.distributionJobs || []}
+          knownIsrcMap={data.knownIsrcMap || []}
           canApprove={allowed('approve_submissions')}
           canRotate={allowed('manage_rotation')}
           canDistro={allowed('manage_artist_wallet')}
@@ -263,6 +422,7 @@ export default function EditorialDashboard() {
               track={track}
               credits={data.credits.filter((c) => c.track_id === track.id)}
               messages={(data.trackReviewMessages || []).filter((message) => message.track_id === track.id)}
+              profile={data.profiles.find((profile) => profile.id === track.user_id)}
               allowed={allowed}
               act={act}
               busy={busy}
@@ -316,7 +476,7 @@ export default function EditorialDashboard() {
                   className="flex items-center justify-between gap-4 rounded-xl border border-white/10 p-4"
                 >
                   <div>
-                    <p className="font-medium">{creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })}</p>
+                    <ArtistReviewLink profile={profile} className="font-medium" />
                     <p className="text-xs text-text-secondary">
                       @{profile.username} · member name: {profile.display_name || 'not set'} · {profile.is_published ? 'Published and verified' : 'Not published'}
                     </p>
@@ -777,7 +937,7 @@ function BeatReviewThread({ beat, messages, profiles, act, busy }: { beat: Beat;
   </div>
 }
 
-function TrackCard({ track, credits, messages, allowed, act, busy }: { track: Track; credits: Credit[]; messages: TrackReviewMessage[]; allowed: (p: EditorialPermission) => boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
+function TrackCard({ track, profile, credits, messages, allowed, act, busy }: { track: Track; profile?: Profile; credits: Credit[]; messages: TrackReviewMessage[]; allowed: (p: EditorialPermission) => boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
   const [notes, setNotes] = useState(track.editorial_notes || '')
   const [message, setMessage] = useState('')
   const [messageOpen, setMessageOpen] = useState(false)
@@ -786,14 +946,23 @@ function TrackCard({ track, credits, messages, allowed, act, busy }: { track: Tr
   const [licenceSummary, setLicenceSummary] = useState(track.licence_summary || '')
   const [personName, setPersonName] = useState('')
   const [creditRole, setCreditRole] = useState('')
+  const iosClearance = track.mobile_clearances?.find((item) => item.surface === 'ios')
+  const [iosStatus, setIosStatus] = useState(iosClearance?.status || 'not_reviewed')
+  const [iosRightsBasis, setIosRightsBasis] = useState(iosClearance?.rights_basis || '')
+  const [iosEvidence, setIosEvidence] = useState(iosClearance?.evidence_reference || '')
+  const [iosNotes, setIosNotes] = useState(iosClearance?.review_notes || '')
   const disabled = Boolean(busy)
-  return <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div className="flex min-w-0 gap-4">{track.artwork_url?<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed border-white/15 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><h3 className="mt-1 text-xl font-semibold">{track.title}</h3><p className="text-sm text-text-secondary">{track.artist_name} · {track.genre} · {new Date(track.created_at).toLocaleDateString()}</p><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><audio controls preload="none" src={track.file_url} className="h-10 max-w-full" /></div>
+  return <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div className="flex min-w-0 gap-4">{track.artwork_url?<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed border-white/15 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><h3 className="mt-1 text-xl font-semibold">{track.title}</h3><p className="text-sm text-text-secondary">{profile ? <ArtistReviewLink profile={profile} label={track.artist_name} /> : track.artist_name} · {track.genre} · {new Date(track.created_at).toLocaleDateString()}</p><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><audio controls preload="none" src={track.file_url} className="h-10 max-w-full" /></div>
     {allowed('approve_submissions') && <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]"><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Private review notes" className="min-h-20 rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"/><div className="flex flex-wrap items-start gap-2"><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'in_review', notes })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Review</button><button disabled={disabled} onClick={() => setMessageOpen(open => !open)} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{messageOpen ? 'Close message' : 'Send message'}</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'approved', notes })} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'rejected', notes })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button><button disabled={disabled} onClick={async () => { if (!window.confirm(`Move “${track.title}” from Singles to the BeatStore review queue?`)) return; await act('reclassify_track_as_beat', { trackId: track.id }) }} className="rounded-full border border-amber-300/60 px-4 py-2 text-xs text-amber-200">Move to BeatStore</button>{track.editorial_status === 'approved' && <button disabled={disabled} onClick={() => act('publish_track', { trackId: track.id, publish: !track.is_public })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{track.is_public ? 'Unpublish track' : 'Publish track'}</button>}</div></div>}
     {messageOpen && <div className="mt-4 rounded-xl border border-brand/20 bg-black/20 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>{messages.length > 0 && <div className="mt-3 max-h-44 space-y-2 overflow-y-auto">{messages.map(item => <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs"><span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}<span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span></p>)}</div>}<div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><textarea autoFocus value={message} onChange={e => setMessage(e.target.value)} maxLength={2000} placeholder="Message the uploader about classification, rights, artwork or requested changes…" className="min-h-24 rounded-lg border border-white/10 bg-black/20 p-3 text-sm"/><button disabled={disabled || !message.trim()} onClick={async () => { await act('message_track', { trackId: track.id, message }); setMessage('') }} className="self-start rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Post message</button></div></div>}
     <div className="mt-5 grid gap-5 border-t border-white/10 pt-5 lg:grid-cols-3">
       <div><h4 className="text-sm font-semibold">Rotation</h4><p className="mt-1 text-xs text-text-secondary">{track.in_rotation ? 'Included in the station player' : 'Not in rotation'}</p>{allowed('manage_rotation') && <button disabled={disabled} onClick={() => act('set_rotation', { trackId: track.id, enabled: !track.in_rotation })} className="mt-3 rounded-full border border-white/20 px-4 py-2 text-xs">{track.in_rotation ? 'Remove' : 'Add to rotation'}</button>}</div>
       <div><h4 className="text-sm font-semibold">Licensing &amp; price</h4>{allowed('manage_licensing') ? <div className="mt-2 space-y-2"><select value={licenceType} onChange={e => setLicenceType(e.target.value)} className="w-full rounded-lg border border-white/10 bg-bg-primary p-2 text-xs"><option value="not_for_sale">Not for sale</option><option value="personal_download">Personal download</option><option value="standard_lease">Standard lease</option><option value="exclusive">Exclusive</option><option value="custom">Custom</option></select><input type="number" min="0" step="0.01" value={price} onChange={e => setPrice(e.target.value)} className="w-full rounded-lg border border-white/10 bg-black/20 p-2 text-xs" placeholder="USD price"/><input value={licenceSummary} onChange={e => setLicenceSummary(e.target.value)} className="w-full rounded-lg border border-white/10 bg-black/20 p-2 text-xs" placeholder="Rights summary"/><button disabled={disabled} onClick={() => act('manage_license', { trackId: track.id, licenceType, price, summary: licenceSummary })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">Save terms</button></div> : <p className="mt-1 text-xs text-text-secondary">{track.licence_type} · ${track.download_price}</p>}</div>
       <div><h4 className="text-sm font-semibold">Verified credits</h4><ul className="mt-2 space-y-1 text-xs text-text-secondary">{credits.map(c => <li key={c.id}>{c.person_name} — {c.credit_role}</li>)}</ul>{allowed('verify_credits') && <div className="mt-2 space-y-2"><input value={personName} onChange={e => setPersonName(e.target.value)} className="w-full rounded-lg border border-white/10 bg-black/20 p-2 text-xs" placeholder="Person / artist"/><input value={creditRole} onChange={e => setCreditRole(e.target.value)} className="w-full rounded-lg border border-white/10 bg-black/20 p-2 text-xs" placeholder="Producer, writer, engineer…"/><button disabled={disabled || !personName || !creditRole} onClick={() => act('add_credit', { trackId: track.id, personName, creditRole })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">Verify credit</button></div>}</div>
+    </div>
+    <div className="mt-5 border-t border-white/10 pt-5">
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h4 className="text-sm font-semibold">Mobile distribution</h4><p className="mt-1 text-xs text-text-secondary">iOS is active now. Android uses the same evidence gate later.</p></div><span className={`rounded-full px-3 py-1 text-xs ${iosStatus === 'cleared' ? 'bg-emerald-400/10 text-emerald-200' : iosStatus === 'blocked' ? 'bg-red-400/10 text-red-200' : 'bg-white/5 text-text-secondary'}`}>iOS · {iosStatus.replaceAll('_', ' ')}</span></div>
+      {allowed('approve_submissions') && <div className="mt-3 grid gap-2 md:grid-cols-2"><select value={iosStatus} onChange={e => setIosStatus(e.target.value as MobileClearance['status'])} className="rounded-lg border border-white/10 bg-bg-primary p-2 text-xs"><option value="not_reviewed">Not reviewed</option><option value="cleared">Cleared for iOS</option><option value="blocked">Blocked from iOS</option></select><input value={iosRightsBasis} onChange={e => setIosRightsBasis(e.target.value)} placeholder="Rights basis: founder-owned / direct licence" className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs"/><input value={iosEvidence} onChange={e => setIosEvidence(e.target.value)} placeholder="Evidence reference / agreement ID" className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs"/><input value={iosNotes} onChange={e => setIosNotes(e.target.value)} placeholder="Private review notes" className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs"/><button disabled={disabled || (iosStatus === 'cleared' && (!iosRightsBasis.trim() || !iosEvidence.trim()))} onClick={() => act('set_mobile_clearance', { trackId: track.id, surface: 'ios', status: iosStatus, rightsBasis: iosRightsBasis, evidenceReference: iosEvidence, notes: iosNotes })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40 md:col-span-2">Save iOS clearance</button></div>}
     </div>
   </article>
 }
@@ -811,8 +980,58 @@ function ProgrammePanel({ programmes, enabled, act }: { programmes: Programme[];
 }
 
 function StaffPanel({ profiles, staff, act }: { profiles: Profile[]; staff: Staff[]; act: (action: string, body: Record<string, unknown>) => Promise<void> }) {
-  const [userId, setUserId] = useState(''); const [role, setRole] = useState<EditorialRole>('editor')
-  return <section className="mt-14"><h2 className="text-2xl font-semibold">Staff roles</h2><p className="mt-2 text-sm text-text-secondary">Only administrators can assign these permissions.</p><div className="mt-5 grid gap-3 md:grid-cols-2">{staff.map(member => { const p=profiles.find(profile=>profile.id===member.user_id); return <div key={member.user_id} className="rounded-xl border border-white/10 p-4"><p className="font-medium">{p?.display_name || p?.username || member.user_id}</p><p className="text-xs text-text-secondary">{roleLabels[member.role]} · {member.active ? 'active' : 'disabled'}</p></div>})}</div><div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-white/10 p-4"><select value={userId} onChange={e=>setUserId(e.target.value)} className="min-w-56 rounded-lg border border-white/10 bg-bg-primary p-2 text-sm"><option value="">Select account</option>{profiles.map(p=><option key={p.id} value={p.id}>{p.display_name || p.username}</option>)}</select><select value={role} onChange={e=>setRole(e.target.value as EditorialRole)} className="rounded-lg border border-white/10 bg-bg-primary p-2 text-sm">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><button disabled={!userId} onClick={()=>act('assign_staff',{userId,role,active:true})} className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Assign role</button></div></section>
+  const [userId, setUserId] = useState('')
+  const [role, setRole] = useState<EditorialRole>('editor')
+  const save = (member: Staff, nextRole: EditorialRole, active: boolean) =>
+    act('assign_staff', { userId: member.user_id, role: nextRole, active })
+  const assignableRoles = Object.entries(roleLabels).filter(([value]) => value !== 'founder')
+  return <section className="mt-14"><h2 className="text-2xl font-semibold">Staff roles</h2><p className="mt-2 text-sm text-text-secondary">The Founder is the protected highest authority. Administrators can manage all other staff roles, while at least one active administrator must remain.</p><div className="mt-5 grid gap-3 md:grid-cols-2">{staff.map(member => { const p=profiles.find(profile=>profile.id===member.user_id); return <StaffRoleCard key={member.user_id} member={member} name={p?.display_name || p?.username || member.user_id} save={save} />})}</div><div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-white/10 p-4"><select value={userId} onChange={e=>setUserId(e.target.value)} className="min-w-56 rounded-lg border border-white/10 bg-bg-primary p-2 text-sm"><option value="">Select account</option>{profiles.filter(p=>!staff.some(member=>member.user_id===p.id)).map(p=><option key={p.id} value={p.id}>{p.display_name || p.username}</option>)}</select><select value={role} onChange={e=>setRole(e.target.value as EditorialRole)} className="rounded-lg border border-white/10 bg-bg-primary p-2 text-sm">{assignableRoles.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><button disabled={!userId} onClick={()=>act('assign_staff',{userId,role,active:true})} className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Add staff member</button></div></section>
+}
+
+function socialUrl(kind: 'instagram' | 'spotify' | 'website', value?: string) {
+  const clean = String(value || '').trim()
+  if (!clean) return ''
+  if (/^https?:\/\//i.test(clean)) return clean
+  if (kind === 'instagram') return `https://instagram.com/${clean.replace(/^@/, '')}`
+  return `https://${clean.replace(/^\/+/, '')}`
+}
+
+function ArtistReviewLink({ profile, label, className = '' }: { profile: Profile; label?: string; className?: string }) {
+  const [open, setOpen] = useState(false)
+  const publicName = creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })
+  const links = {
+    instagram: socialUrl('instagram', profile.social_links?.instagram),
+    spotify: socialUrl('spotify', profile.social_links?.spotify || profile.spotify_url),
+    website: socialUrl('website', profile.social_links?.website || profile.website_url),
+  }
+  const avatar = mediaUrlForStoredValue(profile.avatar_url) || ''
+  return <>
+    <button type="button" onClick={() => setOpen(true)} className={`text-left text-brand underline decoration-brand/40 underline-offset-4 hover:text-white ${className}`}>{label || publicName}</button>
+    {open && <div className="fixed inset-0 z-[100] grid place-items-center bg-black/80 p-4" role="dialog" aria-modal="true" aria-label={`Review ${publicName}`} onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false) }}>
+      <article className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-white/15 bg-bg-primary p-6 shadow-2xl">
+        <div className="flex items-start justify-between gap-4"><div className="flex min-w-0 items-center gap-4">{avatar ? <Image src={avatar} alt={`${publicName} profile`} width={88} height={88} unoptimized={/^https?:\/\//i.test(avatar)} className="h-20 w-20 shrink-0 rounded-2xl object-cover ring-1 ring-white/15" /> : <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-white/5 text-2xl text-brand">{publicName.slice(0,1).toUpperCase()}</div>}<div className="min-w-0"><p className="text-xs uppercase tracking-[.2em] text-brand">Artist credibility review</p><h2 className="mt-1 truncate text-3xl font-semibold">{publicName}</h2><p className="text-sm text-text-secondary">@{profile.username}{profile.onboarding_artist_name && profile.onboarding_artist_name !== publicName ? ` · applied as ${profile.onboarding_artist_name}` : ''}</p></div></div><button type="button" onClick={() => setOpen(false)} className="rounded-full border border-white/20 px-3 py-1.5 text-sm">Close</button></div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3"><ReviewFact label="Account" value={profile.is_verified ? 'Verified' : 'Not verified'} /><ReviewFact label="Publishing" value={profile.is_published ? 'Published' : 'Not published'} /><ReviewFact label="Joined" value={profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'} /></div>
+        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[.025] p-5"><h3 className="font-semibold">Profile and location</h3><p className="mt-2 whitespace-pre-wrap text-sm text-text-secondary">{profile.bio || 'No artist biography supplied.'}</p><p className="mt-3 text-sm text-brand">{profile.onboarding_location || profile.location || 'No location supplied'}</p></div>
+        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[.025] p-5"><h3 className="font-semibold">Social presence</h3><p className="mt-1 text-xs text-text-secondary">Open each submitted account and check identity consistency, audience history, releases and engagement quality.</p><div className="mt-4 flex flex-wrap gap-3">{links.instagram && <ExternalReviewLink href={links.instagram} label="Instagram ↗" />}{links.spotify && <ExternalReviewLink href={links.spotify} label="Spotify / DSP ↗" />}{links.website && <ExternalReviewLink href={links.website} label="Website / link hub ↗" />}{!links.instagram && !links.spotify && !links.website && <p className="text-sm text-amber-200">No social or DSP links were submitted.</p>}</div></div>
+        {profile.is_published && <Link href={`/artist/${profile.username}`} target="_blank" rel="noreferrer" className="mt-5 inline-flex rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Open public BVS profile ↗</Link>}
+      </article>
+    </div>}
+  </>
+}
+
+function ReviewFact({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-xl border border-white/10 p-3"><p className="text-[11px] uppercase tracking-wider text-text-secondary">{label}</p><p className="mt-1 text-sm font-medium">{value}</p></div>
+}
+
+function ExternalReviewLink({ href, label }: { href: string; label: string }) {
+  return <a href={href} target="_blank" rel="noopener noreferrer" className="rounded-full border border-brand/50 px-4 py-2 text-sm text-brand hover:bg-brand hover:text-black">{label}</a>
+}
+
+function StaffRoleCard({ member, name, save }: { member: Staff; name: string; save: (member: Staff, role: EditorialRole, active: boolean) => Promise<void> }) {
+  const [role, setRole] = useState<EditorialRole>(member.role)
+  const changed = role !== member.role
+  if (member.role === 'founder') return <div className="rounded-xl border border-brand/40 bg-brand/[.04] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{name}</p><p className="text-xs text-text-secondary">Full platform authority · protected from staff-role changes</p></div><span className="rounded-full bg-brand/15 px-2.5 py-1 text-[11px] font-semibold text-brand">Founder</span></div></div>
+  return <div className="rounded-xl border border-white/10 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-medium">{name}</p><p className="text-xs text-text-secondary">{member.active ? 'Active staff access' : 'Access disabled'}</p></div><span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${member.active ? 'bg-emerald-400/10 text-emerald-300' : 'bg-white/5 text-text-secondary'}`}>{member.active ? 'Active' : 'Disabled'}</span></div><div className="mt-4 flex flex-wrap gap-2"><select value={role} onChange={e=>setRole(e.target.value as EditorialRole)} className="min-w-44 rounded-lg border border-white/10 bg-bg-primary p-2 text-sm">{Object.entries(roleLabels).filter(([value])=>value!=='founder').map(([value,label])=><option key={value} value={value}>{label}</option>)}</select><button disabled={!changed} onClick={()=>save(member,role,member.active)} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40">Save role</button><button onClick={()=>save(member,role,!member.active)} className={`rounded-full px-4 py-2 text-xs font-semibold ${member.active ? 'border border-red-300/40 text-red-200' : 'border border-emerald-300/40 text-emerald-200'}`}>{member.active ? 'Disable access' : 'Restore access'}</button></div></div>
 }
 
 function ArtistWalletPanel({ waitlist, deposits, payoutRequests, profiles }: { waitlist: ArtistWaitlist[]; deposits: ArtistDeposit[]; payoutRequests: ArtistPayoutRequest[]; profiles: Profile[] }) {

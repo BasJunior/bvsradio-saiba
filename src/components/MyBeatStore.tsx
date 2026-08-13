@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import { isAllowedAudioFile } from '@/lib/audio-formats'
 
 type Licence = {
   id?: string
@@ -32,26 +33,52 @@ type Beat = {
   }>
 }
 
+type BeatEntitlements = {
+  planId?: string
+  tier?: string
+  beatLiveLimit?: number | null
+  liveCount?: number
+  remaining?: number | null
+  softWarn?: boolean
+  canGoLive?: boolean
+  marketplaceCommissionBps?: number
+}
+
 const field =
   'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
 
-async function putSigned(slot: { signedUrl: string; path: string; contentType?: string }, file: File) {
+function validateArtwork(file: File) {
+  if (!/\.(jpe?g|png|webp)$/i.test(file.name)) return 'Cover art must be JPG, PNG, or WebP.'
+  if (!file.size) return 'The selected cover art is empty.'
+  if (file.size > 8 * 1024 * 1024) return 'Cover art must be 8MB or smaller.'
+  return ''
+}
+
+async function putSigned(slot: { signedUrl: string; path: string; contentType?: string }, file: File, onProgress: (percent: number) => void) {
   const contentType = file.type || (file.name.match(/\.png$/i) ? 'image/png' : file.name.match(/\.webp$/i) ? 'image/webp' : file.name.match(/\.(jpe?g)$/i) ? 'image/jpeg' : 'application/octet-stream')
-  const res = await fetch(slot.signedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': slot.contentType || contentType },
-    body: file,
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('PUT', slot.signedUrl)
+    xhr.setRequestHeader('Content-Type', slot.contentType || contentType)
+    xhr.upload.onprogress = event => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100))
+    }
+    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed for ${file.name}.`))
+    xhr.onerror = () => reject(new Error(`Upload failed for ${file.name}. Check your connection and retry.`))
+    xhr.send(file)
   })
-  if (!res.ok) throw new Error(`Upload failed for ${file.name}`)
   return slot.path
 }
 
-export default function MyBeatStore() {
+export default function MyBeatStore({ creationOnly = false }: { creationOnly?: boolean }) {
+  const supabaseReady = isSupabaseConfigured()
   const [token, setToken] = useState('')
   const [beats, setBeats] = useState<Beat[]>([])
-  const [error, setError] = useState('')
+  const [entitlements, setEntitlements] = useState<BeatEntitlements | null>(null)
+  const [error, setError] = useState(supabaseReady ? '' : 'Supabase is not configured.')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [genre, setGenre] = useState('Hip-Hop')
@@ -72,13 +99,11 @@ export default function MyBeatStore() {
     const payload = await res.json().catch(() => ({}))
     if (!res.ok) throw new Error(payload.error || 'Could not load BeatStore.')
     setBeats(payload.beats || [])
+    setEntitlements(payload.entitlements || null)
   }, [])
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setError('Supabase is not configured.')
-      return
-    }
+    if (!supabaseReady) return
     createClient()
       .auth.getSession()
       .then(({ data }) => {
@@ -88,9 +113,11 @@ export default function MyBeatStore() {
           return
         }
         setToken(t)
-        load(t).catch((e) => setError(e instanceof Error ? e.message : 'Load failed'))
+        if (!creationOnly) {
+          load(t).catch((e) => setError(e instanceof Error ? e.message : 'Load failed'))
+        }
       })
-  }, [load])
+  }, [creationOnly, load, supabaseReady])
 
   const onSubmit = async (e: FormEvent, submit: boolean) => {
     e.preventDefault()
@@ -102,6 +129,14 @@ export default function MyBeatStore() {
       if (!title.trim()) throw new Error('Title is required.')
       if (!rights) throw new Error('Confirm rights before saving.')
       if (submit && !preview) throw new Error('Upload a tagged preview before submitting.')
+      for (const file of [preview, master].filter((value): value is File => Boolean(value))) {
+        const check = isAllowedAudioFile(file)
+        if (!check.ok) throw new Error(check.error)
+      }
+      if (artwork) {
+        const artworkError = validateArtwork(artwork)
+        if (artworkError) throw new Error(artworkError)
+      }
 
       let previewPath: string | null = null
       let masterPath: string | null = null
@@ -129,11 +164,12 @@ export default function MyBeatStore() {
         const prep = await prepRes.json().catch(() => ({}))
         if (!prepRes.ok) throw new Error(prep.error || 'Could not prepare uploads.')
         const slots = prep.slots || {}
-        if (preview && slots.preview) previewPath = await putSigned(slots.preview, preview)
-        if (master && slots.master) masterPath = await putSigned(slots.master, master)
-        if (artwork && slots.artwork) artworkPath = await putSigned(slots.artwork, artwork)
+        if (preview && slots.preview) previewPath = await putSigned(slots.preview, preview, percent => setUploadProgress(`Tagged preview · ${preview.name}: ${percent}%`))
+        if (master && slots.master) masterPath = await putSigned(slots.master, master, percent => setUploadProgress(`Master · ${master.name}: ${percent}%`))
+        if (artwork && slots.artwork) artworkPath = await putSigned(slots.artwork, artwork, percent => setUploadProgress(`Cover · ${artwork.name}: ${percent}%`))
       }
 
+      setUploadProgress(submit ? 'Submitting for editorial review…' : 'Saving draft…')
       const createRes = await fetch('/api/beats', {
         method: 'POST',
         headers: {
@@ -166,11 +202,12 @@ export default function MyBeatStore() {
       setMaster(null)
       setArtwork(null)
       setRights(false)
-      await load(token)
+      if (!creationOnly) await load(token)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed.')
     } finally {
       setBusy(false)
+      setUploadProgress('')
     }
   }
 
@@ -227,7 +264,7 @@ export default function MyBeatStore() {
       <section className="mt-10 rounded-2xl border border-white/10 p-6">
         <h2 className="text-2xl">My BeatStore</h2>
         <p className="mt-3 text-text-secondary">{error}</p>
-        <Link href="/auth/login?next=/creator/studio" className="mt-4 inline-block text-brand">
+        <Link href={`/auth/login?next=${creationOnly ? '/upload' : '/creator/studio'}`} className="mt-4 inline-block text-brand">
           Sign in →
         </Link>
       </section>
@@ -235,19 +272,55 @@ export default function MyBeatStore() {
   }
 
   return (
-    <section className="mt-10">
+    <section className={creationOnly ? '' : 'mt-10'}>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-brand">Producer</p>
-          <h2 className="mt-1 text-2xl">My BeatStore</h2>
+          <h2 className="mt-1 text-2xl">{creationOnly ? 'Upload a single beat' : 'My BeatStore'}</h2>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
             Upload a tagged preview, set a Standard lease price, and submit for editorial. Published
-            beats appear in Beats / BeatStore.
+            beats appear in Beats / BeatStore. Live limits only apply when a beat goes public for sale
+            — drafts and in-review do not count.
           </p>
+          {entitlements && (
+            <div
+              className={`mt-3 rounded-xl border px-4 py-3 text-sm ${
+                entitlements.canGoLive === false
+                  ? 'border-amber-400/40 bg-amber-500/10 text-amber-50'
+                  : entitlements.softWarn
+                    ? 'border-brand/40 bg-brand/10 text-brand'
+                    : 'border-white/10 bg-white/[0.03] text-text-secondary'
+              }`}
+            >
+              <p className="font-medium text-white">
+                Live for sale:{' '}
+                {entitlements.beatLiveLimit == null
+                  ? `${entitlements.liveCount ?? 0} (fair-use / unlimited)`
+                  : `${entitlements.liveCount ?? 0} / ${entitlements.beatLiveLimit}`}
+              </p>
+              <p className="mt-1 text-xs opacity-90">
+                Tier: {entitlements.tier || 'free'}
+                {typeof entitlements.marketplaceCommissionBps === 'number'
+                  ? ` · platform fee ${(entitlements.marketplaceCommissionBps / 100).toFixed(0)}%`
+                  : ''}
+                {entitlements.canGoLive === false
+                  ? ' · Limit reached — archive a live beat or upgrade on Premium before new go-live.'
+                  : entitlements.softWarn
+                    ? ' · Near your live limit — upgrade anytime on /premium.'
+                    : ' · Growth-era free tier allows up to 25 live beats.'}
+              </p>
+            </div>
+          )}
         </div>
-        <Link href="/catalogue?type=beat#beatstore" className="text-sm text-brand">
-          View public BeatStore →
-        </Link>
+        {creationOnly ? (
+          <Link href="/creator/studio" className="text-sm text-brand">
+            Manage my beats →
+          </Link>
+        ) : (
+          <Link href="/catalogue?type=beat#beatstore" className="text-sm text-brand">
+            View public BeatStore →
+          </Link>
+        )}
       </div>
 
       {error && <p className="mt-4 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}
@@ -359,13 +432,15 @@ export default function MyBeatStore() {
             {busy ? 'Working…' : 'Submit for review'}
           </button>
         </div>
+        {uploadProgress && <p className="text-sm text-brand" role="status">{uploadProgress}</p>}
         <p className="text-xs text-text-secondary">
-          MVP uses one Standard lease tier. Full legal licence copy is finalized by BVS before
-          multi-tier commerce.
+          Licence tiers: Standard Lease ($15–$50), Premium Lease ($50–$200), Exclusive ($200–$2000).
+          Your listed price is authoritative at checkout (server-resolved from your licence option).
+          Full versioned terms are snapshotted at purchase so later template edits do not change what the buyer accepted.
         </p>
       </form>
 
-      <div className="mt-8 space-y-3">
+      {!creationOnly && <div className="mt-8 space-y-3">
         <h3 className="text-xl">Your beats</h3>
         {beats.map((beat) => {
           const priceUsd = beat.beat_licence_options?.[0]?.price_usd
@@ -418,7 +493,7 @@ export default function MyBeatStore() {
             No beats yet. Add your first listing above.
           </p>
         )}
-      </div>
+      </div>}
     </section>
   )
 }

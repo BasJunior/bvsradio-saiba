@@ -35,6 +35,8 @@ export type BeatRow = {
   created_at?: string
   updated_at?: string
   published_at?: string | null
+  pack_id?: string | null
+  pack_position?: number | null
 }
 
 export type BeatLicenceRow = {
@@ -150,10 +152,14 @@ export async function listBeatsForProducer(userId: string) {
 }
 
 export async function listPublishedBeats(limit = 48) {
+  if (!url || !service) {
+    console.warn("listPublishedBeats: missing Supabase env — returning no beats")
+    return []
+  }
   // Prefer embed with licences; fall back if relationship/filter fails so published beats still show.
   const withLicences = await fetch(
     creatorUrl(
-      `beats?is_public=eq.true&status=eq.published&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,created_at,published_at,beat_licence_options(id,licence_code,licence_name,price_usd,currency,is_active,is_sold_out)&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
+      `beats?is_public=eq.true&status=eq.published&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,pack_id,pack_position,created_at,published_at,beat_licence_options(id,licence_code,licence_name,price_usd,currency,is_active,is_sold_out)&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
     ),
     { headers: creatorHeaders, cache: 'no-store' },
   )
@@ -171,7 +177,7 @@ export async function listPublishedBeats(limit = 48) {
 
   const plain = await fetch(
     creatorUrl(
-      `beats?is_public=eq.true&status=eq.published&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,created_at,published_at&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
+      `beats?is_public=eq.true&status=eq.published&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,pack_id,pack_position,created_at,published_at&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
     ),
     { headers: creatorHeaders, cache: 'no-store' },
   )

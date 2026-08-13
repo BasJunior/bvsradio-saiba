@@ -11,6 +11,8 @@ import {
   detectBrowserCountry,
   type TaxBreakdown,
 } from "@/lib/tax";
+import { clearCartLines, writeCartLines } from "@/lib/cart-client";
+import { MARKETPLACE_BASKET_TARGET_USD } from "@/lib/marketplace-economics";
 
 interface CartItem {
   id: string | number;
@@ -22,6 +24,8 @@ interface CartItem {
   src?: string;
   delivery?: string;
   artwork?: string;
+  /** Selected beat_licence_options.id — preserved so server can resolve the authoritative licence SKU/price. */
+  licence_option_id?: string;
 }
 
 interface Customer {
@@ -47,57 +51,38 @@ interface OrderResult {
   total?: number;
 }
 
+/** Live checkout rails only — no WhatsApp cosplay methods. */
 const paymentMethodsBase = [
   {
     id: "paynow",
-    label: "Paynow (EcoCash, cards, OneMoney)",
-    detail: "Zimbabwe Paynow checkout — EcoCash and more on their secure page.",
-    needsPaynow: true,
-  },
-  {
-    id: "ecocash",
-    label: "EcoCash push (ZW number)",
-    detail: "Enter a Zimbabwe EcoCash number in WhatsApp field — Paynow sends a phone prompt.",
+    label: "Paynow (EcoCash, OneMoney & local)",
+    detail: "Pay on Paynow’s secure page — EcoCash, OneMoney, and local cards.",
     needsPaynow: true,
   },
   {
     id: "card",
     label: "International card (Stripe)",
-    detail: "Visa / Mastercard when Stripe is connected.",
+    detail: "Visa / Mastercard on Stripe’s secure checkout.",
     needsStripe: true,
-  },
-  {
-    id: "mobile_money",
-    label: "EcoCash / mobile money (manual)",
-    detail: "Place order, pay, WhatsApp proof with your reference to BVS.",
-    needsStripe: false,
-  },
-  {
-    id: "manual_bank",
-    label: "Bank transfer",
-    detail: "Larger service orders. BVS confirms details on WhatsApp.",
-    needsStripe: false,
-  },
-  {
-    id: "paypal",
-    label: "PayPal",
-    detail: "International. Confirm address with BVS on WhatsApp.",
-    needsStripe: false,
   },
 ];
 
 function priceFor(item: CartItem) {
-  // Prefer price stamped at add-to-cart from catalogue (singles $2, albums explicit, beats $29…)
-  if (typeof item.price === "number" && Number.isFinite(item.price)) return item.price;
-  if (item.price !== undefined && Number.isFinite(Number(item.price))) return Number(item.price);
+  // Client display only. /api/orders always resolves the authoritative server price.
+  if (typeof item.price === "number" && Number.isFinite(item.price))
+    return item.price;
+  if (item.price !== undefined && Number.isFinite(Number(item.price)))
+    return Number(item.price);
   if (item.type === "beat") return 29;
   if (item.type === "mix") return 4;
   if (item.type === "service") return 69;
-  // Album / archive single default
   return 2;
 }
 
 function normalizeItem(item: CartItem): CartItem {
+  const albumPackage = Boolean(
+    (item as CartItem & { albumPackage?: boolean }).albumPackage,
+  );
   return {
     ...item,
     type: item.type || "single",
@@ -107,7 +92,9 @@ function normalizeItem(item: CartItem): CartItem {
       item.delivery ||
       (item.type === "service"
         ? "BVS contacts you for stems/brief, then delivers masters."
-        : "Download / license released after payment is confirmed."),
+        : albumPackage
+          ? "Full release package — download link after payment when the album zip is staged (albums/<release-id>.zip), otherwise BVS delivers via WhatsApp/email."
+          : "Download / license released after payment is confirmed."),
   };
 }
 
@@ -131,9 +118,13 @@ function serviceFromQuery() {
 export default function CheckoutPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const [customer, setCustomer] = useState<Customer>({ name: "", email: "", whatsapp: "" });
+  const [customer, setCustomer] = useState<Customer>({
+    name: "",
+    email: "",
+    whatsapp: "",
+  });
   const [projectNotes, setProjectNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("mobile_money");
+  const [paymentMethod, setPaymentMethod] = useState("paynow");
   const [stripeReady, setStripeReady] = useState(false);
   const [paynowReady, setPaynowReady] = useState(false);
   const [whatsapp, setWhatsapp] = useState<string | null>("+491706580888");
@@ -161,8 +152,6 @@ export default function CheckoutPage() {
     } else if (!savedCart && queryItem) {
       initial = [queryItem];
     }
-    // Hydrate browser-owned cart state after mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setItems(initial);
     setCountryCode(detectBrowserCountry());
     setCancelled(new URLSearchParams(window.location.search).has("cancelled"));
@@ -183,13 +172,40 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (!hydrated) return;
-    window.localStorage.setItem("bvs_cart", JSON.stringify(items));
+    writeCartLines(items as unknown as Array<Record<string, unknown>>);
   }, [items, hydrated]);
 
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + priceFor(item) * (item.quantity || 1), 0),
+    () =>
+      items.reduce(
+        (sum, item) => sum + priceFor(item) * (item.quantity || 1),
+        0,
+      ),
     [items],
   );
+
+  const lowTicketDigitalOnly = useMemo(
+    () =>
+      items.length > 0 &&
+      items.every((item) => ["single", "mix"].includes(item.type || "single")),
+    [items],
+  );
+  const hasCreatorService = items.some(
+    (item) => item.type === "creator_service",
+  );
+  const belowBasketTarget =
+    lowTicketDigitalOnly &&
+    subtotal > 0 &&
+    subtotal < MARKETPLACE_BASKET_TARGET_USD;
+
+  useEffect(() => {
+    if (!belowBasketTarget) return;
+    trackEvent("small_basket_nudge_shown", {
+      subtotal,
+      target: MARKETPLACE_BASKET_TARGET_USD,
+      item_count: items.length,
+    });
+  }, [belowBasketTarget, items.length, subtotal]);
 
   const tax: TaxBreakdown = useMemo(
     () =>
@@ -204,28 +220,52 @@ export default function CheckoutPage() {
   const total = tax.total;
 
   const methods = paymentMethodsBase.filter((m) => {
-    if ("needsPaynow" in m && m.needsPaynow) return paynowReady;
-    if ("needsStripe" in m && m.needsStripe) return stripeReady;
-    return true;
+    if (m.needsPaynow) return paynowReady;
+    if (m.needsStripe) return stripeReady;
+    return false;
   });
 
-  const removeItem = (id: string | number) => setItems(items.filter((i) => i.id !== id));
+  const hasServiceItems = items.some((i) => i.type === "service");
+
+  const removeItem = (id: string | number) =>
+    setItems(items.filter((i) => i.id !== id));
 
   const submitOrder = async (event: FormEvent) => {
     event.preventDefault();
     setError("");
     setResult(null);
     if (items.length === 0) {
-      setError("Add at least one item — music from Catalogue or a service from Shop.");
+      setError(
+        "Add at least one item — music from Catalogue or a service from Shop.",
+      );
+      return;
+    }
+    if (
+      methods.length === 0 ||
+      (paymentMethod !== "paynow" && paymentMethod !== "card")
+    ) {
+      setError("Choose Paynow or card to pay online.");
       return;
     }
     setIsSubmitting(true);
-    trackEvent("checkout_started", { payment_method: paymentMethod, item_count: items.length, total });
+    trackEvent("checkout_started", {
+      payment_method: paymentMethod,
+      item_count: items.length,
+      total,
+      small_basket: belowBasketTarget,
+    });
     try {
-      const session = isSupabaseConfigured() ? (await createClient().auth.getSession()).data.session : null;
+      const session = isSupabaseConfigured()
+        ? (await createClient().auth.getSession()).data.session
+        : null;
       const response = await fetch("/api/orders", {
         method: "POST",
-        headers: { "Content-Type": "application/json", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) },
+        headers: {
+          "Content-Type": "application/json",
+          ...(session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {}),
+        },
         body: JSON.stringify({
           customer: {
             ...customer,
@@ -241,6 +281,7 @@ export default function CheckoutPage() {
             quantity: item.quantity || 1,
             delivery: item.delivery,
             sourceUrl: item.src,
+            licence_option_id: item.licence_option_id,
           })),
           paymentMethod,
           projectNotes,
@@ -254,20 +295,32 @@ export default function CheckoutPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Checkout failed.");
 
+      window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
+      clearCartLines();
+      setItems([]);
+
       if (data.checkoutUrl) {
-        trackEvent("checkout_redirect", { payment_method: data.paymentMode || paymentMethod, item_count: items.length, total });
-        window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
+        trackEvent("checkout_redirect", {
+          payment_method: data.paymentMode || paymentMethod,
+          item_count: items.length,
+          total,
+        });
         window.location.href = data.checkoutUrl as string;
         return;
       }
 
       setResult(data);
-      trackEvent("checkout_complete", { payment_method: data.paymentMode || paymentMethod, item_count: items.length, total, status: data.status || "pending_payment" });
-      window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
-      window.localStorage.removeItem("bvs_cart");
-      setItems([]);
+      trackEvent("checkout_complete", {
+        payment_method: data.paymentMode || paymentMethod,
+        item_count: items.length,
+        total,
+        status: data.status || "pending_payment",
+      });
     } catch (caught) {
-      trackEvent("payment_error", { payment_method: paymentMethod, stage: "order_creation" });
+      trackEvent("payment_error", {
+        payment_method: paymentMethod,
+        stage: "order_creation",
+      });
       setError(caught instanceof Error ? caught.message : "Checkout failed.");
     } finally {
       setIsSubmitting(false);
@@ -275,27 +328,49 @@ export default function CheckoutPage() {
   };
 
   if (!hydrated) {
-    return <div className="p-16 text-center text-text-secondary">Loading checkout…</div>;
+    return (
+      <div className="p-16 text-center text-text-secondary">
+        Loading checkout…
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-12">
       <section className="mb-10">
-        <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">Buy from BVS</p>
+        <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">
+          Buy from BVS
+        </p>
         <h1 className="mb-3 text-4xl font-semibold sm:text-5xl">Checkout</h1>
         <p className="max-w-2xl text-lg text-text-secondary">
-          Beats, tracks, and pro services (mix / master). No ads during playback — you pay for what you buy.
+          Beats, tracks, and pro services (mix / master). No ads during playback
+          — you pay for what you buy.
         </p>
         {cancelled && (
           <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Card payment was cancelled. Your cart is still here — try again or choose EcoCash / bank.
+            Card payment was cancelled. Your cart is still here — try card again
+            or Paynow.
           </p>
         )}
-        <ol className="mt-8 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]" aria-label="Checkout progress">
+        <ol
+          className="mt-8 grid grid-cols-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"
+          aria-label="Checkout progress"
+        >
           {["Review cart", "Your details", "Payment"].map((step, index) => (
-            <li key={step} className={`flex items-center gap-3 px-3 py-4 sm:px-5 ${index === 0 ? "bg-brand/10" : "border-l border-white/10"}`}>
-              <span className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-xs font-bold ${index === 0 ? "bg-brand text-black" : "bg-white/10 text-text-secondary"}`}>{index + 1}</span>
-              <span className={`hidden text-sm font-medium sm:block ${index === 0 ? "text-white" : "text-text-secondary"}`}>{step}</span>
+            <li
+              key={step}
+              className={`flex items-center gap-3 px-3 py-4 sm:px-5 ${index === 0 ? "bg-brand/10" : "border-l border-white/10"}`}
+            >
+              <span
+                className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-xs font-bold ${index === 0 ? "bg-brand text-black" : "bg-white/10 text-text-secondary"}`}
+              >
+                {index + 1}
+              </span>
+              <span
+                className={`hidden text-sm font-medium sm:block ${index === 0 ? "text-white" : "text-text-secondary"}`}
+              >
+                {step}
+              </span>
             </li>
           ))}
         </ol>
@@ -307,10 +382,16 @@ export default function CheckoutPage() {
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Your cart</h2>
               <div className="flex gap-2 text-sm">
-                <Link href="/catalogue" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">
+                <Link
+                  href="/catalogue"
+                  className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5"
+                >
                   + Music
                 </Link>
-                <Link href="/shop" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">
+                <Link
+                  href="/shop"
+                  className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5"
+                >
                   + Services
                 </Link>
               </div>
@@ -326,20 +407,36 @@ export default function CheckoutPage() {
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">
                         {item.artwork ? (
-                          <Image src={item.artwork} alt="" fill className="object-cover" />
+                          <Image
+                            src={item.artwork}
+                            alt=""
+                            fill
+                            className="object-cover"
+                          />
                         ) : (
-                          <span className="grid h-full place-items-center text-lg text-brand">♪</span>
+                          <span className="grid h-full place-items-center text-lg text-brand">
+                            ♪
+                          </span>
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="truncate font-semibold">{item.title}</div>
+                        <div className="truncate font-semibold">
+                          {item.title}
+                        </div>
                         <div className="text-sm capitalize text-text-secondary">
-                          {item.artist || "BVS"} · {item.type === "beat" ? "Beat licence" : item.type === "service" ? "Studio service" : "Digital download"}
+                          {item.artist || "BVS"} ·{" "}
+                          {item.type === "beat"
+                            ? "Beat licence"
+                            : item.type === "service"
+                              ? "Studio service"
+                              : "Digital download"}
                         </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-semibold text-brand">${priceFor(item).toFixed(2)}</div>
+                      <div className="font-semibold text-brand">
+                        ${priceFor(item).toFixed(2)}
+                      </div>
                       <button
                         type="button"
                         onClick={() => removeItem(item.id)}
@@ -350,6 +447,29 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 ))}
+                {belowBasketTarget && (
+                  <div className="rounded-xl border border-brand/25 bg-brand/[.06] p-4 text-sm">
+                    <strong>Small basket tip:</strong>{" "}
+                    <span className="text-text-secondary">
+                      Add another track if you can. Combining low-ticket music
+                      into one checkout spreads fixed payment costs across more
+                      music and leaves more value in the creator economy. BVS is
+                      measuring this before enforcing a hard minimum.
+                    </span>
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <Link
+                        href="/catalogue"
+                        className="rounded-full border border-brand/50 px-4 py-2 text-brand"
+                      >
+                        Add more music
+                      </Link>
+                      <span className="text-xs text-text-secondary">
+                        Current ${subtotal.toFixed(2)} · target $
+                        {MARKETPLACE_BASKET_TARGET_USD.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-xl border border-dashed border-white/15 px-5 py-10 text-center text-text-secondary">
@@ -374,7 +494,9 @@ export default function CheckoutPage() {
                 <input
                   required
                   value={customer.name}
-                  onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+                  onChange={(e) =>
+                    setCustomer({ ...customer, name: e.target.value })
+                  }
                   className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
                   placeholder="Your name"
                 />
@@ -385,22 +507,30 @@ export default function CheckoutPage() {
                   required
                   type="email"
                   value={customer.email}
-                  onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
+                  onChange={(e) =>
+                    setCustomer({ ...customer, email: e.target.value })
+                  }
                   className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
                   placeholder="you@email.com"
                 />
               </label>
               <label className="block text-sm sm:col-span-2">
-                <span className="mb-1.5 block text-text-secondary">WhatsApp (recommended)</span>
+                <span className="mb-1.5 block text-text-secondary">
+                  WhatsApp (recommended)
+                </span>
                 <input
                   value={customer.whatsapp}
-                  onChange={(e) => setCustomer({ ...customer, whatsapp: e.target.value })}
+                  onChange={(e) =>
+                    setCustomer({ ...customer, whatsapp: e.target.value })
+                  }
                   className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
                   placeholder="+263…"
                 />
               </label>
               <label className="block text-sm sm:col-span-1">
-                <span className="mb-1.5 block text-text-secondary">Billing country / region</span>
+                <span className="mb-1.5 block text-text-secondary">
+                  Billing country / region
+                </span>
                 <select
                   required
                   value={countryCode}
@@ -411,13 +541,17 @@ export default function CheckoutPage() {
                   {TAX_COUNTRIES.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.name}
-                      {c.rate > 0 ? ` · ${Math.round(c.rate * 1000) / 10}% ${c.label}` : ""}
+                      {c.rate > 0
+                        ? ` · ${Math.round(c.rate * 1000) / 10}% ${c.label}`
+                        : ""}
                     </option>
                   ))}
                 </select>
               </label>
               <label className="block text-sm sm:col-span-1">
-                <span className="mb-1.5 block text-text-secondary">EU VAT ID (optional, B2B)</span>
+                <span className="mb-1.5 block text-text-secondary">
+                  EU VAT ID (optional, B2B)
+                </span>
                 <input
                   value={vatId}
                   onChange={(e) => setVatId(e.target.value)}
@@ -428,50 +562,92 @@ export default function CheckoutPage() {
               </label>
             </div>
             <p className="mt-3 text-xs text-text-secondary">
-              Tax is estimated from your billing country. Prices are net (ex-tax); the total includes calculated tax for your region.
+              Tax is estimated from your billing country. Prices are net
+              (ex-tax); the total includes calculated tax for your region.
               {tax.note ? ` ${tax.note}` : ""}
             </p>
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
-            <h2 className="mb-2 text-xl font-semibold">Pay how you want</h2>
+            <h2 className="mb-2 text-xl font-semibold">Payment</h2>
             <p className="mb-4 text-sm text-text-secondary">
-              {paynowReady
-                ? "Paynow is live for EcoCash and local methods. International card optional via Stripe."
-                : stripeReady
-                  ? "Card is live. EcoCash manual still available until Paynow is set."
-                  : "Order now — EcoCash/bank/PayPal manual. Add Paynow Integration ID+Key for automatic EcoCash."}
+              {paynowReady && stripeReady
+                ? "Choose Paynow (EcoCash & local) or international card. Both finish online — no WhatsApp proof step."
+                : paynowReady
+                  ? "Pay securely on Paynow (EcoCash, OneMoney, local methods)."
+                  : stripeReady
+                    ? "Pay securely by card on Stripe."
+                    : "Online checkout is temporarily unavailable. Contact BVS to complete your order."}
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {methods.map((method) => (
-                <label
-                  key={method.id}
-                  className={`cursor-pointer rounded-xl border p-4 ${
-                    paymentMethod === method.id ? "border-brand bg-brand/10" : "border-white/10 bg-black/20"
-                  }`}
+            {methods.length > 0 ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {methods.map((method) => (
+                  <label
+                    key={method.id}
+                    className={`cursor-pointer rounded-xl border p-4 ${paymentMethod === method.id ? "border-brand bg-brand/10" : "border-white/10 bg-black/20"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      className="sr-only"
+                      checked={paymentMethod === method.id}
+                      onChange={() => setPaymentMethod(method.id)}
+                    />
+                    <span className="block font-semibold">{method.label}</span>
+                    <span className="mt-1 block text-xs text-text-secondary">
+                      {method.detail}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-50">
+                No online payment method is configured right now.{" "}
+                <Link
+                  href="/contact?topic=checkout"
+                  className="font-semibold text-brand underline"
                 >
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    className="sr-only"
-                    checked={paymentMethod === method.id}
-                    onChange={() => setPaymentMethod(method.id)}
-                  />
-                  <span className="block font-semibold">{method.label}</span>
-                  <span className="mt-1 block text-xs text-text-secondary">{method.detail}</span>
-                </label>
-              ))}
-            </div>
+                  Contact BVS
+                </Link>{" "}
+                with your cart and we will help you finish.
+              </p>
+            )}
+            {hasServiceItems && (
+              <p className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs leading-relaxed text-text-secondary">
+                Studio / service jobs: prefer Paynow or card above. Need an
+                invoice or bank details for a larger booking?{" "}
+                <Link
+                  href="/contact?topic=invoice"
+                  className="text-brand underline"
+                >
+                  Contact BVS
+                </Link>{" "}
+                — we will send payment instructions.
+              </p>
+            )}
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
-            <h2 className="mb-2 text-xl font-semibold">Project notes</h2>
+            <h2 className="mb-2 text-xl font-semibold">
+              {hasCreatorService ? "Project brief" : "Project notes"}
+            </h2>
+            {hasCreatorService ? (
+              <p className="mb-3 text-sm text-text-secondary">
+                Tell the creator what you need, your deadline and any
+                references. You can exchange private delivery files after
+                payment.
+              </p>
+            ) : null}
             <textarea
               value={projectNotes}
               onChange={(e) => setProjectNotes(e.target.value)}
               rows={4}
               className="w-full resize-y rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-              placeholder="References, deadlines, license type, Dropbox/Drive link to stems…"
+              placeholder={
+                hasCreatorService
+                  ? "Describe the project, deadline, references and delivery requirements…"
+                  : "References, deadlines, licence type, Dropbox/Drive link to stems…"
+              }
             />
           </section>
 
@@ -483,17 +659,16 @@ export default function CheckoutPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting || items.length === 0}
+            disabled={
+              isSubmitting || items.length === 0 || methods.length === 0
+            }
             className="w-full rounded-full bg-brand px-8 py-4 text-lg font-semibold text-black hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSubmitting
               ? "Working…"
-              : (paymentMethod === "card" && stripeReady) ||
-                  (paymentMethod === "paynow" && paynowReady)
-                ? `Pay $${total.toFixed(2)} securely`
-                : paymentMethod === "ecocash" && paynowReady
-                  ? `Send EcoCash prompt · $${total.toFixed(2)}`
-                  : `Place order · $${total.toFixed(2)}`}
+              : methods.length === 0
+                ? "Checkout unavailable"
+                : `Pay $${total.toFixed(2)} securely`}
           </button>
         </form>
 
@@ -503,9 +678,16 @@ export default function CheckoutPage() {
             {items.length > 0 && (
               <div className="mb-4 space-y-2 border-b border-white/10 pb-4">
                 {items.map((item) => (
-                  <div key={`summary-${item.id}`} className="flex justify-between gap-4 text-sm">
-                    <span className="min-w-0 truncate text-text-secondary">{item.title}</span>
-                    <span className="flex-shrink-0">${(priceFor(item) * (item.quantity || 1)).toFixed(2)}</span>
+                  <div
+                    key={`summary-${item.id}`}
+                    className="flex justify-between gap-4 text-sm"
+                  >
+                    <span className="min-w-0 truncate text-text-secondary">
+                      {item.title}
+                    </span>
+                    <span className="flex-shrink-0">
+                      ${(priceFor(item) * (item.quantity || 1)).toFixed(2)}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -523,7 +705,9 @@ export default function CheckoutPage() {
                 <span>
                   {tax.taxLabel}
                   {tax.ratePercent > 0 ? ` (${tax.ratePercent}%)` : ""}
-                  <span className="block text-[11px] text-text-secondary/80">{tax.countryName}</span>
+                  <span className="block text-[11px] text-text-secondary/80">
+                    {tax.countryName}
+                  </span>
                 </span>
                 <span>${tax.taxAmount.toFixed(2)}</span>
               </div>
@@ -534,9 +718,10 @@ export default function CheckoutPage() {
               {tax.mode === "reverse_charge" && (
                 <p className="pt-1 text-xs text-brand/90">{tax.note}</p>
               )}
-              {(tax.mode === "unknown_region" || tax.mode === "zero_rated") && tax.taxAmount === 0 && (
-                <p className="pt-1 text-xs text-text-secondary">{tax.note}</p>
-              )}
+              {(tax.mode === "unknown_region" || tax.mode === "zero_rated") &&
+                tax.taxAmount === 0 && (
+                  <p className="pt-1 text-xs text-text-secondary">{tax.note}</p>
+                )}
             </div>
             <ul className="mt-6 space-y-2 text-xs text-text-secondary">
               <li>✓ Beats & tracks from catalogue</li>
@@ -548,9 +733,17 @@ export default function CheckoutPage() {
 
           {result && (
             <section className="rounded-2xl border border-brand/30 bg-brand/10 p-6">
-              <p className="text-xs uppercase tracking-[3px] text-brand">Order created</p>
-              <h2 className="mt-2 font-mono text-2xl font-semibold">{result.reference}</h2>
-              <p className="mt-3 text-sm text-text-secondary">{result.persistenceMessage}</p>
+              <p className="text-xs uppercase tracking-[3px] text-brand">
+                {result.paymentMode === "manual"
+                  ? "Order created — finish payment"
+                  : "Order created"}
+              </p>
+              <h2 className="mt-2 font-mono text-2xl font-semibold">
+                {result.reference}
+              </h2>
+              <p className="mt-3 text-sm text-text-secondary">
+                {result.persistenceMessage}
+              </p>
               {typeof result.total === "number" && (
                 <div className="mt-4 space-y-1.5 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm">
                   {typeof result.subtotal === "number" && (
@@ -570,10 +763,14 @@ export default function CheckoutPage() {
                   )}
                   <div className="flex justify-between border-t border-white/10 pt-2 font-semibold">
                     <span>Total paid / due</span>
-                    <span className="text-brand">${Number(result.total).toFixed(2)}</span>
+                    <span className="text-brand">
+                      ${Number(result.total).toFixed(2)}
+                    </span>
                   </div>
                   {result.taxNote && (
-                    <p className="pt-1 text-xs text-text-secondary">{result.taxNote}</p>
+                    <p className="pt-1 text-xs text-text-secondary">
+                      {result.taxNote}
+                    </p>
                   )}
                 </div>
               )}
@@ -606,7 +803,10 @@ export default function CheckoutPage() {
           {!result && (
             <p className="text-center text-xs text-text-secondary">
               Questions? WhatsApp{" "}
-              <a className="text-brand" href={`https://wa.me/${(whatsapp || "").replace(/\D/g, "")}`}>
+              <a
+                className="text-brand"
+                href={`https://wa.me/${(whatsapp || "").replace(/\D/g, "")}`}
+              >
                 {whatsapp}
               </a>
               {" · "}

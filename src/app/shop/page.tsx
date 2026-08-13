@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { officialBvsServices } from "@/lib/official-services";
 
 export const metadata: Metadata = {
-  title: "Services | BVS Radio — Professional Audio Engineering",
-  description: "BVS Radio Services — Online mixing, mastering, and production by top engineers including Wolf Bridges. Upload your tracks and get industry-standard results.",
+  title: "BVS Studio Services — Official BVS | BVS Radio",
+  description: "Official BVS Studio Services for online mixing, mastering and vocal production, separate from independent Creator Marketplace listings.",
 };
 
 const engineers = [
@@ -15,60 +16,6 @@ const engineers = [
     bio: "Send BVS your track, references and release plans. We confirm the engineer, scope, delivery format and schedule before work begins, so the order matches what your project actually needs.",
     specialties: ["Mixing", "Mastering", "Vocal Production", "Stem Work"],
     turnaround: "Confirmed after file review",
-  }
-];
-
-const services = [
-  {
-    title: "Mixing",
-    engineer: "BVS Audio Services",
-    price: "From $89",
-    tiers: [
-      { name: "Basic Mix", price: "$89", desc: "Mix from supplied stems, 1 revision" },
-      { name: "Pro Mix", price: "$149", desc: "Detailed mix, delivery master + instrumental, 2 revisions" },
-      { name: "Premium Mix", price: "$199", desc: "Complex session review and priority scheduling; scope confirmed first" }
-    ],
-    desc: "Professional mixing that brings your track to life. Reference tracks welcome."
-  },
-  {
-    title: "Mastering",
-    engineer: "BVS Audio Services",
-    price: "From $69",
-    tiers: [
-      { name: "Standard Master", price: "$69", desc: "Release-format master, 1 revision" },
-      { name: "Premium Master", price: "$99", desc: "Stem review where supplied, 2 revisions" },
-      { name: "Album Master", price: "$299", desc: "Up to 14 tracks, consistent loudness across project" }
-    ],
-    desc: "Industry-standard mastering for Spotify, Apple Music and all platforms."
-  },
-  {
-    title: "Mix + Master Bundle",
-    engineer: "BVS Audio Services",
-    price: "From $189",
-    tiers: [
-      { name: "Standard Bundle", price: "$189", desc: "Pro mix + standard master" },
-      { name: "Premium Bundle", price: "$249", desc: "Premium mix + premium master; deliverables confirmed first" }
-    ],
-    desc: "Complete post-production package with one clear scope and delivery plan."
-  },
-  {
-    title: "Ultimate Bundle",
-    engineer: "BVS Audio Services",
-    price: "From $299",
-    tiers: [
-      { name: "Ultimate Bundle", price: "$299", desc: "Professional mix + release-format master + publishing setup support" }
-    ],
-    desc: "Take one song from final stems to a release-ready master with publishing setup support in one coordinated package."
-  },
-  {
-    title: "Vocal Production",
-    engineer: "BVS Audio Services",
-    price: "From $65",
-    tiers: [
-      { name: "Vocal Comping & Tuning", price: "$65", desc: "Full comp + pitch correction. 1 revision." },
-      { name: "Full Vocal Production", price: "$129", desc: "Editing and arrangement support from supplied takes. 2 revisions." }
-    ],
-    desc: "Bring your vocals to professional level."
   }
 ];
 
@@ -85,13 +32,14 @@ export default function ServicesPage() {
       {/* Hero - Metropolis style */}
       <section className="mb-16 text-center">
         <div className="max-w-3xl mx-auto">
-          <p className="uppercase text-xs tracking-[3px] text-brand mb-2">HiFi Services • BVS Radio</p>
-          <h1 className="text-5xl font-semibold tracking-[-0.03em] mb-4">Professional Online Mixing &amp; Mastering</h1>
+          <p className="uppercase text-xs tracking-[3px] text-brand mb-2">Official BVS provider • Creator Marketplace</p>
+          <h1 className="text-5xl font-semibold tracking-[-0.03em] mb-4">BVS Studio Services</h1>
           <p className="text-xl text-text-secondary mb-8">
             Send your project from anywhere. BVS will review the files and confirm the engineer, scope, turnaround and final deliverables before production starts.
           </p>
           <div className="text-xs text-brand/80">Final formats and platform requirements are agreed for each order.</div>
           <div className="flex gap-4 justify-center">
+            <Link href="/marketplace" className="px-8 py-3 border border-brand/50 text-brand rounded-full hover:bg-white/5">Creator Marketplace</Link>
             <Link href="#engineers" className="px-8 py-3 bg-brand text-black font-semibold rounded-full hover:bg-brand-dark">How assignment works</Link>
             <Link href="#services" className="px-8 py-3 border border-white/30 rounded-full hover:bg-white/5">Browse Services</Link>
           </div>
@@ -139,8 +87,8 @@ export default function ServicesPage() {
         <p className="text-text-secondary mb-8 max-w-2xl">Transparent starting packages for your own recordings. Your music rights remain yours; the service fee covers the agreed production work and deliverables.</p>
 
         <div className="grid md:grid-cols-2 gap-6">
-          {services.map((service, index) => (
-            <div key={index} className="bg-bg-card/40 border border-white/5 rounded-3xl p-8">
+          {officialBvsServices.map((service) => (
+            <div key={service.id} className="bg-bg-card/40 border border-white/5 rounded-3xl p-8">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-2xl font-semibold">{service.title}</h3>

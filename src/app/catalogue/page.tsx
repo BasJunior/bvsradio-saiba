@@ -16,8 +16,9 @@ import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
-import { legacyPreviewUrl } from "@/lib/legacy-catalogue-media";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
+import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
+import { writeCartLines } from "@/lib/cart-client";
 
 type TrackType = "single" | "beat" | "mix";
 
@@ -41,7 +42,22 @@ interface Track {
   /** DB-backed producer BeatStore listing */
   producerBeat?: boolean;
   producerUsername?: string;
+  packId?: string | null;
 }
+
+type ShelfAction =
+  | { type: "live-beatstore" }
+  | { type: "filter"; query: string; lane?: "music" | "beat" | "all" }
+  | { type: "pack"; packId: string }
+  | { type: "release"; releaseId: string }
+  | { type: "href"; href: string };
+
+type ShelfCard = CollectionCard & {
+  id?: string;
+  source?: "live" | "pack" | "release" | "curated";
+  itemCount?: number;
+  action?: ShelfAction;
+};
 
 const coverArt = "/music/Bvs-3000x3000%202.png";
 const junePackArt = "/images/music-packs/june-pack.jpg";
@@ -60,482 +76,138 @@ function formatTime(seconds: number) {
   return `${Math.floor(wholeSeconds / 60)}:${String(wholeSeconds % 60).padStart(2, "0")}`;
 }
 
-function musicFile(filename: string) {
-  return legacyPreviewUrl(filename);
-}
+// Curated archive/stream/sample listings live in src/data/catalogue-curated-tracks.ts
+// Live approved tracks come from /api/catalogue/listings.
 
-const streamingReleaseSongs: Track[] = [
-  ...[
-    ["Peter Piper (feat. W.Hills & Calm Beast)", "2:31", "6-rP-DUCq8o"],
-    ["Trap Jumping (feat. H.Sauce & W.Hills)", "1:48", "OwGq3xqI0WE"],
-    ["Loot (feat. Obi Davids)", "2:25", "ZxlRn4-BdtY"],
-    ["Diss You (feat. Obi Davids)", "2:27", "IKhskzyN-BM"],
-    ["My Side (feat. I Ratty)", "2:06", "JWyQp7H-bUE"],
-    ["Frightened (feat. W.Hills)", "2:09", "tiracfBEIiI"],
-    ["Ndatenda (feat. 9xne)", "2:12", "KeWj8zF5Tns"],
-    ["Chasing Dead Faces (OUTRO) (feat. I Ratty)", "4:50", "6SHdHsJ6X34"],
-  ].map(([title, duration, videoId], index) => ({
-    id: 1100 + index,
-    title,
-    artist: "Wolfbridges",
-    genre: "Streaming Release",
-    collection: "STRAIGHTENIN",
-    duration,
-    description: `Track ${index + 1} from STRAIGHTENIN by Wolfbridges. Listed for BVS discovery with the project cover assigned.`,
-    type: "mix" as TrackType,
-    src: "",
-    artwork: straighteninArt,
-    externalUrl: `https://music.youtube.com/watch?v=${videoId}`,
-    streamOnly: true,
-    price: null,
-  })),
-  ...[
-    ["The Wolf Cub & The Hill Intro (skit)", "2:28", "pkVMa54Y4Sg"],
-    ["Forgive Me, Lord", "1:40", "vEvrp6ty9C4"],
-    ["Nanganisa", "3:23", "qY_iiPrml10"],
-    ["Zviriko Here?", "2:32", "wKzna4XfvWA"],
-    ["Multiply (How Come)", "2:29", "qPqzl3UFjsY"],
-    ["Doubted", "2:24", "jIFxjGOf1z4"],
-    ["Kurt Kobain (feat. Omari Gray)", "2:39", "wbyBSQ1xH0o"],
-    ["Boddies In The Booth (feat. Omari Gray)", "2:36", "mVRvPr5ZyOA"],
-    ["Thank God (feat. Omari Gray)", "2:54", "X9u1lzsWDJ4"],
-    ["Kunta Kinte (feat. Omari Gray)", "2:37", "bpm_tC1POIE"],
-    ["NaZoaa's Call", "1:26", "x26qVN_2jFE"],
-    ["Truth", "3:47", "sNCqu1JzlZY"],
-    ["The Wolf Cub & The Hill Outro (skit)", "2:28", "QJ7ftRLOC4Y"],
-  ].map(([title, duration, videoId], index) => ({
-    id: 1200 + index,
-    title,
-    artist: "Wolfbridges x W.Hills",
-    genre: "Streaming Release",
-    collection: "HOWLING IN THE HILLS 2",
-    duration,
-    description: `Track ${index + 1} from HOWLING IN THE HILLS 2 by Wolfbridges and W.Hills. Listed for BVS discovery with the project cover assigned.`,
-    type: "mix" as TrackType,
-    src: "",
-    artwork: howlingArt,
-    externalUrl: `https://music.youtube.com/watch?v=${videoId}`,
-    streamOnly: true,
-    price: null,
-  })),
-  ...[
-    ["See Clear", "1:54", "Y6Ml21LuJhA"],
-    ["Run Dolla", "3:01", "8LOexU8JcGU"],
-    ["Don't Worry", "2:48", "Ce2YDXITQXs"],
-    ["Only Jah", "2:05", "N5l3k2tHRkQ"],
-  ].map(([title, duration, videoId], index) => ({
-    id: 1300 + index,
-    title,
-    artist: "Wolfbridges x I Ratty",
-    genre: "Streaming Release",
-    collection: "WOLF BEEN BAD",
-    duration,
-    description: `Track ${index + 1} from WOLF BEEN BAD by Wolfbridges and I Ratty. Listed for BVS discovery with the project cover assigned.`,
-    type: "mix" as TrackType,
-    src: "",
-    artwork: wolfBeenBadArt,
-    externalUrl: `https://music.youtube.com/watch?v=${videoId}`,
-    streamOnly: true,
-    price: null,
-  })),
-];
+/** Canonical live BeatStore shelf — stats filled from published DB beats. */
+const LIVE_BEATSTORE_NAME = "Live BeatStore";
+const LEGACY_LIVE_BEATSTORE_NAMES = new Set([
+  "Producer Picks",
+  LIVE_BEATSTORE_NAME,
+  "Producer BeatStore",
+]);
 
-const tracks: Track[] = [
+/** Offline fallback if /api/catalogue/shelves is unavailable. */
+const fallbackCollectionCards: ShelfCard[] = [
   {
-    id: 1,
-    title: "Robert Gabriel Mugabe International Airport",
-    artist: "BVS Radio",
-    genre: "BVS Original",
-    collection: "BVS Archive",
-    duration: "3:42",
-    description:
-      "One of the preserved original BVS cuts now restored into the live site catalogue.",
-    type: "single",
-    src: musicFile("bvs-radio-robert-gabriel-mugabe-international-airport.mp3"),
-    artwork: coverArt,
+    id: "live-beatstore",
+    name: LIVE_BEATSTORE_NAME,
+    detail: "Published producer beats · live from BeatStore",
+    img: "/images/hero-studio.jpg",
+    launchedAt: "2026-08-05",
+    shelfKind: "live-beatstore",
+    source: "live",
+    action: { type: "live-beatstore" },
   },
   {
-    id: 2,
-    title: "BVS Slide",
-    artist: "BVS Radio",
-    genre: "BVS Original",
-    collection: "BVS Archive",
-    duration: "3:18",
-    description: "A direct BVS archive track from the original player library.",
-    type: "mix",
-    src: musicFile("bvs-radio-slide-mix.mp3"),
-    artwork: coverArt,
-  },
-  {
-    id: 3,
-    title: "Never Ending Mix",
-    artist: "BVS x Brx",
-    genre: "BVS Original",
-    collection: "BVS Archive",
-    duration: "4:08",
-    description: "BVS and Brx energy from the preserved VPS catalogue.",
-    type: "mix",
-    src: musicFile("bvs-brx-never-ending-mix.mp3"),
-    artwork: coverArt,
-  },
-  {
-    id: 4,
-    title: "BVS Starve",
-    artist: "BVS Radio",
-    genre: "BVS Original",
-    collection: "BVS Archive",
-    duration: "3:36",
-    description:
-      "A gritty BVS archive track carried forward from the original station files.",
-    type: "single",
-    src: musicFile("bvs-radio-starve.mp3"),
-    artwork: coverArt,
-  },
-  {
-    id: 5,
-    title: "Calm Beast",
-    artist: "Mahendere",
-    genre: "Gospel",
-    collection: "BVS Archive",
-    duration: "4:22",
-    description:
-      "A mastered archive track that gives the catalogue a warmer Zimbabwean gospel edge.",
-    type: "single",
-    src: musicFile("calm-beast-mahendere-master.mp3"),
-    artwork: coverArt,
-  },
-  {
-    id: 6,
-    title: "Mellisa",
-    artist: "WolfBrx",
-    genre: "Hip-Hop",
-    collection: "June Pack",
-    duration: "2:54",
-    description: "A polished WolfBrx beat from the staged June pack.",
-    type: "beat",
-    bpm: "156 BPM",
-    src: musicFile("mellisa - 156 bpm @wolfbrx.mp3"),
-    artwork: junePackArt,
-  },
-  {
-    id: 7,
-    title: "In My City",
-    artist: "WolfBrx",
-    genre: "Hip-Hop",
-    collection: "June Pack",
-    duration: "2:41",
-    description:
-      "Fast, direct, and built for radio rotation or artist placement.",
-    type: "beat",
-    bpm: "170 BPM",
-    src: musicFile("in my city - 170 bpm @wolfbrx.mp3"),
-    artwork: junePackArt,
-  },
-  {
-    id: 8,
-    title: "RGB",
-    artist: "WolfBrx",
-    genre: "Trap",
-    collection: "June Pack",
-    duration: "3:05",
-    description:
-      "A clean trap beat with the kind of punch that fits BVS producer showcases.",
-    type: "beat",
-    bpm: "160 BPM",
-    src: musicFile("RGB - 160 bpm @wolfbrx.mp3"),
-    artwork: junePackArt,
-  },
-  {
-    id: 9,
-    title: "Fading Memories",
-    artist: "WolfBrx + Znayshi",
-    genre: "Melodic Rap",
-    collection: "March Pack",
-    duration: "2:58",
-    description:
-      "Melodic and reflective, pulled from the WolfBrx pack now sitting in the live catalogue.",
-    type: "beat",
-    bpm: "167 BPM",
-    src: musicFile("fading memories - 167 bpm @wolfbrx + znayshi.mp3"),
-    artwork: "/images/mic-closeup.jpg",
-  },
-  {
-    id: 10,
-    title: "The Giant",
-    artist: "WolfBrx + Dannynevamiss",
-    genre: "Hip-Hop",
-    collection: "March Pack",
-    duration: "2:47",
-    description:
-      "A heavy producer cut from the Dropbox pack with enough presence for a featured card.",
-    type: "beat",
-    bpm: "166 BPM",
-    src: musicFile("the giant - 166 bpm @wolfbrx + dannynevamiss.mp3"),
-    artwork: "/images/musicians.jpg",
-  },
-  {
-    id: 11,
-    title: "Foreign Exchange",
-    artist: "WolfBrx + Thermo",
-    genre: "Trap",
-    collection: "March Pack",
-    duration: "3:11",
-    description:
-      "A sharp, clean beat that fits the producer-market side of BVS.",
-    type: "beat",
-    bpm: "158 BPM",
-    src: musicFile("foreign exchange - 158 bpm @wolfbrx + thermo.mp3"),
-    artwork: "/images/female-host.jpg",
-  },
-  {
-    id: 12,
-    title: "Chiraq Drillaz",
-    artist: "WolfBrx",
-    genre: "Drill",
-    collection: "January Pack",
-    duration: "2:51",
-    description:
-      "Drill energy from the January pack, useful for showing the harder side of the catalogue.",
-    type: "beat",
-    bpm: "158 BPM",
-    src: musicFile("Chiraq Drillaz - 158 bpm @wolfbrx.mp3"),
-    artwork: "/images/festival-crowd.jpg",
-  },
-  {
-    id: 13,
-    title: "Bottom Barre",
-    artist: "WolfBrx + Prodbygtp",
-    genre: "Rap",
-    collection: "January Pack",
-    duration: "3:02",
-    description:
-      "A lower-tempo cut from the pack with a different pocket for artists browsing beats.",
-    type: "beat",
-    bpm: "98 BPM",
-    src: musicFile("bottom barre - 98 bpm @wolfbrx + prodbygtp.mp3"),
-    artwork: "/images/hero-studio.jpg",
-  },
-  {
-    id: 14,
-    title: "Rockstar",
-    artist: "WolfBrx + Jhawk",
-    genre: "Hip-Hop",
-    collection: "February Pack",
-    duration: "2:45",
-    description:
-      "A catchy, accessible WolfBrx collaboration from the February pack.",
-    type: "beat",
-    bpm: "125 BPM",
-    src: musicFile("rockstar - 125 bpm @wolfbrx + jhawk.mp3"),
-    artwork: "/images/mic-closeup.jpg",
-  },
-  {
-    id: 15,
-    title: "Grinder's Prayer",
-    artist: "WolfBrx",
-    genre: "Trap",
-    collection: "May Pack",
-    duration: "3:00",
-    description:
-      "A focused May pack track that fits the BVS working-artist lane.",
-    type: "beat",
-    bpm: "169 BPM",
-    src: musicFile("grinder's prayer - 169 bpm @wolfbrx.mp3"),
-    artwork: mayPackArt,
-  },
-  {
-    id: 16,
-    title: "Eternity",
-    artist: "WolfBrx",
-    genre: "Soul",
-    collection: "WolfBrx Library",
-    duration: "2:39",
-    description:
-      "A slower, soulful beat to balance the harder drill and trap rows.",
-    type: "beat",
-    bpm: "90 BPM",
-    src: musicFile("eternity - 90 bpm @wolfbrx.mp3"),
-    artwork: "/images/female-host.jpg",
-  },
-  // LORD Album — each song $2 single; full album package sold separately
-  {
-    id: 1001,
-    title: "Calm Beast (Mahendere Master)",
-    artist: "CalmBeast x W.Hills",
-    genre: "Gospel",
-    collection: "LORD Album",
-    duration: "4:22",
-    description: `LORD Album single — download $${PRICE_SINGLE_DOWNLOAD}. Cover follows the LORD project. Full album package also available.`,
-    type: "single",
-    src: musicFile("calm-beast-mahendere-master.mp3"),
-    artwork: "/images/albums/lord-album.jpg",
-    price: PRICE_SINGLE_DOWNLOAD,
-  },
-  // Drive commerce products (ids match bvsradio-products/albums/<id>.zip)
-  {
-    id: 100,
-    title: "LORD Album",
-    artist: "CalmBeast x W.Hills",
-    genre: "Album",
-    collection: "Albums",
-    duration: "Full album",
-    description: `Full LORD album download (CalmBeast x W.Hills). Individual songs also sell as $${PRICE_SINGLE_DOWNLOAD} singles where hosted. Full zip after payment.`,
-    type: "mix",
-    src: musicFile("calm-beast-mahendere-master.mp3"),
-    artwork: "/images/albums/lord-album.jpg",
-    price: 19,
-    albumPackage: true,
-  },
-  {
-    id: 102,
-    title: "STRAIGHTENIN",
-    artist: "Wolfbridges",
-    genre: "Spotify Release",
-    collection: "Wolfbridges Projects",
-    duration: "Project",
-    description:
-      "Spotify project from Wolfbridges, featured through the BVSRadio playlist.",
-    type: "mix",
-    src: "https://p.scdn.co/mp3-preview/a4c2906e4838d1513e71952936a5039c006c5cf9",
-    artwork: straighteninArt,
-    externalUrl: "https://open.spotify.com/album/2plE5CHEf6lodOSZdTzdXf",
-    streamOnly: true,
-    price: null,
-  },
-  {
-    id: 103,
-    title: "HOWLING IN THE HILLS 2",
-    artist: "Wolfbridges x W.Hills",
-    genre: "Spotify Release",
-    collection: "Wolfbridges Projects",
-    duration: "Project",
-    description:
-      "A Wolfbridges and W.Hills project now surfaced in the BVS music catalogue with Spotify access.",
-    type: "mix",
-    src: "https://p.scdn.co/mp3-preview/afec4b1200c2ca74cbb50d6b0cfa053ccd6a5e8d",
-    artwork: howlingArt,
-    externalUrl: "https://open.spotify.com/album/5dHfrh9OYgQyvaWuEm9dfk",
-    streamOnly: true,
-    price: null,
-  },
-  {
-    id: 104,
-    title: "WOLF BEEN BAD",
-    artist: "Wolfbridges x I Ratty",
-    genre: "Spotify Release",
-    collection: "Wolfbridges Projects",
-    duration: "Project",
-    description:
-      "A Wolfbridges and I Ratty project added to BVS catalogue discovery with a Spotify listen-through path.",
-    type: "mix",
-    src: "https://p.scdn.co/mp3-preview/625162a39886da9e1efec3c864f55238fbe6dd5c",
-    artwork: wolfBeenBadArt,
-    externalUrl: "https://open.spotify.com/album/4Bxbabl2djOaaT2tGHXkrB",
-    streamOnly: true,
-    price: null,
-  },
-  ...streamingReleaseSongs,
-  {
-    id: 1011,
-    title: "16 Bit — Calm Beast cut",
-    artist: "BVS Radio",
-    genre: "Album",
-    collection: "Album 16 Bit",
-    duration: "Single",
-    description: `Album 16 Bit single — download $${PRICE_SINGLE_DOWNLOAD}. Full album package sold separately.`,
-    type: "single",
-    src: musicFile("calm-beast.mp3"),
-    artwork: "/images/albums/album-16-bit.jpg",
-    price: PRICE_SINGLE_DOWNLOAD,
-  },
-  {
-    id: 101,
-    title: "Album 16 Bit",
-    artist: "BVS Radio",
-    genre: "Album",
-    collection: "Albums",
-    duration: "Full album",
-    description: `Complete 16 Bit album package. Songs also available as $${PRICE_SINGLE_DOWNLOAD} singles where hosted. Digital download after checkout.`,
-    type: "mix",
-    src: musicFile("calm-beast.mp3"),
-    artwork: "/images/albums/album-16-bit.jpg",
-    price: 14,
-    albumPackage: true,
-  },
-];
-
-const collectionCards: CollectionCard[] = [
-  {
+    id: "curated-albums",
     name: "Albums",
     detail: `Full albums + $${PRICE_SINGLE_DOWNLOAD} singles`,
     img: "/images/albums/lord-album.jpg",
     launchedAt: "2026-06-01",
+    shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "Albums", lane: "music" },
   },
   {
+    id: "curated-lord",
     name: "LORD Album",
     detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $19`,
     img: "/images/albums/lord-album.jpg",
     launchedAt: "2026-06-15",
+    shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "LORD Album", lane: "music" },
   },
   {
+    id: "curated-16bit",
     name: "Album 16 Bit",
     detail: `$${PRICE_SINGLE_DOWNLOAD}/song · full album $14`,
     img: "/images/albums/album-16-bit.jpg",
     launchedAt: "2026-06-20",
+    shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "Album 16 Bit", lane: "music" },
   },
   {
+    id: "curated-straightenin",
     name: "STRAIGHTENIN",
     detail: "Stream only · no BVS download sale",
     img: straighteninArt,
     launchedAt: "2025-11-01",
+    shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "STRAIGHTENIN", lane: "music" },
   },
   {
+    id: "curated-howling",
     name: "HOWLING IN THE HILLS 2",
     detail: "Stream only · no BVS download sale",
     img: howlingArt,
     launchedAt: "2025-12-01",
+    shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "HOWLING IN THE HILLS 2", lane: "music" },
   },
   {
+    id: "curated-wolf-been-bad",
     name: "WOLF BEEN BAD",
     detail: "Stream only · no BVS download sale",
     img: wolfBeenBadArt,
     launchedAt: "2026-01-15",
+    shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "WOLF BEEN BAD", lane: "music" },
   },
   {
-    name: "Wolfbridges Projects",
+    id: "curated-wolf-projects",
+    name: "Wolf Bridges Projects",
     detail: "Streaming discovery (regulated platforms)",
     img: straighteninArt,
     launchedAt: "2025-11-01",
+    shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "Wolf Bridges Projects", lane: "music" },
   },
   {
+    id: "curated-bvs-archive",
     name: "BVS Archive",
     detail: `$${PRICE_SINGLE_DOWNLOAD} singles / archive downloads`,
     img: coverArt,
     launchedAt: "2025-10-01",
+    shelfKind: "music",
+    source: "curated",
+    action: { type: "filter", query: "BVS Archive", lane: "music" },
   },
   {
+    id: "curated-june-pack",
     name: "June Pack",
-    detail: "WolfBrx beats · licence from $29",
+    detail: "Sample pack · site listings (not full live crate)",
     img: junePackArt,
     launchedAt: "2026-06-01",
+    shelfKind: "archive-sample",
+    source: "curated",
+    action: { type: "filter", query: "June Pack", lane: "all" },
   },
   {
+    id: "curated-may-pack",
     name: "May Pack",
-    detail: "WolfBrx beats · licence from $29",
+    detail: "Sample pack · site listings (not full live crate)",
     img: mayPackArt,
     launchedAt: "2026-05-01",
+    shelfKind: "archive-sample",
+    source: "curated",
+    action: { type: "filter", query: "May Pack", lane: "all" },
   },
   {
+    id: "curated-march-pack",
     name: "March Pack",
-    detail: "Melodic and trap · licence from $29",
+    detail: "Sample pack · site listings (not full live crate)",
     img: "/images/mic-closeup.jpg",
     launchedAt: "2026-03-01",
-  },
-  {
-    name: "Producer Picks",
-    detail: "Beats ready for artists · from $29",
-    img: "/images/hero-studio.jpg",
-    launchedAt: "2026-07-01",
+    shelfKind: "archive-sample",
+    source: "curated",
+    action: { type: "filter", query: "March Pack", lane: "all" },
   },
 ];
 
@@ -551,6 +223,74 @@ function rightsSummary(track: Track) {
   return pricingRightsSummary(track);
 }
 
+/** Compact same-shelf picker — collapsed by default when the shelf is large. */
+function CollapsibleCollection({
+  tracks,
+  selectedId,
+  onSelect,
+}: {
+  tracks: Track[];
+  selectedId: Track["id"];
+  onSelect: (track: Track) => void;
+}) {
+  const SMALL = 6;
+  const [open, setOpen] = useState(false);
+  if (tracks.length <= 1) return null;
+
+  const others = tracks.filter((t) => t.id !== selectedId);
+  if (others.length === 0) return null;
+
+  // Small shelves stay open; Live BeatStore-size lists start collapsed.
+  const large = others.length > SMALL;
+  const expanded = !large || open;
+
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.02]">
+      <button
+        type="button"
+        onClick={() => large && setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+        aria-expanded={expanded}
+        disabled={!large}
+      >
+        <span className="text-sm font-semibold uppercase tracking-[2px] text-text-secondary">
+          Same collection
+          <span className="ml-2 font-normal normal-case tracking-normal text-text-secondary/80">
+            {others.length} other{others.length === 1 ? "" : "s"}
+          </span>
+        </span>
+        {large && (
+          <span className="shrink-0 rounded-full border border-brand/30 px-2.5 py-0.5 text-xs font-semibold text-brand">
+            {open ? "Hide" : "Browse"}
+          </span>
+        )}
+      </button>
+      {expanded && (
+        <div className="max-h-44 space-y-0.5 overflow-y-auto border-t border-white/10 px-1 py-1 overscroll-contain">
+          {others.map((track) => (
+            <button
+              key={String(track.id)}
+              type="button"
+              onClick={() => onSelect(track)}
+              className="flex w-full justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5"
+            >
+              <span className="min-w-0 truncate">{track.title}</span>
+              <span className="ml-4 flex-shrink-0 tabular-nums text-text-secondary">
+                {track.bpm || track.duration}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+      {large && !open && (
+        <p className="border-t border-white/10 px-3 py-2 text-xs text-text-secondary">
+          Actions stay above — open the shelf only when you want another beat.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CataloguePageContent() {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(() => {
@@ -563,10 +303,15 @@ function CataloguePageContent() {
     return new URLSearchParams(window.location.search).get("producer") || "";
   });
   const [collectionJump, setCollectionJump] = useState("");
+  const [packFilter, setPackFilter] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("pack") || "";
+  });
   const [shelfMode, setShelfMode] = useState<"featured" | "trending" | "new">(
     "featured",
   );
   const [shelvesExpanded, setShelvesExpanded] = useState(true);
+  const [remoteShelves, setRemoteShelves] = useState<ShelfCard[] | null>(null);
   const [trendingScores, setTrendingScores] = useState<
     Record<string, { score: number; plays: number }>
   >({});
@@ -590,6 +335,8 @@ function CataloguePageContent() {
   const [previewElapsed, setPreviewElapsed] = useState(0);
   const [previewDuration, setPreviewDuration] = useState(previewLimitSeconds);
   const [dbBeats, setDbBeats] = useState<Track[]>([]);
+  const [dbMusic, setDbMusic] = useState<Track[]>([]);
+  const [musicLoaded, setMusicLoaded] = useState(false);
   const [cart, setCart] = useState<Track[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -608,12 +355,14 @@ function CataloguePageContent() {
   useEffect(() => {
     const requestedType = searchParams.get("type");
     const requestedProducer = searchParams.get("producer") || "";
+    const requestedPack = searchParams.get("pack") || "";
     setSearch(searchParams.get("q") || "");
     setProducerFilter(requestedProducer);
-    if (requestedType === "beat") {
+    setPackFilter(requestedPack);
+    if (requestedType === "beat" || requestedPack) {
       setTypeFilter("beat");
       // Producer deep-links should land on the filtered crate, not the shelf chrome.
-      const anchor = requestedProducer ? "browse" : "beatstore";
+      const anchor = requestedProducer || requestedPack ? "browse" : "beatstore";
       window.requestAnimationFrame(() => {
         document.getElementById(anchor)?.scrollIntoView({ block: "start" });
       });
@@ -631,26 +380,35 @@ function CataloguePageContent() {
   }, [searchParams]);
 
   useEffect(() => {
-    localStorage.setItem("bvs_cart", JSON.stringify(cart));
+    writeCartLines(cart as unknown as Array<Record<string, unknown>>);
   }, [cart]);
 
   useEffect(() => {
     let cancelled = false;
-    const names = collectionCards
-      .map((c) => encodeURIComponent(c.name))
-      .join(",");
-    fetch(`/api/catalogue/trending?names=${names}`, { cache: "no-store" })
+    fetch("/api/catalogue/shelves", { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) return;
         const payload = await res.json().catch(() => ({}));
-        if (cancelled || !payload?.scores || typeof payload.scores !== "object")
-          return;
-        setTrendingScores(
-          payload.scores as Record<string, { score: number; plays: number }>,
+        const rows = Array.isArray(payload.shelves) ? payload.shelves : [];
+        if (cancelled || !rows.length) return;
+        setRemoteShelves(
+          rows.map(
+            (row: ShelfCard & { name?: string; detail?: string; img?: string }) => ({
+              id: row.id,
+              name: row.name || "Shelf",
+              detail: row.detail || "",
+              img: row.img || coverArt,
+              launchedAt: row.launchedAt,
+              shelfKind: row.shelfKind,
+              source: row.source,
+              itemCount: row.itemCount,
+              action: row.action,
+            }),
+          ),
         );
       })
       .catch(() => {
-        /* trending is optional */
+        /* shelves API optional — fallback cards remain */
       });
     return () => {
       cancelled = true;
@@ -680,6 +438,7 @@ function CataloguePageContent() {
                 startingPrice?: number | null;
                 producer?: string;
                 producer_username?: string;
+                packId?: string | null;
               },
               index: number,
             ) => ({
@@ -687,7 +446,7 @@ function CataloguePageContent() {
               title: b.title || "Untitled beat",
               artist: b.producer || "BVS Producer",
               genre: b.genre || "Beat",
-              collection: "Producer BeatStore",
+              collection: "Live BeatStore",
               duration: b.bpm ? `${b.bpm} BPM` : "Preview",
               description:
                 b.description ||
@@ -700,6 +459,7 @@ function CataloguePageContent() {
               price: b.startingPrice ?? 29,
               producerBeat: true,
               producerUsername: b.producer_username || undefined,
+              packId: b.packId || null,
             }),
           ),
         );
@@ -711,6 +471,69 @@ function CataloguePageContent() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/catalogue/listings", { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const payload = await res.json().catch(() => ({}));
+        const rows = Array.isArray(payload.listings) ? payload.listings : [];
+        if (cancelled) return;
+        setDbMusic(
+          rows.map(
+            (
+              row: {
+                id?: string;
+                title?: string;
+                artist?: string;
+                genre?: string;
+                collection?: string;
+                duration?: string;
+                description?: string;
+                type?: TrackType;
+                src?: string;
+                artwork?: string;
+                bpm?: string;
+                price?: number | null;
+                externalUrl?: string;
+                streamOnly?: boolean;
+                albumPackage?: boolean;
+                releaseId?: string | null;
+              },
+              index: number,
+            ): Track => ({
+              id: row.id || `db-music-${index}`,
+              title: row.title || "Untitled track",
+              artist: row.artist || "BVS artist",
+              genre: row.genre || "Music",
+              collection: row.collection || "Published on BVS",
+              duration: row.duration || "Preview",
+              description:
+                row.description || "Published BVS catalogue listing.",
+              type: row.type === "mix" || row.type === "beat" ? row.type : "single",
+              src: row.src || "",
+              artwork: row.artwork || coverArt,
+              bpm: row.bpm,
+              price: row.price,
+              externalUrl: row.externalUrl,
+              streamOnly: Boolean(row.streamOnly),
+              albumPackage: Boolean(row.albumPackage),
+            }),
+          ),
+        );
+      })
+      .catch(() => {
+        /* listings optional */
+      })
+      .finally(() => {
+        if (!cancelled) setMusicLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   useEffect(() => {
     return () => {
@@ -731,12 +554,130 @@ function CataloguePageContent() {
       window.removeEventListener("bvs:audio-claim", releasePreviewAudio);
   }, []);
 
-  const allTracks = useMemo(() => [...dbBeats, ...tracks], [dbBeats, tracks]);
+  const listingKey = (track: Track) =>
+    `${String(track.title || "").trim().toLowerCase()}::${String(track.artist || "").trim().toLowerCase()}`;
+  const titleKey = (track: Track) =>
+    String(track.title || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, " ")
+      .trim();
+
+  const allTracks = useMemo(() => {
+    // Live beats + live music first; curated fills gaps (archive/stream/sample packs).
+    const merged: Track[] = [...dbBeats, ...dbMusic];
+    const seen = new Set(merged.map(listingKey));
+    const seenTitles = new Set(
+      merged.filter((t) => t.type === "beat" || t.producerBeat).map(titleKey),
+    );
+    const liveBeatsReady = dbBeats.length > 0;
+    for (const track of curatedCatalogueTracks as Track[]) {
+      const isCuratedBeat = track.type === "beat" || Boolean(track.producerBeat);
+      // When Live BeatStore is populated, skip curated sample beats that collide by title
+      // (artist credits often differ: "Wolf Bridges" vs "Wolf Bridges + X").
+      if (liveBeatsReady && isCuratedBeat && seenTitles.has(titleKey(track))) {
+        continue;
+      }
+      const key = listingKey(track);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (isCuratedBeat) seenTitles.add(titleKey(track));
+      merged.push(track);
+    }
+    return merged;
+  }, [dbBeats, dbMusic]);
 
   const isBeatListing = (track: Track) =>
     track.type === "beat" || Boolean(track.producerBeat);
 
   const isMusicListing = (track: Track) => !isBeatListing(track);
+
+  const liveBeatStats = useMemo(() => {
+    const count = dbBeats.length;
+    const prices = dbBeats
+      .map((beat) => Number(beat.price))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const minPrice = prices.length ? Math.min(...prices) : null;
+    const producers = new Set(
+      dbBeats
+        .map((beat) => beat.producerUsername || beat.artist)
+        .filter(Boolean),
+    );
+    const cover =
+      dbBeats.find(
+        (beat) =>
+          beat.artwork &&
+          !beat.artwork.includes("Bvs-3000") &&
+          !beat.artwork.includes("default"),
+      )?.artwork || "/images/hero-studio.jpg";
+    return {
+      count,
+      minPrice,
+      producerCount: producers.size,
+      cover,
+      loading: count === 0,
+    };
+  }, [dbBeats]);
+
+  const activeCollectionCards = useMemo((): ShelfCard[] => {
+    const base = remoteShelves?.length
+      ? remoteShelves
+      : fallbackCollectionCards;
+
+    return base.map((card) => {
+      const isLive =
+        card.shelfKind === "live-beatstore" ||
+        card.action?.type === "live-beatstore" ||
+        LEGACY_LIVE_BEATSTORE_NAMES.has(card.name);
+      if (!isLive || card.action?.type === "pack") return card;
+      if (!liveBeatStats.count) {
+        return {
+          ...card,
+          detail: remoteShelves ? card.detail : "Loading published BeatStore…",
+        };
+      }
+      const priceBit =
+        liveBeatStats.minPrice != null
+          ? ` · from $${liveBeatStats.minPrice}`
+          : "";
+      return {
+        ...card,
+        detail: `${liveBeatStats.count} live beat${liveBeatStats.count === 1 ? "" : "s"} · ${liveBeatStats.producerCount} producer${liveBeatStats.producerCount === 1 ? "" : "s"}${priceBit}`,
+        img: liveBeatStats.cover || card.img,
+        itemCount: liveBeatStats.count,
+        action: card.action || { type: "live-beatstore" },
+      };
+    });
+  }, [remoteShelves, liveBeatStats]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const names = Array.from(
+      new Set([
+        ...activeCollectionCards.map((c) => c.name),
+        ...LEGACY_LIVE_BEATSTORE_NAMES,
+      ]),
+    )
+      .map((name) => encodeURIComponent(name))
+      .join(",");
+    if (!names) return;
+    fetch(`/api/catalogue/trending?names=${names}`, { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) return;
+        const payload = await res.json().catch(() => ({}));
+        if (cancelled || !payload?.scores || typeof payload.scores !== "object")
+          return;
+        setTrendingScores(
+          payload.scores as Record<string, { score: number; plays: number }>,
+        );
+      })
+      .catch(() => {
+        /* trending is optional */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCollectionCards]);
 
   const scopeTracks = useMemo(() => {
     // Beats lane: producer beats + typed beat licences only (never BVS archive songs)
@@ -761,38 +702,117 @@ function CataloguePageContent() {
   );
 
   const shelfCards = useMemo(
-    () => rankCollections(collectionCards, trendingScores, shelfMode),
-    [trendingScores, shelfMode],
+    () => rankCollections(activeCollectionCards, trendingScores, shelfMode),
+    [activeCollectionCards, trendingScores, shelfMode],
   );
 
   const jumpToCollection = (collectionName: string) => {
-    setCollectionJump(collectionName);
+    const card =
+      activeCollectionCards.find((entry) => entry.name === collectionName) ||
+      fallbackCollectionCards.find((entry) => entry.name === collectionName);
+    const action = card?.action;
+
     setGenreFilter("All");
+    setProducerFilter("");
     try {
       trackEvent("player_start", {
         collection: collectionName,
         source: "catalogue_shelf",
         shelf_mode: shelfMode,
+        shelf_kind: card?.shelfKind || "music",
+        shelf_source: card?.source || "curated",
       });
     } catch {
       /* ignore */
     }
-    if (collectionName === "Producer Picks") {
+
+    if (action?.type === "release") {
+      window.location.href = `/album/${encodeURIComponent(action.releaseId)}`;
+      return;
+    }
+    if (action?.type === "href") {
+      window.location.href = action.href;
+      return;
+    }
+
+    if (
+      action?.type === "live-beatstore" ||
+      (!action && LEGACY_LIVE_BEATSTORE_NAMES.has(collectionName))
+    ) {
+      setCollectionJump(LIVE_BEATSTORE_NAME);
+      setPackFilter("");
       setSearch("");
       setTypeFilter("beat");
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
         url.searchParams.set("type", "beat");
+        url.searchParams.delete("producer");
+        url.searchParams.delete("pack");
+        url.searchParams.delete("q");
         window.history.replaceState(
           {},
           "",
-          `${url.pathname}?type=beat#beatstore`,
+          `${url.pathname}?type=beat#browse`,
         );
       }
-    } else {
-      setSearch(collectionName);
-      if (typeFilter === "beat") setTypeFilter("music");
-      setTypeFilter("all");
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("browse")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
+
+    if (action?.type === "pack") {
+      setCollectionJump(collectionName);
+      setPackFilter(action.packId);
+      setSearch("");
+      setTypeFilter("beat");
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.set("type", "beat");
+        url.searchParams.set("pack", action.packId);
+        url.searchParams.delete("producer");
+        url.searchParams.delete("q");
+        window.history.replaceState(
+          {},
+          "",
+          `${url.pathname}?${url.searchParams.toString()}#browse`,
+        );
+      }
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById("browse")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      return;
+    }
+
+    const query =
+      action?.type === "filter" ? action.query : collectionName;
+    const lane =
+      action?.type === "filter"
+        ? action.lane || "music"
+        : card?.shelfKind === "archive-sample"
+          ? "all"
+          : "music";
+
+    setCollectionJump(collectionName);
+    setPackFilter("");
+    setSearch(query);
+    setTypeFilter(lane);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (lane === "music") url.searchParams.delete("type");
+      else url.searchParams.set("type", lane);
+      url.searchParams.delete("producer");
+      url.searchParams.delete("pack");
+      url.searchParams.set("q", query);
+      window.history.replaceState(
+        {},
+        "",
+        `${url.pathname}?${url.searchParams.toString()}#browse`,
+      );
     }
     window.requestAnimationFrame(() => {
       document
@@ -815,15 +835,22 @@ function CataloguePageContent() {
       const matchesProducer =
         !producerFilter ||
         producerKeysMatch(producerFilter, track.producerUsername, track.artist);
+      const matchesPack = !packFilter || track.packId === packFilter;
       // typeFilter music/beat already applied in scopeTracks; single/mix narrow further
       const matchesType =
         typeFilter === "all" ||
         typeFilter === "music" ||
         typeFilter === "beat" ||
         track.type === typeFilter;
-      return matchesSearch && matchesGenre && matchesProducer && matchesType;
+      return (
+        matchesSearch &&
+        matchesGenre &&
+        matchesProducer &&
+        matchesPack &&
+        matchesType
+      );
     });
-  }, [scopeTracks, genreFilter, producerFilter, search, typeFilter]);
+  }, [scopeTracks, genreFilter, producerFilter, packFilter, search, typeFilter]);
 
   const openExternalStream = (track: Track) => {
     if (!track.externalUrl) return;
@@ -982,21 +1009,33 @@ function CataloguePageContent() {
       ? beatCount
       : musicCount;
 
-  const clearProducerFilter = () => {
+  /** Clear producer/pack filters and jump to the full beats grid (esp. mobile). */
+  const showAllBeats = () => {
     setTypeFilter("beat");
     setSearch("");
     setProducerFilter("");
+    setPackFilter("");
     setGenreFilter("All");
+    setCollectionJump(LIVE_BEATSTORE_NAME);
+    if (typeof window === "undefined") return;
     const url = new URL(window.location.href);
     url.searchParams.set("type", "beat");
     url.searchParams.delete("producer");
+    url.searchParams.delete("pack");
     url.searchParams.delete("q");
     window.history.replaceState(
       {},
       "",
-      `${url.pathname}?${url.searchParams.toString()}#beatstore`,
+      `${url.pathname}?type=beat#browse`,
     );
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("browse")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   };
+
+  const clearProducerFilter = showAllBeats;
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12 pb-28">
@@ -1110,7 +1149,7 @@ function CataloguePageContent() {
               producerMode
                 ? `${producerLabel} BeatStore crate`
                 : beatsMode
-                  ? "WolfBrx June Pack beat artwork"
+                  ? "Wolf Bridges June Pack beat artwork"
                   : "BVS music catalogue"
             }
             fill
@@ -1159,8 +1198,11 @@ function CataloguePageContent() {
                 Browse beats from your favorite producer.
               </h2>
               <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-                Producer crates only. BVS archive songs stay on Music — not
-                here.
+                Live published crates only
+                {liveBeatStats.count
+                  ? ` · ${liveBeatStats.count} beat${liveBeatStats.count === 1 ? "" : "s"} from ${liveBeatStats.producerCount} producer${liveBeatStats.producerCount === 1 ? "" : "s"}${liveBeatStats.minPrice != null ? ` · from $${liveBeatStats.minPrice}` : ""}`
+                  : " · loading…"}
+                . Sample pack shelves below are site listings, not this full crate.
               </p>
             </div>
             <button
@@ -1263,7 +1305,7 @@ function CataloguePageContent() {
                 </span>
                 <span className="mt-1 block text-sm text-text-secondary">
                   {shelvesExpanded
-                    ? "Featured is editorial. Trending ranks by plays and checkout activity."
+                    ? "Live BeatStore updates from published data. Pack cards are sample listings. Trending ranks by plays."
                     : "Expand to browse featured, trending and new shelves."}
                 </span>
               </span>
@@ -1306,7 +1348,7 @@ function CataloguePageContent() {
                 return (
                   <button
                     type="button"
-                    key={collection.name}
+                    key={collection.id || collection.name}
                     onClick={() => jumpToCollection(collection.name)}
                     className={`group relative flex items-center gap-3 rounded-xl border bg-bg-card/40 p-3 text-left transition ${
                       isTop || isActive
@@ -1324,6 +1366,10 @@ function CataloguePageContent() {
                         src={collection.img}
                         alt=""
                         fill
+                        unoptimized={
+                          /^https?:\/\//i.test(collection.img) ||
+                          collection.img.startsWith("/api/media/")
+                        }
                         className="object-cover transition-transform group-hover:scale-[1.03]"
                       />
                     </div>
@@ -1334,6 +1380,16 @@ function CataloguePageContent() {
                       <div className="truncate text-xs text-text-secondary">
                         {collection.detail}
                       </div>
+                      {collection.shelfKind === "archive-sample" && (
+                        <div className="mt-0.5 truncate text-[11px] text-white/45">
+                          Sample shelf
+                        </div>
+                      )}
+                      {collection.shelfKind === "live-beatstore" && (
+                        <div className="mt-0.5 truncate text-[11px] text-brand/90">
+                          Live data
+                        </div>
+                      )}
                       {shelfMode === "trending" && collection.statLine && (
                         <div className="mt-0.5 truncate text-[11px] text-brand/90">
                           {collection.statLine}
@@ -1392,8 +1448,8 @@ function CataloguePageContent() {
                 className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
               >
                 <option value="">Jump to collection</option>
-                {collectionCards.map((collection) => (
-                  <option key={collection.name} value={collection.name}>
+                {activeCollectionCards.map((collection) => (
+                  <option key={collection.id || collection.name} value={collection.name}>
                     {collection.name} — {collection.detail}
                   </option>
                 ))}
@@ -1796,32 +1852,7 @@ function CataloguePageContent() {
                   )}
                 </div>
 
-                <div className="mt-7">
-                  <h3 className="mb-3 text-sm font-semibold uppercase tracking-[2px]">
-                    Same collection
-                  </h3>
-                  <div className="space-y-1">
-                    {collectionTracks.map((track) => (
-                      <button
-                        key={track.id}
-                        type="button"
-                        onClick={() => setSelectedTrack(track)}
-                        className={`flex w-full justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-white/5 ${
-                          track.id === selectedTrack.id
-                            ? "bg-brand/10 text-brand"
-                            : ""
-                        }`}
-                      >
-                        <span className="min-w-0 truncate">{track.title}</span>
-                        <span className="ml-4 flex-shrink-0 text-text-secondary">
-                          {track.bpm || track.duration}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-auto flex flex-col gap-3 border-t border-white/10 pt-6 sm:flex-row sm:flex-wrap">
+                <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:flex-wrap">
                   {selectedTrack.streamOnly ? (
                     <>
                       {selectedTrack.src ? (
@@ -1926,6 +1957,14 @@ function CataloguePageContent() {
                       </Link>
                     </>
                   )}
+                </div>
+
+                <div className="mt-5">
+                  <CollapsibleCollection
+                    tracks={collectionTracks}
+                    selectedId={selectedTrack.id}
+                    onSelect={setSelectedTrack}
+                  />
                 </div>
 
                 <Link

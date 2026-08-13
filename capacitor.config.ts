@@ -5,13 +5,16 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * Loads the live site so content updates deploy with Vercel (no store resubmit for catalogue).
  * For fully offline packages later: switch to local `webDir` after a static export strategy.
  */
+const mobileSurface = process.env.BVS_MOBILE_SURFACE === "android" ? "android" : "ios";
+
 const config: CapacitorConfig = {
   appId: "com.bvsradio.app",
   appName: "BVS Radio",
   webDir: "out",
   server: {
     // Live hybrid: always serve production web app inside the native shell
-    url: "https://bvsradio.com",
+    // Default build is iOS. Play builds use BVS_MOBILE_SURFACE=android.
+    url: `https://bvsradio.com/app/${mobileSurface}`,
     cleartext: false,
     allowNavigation: [
       "bvsradio.com",

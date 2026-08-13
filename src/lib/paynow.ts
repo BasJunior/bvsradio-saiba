@@ -49,6 +49,42 @@ export function getPaynow() {
   return paynow;
 }
 
+/**
+ * Auth email sent to Paynow with initiate.
+ *
+ * Paynow **test** integrations reject any authemail that is not the merchant
+ * registration email. Empty authemail is accepted and still returns browserurl.
+ * Production integrations accept the payer email.
+ *
+ * Override with PAYNOW_AUTH_EMAIL (merchant email) when you must pin one address.
+ * Set PAYNOW_USE_CUSTOMER_EMAIL=1 only on a live (non-test) integration.
+ */
+export function paynowAuthEmail(customerEmail?: string | null): string {
+  const pinned = (process.env.PAYNOW_AUTH_EMAIL || "").trim();
+  if (pinned) return pinned;
+  const useCustomer = process.env.PAYNOW_USE_CUSTOMER_EMAIL === "1";
+  if (useCustomer && customerEmail && customerEmail.includes("@")) {
+    return customerEmail.trim();
+  }
+  // Safe default for test mode + avoids silent initiate failures.
+  return "";
+}
+
+export function humanizePaynowError(raw?: string | null): string {
+  const msg = (raw || "").trim();
+  if (!msg) {
+    return "Paynow could not start checkout. Try again or contact BVS.";
+  }
+  if (/test mode/i.test(msg) && /authemail|email/i.test(msg)) {
+    return "Paynow is still in test mode and rejected this checkout email. BVS will open Paynow without a locked email, or switch the integration to live.";
+  }
+  if (/integration/i.test(msg) && /invalid|not found|disabled/i.test(msg)) {
+    return "Paynow merchant credentials are invalid or disabled. Check PAYNOW_INTEGRATION_ID / KEY.";
+  }
+  // Keep provider detail short for operators; customers get a stable line.
+  return "Paynow could not start checkout. Please try again in a moment.";
+}
+
 /** Normalize ZW / international phones for Paynow EcoCash */
 export function normalizeZwPhone(input: string): string | null {
   const digits = input.replace(/\D/g, "");

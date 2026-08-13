@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useStationPlayer } from "@/components/StationPlayer";
+import FlowRelationships from "@/components/flow/FlowRelationships";
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -35,14 +35,14 @@ export default function HomeListenPanel() {
       </div>
       <div className="p-4 sm:p-6">
         <div className="flex items-center gap-3 sm:gap-4">
-          <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] sm:h-20 sm:w-20 sm:rounded-2xl">
+          <button type="button" onClick={player.openNowPlaying} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] sm:h-20 sm:w-20 sm:rounded-2xl" aria-label="Open full player">
             {art ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={art} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center" />
             ) : (
               <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold text-white/50">BVS</span>
             )}
-          </span>
+          </button>
 
           <div className="min-w-0 flex-1">
             <p className="mb-1 truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-brand sm:text-[11px] sm:tracking-[0.18em]">
@@ -82,10 +82,11 @@ export default function HomeListenPanel() {
           >
             Open queue
           </button>
-          <Link href="/radio" className="font-medium text-brand hover:underline">
-            Full player →
-          </Link>
+          <button type="button" onClick={player.openNowPlaying} className="text-left font-medium text-brand hover:underline">
+            Open Now Playing
+          </button>
         </div>
+        <FlowRelationships kind="track" id={player.current?.id} compact />
       </div>
     </div>
   );

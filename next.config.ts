@@ -34,6 +34,17 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/:path*",
+        headers: [
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(self)" },
+          { key: "X-DNS-Prefetch-Control", value: "off" },
+        ],
+      },
+      {
         source: "/sw.js",
         headers: [
           { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
@@ -63,6 +74,8 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
+      { source: "/admin/editorial", destination: "/editorial", permanent: true },
+      { source: "/admin/editorial/finance", destination: "/editorial/finance", permanent: true },
       { source: "/radio.html", destination: "/radio", permanent: true },
       { source: "/listen", destination: "/radio", permanent: true },
       { source: "/listen.html", destination: "/radio", permanent: true },

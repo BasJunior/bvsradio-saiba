@@ -13,9 +13,13 @@ import {
   publicStorageUrl,
   slugifyBeat,
 } from '@/lib/beatstore-server'
+// beat licence templates: src/lib/beat-licences.ts
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 import { creatorPublicName } from '@/lib/public-name'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
+import { resolveProducerBeatEntitlements } from '@/lib/producer-entitlements'
+import { licenceOptionSeed } from '@/lib/beat-licences'
+import { ensureBeatArtworkPath } from '@/lib/beat-cover-autogen'
 
 export const runtime = 'nodejs'
 
@@ -53,11 +57,12 @@ export async function GET(request: Request) {
       master_path: await privateMediaUrl(beat.master_path),
       stems_path: await privateMediaUrl(beat.stems_path),
     })))
-    return NextResponse.json({ beats, profile })
+    const entitlements = await resolveProducerBeatEntitlements(identity.user.id)
+    return NextResponse.json({ beats, profile, entitlements })
   }
 
   // public published beats for catalogue / BeatStore
-  const beats = await listPublishedBeats(60)
+  const beats = await listPublishedBeats(120)
   const producerIds = [...new Set(beats.map(beat => beat.producer_user_id))]
   const producerResponse = producerIds.length
     ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status`), { headers: beatHeaders, cache: 'no-store' })
@@ -89,12 +94,23 @@ export async function GET(request: Request) {
       artworkUrl: publicStorageUrl(b.artwork_path),
       previewUrl: publicStorageUrl(b.preview_path),
       startingPrice: starting,
+      packId: b.pack_id || null,
+      packPosition: b.pack_position ?? null,
       licences,
       published_at: b.published_at,
       created_at: b.created_at,
     }
   })
-  return NextResponse.json({ beats: shaped, count: shaped.length })
+  const startingPrices = shaped
+    .map((beat) => Number(beat.startingPrice))
+    .filter((n) => Number.isFinite(n) && n > 0)
+  const summary = {
+    count: shaped.length,
+    producerCount: producerIds.length,
+    minPrice: startingPrices.length ? Math.min(...startingPrices) : null,
+    updatedAt: new Date().toISOString(),
+  }
+  return NextResponse.json({ beats: shaped, count: shaped.length, summary })
 }
 
 export async function POST(request: Request) {
@@ -141,6 +157,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Media storage is unavailable.' }, { status: 503 })
     }
     const slugBase = slugifyBeat(cleanText(body.slug, 80) || title) || `beat-${Date.now()}`
+    let artworkPath = cleanText(body.artworkPath, 500) || null
+    let artworkGenerated = false
+    // On submit (or when no art provided), fill a BVS-branded placeholder cover.
+    if (!artworkPath) {
+      const producerLabel =
+        creatorPublicName({
+          publicName: (profile as { creator_public_name?: string }).creator_public_name,
+          username: profile.username,
+        }) ||
+        profile.display_name ||
+        profile.username ||
+        'BVS producer'
+      const ensured = await ensureBeatArtworkPath({
+        producerUserId: identity.user.id,
+        title,
+        producerName: producerLabel,
+        artworkPath: null,
+      })
+      artworkPath = ensured.path
+      artworkGenerated = ensured.generated
+    }
     const payload = {
       producer_user_id: identity.user.id,
       title,
@@ -150,7 +187,7 @@ export async function POST(request: Request) {
       mood: cleanText(body.mood, 120),
       bpm: Number(body.bpm) > 0 ? Math.round(Number(body.bpm)) : null,
       musical_key: cleanText(body.musicalKey, 20) || null,
-      artwork_path: cleanText(body.artworkPath, 500) || null,
+      artwork_path: artworkPath,
       preview_path: cleanText(body.previewPath, 500) || null,
       master_path: cleanText(body.masterPath, 500) || null,
       stems_path: cleanText(body.stemsPath, 500) || null,
@@ -208,27 +245,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Beat create returned empty.' }, { status: 500 })
     }
 
+    const seed = licenceOptionSeed('standard_lease', price)
     const licenceRes = await fetch(beatUrl('beat_licence_options'), {
       method: 'POST',
       headers: { ...beatHeaders, Prefer: 'return=representation' },
       body: JSON.stringify({
         beat_id: beat.id,
-        licence_code: 'standard_lease',
-        licence_name: 'Standard lease',
-        price_usd: price,
-        currency: 'usd',
-        included_files: ['preview', 'master'],
-        is_active: true,
-        terms_version: 'mvp-v1',
-        terms_summary:
-          'Personal / non-exclusive lease. Full legal terms to be finalized by BVS; purchase will snapshot the version shown at checkout.',
+        licence_code: seed.licence_code,
+        licence_name: seed.licence_name,
+        price_usd: seed.price_usd,
+        currency: seed.currency,
+        included_files: seed.included_files,
+        is_active: seed.is_active,
+        terms_version: seed.terms_version,
+        terms_summary: seed.terms_summary,
       }),
     })
     if (!licenceRes.ok) {
       console.error('licence create failed', await licenceRes.text())
     }
 
-    return NextResponse.json({ ok: true, beatId: beat.id, status: payload.status })
+    return NextResponse.json({
+      ok: true,
+      beatId: beat.id,
+      status: payload.status,
+      artworkPath: payload.artwork_path,
+      artworkGenerated,
+    })
   } catch (error) {
     console.error('beats POST', error)
     return NextResponse.json({ error: 'Could not save beat.' }, { status: 500 })

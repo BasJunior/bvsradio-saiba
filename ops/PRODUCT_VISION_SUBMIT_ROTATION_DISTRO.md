@@ -2,7 +2,7 @@
 
 **Status:** product vision + implementation direction (2026-07-21)  
 **Audience:** OpenClaw / Saiba / Grok Build / any BVS agent  
-**Rule:** Do **not** invent distributor names, licence fees, or premium prices until Abias sets them. Build the **system** so those details can be plugged in later.
+**Rule:** Do **not** invent **distributor names** or **pass-through licence fees**. Artist Premium **list prices** were set in the 2026-07-28 financial plan (Founding / Standard) — use those on the site. Build billing so partner costs can still be plugged in later.
 
 ---
 
@@ -34,10 +34,18 @@ Artist account (role artist)
   → Optional: sell singles ($2 default) / full album packages on BVS
   → If premium artist subscription active:
        → Distribution entitlement ON
-       → Hand-off to a music distributor (TBD) for Spotify / other DSPs
+       → distribution_jobs: eligible → queued → submitted → live_on_dsp
+       → Hand-off via **private** DSP partner (internal code only; not a public brand)
+       → After partner/store approval → Spotify / Apple / Boomplay / etc.
   → If not premium:
        → BVS listen + on-site commerce only (no auto multi-platform publish)
 ```
+
+### User story (Premium artist — full path)
+
+> As a **Premium artist**, I upload a song to BVS. After **BVS editorial approval**, it is **live on BVS Radio**. BVS then queues **multi-platform distribution** through a **private partner** (not named in the product UI). When that partner and the stores approve the release, the same song is **live on Spotify and other major platforms**. Studio shows my path status the whole way.
+
+Implementation spine: `src/lib/distribution-path.ts` · Studio `/creator/studio#release-path` · editorial `distribution_jobs` controls · publish hook in `releases-server.ts`.
 
 Dropbox album folders Abias provided are the **UX/data shape reference** for “how submit should work,” not merely static Spotify deep-links.
 
@@ -68,14 +76,23 @@ Do **not** mix “stream-only YouTube/Spotify discovery stubs” with “we sell
   - cost of **distributor / partner**
   - other **business factors** (margin, support, currency)
 
-**Unknown — do not invent**
+**Artist Premium list prices (locked 2026-07-28 plan)**
 
-- Exact monthly USD/ZAR/USD$ amount  
+| Tier | Monthly | Yearly | Notes |
+|------|---------|--------|--------|
+| **Founding Premium** | **US$9** | **US$90** | First 25–50 artists |
+| **Standard Premium** | **US$12** | **US$120** | After founding / cost validation |
+
+Source of truth in code: `src/lib/premium-tiers.ts` · public page `/premium`.
+
+**Still unknown — do not invent**
+
 - Named distributor (DistroKid, CD Baby, TuneCore, label partner, custom, …)  
+- Distributor **pass-through** fees (keep separate from Premium list price)  
 - Contract terms, territories, exclusive vs non-exclusive  
 - Whether premium is required for BVS rotation (default vision: **rotation is after BVS publish**; premium is for **off-platform**)
 
-When details arrive: update this doc + UI copy + billing only; **data model should already have** `premium_active`, `distribution_enabled`, `distributor_id` (nullable).
+When partner details arrive: update this doc + billing only; **data model should already have** `premium_active`, `distribution_enabled`, `distributor_id` (nullable).
 
 ---
 

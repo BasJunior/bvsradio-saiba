@@ -57,7 +57,17 @@ PACKS: list[dict[str, str | int]] = [
     {"id": "rights-passport", "step": 16, "file": "supabase-rights-passport.sql"},
     {"id": "media-preflight", "step": 17, "file": "supabase-media-preflight.sql"},
     {"id": "qr-login", "step": 18, "file": "supabase-qr-login.sql"},
-    {"id": "apple-rights-compliance", "step": 19, "file": "supabase-apple-rights-compliance.sql"},
+    {"id": "release-clearance-evidence", "step": 19, "file": "supabase-release-clearance-evidence.sql"},
+    {"id": "beat-packs", "step": 20, "file": "supabase-beat-packs.sql"},
+    {"id": "premium-memberships", "step": 21, "file": "supabase-premium-memberships.sql", "skip_if_table": "bvs_memberships"},
+    {"id": "spotify-catalogue-link", "step": 22, "file": "supabase-spotify-catalogue-link.sql"},
+    {"id": "founder-authority", "step": 23, "file": "supabase-founder-authority.sql"},
+    {"id": "security-hardening", "step": 24, "file": "supabase-security-hardening.sql"},
+    {"id": "marketplace-economics", "step": 25, "file": "supabase-marketplace-economics.sql"},
+    {"id": "creator-marketplace", "step": 26, "file": "supabase-creator-marketplace.sql"},
+    {"id": "marketplace-services", "step": 27, "file": "supabase-marketplace-services.sql"},
+    {"id": "mobile-distribution", "step": 28, "file": "supabase-mobile-distribution.sql"},
+    {"id": "apple-rights-compliance", "step": 29, "file": "supabase-apple-rights-compliance.sql"},
 ]
 
 BOOKKEEPING_SQL = """

@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import ThemeToggle from '@/components/ThemeToggle'
 
 type Profile = {
   username: string
@@ -31,6 +32,7 @@ type Order = {
   created_at: string
 }
 type Access = { creator?: boolean; artist?: boolean; producer?: boolean; writer?: boolean; showCreator?: boolean; editorial?: boolean; admin?: boolean }
+type PremiumSnap = { premiumActive?: boolean; premiumUntil?: string | null; premiumPlanLabel?: string | null }
 type RoleApplication = {
   id: string
   requested_role: 'artist' | 'producer' | 'writer' | 'show_creator'
@@ -51,6 +53,7 @@ export default function AccountPage() {
   const [token, setToken] = useState('')
   const [data, setData] = useState<AccountData | null>(null)
   const [access, setAccess] = useState<Access>({})
+  const [premiumSnap, setPremiumSnap] = useState<PremiumSnap>({})
   const [roleApplication, setRoleApplication] = useState<RoleApplication | null>(null)
   const [roleForm, setRoleForm] = useState({ requestedRole: 'artist', message: '' })
   const [applying, setApplying] = useState(false)
@@ -79,6 +82,11 @@ export default function AccountPage() {
     const applicationPayload = applicationResponse.ok ? await applicationResponse.json() : {}
     setData(account)
     setAccess(accessPayload.access || {})
+    setPremiumSnap({
+      premiumActive: Boolean(accessPayload.premiumActive),
+      premiumUntil: accessPayload.premiumUntil ?? null,
+      premiumPlanLabel: accessPayload.premiumPlanLabel ?? null,
+    })
     setRoleApplication(applicationPayload.application || null)
     setForm({
       username: account.profile?.username || '',
@@ -117,10 +125,14 @@ export default function AccountPage() {
     const items = [
       { href: '/library', title: 'Library', copy: 'Favourites, follows and listening history.' },
       { href: '/checkout', title: 'Cart', copy: 'Review your current basket and continue checkout.' },
+      { href: '/notifications', title: 'Notifications', copy: 'Review editorial, creator, order and account updates.' },
     ]
     if (access.creator) items.push({ href: '/creator/studio', title: 'Creator Studio', copy: 'Manage submissions, releases and creator workflows.' })
     if (access.artist) items.push({ href: '/artists', title: 'Artist wallet', copy: 'View onboarding, deposits, balance and payout readiness.' })
-    if (access.editorial) items.push({ href: '/admin/editorial', title: 'Editorial', copy: 'Open the BVS editorial workspace.' })
+    if (access.editorial) {
+      items.push({ href: '/editorial', title: 'Editorial', copy: 'Review music, releases, artists and operational queues.' })
+      items.push({ href: '/admin/creator-workflows', title: 'Writing & research', copy: 'Review research briefs, approve drafting and review submitted articles.' })
+    }
     return items
   }, [access])
 
@@ -259,9 +271,20 @@ export default function AccountPage() {
           <h1 className="mt-2 text-4xl font-semibold">Welcome, {data.profile.display_name || data.profile.username}</h1>
           <p className="mt-3 text-text-secondary">{data.user.email}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-brand/40 px-4 py-2 text-sm capitalize text-brand">{accountRole}</span>
           {data.profile.is_verified && <span className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">Verified</span>}
+          {premiumSnap.premiumActive && (
+            <Link
+              href="/artist/premium"
+              className="rounded-full border border-brand/50 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/20"
+            >
+              Premium · {premiumSnap.premiumPlanLabel || 'Standard'}
+              {premiumSnap.premiumUntil
+                ? ` · through ${new Date(premiumSnap.premiumUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`
+                : ''}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -270,6 +293,11 @@ export default function AccountPage() {
 
       <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {shortcuts.map((item) => <Link key={item.href} href={item.href} className="rounded-2xl border border-white/10 bg-white/[.025] p-5 transition hover:border-brand/50"><h2 className="text-lg font-semibold">{item.title}</h2><p className="mt-2 text-sm text-text-secondary">{item.copy}</p></Link>)}
+      </section>
+
+      <section className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.025] p-5">
+        <div><h2 className="text-lg font-semibold">Appearance</h2><p className="mt-1 text-sm text-text-secondary">Choose the BVS light or dark theme for this device.</p></div>
+        <ThemeToggle />
       </section>
 
       <section className="mt-12 grid gap-8 lg:grid-cols-[1.1fr_.9fr]">

@@ -1,5 +1,5 @@
 import 'server-only'
-import { sendBvsEmail } from '@/lib/mailer'
+import { sendBvsEmail, wrapBvsEmailHtml } from '@/lib/mailer'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -49,6 +49,18 @@ export async function sendMusicApprovalEmail(input: {
     'BVS Radio Editorial',
   ].join('\n')
 
-  await sendBvsEmail({ to: user.email, subject, text })
+  const html = wrapBvsEmailHtml({
+    title: `Approved: ${title}`,
+    bodyHtml: `
+      <p style="color:#cfcfcf;line-height:1.5;margin:0 0 14px">Good news — your music has been approved by BVS Radio.</p>
+      <p style="color:#fafafa;margin:0 0 12px"><strong>${label[0].toUpperCase()}${label.slice(1)}:</strong> ${title}</p>
+      <p style="color:#cfcfcf;line-height:1.5;margin:0 0 18px">${
+        input.kind === 'release'
+          ? 'Your release has been published to the BVS catalogue.'
+          : `Your ${label} has passed editorial review. It can now proceed to publishing and rotation.`
+      }</p>
+      <p style="margin:0"><a href="${catalogueUrl}" style="display:inline-block;background:#f5c518;color:#000;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">Open catalogue</a></p>`,
+  })
+  await sendBvsEmail({ to: user.email, subject, text, html })
 }
 

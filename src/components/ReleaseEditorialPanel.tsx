@@ -1,6 +1,16 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  PRIVATE_DSP_PARTNER_CODE,
+  editorialDistributionStatusLabel,
+} from '@/lib/distribution-path'
+import {
+  bestIsrcMatch,
+  normalizeIsrc,
+  suggestIsrcs,
+  type KnownIsrcEntry,
+} from '@/lib/known-isrc'
 
 type Release = {
   id: string
@@ -22,6 +32,7 @@ type Release = {
   master_owner_name?: string
   composition_owner_names?: string[]
   territories?: string[]
+  material_types?: string[]
 }
 
 type ReleaseTrack = {
@@ -31,6 +42,8 @@ type ReleaseTrack = {
   title: string
   file_url?: string
   in_rotation?: boolean
+  isrc?: string | null
+  track_id?: string | null
 }
 type ReleaseContributor = {
   id: string
@@ -56,6 +69,17 @@ type MediaProcessingJob = {
   preview_path?: string
   error_code?: string
 }
+type ReleaseClearanceEvidence = {
+  id: string
+  release_id: string
+  material_type: string
+  evidence_version: number
+  original_file_name: string
+  file_url?: string
+  artist_notes?: string
+  review_status: string
+  review_notes?: string
+}
 
 type DistJob = {
   id: string
@@ -69,8 +93,10 @@ export default function ReleaseEditorialPanel({
   releases,
   releaseTracks,
   releaseContributors,
+  releaseClearanceEvidence,
   mediaProcessingJobs,
   distributionJobs,
+  knownIsrcMap = [],
   canApprove,
   canRotate,
   canDistro,
@@ -80,8 +106,10 @@ export default function ReleaseEditorialPanel({
   releases: Release[]
   releaseTracks: ReleaseTrack[]
   releaseContributors: ReleaseContributor[]
+  releaseClearanceEvidence: ReleaseClearanceEvidence[]
   mediaProcessingJobs: MediaProcessingJob[]
   distributionJobs: DistJob[]
+  knownIsrcMap?: KnownIsrcEntry[]
   canApprove: boolean
   canRotate: boolean
   canDistro: boolean
@@ -90,6 +118,23 @@ export default function ReleaseEditorialPanel({
 }) {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [rotationSelections, setRotationSelections] = useState<Record<string, string[]>>({})
+  const [isrcValues, setIsrcValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {}
+    for (const track of releaseTracks) {
+      if (track.isrc) initial[track.id] = String(track.isrc)
+    }
+    return initial
+  })
+  const [isrcQuery, setIsrcQuery] = useState<Record<string, string>>({})
+  const [openIsrcMenu, setOpenIsrcMenu] = useState<string | null>(null)
+
+  const trackIsrcsPayload = (members: ReleaseTrack[]) =>
+    members
+      .map((member) => ({
+        releaseTrackId: member.id,
+        isrc: normalizeIsrc(isrcValues[member.id] ?? member.isrc ?? ''),
+      }))
+      .filter((row) => row.isrc)
 
   if (!releases?.length) {
     return (
@@ -117,6 +162,7 @@ export default function ReleaseEditorialPanel({
         {releases.map((release) => {
           const members = releaseTracks.filter((t) => t.release_id === release.id)
           const contributors = releaseContributors.filter((item) => item.release_id === release.id)
+          const clearanceEvidence = releaseClearanceEvidence.filter((item) => item.release_id === release.id)
           const mediaJobs = mediaProcessingJobs.filter((item) => item.release_id === release.id)
           const job = distributionJobs.find((j) => j.release_id === release.id)
           const rightsReady = ['ready', 'legacy_approved'].includes(release.preflight_status || '')
@@ -152,9 +198,22 @@ export default function ReleaseEditorialPanel({
                     {new Date(release.created_at).toLocaleString()}
                   </p>
                   <ol className="mt-3 space-y-2 text-sm text-text-secondary">
-                    {members.map((m) => (
+                    {members.map((m) => {
+                      const currentIsrc = isrcValues[m.id] ?? m.isrc ?? ''
+                      const query = isrcQuery[m.id] ?? ''
+                      const auto = !currentIsrc
+                        ? bestIsrcMatch(m.title, knownIsrcMap, { artistName: release.artist_name })
+                        : null
+                      const suggestions = suggestIsrcs(m.title, knownIsrcMap, {
+                        artistName: release.artist_name,
+                        query: query || undefined,
+                        limit: 6,
+                        minScore: query ? 0.2 : 0.35,
+                      })
+                      const menuOpen = openIsrcMenu === m.id
+                      return (
                       <li key={m.id} className="rounded-lg border border-white/10 p-2">
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                           {canRotate && (
                             <input
                               type="checkbox"
@@ -164,13 +223,100 @@ export default function ReleaseEditorialPanel({
                               className="h-4 w-4 accent-emerald-400"
                             />
                           )}
-                          <span>{m.position}. {m.title}</span>
+                          <span className="min-w-0 flex-1">{m.position}. {m.title}</span>
                         </div>
                         {m.file_url && (
                           <audio controls preload="none" src={m.file_url} className="mt-1 h-8 max-w-full" />
                         )}
+                        <div className="relative mt-2">
+                          <label className="mb-1 block text-[11px] uppercase tracking-wide text-text-secondary">
+                            ISRC
+                            {auto && !currentIsrc ? (
+                              <button
+                                type="button"
+                                className="ml-2 normal-case tracking-normal text-brand underline"
+                                onClick={() => {
+                                  setIsrcValues((prev) => ({ ...prev, [m.id]: auto.isrc }))
+                                  setIsrcQuery((prev) => ({ ...prev, [m.id]: '' }))
+                                  setOpenIsrcMenu(null)
+                                }}
+                              >
+                                Use suggestion {auto.isrc}
+                              </button>
+                            ) : null}
+                          </label>
+                          <div className="flex flex-wrap gap-2">
+                            <input
+                              type="text"
+                              value={currentIsrc}
+                              onChange={(e) => {
+                                const next = e.target.value.toUpperCase()
+                                setIsrcValues((prev) => ({ ...prev, [m.id]: next }))
+                                setIsrcQuery((prev) => ({ ...prev, [m.id]: next }))
+                                setOpenIsrcMenu(m.id)
+                              }}
+                              onFocus={() => setOpenIsrcMenu(m.id)}
+                              onBlur={() => {
+                                // Delay so suggestion click registers.
+                                window.setTimeout(() => {
+                                  setOpenIsrcMenu((open) => (open === m.id ? null : open))
+                                }, 150)
+                              }}
+                              placeholder="e.g. SE6XY2585728"
+                              spellCheck={false}
+                              className="min-w-[12rem] flex-1 rounded-lg border border-white/10 bg-black/30 px-2 py-1.5 font-mono text-xs text-text-primary"
+                              aria-label={`ISRC for ${m.title}`}
+                              autoComplete="off"
+                            />
+                            {currentIsrc && (
+                              <button
+                                type="button"
+                                className="rounded-full border border-white/15 px-2 py-1 text-[11px]"
+                                onClick={() => {
+                                  setIsrcValues((prev) => ({ ...prev, [m.id]: '' }))
+                                  setIsrcQuery((prev) => ({ ...prev, [m.id]: '' }))
+                                }}
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+                          {menuOpen && suggestions.length > 0 && (
+                            <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-white/15 bg-[#0f141c] shadow-xl">
+                              {suggestions.map((suggestion) => (
+                                <li key={`${m.id}-${suggestion.isrc}`}>
+                                  <button
+                                    type="button"
+                                    className="flex w-full flex-col gap-0.5 px-3 py-2 text-left text-xs hover:bg-white/10"
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onClick={() => {
+                                      setIsrcValues((prev) => ({ ...prev, [m.id]: suggestion.isrc }))
+                                      setIsrcQuery((prev) => ({ ...prev, [m.id]: '' }))
+                                      setOpenIsrcMenu(null)
+                                    }}
+                                  >
+                                    <span className="font-mono text-brand">{suggestion.isrc}</span>
+                                    <span className="text-text-secondary">
+                                      {suggestion.title || 'Untitled'}
+                                      {suggestion.artist_name ? ` · ${suggestion.artist_name}` : ''}
+                                      {suggestion.source ? ` · ${suggestion.source}` : ''}
+                                      {' · '}
+                                      {Math.round(suggestion.score * 100)}% match
+                                    </span>
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {!currentIsrc && auto && (
+                            <p className="mt-1 text-[11px] text-emerald-200/90">
+                              Suggested from known catalogue: {auto.title} ({Math.round(auto.score * 100)}%)
+                            </p>
+                          )}
+                        </div>
                       </li>
-                    ))}
+                      )
+                    })}
                   </ol>
                   {canRotate && (
                     <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-xs text-text-secondary">
@@ -221,6 +367,25 @@ export default function ReleaseEditorialPanel({
                         ))}
                       </ul>
                     )}
+                    <p className="mt-2 text-text-secondary">Material: {release.material_types?.map((item) => item.replaceAll('_', ' ')).join(', ') || 'legacy / undeclared'}</p>
+                    {clearanceEvidence.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {clearanceEvidence.map((evidence) => (
+                          <div key={evidence.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                            <p className="font-semibold">{evidence.material_type.replaceAll('_', ' ')} · v{evidence.evidence_version} · {evidence.review_status}</p>
+                            <p className="mt-1 text-text-secondary">{evidence.original_file_name}{evidence.artist_notes ? ` · ${evidence.artist_notes}` : ''}</p>
+                            {evidence.file_url && <a href={evidence.file_url} target="_blank" rel="noreferrer" className="mt-2 inline-block text-brand underline">Open private evidence</a>}
+                            {evidence.review_notes && <p className="mt-2 text-text-secondary">Reviewer: {evidence.review_notes}</p>}
+                            {canApprove && evidence.review_status === 'submitted' && (
+                              <div className="mt-3 flex flex-wrap gap-2">
+                                <button type="button" disabled={Boolean(busy)} onClick={() => void act('review_release_clearance_evidence', { evidenceId: evidence.id, status: 'approved', notes: notes[release.id] || '' })} className="rounded-full bg-emerald-400 px-3 py-1 font-semibold text-black">Approve evidence</button>
+                                <button type="button" disabled={Boolean(busy)} onClick={() => void act('review_release_clearance_evidence', { evidenceId: evidence.id, status: 'rejected', notes: notes[release.id] || '' })} className="rounded-full bg-red-400 px-3 py-1 font-semibold text-black">Reject evidence</button>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   {release.passport_version ? (
                     <div className={`mt-3 rounded-xl border p-3 text-xs ${mediaReady ? 'border-emerald-400/30 bg-emerald-400/5' : 'border-blue-300/30 bg-blue-300/5'}`}>
@@ -262,6 +427,7 @@ export default function ReleaseEditorialPanel({
                           releaseId: release.id,
                           inRotation: selectedRotationIds.length > 0,
                           rotationReleaseTrackIds: selectedRotationIds,
+                          trackIsrcs: trackIsrcsPayload(members),
                           notes: notes[release.id] || '',
                         })
                       }
@@ -276,6 +442,7 @@ export default function ReleaseEditorialPanel({
                         void act('publish_release', {
                           releaseId: release.id,
                           inRotation: false,
+                          trackIsrcs: trackIsrcsPayload(members),
                           notes: notes[release.id] || '',
                         })
                       }
@@ -301,19 +468,50 @@ export default function ReleaseEditorialPanel({
               )}
               {job && (
                 <div className="mt-4 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                  Distribution job: <strong className="text-text-primary">{job.status}</strong>
-                  {job.distributor ? ` · ${job.distributor}` : ' · partner TBD'}
+                  <p className="text-[11px] uppercase tracking-wide text-brand">Multi-platform path</p>
+                  <p className="mt-1">
+                    Distribution job:{' '}
+                    <strong className="text-text-primary">{editorialDistributionStatusLabel(job.status)}</strong>
+                    {job.distributor ? ` · internal: ${job.distributor}` : ' · internal partner unset'}
+                  </p>
+                  {job.notes && <p className="mt-2 opacity-90">{job.notes}</p>}
+                  <p className="mt-2 text-[11px] opacity-80">
+                    Flow: eligible → queued (ops) → submitted (private partner) → live_on_dsp (stores live).
+                    Do not name aggregator brands in artist-facing copy.
+                  </p>
                   {canDistro && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      {['eligible', 'queued', 'submitted', 'live_on_dsp', 'not_eligible'].map((status) => (
+                      {[
+                        ['eligible', 'Eligible'],
+                        ['queued', 'Queue partner hand-off'],
+                        ['submitted', 'Submitted to partner'],
+                        ['live_on_dsp', 'Live on DSPs'],
+                        ['failed', 'Failed'],
+                        ['not_eligible', 'Not eligible'],
+                      ].map(([status, label]) => (
                         <button
                           key={status}
                           type="button"
                           disabled={Boolean(busy)}
-                          onClick={() => void act('update_distribution_job', { jobId: job.id, status })}
+                          onClick={() =>
+                            void act('update_distribution_job', {
+                              jobId: job.id,
+                              status,
+                              distributor:
+                                status === 'not_eligible' ? null : PRIVATE_DSP_PARTNER_CODE,
+                              notes:
+                                status === 'queued'
+                                  ? 'Queued for private DSP partner hand-off after BVS publish.'
+                                  : status === 'submitted'
+                                    ? 'Delivered to private DSP partner — awaiting store approval.'
+                                    : status === 'live_on_dsp'
+                                      ? 'Live on major platforms. Link ISRC / Spotify URLs on tracks.'
+                                      : undefined,
+                            })
+                          }
                           className="rounded-full border border-white/15 px-3 py-1 hover:border-brand"
                         >
-                          {status}
+                          {label}
                         </button>
                       ))}
                     </div>

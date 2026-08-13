@@ -17,8 +17,18 @@ export function normalizeCreatorKey(value?: string | null) {
  * Keys are normalized; values are preferred public handles.
  */
 const LEGACY_HANDLE_ALIASES: Record<string, string> = {
-  bvsadmin: 'BasJunior',
-  admin: 'BasJunior',
+  bvsadmin: 'basjunior',
+  admin: 'basjunior',
+  basjunior: 'basjunior',
+  'bas-junior': 'basjunior',
+  wolfbrx: 'wolf-bridges',
+  wolfbridges: 'wolf-bridges',
+}
+
+/** Account usernames that may back a public creator handle (profile lookup). */
+const PUBLIC_HANDLE_ACCOUNT_CANDIDATES: Record<string, string[]> = {
+  basjunior: ['basjunior', 'BasJunior', 'admin', 'bvsadmin', 'bvs-admin'],
+  'wolf-bridges': ['wolf-bridges', 'wolfbridges', 'wolfbrx'],
 }
 
 export function resolvePublicHandle(value?: string | null) {
@@ -26,6 +36,26 @@ export function resolvePublicHandle(value?: string | null) {
   if (!raw) return ''
   const alias = LEGACY_HANDLE_ALIASES[normalizeCreatorKey(raw)]
   return alias || raw
+}
+
+/** Usernames to try when loading a public artist page by slug. */
+export function publicHandleAccountCandidates(value?: string | null): string[] {
+  const resolved = resolvePublicHandle(value)
+  if (!resolved) return []
+  const key = normalizeCreatorKey(resolved)
+  const extras = PUBLIC_HANDLE_ACCOUNT_CANDIDATES[key] || PUBLIC_HANDLE_ACCOUNT_CANDIDATES[resolved.toLowerCase()] || []
+  const ordered = [resolved, ...extras, String(value || '').trim().replace(/^@+/, '')]
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const item of ordered) {
+    const clean = String(item || '').trim()
+    if (!clean) continue
+    const token = clean.toLowerCase()
+    if (seen.has(token)) continue
+    seen.add(token)
+    out.push(clean)
+  }
+  return out
 }
 
 export function creatorPublicName(input: {

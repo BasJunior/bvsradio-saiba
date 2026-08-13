@@ -40,17 +40,17 @@ export async function GET(request: Request) {
       rows('artist_payout_requests?status=in.(requested,approved,processing)&select=id,requested_amount,currency,status,requested_at&order=requested_at.desc&limit=30'),
     ])
     events = [
-      ...messages.map(item => ({ id: `beat-message-${item.id}`, title: 'Producer reply', detail: String(item.message || ''), created_at: String(item.created_at), href: '/admin/editorial#ed-beats', kind: 'message' })),
-      ...trackMessages.map(item => ({ id: `track-message-${item.id}`, title: 'Artist reply', detail: String(item.message || ''), created_at: String(item.created_at), href: '/admin/editorial#ed-tracks', kind: 'message' })),
-      ...beats.map(item => ({ id: `beat-${item.id}-${item.status}`, title: 'Beat needs review', detail: `${item.title} · ${String(item.status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/admin/editorial#ed-beats', kind: 'beat' })),
-      ...tracks.map(item => ({ id: `track-${item.id}-${item.editorial_status}`, title: 'Track submission', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/admin/editorial#ed-tracks', kind: 'track' })),
-      ...releases.map(item => ({ id: `release-${item.id}-${item.editorial_status}`, title: 'Release submission', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/admin/editorial#ed-releases', kind: 'release' })),
-      ...requests.map(item => ({ id: `request-${item.id}-${item.status}`, title: 'Artist request', detail: String(item.request_type || '').replaceAll('_', ' '), created_at: String(item.created_at), href: '/admin/editorial#ed-requests', kind: 'request' })),
+      ...messages.map(item => ({ id: `beat-message-${item.id}`, title: 'Producer reply', detail: String(item.message || ''), created_at: String(item.created_at), href: '/editorial#ed-beats', kind: 'message' })),
+      ...trackMessages.map(item => ({ id: `track-message-${item.id}`, title: 'Artist reply', detail: String(item.message || ''), created_at: String(item.created_at), href: '/editorial#ed-tracks', kind: 'message' })),
+      ...beats.map(item => ({ id: `beat-${item.id}-${item.status}`, title: 'Beat needs review', detail: `${item.title} · ${String(item.status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/editorial#ed-beats', kind: 'beat' })),
+      ...tracks.map(item => ({ id: `track-${item.id}-${item.editorial_status}`, title: 'Track submission', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/editorial#ed-tracks', kind: 'track' })),
+      ...releases.map(item => ({ id: `release-${item.id}-${item.editorial_status}`, title: 'Release submission', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/editorial#ed-releases', kind: 'release' })),
+      ...requests.map(item => ({ id: `request-${item.id}-${item.status}`, title: 'Artist request', detail: String(item.request_type || '').replaceAll('_', ' '), created_at: String(item.created_at), href: '/editorial#ed-requests', kind: 'request' })),
       ...applications.map(item => ({ id: `writer-${item.id}`, title: 'Writer application', detail: 'New application waiting for review', created_at: String(item.created_at), href: '/admin/creator-workflows', kind: 'writer' })),
       ...articles.map(item => ({ id: `article-${item.id}-${item.status}`, title: 'Article submission', detail: String(item.title || 'Untitled article'), created_at: String(item.updated_at), href: '/admin/creator-workflows', kind: 'article' })),
       ...shows.map(item => ({ id: `show-${item.id}-${item.status}`, title: 'Show proposal', detail: String(item.title || 'Untitled show'), created_at: String(item.updated_at), href: '/admin/creator-workflows', kind: 'show' })),
       ...episodes.map(item => ({ id: `episode-${item.id}-${item.status}`, title: 'Episode submission', detail: String(item.title || 'Untitled episode'), created_at: String(item.updated_at), href: '/admin/creator-workflows', kind: 'episode' })),
-      ...payouts.map(item => ({ id: `payout-${item.id}-${item.status}`, title: 'Payout request', detail: `${item.currency || 'USD'} ${item.requested_amount} · ${item.status}`, created_at: String(item.requested_at), href: '/admin/editorial#ed-wallet', kind: 'payout' })),
+      ...payouts.map(item => ({ id: `payout-${item.id}-${item.status}`, title: 'Payout request', detail: `${item.currency || 'USD'} ${item.requested_amount} · ${item.status}`, created_at: String(item.requested_at), href: '/editorial#ed-wallet', kind: 'payout' })),
     ]
   } else {
     const rightsNotices = await rows(

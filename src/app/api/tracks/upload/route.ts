@@ -18,7 +18,7 @@ async function notifyOwnerNewUpload(
     `${track.title || "Untitled track"} · ${track.artist_name || uploader.name}`,
     `Genre: ${track.genre || "Not set"}`,
     `Uploader: ${uploader.name} (${uploader.id})`,
-    `Review: ${process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com"}/admin/editorial`,
+    `Review: ${process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com"}/editorial`,
   ].join("\n");
 
   const webhook = process.env.ORDER_NOTIFY_WEBHOOK;

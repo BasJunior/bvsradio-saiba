@@ -1,5 +1,5 @@
 import { getAuthCallbackUrl } from '@/lib/auth-url'
-import { sendBvsEmail } from '@/lib/mailer'
+import { sendBvsEmail, wrapBvsEmailHtml } from '@/lib/mailer'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
@@ -123,15 +123,13 @@ export async function sendConfirmAccountEmail(email: string, confirmUrl: string)
     'This link opens on bvsradio.com.',
     'If you did not sign up, ignore this email.',
   ].join('\n')
-  const html = `<!doctype html>
-<html><body style="font-family:system-ui,sans-serif;background:#0a0a0a;color:#f5f5f5;padding:24px">
-  <div style="max-width:520px;margin:0 auto;background:#141414;border:1px solid #333;border-radius:16px;padding:28px">
-    <h1 style="margin:0 0 12px;font-size:22px">Confirm your BVS Radio account</h1>
-    <p style="color:#cfcfcf;line-height:1.5">Thanks for joining. Tap the button below to confirm <strong>${email}</strong>.</p>
+  const html = wrapBvsEmailHtml({
+    title: 'Confirm your BVS Radio account',
+    bodyHtml: `
+    <p style="color:#cfcfcf;line-height:1.5;margin:0 0 16px">Thanks for joining. Tap the button below to confirm <strong>${email}</strong>.</p>
     <p style="margin:28px 0"><a href="${confirmUrl}" style="display:inline-block;background:#f5c518;color:#000;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">Confirm email</a></p>
-    <p style="color:#999;font-size:13px;line-height:1.5">Or paste this link into your browser:<br/><a href="${confirmUrl}" style="color:#f5c518;word-break:break-all">${confirmUrl}</a></p>
-  </div>
-</body></html>`
+    <p style="color:#999;font-size:13px;line-height:1.5">Or paste this link into your browser:<br/><a href="${confirmUrl}" style="color:#f5c518;word-break:break-all">${confirmUrl}</a></p>`,
+  })
   await sendBvsEmail({ to: email, subject, text, html })
 }
 
@@ -146,15 +144,13 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string) {
     'This link opens on bvsradio.com and expires soon.',
     'If you did not request a reset, ignore this email.',
   ].join('\n')
-  const html = `<!doctype html>
-<html><body style="font-family:system-ui,sans-serif;background:#0a0a0a;color:#f5f5f5;padding:24px">
-  <div style="max-width:520px;margin:0 auto;background:#141414;border:1px solid #333;border-radius:16px;padding:28px">
-    <h1 style="margin:0 0 12px;font-size:22px">Reset your BVS Radio password</h1>
-    <p style="color:#cfcfcf;line-height:1.5">We received a password reset request for <strong>${email}</strong>.</p>
+  const html = wrapBvsEmailHtml({
+    title: 'Reset your BVS Radio password',
+    bodyHtml: `
+    <p style="color:#cfcfcf;line-height:1.5;margin:0 0 16px">We received a password reset request for <strong>${email}</strong>.</p>
     <p style="margin:28px 0"><a href="${resetUrl}" style="display:inline-block;background:#f5c518;color:#000;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">Choose new password</a></p>
     <p style="color:#999;font-size:13px;line-height:1.5">Or paste this link into your browser:<br/><a href="${resetUrl}" style="color:#f5c518;word-break:break-all">${resetUrl}</a></p>
-    <p style="color:#777;font-size:12px;margin-top:24px">If you did not request this, you can ignore the email.</p>
-  </div>
-</body></html>`
+    <p style="color:#777;font-size:12px;margin-top:16px">If you did not request this, you can ignore the email.</p>`,
+  })
   await sendBvsEmail({ to: email, subject, text, html })
 }

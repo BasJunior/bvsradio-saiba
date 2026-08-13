@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 
 type Answer = { reply: string; links?: Array<{ label: string; href: string }> };
 type Message = Answer & { role: "user" | "assistant" };
 
 export default function VisitorAssistant() {
+  const { appChrome } = useAppSurface();
   const [open, setOpen] = useState(false);
+  if (appChrome) return null;
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -37,8 +40,8 @@ export default function VisitorAssistant() {
     }
   }
 
-  return <div className="fixed bottom-24 right-4 z-[60] sm:right-6 sm:bottom-28">
-    {open && <section aria-label="BVS visitor assistant" className="mb-3 flex h-[min(600px,70vh)] w-[calc(100vw-2rem)] max-w-[380px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#181818] shadow-2xl">
+  return <div className="fixed bottom-[calc(9.25rem+env(safe-area-inset-bottom))] right-3 z-[60] sm:right-6 md:bottom-[calc(6.25rem+env(safe-area-inset-bottom))]">
+    {open && <section aria-label="BVS visitor assistant" className="mb-3 flex h-[min(34rem,calc(100dvh-12rem-env(safe-area-inset-bottom)))] min-h-72 w-[calc(100vw-1.5rem)] max-w-[380px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#181818] shadow-2xl md:h-[min(600px,70vh)] md:w-[calc(100vw-3rem)]">
       <header className="flex items-center justify-between border-b border-white/10 bg-bg-secondary px-5 py-4">
         <div><h2 className="font-semibold text-brand">BVS Guide</h2><p className="text-xs text-text-secondary">Visitor support</p></div>
         <button onClick={() => setOpen(false)} aria-label="Close assistant" className="text-2xl text-text-secondary">×</button>
@@ -56,6 +59,6 @@ export default function VisitorAssistant() {
         <button disabled={!input.trim() || busy} aria-label="Send message" className="h-10 w-10 rounded-full bg-brand text-black disabled:opacity-40">↑</button>
       </form>
     </section>}
-    <button onClick={() => setOpen((value) => !value)} aria-expanded={open} className="ml-auto rounded-full bg-white px-5 py-3 text-sm font-semibold text-black shadow-xl">{open ? "Close" : "✦ Ask BVS"}</button>
+    <button onClick={() => setOpen((value) => !value)} aria-expanded={open} className="ml-auto min-h-11 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-black shadow-xl sm:px-5 sm:py-3">{open ? "Close" : "✦ Ask BVS"}</button>
   </div>;
 }

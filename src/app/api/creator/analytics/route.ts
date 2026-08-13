@@ -24,8 +24,9 @@ function percentChange(current: number, previous: number) {
   return Math.round(((current - previous) / previous) * 1000) / 10
 }
 
-function eventItemId(event: EventRow) {
-  return String(event.properties?.track_id || event.properties?.beat_id || '')
+function eventItemId(event: EventRow, legacyTrackIds: Map<string, string>) {
+  const rawId = String(event.properties?.track_id || event.properties?.beat_id || '')
+  return legacyTrackIds.get(rawId) || rawId
 }
 
 export async function GET(request: Request) {
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
   try {
     const userId = identity.user.id
     const [tracks, beats, events, requests] = await Promise.all([
-      rows(`tracks?user_id=eq.${encodeURIComponent(userId)}&select=id,title,genre,editorial_status,is_public,in_rotation,play_count,like_count,created_at&limit=2000`),
+      rows(`tracks?user_id=eq.${encodeURIComponent(userId)}&select=id,title,genre,file_url,editorial_status,is_public,in_rotation,play_count,like_count,created_at&limit=2000`),
       identity.profile.is_producer || identity.profile.role === 'admin'
         ? rows(`beats?producer_user_id=eq.${encodeURIComponent(userId)}&select=id,title,genre,status,is_public,created_at&limit=2000`).catch(() => [])
         : Promise.resolve([]),
@@ -58,8 +59,12 @@ export async function GET(request: Request) {
 
     const ownedItems = [...tracks, ...beats]
     const ownedIds = new Set(ownedItems.map((item) => String(item.id)))
+    const legacyTrackIds = new Map<string, string>(tracks.flatMap((track) => {
+      const fileUrl = String(track.file_url || '')
+      return fileUrl ? [[`rotation-${fileUrl}`, String(track.id)] as const] : []
+    }))
     const labels = new Map(ownedItems.map((item) => [String(item.id), String(item.title || 'Untitled')]))
-    const ownedEvents = events.filter((event) => ownedIds.has(eventItemId(event)))
+    const ownedEvents = events.filter((event) => ownedIds.has(eventItemId(event, legacyTrackIds)))
     const currentEvents = ownedEvents.filter((event) => event.created_at >= currentStart.toISOString())
     const previousEvents = ownedEvents.filter((event) => event.created_at < currentStart.toISOString())
     const plays = currentEvents.filter((event) => event.event_name === 'player_start')
@@ -91,7 +96,7 @@ export async function GET(request: Request) {
 
     const itemPerformance = ownedItems.map((item) => {
       const id = String(item.id)
-      const itemEvents = currentEvents.filter((event) => eventItemId(event) === id)
+      const itemEvents = currentEvents.filter((event) => eventItemId(event, legacyTrackIds) === id)
       return {
         id,
         title: labels.get(id) || 'Untitled',
@@ -108,7 +113,7 @@ export async function GET(request: Request) {
     const genres = ownedItems.reduce<Record<string, number>>((acc, item) => {
       const genre = String(item.genre || 'Unspecified')
       const id = String(item.id)
-      const itemPlays = plays.filter((event) => eventItemId(event) === id).length
+      const itemPlays = plays.filter((event) => eventItemId(event, legacyTrackIds) === id).length
       acc[genre] = (acc[genre] || 0) + itemPlays
       return acc
     }, {})

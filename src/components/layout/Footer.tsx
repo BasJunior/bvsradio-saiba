@@ -1,6 +1,25 @@
+'use client'
+
 import Link from 'next/link'
+import { useAppSurface } from '@/components/app/AppSurfaceProvider'
 
 export default function Footer() {
+  const { appChrome, isNative, exitAppChrome } = useAppSurface()
+
+  if (appChrome) {
+    return (
+      <footer className="border-t border-white/10 px-4 py-8 text-center text-xs text-text-secondary">
+        <p>Focused listening edition · rights reviewed by BVS Editorial</p>
+        <div className="mt-3 flex flex-wrap justify-center gap-4">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/terms">Terms</Link>
+          <Link href="/contact">Support</Link>
+          {!isNative && <button type="button" onClick={exitAppChrome} className="text-brand hover:underline">Full website</button>}
+        </div>
+        <p className="mt-4">&copy; {new Date().getFullYear()} BVS Radio</p>
+      </footer>
+    )
+  }
   return (
     <footer className="border-t border-white/10 bg-bg-secondary/50 mt-20">
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -22,13 +41,17 @@ export default function Footer() {
             </div>
           </div>
           <div>
-            <h4 className="text-sm font-semibold text-text-primary mb-3">For artists</h4>
+            <h4 className="text-sm font-semibold text-text-primary mb-3">Artists &amp; BVS Services</h4>
             <div className="flex flex-col gap-2">
-              <Link href="/artists" className="text-sm text-text-secondary hover:text-brand transition-colors">Artist Access</Link>
-              <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Upload Music</Link>
-              <Link href="/catalogue?type=beat" className="text-sm text-text-secondary hover:text-brand transition-colors">Browse Beats</Link>
+              <Link href="/creator/studio#artist-access" className="text-sm text-text-secondary hover:text-brand transition-colors">Artist Access in Studio</Link>
+              <Link href="/premium" className="text-sm text-text-secondary hover:text-brand transition-colors">Premium</Link>
+              <Link href="/upload" className="text-sm text-text-secondary hover:text-brand transition-colors">Submit music</Link>
+              <Link href="/upload?type=beats" className="text-sm text-text-secondary hover:text-brand transition-colors">Submit beat</Link>
+              <Link href="/catalogue?type=beat#beatstore" className="text-sm text-text-secondary hover:text-brand transition-colors">Browse Beats</Link>
+              <Link href="/marketplace" className="text-sm text-text-secondary hover:text-brand transition-colors">Creator Marketplace</Link>
+              <Link href="/creator/studio#marketplace-desk" className="text-sm text-text-secondary hover:text-brand transition-colors">Manage marketplace</Link>
               <Link href="/music/producers" className="text-sm text-text-secondary hover:text-brand transition-colors">Producers</Link>
-              <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Mixing &amp; Mastering</Link>
+              <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Official BVS Studio Services</Link>
             </div>
           </div>
           <div>

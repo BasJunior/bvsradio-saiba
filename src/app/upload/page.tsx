@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import ReleaseSubmitForm from '@/components/ReleaseSubmitForm'
+import MyBeatStore from '@/components/MyBeatStore'
+import BeatPackUploadForm from '@/components/BeatPackUploadForm'
 
 type SignedSlot = {
   path: string
@@ -31,7 +34,8 @@ async function putToSignedSlot(slot: SignedSlot, file: File) {
   }
 }
 
-export default function UploadPage() {
+function UploadPageInner() {
+  const searchParams = useSearchParams()
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [description, setDescription] = useState('')
@@ -44,13 +48,30 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [signedInAs, setSignedInAs] = useState<string | null>(null)
+  const [uploadType, setUploadType] = useState<'music' | 'beats'>('music')
   const [mode, setMode] = useState<'single' | 'release'>('release')
+  const [beatMode, setBeatMode] = useState<'single' | 'pack'>('single')
 
   const genres = [
     'Hip-Hop', 'Trap', 'Afrobeats', 'Amapiano', 'R&B',
     'Dancehall', 'Electronic', 'Lofi', 'Gospel', 'Jazz', 'Pop',
     'Sungura', 'Zimdancehall', 'Chimurenga', 'Other',
   ]
+
+  // Deep-link: /upload?type=beats | beat | pack | beat-pack
+  useEffect(() => {
+    const raw = (searchParams.get('type') || searchParams.get('mode') || '').toLowerCase()
+    if (!raw) return
+    if (raw === 'beats' || raw === 'beat' || raw === 'beatstore') {
+      setUploadType('beats')
+      setBeatMode('single')
+    } else if (raw === 'pack' || raw === 'beat-pack' || raw === 'beatpack') {
+      setUploadType('beats')
+      setBeatMode('pack')
+    } else if (raw === 'music' || raw === 'release' || raw === 'track') {
+      setUploadType('music')
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
@@ -271,7 +292,7 @@ export default function UploadPage() {
               Upload Another
             </button>
             <Link
-              href="/admin/editorial"
+              href="/editorial"
               className="rounded-full border border-white/20 px-6 py-3 transition-all hover:bg-white/5"
             >
               Open Editorial
@@ -284,13 +305,38 @@ export default function UploadPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
+      <div className="mb-10 grid gap-3 sm:grid-cols-2" role="tablist" aria-label="Choose what to upload">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={uploadType === 'music'}
+          onClick={() => setUploadType('music')}
+          className={`rounded-2xl border p-5 text-left transition ${uploadType === 'music' ? 'border-brand bg-brand/10' : 'border-white/10 bg-bg-card/30 hover:border-white/30'}`}
+        >
+          <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand"><span aria-hidden="true" className="text-lg">♪</span> Music</span>
+          <span className="mt-1 block text-xl font-semibold">Songs and releases</span>
+          <span className="mt-1 block text-sm text-text-secondary">Radio, catalogue and rotation review.</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={uploadType === 'beats'}
+          onClick={() => setUploadType('beats')}
+          className={`rounded-2xl border p-5 text-left transition ${uploadType === 'beats' ? 'border-brand bg-brand/10' : 'border-white/10 bg-bg-card/30 hover:border-white/30'}`}
+        >
+          <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-brand"><span aria-hidden="true" className="text-lg">◒</span> Beats</span>
+          <span className="mt-1 block text-xl font-semibold">BeatStore instrumentals</span>
+          <span className="mt-1 block text-sm text-text-secondary">BeatStore licensing and producer review.</span>
+        </button>
+      </div>
       <div className="grid gap-16 lg:grid-cols-2">
         <div>
-          <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">For artists · Radio submission</p>
-          <h1 className="mb-4 text-5xl font-bold tracking-tight">Submit your music to BVS.</h1>
+          <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">{uploadType === 'music' ? 'For artists · Radio submission' : 'For producers · BeatStore submission'}</p>
+          <h1 className="mb-4 text-5xl font-bold tracking-tight">{uploadType === 'music' ? 'Submit your music to BVS.' : 'Upload beats to BeatStore.'}</h1>
           <p className="mb-8 text-xl text-text-secondary">
-            Send an original release for editorial review. This form is for radio and catalogue consideration, not for
-            ordering mixing or mastering.
+            {uploadType === 'music'
+              ? 'Send a release for editorial review and radio or catalogue consideration.'
+              : 'Create a licensable beat listing for editorial review. Published beats appear in BVS BeatStore.'}
           </p>
 
           <section
@@ -301,15 +347,16 @@ export default function UploadPage() {
             <h2 id="requirements-heading" className="text-2xl font-semibold">
               Submission requirements
             </h2>
-            <p className="mt-2 text-sm text-text-secondary">Prepare these essentials before you upload.</p>
+            <p className="mt-2 text-sm text-text-secondary">Prepare these essentials before you upload {uploadType === 'music' ? 'music' : 'a beat'}.</p>
             <div className="mt-6 space-y-6 text-sm">
               <div className="flex gap-4">
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-brand/10 text-brand">
                   1
                 </div>
                 <div>
-                  <strong className="mb-1 block">Confirm eligibility and rights</strong> Submit original work only, with
-                  permission from every artist, producer and rights holder.
+                  <strong className="mb-1 block">Confirm eligibility and rights</strong> {uploadType === 'music'
+                    ? 'Declare the material type and provide any clearance evidence required for covers, remixes or samples.'
+                    : 'Only offer a beat you own or control and are allowed to license.'}
                 </div>
               </div>
               <div className="flex gap-4">
@@ -328,8 +375,9 @@ export default function UploadPage() {
                   3
                 </div>
                 <div>
-                  <strong className="mb-1 block">Add release details</strong> Title, genre, required cover art and
-                  description (language, city, features).
+                  <strong className="mb-1 block">Add {uploadType === 'music' ? 'release' : 'listing'} details</strong> {uploadType === 'music'
+                    ? 'Title, genre, required cover art and description.'
+                    : 'Title, genre, mood, BPM, tagged preview, optional master and lease price.'}
                 </div>
               </div>
               <div className="flex gap-4">
@@ -337,8 +385,7 @@ export default function UploadPage() {
                   4
                 </div>
                 <div>
-                  <strong className="mb-1 block">Understand the review</strong> Upload does not guarantee airplay or
-                  publication.
+                  <strong className="mb-1 block">Understand the review</strong> Upload does not guarantee {uploadType === 'music' ? 'airplay or publication' : 'BeatStore publication'}.
                 </div>
               </div>
             </div>
@@ -369,26 +416,38 @@ export default function UploadPage() {
 
         <div className="pt-2">
           <div className="mb-4 flex flex-wrap gap-2">
+            {uploadType === 'music' ? <>
             <button
               type="button"
               onClick={() => setMode('release')}
               className={`rounded-full px-4 py-2 text-sm font-medium ${mode === 'release' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}
             >
-              Album / EP release
+              Album / EP
             </button>
             <button
               type="button"
               onClick={() => setMode('single')}
               className={`rounded-full px-4 py-2 text-sm font-medium ${mode === 'single' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}
             >
-              Single track
+              Single song
             </button>
+            </> : <>
+              <button type="button" onClick={() => setBeatMode('single')} className={`rounded-full px-4 py-2 text-sm font-medium ${beatMode === 'single' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}>Single beat</button>
+              <button type="button" onClick={() => setBeatMode('pack')} className={`rounded-full px-4 py-2 text-sm font-medium ${beatMode === 'pack' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}>Beat pack</button>
+            </>}
             <Link href="/artist/premium" className="rounded-full border border-white/20 px-4 py-2 text-sm text-text-secondary hover:border-brand">
               Premium
             </Link>
           </div>
 
-          {mode === 'release' ? (
+          {uploadType === 'beats' ? (
+            <div className="rounded-2xl border border-white/10 bg-bg-card/30 p-6">
+              <p className="mb-5 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-xs text-text-secondary">
+                <strong className="text-text-primary">Where it goes:</strong> files upload directly to private BVS storage, then the listing goes to editorial review. Published beats appear in BeatStore; drafts and review messages remain in Creator Studio.
+              </p>
+              {beatMode === 'single' ? <MyBeatStore creationOnly /> : <BeatPackUploadForm />}
+            </div>
+          ) : mode === 'release' ? (
             <div className="rounded-2xl border border-white/10 bg-bg-card/30 p-8">
               {signedInAs ? (
                 <p className="mb-4 text-xs text-brand">Signed in as {signedInAs}</p>
@@ -410,7 +469,7 @@ export default function UploadPage() {
               <strong className="text-text-primary">Where it goes:</strong> Browser → Supabase bucket{' '}
               <code className="text-brand">bvsradio-audio</code> under{' '}
               <code className="text-brand">tracks/…</code>, then a <em>submitted</em> row for staff at{' '}
-              <Link href="/admin/editorial" className="text-brand hover:underline">
+              <Link href="/editorial" className="text-brand hover:underline">
                 Admin → Editorial
               </Link>
               . Not on radio until approved. Prefer <strong className="text-text-primary">Album / EP</strong> for multi-track projects.
@@ -592,5 +651,13 @@ export default function UploadPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function UploadPage() {
+  return (
+    <Suspense fallback={<div className="p-16 text-center text-text-secondary">Loading upload…</div>}>
+      <UploadPageInner />
+    </Suspense>
   )
 }

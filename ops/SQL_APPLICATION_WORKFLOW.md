@@ -99,7 +99,17 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 16 | `rights-passport` | `supabase-rights-passport.sql` | contributor permissions, ownership scope and deterministic release preflight |
 | 17 | `media-preflight` | `supabase-media-preflight.sql` | private audio analysis queue, derivatives, duplicate detection and publication gate |
 | 18 | `qr-login` | `supabase-qr-login.sql` | five-minute, single-use phone → computer login pairings |
-| 19 | `apple-rights-compliance` | `supabase-apple-rights-compliance.sql` | versioned rights attestation, clearance evidence, copyright complaints/takedown, repeat-infringer strikes (no auto-delete) |
+| 19 | `release-clearance-evidence` | `supabase-release-clearance-evidence.sql` | versioned proof and publication gates for covers, remixes, samples, leased beats and third-party material |
+| 20 | `beat-packs` | `supabase-beat-packs.sql` | ordered producer BeatStore pack submissions |
+| 21 | `premium-memberships` | `supabase-premium-memberships.sql` | premium membership state; skipped when `bvs_memberships` already exists |
+| 22 | `spotify-catalogue-link` | `supabase-spotify-catalogue-link.sql` | Spotify and ISRC catalogue references |
+| 23 | `founder-authority` | `supabase-founder-authority.sql` | single protected BVS Founder authority + BasJunior assignment |
+| 24 | `security-hardening` | `supabase-security-hardening.sql` | server-only operational tables and mutation RPCs |
+| 25 | `marketplace-economics` | `supabase-marketplace-economics.sql` | immutable seller fee snapshots, settlements, processor fees and refund reversals |
+| 26 | `creator-marketplace` | `supabase-creator-marketplace.sql` | multi-role creator profiles, accomplishments and moderated product/service listings |
+| 27 | `marketplace-services` | `supabase-marketplace-services.sql` | professional profile fields and held creator-service fulfilment lifecycle |
+| 28 | `mobile-distribution` | `supabase-mobile-distribution.sql` | evidence-gated iOS catalogue now; same surface model reserved for Android later |
+| 29 | `apple-rights-compliance` | `supabase-apple-rights-compliance.sql` | versioned rights attestation, clearance items, copyright complaints/takedown, repeat-infringer strikes (no auto-delete) |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.

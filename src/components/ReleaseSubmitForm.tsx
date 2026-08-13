@@ -21,6 +21,15 @@ const genres = [
   'Gospel', 'Jazz', 'Pop', 'Sungura', 'Zimdancehall', 'Chimurenga', 'Other',
 ]
 
+const materialOptions = [
+  ['original', 'Fully original'],
+  ['cover', 'Cover song'],
+  ['remix', 'Remix'],
+  ['sample', 'Contains samples'],
+  ['leased_beat', 'Uses a leased beat'],
+  ['other_third_party', 'Other third-party material'],
+] as const
+
 export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => void }) {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
@@ -47,12 +56,14 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
   const [grantCatalogue, setGrantCatalogue] = useState(false)
   const [grantPromote, setGrantPromote] = useState(false)
   const [accuracyConfirmed, setAccuracyConfirmed] = useState(false)
-  const [containsCover, setContainsCover] = useState(false)
-  const [containsRemix, setContainsRemix] = useState(false)
-  const [containsSamples, setContainsSamples] = useState(false)
-  const [containsLeasedBeats, setContainsLeasedBeats] = useState(false)
-  const [containsThirdParty, setContainsThirdParty] = useState(false)
-  const [clearanceNote, setClearanceNote] = useState('')
+  const [materialTypes, setMaterialTypes] = useState<string[]>(['original'])
+  const [evidenceFiles, setEvidenceFiles] = useState<Record<string, File | null>>({})
+  const [evidenceNotes, setEvidenceNotes] = useState<Record<string, string>>({})
+  const containsCover = materialTypes.includes('cover')
+  const containsRemix = materialTypes.includes('remix')
+  const containsSamples = materialTypes.includes('sample')
+  const containsLeasedBeats = materialTypes.includes('leased_beat')
+  const containsThirdParty = materialTypes.includes('other_third_party')
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -106,10 +117,9 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       setError('Complete the versioned rights attestation (master, composition, contributors, samples/beats, and BVS grants).')
       return
     }
-    const needsClearance =
-      containsCover || containsRemix || containsSamples || containsLeasedBeats || containsThirdParty
-    if (needsClearance && clearanceNote.trim().length < 8) {
-      setError('Because this release includes third-party/derivative material, add a clearance reference (licence ID, permission note, or document path).')
+    const requiredEvidenceTypes = materialTypes.filter((type) => type !== 'original')
+    if (!materialTypes.length || requiredEvidenceTypes.some((type) => !evidenceFiles[type])) {
+      setError('Declare the material type and upload clearance evidence for every cover, remix, sample, leased beat or third-party element.')
       return
     }
     if (!isSupabaseConfigured()) {
@@ -127,6 +137,7 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
         Authorization: `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       }
+      const evidenceEntries = requiredEvidenceTypes.map((materialType) => ({ materialType, file: evidenceFiles[materialType] as File }))
 
       setProgress('Preparing secure upload slots…')
       const prepRes = await fetch('/api/releases/prepare', {
@@ -135,6 +146,7 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
         body: JSON.stringify({
           tracks: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
           cover: cover ? { name: cover.name, type: cover.type, size: cover.size } : null,
+          evidence: evidenceEntries.map(({ materialType, file }) => ({ materialType, name: file.name, type: file.type, size: file.size })),
         }),
       })
       const prep = await prepRes.json()
@@ -148,6 +160,10 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       if (cover && prep.cover) {
         setProgress('Uploading cover…')
         await putToSignedSlot(prep.cover as Slot, cover)
+      }
+      for (let i = 0; i < evidenceEntries.length; i++) {
+        setProgress(`Uploading clearance evidence ${i + 1} of ${evidenceEntries.length}…`)
+        await putToSignedSlot(prep.evidence[i] as Slot, evidenceEntries[i].file)
       }
 
       setProgress('Registering release for review…')
@@ -169,6 +185,23 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
           songwriters: songwriters.split(',').map((value) => value.trim()).filter(Boolean),
           producers: producers.split(',').map((value) => value.trim()).filter(Boolean),
           featuredArtists: featuredArtists.split(',').map((value) => value.trim()).filter(Boolean),
+          materialTypes,
+          evidence: evidenceEntries.map(({ materialType, file }, index) => ({
+            materialType,
+            path: prep.evidence[index].path,
+            originalFileName: file.name,
+            mimeType: file.type,
+            size: file.size,
+            artistNotes: evidenceNotes[materialType] || '',
+          })),
+          clearanceItems: evidenceEntries.map(({ materialType }, index) => ({
+            materialType: materialType === 'other_third_party' ? 'third_party' : materialType,
+            riskLevel: 'medium',
+            title: `${materialOptions.find(([value]) => value === materialType)?.[1] || materialType} clearance`,
+            description: evidenceNotes[materialType] || 'Documentary clearance evidence uploaded with this release.',
+            licenceOrPermissionRef: evidenceNotes[materialType] || `Uploaded evidence: ${prep.evidence[index].path}`,
+            documentStoragePath: prep.evidence[index].path,
+          })),
           coverPath: prep.cover?.path || null,
           tracks: files.map((_, i) => ({
             title: (trackTitles[i] || `Track ${i + 1}`).trim(),
@@ -180,16 +213,20 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
           containsSamples,
           containsLeasedBeats,
           containsThirdParty,
-          masterControl: true,
-          compositionControl: true,
-          featuredContributorsCleared: true,
-          samplesBeatsCleared: true,
-          grantHost: true,
-          grantStream: true,
-          grantCatalogue: true,
-          grantPromote: true,
-          accuracyConfirmed: true,
-          clearanceNote: needsClearance ? clearanceNote.trim() : undefined,
+          masterControl,
+          compositionControl,
+          featuredContributorsCleared: featuredCleared,
+          samplesBeatsCleared: samplesCleared,
+          grantHost,
+          grantStream,
+          grantCatalogue,
+          grantPromote,
+          accuracyConfirmed,
+          clearanceNote: evidenceEntries
+            .map(({ materialType }) => evidenceNotes[materialType]?.trim())
+            .filter(Boolean)
+            .join('; ')
+            .slice(0, 2000) || undefined,
         }),
       })
       const fin = await finRes.json()
@@ -210,6 +247,18 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       setSongwriters('')
       setProducers('')
       setFeaturedArtists('')
+      setMaterialTypes(['original'])
+      setEvidenceFiles({})
+      setEvidenceNotes({})
+      setMasterControl(false)
+      setCompositionControl(false)
+      setFeaturedCleared(false)
+      setSamplesCleared(false)
+      setGrantHost(false)
+      setGrantStream(false)
+      setGrantCatalogue(false)
+      setGrantPromote(false)
+      setAccuracyConfirmed(false)
       onSuccess?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Submit failed')
@@ -307,6 +356,50 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
         <p className="text-xs text-text-secondary">Territory: worldwide for BVS review. Editorial must request changes before any narrower territory is published.</p>
       </section>
 
+      <section className="space-y-4 rounded-2xl border border-amber-300/20 bg-amber-300/[.03] p-5">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-amber-200">Material and clearance evidence</p>
+          <h3 className="mt-1 text-lg font-semibold">Tell us what this release contains</h3>
+          <p className="mt-1 text-xs text-text-secondary">Select every applicable type. Covers, remixes, samples, leased beats and other third-party material cannot be published until editorial approves documentary evidence.</p>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {materialOptions.map(([value, label]) => (
+            <label key={value} className="flex items-center gap-3 rounded-xl border border-white/10 p-3 text-sm">
+              <input
+                type="checkbox"
+                checked={materialTypes.includes(value)}
+                onChange={(event) => {
+                  setMaterialTypes(event.target.checked ? [...new Set([...materialTypes, value])] : materialTypes.filter((item) => item !== value))
+                }}
+                className="accent-brand"
+              />
+              {label}
+            </label>
+          ))}
+        </div>
+        {materialTypes.filter((type) => type !== 'original').map((type) => {
+          const label = materialOptions.find(([value]) => value === type)?.[1] || type
+          return (
+            <div key={type} className="rounded-xl border border-amber-200/20 p-4">
+              <label className="block text-sm font-medium">{label} clearance document *</label>
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(event) => setEvidenceFiles({ ...evidenceFiles, [type]: event.target.files?.[0] || null })}
+                className="mt-2 text-sm"
+              />
+              <textarea
+                value={evidenceNotes[type] || ''}
+                onChange={(event) => setEvidenceNotes({ ...evidenceNotes, [type]: event.target.value })}
+                placeholder="Who granted permission, scope, territories, dates or licence reference"
+                className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 text-sm"
+              />
+              <p className="mt-2 text-xs text-text-secondary">PDF or image, maximum 10MB. Evidence remains private to the artist and authorized editorial staff.</p>
+            </div>
+          )
+        })}
+      </section>
+
       <div>
         <label className="mb-1.5 block text-sm font-medium">Audio tracks * (1–30)</label>
         <input type="file" multiple onChange={(e) => onFiles(e.target.files)} className="text-sm" />
@@ -380,32 +473,6 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
           <input type="checkbox" checked={accuracyConfirmed} onChange={(e) => setAccuracyConfirmed(e.target.checked)} className="mt-1 accent-brand" />
           <span>I confirm this attestation is accurate to the best of my knowledge.</span>
         </label>
-      </section>
-
-      <section className="space-y-3 rounded-xl border border-white/10 p-4">
-        <h3 className="text-sm font-semibold text-text-primary">Clearance signals (covers, remixes, samples, leased beats)</h3>
-        <p className="text-xs text-text-secondary">
-          If any box is checked, publication is blocked until clearance evidence (licence reference or document path) is on file.
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsCover} onChange={(e) => setContainsCover(e.target.checked)} className="accent-brand" /> Cover version</label>
-          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsRemix} onChange={(e) => setContainsRemix(e.target.checked)} className="accent-brand" /> Remix</label>
-          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsSamples} onChange={(e) => setContainsSamples(e.target.checked)} className="accent-brand" /> Samples</label>
-          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsLeasedBeats} onChange={(e) => setContainsLeasedBeats(e.target.checked)} className="accent-brand" /> Leased beat</label>
-          <label className="flex gap-2 text-sm"><input type="checkbox" checked={containsThirdParty} onChange={(e) => setContainsThirdParty(e.target.checked)} className="accent-brand" /> Other third-party material</label>
-        </div>
-        {(containsCover || containsRemix || containsSamples || containsLeasedBeats || containsThirdParty) && (
-          <label className="block text-sm">
-            Clearance evidence *
-            <textarea
-              value={clearanceNote}
-              onChange={(e) => setClearanceNote(e.target.value)}
-              rows={3}
-              placeholder="Licence ID, permission email summary, or storage path reference for the clearance document"
-              className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3"
-            />
-          </label>
-        )}
       </section>
 
       <label className="flex gap-3 rounded-xl border border-white/10 p-4 text-sm">

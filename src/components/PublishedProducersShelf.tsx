@@ -51,35 +51,31 @@ export default function PublishedProducersShelf({
           View all producers →
         </Link>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {producers.map((producer) => (
           <article
             key={producer.id}
-            className="group overflow-hidden rounded-2xl border border-white/10 bg-black/25"
+            className="group min-w-0"
           >
-            <div className="relative aspect-square bg-black/30">
+            <Link href={`/artist/${producer.username}`} className="relative block aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/40">
               <Image
                 src={producer.image}
-                alt=""
+                alt={producer.name}
                 fill
                 unoptimized={/^https?:\/\//i.test(producer.image)}
-                className="object-contain transition group-hover:scale-[1.02]"
+                sizes="(max-width:768px) 50vw, 160px"
+                className="object-cover object-center transition duration-300 group-hover:scale-[1.04]"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-            </div>
-            <div className="p-4">
-              <p className="text-xs uppercase tracking-widest text-brand">
-                Verified producer
-              </p>
-              <h3 className="mt-1 text-lg font-semibold">{producer.name}</h3>
-              <p className="mt-2 text-sm text-text-secondary">
+            </Link>
+            <Link href={`/artist/${producer.username}`} className="mt-3 block truncate font-semibold group-hover:text-brand">{producer.name}</Link>
+              <p className="truncate text-xs text-text-secondary">
                 {producer.beatCount} published{" "}
                 {producer.beatCount === 1 ? "beat" : "beats"}
                 {producer.genres.length
                   ? ` · ${producer.genres.join(" · ")}`
                   : ""}
               </p>
-              <div className="mt-4 flex gap-3 text-sm">
+              <div className="mt-2 flex gap-3 text-xs">
                 <button
                   type="button"
                   onClick={() => onBrowse(producer)}
@@ -87,14 +83,7 @@ export default function PublishedProducersShelf({
                 >
                   View catalogue →
                 </button>
-                <Link
-                  href={`/artist/${producer.username}`}
-                  className="text-text-secondary hover:text-brand"
-                >
-                  Producer profile
-                </Link>
               </div>
-            </div>
           </article>
         ))}
       </div>

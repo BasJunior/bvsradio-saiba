@@ -1,7 +1,9 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
+import type { Metadata } from "next";
 import LibraryAction from "@/components/LibraryAction";
 import ShareCreatorButton from "@/components/ShareCreatorButton";
+import FlowRelationships from "@/components/flow/FlowRelationships";
 
 function external(value: string) {
   return /^https?:\/\//i.test(value)
@@ -10,6 +12,13 @@ function external(value: string) {
 }
 import type { DiscoveryItem } from "@/lib/discovery";
 import { getPublicArtist } from "@/lib/artist-content";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const profile = await getPublicArtist((await params).slug.toLowerCase());
+  if (!profile) return { title: "Creator profile" };
+  const description = `${profile.role} on BVS Radio. ${profile.bio}`.slice(0, 180);
+  return { title: profile.name, description, openGraph: { title: `${profile.name} | BVS Radio`, description, images: profile.image && !profile.image.includes("default-avatar") ? [profile.image] : ["/logo.png"] } };
+}
 
 export default async function ArtistPage({
   params,
@@ -54,23 +63,28 @@ export default async function ArtistPage({
     href: `/artist/${profile.username}`,
     image: profile.image,
   };
+  const hasMusic = profile.tracks.length > 0;
+  const hasConnections = profile.tracks.some(track => track.credits.length > 0);
+  const hasBeats = Boolean(profile.beats?.length);
+  const producerFirst = /producer/i.test(profile.role) && hasBeats;
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
       <Link href="/music/artists" className="text-sm text-brand">
         ← All BVS creators
       </Link>
       <div className="mt-8 flex flex-col gap-10 md:flex-row">
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl border border-white/10 md:w-80">
+        <div className="relative aspect-square w-full shrink-0 self-start overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:h-80 md:w-80">
           <Image
             src={profile.image}
             alt={profile.name}
             fill
             unoptimized={/^https?:\/\//i.test(profile.image)}
-            className="object-contain"
+            sizes="(max-width:768px) 100vw, 320px"
+            className="object-cover object-center"
             priority
           />
         </div>
-        <div className="flex-1">
+        <div className="min-w-0 flex-1">
           <p className="text-xs uppercase tracking-[0.25em] text-brand">
             Verified {profile.role}
           </p>
@@ -80,16 +94,16 @@ export default async function ArtistPage({
           )}
           <p className="mt-5 max-w-prose text-text-secondary">{profile.bio}</p>
           <div className="mt-6 flex flex-wrap gap-3">
-              <LibraryAction item={item} section="follows" />
-              {profile.beats && profile.beats.length > 0 && (
-                <Link
-                  href={`/catalogue?type=beat&producer=${encodeURIComponent(profile.username)}#browse`}
-                  className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black hover:bg-brand-dark"
-                >
-                  View producer catalogue
-                </Link>
-              )}
-              <ShareCreatorButton name={profile.name} />
+            <LibraryAction item={item} section="follows" />
+            {profile.beats && profile.beats.length > 0 && (
+              <Link
+                href={`/catalogue?type=beat&producer=${encodeURIComponent(profile.username)}#browse`}
+                className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black hover:bg-brand-dark"
+              >
+                View producer catalogue
+              </Link>
+            )}
+            <ShareCreatorButton name={profile.name} />
             {profile.links?.instagram && (
               <a
                 href={
@@ -109,9 +123,9 @@ export default async function ArtistPage({
                 href={external(profile.links.spotify)}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-full border border-white/20 px-4 py-2 text-sm hover:border-brand"
+                className="rounded-full border border-brand/40 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/20"
               >
-                Spotify / DSP
+                Listen on Spotify
               </a>
             )}
             {profile.links?.website && (
@@ -130,7 +144,17 @@ export default async function ArtistPage({
               BVS member since {new Date(profile.joinedAt).toLocaleDateString()}
             </p>
           )}
-          <section className="mt-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+
+          <nav className="mt-8 flex gap-2 overflow-x-auto pb-1 text-sm" aria-label="Creator profile sections" data-flow-scroll-key={`creator-tabs:${profile.id}`}>
+            {producerFirst ? <a href="#beats" className="shrink-0 rounded-full border border-brand/35 bg-brand/10 px-4 py-2 text-brand">Beats</a> : null}
+            {hasMusic ? <a href="#music" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Music</a> : null}
+            {hasConnections ? <a href="#connections" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Credits & Connections</a> : null}
+            {hasBeats && !producerFirst ? <a href="#beats" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Beats</a> : null}
+          </nav>
+
+          {producerFirst ? <section id="beats" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="beats" /></section> : null}
+
+          {hasMusic ? <section id="music" className="mt-8 scroll-mt-24 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-brand">
@@ -148,49 +172,73 @@ export default async function ArtistPage({
                 {profile.tracks.map((track) => (
                   <article
                     key={track.id}
-                    className="flex gap-4 rounded-xl border border-white/10 p-3"
+                    className="rounded-xl border border-white/10 p-3"
+                    data-flow-focus-id={`track:${track.id}`}
+                    tabIndex={-1}
                   >
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white/5">
-                      {track.artwork_url && (
-                        <Image
-                          src={track.artwork_url}
-                          alt=""
-                          fill
-                          unoptimized={/^https?:\/\//i.test(track.artwork_url)}
-                          className="object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex justify-between gap-4">
-                        <div className="min-w-0">
-                          <h3 className="truncate font-semibold">
-                            {track.title}
-                          </h3>
-                          <p className="text-xs text-text-secondary">
-                            {track.genre || "Music"}
-                            {track.in_rotation ? " · In BVS rotation" : ""}
-                          </p>
-                        </div>
-                        <Link
-                          href={`/catalogue?q=${encodeURIComponent(track.title)}`}
-                          className="shrink-0 text-sm text-brand"
-                        >
-                          Open →
-                        </Link>
+                    <div className="flex gap-4">
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white/5">
+                        {track.artwork_url && (
+                          <Image
+                            src={track.artwork_url}
+                            alt=""
+                            fill
+                            unoptimized={/^https?:\/\//i.test(track.artwork_url)}
+                            className="object-cover"
+                          />
+                        )}
                       </div>
-                      {track.credits.length > 0 && (
-                        <p className="mt-3 border-t border-white/10 pt-2 text-xs text-text-secondary">
-                          Verified credits:{" "}
-                          {track.credits
-                            .map(
-                              (credit) =>
-                                `${credit.person_name} — ${credit.credit_role}`,
-                            )
-                            .join(" · ")}
-                        </p>
-                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex justify-between gap-4">
+                          <div className="min-w-0">
+                            <h3 className="truncate font-semibold">
+                              {track.title}
+                            </h3>
+                            <p className="text-xs text-text-secondary">
+                              {track.genre || "Music"}
+                              {track.in_rotation ? " · In BVS rotation" : ""}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-col items-end gap-1">
+                            {track.spotify_url && (
+                              <a
+                                href={external(track.spotify_url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-sm text-brand"
+                              >
+                                Spotify →
+                              </a>
+                            )}
+                            <Link
+                              href={`/catalogue?q=${encodeURIComponent(track.title)}`}
+                              className="text-sm text-brand"
+                            >
+                              Open →
+                            </Link>
+                          </div>
+                        </div>
+                        {(track.isrc || track.spotify_url) && (
+                          <p className="mt-2 text-xs text-text-secondary">
+                            {track.isrc ? `ISRC ${track.isrc}` : "DSP linked"}
+                            {track.isrc && track.spotify_url ? " · " : ""}
+                            {track.spotify_url ? "Also on Spotify" : ""}
+                          </p>
+                        )}
+                        {track.credits.length > 0 && (
+                          <p className="mt-3 border-t border-white/10 pt-2 text-xs text-text-secondary">
+                            Verified credits:{" "}
+                            {track.credits
+                              .map(
+                                (credit) =>
+                                  `${credit.person_name} — ${credit.credit_role}`,
+                              )
+                              .join(" · ")}
+                          </p>
+                        )}
+                      </div>
                     </div>
+                    <FlowRelationships kind="track" id={track.id} compact />
                   </article>
                 ))}
               </div>
@@ -199,55 +247,10 @@ export default async function ArtistPage({
                 No tracks have been published for this artist yet.
               </p>
             )}
-          </section>
-          {profile.beats && profile.beats.length > 0 && (
-            <section className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-brand">
-                    Producer BeatStore
-                  </p>
-                  <h2 className="mt-1 text-xl">Published beats</h2>
-                </div>
-                <span className="text-sm text-text-secondary">
-                  {profile.beats.length} beats
-                </span>
-              </div>
-              <div className="mt-4 space-y-3">
-                {profile.beats.map((beat) => (
-                  <article
-                    key={beat.id}
-                    className="flex items-center gap-4 rounded-xl border border-white/10 p-3"
-                  >
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-white/5">
-                      {beat.artwork_url && (
-                        <Image
-                          src={beat.artwork_url}
-                          alt=""
-                          fill
-                          unoptimized
-                          className="object-cover"
-                        />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="truncate font-semibold">{beat.title}</h3>
-                      <p className="text-xs text-text-secondary">
-                        {beat.genre || "Beat"} · Licence from $
-                        {Number(beat.starting_price || 29).toFixed(2)}
-                      </p>
-                    </div>
-                    <Link
-                      href={`/catalogue?type=beat&q=${encodeURIComponent(beat.title)}#beatstore`}
-                      className="text-sm text-brand"
-                    >
-                      Open →
-                    </Link>
-                  </article>
-                ))}
-              </div>
-            </section>
-          )}
+          </section> : null}
+
+          {hasConnections ? <section id="connections" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="connections" /></section> : null}
+          {hasBeats && !producerFirst ? <section id="beats" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="beats" /></section> : null}
         </div>
       </div>
     </main>
