@@ -424,6 +424,7 @@ export default function Navbar() {
                   <Link href="/account" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Account Centre</Link>
                   {showCreator && <Link href="/creator/studio" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Creator studio</Link>}
                   {showEditorial && <Link href="/editorial" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Editorial dashboard</Link>}
+                  {showEditorial && <Link href="/admin/creator-workflows" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Writing &amp; research review</Link>}
                   <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
                     Sign out
                   </button>

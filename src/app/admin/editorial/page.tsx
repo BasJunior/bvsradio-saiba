@@ -310,6 +310,17 @@ export default function EditorialDashboard() {
         <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}</p>
       )}
 
+      <Link
+        href="/admin/creator-workflows"
+        className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand/[.06] p-5 transition hover:border-brand/60"
+      >
+        <div>
+          <p className="font-semibold">Writing &amp; Research Review</p>
+          <p className="mt-1 text-sm text-text-secondary">Approve research briefs for drafting and review articles returned by the BVS Editorial Desk.</p>
+        </div>
+        <span className="text-sm font-semibold text-brand">Open queue →</span>
+      </Link>
+
       <nav
         aria-label="Editorial sections"
         className="sticky top-16 z-30 -mx-2 mt-8 overflow-x-auto rounded-2xl border border-white/10 bg-bg-primary/90 px-2 py-2 backdrop-blur-md"
