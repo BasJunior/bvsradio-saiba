@@ -39,10 +39,10 @@ export default async function HomePage() {
                 Start listening
               </Link>
               <Link
-                href="/upload"
+                href="/creator/studio#artist-access"
                 className="rounded-full border border-white/30 px-7 py-3.5 text-center font-semibold hover:bg-white/10"
               >
-                For artists
+                Artist Studio
               </Link>
               <Link
                 href="/catalogue?type=beat#beatstore"

@@ -633,7 +633,7 @@ function CataloguePageContent() {
       if (!liveBeatStats.count) {
         return {
           ...card,
-          detail: remoteShelves ? card.detail : "Loading published BeatStore…",
+          detail: remoteShelves ? card.detail : "Published BeatStore catalogue",
         };
       }
       const priceBit =
@@ -1305,7 +1305,7 @@ function CataloguePageContent() {
                 </span>
                 <span className="mt-1 block text-sm text-text-secondary">
                   {shelvesExpanded
-                    ? "Live BeatStore updates from published data. Pack cards are sample listings. Trending ranks by plays."
+                    ? "Live BeatStore updates from published data. Editorial discovery shelves are clearly separated from items available to licence. Trending ranks by plays."
                     : "Expand to browse featured, trending and new shelves."}
                 </span>
               </span>
