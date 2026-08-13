@@ -12,6 +12,7 @@ export type PublicArtistTrack = {
   licence_type?: string
   isrc?: string
   spotify_url?: string
+  audio_url?: string
   credits: Array<{ person_name: string; credit_role: string }>
 }
 
@@ -23,7 +24,7 @@ export type PublicArtist = {
   bio: string
   image: string
   tracks: PublicArtistTrack[]
-  beats?: Array<{ id: string; title: string; genre?: string; artwork_url?: string; starting_price?: number }>
+  beats?: Array<{ id: string; title: string; genre?: string; artwork_url?: string; preview_url?: string; starting_price?: number }>
   location?: string
   links?: { instagram?: string; spotify?: string; website?: string }
   spotifyArtistId?: string
@@ -254,8 +255,8 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const creatorDetails = waitlistResponse.ok ? (await waitlistResponse.json())[0] : null
 
     let databaseTracks: Array<Omit<PublicArtistTrack, 'credits'> & { artwork_url?: string }> = []
-    const trackSelectWithDsp = 'id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type,isrc,spotify_url'
-    const trackSelectBase = 'id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type'
+    const trackSelectWithDsp = 'id,title,genre,artwork_url,audio_path,in_rotation,is_downloadable,licence_type,isrc,spotify_url'
+    const trackSelectBase = 'id,title,genre,artwork_url,audio_path,in_rotation,is_downloadable,licence_type'
     for (const select of [trackSelectWithDsp, trackSelectBase]) {
       const tracksResponse = await fetch(
         `${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=${select}&order=created_at.desc`,
@@ -267,11 +268,11 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       }
     }
 
-    const beatsResponse = await fetch(`${url}/rest/v1/beats?producer_user_id=eq.${profile.id}&is_public=eq.true&status=eq.published&select=id,title,genre,artwork_path,beat_licence_options(price_usd,is_active)&order=published_at.desc`, { headers, next: { revalidate: 60 } })
+    const beatsResponse = await fetch(`${url}/rest/v1/beats?producer_user_id=eq.${profile.id}&is_public=eq.true&status=eq.published&select=id,title,genre,artwork_path,preview_path,beat_licence_options(price_usd,is_active)&order=published_at.desc`, { headers, next: { revalidate: 60 } })
     const rawBeats = beatsResponse.ok ? await beatsResponse.json() : []
-    const beats = rawBeats.map((beat: { id: string; title: string; genre?: string; artwork_path?: string; beat_licence_options?: Array<{ price_usd: number; is_active: boolean }> }) => {
+    const beats = rawBeats.map((beat: { id: string; title: string; genre?: string; artwork_path?: string; preview_path?: string; beat_licence_options?: Array<{ price_usd: number; is_active: boolean }> }) => {
       const prices = (beat.beat_licence_options || []).filter(option => option.is_active).map(option => Number(option.price_usd)).filter(Number.isFinite)
-      return { id: beat.id, title: beat.title, genre: beat.genre, artwork_url: mediaUrlForStoredValue(beat.artwork_path) || undefined, starting_price: prices.length ? Math.min(...prices) : 29 }
+      return { id: beat.id, title: beat.title, genre: beat.genre, artwork_url: mediaUrlForStoredValue(beat.artwork_path) || undefined, preview_url: mediaUrlForStoredValue(beat.preview_path) || undefined, starting_price: prices.length ? Math.min(...prices) : 29 }
     })
     const ids = databaseTracks.map((track) => track.id)
     let credits: Array<{ track_id: string; person_name: string; credit_role: string }> = []
@@ -293,6 +294,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const publicTracks = databaseTracks.map((track) => ({
       ...track,
       artwork_url: mediaUrlForStoredValue(track.artwork_url) || undefined,
+      audio_url: mediaUrlForStoredValue((track as { audio_path?: string }).audio_path) || undefined,
       isrc: track.isrc || undefined,
       spotify_url: track.spotify_url || undefined,
       credits: credits.filter(credit => credit.track_id === track.id),

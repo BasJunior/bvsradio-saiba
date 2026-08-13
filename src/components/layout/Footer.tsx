@@ -32,6 +32,8 @@ export default function Footer() {
             <h4 className="text-sm font-semibold text-text-primary mb-3">Listen &amp; discover</h4>
             <div className="flex flex-col gap-2">
               <Link href="/radio" className="text-sm text-text-secondary hover:text-brand transition-colors">Live Radio</Link>
+              <Link href="/music/artists" className="text-sm text-text-secondary hover:text-brand transition-colors">Artists</Link>
+              <Link href="/music/producers" className="text-sm text-text-secondary hover:text-brand transition-colors">Producers</Link>
               <Link href="/catalogue" className="text-sm text-text-secondary hover:text-brand transition-colors">Music</Link>
               <Link href="/shows" className="text-sm text-text-secondary hover:text-brand transition-colors">Shows</Link>
               <Link href="/search" className="text-sm text-text-secondary hover:text-brand transition-colors">Search</Link>
@@ -47,8 +49,6 @@ export default function Footer() {
               <Link href="/upload?type=beats" className="text-sm text-text-secondary hover:text-brand transition-colors">Submit beat</Link>
               <Link href="/catalogue?type=beat#beatstore" className="text-sm text-text-secondary hover:text-brand transition-colors">Browse Beats</Link>
               <Link href="/marketplace" className="text-sm text-text-secondary hover:text-brand transition-colors">Creator Marketplace</Link>
-              <Link href="/creator/studio#marketplace-desk" className="text-sm text-text-secondary hover:text-brand transition-colors">Manage marketplace</Link>
-              <Link href="/music/producers" className="text-sm text-text-secondary hover:text-brand transition-colors">Producers</Link>
               <Link href="/shop" className="text-sm text-text-secondary hover:text-brand transition-colors">Official BVS Studio Services</Link>
             </div>
           </div>

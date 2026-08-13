@@ -134,14 +134,21 @@ export default function FlowRelationships({ kind, id, compact = false, view = "a
   const graph = graphState && graphState.id === id ? graphState.payload : null;
   const beats = beatsState && beatsState.id === id ? beatsState.beats : [];
   const producerEdges = producerState && producerState.id === id ? producerState.edges : [];
-  const trackCreators = useMemo(() => (graph?.edges || []).filter((edge) => edge.verified && edge.node.kind === "creator"), [graph]);
+  const trackCreators = useMemo(() => {
+    const seen = new Set<string>();
+    return (graph?.edges || []).filter((edge) => {
+      if (!edge.verified || edge.node.kind !== "creator" || edge.node.id === id || seen.has(edge.node.id)) return false;
+      seen.add(edge.node.id);
+      return true;
+    });
+  }, [graph, id]);
 
   if (!id) return null;
   if (kind === "track") {
     if (!trackCreators.length) return null;
     return (
       <section className="mt-4 border-t border-white/10 pt-4" aria-label="Verified relationships for this track">
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Explore this track</p>
+        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[.18em] text-brand">People behind this track</p>
         <div className={compact ? "grid gap-2" : "grid gap-3 sm:grid-cols-2"}>
           {trackCreators.map((edge) => <BvsObjectCard key={`${edge.relationship}-${edge.node.id}`} object={creatorObject(edge)} variant="relationship-card" relationship={edge.relationship} />)}
         </div>

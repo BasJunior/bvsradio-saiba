@@ -134,8 +134,9 @@ export default function Navbar() {
   // BVS Flow keeps listener movement short. Creator and operational paths live
   // behind the workspace/account surfaces instead of competing with discovery.
   const navLinks = [
-    { href: '/', label: 'Home' },
+    { href: '/radio', label: 'Radio' },
     { href: '/search', label: 'Explore' },
+    { href: '/music/artists', label: 'Artists' },
     { href: '/catalogue?type=beat#beatstore', label: 'Beats' },
     { href: '/library', label: 'Library' },
   ]

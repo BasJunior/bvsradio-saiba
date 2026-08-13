@@ -4,9 +4,13 @@ import { useEffect, useState } from 'react'
 import type { DiscoveryItem } from '@/lib/discovery'
 import { hasLibraryItem, toggleLibraryItem, type LibrarySection } from '@/lib/library'
 import { trackEvent } from '@/lib/analytics'
+import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
 
 export default function LibraryAction({ item, section = 'favourites', compact = false }: { item: DiscoveryItem; section?: Extract<LibrarySection, 'favourites' | 'follows'>; compact?: boolean }) {
   const [saved, setSaved] = useState(false)
+  const [signedIn, setSignedIn] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     const sync = () => setSaved(hasLibraryItem(section, item.id))
@@ -16,6 +20,14 @@ export default function LibraryAction({ item, section = 'favourites', compact = 
     return () => { window.removeEventListener('bvs:library-change', sync); window.removeEventListener('storage', sync) }
   }, [item.id, section])
 
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return
+    const client = createClient()
+    client.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session)))
+    const { data } = client.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)))
+    return () => data.subscription.unsubscribe()
+  }, [])
+
   const label = section === 'follows' ? (saved ? 'Following' : 'Follow') : (saved ? 'Saved' : 'Save')
   return (
     <button
@@ -23,13 +35,18 @@ export default function LibraryAction({ item, section = 'favourites', compact = 
       aria-pressed={saved}
       aria-label={`${label} ${item.title}`}
       onClick={() => {
+        if (section === 'follows' && !signedIn) {
+          const next = `${window.location.pathname}${window.location.search}${window.location.hash}`
+          router.push(`/auth/login?next=${encodeURIComponent(next)}`)
+          return
+        }
         const next = toggleLibraryItem(section, item)
         setSaved(next)
         if (next && section === 'favourites' && item.kind === 'track') trackEvent('track_save', { track_id: item.id })
       }}
       className={`rounded-full border transition ${saved ? 'border-brand bg-brand/15 text-brand' : 'border-white/20 text-text-secondary hover:border-brand hover:text-white'} ${compact ? 'px-3 py-1 text-xs' : 'px-5 py-2 text-sm'}`}
     >
-      {section === 'favourites' ? (saved ? '♥ ' : '♡ ') : (saved ? '✓ ' : '+ ')}{label}
+      {section === 'favourites' ? (saved ? '♥ ' : '♡ ') : (saved ? '✓ ' : '+ ')}{section === 'follows' && !signedIn ? 'Sign in to follow' : label}
     </button>
   )
 }
