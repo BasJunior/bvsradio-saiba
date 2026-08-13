@@ -255,8 +255,8 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const creatorDetails = waitlistResponse.ok ? (await waitlistResponse.json())[0] : null
 
     let databaseTracks: Array<Omit<PublicArtistTrack, 'credits'> & { artwork_url?: string }> = []
-    const trackSelectWithDsp = 'id,title,genre,artwork_url,audio_path,in_rotation,is_downloadable,licence_type,isrc,spotify_url'
-    const trackSelectBase = 'id,title,genre,artwork_url,audio_path,in_rotation,is_downloadable,licence_type'
+    const trackSelectWithDsp = 'id,title,genre,artwork_url,file_url,in_rotation,is_downloadable,licence_type,isrc,spotify_url'
+    const trackSelectBase = 'id,title,genre,artwork_url,file_url,in_rotation,is_downloadable,licence_type'
     for (const select of [trackSelectWithDsp, trackSelectBase]) {
       const tracksResponse = await fetch(
         `${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=${select}&order=created_at.desc`,
@@ -294,7 +294,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const publicTracks = databaseTracks.map((track) => ({
       ...track,
       artwork_url: mediaUrlForStoredValue(track.artwork_url) || undefined,
-      audio_url: mediaUrlForStoredValue((track as { audio_path?: string }).audio_path) || undefined,
+      audio_url: mediaUrlForStoredValue((track as { file_url?: string }).file_url) || undefined,
       isrc: track.isrc || undefined,
       spotify_url: track.spotify_url || undefined,
       credits: credits.filter(credit => credit.track_id === track.id),
