@@ -25,6 +25,23 @@ type SettlementView = SettlementRow & {
   tax_excluded: true
 }
 
+const RADIO_EARNINGS_ENTRY_TYPES = new Set(['royalty_credit'])
+const FOUNDING_BONUS_ENTRY_TYPES = new Set(['founding_artist_bonus', 'promotional_credit'])
+
+function isFoundingBonus(entry: { entry_type?: string; metadata?: Record<string, unknown> }) {
+  return FOUNDING_BONUS_ENTRY_TYPES.has(String(entry.entry_type || ''))
+    || (entry.entry_type === 'manual_credit' && entry.metadata?.program === 'founding_artist_bonus')
+}
+
+function postedCreditTotal(
+  entries: Array<{ direction: string; amount: number | string; status: string; entry_type?: string; metadata?: Record<string, unknown> }>,
+  matches: (entry: { entry_type?: string; metadata?: Record<string, unknown> }) => boolean,
+) {
+  return entries
+    .filter((entry) => entry.direction === 'credit' && entry.status === 'posted' && matches(entry))
+    .reduce((total, entry) => total + (Number(entry.amount) || 0), 0)
+}
+
 async function currentUser(request: Request): Promise<SupabaseUser | null> {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
   if (!token || !SUPABASE_URL || !SUPABASE_ANON_KEY || !serviceHeaders.apikey) return null
@@ -62,7 +79,7 @@ export async function GET(request: Request) {
 
   const email = encodeURIComponent(user.email || '')
   const userId = encodeURIComponent(user.id)
-  const [profile, waitlist, deposits, ledger, payoutMethods, payoutRequests, settings, rawSettlements] = await Promise.all([
+  const [profile, waitlist, deposits, ledger, payoutMethods, payoutRequests, settings, rawSettlements, tracks] = await Promise.all([
     getJson<Array<Record<string, unknown>>>(`profiles?id=eq.${userId}&select=id,username,display_name,role,is_verified,is_published`, []),
     user.email ? getJson<Array<Record<string, unknown>>>(`artist_waitlist?email=eq.${email}&select=*&order=created_at.desc&limit=1`, []) : Promise.resolve([]),
     getJson<Array<{ amount: number | string; status: string } & Record<string, unknown>>>(`artist_deposits?artist_user_id=eq.${userId}&select=*&order=created_at.desc&limit=20`, []),
@@ -71,6 +88,7 @@ export async function GET(request: Request) {
     getJson<Array<Record<string, unknown>>>(`artist_payout_requests?artist_user_id=eq.${userId}&select=*&order=requested_at.desc&limit=20`, []),
     getJson<Array<{ value?: { amount?: number | string; currency?: string } }>>(`artist_wallet_settings?key=eq.payout_minimum_usd&select=value&limit=1`, []),
     getJson<SettlementRow[]>(`commerce_seller_settlements?seller_user_id=eq.${userId}&select=id,order_reference,provider,policy_version,seller_plan_id,gross_product_revenue,platform_fee_bps,platform_fee_amount,processor_fee_allocated,processor_fee_status,processor_fee_native_amount,processor_fee_native_currency,seller_net,settlement_status,breakdown,created_at&order=created_at.desc&limit=60`, []),
+    getJson<Array<{ play_count?: number | string }>>(`tracks?user_id=eq.${userId}&select=play_count&is_public=eq.true&editorial_status=eq.approved&limit=2000`, []),
   ])
 
   const refundByReference = new Map<string, number>()
@@ -98,6 +116,12 @@ export async function GET(request: Request) {
     .reduce((total, entry) => total + (Number(entry.amount) || 0), 0)
   const postedSettlements = sellerSettlements.filter((row) => row.settlement_status === 'posted')
   const refundDebits = [...refundByReference.values()].reduce((total, amount) => total + amount, 0)
+  const foundingBonus = postedCreditTotal(ledger, isFoundingBonus)
+  const radioEarnings = postedCreditTotal(ledger, (entry) => RADIO_EARNINGS_ENTRY_TYPES.has(String(entry.entry_type || '')))
+  const marketplaceEarnings = postedCreditTotal(ledger, (entry) => entry.entry_type === 'sale_credit')
+  const eligiblePlays = tracks.reduce((total, track) => total + (Number(track.play_count) || 0), 0)
+  const availableBalance = balance(ledger)
+  const otherCreditsAndAdjustments = availableBalance - marketplaceEarnings - radioEarnings - foundingBonus
 
   return NextResponse.json({
     profile: profile[0] || null,
@@ -112,7 +136,7 @@ export async function GET(request: Request) {
       currency: settings[0]?.value?.currency || 'USD',
     },
     balances: {
-      available: balance(ledger),
+      available: availableBalance,
       pendingDeposits: deposits.filter((deposit) => ['pending', 'creditable'].includes(String(deposit.status))).reduce((total, deposit) => total + (Number(deposit.amount) || 0), 0),
       pendingEarnings: pendingSaleCredits,
     },
@@ -125,6 +149,17 @@ export async function GET(request: Request) {
       netAfterRefunds: Math.max(0, sum(postedSettlements, 'seller_net') - refundDebits),
       pendingNetEarnings: sum(sellerSettlements.filter((row) => row.settlement_status === 'pending_processor'), 'seller_net'),
       settlementCount: sellerSettlements.length,
+    },
+    sources: {
+      marketplaceEarnings,
+      radioEarnings,
+      foundingBonus,
+      otherCreditsAndAdjustments,
+    },
+    radio: {
+      eligiblePlays,
+      fundedEarnings: radioEarnings,
+      settlementStatus: radioEarnings > 0 ? 'credited' : 'awaiting_funded_programme',
     },
   })
 }
