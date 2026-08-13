@@ -129,7 +129,10 @@ export default function AccountPage() {
     ]
     if (access.creator) items.push({ href: '/creator/studio', title: 'Creator Studio', copy: 'Manage submissions, releases and creator workflows.' })
     if (access.artist) items.push({ href: '/artists', title: 'Artist wallet', copy: 'View onboarding, deposits, balance and payout readiness.' })
-    if (access.editorial) items.push({ href: '/editorial', title: 'Editorial', copy: 'Open the BVS editorial workspace.' })
+    if (access.editorial) {
+      items.push({ href: '/editorial', title: 'Editorial', copy: 'Review music, releases, artists and operational queues.' })
+      items.push({ href: '/admin/creator-workflows', title: 'Writing & research', copy: 'Review research briefs, approve drafting and review submitted articles.' })
+    }
     return items
   }, [access])
 
