@@ -7,7 +7,8 @@ import type { PublicArtistTrack } from '@/lib/artist-content'
 import type { DiscoveryItem } from '@/lib/discovery'
 
 function creditLabel(person: string, role: string) {
-  const cleanPerson = person.trim()
+  const rawPerson = person.trim()
+  const cleanPerson = rawPerson.toLowerCase() === 'wolfbridges' ? 'Wolf Bridges' : rawPerson
   const cleanRole = role.trim()
   return `${cleanPerson} — ${cleanRole.toLowerCase() === cleanPerson.toLowerCase() ? 'Artist' : cleanRole}`
 }
