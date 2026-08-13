@@ -19,6 +19,7 @@ type FlowScrollState = {
 
 const TRAIL_KEY = "bvs.flow.trail.v1";
 const RESTORE_PREFIX = "bvs.flow.restore.v1:";
+const BACK_PREFIX = "bvs.flow.back.v1:";
 const MAX_TRAIL = 12;
 
 function routeKey(route: string) {
@@ -79,6 +80,16 @@ export function captureFlowScroll(route: string, focusId?: string) {
     scrollers,
   };
   window.sessionStorage.setItem(`${RESTORE_PREFIX}${routeKey(route)}`, JSON.stringify(state));
+}
+
+export function recordFlowBackTarget(destination: string, previous: string) {
+  if (typeof window === "undefined") return;
+  window.sessionStorage.setItem(`${BACK_PREFIX}${routeKey(destination)}`, previous);
+}
+
+export function readFlowBackTarget(route: string) {
+  if (typeof window === "undefined") return null;
+  return window.sessionStorage.getItem(`${BACK_PREFIX}${routeKey(route)}`);
 }
 
 export function restoreFlowScroll(route: string) {

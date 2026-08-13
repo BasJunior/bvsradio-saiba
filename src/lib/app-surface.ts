@@ -62,6 +62,10 @@ export function appLibrary(surface: AppSurface) {
   return `/app/${surface}/library`;
 }
 
+export function isAppPrimaryRoot(pathname: string, surface: AppSurface) {
+  return [appHome(surface), appExplore(surface), appBeats(surface), appLibrary(surface)].includes(pathname);
+}
+
 export function hrefForAppSurface(href: string, surface: AppSurface | null | undefined) {
   if (!surface || !href.startsWith("/")) return href;
   if (href.startsWith("/app/")) return href;

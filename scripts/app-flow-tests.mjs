@@ -5,6 +5,7 @@ import {
   appHome,
   appLibrary,
   hrefForAppSurface,
+  isAppPrimaryRoot,
   matchPrimaryDestination,
   parseSurfaceFromPath,
   resolveAppChrome,
@@ -19,6 +20,9 @@ assert.equal(appHome("ios"), "/app/ios");
 assert.equal(appExplore("ios", "BasJunior"), "/app/ios/explore?q=BasJunior");
 assert.equal(appBeats("android"), "/app/android/beats");
 assert.equal(appLibrary("ios"), "/app/ios/library");
+assert.equal(isAppPrimaryRoot("/app/ios", "ios"), true);
+assert.equal(isAppPrimaryRoot("/app/ios/explore", "ios"), true);
+assert.equal(isAppPrimaryRoot("/artist/BasJunior", "ios"), false);
 
 assert.equal(hrefForAppSurface("/search?q=Heavy", "ios"), "/app/ios/explore?q=Heavy");
 assert.equal(hrefForAppSurface("/library", "ios"), "/app/ios/library");

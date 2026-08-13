@@ -1,11 +1,13 @@
 import UIKit
 import AVFoundation
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    private var webViewURLObservation: NSKeyValueObservation?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Allow HTML5 / WebView audio to continue when the screen locks (radio use case).
@@ -13,12 +15,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             try AVAudioSession.sharedInstance().setCategory(
                 .playback,
                 mode: .default,
-                options: [.allowAirPlay, .allowBluetooth]
+                options: [.allowAirPlay, .allowBluetoothHFP]
             )
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             // Non-fatal: playback still works while app is foregrounded.
             print("AVAudioSession setup failed: \(error)")
+        }
+        DispatchQueue.main.async { [weak self] in
+            self?.configureNavigationGesturesIfNeeded()
         }
         return true
     }
@@ -39,6 +44,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationDidBecomeActive(_ application: UIApplication) {
         // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
+        configureNavigationGesturesIfNeeded()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -56,6 +62,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Feel free to add additional processing here, but if you want the App API to support
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+
+    private func configureNavigationGesturesIfNeeded() {
+        guard webViewURLObservation == nil,
+              let bridge = window?.rootViewController as? CAPBridgeViewController else { return }
+        bridge.loadViewIfNeeded()
+        guard let webView = bridge.webView else { return }
+        webViewURLObservation = webView.observe(\.url, options: [.initial, .new]) { [weak self] observedWebView, _ in
+            self?.updateNavigationGestures(for: observedWebView)
+        }
+    }
+
+    private func updateNavigationGestures(for webView: WKWebView) {
+        guard let url = webView.url else {
+            webView.allowsBackForwardNavigationGestures = false
+            return
+        }
+        let trustedHosts = ["bvsradio.com", "www.bvsradio.com"]
+        guard url.host.map(trustedHosts.contains) == true else {
+            webView.allowsBackForwardNavigationGestures = false
+            return
+        }
+        let primaryRoots = [
+            "/", "/app/ios", "/app/ios/explore", "/app/ios/beats", "/app/ios/library",
+            "/app/android", "/app/android/explore", "/app/android/beats", "/app/android/library"
+        ]
+        let hasDismissibleLayer = url.fragment?.hasPrefix("bvs-") == true
+        webView.allowsBackForwardNavigationGestures = hasDismissibleLayer || !primaryRoots.contains(url.path)
     }
 
 }

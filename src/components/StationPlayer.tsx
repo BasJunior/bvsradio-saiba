@@ -8,6 +8,13 @@ import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/librar
 import { listeningBucket, trackEvent } from "@/lib/analytics";
 import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 import { appExplore, appLibrary, hrefForAppSurface } from "@/lib/app-surface";
+import {
+  BVS_DISMISS_TRANSIENTS_EVENT,
+  clearCurrentTransientLayer,
+  currentTransientLayer,
+  dismissTransientLayer,
+  openTransientLayer,
+} from "@/lib/transient-navigation";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -177,10 +184,44 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const [mode, setMode] = useState<ListenMode>("station");
   const [playingFrom, setPlayingFrom] = useState("BVS Station");
   const [autoplay, setAutoplay] = useState(true);
-  const [queueOpen, setQueueOpen] = useState(false);
-  const [nowPlayingOpen, setNowPlayingOpen] = useState(false);
-  const openNowPlaying = useCallback(() => setNowPlayingOpen(true), []);
-  const closeNowPlaying = useCallback(() => setNowPlayingOpen(false), []);
+  const [queueOpen, setQueueOpenState] = useState(false);
+  const [nowPlayingOpen, setNowPlayingOpenState] = useState(false);
+  const setQueueOpen = useCallback((open: boolean) => {
+    if (open) {
+      openTransientLayer("queue");
+      setNowPlayingOpenState(false);
+      setQueueOpenState(true);
+    } else if (!dismissTransientLayer("queue")) {
+      setQueueOpenState(false);
+    }
+  }, []);
+  const openNowPlaying = useCallback(() => {
+    openTransientLayer("now-playing");
+    setQueueOpenState(false);
+    setNowPlayingOpenState(true);
+  }, []);
+  const closeNowPlaying = useCallback(() => {
+    if (!dismissTransientLayer("now-playing")) setNowPlayingOpenState(false);
+  }, []);
+
+  useEffect(() => {
+    const syncLayer = (event: PopStateEvent) => {
+      const layer = currentTransientLayer(event.state);
+      setQueueOpenState(layer === "queue");
+      setNowPlayingOpenState(layer === "now-playing");
+    };
+    const dismissBeforeNavigation = () => {
+      clearCurrentTransientLayer();
+      setQueueOpenState(false);
+      setNowPlayingOpenState(false);
+    };
+    window.addEventListener("popstate", syncLayer);
+    window.addEventListener(BVS_DISMISS_TRANSIENTS_EVENT, dismissBeforeNavigation);
+    return () => {
+      window.removeEventListener("popstate", syncLayer);
+      window.removeEventListener(BVS_DISMISS_TRANSIENTS_EVENT, dismissBeforeNavigation);
+    };
+  }, []);
 
   const current = nowPlaying?.track;
   const tracksRef = useRef(tracks);
@@ -713,7 +754,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setQueueOpen(true);
       trackEvent("queue_play_now", { track_id: trackLibraryId(track) });
     },
-    [fillUpNext, flushListening, pushHistory],
+    [fillUpNext, flushListening, pushHistory, setQueueOpen],
   );
 
   const playNext = useCallback((track: StationTrack) => {
@@ -896,6 +937,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       upNext,
       autoplay,
       queueOpen,
+      setQueueOpen,
       nowPlayingOpen,
       openNowPlaying,
       closeNowPlaying,
@@ -1182,7 +1224,7 @@ export function PersistentPlayer() {
                 <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Now Playing World</p>
                 <p className="mt-1 text-xs text-white/60">{player.playingFrom || "BVS Radio"}</p>
               </div>
-              <button type="button" onClick={() => { player.closeNowPlaying(); player.setQueueOpen(true); }} className="grid h-11 min-w-11 place-items-center rounded-full border border-white/15 bg-black/20 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
+              <button type="button" onClick={() => player.setQueueOpen(true)} className="grid h-11 min-w-11 place-items-center rounded-full border border-white/15 bg-black/20 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
             </header>
 
             <div className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:gap-16">
@@ -1216,7 +1258,7 @@ export function PersistentPlayer() {
                   <ArtistSearchLink artist={player.current?.artist || ""} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Go deeper</span><span className="mt-1 block font-medium">Explore artist and credits</span>
                   </ArtistSearchLink>
-                  <button type="button" onClick={() => { player.closeNowPlaying(); player.setQueueOpen(true); }} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left hover:border-brand/40">
+                  <button type="button" onClick={() => player.setQueueOpen(true)} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left hover:border-brand/40">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Coming next</span><span className="mt-1 block font-medium">Open queue · {player.upNext.length} tracks</span>
                   </button>
                 </div>

@@ -52,6 +52,7 @@ export default function MobileFlowNav() {
             <Link
               key={item.id}
               href={item.href}
+              replace
               aria-current={active ? "page" : undefined}
               className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${active ? "text-brand" : "text-text-secondary hover:text-white"}`}
             >

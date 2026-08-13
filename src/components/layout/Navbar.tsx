@@ -8,7 +8,8 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import HeaderSearch from '@/components/layout/HeaderSearch'
 import { useAppSurface } from '@/components/app/AppSurfaceProvider'
-import { appExplore, appHome, primaryAppDestinations } from '@/lib/app-surface'
+import { appExplore, appHome, isAppPrimaryRoot, primaryAppDestinations } from '@/lib/app-surface'
+import { readFlowBackTarget } from '@/lib/flow-session'
 import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
 type Access = {
   artist: boolean
@@ -180,12 +181,33 @@ export default function Navbar() {
 
   if (appChrome && surface) {
     const destinations = primaryAppDestinations(surface)
+    const showBack = !isAppPrimaryRoot(pathname, surface)
+    const goBack = () => {
+      const route = `${window.location.pathname}${window.location.search}${window.location.hash}`
+      if (readFlowBackTarget(route)) {
+        router.back()
+      } else {
+        router.replace(appHome(surface))
+      }
+    }
     return (
       <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-3 px-4">
-          <Link href={appHome(surface)} className="flex min-w-0 items-center gap-2" aria-label="BVS Radio app home">
-            <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-10 w-auto rounded-md object-contain" priority />
-          </Link>
+          <div className="flex min-w-0 items-center gap-1">
+            {showBack ? (
+              <button
+                type="button"
+                onClick={goBack}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-2xl text-brand transition hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+                aria-label="Back to previous screen"
+              >
+                ‹
+              </button>
+            ) : null}
+            <Link href={appHome(surface)} replace className="flex min-w-0 items-center gap-2" aria-label="BVS Radio app home">
+              <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-10 w-auto rounded-md object-contain" priority />
+            </Link>
+          </div>
           <div className="hidden items-center gap-5 text-sm font-medium md:flex">
             {destinations.map((item) => (
               <Link key={item.id} href={item.href} className={`transition-colors ${pathname === item.href.split('?')[0] ? 'text-brand' : 'text-text-secondary hover:text-brand'}`}>

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { captureFlowScroll, restoreFlowScroll } from "@/lib/flow-session";
+import { captureFlowScroll, recordFlowBackTarget, restoreFlowScroll } from "@/lib/flow-session";
 import { trackEvent } from "@/lib/analytics";
+import { BVS_DISMISS_TRANSIENTS_EVENT } from "@/lib/transient-navigation";
 
 function currentRoute() {
   if (typeof window === "undefined") return "/";
@@ -40,8 +41,10 @@ export default function FlowNavigationProvider({ children }: { children: React.R
       if (destination.origin !== window.location.origin) return;
       const next = `${destination.pathname}${destination.search}${destination.hash}`;
       if (next === currentRoute()) return;
+      window.dispatchEvent(new Event(BVS_DISMISS_TRANSIENTS_EVENT));
       const focusId = target.closest<HTMLElement>("[data-flow-focus-id]")?.dataset.flowFocusId;
       captureFlowScroll(currentRoute(), focusId);
+      recordFlowBackTarget(next, currentRoute());
     };
     window.addEventListener("popstate", onPopState);
     document.addEventListener("click", onClick, true);
