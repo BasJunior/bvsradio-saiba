@@ -125,17 +125,44 @@ function artistImage(avatarUrl: string | undefined, artworkUrl: string | undefin
   return mediaUrlForStoredValue(hasCustomAvatar ? avatarUrl : artworkUrl) || '/assets/images/default-avatar.png'
 }
 
+function berlinDayKey() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Berlin' })
+}
+
+function hashSeed(input: string) {
+  let hash = 2166136261
+  for (let i = 0; i < input.length; i += 1) {
+    hash ^= input.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function fairShuffle<T extends { id: string }>(items: T[], scope: string) {
+  const next = [...items]
+  let state = hashSeed(`${scope}:${berlinDayKey()}`) || 1
+  const random = () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    return state / 4294967296
+  }
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(random() * (i + 1))
+    ;[next[i], next[j]] = [next[j], next[i]]
+  }
+  return next
+}
+
 export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  if (!url || !key) return fallbackSummaries
+  if (!url || !key) return fairShuffle(fallbackSummaries, 'artists')
   const headers = { apikey: key, Authorization: `Bearer ${key}` }
   try {
     const profileResponse = await fetch(
       `${url}/rest/v1/profiles?is_published=eq.true&is_verified=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status&order=username.asc`,
       { headers, cache: 'no-store' },
     )
-    if (!profileResponse.ok) return fallbackSummaries
+    if (!profileResponse.ok) return fairShuffle(fallbackSummaries, 'artists')
     const profiles = (await profileResponse.json() as Array<{
       id: string
       username: string
@@ -157,7 +184,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
     const tracks = tracksResponse.ok
       ? await tracksResponse.json() as Array<{ user_id: string; genre?: string; artwork_url?: string }>
       : []
-    return profiles.map((profile) => {
+    const artists = profiles.map((profile) => {
       const artistTracks = tracks.filter((track) => track.user_id === profile.id)
       const linkedTracks = legacyCreatorTracks[profile.username] || []
       const genres = [...new Set([
@@ -182,8 +209,9 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
         genres,
       }
     }).filter((artist) => artist.trackCount > 0)
+    return fairShuffle(artists, 'artists')
   } catch {
-    return fallbackSummaries
+    return fairShuffle(fallbackSummaries, 'artists')
   }
 }
 
