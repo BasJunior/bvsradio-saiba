@@ -127,7 +127,10 @@ export default function AccountPage() {
       { href: '/checkout', title: 'Cart', copy: 'Review your current basket and continue checkout.' },
       { href: '/notifications', title: 'Notifications', copy: 'Review editorial, creator, order and account updates.' },
     ]
-    if (access.creator) items.push({ href: '/creator/studio', title: 'Creator Studio', copy: 'Manage submissions, releases and creator workflows.' })
+    if (access.creator) {
+      items.push({ href: '/creator/studio', title: 'Creator Studio', copy: 'Manage submissions, releases and creator workflows.' })
+      items.push({ href: '/creator/studio#cover-change', title: 'Update covers', copy: 'Request a new picture for a release, beat or beat pack. Editorial approves it before it goes live.' })
+    }
     if (access.artist) items.push({ href: '/artists', title: 'Artist wallet', copy: 'View onboarding, deposits, balance and payout readiness.' })
     if (access.editorial) {
       items.push({ href: '/editorial', title: 'Editorial', copy: 'Review music, releases, artists and operational queues.' })

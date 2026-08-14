@@ -121,7 +121,7 @@ export async function isPublicR2MediaKey(key: string) {
   const encUrl = encodeURIComponent(mediaUrl);
 
   // Targeted lookups — avoid the old limit=500 scan that missed rows / shared keys.
-  const [trackByUrl, trackByKey, beatByPath, beatByUrl, episodeByPath, episodeByUrl, marketplaceMedia] = await Promise.all([
+  const [trackByUrl, trackByKey, beatByPath, beatByUrl, episodeByPath, episodeByUrl, marketplaceMedia, releaseByUrl, packByPath] = await Promise.all([
     fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&or=(file_url.eq.${encUrl},artwork_url.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&or=(file_url.eq.${enc},artwork_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&or=(preview_path.eq.${enc},artwork_path.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
@@ -129,6 +129,8 @@ export async function isPublicR2MediaKey(key: string) {
     fetch(`${url}/rest/v1/show_episodes?status=eq.published&or=(audio_path.eq.${enc},artwork_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/show_episodes?status=eq.published&or=(audio_path.eq.${encUrl},artwork_url.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/creator_marketplace_listings?status=eq.published&or=(artwork_path.eq.${enc},preview_path.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/releases?is_public=eq.true&editorial_status=eq.approved&or=(cover_url.eq.${encUrl},cover_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/beat_packs?is_public=eq.true&status=eq.published&or=(artwork_path.eq.${enc},artwork_path.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
   ]);
 
   const nonempty = async (res: Response) => {
@@ -145,5 +147,7 @@ export async function isPublicR2MediaKey(key: string) {
     || (await nonempty(episodeByPath))
     || (await nonempty(episodeByUrl))
     || (await nonempty(marketplaceMedia))
+    || (await nonempty(releaseByUrl))
+    || (await nonempty(packByPath))
   );
 }

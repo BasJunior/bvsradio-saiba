@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const [tracksResponse, requestsResponse, releasesResponse, jobsResponse, profileFlagsResponse] = await Promise.all([
     fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,genre,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at,release_id,isrc,spotify_url&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`track_review_requests?artist_user_id=eq.${id}&select=*&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
-    fetch(creatorUrl(`releases?user_id=eq.${id}&select=id,title,artist_name,genre,editorial_status,editorial_notes,is_public,in_rotation,release_type,track_count,created_at,published_at&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`releases?user_id=eq.${id}&select=id,title,artist_name,genre,cover_url,editorial_status,editorial_notes,is_public,in_rotation,release_type,track_count,created_at,published_at&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`distribution_jobs?artist_user_id=eq.${id}&select=id,release_id,status,notes,updated_at,created_at&order=updated_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`profiles?id=eq.${id}&select=premium_active,premium_until,distribution_enabled,premium_plan_id&limit=1`), { headers: creatorHeaders, cache: 'no-store' }),
   ])

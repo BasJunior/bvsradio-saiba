@@ -3,6 +3,7 @@ import { audit, can, editorialIdentity, editorialUrl, serviceHeaders } from '@/l
 import { sendMusicApprovalEmail } from '@/lib/approval-email'
 import type { EditorialPermission, EditorialRole } from '@/lib/editorial'
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
+import { applyApprovedArtwork, type ArtworkTargetKind } from '@/lib/artwork-change-requests'
 import { assertCanPublishLiveBeat } from '@/lib/producer-entitlements'
 
 async function jsonOrError(response: Response) {
@@ -87,12 +88,21 @@ async function loadTracksSection() {
       artwork_url: await signStoredMedia(String(track.artwork_url || '')),
     })),
   )
-  const [trackRequests, trackReviewMessages, credits] = await Promise.all([
+  const [trackRequests, trackReviewMessages, credits, rawArtworkChangeRequests, beatPacks] = await Promise.all([
     optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100'),
     optionalJson('track_review_messages?select=*&order=created_at.asc&limit=500'),
     optionalJson('track_credits?select=*&order=created_at.desc&limit=100'),
+    optionalJson('artwork_change_requests?select=*&order=created_at.desc&limit=100'),
+    optionalJson('beat_packs?select=id,title,producer_user_id,artwork_path,status&order=created_at.desc&limit=200'),
   ])
-  return { tracks, trackRequests, trackReviewMessages, credits }
+  const artworkChangeRequests = await Promise.all(
+    (rawArtworkChangeRequests as Array<Record<string, unknown>>).map(async (row) => ({
+      ...row,
+      proposed_artwork_url: await signStoredMedia(String(row.proposed_artwork_path || '')),
+      current_artwork_url: await signStoredMedia(String(row.current_artwork_path || '')),
+    })),
+  )
+  return { tracks, trackRequests, trackReviewMessages, credits, artworkChangeRequests, beatPacks }
 }
 
 async function loadBeatsSection() {
@@ -633,6 +643,34 @@ export async function PATCH(request: Request) {
         const status = ['reviewing', 'resolved', 'rejected'].includes(String(body.status)) ? String(body.status) : 'reviewing'
         const result = await patchTable('track_review_requests', `id=eq.${encodeURIComponent(requestId)}`, { status, staff_notes: String(body.notes || '').slice(0, 2000), reviewed_by: identity.user.id, reviewed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
         await audit(identity.user.id, `track_request_${status}`, 'track_review_request', requestId)
+        return NextResponse.json({ result })
+      }
+      case 'review_artwork_change': {
+        requirePermission('approve_submissions')
+        const requestId = String(body.requestId || '')
+        const status = ['reviewing', 'resolved', 'rejected'].includes(String(body.status)) ? String(body.status) : 'reviewing'
+        const notes = String(body.notes || '').slice(0, 2000)
+        if (!requestId) return NextResponse.json({ error: 'requestId required.' }, { status: 400 })
+        const existing = ((await optionalJson(`artwork_change_requests?id=eq.${encodeURIComponent(requestId)}&select=*&limit=1`)) as Array<Record<string, unknown>>)[0]
+        if (!existing) return NextResponse.json({ error: 'Cover request not found.' }, { status: 404 })
+        if (status === 'resolved' && String(existing.request_type) === 'artwork_replacement') {
+          const path = String(existing.proposed_artwork_path || '')
+          if (!path) return NextResponse.json({ error: 'This request has no new cover to apply.' }, { status: 400 })
+          await applyApprovedArtwork({
+            kind: String(existing.target_kind) as ArtworkTargetKind,
+            targetId: String(existing.target_id),
+            path,
+            applyToPackMembers: existing.apply_to_pack_members === true,
+          })
+        }
+        const result = await patchTable('artwork_change_requests', `id=eq.${encodeURIComponent(requestId)}`, {
+          status,
+          staff_notes: notes,
+          reviewed_by: identity.user.id,
+          reviewed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        await audit(identity.user.id, `artwork_change_${status}`, String(existing.target_kind || 'artwork_change'), String(existing.target_id || requestId))
         return NextResponse.json({ result })
       }
       case 'publish_release': {

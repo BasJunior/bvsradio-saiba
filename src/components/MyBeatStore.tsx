@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
+import ArtworkChangeRequestForm from '@/components/ArtworkChangeRequestForm'
 
 type Licence = {
   id?: string
@@ -493,6 +494,15 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
             No beats yet. Add your first listing above.
           </p>
         )}
+        <div className="pt-4">
+          <ArtworkChangeRequestForm
+            token={token}
+            scope="beats"
+            formId="beatstore-cover-change"
+            heading="Request a change"
+            copy="Select a beat or beat pack — including your latest pack — upload a new cover from your profile, and editorial will approve it."
+          />
+        </div>
       </div>}
     </section>
   )
