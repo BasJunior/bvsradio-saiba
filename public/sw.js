@@ -1,5 +1,5 @@
 /* BVS Radio service worker — app shell only (never cache large audio). */
-const CACHE = "bvs-shell-v1";
+const CACHE = "bvs-shell-v2-ask-flow";
 const PRECACHE = [
   "/",
   "/radio",

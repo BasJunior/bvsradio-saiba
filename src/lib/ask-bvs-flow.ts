@@ -116,15 +116,57 @@ function score(query: string, item: Candidate) {
   const q = normalize(query)
   const title = normalize(item.title)
   if (!q || !title) return 0
+  if (q === title) return 1200 + title.length
   if (q.includes(title)) return 1000 + title.length
-  if (title.includes(q) && q.length >= 4) return 800 + q.length
+  if (title.includes(q) && q.length >= 3) return 800 + q.length
+  // Username / slug style partials (e.g. basjun → basjunior)
+  const slug = normalize(item.route.split('/').pop() || '')
+  if (slug && (slug === q || (q.length >= 3 && slug.includes(q)) || (slug.length >= 3 && q.includes(slug)))) {
+    return 780 + Math.min(q.length, slug.length)
+  }
   const qTokens = new Set(q.split(' ').filter((token) => token.length >= 3))
   const titleTokens = title.split(' ').filter((token) => token.length >= 3)
   const titleHits = titleTokens.filter((token) => qTokens.has(token)).length
   if (titleHits && titleHits === titleTokens.length) return 650 + titleHits * 20
   const haystack = normalize(`${item.title} ${item.subtitle || ''} ${item.searchText}`)
   const hits = [...qTokens].filter((token) => haystack.includes(token)).length
-  return hits >= 2 ? 250 + hits * 20 : 0
+  return hits >= 2 ? 250 + hits * 20 : hits === 1 && q.length >= 5 ? 200 + hits * 10 : 0
+}
+
+type GraphSnapshot = {
+  at: number
+  catalogue: Awaited<ReturnType<typeof listCatalogueMusicListings>>
+  releases: Awaited<ReturnType<typeof getPublicReleases>>
+  artists: Awaited<ReturnType<typeof getPublishedArtists>>
+  producers: Awaited<ReturnType<typeof getPublishedProducers>>
+  beats: Candidate[]
+  pulse: PulseRow[]
+}
+
+const GRAPH_TTL_MS = 45_000
+let graphSnapshot: GraphSnapshot | null = null
+let graphInflight: Promise<GraphSnapshot> | null = null
+
+async function loadGraphSnapshot(): Promise<GraphSnapshot> {
+  const now = Date.now()
+  if (graphSnapshot && now - graphSnapshot.at < GRAPH_TTL_MS) return graphSnapshot
+  if (graphInflight) return graphInflight
+  graphInflight = Promise.all([
+    listCatalogueMusicListings(250).catch(() => ({ listings: [], summary: { trackCount: 0, releasePackageCount: 0, updatedAt: '' } })),
+    getPublicReleases().catch(() => [] as Awaited<ReturnType<typeof getPublicReleases>>),
+    getPublishedArtists().catch(() => [] as Awaited<ReturnType<typeof getPublishedArtists>>),
+    getPublishedProducers().catch(() => [] as Awaited<ReturnType<typeof getPublishedProducers>>),
+    loadBeats().catch(() => [] as Candidate[]),
+    loadPulse().catch(() => [] as PulseRow[]),
+  ]).then(([catalogue, releases, artists, producers, beats, pulse]) => {
+    graphSnapshot = { at: Date.now(), catalogue, releases, artists, producers, beats, pulse }
+    graphInflight = null
+    return graphSnapshot
+  }).catch((error) => {
+    graphInflight = null
+    throw error
+  })
+  return graphInflight
 }
 
 function isCuratedRelease(row: (typeof curatedCatalogueTracks)[number]) {
@@ -217,14 +259,7 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
       : { reply: 'Your BVS trail is empty on this device so far. Explore a few connected objects and I’ll be able to point you back.', objects: [], links: [{ label: 'Explore BVS', href: '/search' }], mode: 'flow', reason: 'scene_trail' }
   }
 
-  const [catalogue, releases, artists, producers, beats, pulse] = await Promise.all([
-    listCatalogueMusicListings(250).catch(() => ({ listings: [], summary: { trackCount: 0, releasePackageCount: 0, updatedAt: '' } })),
-    getPublicReleases().catch(() => []),
-    getPublishedArtists().catch(() => []),
-    getPublishedProducers().catch(() => []),
-    loadBeats().catch(() => []),
-    loadPulse().catch(() => []),
-  ])
+  const { catalogue, releases, artists, producers, beats, pulse } = await loadGraphSnapshot()
 
   const creators: Candidate[] = [
     ...artists.map((artist) => ({ id: artist.id, kind: 'creator' as const, title: artist.name, subtitle: artist.role, route: `/artist/${encodeURIComponent(artist.username)}`, artwork: artist.image, searchText: [artist.name, artist.username, artist.role, artist.bio, ...artist.genres].join(' '), source: 'creator' as const, creatorId: artist.id })),
@@ -318,8 +353,34 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
   }
 
   if (best && ranked[0].score >= 250) {
-    const related = ranked.filter((entry) => entry.candidate.id !== best.id || entry.candidate.kind !== best.kind).slice(0, 3).map((entry) => entry.candidate)
-    return { reply: `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}.`, objects: unique([best, ...related]).slice(0, 4), links: [], mode: 'flow', reason: 'entity_match' }
+    const related = ranked
+      .filter((entry) => entry.candidate.id !== best.id || entry.candidate.kind !== best.kind)
+      .slice(0, 3)
+      .map((entry) => entry.candidate)
+    const objects = unique([best, ...related]).slice(0, 4)
+    const links =
+      best.kind === 'creator'
+        ? [
+            { label: `Open ${best.title} profile`, href: best.route },
+            ...(related[0]
+              ? [{ label: `Also see ${related[0].title}`, href: related[0].route }]
+              : [{ label: 'Explore creators', href: '/search?mode=creators' }]),
+          ]
+        : best.kind === 'beat'
+          ? [
+              { label: 'Open in BeatStore', href: best.route },
+              ...(best.artist
+                ? [{ label: `${best.artist} profile`, href: creators.find((item) => normalize(item.title) === normalize(best.artist))?.route || '/music/producers' }]
+                : []),
+            ].filter((link) => Boolean(link.href))
+          : best.route
+            ? [{ label: best.kind === 'release' ? 'Open release' : 'Open on BVS', href: best.route }]
+            : []
+    const reply =
+      best.kind === 'creator'
+        ? `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}. Open the profile card below, or try a similar creator if that isn’t who you meant.`
+        : `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}.`
+    return { reply, objects, links, mode: 'flow', reason: 'entity_match' }
   }
 
   return guide(message)
