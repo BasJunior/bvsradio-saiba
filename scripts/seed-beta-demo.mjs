@@ -50,6 +50,60 @@ const founder = await ensureUser("founder@beta.bvsradio.test", "BasJunior", "adm
 const producer = await ensureUser("producer@beta.bvsradio.test", "Beta Producer", "artist");
 const buyer = await ensureUser("buyer@beta.bvsradio.test", "Beta Buyer", "listener");
 
+const trackRows = await json(`/rest/v1/tracks?user_id=eq.${producer.id}&title=eq.Beta%20Qualification%20Track&select=id&limit=1`);
+let trackId = trackRows?.[0]?.id;
+if (!trackId) {
+  const created = await json("/rest/v1/tracks", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({
+      user_id: producer.id,
+      title: "Beta Qualification Track",
+      artist_name: "Beta Producer",
+      genre: "Afrobeats",
+      duration_sec: 120,
+      file_url: "/assets/audio/beta-qualification-placeholder.mp3",
+      is_public: true,
+      editorial_status: "approved",
+      in_rotation: true,
+    }),
+  });
+  trackId = created[0].id;
+}
+
+const showRows = await json("/rest/v1/show_events?room_id=eq.beta-sunrise-room&select=id&limit=1");
+let showId = showRows?.[0]?.id;
+if (!showId) {
+  const startsAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const endsAt = new Date(startsAt.getTime() + 60 * 60 * 1000);
+  const created = await json("/rest/v1/show_events", {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify({
+      programme_slug: "beta-sunrise-show",
+      title: "Beta Sunrise Show",
+      starts_at: startsAt.toISOString(),
+      ends_at: endsAt.toISOString(),
+      status: "scheduled",
+      room_id: "beta-sunrise-room",
+      is_public: true,
+      created_by: founder.id,
+      updated_by: founder.id,
+    }),
+  });
+  showId = created[0].id;
+}
+await json("/rest/v1/show_event_creators?on_conflict=event_id,public_name,role", {
+  method: "POST",
+  headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+  body: JSON.stringify({ event_id: showId, profile_id: producer.id, public_name: "Beta Producer", role: "Host", position: 0 }),
+});
+await json("/rest/v1/show_setlist_items?on_conflict=event_id,position", {
+  method: "POST",
+  headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+  body: JSON.stringify({ event_id: showId, track_id: trackId, title: "Beta Qualification Track", artist_name: "Beta Producer", position: 0 }),
+});
+
 const beatRows = await json(`/rest/v1/beats?producer_user_id=eq.${producer.id}&slug=eq.beta-sunrise&select=id&limit=1`);
 let beatId = beatRows?.[0]?.id;
 if (!beatId) {
@@ -88,4 +142,4 @@ await json("/rest/v1/beat_licence_options?on_conflict=beat_id,licence_code", {
   }),
 });
 
-console.log(JSON.stringify({ ok: true, users: 3, beats: 1, founderId: founder.id, producerId: producer.id, buyerId: buyer.id }));
+console.log(JSON.stringify({ ok: true, users: 3, tracks: 1, beats: 1, shows: 1, founderId: founder.id, producerId: producer.id, buyerId: buyer.id, trackId, showId }));
