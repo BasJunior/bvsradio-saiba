@@ -14,7 +14,11 @@ export async function getPublicProgrammes(): Promise<Show[]> {
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) return fallbackShows
   try {
-    const response = await fetch(`${url}/rest/v1/programmes?status=in.(scheduled,active)&select=*&order=day_label,start_time`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, next: { revalidate: 60 } })
+    const response = await fetch(`${url}/rest/v1/programmes?status=in.(scheduled,active)&select=*&order=day_label,start_time`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(8_000),
+    })
     if (!response.ok) return fallbackShows
     const rows = await response.json() as ProgrammeRow[]
     if (!rows.length) return fallbackShows

@@ -22,6 +22,13 @@ const SERVICE_PRICES: Record<string, number> = {
   "custom-bvs-service": 69,
 };
 
+type ServicePackageSnapshot = {
+  code: string;
+  name: string;
+  description: string;
+  priceUsd: number;
+};
+
 export type CommerceItem = OrderItem & {
   sku: string;
   sourceId: string;
@@ -43,6 +50,7 @@ export type CommerceItem = OrderItem & {
   licenceTermsVersion?: string;
   licenceSummary?: string;
   licenceTerms?: string;
+  servicePackageSnapshot?: ServicePackageSnapshot;
   sellerUserId?: string;
   sellerPlanId?: string;
   marketplaceCommissionBps?: number;
@@ -66,10 +74,6 @@ async function resolveSellerUserId(
     return undefined;
   }
   const headers = { apikey: key, Authorization: `Bearer ${key}` };
-
-  // Explicit commerce ownership is authoritative and supports albums/collaborative
-  // products without guessing a seller from a display artist name. Finance/admin can
-  // assign commerce_products.seller_user_id once rights ownership is confirmed.
   const existingProduct = await fetch(
     `${url}/rest/v1/commerce_products?sku=eq.${encodeURIComponent(sku)}&seller_user_id=not.is.null&select=seller_user_id&limit=1`,
     { headers, cache: "no-store" },
@@ -141,6 +145,7 @@ type CreatorProductRow = {
   licence_summary?: string | null;
   licence_terms?: string | null;
   listing_type?: "digital_product" | "service";
+  packages?: Array<Record<string, unknown>> | null;
 };
 
 async function fetchCreatorListing(
@@ -156,7 +161,7 @@ async function fetchCreatorListing(
     return null;
   }
   const response = await fetch(
-    `${url}/rest/v1/creator_marketplace_listings?id=eq.${encodeURIComponent(id)}&listing_type=eq.${listingType}&status=eq.published&select=id,seller_user_id,title,price_usd,licence_summary,licence_terms,listing_type&limit=1`,
+    `${url}/rest/v1/creator_marketplace_listings?id=eq.${encodeURIComponent(id)}&listing_type=eq.${listingType}&status=eq.published&select=id,seller_user_id,title,price_usd,licence_summary,licence_terms,listing_type,packages&limit=1`,
     {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
       cache: "no-store",
@@ -228,6 +233,39 @@ function parsePriceUsd(
   return Math.round(n * 100) / 100;
 }
 
+function resolveServicePackage(
+  product: CreatorProductRow,
+  requestedCode?: string,
+): ServicePackageSnapshot | null {
+  const packages = Array.isArray(product.packages) ? product.packages : [];
+  if (!packages.length) {
+    const price = parsePriceUsd(product.price_usd);
+    if (price == null || price < 1) return null;
+    return {
+      code: "standard-1",
+      name: "Standard",
+      description: "",
+      priceUsd: price,
+    };
+  }
+  const normalized = packages.map((row, index) => {
+    const name = String(row.name || `Package ${index + 1}`).trim();
+    const code = String(row.code || `${slug(name) || "package"}-${index + 1}`).trim();
+    const priceUsd = parsePriceUsd(row.priceUsd as number | string | null | undefined);
+    return {
+      code,
+      name,
+      description: String(row.description || "").trim().slice(0, 500),
+      priceUsd,
+    };
+  });
+  const selected = requestedCode
+    ? normalized.find((row) => row.code === requestedCode)
+    : normalized[0];
+  if (!selected || selected.priceUsd == null || selected.priceUsd < 1) return null;
+  return { ...selected, priceUsd: selected.priceUsd };
+}
+
 /** Resolve authoritative products, seller ownership and economic policy at checkout time. */
 export async function resolveCommerceItems(
   items: OrderItem[],
@@ -254,6 +292,7 @@ export async function resolveCommerceItems(
       let licenceTermsVersion: string | undefined;
       let licenceSummary: string | undefined;
       let licenceTerms: string | undefined;
+      let servicePackageSnapshot: ServicePackageSnapshot | undefined;
       let authoritativeTitle = item.title;
       let authoritativeSellerUserId: string | undefined;
 
@@ -264,13 +303,25 @@ export async function resolveCommerceItems(
           isService ? "service" : "digital_product",
         );
         if (!product) throw new Error("UNKNOWN_CREATOR_PRODUCT");
-        const priced = parsePriceUsd(product.price_usd);
-        if (priced == null || priced < 1)
-          throw new Error("INVALID_CREATOR_PRODUCT_PRICE");
         productType = isService ? "creator_service" : "creator_product";
-        unitAmount = priced;
-        sku = `${isService ? "creator-service" : "creator-product"}:${product.id}`;
-        authoritativeTitle = product.title;
+        if (isService) {
+          const selectedPackage = resolveServicePackage(
+            product,
+            item.service_package_code,
+          );
+          if (!selectedPackage) throw new Error("UNKNOWN_CREATOR_SERVICE_PACKAGE");
+          servicePackageSnapshot = selectedPackage;
+          unitAmount = selectedPackage.priceUsd;
+          sku = `creator-service:${product.id}:${selectedPackage.code}`;
+          authoritativeTitle = `${product.title} — ${selectedPackage.name}`;
+        } else {
+          const priced = parsePriceUsd(product.price_usd);
+          if (priced == null || priced < 1)
+            throw new Error("INVALID_CREATOR_PRODUCT_PRICE");
+          unitAmount = priced;
+          sku = `creator-product:${product.id}`;
+          authoritativeTitle = product.title;
+        }
         authoritativeSellerUserId = product.seller_user_id;
         licenceSummary =
           product.licence_summary?.trim() ||
@@ -342,6 +393,7 @@ export async function resolveCommerceItems(
         licenceTermsVersion,
         licenceSummary,
         licenceTerms,
+        servicePackageSnapshot,
         sellerUserId,
         sellerPlanId: sellerPolicy?.planId,
         marketplaceCommissionBps: sellerPolicy?.commissionBps,
@@ -404,6 +456,7 @@ export async function recordOrderSnapshot(
         licenceTermsVersion,
         licenceSummary,
         licenceTerms,
+        servicePackageSnapshot,
         sellerUserId,
         sellerPlanId,
         marketplaceCommissionBps,
@@ -424,6 +477,7 @@ export async function recordOrderSnapshot(
         licenceTermsVersion: licenceTermsVersion ?? null,
         licenceSummary: licenceSummary ?? null,
         licenceTerms: licenceTerms ?? null,
+        servicePackageSnapshot: servicePackageSnapshot ?? null,
         sellerUserId: sellerUserId ?? null,
         sellerPlanId: sellerPlanId ?? null,
         marketplaceCommissionBps: marketplaceCommissionBps ?? null,

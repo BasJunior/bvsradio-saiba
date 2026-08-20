@@ -40,6 +40,14 @@ const serviceCategories = new Set([
   "podcast_editing",
   "other",
 ]);
+const serviceSellerRoles = new Set([
+  "producer",
+  "engineer",
+  "studio",
+  "songwriter",
+  "vocalist",
+  "designer",
+]);
 const clean = (value: unknown, max: number) =>
   String(value || "")
     .trim()
@@ -60,6 +68,8 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 70);
+const packageCode = (name: string, index: number) =>
+  `${slugify(name) || "package"}-${index + 1}`;
 
 async function rows(path: string) {
   const response = await fetch(creatorUrl(path), {
@@ -176,9 +186,9 @@ export async function POST(request: Request) {
   if (action === "save_listing") {
     const profile = (
       await rows(
-        `creator_marketplace_profiles?user_id=eq.${identity.user.id}&status=eq.approved&select=user_id&limit=1`,
+        `creator_marketplace_profiles?user_id=eq.${identity.user.id}&status=eq.approved&select=user_id,roles&limit=1`,
       )
-    )[0];
+    )[0] as { user_id?: string; roles?: string[] } | undefined;
     if (!profile)
       return NextResponse.json(
         {
@@ -192,6 +202,17 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Choose product or service." },
         { status: 400 },
+      );
+    if (
+      listingType === "service" &&
+      !(profile.roles || []).some((role) => serviceSellerRoles.has(role))
+    )
+      return NextResponse.json(
+        {
+          error:
+            "Add an approved Producer, Engineer, Studio, Songwriter, Vocalist or Designer role before offering creator services.",
+        },
+        { status: 403 },
       );
     const category = clean(body.category, 40);
     const allowedCategories =
@@ -262,22 +283,38 @@ export async function POST(request: Request) {
     const packages = Array.isArray(body.packages)
       ? body.packages
           .slice(0, entitlements.servicePackageLimit)
-          .map((item) => ({
+          .map((item, index) => {
+            const name = clean((item as Record<string, unknown>)?.name, 100);
+            return {
+              code: packageCode(name, index),
+              name,
+              description: clean(
+                (item as Record<string, unknown>)?.description,
+                500,
+              ),
+              priceUsd: Math.round(
+                Math.max(
+                  1,
+                  Number((item as Record<string, unknown>)?.priceUsd) || price,
+                ) * 100,
+              ) / 100,
+            };
+          })
+          .filter((item) => item.name)
+      : [];
+    const addons =
+      entitlements.addonsEnabled && Array.isArray(body.addons)
+        ? body.addons.slice(0, 12).map((item) => ({
             name: clean((item as Record<string, unknown>)?.name, 100),
             description: clean(
               (item as Record<string, unknown>)?.description,
               500,
             ),
-            priceUsd: Math.max(
-              1,
-              Number((item as Record<string, unknown>)?.priceUsd) || price,
-            ),
-          }))
-          .filter((item) => item.name)
-      : [];
-    const addons =
-      entitlements.addonsEnabled && Array.isArray(body.addons)
-        ? body.addons.slice(0, 12)
+            priceUsd: Math.round(
+              Math.max(0, Number((item as Record<string, unknown>)?.priceUsd) || 0) *
+                100,
+            ) / 100,
+          })).filter((item) => item.name)
         : [];
     const payload = {
       seller_user_id: identity.user.id,

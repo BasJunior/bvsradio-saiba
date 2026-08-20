@@ -12,6 +12,8 @@ export type OrderItem = {
   sourceUrl?: string;
   /** Selected beat_licence_options.id when purchasing a beat */
   licence_option_id?: string;
+  /** Stable package code selected from a Creator Marketplace service listing. */
+  service_package_code?: string;
 };
 
 export type Customer = {
@@ -412,7 +414,6 @@ export async function notifyOwnerNewOrder(order: StoredOrder) {
     }
   }
 
-  // Owner email copy (same inbox as SMTP_FROM / BVS_ORDER_EMAIL)
   const ownerInbox =
     (process.env.BVS_OWNER_NOTIFY_EMAIL || process.env.BVS_ORDER_EMAIL || "").trim();
   if (ownerInbox) {
