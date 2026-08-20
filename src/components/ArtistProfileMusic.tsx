@@ -47,6 +47,12 @@ export default function ArtistProfileMusic({ artist, username, tracks }: { artis
           tabIndex={0}
           role="button"
           aria-label={`Open details for ${track.title}`}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              event.currentTarget.click()
+            }
+          }}
         >
           <div className="flex gap-3 sm:gap-4">
             <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white/5">{track.artwork_url ? <Image src={track.artwork_url} alt={`${track.title} artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /> : <div className="grid h-full place-items-center text-2xl text-brand/50">♪</div>}</div>
