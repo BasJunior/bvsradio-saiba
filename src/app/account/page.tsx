@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import ThemeToggle from '@/components/ThemeToggle'
+import { isArtistNameCapable, isProducerNameCapable, PRODUCER_NAME_USE_ARTIST } from '@/lib/creator-entitlements'
 
 type Profile = {
   username: string
@@ -265,9 +266,14 @@ export default function AccountPage() {
         : data?.profile?.role === 'show_creator'
           ? 'Show creator'
           : data?.profile?.role || 'Listener'
-  const artistCapable = Boolean(access.artist || data?.profile?.role === 'artist')
-  const producerCapable = Boolean(access.producer || data?.profile?.is_producer)
+  // Must match /api/account PATCH + /api/auth/access (admin inherits both).
+  const artistCapable = isArtistNameCapable(data?.profile, access)
+  const producerCapable = isProducerNameCapable(data?.profile, access)
   const creatorCapable = artistCapable || producerCapable
+  const hasSeparateProducerName = Boolean(data?.profile?.producer_public_name?.trim())
+  const producerFallbackPending =
+    data?.profile?.producer_name_request === PRODUCER_NAME_USE_ARTIST &&
+    data?.profile?.producer_name_status === 'pending'
 
   if (loading) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Loading Account Centre…</main>
   if (!token) return <main className="mx-auto min-h-[65vh] max-w-xl px-6 py-20 text-center"><p className="text-xs uppercase tracking-[.22em] text-brand">Account Centre</p><h1 className="mt-3 text-4xl">Sign in to continue</h1><p className="mt-4 text-text-secondary">Your profile, library, orders and role-specific tools live here.</p><Link href="/auth/login?next=/account" className="mt-7 inline-block rounded-full bg-brand px-6 py-3 font-semibold text-black">Sign in</Link></main>
@@ -353,18 +359,57 @@ export default function AccountPage() {
               </label>
             )}
             {producerCapable && (
-              <label className="text-sm font-medium">
-                Producer public name
-                <input
-                  value={form.producerPublicName}
-                  onChange={(event) => setForm({ ...form, producerPublicName: event.target.value })}
-                  placeholder={form.creatorPublicName || `@${form.username}`}
-                  className={field}
-                />
-                <span className="mt-1 block text-xs font-normal text-text-secondary">
-                  Used on BeatStore and producer pages after Editorial approval. Leave blank to keep using your artist public name (or @{form.username}) until you submit one.
-                </span>
-              </label>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium">
+                  Producer public name
+                  <input
+                    value={form.producerPublicName}
+                    onChange={(event) => setForm({ ...form, producerPublicName: event.target.value })}
+                    placeholder={form.creatorPublicName || `@${form.username}`}
+                    className={field}
+                  />
+                  <span className="mt-1 block text-xs font-normal text-text-secondary">
+                    Used on BeatStore and producer pages after Editorial approval. Submit a name here, or use the control below to request falling back to your artist public name.
+                  </span>
+                </label>
+                {(hasSeparateProducerName || producerFallbackPending) && (
+                  <button
+                    type="button"
+                    disabled={saving || producerFallbackPending}
+                    onClick={async () => {
+                      setSaving(true)
+                      setError('')
+                      setMessage('')
+                      try {
+                        const response = await fetch('/api/account', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                          body: JSON.stringify({
+                            username: form.username,
+                            fullName: form.fullName,
+                            displayName: form.displayName,
+                            bio: form.bio,
+                            avatarUrl: form.avatarUrl,
+                            creatorPublicName: form.creatorPublicName,
+                            useArtistNameForProducer: true,
+                          }),
+                        })
+                        const payload = await response.json()
+                        if (!response.ok) throw new Error(payload.error || 'Could not request producer name fallback.')
+                        await load(token)
+                        setMessage('Requested: use artist name for producer identity. Editorial will review.')
+                      } catch (caught) {
+                        setError(caught instanceof Error ? caught.message : 'Could not request producer name fallback.')
+                      } finally {
+                        setSaving(false)
+                      }
+                    }}
+                    className="mt-3 rounded-full border border-white/20 px-4 py-2 text-xs text-text-secondary hover:border-brand hover:text-brand disabled:opacity-50"
+                  >
+                    {producerFallbackPending ? 'Fallback pending editorial…' : 'Use my artist name for producer identity'}
+                  </button>
+                )}
+              </div>
             )}
             <label className="text-sm font-medium sm:col-span-2">Bio<textarea value={form.bio} onChange={(event) => setForm({ ...form, bio: event.target.value })} rows={5} className={field} /></label>
           </div>

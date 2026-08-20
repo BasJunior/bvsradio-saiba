@@ -17,19 +17,35 @@ function external(value: string) {
 import type { DiscoveryItem } from "@/lib/discovery";
 import { getPublicArtist } from "@/lib/artist-content";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ as?: string | string[] }>;
+}): Promise<Metadata> {
   const profile = await getPublicArtist((await params).slug.toLowerCase());
   if (!profile) return { title: "Creator profile" };
+  const asRaw = searchParams ? (await searchParams).as : undefined;
+  const as = String(Array.isArray(asRaw) ? asRaw[0] : asRaw || "").toLowerCase();
+  const producerContext = as === "producer" && Boolean(profile.isProducer || profile.beats?.length);
+  const displayName = producerContext
+    ? (profile.producerName || profile.name)
+    : (profile.artistName || profile.name);
   const description = `${profile.role} on BVS Radio. ${profile.bio}`.slice(0, 180);
-  return { title: profile.name, description, openGraph: { title: `${profile.name} | BVS Radio`, description, images: profile.image && !profile.image.includes("default-avatar") ? [profile.image] : ["/logo.png"] } };
+  return { title: displayName, description, openGraph: { title: `${displayName} | BVS Radio`, description, images: profile.image && !profile.image.includes("default-avatar") ? [profile.image] : ["/logo.png"] } };
 }
 
 export default async function ArtistPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ as?: string | string[] }>;
 }) {
   const slug = (await params).slug.toLowerCase();
+  const asRaw = searchParams ? (await searchParams).as : undefined;
+  const as = String(Array.isArray(asRaw) ? asRaw[0] : asRaw || "").toLowerCase();
   const profile = await getPublicArtist(slug);
   if (!profile)
     return (
@@ -59,28 +75,35 @@ export default async function ArtistPage({
       </main>
     );
 
-  const item: DiscoveryItem = {
-    id: `artist-${profile.id}`,
-    kind: "artist",
-    title: profile.name,
-    subtitle: profile.role,
-    href: `/artist/${profile.username}`,
-    image: profile.image,
-  };
   const hasMusic = profile.tracks.length > 0;
   const hasConnections = profile.tracks.some(track => track.credits.length > 0);
   const hasBeats = Boolean(profile.beats?.length);
-  const producerFirst = /producer/i.test(profile.role) && hasBeats;
+  const producerContext = as === "producer" && Boolean(profile.isProducer || hasBeats);
+  const artistName = profile.artistName || profile.name;
+  const producerName = profile.producerName || profile.name;
+  const displayName = producerContext ? producerName : artistName;
+  const displayRole = producerContext
+    ? (hasMusic ? "BVS producer · also releases as artist" : "BVS producer")
+    : profile.role;
+  const producerFirst = producerContext || (/producer/i.test(profile.role) && hasBeats && !hasMusic);
+  const item: DiscoveryItem = {
+    id: `artist-${profile.id}`,
+    kind: "artist",
+    title: displayName,
+    subtitle: displayRole,
+    href: `/artist/${profile.username}${producerContext ? "?as=producer" : ""}`,
+    image: profile.image,
+  };
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <Link href="/music/artists" className="text-sm text-brand">
-        ← All BVS creators
+      <Link href={producerContext ? "/music/producers" : "/music/artists"} className="text-sm text-brand">
+        ← {producerContext ? "All BVS producers" : "All BVS creators"}
       </Link>
       <div className="mt-8 flex flex-col gap-10 md:flex-row">
         <div className="relative aspect-square w-full shrink-0 self-start overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:h-80 md:w-80">
           <Image
             src={profile.image}
-            alt={profile.name}
+            alt={displayName}
             fill
             unoptimized={/^https?:\/\//i.test(profile.image)}
             sizes="(max-width:768px) 100vw, 320px"
@@ -90,9 +113,15 @@ export default async function ArtistPage({
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-xs uppercase tracking-[0.25em] text-brand">
-            Verified {profile.role}
+            Verified {displayRole}
           </p>
-          <h1 className="mt-2 text-5xl">{profile.name}</h1>
+          <h1 className="mt-2 text-5xl">{displayName}</h1>
+          {producerContext && artistName && artistName !== displayName ? (
+            <p className="mt-2 text-sm text-text-secondary">Also releases as artist <span className="text-white">{artistName}</span></p>
+          ) : null}
+          {!producerContext && profile.isProducer && producerName && producerName !== displayName ? (
+            <p className="mt-2 text-sm text-text-secondary">Also produces as <Link href={`/artist/${profile.username}?as=producer`} className="text-brand hover:underline">{producerName}</Link></p>
+          ) : null}
           {profile.location && (
             <p className="mt-3 text-sm text-brand">{profile.location}</p>
           )}
@@ -107,7 +136,7 @@ export default async function ArtistPage({
                 View producer catalogue
               </Link>
             )}
-            <ShareCreatorButton name={profile.name} />
+            <ShareCreatorButton name={displayName} />
             {profile.links?.instagram && (
               <a
                 href={
@@ -156,14 +185,14 @@ export default async function ArtistPage({
             {hasBeats && !producerFirst ? <a href="#beats" className="shrink-0 rounded-full border border-white/10 px-4 py-2 hover:border-brand/40 hover:text-brand">Beats</a> : null}
           </nav>
 
-          {producerFirst && profile.beats ? <ArtistProfileBeats artist={profile.name} username={profile.username} beats={profile.beats} /> : null}
+          {producerFirst && profile.beats ? <ArtistProfileBeats artist={producerName} username={profile.username} beats={profile.beats} /> : null}
 
-          {hasMusic ? <ArtistProfileMusic artist={profile.name} username={profile.username} tracks={profile.tracks} /> : null}
+          {hasMusic ? <ArtistProfileMusic artist={artistName} username={profile.username} tracks={profile.tracks} /> : null}
 
           {flowV2Flags.pulse ? <CreatorActivity creatorId={profile.id} /> : null}
 
           {hasConnections ? <section id="connections" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="connections" /></section> : null}
-          {hasBeats && !producerFirst && profile.beats ? <ArtistProfileBeats artist={profile.name} username={profile.username} beats={profile.beats} /> : null}
+          {hasBeats && !producerFirst && profile.beats ? <ArtistProfileBeats artist={producerName} username={profile.username} beats={profile.beats} /> : null}
         </div>
       </div>
     </div>

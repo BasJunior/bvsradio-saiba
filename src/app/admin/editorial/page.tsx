@@ -698,7 +698,11 @@ function CreatorNamePanel({
   const decideProducer = (decision: 'approved' | 'changes_requested' | 'rejected') =>
     act('review_producer_name', { profileId: profile.id, decision, publicName: producerName, notes: producerNotes })
   return (
-    <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
+    <article
+      data-editorial-id={profile.id}
+      data-editorial-kind="creator"
+      className="rounded-2xl border border-white/10 bg-white/[.025] p-5"
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h3 className="text-xl font-semibold">@{profile.username}</h3>
@@ -709,9 +713,14 @@ function CreatorNamePanel({
         </div>
       </div>
       {isArtist ? (
-        <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-4">
+        <div
+          data-editorial-id={profile.id}
+          data-editorial-identity="artist"
+          data-editorial-kind="artist_name"
+          className="mt-4 rounded-xl border border-white/10 bg-black/15 p-4"
+        >
           <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[artistStatus] || 'text-text-secondary'}`}>
-            Artist name · {artistStatus.replaceAll('_', ' ')}
+            Artist identity · {artistStatus.replaceAll('_', ' ')}
           </p>
           <p className="mt-1 text-sm text-text-secondary">
             Current public artist output: {creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })}
@@ -742,17 +751,27 @@ function CreatorNamePanel({
         </div>
       ) : null}
       {isProducer ? (
-        <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-4">
+        <div
+          data-editorial-id={profile.id}
+          data-editorial-identity="producer"
+          data-editorial-kind="producer_name"
+          className="mt-4 rounded-xl border border-white/10 bg-black/15 p-4"
+        >
           <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[producerStatus] || 'text-text-secondary'}`}>
-            Producer name · {producerStatus.replaceAll('_', ' ')}
+            Producer identity · {producerStatus.replaceAll('_', ' ')}
           </p>
           <p className="mt-1 text-sm text-text-secondary">
             Current public producer output: {creatorPublicName({ publicName: profile.producer_public_name || profile.creator_public_name, publicNameStatus: profile.producer_name_status || profile.creator_name_status, username: profile.username })}
           </p>
+          {profile.producer_name_request === '__use_artist_name__' ? (
+            <p className="mt-2 rounded-lg border border-amber-300/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
+              Creator requested: clear the separate producer name and use the artist public name for producer identity.
+            </p>
+          ) : null}
           <label className="mt-3 block text-sm font-medium">
             Producer public name
             <input
-              value={producerName}
+              value={producerName === '__use_artist_name__' ? '' : producerName}
               onChange={(event) => setProducerName(event.target.value)}
               maxLength={120}
               placeholder={profile.creator_public_name || `@${profile.username}`}
@@ -767,7 +786,22 @@ function CreatorNamePanel({
           />
           {enabled && (
             <div className="mt-3 flex flex-wrap gap-2">
-              <button disabled={Boolean(busy) || !producerName.trim()} onClick={() => decideProducer('approved')} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Approve producer name</button>
+              {profile.producer_name_request === '__use_artist_name__' ? (
+                <button
+                  disabled={Boolean(busy)}
+                  onClick={() => act('review_producer_name', {
+                    profileId: profile.id,
+                    decision: 'approved',
+                    useArtistNameForProducer: true,
+                    notes: producerNotes || 'Approved fallback to artist public name for producer identity.',
+                  })}
+                  className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40"
+                >
+                  Approve use artist name
+                </button>
+              ) : (
+                <button disabled={Boolean(busy) || !producerName.trim()} onClick={() => decideProducer('approved')} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Approve producer name</button>
+              )}
               <button disabled={Boolean(busy) || producerNotes.trim().length < 3} onClick={() => decideProducer('changes_requested')} className="rounded-full border border-amber-300 px-4 py-2 text-xs text-amber-200 disabled:opacity-40">Request changes</button>
               <button disabled={Boolean(busy) || producerNotes.trim().length < 3} onClick={() => decideProducer('rejected')} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Reject</button>
             </div>
@@ -1018,7 +1052,7 @@ function TrackCard({ track, profile, credits, messages, allowed, act, busy }: { 
   const [iosEvidence, setIosEvidence] = useState(iosClearance?.evidence_reference || '')
   const [iosNotes, setIosNotes] = useState(iosClearance?.review_notes || '')
   const disabled = Boolean(busy)
-  return <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div className="flex min-w-0 gap-4">{track.artwork_url?<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed border-white/15 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><h3 className="mt-1 text-xl font-semibold">{track.title}</h3><p className="text-sm text-text-secondary">{profile ? <ArtistReviewLink profile={profile} label={track.artist_name} /> : track.artist_name} · {track.genre} · {new Date(track.created_at).toLocaleDateString()}</p><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><audio controls preload="none" src={track.file_url} className="h-10 max-w-full" /></div>
+  return <article data-editorial-id={track.id} data-editorial-kind="track" className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div className="flex min-w-0 gap-4">{track.artwork_url?<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed border-white/15 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><h3 className="mt-1 text-xl font-semibold">{track.title}</h3><p className="text-sm text-text-secondary">{profile ? <ArtistReviewLink profile={profile} label={track.artist_name} /> : track.artist_name} · {track.genre} · {new Date(track.created_at).toLocaleDateString()}</p><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><audio controls preload="none" src={track.file_url} className="h-10 max-w-full" /></div>
     {allowed('approve_submissions') && <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]"><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Private review notes" className="min-h-20 rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"/><div className="flex flex-wrap items-start gap-2"><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'in_review', notes })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Review</button><button disabled={disabled} onClick={() => setMessageOpen(open => !open)} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{messageOpen ? 'Close message' : 'Send message'}</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'approved', notes })} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'rejected', notes })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button><button disabled={disabled} onClick={async () => { if (!window.confirm(`Move “${track.title}” from Singles to the BeatStore review queue?`)) return; await act('reclassify_track_as_beat', { trackId: track.id }) }} className="rounded-full border border-amber-300/60 px-4 py-2 text-xs text-amber-200">Move to BeatStore</button>{track.editorial_status === 'approved' && <button disabled={disabled} onClick={() => act('publish_track', { trackId: track.id, publish: !track.is_public })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{track.is_public ? 'Unpublish track' : 'Publish track'}</button>}</div></div>}
     {messageOpen && <div className="mt-4 rounded-xl border border-brand/20 bg-black/20 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>{messages.length > 0 && <div className="mt-3 max-h-44 space-y-2 overflow-y-auto">{messages.map(item => <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs"><span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}<span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span></p>)}</div>}<div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><textarea autoFocus value={message} onChange={e => setMessage(e.target.value)} maxLength={2000} placeholder="Message the uploader about classification, rights, artwork or requested changes…" className="min-h-24 rounded-lg border border-white/10 bg-black/20 p-3 text-sm"/><button disabled={disabled || !message.trim()} onClick={async () => { await act('message_track', { trackId: track.id, message }); setMessage('') }} className="self-start rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Post message</button></div></div>}
     <div className="mt-5 grid gap-5 border-t border-white/10 pt-5 lg:grid-cols-3">

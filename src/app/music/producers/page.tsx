@@ -42,7 +42,7 @@ export default async function ProducersDirectoryPage() {
               key={producer.id}
               className="overflow-hidden rounded-2xl border border-white/10 bg-white/[.03]"
             >
-              <Link href={`/artist/${producer.username}`}>
+              <Link href={`/artist/${producer.username}?as=producer`}>
                 <div className="relative aspect-square overflow-hidden bg-black/40">
                   <Image
                     src={producer.image}

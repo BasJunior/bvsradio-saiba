@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
+import {
+  isArtistNameCapable,
+  isProducerNameCapable,
+  PRODUCER_NAME_USE_ARTIST,
+} from '@/lib/creator-entitlements'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -74,7 +79,11 @@ export async function PATCH(request: Request) {
   const bio = String(body.bio || '').trim().slice(0, 1000)
   const avatarUrl = String(body.avatarUrl || '').trim().slice(0, 500)
   const creatorNameRequest = String(body.creatorPublicName || body.artistPublicName || '').trim().slice(0, 120)
-  const producerNameRequest = String(body.producerPublicName || '').trim().slice(0, 120)
+  const producerNameRaw = String(body.producerPublicName || '').trim().slice(0, 120)
+  const useArtistForProducer =
+    body.useArtistNameForProducer === true ||
+    producerNameRaw === PRODUCER_NAME_USE_ARTIST ||
+    body.clearProducerPublicName === true
 
   const existingResponse = await fetch(
     `${url}/rest/v1/profiles?id=eq.${user.id}&select=id,username,role,is_producer,creator_public_name,creator_name_request,creator_name_status,producer_public_name,producer_name_request,producer_name_status&limit=1`,
@@ -111,18 +120,26 @@ export async function PATCH(request: Request) {
   if (!displayName) return NextResponse.json({ error: 'Display name is required.' }, { status: 400 })
   if (!fullName) return NextResponse.json({ error: 'Full/legal name is required and remains private.' }, { status: 400 })
 
-  const artistCapable = existing.role === 'artist'
-  const producerCapable = Boolean(existing.is_producer)
+  // Same resolver as Account UI + /api/auth/access (admin inherits both).
+  const artistCapable = isArtistNameCapable(existing)
+  const producerCapable = isProducerNameCapable(existing)
   const creatorNameChanged =
     artistCapable &&
     creatorNameRequest.length > 0 &&
     creatorNameRequest !== String(existing.creator_name_request || '') &&
     creatorNameRequest !== String(existing.creator_public_name || '')
+  const producerNameRequest = useArtistForProducer ? PRODUCER_NAME_USE_ARTIST : producerNameRaw
+  const hasSeparateProducerName = Boolean(String(existing.producer_public_name || '').trim())
   const producerNameChanged =
     producerCapable &&
-    producerNameRequest.length > 0 &&
-    producerNameRequest !== String(existing.producer_name_request || '') &&
-    producerNameRequest !== String(existing.producer_public_name || '')
+    (
+      (useArtistForProducer &&
+        (hasSeparateProducerName || String(existing.producer_name_request || '') !== PRODUCER_NAME_USE_ARTIST)) ||
+      (!useArtistForProducer &&
+        producerNameRequest.length > 0 &&
+        producerNameRequest !== String(existing.producer_name_request || '') &&
+        producerNameRequest !== String(existing.producer_public_name || ''))
+    )
 
   const profilePatch: Record<string, unknown> = {
     username,

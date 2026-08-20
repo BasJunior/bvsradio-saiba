@@ -5,7 +5,7 @@ import { listCatalogueMusicListings } from '@/lib/catalogue-listings'
 import { getPublishedArtists, getPublishedProducers } from '@/lib/artist-content'
 import { getPublicReleases } from '@/lib/public-releases'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
-import { creatorPublicName } from '@/lib/public-name'
+import { creatorPublicName, producerPublicName } from '@/lib/public-name'
 
 export type AskBvsObjectKind = 'track' | 'release' | 'creator' | 'beat' | 'story' | 'show' | 'product' | 'service'
 
@@ -82,6 +82,8 @@ type ProducerProfile = {
   username?: string | null
   creator_public_name?: string | null
   creator_name_status?: string | null
+  producer_public_name?: string | null
+  producer_name_status?: string | null
 }
 
 function normalize(value?: string | null) {
@@ -133,40 +135,61 @@ function score(query: string, item: Candidate) {
   return hits >= 2 ? 250 + hits * 20 : hits === 1 && q.length >= 5 ? 200 + hits * 10 : 0
 }
 
-type GraphSnapshot = {
+type CatalogueSnapshot = {
   at: number
   catalogue: Awaited<ReturnType<typeof listCatalogueMusicListings>>
   releases: Awaited<ReturnType<typeof getPublicReleases>>
   artists: Awaited<ReturnType<typeof getPublishedArtists>>
   producers: Awaited<ReturnType<typeof getPublishedProducers>>
   beats: Candidate[]
-  pulse: PulseRow[]
 }
 
-const GRAPH_TTL_MS = 45_000
-let graphSnapshot: GraphSnapshot | null = null
-let graphInflight: Promise<GraphSnapshot> | null = null
+// Catalogue can lag a bit; Pulse/show live state must stay fresher.
+const CATALOGUE_TTL_MS = 90_000
+const PULSE_TTL_MS = 8_000
+let catalogueSnapshot: CatalogueSnapshot | null = null
+let catalogueInflight: Promise<CatalogueSnapshot> | null = null
+let pulseSnapshot: { at: number; pulse: PulseRow[] } | null = null
+let pulseInflight: Promise<PulseRow[]> | null = null
 
-async function loadGraphSnapshot(): Promise<GraphSnapshot> {
+async function loadCatalogueSnapshot(): Promise<CatalogueSnapshot> {
   const now = Date.now()
-  if (graphSnapshot && now - graphSnapshot.at < GRAPH_TTL_MS) return graphSnapshot
-  if (graphInflight) return graphInflight
-  graphInflight = Promise.all([
+  if (catalogueSnapshot && now - catalogueSnapshot.at < CATALOGUE_TTL_MS) return catalogueSnapshot
+  if (catalogueInflight) return catalogueInflight
+  catalogueInflight = Promise.all([
     listCatalogueMusicListings(250).catch(() => ({ listings: [], summary: { trackCount: 0, releasePackageCount: 0, updatedAt: '' } })),
     getPublicReleases().catch(() => [] as Awaited<ReturnType<typeof getPublicReleases>>),
     getPublishedArtists().catch(() => [] as Awaited<ReturnType<typeof getPublishedArtists>>),
     getPublishedProducers().catch(() => [] as Awaited<ReturnType<typeof getPublishedProducers>>),
     loadBeats().catch(() => [] as Candidate[]),
-    loadPulse().catch(() => [] as PulseRow[]),
-  ]).then(([catalogue, releases, artists, producers, beats, pulse]) => {
-    graphSnapshot = { at: Date.now(), catalogue, releases, artists, producers, beats, pulse }
-    graphInflight = null
-    return graphSnapshot
+  ]).then(([catalogue, releases, artists, producers, beats]) => {
+    catalogueSnapshot = { at: Date.now(), catalogue, releases, artists, producers, beats }
+    catalogueInflight = null
+    return catalogueSnapshot
   }).catch((error) => {
-    graphInflight = null
+    catalogueInflight = null
     throw error
   })
-  return graphInflight
+  return catalogueInflight
+}
+
+async function loadPulseSnapshot(): Promise<PulseRow[]> {
+  const now = Date.now()
+  if (pulseSnapshot && now - pulseSnapshot.at < PULSE_TTL_MS) return pulseSnapshot.pulse
+  if (pulseInflight) return pulseInflight
+  pulseInflight = loadPulse()
+    .catch(() => [] as PulseRow[])
+    .then((pulse) => {
+      pulseSnapshot = { at: Date.now(), pulse }
+      pulseInflight = null
+      return pulse
+    })
+  return pulseInflight
+}
+
+async function loadGraphSnapshot() {
+  const [cataloguePart, pulse] = await Promise.all([loadCatalogueSnapshot(), loadPulseSnapshot()])
+  return { ...cataloguePart, pulse }
 }
 
 function isCuratedRelease(row: (typeof curatedCatalogueTracks)[number]) {
@@ -188,12 +211,14 @@ async function loadBeats(): Promise<Candidate[]> {
   const beats = await response.json() as BeatRow[]
   const ids = [...new Set(beats.map((beat) => beat.producer_user_id).filter(Boolean))]
   const profilesResponse = ids.length
-    ? await fetch(`${setup.url}/rest/v1/profiles?id=in.(${ids.join(',')})&select=id,username,creator_public_name,creator_name_status`, { headers: setup.headers, cache: 'no-store' }).catch(() => null)
+    ? await fetch(`${setup.url}/rest/v1/profiles?id=in.(${ids.join(',')})&select=id,username,creator_public_name,creator_name_status,producer_public_name,producer_name_status`, { headers: setup.headers, cache: 'no-store' }).catch(() => null)
     : null
   const profiles = profilesResponse?.ok ? await profilesResponse.json() as ProducerProfile[] : []
   return beats.map((beat) => {
     const profile = profiles.find((row) => row.id === beat.producer_user_id)
-    const producer = creatorPublicName({
+    const producer = producerPublicName({
+      producerPublicName: profile?.producer_public_name || undefined,
+      producerNameStatus: profile?.producer_name_status || undefined,
       publicName: profile?.creator_public_name || undefined,
       publicNameStatus: profile?.creator_name_status || undefined,
       username: profile?.username || undefined,
@@ -263,7 +288,7 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
 
   const creators: Candidate[] = [
     ...artists.map((artist) => ({ id: artist.id, kind: 'creator' as const, title: artist.name, subtitle: artist.role, route: `/artist/${encodeURIComponent(artist.username)}`, artwork: artist.image, searchText: [artist.name, artist.username, artist.role, artist.bio, ...artist.genres].join(' '), source: 'creator' as const, creatorId: artist.id })),
-    ...producers.map((producer) => ({ id: producer.id, kind: 'creator' as const, title: producer.name, subtitle: `Producer · ${producer.beatCount} published ${producer.beatCount === 1 ? 'beat' : 'beats'}`, route: `/artist/${encodeURIComponent(producer.username)}`, artwork: producer.image, searchText: [producer.name, producer.username, 'producer', ...producer.genres].join(' '), source: 'creator' as const, creatorId: producer.id })),
+    ...producers.map((producer) => ({ id: producer.id, kind: 'creator' as const, title: producer.name, subtitle: `Producer · ${producer.beatCount} published ${producer.beatCount === 1 ? 'beat' : 'beats'}`, route: `/artist/${encodeURIComponent(producer.username)}?as=producer`, artwork: producer.image, searchText: [producer.name, producer.username, 'producer', ...producer.genres].join(' '), source: 'creator' as const, creatorId: producer.id })),
   ]
 
   const live: Candidate[] = catalogue.listings.map((row) => ({
@@ -353,32 +378,45 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
   }
 
   if (best && ranked[0].score >= 250) {
-    const related = ranked
+    const relatedCreators = ranked
+      .filter((entry) => entry.candidate.kind === 'creator' && (entry.candidate.id !== best.id || best.kind !== 'creator'))
+      .slice(0, 2)
+      .map((entry) => entry.candidate)
+    const relatedAny = ranked
       .filter((entry) => entry.candidate.id !== best.id || entry.candidate.kind !== best.kind)
       .slice(0, 3)
       .map((entry) => entry.candidate)
+    const related = best.kind === 'creator' ? relatedCreators : relatedAny
     const objects = unique([best, ...related]).slice(0, 4)
     const links =
       best.kind === 'creator'
         ? [
             { label: `Open ${best.title} profile`, href: best.route },
-            ...(related[0]
-              ? [{ label: `Also see ${related[0].title}`, href: related[0].route }]
+            ...(relatedCreators[0]
+              ? [{ label: `Similar creator: ${relatedCreators[0].title}`, href: relatedCreators[0].route }]
               : [{ label: 'Explore creators', href: '/search?mode=creators' }]),
           ]
         : best.kind === 'beat'
           ? [
               { label: 'Open in BeatStore', href: best.route },
               ...(best.artist
-                ? [{ label: `${best.artist} profile`, href: creators.find((item) => normalize(item.title) === normalize(best.artist))?.route || '/music/producers' }]
+                ? [{
+                    label: `${best.artist} profile`,
+                    href: creators.find((item) => normalize(item.title) === normalize(best.artist))?.route
+                      ? `${creators.find((item) => normalize(item.title) === normalize(best.artist))!.route}?as=producer`
+                      : '/music/producers',
+                  }]
                 : []),
             ].filter((link) => Boolean(link.href))
           : best.route
-            ? [{ label: best.kind === 'release' ? 'Open release' : 'Open on BVS', href: best.route }]
+            ? [
+                { label: best.kind === 'release' ? 'Open release' : 'Open on BVS', href: best.route },
+                ...(relatedAny[0] ? [{ label: 'Related on BVS', href: relatedAny[0].route }] : []),
+              ]
             : []
     const reply =
       best.kind === 'creator'
-        ? `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}. Open the profile card below, or try a similar creator if that isn’t who you meant.`
+        ? `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}. Open the profile card below${relatedCreators[0] ? `, or try a similar creator` : ''}.`
         : `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}.`
     return { reply, objects, links, mode: 'flow', reason: 'entity_match' }
   }

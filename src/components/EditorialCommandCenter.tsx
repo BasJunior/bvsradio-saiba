@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
-type CommandKind = 'release' | 'track' | 'beat' | 'creator' | 'request' | 'role' | 'programme' | 'audit'
+type CommandKind = 'release' | 'track' | 'beat' | 'creator' | 'artist_name' | 'producer_name' | 'request' | 'role' | 'programme' | 'audit'
 type CommandFilter = 'attention' | 'all' | CommandKind
 
 type CommandItem = {
@@ -36,6 +36,8 @@ const filters: Array<{ value: CommandFilter; label: string }> = [
   { value: 'track', label: 'Tracks' },
   { value: 'beat', label: 'Beats' },
   { value: 'creator', label: 'Creators' },
+  { value: 'artist_name', label: 'Artist names' },
+  { value: 'producer_name', label: 'Producer names' },
   { value: 'request', label: 'Requests' },
   { value: 'role', label: 'Roles' },
   { value: 'programme', label: 'Programmes' },
@@ -48,7 +50,17 @@ function normalize(value?: string | null) {
 
 function kindLabel(kind: CommandKind) {
   if (kind === 'role') return 'Role application'
+  if (kind === 'artist_name') return 'Artist identity'
+  if (kind === 'producer_name') return 'Producer identity'
   return kind.charAt(0).toUpperCase() + kind.slice(1)
+}
+
+function workObjectId(item: CommandItem) {
+  // Identity tasks use composite ids like `${profileId}:artist-name`.
+  if (item.kind === 'artist_name' || item.kind === 'producer_name') {
+    return item.id.split(':')[0] || item.id
+  }
+  return item.id
 }
 
 function isEditable(target: EventTarget | null) {
@@ -89,6 +101,20 @@ function resultScore(item: CommandItem, query: string) {
 }
 
 function findTarget(section: HTMLElement, item: CommandItem) {
+  const objectId = workObjectId(item)
+  // Prefer stable data attributes so Command works even when the section only
+  // renders a subset of the catalogue (tracks limit, pagination, etc.).
+  const byAttr =
+    section.querySelector<HTMLElement>(`[data-editorial-id="${CSS.escape(objectId)}"]`) ||
+    section.querySelector<HTMLElement>(`[data-editorial-id="${CSS.escape(item.id)}"]`) ||
+    (item.kind === 'artist_name'
+      ? section.querySelector<HTMLElement>(`[data-editorial-identity="artist"][data-editorial-id="${CSS.escape(objectId)}"]`)
+      : null) ||
+    (item.kind === 'producer_name'
+      ? section.querySelector<HTMLElement>(`[data-editorial-identity="producer"][data-editorial-id="${CSS.escape(objectId)}"]`)
+      : null)
+  if (byAttr) return byAttr
+
   const title = normalize(item.title)
   const subtitleTokens = normalize(item.subtitle).split(' ').filter((token) => token.length >= 4).slice(0, 3)
   const candidates = Array.from(section.querySelectorAll<HTMLElement>('article, tr, li, [role="group"]'))
@@ -107,6 +133,18 @@ function findTarget(section: HTMLElement, item: CommandItem) {
 }
 
 function openEditorialItem(item: CommandItem) {
+  const objectId = workObjectId(item)
+  // Deep-link the work object so staff can open by ID even when the accordion
+  // only rendered a partial list. Panels can grow into a true drawer later.
+  try {
+    const url = new URL(window.location.href)
+    url.hash = item.section
+    url.searchParams.set('work', `${item.kind}:${objectId}`)
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  } catch {
+    window.location.hash = item.section
+  }
+
   const section = document.getElementById(item.section)
   if (!section) {
     window.location.hash = item.section
@@ -119,8 +157,16 @@ function openEditorialItem(item: CommandItem) {
   const scroll = () => {
     const latestSection = document.getElementById(item.section)
     if (!latestSection) return
-    const target = findTarget(latestSection, item) || latestSection
+    const target = findTarget(latestSection, item)
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (!target) {
+      // Object not in the currently rendered list — land on the section and leave
+      // ?work= so a future drawer / load-more can resolve the exact ID.
+      latestSection.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
+      const notice = latestSection.querySelector<HTMLElement>('[data-editorial-work-miss]') || latestSection
+      notice.setAttribute('data-editorial-work-miss', `${item.kind}:${objectId}`)
+      return
+    }
     target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
     const hadTabIndex = target.hasAttribute('tabindex')
     if (!hadTabIndex) target.setAttribute('tabindex', '-1')

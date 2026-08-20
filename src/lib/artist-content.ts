@@ -20,7 +20,12 @@ export type PublicArtist = {
   id: string
   username: string
   name: string
+  /** Artist-facing public name (tracks / artist context). */
+  artistName?: string
+  /** Producer-facing public name (BeatStore / producer context). */
+  producerName?: string
   role: string
+  isProducer?: boolean
   bio: string
   image: string
   tracks: PublicArtistTrack[]
@@ -243,6 +248,8 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       is_producer?: boolean
       creator_public_name?: string
       creator_name_status?: string
+      producer_public_name?: string
+      producer_name_status?: string
       spotify_artist_id?: string
       spotify_url?: string
       created_at?: string
@@ -250,7 +257,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
 
     for (const candidate of candidates) {
       const profileResponse = await fetch(
-        `${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(candidate)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,spotify_artist_id,spotify_url,created_at&limit=1`,
+        `${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(candidate)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,producer_public_name,producer_name_status,spotify_artist_id,spotify_url,created_at&limit=1`,
         { headers, next: { revalidate: 60 } },
       )
       if (!profileResponse.ok) continue
@@ -265,7 +272,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     if (!profile) {
       for (const candidate of candidates) {
         const profileResponse = await fetch(
-          `${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(candidate)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,created_at&limit=1`,
+          `${url}/rest/v1/profiles?username=ilike.${encodeURIComponent(candidate)}&is_published=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status,producer_public_name,producer_name_status,created_at&limit=1`,
           { headers, next: { revalidate: 60 } },
         )
         if (!profileResponse.ok) continue
@@ -319,6 +326,18 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       linkedTracks.find((track) => track.artwork_url)?.artwork_url
     const beatArtwork = beats.find((beat: { artwork_url?: string }) => beat.artwork_url)?.artwork_url
     const role = profile.is_producer ? (profile.role === 'artist' ? 'BVS artist & producer' : 'BVS producer') : profile.role === 'artist' ? 'BVS artist' : profile.role
+    const artistName = creatorPublicName({
+      publicName: profile.creator_public_name,
+      publicNameStatus: profile.creator_name_status,
+      username: profile.username,
+    })
+    const producerName = producerPublicName({
+      producerPublicName: profile.producer_public_name,
+      producerNameStatus: profile.producer_name_status,
+      publicName: profile.creator_public_name,
+      publicNameStatus: profile.creator_name_status,
+      username: profile.username,
+    })
     const publicTracks = databaseTracks.map((track) => ({
       ...track,
       artwork_url: mediaUrlForStoredValue(track.artwork_url) || undefined,
@@ -341,12 +360,11 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     return {
       id: profile.id,
       username: publicUsername,
-      name: creatorPublicName({
-        publicName: profile.creator_public_name,
-        publicNameStatus: profile.creator_name_status,
-        username: profile.username,
-      }),
+      name: artistName,
+      artistName,
+      producerName,
       role,
+      isProducer: Boolean(profile.is_producer),
       bio: profile.bio || 'Verified creator on BVS Radio.',
       image: artistImage(profile.avatar_url, trackArtwork || beatArtwork),
       tracks: [...publicTracks, ...linkedTracks],

@@ -520,12 +520,18 @@ export async function PATCH(request: Request) {
         requirePermission('publish_artists')
         const profileId = String(body.profileId || '')
         const decision = String(body.decision || '')
-        const requestedPublicName = String(body.publicName || '').trim().slice(0, 120)
+        const rawPublicName = String(body.publicName || '').trim().slice(0, 120)
         const notes = String(body.notes || '').trim().slice(0, 2000)
+        // Sentinel from Account: clear separate producer name and fall back to artist public name.
+        const useArtistName =
+          body.useArtistNameForProducer === true ||
+          rawPublicName === '__use_artist_name__' ||
+          String(body.clearProducerPublicName || '') === 'true'
+        const requestedPublicName = useArtistName ? '__use_artist_name__' : rawPublicName
         if (!profileId || !['approved', 'changes_requested', 'rejected'].includes(decision)) {
           return NextResponse.json({ error: 'Choose a valid producer public-name review decision.' }, { status: 400 })
         }
-        if (decision === 'approved' && !requestedPublicName) {
+        if (decision === 'approved' && !useArtistName && !requestedPublicName) {
           return NextResponse.json({ error: 'Enter the public producer name to approve.' }, { status: 400 })
         }
         if (decision !== 'approved' && notes.length < 3) {
@@ -540,18 +546,26 @@ export async function PATCH(request: Request) {
         }
         const now = new Date().toISOString()
         const result = await patchTable('profiles', `id=eq.${encodeURIComponent(profileId)}`, {
-          producer_name_request: requestedPublicName || profile.producer_name_request || null,
+          producer_name_request: useArtistName
+            ? null
+            : requestedPublicName || profile.producer_name_request || null,
           producer_name_status: decision,
-          producer_name_review_notes: notes || null,
+          producer_name_review_notes: notes || (useArtistName && decision === 'approved'
+            ? 'Approved fallback: use artist public name for producer identity.'
+            : null),
           producer_name_reviewed_by: identity.user.id,
           producer_name_reviewed_at: now,
-          ...(decision === 'approved' ? { producer_public_name: requestedPublicName } : {}),
+          ...(decision === 'approved'
+            ? { producer_public_name: useArtistName ? null : requestedPublicName }
+            : {}),
           updated_at: now,
         })
         await audit(identity.user.id, `producer_name_${decision}`, 'profile', profileId, {
           username: profile.username,
           role: 'producer',
-          approvedPublicName: decision === 'approved' ? requestedPublicName : undefined,
+          useArtistNameForProducer: useArtistName || undefined,
+          approvedPublicName: decision === 'approved' && !useArtistName ? requestedPublicName : undefined,
+          clearedProducerPublicName: decision === 'approved' && useArtistName ? true : undefined,
         })
         return NextResponse.json({ result })
       }

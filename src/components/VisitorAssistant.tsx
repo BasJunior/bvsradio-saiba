@@ -26,7 +26,13 @@ type Answer = {
 };
 type Message = Answer & { role: "user" | "assistant" };
 
-function clientContext() {
+function needsDeviceContext(message: string) {
+  const q = message.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return /what.*(been listening|listened|played)|my listening|listening history|what did i play|where.*(left off|was i|did i go)|my trail|recently explored|what did i explore|(new|latest|happening|recent).*(follow|following)|(?:follow|following).*(new|latest|happening|recent)|creators i follow|people i follow/.test(q);
+}
+
+function clientContext(message: string) {
+  if (!needsDeviceContext(message)) return {};
   const item = (value: { id: string; kind: string; title: string; subtitle?: string; href?: string }) => ({
     id: value.id,
     kind: value.kind,
@@ -132,7 +138,7 @@ export default function VisitorAssistant() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, context: clientContext() }),
+        body: JSON.stringify({ message, context: clientContext(message) }),
       });
       if (!response.ok) throw new Error();
       const answer = (await response.json()) as Answer;

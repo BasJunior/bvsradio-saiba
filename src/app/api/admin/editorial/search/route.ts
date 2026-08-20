@@ -5,7 +5,7 @@ import { creatorPublicName } from '@/lib/public-name'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-type CommandKind = 'release' | 'track' | 'beat' | 'creator' | 'request' | 'role' | 'programme' | 'audit'
+type CommandKind = 'release' | 'track' | 'beat' | 'creator' | 'artist_name' | 'producer_name' | 'request' | 'role' | 'programme' | 'audit'
 
 type CommandItem = {
   id: string
@@ -150,19 +150,52 @@ export async function GET(request: Request) {
   for (const profile of profiles) {
     const artistStatus = text(profile.creator_name_status)
     const producerStatus = text(profile.producer_name_status)
-    const combinedStatus = [artistStatus, producerStatus].filter((value) => value && value !== 'not_submitted').join(' / ')
-    const section = /pending|changes_requested/.test(combinedStatus) ? 'ed-identities' : 'ed-artists'
+    const artistPublic = text(profile.creator_public_name)
+    const producerPublic = text(profile.producer_public_name)
+    const artistRequest = text(profile.creator_name_request)
+    const producerRequest = text(profile.producer_name_request)
     const name = creatorName(profile)
+    const baseKeywords = [text(profile.username), text(profile.display_name), text(profile.role), text(profile.id), name]
+
+    // Separate identity work objects so staff can triage artist vs producer names independently.
+    if (artistStatus && artistStatus !== 'not_submitted') {
+      items.push({
+        id: `${text(profile.id)}:artist-name`,
+        kind: 'artist_name',
+        title: artistRequest || artistPublic || name,
+        subtitle: [`Artist identity · ${artistStatus.replaceAll('_', ' ')}`, `@${text(profile.username)}`, artistPublic ? `public: ${artistPublic}` : ''].filter(Boolean).join(' · '),
+        status: artistStatus,
+        section: 'ed-identities',
+        createdAt: text(profile.created_at) || undefined,
+        priority: statusPriority(artistStatus, 'creator'),
+        keywords: [...baseKeywords, artistStatus, artistPublic, artistRequest, 'artist identity', 'artist name'],
+      })
+    }
+    if (profile.is_producer && producerStatus && producerStatus !== 'not_submitted') {
+      const fallbackRequest = producerRequest === '__use_artist_name__'
+      items.push({
+        id: `${text(profile.id)}:producer-name`,
+        kind: 'producer_name',
+        title: fallbackRequest ? `${name} → use artist name` : (producerRequest || producerPublic || name),
+        subtitle: [`Producer identity · ${producerStatus.replaceAll('_', ' ')}`, `@${text(profile.username)}`, producerPublic ? `public: ${producerPublic}` : fallbackRequest ? 'clear separate producer name' : ''].filter(Boolean).join(' · '),
+        status: producerStatus,
+        section: 'ed-identities',
+        createdAt: text(profile.created_at) || undefined,
+        priority: statusPriority(producerStatus, 'creator') + (fallbackRequest ? 5 : 0),
+        keywords: [...baseKeywords, producerStatus, producerPublic, producerRequest, 'producer identity', 'producer name', fallbackRequest ? 'use artist name' : ''],
+      })
+    }
+
     items.push({
       id: text(profile.id),
       kind: 'creator',
       title: name,
-      subtitle: [`@${text(profile.username)}`, text(profile.role), profile.is_producer ? 'producer' : '', profile.is_published ? 'published' : 'not published'].filter(Boolean).join(' · '),
-      status: combinedStatus || (profile.is_published ? 'published' : 'not_published'),
-      section,
+      subtitle: [`@${text(profile.username)}`, text(profile.role), profile.is_producer ? 'producer' : '', profile.is_published ? 'published' : 'not published', artistStatus && artistStatus !== 'not_submitted' ? `artist name ${artistStatus}` : '', producerStatus && producerStatus !== 'not_submitted' ? `producer name ${producerStatus}` : ''].filter(Boolean).join(' · '),
+      status: [artistStatus, producerStatus].filter((value) => value && value !== 'not_submitted').join(' / ') || (profile.is_published ? 'published' : 'not_published'),
+      section: /pending|changes_requested/.test(`${artistStatus} ${producerStatus}`) ? 'ed-identities' : 'ed-artists',
       createdAt: text(profile.created_at) || undefined,
-      priority: statusPriority(combinedStatus, 'creator'),
-      keywords: [text(profile.username), text(profile.display_name), text(profile.role), artistStatus, producerStatus, text(profile.id)],
+      priority: Math.max(statusPriority(artistStatus, 'creator'), statusPriority(producerStatus, 'creator')),
+      keywords: [...baseKeywords, artistStatus, producerStatus, artistPublic, producerPublic],
     })
   }
 
