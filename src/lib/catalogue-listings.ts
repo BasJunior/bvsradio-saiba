@@ -23,6 +23,12 @@ export type CatalogueListing = {
   packId?: string | null
   releaseId?: string | null
   source: 'track' | 'release-package' | 'curated'
+  /** Public/editorial timestamp used for truthful Fresh ordering. */
+  publishedAt?: string
+  /** Explicit editorial rotation state used by Explore → On BVS. */
+  inRotation?: boolean
+  /** Explicit editorial feature state; never inferred from popularity. */
+  featured?: boolean
 }
 
 function formatDuration(seconds?: number | null) {
@@ -57,6 +63,8 @@ type TrackRow = {
   in_rotation?: boolean
   is_featured?: boolean
   bpm?: number | null
+  created_at?: string | null
+  reviewed_at?: string | null
 }
 
 type ReleaseRow = {
@@ -68,6 +76,7 @@ type ReleaseRow = {
   cover_url?: string | null
   release_type?: string | null
   track_count?: number | null
+  published_at?: string | null
 }
 
 function trackListing(row: TrackRow, releaseTitleById: Map<string, string>): CatalogueListing {
@@ -107,6 +116,9 @@ function trackListing(row: TrackRow, releaseTitleById: Map<string, string>): Cat
     streamOnly: !downloadable,
     releaseId,
     source: 'track',
+    publishedAt: row.reviewed_at || row.created_at || undefined,
+    inRotation: row.in_rotation === true,
+    featured: row.is_featured === true,
   }
 }
 
@@ -136,6 +148,7 @@ function releasePackageListing(row: ReleaseRow, trackCount: number): CatalogueLi
     albumPackage: true,
     releaseId,
     source: 'release-package',
+    publishedAt: row.published_at || undefined,
   }
 }
 
