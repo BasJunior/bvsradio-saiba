@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import LibraryAction from '@/components/LibraryAction'
+import ExploreItemDetails, { type ExploreDetail } from '@/components/ExploreItemDetails'
 import { discoveryItems } from '@/lib/discovery'
 import { trackEvent } from '@/lib/analytics'
 import type { PublishedArtistSummary, PublishedProducerSummary } from '@/lib/artist-content'
@@ -23,16 +24,21 @@ type SearchItem = {
   badge?: string
   publishedAt?: string
   onBvs?: boolean
+  detail?: ExploreDetail
 }
 type PublicBeat = {
   id: string
   title: string
   producer: string
   producer_username?: string
+  description?: string
   genre?: string
   mood?: string
   artworkUrl?: string
+  previewUrl?: string
+  startingPrice?: number
   bpm?: number
+  musical_key?: string
   published_at?: string
   created_at?: string
 }
@@ -44,7 +50,14 @@ type CatalogueTrack = {
   artist: string
   genre?: string
   collection?: string
+  duration?: string
+  description?: string
+  src?: string
   artwork?: string
+  bpm?: string
+  price?: number | null
+  externalUrl?: string
+  streamOnly?: boolean
   type: string
   source: string
   publishedAt?: string
@@ -109,6 +122,7 @@ export default function SearchPage() {
   const [releases, setReleases] = useState<PublicRelease[]>([])
   const [services, setServices] = useState<MarketplaceListing[]>([])
   const [catalogueTracks, setCatalogueTracks] = useState<CatalogueTrack[]>([])
+  const [selectedDetail, setSelectedDetail] = useState<ExploreDetail | null>(null)
   const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
@@ -157,20 +171,73 @@ export default function SearchPage() {
     })
     return [
       ...local.filter(item => item.kind !== 'artist' && (item.kind !== 'track' || catalogueTracks.length === 0)),
-      ...catalogueTracks.map(item => ({
-        id: `track-${item.id}`,
-        kind: 'track' as const,
-        title: item.title,
-        subtitle: `${item.artist} · ${item.collection || 'Published on BVS'}`,
-        href: `/catalogue?q=${encodeURIComponent(item.title)}`,
-        image: imageUrl(item.artwork),
-        tags: [item.genre || '', item.artist],
-        publishedAt: item.publishedAt,
-        onBvs: item.inRotation === true,
-      })),
+      ...catalogueTracks.map(item => {
+        const artwork = imageUrl(item.artwork)
+        const href = `/catalogue?q=${encodeURIComponent(item.title)}`
+        return {
+          id: `track-${item.id}`,
+          kind: 'track' as const,
+          title: item.title,
+          subtitle: `${item.artist} · ${item.collection || 'Published on BVS'}`,
+          href,
+          image: artwork,
+          tags: [item.genre || '', item.artist],
+          publishedAt: item.publishedAt,
+          onBvs: item.inRotation === true,
+          detail: {
+            id: item.id,
+            kind: 'track' as const,
+            title: item.title,
+            artist: item.artist,
+            image: artwork,
+            genre: item.genre,
+            collection: item.collection,
+            duration: item.duration,
+            description: item.description,
+            bpm: item.bpm,
+            price: item.price,
+            streamOnly: item.streamOnly,
+            src: item.src,
+            externalUrl: item.externalUrl,
+            href,
+            inRotation: item.inRotation === true,
+          },
+        }
+      }),
       ...artists.filter(item => !producerIds.has(item.id)).map(item => ({ id: `artist-${item.id}`, kind: 'artist' as const, title: item.name, subtitle: `${item.role} · ${item.trackCount} published ${item.trackCount === 1 ? 'track' : 'tracks'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
       ...producers.map(item => ({ id: `producer-${item.id}`, kind: 'producer' as const, title: item.name, subtitle: `Producer · ${item.beatCount} published ${item.beatCount === 1 ? 'beat' : 'beats'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
-      ...beats.map(item => ({ id: `beat-${item.id}`, kind: 'beat' as const, title: item.title, subtitle: `${item.producer} · ${item.genre || 'BeatStore'}${item.bpm ? ` · ${item.bpm} BPM` : ''}`, href: `/catalogue?type=beat&q=${encodeURIComponent(item.title)}#beatstore`, image: item.artworkUrl, tags: [item.genre || '', item.mood || ''], publishedAt: item.published_at || item.created_at })),
+      ...beats.map(item => {
+        const href = `/catalogue?type=beat${item.producer_username ? `&producer=${encodeURIComponent(item.producer_username)}` : ''}&q=${encodeURIComponent(item.title)}#browse`
+        return {
+          id: `beat-${item.id}`,
+          kind: 'beat' as const,
+          title: item.title,
+          subtitle: `${item.producer} · ${item.genre || 'BeatStore'}${item.bpm ? ` · ${item.bpm} BPM` : ''}`,
+          href,
+          image: item.artworkUrl,
+          tags: [item.genre || '', item.mood || ''],
+          publishedAt: item.published_at || item.created_at,
+          detail: {
+            id: item.id,
+            kind: 'beat' as const,
+            title: item.title,
+            artist: item.producer,
+            image: item.artworkUrl,
+            genre: item.genre,
+            collection: 'BVS BeatStore',
+            duration: item.bpm ? `${item.bpm} BPM` : 'Tagged preview',
+            description: item.description,
+            bpm: item.bpm ? String(item.bpm) : undefined,
+            mood: item.mood,
+            musicalKey: item.musical_key,
+            price: item.startingPrice,
+            streamOnly: false,
+            src: item.previewUrl,
+            href,
+            producerUsername: item.producer_username,
+          },
+        }
+      }),
       ...releases.map(item => ({ id: `release-${item.id}`, kind: 'release' as const, title: item.title, subtitle: `${item.artist || 'BVS creator'} · Release`, href: `/album/${item.id}`, image: item.cover, publishedAt: item.publishedAt })),
       ...services.map(item => ({ id: `service-${item.id}`, kind: 'service' as const, title: item.title, subtitle: `${item.category?.replaceAll('_', ' ') || 'Creator service'}${item.price_usd ? ` · $${item.price_usd}` : ''}`, href: `/marketplace?listing=${encodeURIComponent(item.slug)}`, image: imageUrl(item.artwork_path), tags: [item.category || '', item.description || ''] })),
       ...officialBvsServices.map(item => ({ id: `official-service-${item.id}`, kind: 'service' as const, title: item.title, subtitle: `${item.category} · ${item.price}`, href: `/shop#services`, image: '/images/hero-studio.jpg', tags: [item.category, item.desc, item.engineer, 'official bvs'], badge: 'Official BVS' })),
@@ -214,6 +281,13 @@ export default function SearchPage() {
     return () => window.clearTimeout(timer)
   }, [filter, query, results.length])
 
+  const openResult = (item: SearchItem) => {
+    trackEvent('search_result_open', { object_kind: item.kind, object_id: item.id })
+    if (!item.detail) return
+    trackEvent('flow_object_open', { object_kind: item.kind, object_id: item.id, source: 'explore_details' })
+    setSelectedDetail(item.detail)
+  }
+
   const activeMode = exploreModes.find(item => item.value === mode) || exploreModes[0]
 
   return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 py-12 sm:px-6">
@@ -226,9 +300,43 @@ export default function SearchPage() {
 
     {!query.trim() && filter === 'all' ? <section className="mt-10" aria-label="Explore published BVS content"><h2 className="text-3xl font-semibold">{flowV2Flags.exploreModes ? activeMode.label : 'Discover now'}</h2><p className="mt-2 text-text-secondary">{flowV2Flags.exploreModes ? activeMode.description : 'Published and editorially visible BVS content.'}</p></section> : <h2 className="mt-10 text-3xl font-semibold">{query.trim() ? `Results for “${query.trim()}”` : headings[filter as SearchKind]}</h2>}
     <div className="mt-7 space-y-12">
-      {grouped.map(group => <section key={group.kind} aria-labelledby={`search-${group.kind}`}><div className="mb-4 flex items-end justify-between"><h2 id={`search-${group.kind}`} className="text-2xl font-semibold">{headings[group.kind]}</h2>{filter === 'all' && results.filter(item => item.kind === group.kind).length > 8 ? <button onClick={() => setFilter(group.kind)} className="min-h-11 text-sm text-brand">View all →</button> : null}</div><div className="grid gap-3 md:grid-cols-2">{group.items.map(item => <article key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-3 transition hover:border-brand/35"><div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</div><Link href={item.href} onClick={() => trackEvent('search_result_open', { object_kind: item.kind, object_id: item.id })} className="min-w-0 flex-1"><span className="text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || item.kind}</span><h3 className="truncate text-lg">{item.title}</h3><p className="truncate text-sm text-text-secondary">{item.subtitle}</p></Link>{['track','artist','producer'].includes(item.kind) ? <LibraryAction item={{ ...item, kind: item.kind === 'track' ? 'track' : 'artist' }} section={item.kind === 'track' ? 'favourites' : 'follows'} compact /> : <Link href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">{item.kind === 'beat' ? 'Preview' : item.kind === 'story' ? 'Read' : 'Open'}</Link>}</article>)}</div></section>)}
+      {grouped.map(group => <section key={group.kind} aria-labelledby={`search-${group.kind}`}>
+        <div className="mb-4 flex items-end justify-between">
+          <h2 id={`search-${group.kind}`} className="text-2xl font-semibold">{headings[group.kind]}</h2>
+          {filter === 'all' && results.filter(item => item.kind === group.kind).length > 8 ? <button onClick={() => setFilter(group.kind)} className="min-h-11 text-sm text-brand">View all →</button> : null}
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {group.items.map(item => <article key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-3 transition hover:border-brand/35">
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</div>
+            {item.detail ? (
+              <button type="button" onClick={() => openResult(item)} className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 rounded-lg">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || item.kind}</span>
+                <h3 className="truncate text-lg">{item.title}</h3>
+                <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
+              </button>
+            ) : (
+              <Link href={item.href} onClick={() => trackEvent('search_result_open', { object_kind: item.kind, object_id: item.id })} className="min-w-0 flex-1">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || item.kind}</span>
+                <h3 className="truncate text-lg">{item.title}</h3>
+                <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
+              </Link>
+            )}
+            {['track','artist','producer'].includes(item.kind) ? (
+              <div className="flex items-center gap-2">
+                <LibraryAction item={{ ...item, kind: item.kind === 'track' ? 'track' : 'artist' }} section={item.kind === 'track' ? 'favourites' : 'follows'} compact />
+                {item.detail ? <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-brand hover:border-brand">Details</button> : null}
+              </div>
+            ) : item.detail ? (
+              <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">Details</button>
+            ) : (
+              <Link href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">{item.kind === 'story' ? 'Read' : 'Open'}</Link>
+            )}
+          </article>)}
+        </div>
+      </section>)}
       {loaded && results.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 px-6 py-14 text-center"><h3 className="text-xl">Nothing published under that view yet</h3><p className="mt-2 text-text-secondary">Try another term, mode or category. BVS will not invent content to fill the space.</p><button onClick={() => { setQuery(''); setFilter('all'); setMode('fresh') }} className="mt-5 min-h-11 rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Explore Fresh</button></div> : null}
       {!loaded ? <div className="grid gap-3 md:grid-cols-2" aria-label="Loading discovery"><div className="h-24 animate-pulse rounded-2xl bg-white/5"/><div className="h-24 animate-pulse rounded-2xl bg-white/5"/></div> : null}
     </div>
+    {selectedDetail ? <ExploreItemDetails detail={selectedDetail} onClose={() => setSelectedDetail(null)} /> : null}
   </main>
 }
