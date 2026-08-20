@@ -247,11 +247,17 @@ export async function materializeReleaseTracks(releaseId: string, options: {
   const profile = profiles?.[0];
   const distroOk = Boolean(profile?.premium_active && profile?.distribution_enabled);
   if (options.publish) {
+    const { releasePackagingReady } = await import("@/lib/distribution-readiness");
+    const pack = distroOk
+      ? await releasePackagingReady(releaseId)
+      : { ready: false as const, reason: "clearance_pending" as const, detail: "Artist Premium off." };
     const existing = await restGet<Array<{ id: string; status?: string }>>(
       `distribution_jobs?release_id=eq.${releaseId}&select=id,status&limit=1`,
     );
-    const status = distroOk ? "eligible" : "not_eligible";
-    const notes = distributionJobNotes({ distroOk, publish: true, status });
+    const status = distroOk && pack.ready ? "eligible" : "not_eligible";
+    const notes = pack.ready
+      ? distributionJobNotes({ distroOk, publish: true, status })
+      : `${distributionJobNotes({ distroOk: false, publish: true, status: "not_eligible" })} ${pack.detail}`;
     // Do not downgrade jobs already past eligible (queued/submitted/live).
     const terminalOrProgress = new Set([
       "queued",
@@ -261,7 +267,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
       "cancelled",
     ]);
     // Premium path uses internal Amuse pilot code; public UI stays partner-anonymous.
-    const distributor = distroOk ? PRIVATE_DSP_PARTNER_AMUSE : null;
+    const distributor = distroOk && pack.ready ? PRIVATE_DSP_PARTNER_AMUSE : null;
     if (!existing?.length) {
       await restPost("distribution_jobs", {
         release_id: releaseId,

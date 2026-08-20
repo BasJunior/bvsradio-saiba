@@ -83,7 +83,46 @@ export async function GET(request: Request) {
     ]
   }
 
-  events = events.filter(event => event.created_at && event.created_at !== 'undefined')
+  const meRows = await rows(`profiles?id=eq.${user.id}&select=display_name,username,premium_active,premium_until&limit=1`)
+  const me = meRows[0] || {}
+  const extras: Event[] = []
+  if (!String(me.display_name || '').trim()) {
+    extras.push({
+      id: 'profile-incomplete',
+      title: 'Finish your profile',
+      detail: 'Add a public display name so listeners can find you.',
+      created_at: new Date().toISOString(),
+      href: '/account',
+      kind: 'profile',
+    })
+  }
+  const until = me.premium_until ? new Date(String(me.premium_until)).getTime() : 0
+  if (me.premium_active && until) {
+    const days = Math.ceil((until - Date.now()) / 86400000)
+    if (days <= 7) {
+      extras.push({
+        id: `premium-ending-${days}`,
+        title: days < 0 ? 'Artist Premium ended' : 'Artist Premium ending soon',
+        detail: days < 0 ? 'Resubscribe to keep the store-delivery queue.' : `${days} day${days === 1 ? '' : 's'} left on your prepaid period.`,
+        created_at: new Date().toISOString(),
+        href: '/artist/premium',
+        kind: 'premium',
+      })
+    }
+  }
+  if (editorial) {
+    const unlinked = await rows('orders?delivery_status=eq.premium_paid_needs_user_link&select=reference,customer_email,updated_at&order=updated_at.desc&limit=20')
+    extras.push(...unlinked.map(item => ({
+      id: `prem-unlink-${item.reference}`,
+      title: 'Paid Premium needs account link',
+      detail: `${item.reference} · ${item.customer_email || 'no email'}`,
+      created_at: String(item.updated_at),
+      href: '/editorial/queues#ed-audit',
+      kind: 'premium',
+    })))
+  }
+
+  events = [...extras, ...events].filter(event => event.created_at && event.created_at !== 'undefined')
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 100)
   return NextResponse.json({ destination: '/notifications', events })

@@ -1,15 +1,19 @@
 # BVS consumer commerce (no in-stream ads)
 
+Durable orders live in **Supabase** (`orders`). Local `data/orders` is a serverless leftover, not the source of truth.
+
+Checkout **does not start payment** unless `saveOrderToSupabase` succeeds (same rule as Artist Premium / ZVSJQ).
+
 ## What buyers can do today
 
 1. **Catalogue** → Add to cart / Buy now → Checkout  
 2. **Shop** (mix/master) → Buy now → Checkout with price  
 3. **Checkout**  
-   - **Card** if `STRIPE_SECRET_KEY` is set → Stripe hosted pay  
-   - **EcoCash / bank / PayPal** always → order created + payment steps + WhatsApp  
+   - **Card** if Stripe is configured → Stripe hosted pay  
+   - **Paynow** (EcoCash / cards / OneMoney) when keys exist → redirect to Paynow  
+   - Manual WhatsApp only if the buyer chose a non-Paynow method  
 
-Orders are saved under `data/orders/BVS-*.json` (and Supabase if configured).  
-Owner can get Telegram alerts via `BVS_ORDER_TELEGRAM_*`.
+Artist Premium: Paynow is **prepaid** (resubscribe). Stripe is **auto-renew**. Eligible ≠ live on Spotify.
 
 ## Go live checklist (ASAP)
 

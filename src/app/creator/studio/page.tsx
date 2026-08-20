@@ -763,36 +763,30 @@ function ArtistPathBoard({ data }: { data: Data }) {
           User story
         </p>
         <h2 className="mt-2 text-xl font-semibold">
-          Premium song → BVS → platforms
+          Premium song → BVS → stores
         </h2>
         <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm text-text-secondary">
           <li>
             Activate{" "}
             <Link href="/artist/premium" className="text-brand hover:underline">
               Artist Premium
-            </Link>{" "}
-            (unlocks multi-platform).
+            </Link>
+            . Paynow is prepaid (resubscribe when it ends). Stripe auto-renews.
           </li>
           <li>
             <Link href="/upload" className="text-brand hover:underline">
               Submit
             </Link>{" "}
-            single/EP/album with rights confirmed.
+            with rights/clearance and ISRCs.
           </li>
           <li>
-            BVS editorial approves → live on BVS Radio / catalogue (rotation
-            optional).
+            BVS editorial approves → live on BVS Radio (free). Rotation does not need Premium.
           </li>
           <li>
-            If Premium: release becomes multi-platform eligible automatically after BVS publish.
+            Eligible means BVS can send the pack — it is <strong className="text-text-primary">not</strong> live on Spotify yet.
           </li>
           <li>
-            BVS ops hand off through the private distribution partner (internal pilot).
-            You will only see partner-anonymous status here — never a third-party brand name.
-          </li>
-          <li>
-            After partner/store approval → live on Spotify and other major platforms;
-            ISRCs and store links land back on your BVS tracks.
+            After stores approve, paste Spotify/Apple links and ISRCs on the release card below.
           </li>
         </ol>
         <div className="mt-5 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
@@ -827,6 +821,100 @@ function ArtistPathBoard({ data }: { data: Data }) {
           </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ReleaseStoreLinks({
+  token,
+  tracks,
+}: {
+  token: string;
+  tracks: Release[];
+}) {
+  const [drafts, setDrafts] = useState<Record<string, { isrc: string; spotifyUrl: string }>>({});
+  const [busy, setBusy] = useState("");
+  const [note, setNote] = useState("");
+  if (!tracks.length) {
+    return (
+      <p className="mt-3 text-xs text-text-secondary">
+        No linked tracks yet — ISRCs and store URLs appear here after publish.
+      </p>
+    );
+  }
+  return (
+    <div className="mt-4 space-y-3 rounded-xl border border-white/10 p-3">
+      <p className="text-[11px] uppercase tracking-wide text-brand">Store links (you paste — BVS does not invent them)</p>
+      {tracks.map((track) => {
+        const draft = drafts[track.id] || {
+          isrc: track.isrc || "",
+          spotifyUrl: track.spotify_url || "",
+        };
+        return (
+          <form
+            key={track.id}
+            className="grid gap-2 md:grid-cols-[1fr_1fr_auto]"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              setBusy(track.id);
+              setNote("");
+              try {
+                const res = await fetch("/api/creator/distribution-links", {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    trackId: track.id,
+                    isrc: draft.isrc,
+                    spotifyUrl: draft.spotifyUrl,
+                  }),
+                });
+                const payload = await res.json();
+                if (!res.ok) throw new Error(payload.error || "Save failed");
+                setNote(`Saved ${track.title}`);
+              } catch (error) {
+                setNote(error instanceof Error ? error.message : "Save failed");
+              } finally {
+                setBusy("");
+              }
+            }}
+          >
+            <p className="md:col-span-3 text-xs text-text-primary">{track.title}</p>
+            <input
+              value={draft.isrc}
+              onChange={(event) =>
+                setDrafts((current) => ({
+                  ...current,
+                  [track.id]: { ...draft, isrc: event.target.value },
+                }))
+              }
+              placeholder="ISRC"
+              className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-xs"
+            />
+            <input
+              value={draft.spotifyUrl}
+              onChange={(event) =>
+                setDrafts((current) => ({
+                  ...current,
+                  [track.id]: { ...draft, spotifyUrl: event.target.value },
+                }))
+              }
+              placeholder="https://open.spotify.com/..."
+              className="rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-xs"
+            />
+            <button
+              type="submit"
+              disabled={busy === track.id}
+              className="rounded-full border border-white/20 px-3 py-2 text-xs hover:border-brand disabled:opacity-40"
+            >
+              {busy === track.id ? "Saving…" : "Save"}
+            </button>
+          </form>
+        );
+      })}
+      {note && <p className="text-xs text-text-secondary">{note}</p>}
     </div>
   );
 }
@@ -896,6 +984,13 @@ function ArtistReleases({
                       {publicDistributionStatusLabel(job?.status)}
                     </p>
                   </div>
+                  <p className="mt-2 text-xs text-text-secondary">
+                    {job?.notes ? String(job.notes).slice(0, 240) : "No store-delivery notes yet."}
+                  </p>
+                  <ReleaseStoreLinks
+                    token={token}
+                    tracks={tracks.filter((t) => t.release_id === release.id)}
+                  />
                   {release.editorial_notes && (
                     <p className="mt-3 text-sm text-text-secondary">
                       Editor: {release.editorial_notes}

@@ -305,9 +305,9 @@ export default function EditorialDashboard() {
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <p className="text-xs uppercase tracking-[.22em] text-brand">BVS operations</p>
-          <h1 className="mt-2 text-4xl font-semibold">Editorial workflow</h1>
+          <h1 className="mt-2 text-4xl font-semibold">Editorial queue list</h1>
           <p className="mt-3 text-text-secondary">
-            Signed in as {roleLabels[data.identity.role]}. Every action is recorded.
+            Signed in as {roleLabels[data.identity.role]}. Command search (top of the page) opens exact work. This table is the queue.
           </p>
         </div>
         <button onClick={() => load(token)} className="rounded-full border border-white/20 px-5 py-2 text-sm">

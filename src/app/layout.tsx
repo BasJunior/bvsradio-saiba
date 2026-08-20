@@ -6,6 +6,7 @@ import VisitorAssistant from "@/components/VisitorAssistant";
 import EditorialCommandCenter from "@/components/EditorialCommandCenter";
 import EditorialWorkBridge from "@/components/EditorialWorkBridge";
 import PwaRegister from "@/components/PwaRegister";
+import StaleBuildBanner from "@/components/StaleBuildBanner";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import DeepLinkFocusManager from "@/components/DeepLinkFocusManager";
@@ -98,6 +99,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Footer />
               <VisitorAssistant />
               <PwaRegister />
+              <StaleBuildBanner />
               <ClientErrorBeacon />
               <MobileFlowNav />
               <PersistentPlayer />

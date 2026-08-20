@@ -43,6 +43,7 @@ interface Track {
   producerBeat?: boolean;
   producerUsername?: string;
   packId?: string | null;
+  listingSource?: "live" | "curated";
 }
 
 type ShelfAction =
@@ -337,6 +338,7 @@ function CataloguePageContent() {
   const [dbBeats, setDbBeats] = useState<Track[]>([]);
   const [dbMusic, setDbMusic] = useState<Track[]>([]);
   const [musicLoaded, setMusicLoaded] = useState(false);
+  const [originFilter, setOriginFilter] = useState<"all" | "live" | "house">("all");
   const [cart, setCart] = useState<Track[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -460,6 +462,7 @@ function CataloguePageContent() {
               producerBeat: true,
               producerUsername: b.producer_username || undefined,
               packId: b.packId || null,
+              listingSource: "live",
             }),
           ),
         );
@@ -517,6 +520,7 @@ function CataloguePageContent() {
               bpm: row.bpm,
               price: row.price,
               externalUrl: row.externalUrl,
+              listingSource: "live",
               streamOnly: Boolean(row.streamOnly),
               albumPackage: Boolean(row.albumPackage),
             }),
@@ -582,7 +586,7 @@ function CataloguePageContent() {
       if (seen.has(key)) continue;
       seen.add(key);
       if (isCuratedBeat) seenTitles.add(titleKey(track));
-      merged.push(track);
+      merged.push({ ...track, listingSource: "curated" });
     }
     return merged;
   }, [dbBeats, dbMusic]);
@@ -842,15 +846,18 @@ function CataloguePageContent() {
         typeFilter === "music" ||
         typeFilter === "beat" ||
         track.type === typeFilter;
+      const origin = track.listingSource === "live" ? "live" : "house";
+      const matchesOrigin = originFilter === "all" || originFilter === origin;
       return (
         matchesSearch &&
         matchesGenre &&
         matchesProducer &&
         matchesPack &&
-        matchesType
+        matchesType &&
+        matchesOrigin
       );
     });
-  }, [scopeTracks, genreFilter, producerFilter, packFilter, search, typeFilter]);
+  }, [scopeTracks, genreFilter, producerFilter, packFilter, search, typeFilter, originFilter]);
 
   const openExternalStream = (track: Track) => {
     if (!track.externalUrl) return;
@@ -1456,6 +1463,16 @@ function CataloguePageContent() {
               </select>
             )}
             <select
+              value={originFilter}
+              onChange={(event) => setOriginFilter(event.target.value as "all" | "live" | "house")}
+              aria-label="Filter live catalogue vs BVS house"
+              className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
+            >
+              <option value="all">All origins</option>
+              <option value="live">On BVS (live)</option>
+              <option value="house">BVS house / demo</option>
+            </select>
+            <select
               value={genreFilter}
               onChange={(event) => setGenreFilter(event.target.value)}
               className="rounded-xl border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
@@ -1571,6 +1588,9 @@ function CataloguePageContent() {
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
                   <span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] uppercase tracking-[1.5px] text-white">
                     {offerLabel(track)}
+                  </span>
+                  <span className="absolute right-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] uppercase tracking-[1.5px] text-white/90">
+                    {track.listingSource === "live" ? "On BVS" : "House / demo"}
                   </span>
                 </div>
               </button>

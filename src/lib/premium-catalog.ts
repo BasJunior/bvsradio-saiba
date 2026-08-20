@@ -118,7 +118,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "Major streaming, social & regional store targets",
       "Priority release-packaging support",
       "15% BVS fee on eligible BVS music sales instead of the Free low-ticket rate",
-      "Founding rate locked in if you join by 27 Aug 2026 (while seats remain) and stay subscribed",
+      "Founding rate locked in if you join by 27 Aug 2026 (first 50 seats) and stay subscribed",
     ],
   },
   {
@@ -547,14 +547,27 @@ export function isFoundingWindowOpen(at: Date = new Date()): boolean {
 
 export function foundingWindowPublicCopy(at: Date = new Date()) {
   const open = isFoundingWindowOpen(at);
+  const msLeft = foundingWindowEndsAt().getTime() - at.getTime();
+  const daysRemaining = open ? Math.max(0, Math.ceil(msLeft / 86400000)) : 0;
   return {
     open,
     label: FOUNDING_WINDOW_LABEL,
     endsAt: FOUNDING_WINDOW_ENDS_AT_ISO,
+    daysRemaining,
+    seatCap: 50,
     headline: open
-      ? `Founding available until ${FOUNDING_WINDOW_LABEL}`
-      : `Founding window closed ${FOUNDING_WINDOW_LABEL}`,
+      ? `Founding available until ${FOUNDING_WINDOW_LABEL} · ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} left · first 50 seats`
+      : `Founding window closed ${FOUNDING_WINDOW_LABEL} — Standard pricing applies`,
   };
+}
+
+/** Only Artist Founding/Standard have a real checkout. Other families are catalogue/waitlist. */
+export function planHasPaidCheckout(plan: CatalogPlan): boolean {
+  return (
+    plan.family === "artist" &&
+    plan.status === "live" &&
+    (plan.id === "artist_founding" || plan.id === "artist_standard")
+  );
 }
 
 export function premiumPricingCopy() {
@@ -566,7 +579,7 @@ export function premiumPricingCopy() {
     standardYearly: 120,
     source: "BVS financial plan 2026-07-28 + marketplace economics 2026-08-08",
     distributionNote:
-      "Artist Premium unlocks multi-platform distribution for approved releases. Producer, Supporter and future role memberships remain separate products under the same BVS family.",
+      "Artist Premium lets BVS send approved releases to major stores. Eligible is not the same as live on Spotify — stores approve after BVS sends. Producer, Supporter and other roles are separate products.",
     storeCount: PREMIUM_DISTRIBUTION_STORES.length,
     positioning:
       "Your music lives on BVS Radio. Premium takes approved releases to the major platforms. BVS Store tools help creators earn directly from their work.",

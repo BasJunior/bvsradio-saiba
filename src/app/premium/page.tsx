@@ -8,6 +8,7 @@ import {
   PREMIUM_CATALOG,
   PREMIUM_DISTRIBUTION_STORES,
   foundingWindowPublicCopy,
+  planHasPaidCheckout,
   premiumPricingCopy,
   type MembershipFamily,
   type CatalogPlan,
@@ -57,9 +58,9 @@ export default function PremiumEcosystemPage() {
             Submit → Publish → Rotate & sell → Premium ships wider
           </p>
           <p className="mt-2 text-sm text-text-secondary">
-            Listening, editorial publish, and BVS rotation stay free. Artist Premium is the commercial switch for
-            multi-platform distribution of <strong className="text-text-primary">approved</strong> releases.
-            Producer, Supporter, Team, and service plans are separate products — not one giant locked feature pile.
+            Listening, editorial publish, and BVS rotation stay free. Artist Premium lets BVS{" "}
+            <strong className="text-text-primary">send</strong> approved releases to stores — eligible is not live on
+            Spotify. Only Artist Founding/Standard can be bought today. Other families are waitlist.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-text-secondary">
             <span className="rounded-full border border-white/15 px-3 py-1">Listen free</span>
@@ -75,7 +76,9 @@ export default function PremiumEcosystemPage() {
             Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong>
             <br />
             <span className="text-text-primary">{foundingWindow.headline}</span>
-            {foundingWindow.open ? " · first 50 seats (date + seat gate)" : " · Standard pricing applies"}
+            {foundingWindow.open
+              ? ` · first ${foundingWindow.seatCap} seats · ${foundingWindow.daysRemaining} day${foundingWindow.daysRemaining === 1 ? "" : "s"} left`
+              : " · Standard pricing applies"}
             <br />
             Standard <strong className="text-text-primary">US$12/mo · US$120/yr</strong>
             {!foundingWindow.open && (
@@ -154,7 +157,7 @@ export default function PremiumEcosystemPage() {
               ))}
             </ul>
             <div className="mt-5">
-              {plan.family === "artist" && plan.id !== "artist_free" && plan.status === "live" ? (
+              {planHasPaidCheckout(plan) ? (
                 <Link
                   href={`/artist/premium?tier=${plan.id.replace("artist_", "")}`}
                   className="inline-flex rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
@@ -165,15 +168,17 @@ export default function PremiumEcosystemPage() {
                 <Link href="/contact" className="inline-flex rounded-full border border-white/20 px-4 py-2 text-sm">
                   Contact sales
                 </Link>
-              ) : plan.status === "live" || plan.status === "pilot" ? (
+              ) : plan.monthlyUsd === 0 && plan.status === "live" ? (
                 <Link
                   href={plan.family === "producer" ? "/catalogue?type=beat#beatstore" : "/auth/signup"}
                   className="inline-flex rounded-full border border-white/20 px-4 py-2 text-sm hover:border-brand"
                 >
-                  {plan.monthlyUsd === 0 ? "Start free" : "Join waitlist / desk"}
+                  Start free
                 </Link>
               ) : (
-                <span className="text-xs text-text-secondary">Ships after foundation products are stable</span>
+                <Link href="/contact" className="inline-flex rounded-full border border-white/20 px-4 py-2 text-sm">
+                  {plan.status === "later" ? "Not for sale yet" : "Join waitlist"}
+                </Link>
               )}
             </div>
           </article>

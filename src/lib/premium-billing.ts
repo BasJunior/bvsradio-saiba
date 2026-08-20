@@ -295,6 +295,7 @@ export async function syncPremiumDistributionJobsForArtist(userId: string): Prom
     partnerHandoffNotes,
   } = await import("@/lib/distribution-path");
 
+  const { releasePackagingReady } = await import("@/lib/distribution-readiness");
   const published = await restGet<
     Array<{ id: string; editorial_status?: string; is_public?: boolean }>
   >(
@@ -311,28 +312,31 @@ export async function syncPremiumDistributionJobsForArtist(userId: string): Prom
   const byRelease = new Map((existing || []).map((row) => [row.release_id, row]));
   const terminalOrProgress = new Set(["queued", "submitted", "live_on_dsp", "failed", "cancelled"]);
   const now = new Date().toISOString();
-  const notes = partnerHandoffNotes("eligible");
   let created = 0;
   let upgraded = 0;
 
   for (const release of releases) {
+    const pack = await releasePackagingReady(release.id);
+    const status = pack.ready ? "eligible" : "not_eligible";
+    const notes = pack.ready
+      ? partnerHandoffNotes("eligible")
+      : `${partnerHandoffNotes("not_eligible")} ${pack.detail}`;
     const job = byRelease.get(release.id);
     if (!job) {
       const post = await restPost("distribution_jobs", {
         release_id: release.id,
         artist_user_id: userId,
-        status: "eligible",
-        distributor: PRIVATE_DSP_PARTNER_AMUSE,
+        status,
+        distributor: pack.ready ? PRIVATE_DSP_PARTNER_AMUSE : null,
         notes,
       });
       if (post.ok) created += 1;
       continue;
     }
     if (terminalOrProgress.has(String(job.status || ""))) continue;
-    // Upgrade not_eligible / eligible drafts onto Amuse pilot code.
     const patch = await restPatch(`distribution_jobs?id=eq.${job.id}`, {
-      status: "eligible",
-      distributor: PRIVATE_DSP_PARTNER_AMUSE,
+      status,
+      distributor: pack.ready ? PRIVATE_DSP_PARTNER_AMUSE : null,
       notes,
       updated_at: now,
     });
@@ -554,7 +558,58 @@ export async function cancelArtistPremium(
   };
 }
 
+/**
+ * Turn off prepaid Artist Premium when paid-through date has passed.
+ * Stripe auto-renew is left to Stripe webhooks. Live store jobs are not cancelled here.
+ */
+export async function expireLapsedPrepaidPremium(userId?: string): Promise<{
+  expired: number;
+  ids: string[];
+}> {
+  if (!url || !service) return { expired: 0, ids: [] };
+  const now = new Date().toISOString();
+  const filter = userId
+    ? `user_id=eq.${encodeURIComponent(userId)}&family=eq.artist&status=in.(active,trialing)&or=(provider.is.null,provider.eq.paynow)&ends_at=lt.${now}`
+    : `family=eq.artist&status=in.(active,trialing)&or=(provider.is.null,provider.eq.paynow)&ends_at=lt.${now}`;
+  const rows = await restGet<
+    Array<{ id: string; user_id: string; provider?: string | null; ends_at?: string | null }>
+  >(`bvs_memberships?${filter}&select=id,user_id,provider,ends_at&limit=80`);
+  const ids: string[] = [];
+  for (const row of rows || []) {
+    await restPatch(`bvs_memberships?id=eq.${row.id}`, {
+      status: "expired",
+      updated_at: now,
+      notes: `Prepaid period ended ${row.ends_at || now}`,
+    });
+    await restPatch(`profiles?id=eq.${row.user_id}`, {
+      premium_active: false,
+      distribution_enabled: false,
+      updated_at: now,
+    });
+    const jobs = await listArtistDistributionJobs(row.user_id);
+    await applyImmediateDistributionLifecycle(row.user_id, jobs);
+    ids.push(row.id);
+  }
+  // Also clear stale profile flags when membership row already ended.
+  if (userId) {
+    const profileRows = await restGet<Array<{ premium_active?: boolean; premium_until?: string | null }>>(
+      `profiles?id=eq.${userId}&select=premium_active,premium_until&limit=1`,
+    );
+    const profile = profileRows?.[0];
+    const until = profile?.premium_until;
+    if (profile?.premium_active && until && new Date(until).getTime() < Date.now()) {
+      await restPatch(`profiles?id=eq.${userId}`, {
+        premium_active: false,
+        distribution_enabled: false,
+        updated_at: now,
+      });
+    }
+  }
+  return { expired: ids.length, ids };
+}
+
 export async function getArtistPremiumStatus(userId: string) {
+  await expireLapsedPrepaidPremium(userId).catch(() => undefined);
   const profileRows = await restGet<
     Array<{
       premium_active?: boolean;
@@ -585,6 +640,10 @@ export async function getArtistPremiumStatus(userId: string) {
   const founding = await foundingEligibility();
   const until = membership?.ends_at || profile.premium_until || null;
   const stillValid = Boolean(profile.premium_active) && (!until || new Date(until).getTime() > Date.now());
+  const provider = membership?.provider || null;
+  const billingModel = provider === "stripe" ? "auto_renew" : stillValid ? "prepaid" : "none";
+  const msLeft = until ? new Date(until).getTime() - Date.now() : 0;
+  const daysRemaining = stillValid && until ? Math.max(0, Math.ceil(msLeft / 86400000)) : null;
 
   return {
     premiumActive: stillValid,
@@ -594,10 +653,13 @@ export async function getArtistPremiumStatus(userId: string) {
     billingInterval: membership?.billing_interval || null,
     cancelAt: membership?.cancel_at || null,
     membershipStatus: membership?.status || (stillValid ? "profile_flag" : "none"),
-    provider: membership?.provider || null,
+    provider,
     providerRef: membership?.provider_ref || null,
     foundingSeat: Boolean(membership?.founding_seat),
     founding,
+    billingModel,
+    daysRemaining,
+    canResubscribe: !stillValid || (billingModel === "prepaid" && daysRemaining !== null && daysRemaining <= 7),
   };
 }
 

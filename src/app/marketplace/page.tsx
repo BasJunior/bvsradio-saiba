@@ -281,8 +281,11 @@ export default function MarketplacePage() {
           </div>
         ) : (
           <p className="mt-6 text-text-secondary">
-            Creator profiles are coming soon. In the meantime, explore the
-            artists and producers already on BVS.
+            No marketplace creator cards in this list yet. Browse{' '}
+            <a className="text-brand hover:underline" href="/artists">artists</a>
+            {' '}and{' '}
+            <a className="text-brand hover:underline" href="/search?mode=creators">producers</a>
+            {' '}already on BVS.
           </p>
         )}
       </section>

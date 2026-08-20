@@ -28,6 +28,10 @@ type PremiumState = {
   provider?: string | null
   foundingSeat?: boolean
   founding?: { used: number; cap: number; available: boolean }
+  billingModel?: string
+  daysRemaining?: number | null
+  canResubscribe?: boolean
+  foundingWindow?: { open: boolean; daysRemaining: number; headline: string }
   billingReady?: boolean
   paynowEnabled?: boolean
   stripeEnabled?: boolean
@@ -57,6 +61,7 @@ function ArtistPremiumInner() {
     if (!res.ok) throw new Error(payload.error || 'Could not load premium status')
     setData(payload)
     if (payload.founding && !payload.founding.available) setPlanChoice('standard')
+    if (payload.foundingWindow && !payload.foundingWindow.open) setPlanChoice('standard')
     if (payload.planId?.includes('standard')) setPlanChoice('standard')
   }, [])
 
@@ -167,6 +172,9 @@ function ArtistPremiumInner() {
             ))}
           </ul>
 
+          {data.foundingWindow && (
+            <p className="text-sm text-text-secondary">{data.foundingWindow.headline}</p>
+          )}
           {data.founding && (
             <p className="text-sm text-text-secondary">
               Founding seats:{' '}
@@ -176,6 +184,18 @@ function ArtistPremiumInner() {
               {data.founding.available ? ' · still open' : ' · full — Standard only'}
             </p>
           )}
+
+          <p className="text-sm text-text-secondary">
+            Billing:{' '}
+            <strong className="text-text-primary">
+              {data.billingModel === 'auto_renew'
+                ? 'Stripe auto-renew'
+                : data.billingModel === 'prepaid'
+                  ? 'Paynow prepaid — resubscribe when the period ends'
+                  : 'No active paid period'}
+            </strong>
+            {data.daysRemaining != null && data.premiumActive && <> · {data.daysRemaining} day{data.daysRemaining === 1 ? '' : 's'} left</>}
+          </p>
 
           <p className="text-sm">
             Status:{' '}
@@ -280,6 +300,16 @@ function ArtistPremiumInner() {
               </>
             ) : (
               <>
+                {data.canResubscribe && data.paynowEnabled !== false && (
+                  <button
+                    type="button"
+                    disabled={busy || !token}
+                    onClick={() => void subscribe('paynow')}
+                    className="rounded-full bg-brand px-6 py-3 text-sm font-semibold text-black disabled:opacity-50"
+                  >
+                    Resubscribe with Paynow
+                  </button>
+                )}
                 {data.provider !== 'stripe' && data.stripeEnabled !== false && (
                   <button
                     type="button"

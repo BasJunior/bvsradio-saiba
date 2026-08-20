@@ -26,6 +26,7 @@ export async function GET(req: Request) {
   const status = await getArtistPremiumStatus(user.id);
   const pricing = premiumPricingCopy();
   const billingReady = paynowEnabled();
+  const foundingWindow = (await import("@/lib/premium-catalog")).foundingWindowPublicCopy();
 
   return NextResponse.json({
     premiumActive: status.premiumActive,
@@ -39,6 +40,10 @@ export async function GET(req: Request) {
     providerRef: status.providerRef,
     foundingSeat: status.foundingSeat,
     founding: status.founding,
+    billingModel: status.billingModel,
+    daysRemaining: status.daysRemaining,
+    canResubscribe: status.canResubscribe,
+    foundingWindow,
     billingReady,
     paynowEnabled: billingReady,
     stripeEnabled: stripeEnabled(),
@@ -52,7 +57,7 @@ export async function GET(req: Request) {
     copy: {
       title: "BVS Premium Artist",
       summary:
-        "Choose Stripe auto-renew or Paynow prepaid. Either activates distribution entitlement for approved releases. BVS rotation after editorial publish does not require Premium.",
+        "Stripe auto-renews. Paynow is prepaid — resubscribe when the period ends. Neither is live-on-Spotify; BVS sends approved packs after packaging is complete. BVS rotation after editorial publish does not require Premium.",
       includes: [
         "Founding: US$9/month or US$90/year (first 50 seats, then Standard)",
         "Standard: US$12/month or US$120/year",

@@ -12,6 +12,7 @@ import {
 import { ensureBeatArtworkPath } from '@/lib/beat-cover-autogen'
 import { creatorPublicName } from '@/lib/public-name'
 import { r2Configured } from '@/lib/r2-storage'
+import { assertCanPublishLiveBeat } from '@/lib/producer-entitlements'
 
 export const runtime = 'nodejs'
 
@@ -126,6 +127,23 @@ export async function PATCH(request: Request, ctx: Ctx) {
         )
       }
       return NextResponse.json({ ok: true, beat: rows[0], artworkGenerated })
+    }
+
+    if (body.is_public === true || String(body.status || '') === 'published') {
+      const currentRes = await fetch(
+        beatUrl(`beats?id=eq.${encodeURIComponent(beatId)}&producer_user_id=eq.${uid}&select=id,is_public,status&limit=1`),
+        { headers: beatHeaders, cache: 'no-store' },
+      )
+      const current = currentRes.ok ? (await currentRes.json())[0] : null
+      const alreadyLive = Boolean(current?.is_public) && String(current?.status) === 'published'
+      const gate = await assertCanPublishLiveBeat({
+        producerUserId: uid,
+        beatId,
+        alreadyLive,
+      })
+      if (!gate.ok) {
+        return NextResponse.json({ error: gate.error, entitlements: gate.entitlements }, { status: 409 })
+      }
     }
 
     // metadata + optional licence price update while editable

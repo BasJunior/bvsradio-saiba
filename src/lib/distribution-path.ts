@@ -106,21 +106,21 @@ export type PathStep = {
 export function publicDistributionStatusLabel(status?: string | null): string {
   switch (status) {
     case "not_eligible":
-      return "BVS only — Premium required for multi-platform";
+      return "On BVS only — Premium + complete packaging required to send wider";
     case "eligible":
-      return "Ready for multi-platform queue";
+      return "BVS will send this next — not on Spotify/Apple yet";
     case "queued":
-      return "Queued for multi-platform delivery";
+      return "BVS is preparing store delivery — not live on stores yet";
     case "submitted":
-      return "With distribution partner (under review)";
+      return "Sent for store review — not live until stores approve";
     case "live_on_dsp":
-      return "Live on major platforms";
+      return "BVS marked this live on stores — confirm links on this page";
     case "failed":
-      return "Distribution needs attention";
+      return "Store delivery needs a fix — editorial will follow up";
     case "cancelled":
-      return "Distribution cancelled";
+      return "Wider delivery cancelled — still on BVS if published";
     default:
-      return "Distribution status pending";
+      return "Wider delivery not started";
   }
 }
 
@@ -237,20 +237,20 @@ export function buildArtistPathSteps(input: {
 
   let distroQueue: PathStep = {
     id: "distro_queue",
-    label: "Multi-platform queue",
-    detail: "Premium releases enter the distribution queue after BVS publish",
+    label: "BVS store-delivery queue",
+    detail: "After BVS publish, Premium releases wait here until packaging is complete",
     state: "upcoming",
   };
   let partner: PathStep = {
     id: "partner_review",
-    label: "Partner / store review",
-    detail: "Private distribution partner delivers to major platforms",
+    label: "Store review",
+    detail: "BVS sends the pack; stores (not BVS) decide when it goes live",
     state: "upcoming",
   };
   let dspLive: PathStep = {
     id: "dsp_live",
-    label: "Live on major platforms",
-    detail: "Spotify, Apple Music, Boomplay, and other destinations",
+    label: "Live on stores",
+    detail: "Only after stores approve — then paste Spotify/Apple links here",
     state: "upcoming",
   };
 
@@ -267,8 +267,8 @@ export function buildArtistPathSteps(input: {
       ...distroQueue,
       detail:
         distro === "queued"
-          ? "Queued for private partner delivery"
-          : "Eligible — waiting to be queued",
+          ? "BVS is preparing to send this pack"
+          : "Packaging complete — waiting for BVS to send (not on stores yet)",
       state: distro === "queued" ? "done" : "current",
     };
     if (distro === "queued") partner = { ...partner, state: "current" };
@@ -285,7 +285,7 @@ export function buildArtistPathSteps(input: {
     dspLive = {
       ...dspLive,
       state: "done",
-      detail: "Live on major platforms — open Spotify links when ISRC matched",
+      detail: "Marked live — confirm Spotify/Apple links on the release card",
     };
   } else if (distro === "failed") {
     distroQueue = { ...distroQueue, state: "done", detail: "Handed off" };
