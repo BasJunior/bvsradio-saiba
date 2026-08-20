@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { answerAskBvs, type AskBvsClientContext, type AskBvsObject } from '@/lib/ask-bvs-flow'
+import { answerAskBvs, type AskBvsClientContext, type AskBvsClientItem, type AskBvsObject } from '@/lib/ask-bvs-flow'
 
 export const runtime = 'nodejs'
 
-function cleanClientItem(value: unknown) {
+function cleanClientItem(value: unknown): AskBvsClientItem | null {
   if (!value || typeof value !== 'object') return null
   const row = value as Record<string, unknown>
   const title = typeof row.title === 'string' ? row.title.trim().slice(0, 160) : ''
@@ -20,9 +20,9 @@ function cleanClientItem(value: unknown) {
 function cleanContext(value: unknown): AskBvsClientContext {
   if (!value || typeof value !== 'object') return {}
   const input = value as Record<string, unknown>
-  const cleanList = (key: 'history' | 'recent' | 'follows') => {
+  const cleanList = (key: 'history' | 'recent' | 'follows'): AskBvsClientItem[] => {
     const rows = Array.isArray(input[key]) ? input[key] : []
-    return rows.slice(0, 8).map(cleanClientItem).filter(Boolean)
+    return rows.slice(0, 8).map(cleanClientItem).filter((item): item is AskBvsClientItem => item !== null)
   }
   return {
     history: cleanList('history'),
