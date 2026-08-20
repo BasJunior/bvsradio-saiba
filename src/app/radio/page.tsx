@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import RadioPlayer from "@/components/RadioPlayer";
 import RadioSessionHome from "@/components/RadioSessionHome";
+import RadioShelfNav from "@/components/RadioShelfNav";
 import { getPublicProgrammes } from "@/lib/station-content";
 import type { Show } from "@/lib/station";
 
@@ -72,16 +73,18 @@ export default async function RadioPage() {
         </nav>
       </header>
 
-      <section aria-labelledby="now-playing-heading">
+      <RadioShelfNav />
+
+      <section id="radio-on-air" className="scroll-mt-28" aria-labelledby="now-playing-heading">
         <h2 id="now-playing-heading" className="sr-only">Now playing on BVS Radio</h2>
         <RadioPlayer />
       </section>
 
-      <div className="mt-8">
+      <div id="radio-session" className="mt-8 scroll-mt-28">
         <RadioSessionHome />
       </div>
 
-      <section className="mt-12" aria-labelledby="coming-up-heading">
+      <section id="radio-coming-up" className="mt-12 scroll-mt-28" aria-labelledby="coming-up-heading">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Station clock</p>
@@ -117,7 +120,7 @@ export default async function RadioPage() {
       </section>
 
       {shows.length ? (
-        <section className="mt-14" aria-labelledby="continue-bvs-heading">
+        <section id="radio-shows" className="mt-14 scroll-mt-28" aria-labelledby="continue-bvs-heading">
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Continue with BVS</p>
