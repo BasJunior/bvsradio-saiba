@@ -41,10 +41,37 @@ type ShowEventRow = {
   archive_published_at?: string | null
 }
 
+export type PublicShowCreator = {
+  id: string
+  profileId?: string
+  username?: string
+  publicName: string
+  role: string
+  position: number
+}
+
+export type PublicShowSetlistItem = {
+  id: string
+  trackId?: string
+  title: string
+  artistName: string
+  position: number
+  playedAt?: string
+}
+
+export type PublicShowContext = {
+  creators: PublicShowCreator[]
+  setlist: PublicShowSetlistItem[]
+}
+
 function publicSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   return url && key ? { url, key } : null
+}
+
+function publicHeaders(key: string) {
+  return { apikey: key, Authorization: `Bearer ${key}` }
 }
 
 export async function getPublicShowEvent(programmeSlug: string): Promise<ShowEvent | null> {
@@ -54,7 +81,7 @@ export async function getPublicShowEvent(programmeSlug: string): Promise<ShowEve
     const fields = 'id,programme_slug,title,starts_at,ends_at,status,room_id,live_video_url,replay_video_url,archive_published_at'
     const response = await fetch(
       `${supabase.url}/rest/v1/show_events?programme_slug=eq.${encodeURIComponent(programmeSlug)}&status=in.(scheduled,live,ended,archived)&select=${fields}&order=starts_at.desc&limit=1`,
-      { headers: { apikey: supabase.key, Authorization: `Bearer ${supabase.key}` }, next: { revalidate: 30 } },
+      { headers: publicHeaders(supabase.key), next: { revalidate: 30 } },
     )
     if (!response.ok) return null
     const rows = await response.json() as ShowEventRow[]
@@ -74,5 +101,66 @@ export async function getPublicShowEvent(programmeSlug: string): Promise<ShowEve
     }
   } catch {
     return null
+  }
+}
+
+export async function getPublicShowContext(eventId: string): Promise<PublicShowContext> {
+  const supabase = publicSupabase()
+  if (!supabase || !eventId) return { creators: [], setlist: [] }
+  const headers = publicHeaders(supabase.key)
+
+  try {
+    const [creatorsResponse, setlistResponse] = await Promise.all([
+      fetch(
+        `${supabase.url}/rest/v1/show_event_creators?event_id=eq.${encodeURIComponent(eventId)}&select=id,profile_id,public_name,role,position&order=position.asc`,
+        { headers, next: { revalidate: 30 } },
+      ),
+      fetch(
+        `${supabase.url}/rest/v1/show_setlist_items?event_id=eq.${encodeURIComponent(eventId)}&select=id,track_id,title,artist_name,position,played_at&order=position.asc`,
+        { headers, next: { revalidate: 15 } },
+      ),
+    ])
+
+    const creatorRows = creatorsResponse.ok
+      ? await creatorsResponse.json() as Array<{ id: string; profile_id?: string | null; public_name: string; role: string; position?: number | null }>
+      : []
+    const setlistRows = setlistResponse.ok
+      ? await setlistResponse.json() as Array<{ id: string; track_id?: string | null; title: string; artist_name: string; position?: number | null; played_at?: string | null }>
+      : []
+
+    const profileIds = [...new Set(creatorRows.map(row => row.profile_id).filter((value): value is string => Boolean(value)))]
+    let usernames = new Map<string, string>()
+
+    if (profileIds.length) {
+      const profilesResponse = await fetch(
+        `${supabase.url}/rest/v1/profiles?id=in.(${profileIds.join(',')})&is_published=eq.true&select=id,username`,
+        { headers, next: { revalidate: 60 } },
+      )
+      if (profilesResponse.ok) {
+        const profiles = await profilesResponse.json() as Array<{ id: string; username?: string | null }>
+        usernames = new Map(profiles.filter(profile => profile.username).map(profile => [profile.id, String(profile.username)]))
+      }
+    }
+
+    return {
+      creators: creatorRows.map(row => ({
+        id: row.id,
+        profileId: row.profile_id || undefined,
+        username: row.profile_id ? usernames.get(row.profile_id) : undefined,
+        publicName: row.public_name,
+        role: row.role,
+        position: Number(row.position || 0),
+      })),
+      setlist: setlistRows.map(row => ({
+        id: row.id,
+        trackId: row.track_id || undefined,
+        title: row.title,
+        artistName: row.artist_name,
+        position: Number(row.position || 0),
+        playedAt: row.played_at || undefined,
+      })),
+    }
+  } catch {
+    return { creators: [], setlist: [] }
   }
 }
