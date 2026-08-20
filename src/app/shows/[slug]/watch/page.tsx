@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import ShowTvExperience from '@/components/ShowTvExperience'
 import { flowV2Flags } from '@/lib/feature-flags'
-import { getPublicProgramme, getPublicShowEvent } from '@/lib/station-content'
-import { resolveShowPhase } from '@/lib/show-events'
+import { getPublicProgramme, getPublicShowContext, getPublicShowEvent } from '@/lib/station-content'
+import { resolveShowPhase, showPhaseLabel } from '@/lib/show-events'
 
 export default async function ShowWatchPage({ params }: { params: Promise<{ slug: string }> }) {
   if (!flowV2Flags.tvExperience) notFound()
@@ -12,5 +12,27 @@ export default async function ShowWatchPage({ params }: { params: Promise<{ slug
   const phase = resolveShowPhase(event)
   const videoUrl = phase === 'live' ? event.liveVideoUrl : phase === 'archived' ? event.replayVideoUrl : null
   if (!videoUrl) notFound()
-  return <ShowTvExperience slug={slug} title={event.title || show.title} videoUrl={videoUrl} poster={show.image} replay={phase === 'archived'} />
+
+  const context = await getPublicShowContext(event.id)
+  const now = Date.now()
+  const played = context.setlist
+    .filter(item => item.playedAt && Date.parse(item.playedAt) <= now)
+    .sort((a, b) => Date.parse(a.playedAt || '') - Date.parse(b.playedAt || ''))
+  const currentItem = phase === 'live'
+    ? played[played.length - 1] || context.setlist[0]
+    : context.setlist[0]
+  const currentArtist = currentItem?.artistName || context.creators[0]?.publicName
+
+  return (
+    <ShowTvExperience
+      slug={slug}
+      title={event.title || show.title}
+      videoUrl={videoUrl}
+      poster={show.image}
+      replay={phase === 'archived'}
+      phaseLabel={showPhaseLabel(phase)}
+      currentTitle={currentItem?.title}
+      currentArtist={currentArtist}
+    />
+  )
 }
