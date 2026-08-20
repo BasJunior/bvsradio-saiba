@@ -50,6 +50,7 @@ export default function BvsActionSheet({
     if (!open) return;
     trackEvent("flow_action_sheet_open", { object_id: object.id, object_kind: object.kind });
     const previousOverflow = document.body.style.overflow;
+    const focusTarget = returnFocus?.current;
     document.body.style.overflow = "hidden";
     const first = window.setTimeout(() => panelRef.current?.querySelector<HTMLElement>("button,a")?.focus(), 0);
     const onKeyDown = (event: KeyboardEvent) => {
@@ -72,7 +73,7 @@ export default function BvsActionSheet({
       window.clearTimeout(first);
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
-      returnFocus?.current?.focus({ preventScroll: true });
+      focusTarget?.focus({ preventScroll: true });
     };
   }, [object.id, object.kind, onClose, open, returnFocus]);
 
@@ -84,6 +85,9 @@ export default function BvsActionSheet({
       if (action.intent === "navigate" && action.href) {
         recordFlowOpen(object);
         trackEvent("flow_object_open", { object_id: object.id, object_kind: object.kind, source: "action_sheet" });
+        if (["beat", "product", "service"].includes(object.kind)) {
+          trackEvent("contextual_commerce_open", { object_id: object.id, object_kind: object.kind, source: "action_sheet" });
+        }
         onClose();
         router.push(action.href);
         return;

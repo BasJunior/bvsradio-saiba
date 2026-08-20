@@ -110,6 +110,7 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 29 | `artwork-change-requests` | `supabase-artwork-change-requests.sql` | artist/producer cover replacements for tracks, releases, beats and beat packs; editorial apply-on-approve |
 | 30 | `flow-v2-measurement` | `supabase-flow-v2-measurement.sql` | server-only 30-second stream qualification records; settlement remains separate |
 | 31 | `flow-v2-activity` | `supabase-flow-v2-activity.sql` | public-content activity for BVS Pulse; no listener activity or private data |
+| 32 | `flow-v2-shows` | `supabase-flow-v2-shows.sql` | truthful show lifecycle, public replay metadata, contextual Rooms and TV pilot |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { communityAccess, communityJson, communityUser } from '@/lib/community-server'
 import { editorialUrl, serviceHeaders } from '@/lib/editorial-server'
+import { flowV2Flags } from '@/lib/feature-flags'
 
 type MessageRow = {
   id: string
@@ -12,15 +13,27 @@ type MessageRow = {
 const WINDOW_MS = 60_000
 const MAX_PER_WINDOW = 6
 
+async function roomAvailable(roomId: string) {
+  if (roomId === 'bvs-live') return true
+  if (!flowV2Flags.showRooms) return false
+  const events = await communityJson<Array<{ id: string }>>(
+    `show_events?room_id=eq.${encodeURIComponent(roomId)}&is_public=eq.true&status=in.(live,archived)&select=id&limit=1`,
+    [],
+  )
+  return events.length === 1
+}
+
 export async function GET(request: Request) {
   const user = await communityUser(request)
   if (!user) return NextResponse.json({ error: 'Sign in to join the BVS community.' }, { status: 401 })
   if (!serviceHeaders.apikey) return NextResponse.json({ error: 'Community chat is not configured.' }, { status: 503 })
 
   const url = new URL(request.url)
-  const broadcastKey = (url.searchParams.get('broadcast') || 'bvs-live').trim().slice(0, 80)
+  const roomId = (url.searchParams.get('room') || url.searchParams.get('broadcast') || 'bvs-live').trim().slice(0, 80)
+  if (!await roomAvailable(roomId)) return NextResponse.json({ error: 'This BVS Room is not open.' }, { status: 404 })
+  const roomColumn = flowV2Flags.showRooms ? 'room_id' : 'broadcast_key'
   const rows = await communityJson<MessageRow[]>(
-    `live_chat_messages?broadcast_key=eq.${encodeURIComponent(broadcastKey)}&status=eq.visible&select=id,user_id,body,created_at&order=created_at.desc&limit=60`,
+    `live_chat_messages?${roomColumn}=eq.${encodeURIComponent(roomId)}&status=eq.visible&select=id,user_id,body,created_at&order=created_at.desc&limit=60`,
     [],
   )
   const userIds = [...new Set(rows.map((row) => row.user_id))]
@@ -43,10 +56,12 @@ export async function POST(request: Request) {
   const access = await communityAccess(user.id)
   if (!access.premium && !access.staff) return NextResponse.json({ error: 'Premium membership is required to post in live chat.' }, { status: 403 })
 
-  const body = await request.json().catch(() => ({})) as { message?: unknown; broadcast?: unknown }
+  const body = await request.json().catch(() => ({})) as { message?: unknown; room?: unknown; broadcast?: unknown }
   const message = typeof body.message === 'string' ? body.message.replace(/\s+/g, ' ').trim().slice(0, 500) : ''
-  const broadcastKey = typeof body.broadcast === 'string' ? body.broadcast.trim().slice(0, 80) : 'bvs-live'
+  const requestedRoom = typeof body.room === 'string' ? body.room : body.broadcast
+  const roomId = typeof requestedRoom === 'string' ? requestedRoom.trim().slice(0, 80) : 'bvs-live'
   if (!message) return NextResponse.json({ error: 'Write a message first.' }, { status: 400 })
+  if (!await roomAvailable(roomId)) return NextResponse.json({ error: 'This BVS Room is not open.' }, { status: 404 })
 
   const since = encodeURIComponent(new Date(Date.now() - WINDOW_MS).toISOString())
   const recent = await communityJson<Array<{ id: string }>>(
@@ -58,7 +73,9 @@ export async function POST(request: Request) {
   const response = await fetch(editorialUrl('live_chat_messages'), {
     method: 'POST',
     headers: { ...serviceHeaders, Prefer: 'return=representation' },
-    body: JSON.stringify({ user_id: user.id, body: message, broadcast_key: broadcastKey || 'bvs-live' }),
+    body: JSON.stringify(flowV2Flags.showRooms
+      ? { user_id: user.id, body: message, room_id: roomId || 'bvs-live', broadcast_key: roomId || 'bvs-live' }
+      : { user_id: user.id, body: message, broadcast_key: roomId || 'bvs-live' }),
   })
   if (!response.ok) return NextResponse.json({ error: 'Live chat is not ready. Ask an administrator to apply the community migration.' }, { status: 503 })
   const [created] = await response.json()

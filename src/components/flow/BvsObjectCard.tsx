@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type { BvsAction, BvsCardVariant, BvsObject } from "@/lib/bvs-object";
 import { objectKindLabel } from "@/lib/bvs-object";
 import { recordFlowOpen } from "@/lib/flow-session";
@@ -43,7 +43,7 @@ export default function BvsObjectCard({
   relationship?: string;
 }) {
   const [actionsOpen, setActionsOpen] = useState(false);
-  const [artworkFailed, setArtworkFailed] = useState(false);
+  const [failedArtwork, setFailedArtwork] = useState<string | null>(null);
   const overflowRef = useRef<HTMLButtonElement>(null);
   const compact = variant === "compact-row" || variant === "relationship-card";
   const feature = variant === "feature-card";
@@ -56,18 +56,22 @@ export default function BvsObjectCard({
       source: variant,
       relationship: relationship || null,
     });
+    if (["beat", "product", "service"].includes(object.kind)) {
+      trackEvent("contextual_commerce_open", {
+        object_id: object.id,
+        object_kind: object.kind,
+        source: variant,
+        relationship: relationship || null,
+      });
+    }
   }
 
   function primary(action: BvsAction) {
     if (["play", "play-next", "queue"].includes(action.intent)) runQueueAction(action, object);
   }
 
-  useEffect(() => {
-    setArtworkFailed(false);
-  }, [object.artwork]);
-
   const hasUsableArtwork = Boolean(object.artwork && !object.artwork.includes("default-avatar"));
-  const image = hasUsableArtwork && !artworkFailed ? (
+  const image = hasUsableArtwork && failedArtwork !== object.artwork ? (
     <Image
       src={object.artwork!}
       alt=""
@@ -75,7 +79,7 @@ export default function BvsObjectCard({
       unoptimized={/^https?:\/\//i.test(object.artwork!)}
       sizes={compact ? "72px" : feature ? "(max-width:768px) 100vw, 50vw" : "(max-width:768px) 78vw, 320px"}
       className="object-cover transition duration-300 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none"
-      onError={() => setArtworkFailed(true)}
+      onError={() => setFailedArtwork(object.artwork || null)}
     />
   ) : (
     <span className="absolute inset-0 grid place-items-center text-xs font-semibold uppercase tracking-[.18em] text-brand">BVS</span>

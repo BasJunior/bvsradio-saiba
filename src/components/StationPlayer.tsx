@@ -33,6 +33,7 @@ type PlayerContextValue = {
   volume: number;
   error: string | null;
   notice: string | null;
+  interruptedBy: "show-video" | null;
   history: StationTrack[];
   elapsed: number;
   duration: number;
@@ -180,6 +181,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const [volume, setVolume] = useState(70);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [interruptedBy, setInterruptedBy] = useState<"show-video" | null>(null);
   const [history, setHistory] = useState<StationTrack[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -404,10 +406,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   useEffect(() => {
     const releaseStationAudio = (event: Event) => {
       const owner = (event as CustomEvent<{ owner?: string }>).detail?.owner;
-      if (owner !== "catalogue" || !audio.current) return;
+      if ((owner !== "catalogue" && owner !== "show-video") || !audio.current) return;
       audio.current.pause();
       if (isPlaying) flushListening();
       setPlaying(false);
+      setInterruptedBy(owner === "show-video" ? "show-video" : null);
     };
     window.addEventListener("bvs:audio-claim", releaseStationAudio);
     return () => window.removeEventListener("bvs:audio-claim", releaseStationAudio);
@@ -431,6 +434,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       audio.current
         .play()
         .then(() => {
+          setInterruptedBy(null);
           failStreak.current = 0;
           if (startedAt.current === null) {
             startedAt.current = Date.now();
@@ -616,6 +620,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       } else {
         window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
         await audio.current.play();
+        setInterruptedBy(null);
         failStreak.current = 0;
         pushHistory(current);
         recordListening({
@@ -896,6 +901,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       volume,
       error,
       notice,
+      interruptedBy,
       history,
       elapsed,
       duration,
@@ -938,6 +944,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       volume,
       error,
       notice,
+      interruptedBy,
       history,
       elapsed,
       duration,
@@ -1265,6 +1272,12 @@ export function PersistentPlayer() {
       )}
       {!nowPlayingOpen ? <section className="fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
         <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
+        {player.interruptedBy === "show-video" ? (
+          <div className="flex items-center justify-center gap-3 border-b border-white/10 bg-brand/10 px-4 py-2 text-xs text-brand" role="status">
+            <span>BVS music paused for show video.</span>
+            <button type="button" onClick={player.toggle} className="min-h-11 rounded-full border border-brand/40 px-4 font-semibold hover:bg-brand/10">Resume BVS music</button>
+          </div>
+        ) : null}
         {(player.error || player.notice) && (
           <p className={`px-4 py-1 text-center text-xs ${player.error ? "bg-red-500/15 text-red-200" : "bg-brand/10 text-brand"}`} role="status">
             {player.error || player.notice}

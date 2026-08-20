@@ -161,6 +161,12 @@ PACKS: dict[str, dict[str, Any]] = {
         "file": "supabase-flow-v2-activity.sql",
         "tables": ["bvs_activity_events"],
     },
+    "flow-v2-shows": {
+        "step": 32,
+        "file": "supabase-flow-v2-shows.sql",
+        "tables": ["show_events", "show_event_creators", "show_setlist_items"],
+        "columns": {"live_chat_messages": ["room_id"]},
+    },
 }
 
 ORDER = sorted(PACKS.keys(), key=lambda k: PACKS[k]["step"])
