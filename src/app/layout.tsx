@@ -10,6 +10,7 @@ import DeepLinkFocusManager from "@/components/DeepLinkFocusManager";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
+import FlowDetailsBridge from "@/components/flow/FlowDetailsBridge";
 import NowPlayingExperienceGuard from "@/components/flow/NowPlayingExperienceGuard";
 import MobileFlowNav from "@/components/layout/MobileFlowNav";
 import "./globals.css";
@@ -95,6 +96,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <MobileFlowNav />
               <PersistentPlayer />
               <NowPlayingExperienceGuard />
+              <FlowDetailsBridge />
               <Suspense fallback={null}>
                 <DeepLinkFocusManager />
               </Suspense>
