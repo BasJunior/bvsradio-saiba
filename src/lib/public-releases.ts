@@ -18,6 +18,7 @@ export type PublicRelease = {
   cover: string
   releaseType: string
   copyrightYear?: number
+  publishedAt?: string
   tracks: PublicReleaseTrack[]
 }
 
@@ -32,7 +33,7 @@ export async function getPublicReleases(releaseId?: string): Promise<PublicRelea
   if (!setup) return []
   const releaseFilter = releaseId ? `&id=eq.${encodeURIComponent(releaseId)}` : ''
   const releasesResponse = await fetch(
-    `${setup.url}/rest/v1/releases?is_public=eq.true&editorial_status=eq.approved${releaseFilter}&select=id,title,artist_name,genre,description,cover_url,release_type,copyright_year&order=published_at.desc&limit=100`,
+    `${setup.url}/rest/v1/releases?is_public=eq.true&editorial_status=eq.approved${releaseFilter}&select=id,title,artist_name,genre,description,cover_url,release_type,copyright_year,published_at&order=published_at.desc&limit=100`,
     { headers: setup.headers, cache: 'no-store' },
   )
   if (!releasesResponse.ok) return []
@@ -65,6 +66,7 @@ export async function getPublicReleases(releaseId?: string): Promise<PublicRelea
     cover: mediaUrlForStoredValue(String(release.cover_url || '')) || '/assets/images/default-artwork.jpg',
     releaseType: String(release.release_type || 'album'),
     copyrightYear: release.copyright_year ? Number(release.copyright_year) : undefined,
+    publishedAt: release.published_at ? String(release.published_at) : undefined,
     tracks: members
       .filter((member) => String(member.release_id) === String(release.id))
       .map((member) => ({
