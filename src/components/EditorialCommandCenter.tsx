@@ -3,21 +3,11 @@
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import EditorialWorkDrawer, { type EditorialCommandItem } from '@/components/EditorialWorkDrawer'
 
 type CommandKind = 'release' | 'track' | 'beat' | 'creator' | 'artist_name' | 'producer_name' | 'request' | 'role' | 'programme' | 'audit'
 type CommandFilter = 'attention' | 'all' | CommandKind
-
-type CommandItem = {
-  id: string
-  kind: CommandKind
-  title: string
-  subtitle: string
-  status?: string
-  section: string
-  createdAt?: string
-  priority: number
-  keywords: string[]
-}
+type CommandItem = EditorialCommandItem & { kind: CommandKind }
 
 type CommandPayload = {
   items: CommandItem[]
@@ -56,10 +46,7 @@ function kindLabel(kind: CommandKind) {
 }
 
 function workObjectId(item: CommandItem) {
-  // Identity tasks use composite ids like `${profileId}:artist-name`.
-  if (item.kind === 'artist_name' || item.kind === 'producer_name') {
-    return item.id.split(':')[0] || item.id
-  }
+  if (item.kind === 'artist_name' || item.kind === 'producer_name') return item.id.split(':')[0] || item.id
   return item.id
 }
 
@@ -102,8 +89,6 @@ function resultScore(item: CommandItem, query: string) {
 
 function findTarget(section: HTMLElement, item: CommandItem) {
   const objectId = workObjectId(item)
-  // Prefer stable data attributes so Command works even when the section only
-  // renders a subset of the catalogue (tracks limit, pagination, etc.).
   const byAttr =
     section.querySelector<HTMLElement>(`[data-editorial-id="${CSS.escape(objectId)}"]`) ||
     section.querySelector<HTMLElement>(`[data-editorial-id="${CSS.escape(item.id)}"]`) ||
@@ -116,73 +101,56 @@ function findTarget(section: HTMLElement, item: CommandItem) {
   if (byAttr) return byAttr
 
   const title = normalize(item.title)
-  const subtitleTokens = normalize(item.subtitle).split(' ').filter((token) => token.length >= 4).slice(0, 3)
   const candidates = Array.from(section.querySelectorAll<HTMLElement>('article, tr, li, [role="group"]'))
-  let best: { element: HTMLElement; score: number } | null = null
-  for (const element of candidates) {
-    const text = normalize(element.textContent)
-    if (!text || !text.includes(title)) continue
-    let score = 100
-    for (const token of subtitleTokens) if (text.includes(token)) score += 15
-    if (!best || score > best.score) best = { element, score }
-  }
-  if (best) return best.element
-  const headings = Array.from(section.querySelectorAll<HTMLElement>('h2,h3,h4,p'))
-  const heading = headings.find((element) => normalize(element.textContent) === title)
-  return heading?.closest<HTMLElement>('article,li,tr,div') || null
+  return candidates.find((element) => normalize(element.textContent).includes(title)) || null
 }
 
-function openEditorialItem(item: CommandItem) {
-  const objectId = workObjectId(item)
-  // Deep-link the work object so staff can open by ID even when the accordion
-  // only rendered a partial list. Panels can grow into a true drawer later.
+function writeWorkUrl(item: CommandItem | null) {
   try {
     const url = new URL(window.location.href)
+    if (item) url.searchParams.set('work', `${item.kind}:${workObjectId(item)}`)
+    else url.searchParams.delete('work')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  } catch {
+    // URL state is convenience; never block editorial work.
+  }
+}
+
+function openFullPanel(item: CommandItem) {
+  const section = document.getElementById(item.section)
+  try {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('work')
     url.hash = item.section
-    url.searchParams.set('work', `${item.kind}:${objectId}`)
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
   } catch {
     window.location.hash = item.section
   }
-
-  const section = document.getElementById(item.section)
-  if (!section) {
-    window.location.hash = item.section
-    return
-  }
+  if (!section) return
 
   const toggle = section.querySelector<HTMLButtonElement>(':scope > button[aria-expanded]')
   if (toggle?.getAttribute('aria-expanded') === 'false') toggle.click()
-
-  const scroll = () => {
-    const latestSection = document.getElementById(item.section)
-    if (!latestSection) return
-    const target = findTarget(latestSection, item)
+  window.setTimeout(() => {
+    const latest = document.getElementById(item.section)
+    if (!latest) return
+    const target = findTarget(latest, item) || latest
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    if (!target) {
-      // Object not in the currently rendered list — land on the section and leave
-      // ?work= so a future drawer / load-more can resolve the exact ID.
-      latestSection.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' })
-      const notice = latestSection.querySelector<HTMLElement>('[data-editorial-work-miss]') || latestSection
-      notice.setAttribute('data-editorial-work-miss', `${item.kind}:${objectId}`)
-      return
+    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: target === latest ? 'start' : 'center' })
+    if (target !== latest) {
+      const hadTabIndex = target.hasAttribute('tabindex')
+      if (!hadTabIndex) target.setAttribute('tabindex', '-1')
+      target.focus({ preventScroll: true })
+      const outline = target.style.outline
+      const offset = target.style.outlineOffset
+      target.style.outline = '2px solid var(--color-brand, #d7ff4f)'
+      target.style.outlineOffset = '6px'
+      window.setTimeout(() => {
+        target.style.outline = outline
+        target.style.outlineOffset = offset
+        if (!hadTabIndex) target.removeAttribute('tabindex')
+      }, 2200)
     }
-    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
-    const hadTabIndex = target.hasAttribute('tabindex')
-    if (!hadTabIndex) target.setAttribute('tabindex', '-1')
-    target.focus({ preventScroll: true })
-    const previousOutline = target.style.outline
-    const previousOffset = target.style.outlineOffset
-    target.style.outline = '2px solid var(--color-brand, #d7ff4f)'
-    target.style.outlineOffset = '6px'
-    window.setTimeout(() => {
-      target.style.outline = previousOutline
-      target.style.outlineOffset = previousOffset
-      if (!hadTabIndex) target.removeAttribute('tabindex')
-    }, 2200)
-  }
-
-  window.setTimeout(scroll, toggle ? 90 : 0)
+  }, toggle ? 90 : 0)
 }
 
 function saveRecent(item: CommandItem) {
@@ -192,7 +160,7 @@ function saveRecent(item: CommandItem) {
     const next = [item, ...current.filter((entry) => !(entry.id === item.id && entry.kind === item.kind))].slice(0, 6)
     window.sessionStorage.setItem(key, JSON.stringify(next))
   } catch {
-    // session-only convenience; never block editorial work
+    // Session-only convenience.
   }
 }
 
@@ -206,7 +174,10 @@ export default function EditorialCommandCenter() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
+  const [selectedWork, setSelectedWork] = useState<CommandItem | null>(null)
+  const [workQueue, setWorkQueue] = useState<CommandItem[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const launcherRef = useRef<HTMLButtonElement>(null)
   const requestRef = useRef<Promise<void> | null>(null)
 
   const loadIndex = async (force = false) => {
@@ -241,10 +212,28 @@ export default function EditorialCommandCenter() {
 
   useEffect(() => {
     if (!active) return
-    const warm = window.setTimeout(() => void loadIndex(), 900)
+    const warm = window.setTimeout(() => void loadIndex(), 500)
     return () => window.clearTimeout(warm)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active])
+
+  useEffect(() => {
+    if (!active || !payload || selectedWork) return
+    try {
+      const raw = new URL(window.location.href).searchParams.get('work')
+      if (!raw) return
+      const separator = raw.indexOf(':')
+      if (separator < 1) return
+      const kind = raw.slice(0, separator)
+      const id = raw.slice(separator + 1)
+      const item = payload.items.find((candidate) => candidate.kind === kind && workObjectId(candidate) === id)
+      if (!item) return
+      setSelectedWork(item)
+      setWorkQueue(item.priority > 0 ? payload.items.filter((candidate) => candidate.priority > 0) : payload.items)
+    } catch {
+      // Ignore malformed deep-link state.
+    }
+  }, [active, payload, selectedWork])
 
   useEffect(() => {
     if (!active) return
@@ -287,9 +276,31 @@ export default function EditorialCommandCenter() {
 
   const openResult = (item: CommandItem) => {
     saveRecent(item)
+    const snapshot = results.length ? results : (payload?.items || [])
+    setWorkQueue(snapshot)
+    setSelectedWork(item)
     setOpen(false)
     setQuery('')
-    openEditorialItem(item)
+    writeWorkUrl(item)
+  }
+
+  const closeWork = () => {
+    setSelectedWork(null)
+    writeWorkUrl(null)
+    window.setTimeout(() => launcherRef.current?.focus(), 0)
+  }
+
+  const selectWork = (item: EditorialCommandItem) => {
+    const nextItem = item as CommandItem
+    setSelectedWork(nextItem)
+    writeWorkUrl(nextItem)
+  }
+
+  const openFull = (item: EditorialCommandItem) => {
+    const nextItem = item as CommandItem
+    setSelectedWork(null)
+    writeWorkUrl(null)
+    window.setTimeout(() => openFullPanel(nextItem), 0)
   }
 
   const nextAction = results.find((item) => item.priority > 0) || payload?.items.find((item) => item.priority > 0)
@@ -312,6 +323,7 @@ export default function EditorialCommandCenter() {
       <div className="rounded-2xl border border-brand/20 bg-brand/[.035] p-3 shadow-lg shadow-black/10">
         <div className="flex flex-wrap items-center gap-3">
           <button
+            ref={launcherRef}
             type="button"
             onClick={() => {
               setOpen(true)
@@ -323,7 +335,7 @@ export default function EditorialCommandCenter() {
           >
             <span className="min-w-0">
               <span className="block text-xs font-semibold uppercase tracking-[.18em] text-brand">Editorial Command</span>
-              <span className="block truncate text-sm text-text-secondary">Search tracks, releases, beats, creators, requests, programmes or audit…</span>
+              <span className="block truncate text-sm text-text-secondary">Search and open the exact track, release, beat, creator, request or programme.</span>
             </span>
             <span className="shrink-0 rounded-lg border border-white/10 px-2 py-1 text-xs text-text-secondary">⌘K / Ctrl K</span>
           </button>
@@ -334,34 +346,28 @@ export default function EditorialCommandCenter() {
                 {payload.summary.needsAction} need action
               </span>
               {nextAction ? (
-                <button
-                  type="button"
-                  onClick={() => openResult(nextAction)}
-                  className="min-h-11 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black"
-                >
+                <button type="button" onClick={() => openResult(nextAction)} className="min-h-11 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black">
                   Review next →
                 </button>
               ) : null}
             </div>
           ) : loading ? <span className="text-xs text-text-secondary">Indexing…</span> : null}
         </div>
-        <p className="mt-2 px-1 text-[11px] text-text-secondary">Tip: press <strong className="text-text-primary">/</strong> anywhere outside a form to search. Search is read-only; editorial decisions still happen in their existing audited panels.</p>
+        <p className="mt-2 px-1 text-[11px] text-text-secondary">Tip: press <strong className="text-text-primary">/</strong> outside a form. Results open as exact work objects; quick actions still use the existing audited editorial API.</p>
       </div>
 
       {open ? (
         <div
           className="fixed inset-0 z-[120] flex items-start justify-center bg-black/75 px-3 pt-[max(5rem,env(safe-area-inset-top))] backdrop-blur-sm sm:px-6 sm:pt-24"
           role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setOpen(false)
-          }}
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setOpen(false) }}
         >
           <section role="dialog" aria-modal="true" aria-labelledby="editorial-command-title" className="flex max-h-[min(78vh,760px)] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-bg-primary shadow-2xl">
             <div className="border-b border-white/10 p-4 sm:p-5">
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <p id="editorial-command-title" className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Editorial Command Center</p>
-                  <p className="mt-1 text-sm text-text-secondary">One search layer across the staff workflow.</p>
+                  <p className="mt-1 text-sm text-text-secondary">Find the work object, not the accordion it lives in.</p>
                 </div>
                 <button type="button" onClick={() => setOpen(false)} className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-xl text-text-secondary hover:border-brand hover:text-white" aria-label="Close Editorial Command">×</button>
               </div>
@@ -410,7 +416,7 @@ export default function EditorialCommandCenter() {
                     <span className="shrink-0 text-right">
                       {item.status ? <span className={`block text-[10px] uppercase tracking-wider ${item.priority ? 'text-amber-200' : 'text-text-secondary'}`}>{item.status.replaceAll('_', ' ')}</span> : null}
                       {item.createdAt ? <span className="mt-1 block text-[10px] text-text-secondary">{ageLabel(item.createdAt)}</span> : null}
-                      <span className="mt-2 block text-xs text-brand">Open →</span>
+                      <span className="mt-2 block text-xs text-brand">Work →</span>
                     </span>
                   </button>
                 ))}
@@ -423,6 +429,17 @@ export default function EditorialCommandCenter() {
             </footer>
           </section>
         </div>
+      ) : null}
+
+      {selectedWork ? (
+        <EditorialWorkDrawer
+          command={selectedWork}
+          queue={workQueue.length ? workQueue : [selectedWork]}
+          onClose={closeWork}
+          onSelect={selectWork}
+          onOpenFull={openFull}
+          onMutated={() => loadIndex(true)}
+        />
       ) : null}
     </div>
   )
