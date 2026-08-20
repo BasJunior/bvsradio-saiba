@@ -20,10 +20,21 @@ export default function PublishedAlbumsShelf() {
     <section className="mb-10 rounded-3xl border border-white/10 bg-bg-card/35 p-5 sm:p-7">
       <p className="text-xs uppercase tracking-[3px] text-brand">Published releases</p>
       <h2 className="mt-2 text-3xl font-semibold tracking-tight">Albums &amp; EPs</h2>
-      <p className="mt-2 text-sm text-text-secondary">Open a release and listen in its intended track order.</p>
+      <p className="mt-2 text-sm text-text-secondary">Open release details in place, then choose whether to play or enter the full release.</p>
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
         {releases.map((release) => (
-          <Link key={release.id} href={`/album/${release.id}`} className="group min-w-0">
+          <Link
+            key={release.id}
+            href={`/album/${release.id}`}
+            data-flow-detail-trigger="release"
+            data-flow-detail-id={release.id}
+            data-flow-detail-title={release.title}
+            data-flow-detail-artist={release.artist}
+            data-flow-detail-image={release.cover}
+            data-flow-detail-collection={release.releaseType}
+            data-flow-detail-href={`/album/${release.id}`}
+            className="group min-w-0"
+          >
             <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/40">
               <Image src={release.cover} alt={`${release.title} cover`} fill unoptimized={/^https?:\/\//i.test(release.cover)} sizes="(max-width:768px) 50vw, 20vw" className="object-cover object-center transition duration-300 group-hover:scale-[1.04]" />
             </div>
