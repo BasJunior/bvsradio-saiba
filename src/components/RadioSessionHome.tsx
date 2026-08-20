@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import CommunityChat from "@/components/CommunityChat";
 import FlowRelationships from "@/components/flow/FlowRelationships";
@@ -24,6 +24,7 @@ function TrackThumb({ src }: { src?: string }) {
 export default function RadioSessionHome() {
   const player = useStationPlayer();
   const [tab, setTab] = useState<SessionTab>("queue");
+  const panelRef = useRef<HTMLDivElement>(null);
   const heardCount = useMemo(() => {
     const ids = new Set(player.history.map((track) => track.id || track.src));
     if (player.current) ids.add(player.current.id || player.current.src);
@@ -33,6 +34,15 @@ export default function RadioSessionHome() {
   const currentHref = player.current?.title
     ? `/catalogue?q=${encodeURIComponent(player.current.title)}`
     : "/catalogue";
+
+  const selectTab = (value: SessionTab) => {
+    setTab(value);
+    if (typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches) return;
+    window.requestAnimationFrame(() => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      panelRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+    });
+  };
 
   return (
     <div className="space-y-8">
@@ -56,7 +66,8 @@ export default function RadioSessionHome() {
                 type="button"
                 role="tab"
                 aria-selected={tab === value}
-                onClick={() => setTab(value)}
+                aria-controls="radio-session-panel"
+                onClick={() => selectTab(value)}
                 className={`min-h-11 shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition ${
                   tab === value ? "border-brand text-white" : "border-transparent text-text-secondary hover:text-white"
                 }`}
@@ -67,7 +78,7 @@ export default function RadioSessionHome() {
           </div>
         </div>
 
-        <div className="p-4 sm:p-6">
+        <div ref={panelRef} id="radio-session-panel" className="scroll-mt-32 p-4 sm:p-6">
           {tab === "queue" ? (
             <div role="tabpanel" className="space-y-2">
               {player.upNext.length ? player.upNext.slice(0, 8).map((item, index) => (
@@ -143,7 +154,7 @@ export default function RadioSessionHome() {
         </div>
       </section>
 
-      <section className="rounded-2xl border border-white/10 bg-bg-card/25 p-5 sm:p-6" aria-labelledby="around-track-heading">
+      <section id="radio-context" className="scroll-mt-28 rounded-2xl border border-white/10 bg-bg-card/25 p-5 sm:p-6" aria-labelledby="around-track-heading">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Around what you’re hearing</p>
