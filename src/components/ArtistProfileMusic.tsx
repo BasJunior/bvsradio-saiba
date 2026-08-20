@@ -30,14 +30,30 @@ export default function ArtistProfileMusic({ artist, username, tracks }: { artis
       {tracks.map(track => {
         const stationTrack = stationTracks.find(item => item.id === track.id)
         const focusId = `track:${track.id}`
-        const item: DiscoveryItem = { id: track.id, kind: 'track', title: track.title, subtitle: artist, image: track.artwork_url, href: `/artist/${encodeURIComponent(username)}?focus=${encodeURIComponent(focusId)}#music` }
-        return <article key={track.id} className="scroll-mt-28 rounded-xl border border-white/10 p-3" data-flow-focus-id={focusId}>
+        const href = `/artist/${encodeURIComponent(username)}?focus=${encodeURIComponent(focusId)}#music`
+        const item: DiscoveryItem = { id: track.id, kind: 'track', title: track.title, subtitle: artist, image: track.artwork_url, href }
+        return <article
+          key={track.id}
+          className="scroll-mt-28 cursor-pointer rounded-xl border border-white/10 p-3 transition hover:border-brand/35"
+          data-flow-focus-id={focusId}
+          data-flow-detail-trigger="track"
+          data-flow-detail-id={track.id}
+          data-flow-detail-title={track.title}
+          data-flow-detail-artist={artist}
+          data-flow-detail-image={track.artwork_url || ''}
+          data-flow-detail-collection={`${artist} on BVS`}
+          data-flow-detail-src={track.audio_url || ''}
+          data-flow-detail-href={href}
+          tabIndex={0}
+          role="button"
+          aria-label={`Open details for ${track.title}`}
+        >
           <div className="flex gap-3 sm:gap-4">
             <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white/5">{track.artwork_url ? <Image src={track.artwork_url} alt={`${track.title} artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /> : <div className="grid h-full place-items-center text-2xl text-brand/50">♪</div>}</div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0"><h3 className="truncate font-semibold">{track.title}</h3><p className="text-xs text-text-secondary">{track.genre || 'Music'}{track.in_rotation ? ' · In BVS rotation' : ''}</p></div>
-                <div className="flex flex-wrap gap-2">
+                <div data-flow-detail-skip="true" className="flex flex-wrap gap-2">
                   {stationTrack ? <button type="button" onClick={() => player.playNow(stationTrack, { from: `${artist} profile`, related: stationTracks })} className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-black">▶ Play</button> : null}
                   <LibraryAction item={item} compact />
                   {track.spotify_url ? <a href={track.spotify_url} target="_blank" rel="noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-text-secondary hover:border-brand">Spotify ↗</a> : null}
