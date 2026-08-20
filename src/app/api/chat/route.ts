@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { answerAskBvs, type AskBvsClientContext } from '@/lib/ask-bvs-flow'
+import { answerAskBvs, type AskBvsClientContext, type AskBvsObject } from '@/lib/ask-bvs-flow'
 
 export const runtime = 'nodejs'
 
@@ -31,6 +31,21 @@ function cleanContext(value: unknown): AskBvsClientContext {
   }
 }
 
+function asksForFollowUpdates(message: string) {
+  const q = message.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  return /(new|latest|happening|recent).*(follow|following)|(?:follow|following).*(new|latest|happening|recent)|creators i follow|people i follow/.test(q)
+}
+
+function uniqueObjects(objects: AskBvsObject[]) {
+  const seen = new Set<string>()
+  return objects.filter((object) => {
+    const key = `${object.kind}:${object.id}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 export async function POST(request: Request) {
   let message = ''
   let context: AskBvsClientContext = {}
@@ -46,6 +61,33 @@ export async function POST(request: Request) {
   if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 })
 
   try {
+    if (asksForFollowUpdates(message)) {
+      const follows = (context.follows || []).filter((item) => item.title).slice(0, 5)
+      if (!follows.length) {
+        return NextResponse.json({
+          reply: 'You are not following any creators on this device yet. Follow a creator and Ask BVS can bring their newest published activity back to you.',
+          objects: [],
+          links: [{ label: 'Explore creators', href: '/search?mode=creators' }, { label: 'Your BVS', href: '/library' }],
+          mode: 'flow',
+          reason: 'follow_updates_empty',
+        }, { headers: { 'Cache-Control': 'no-store, max-age=0' } })
+      }
+
+      const answers = await Promise.all(
+        follows.map((follow) => answerAskBvs(`What's new from ${follow.title}?`, context)),
+      )
+      const objects = uniqueObjects(answers.flatMap((answer) => answer.objects || [])).slice(0, 6)
+      if (objects.length) {
+        return NextResponse.json({
+          reply: 'Here’s the newest published BVS activity I could match from creators you follow.',
+          objects,
+          links: [{ label: 'Your BVS', href: '/library' }],
+          mode: 'flow',
+          reason: 'follow_updates',
+        }, { headers: { 'Cache-Control': 'no-store, max-age=0' } })
+      }
+    }
+
     const answer = await answerAskBvs(message, context)
     return NextResponse.json(answer, {
       headers: { 'Cache-Control': 'no-store, max-age=0' },
