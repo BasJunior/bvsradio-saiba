@@ -47,6 +47,7 @@ export default function BvsObjectCard({
   const overflowRef = useRef<HTMLButtonElement>(null);
   const compact = variant === "compact-row" || variant === "relationship-card";
   const feature = variant === "feature-card";
+  const supportsDetails = object.kind === "track" || object.kind === "beat" || object.kind === "release";
 
   function openObject() {
     recordFlowOpen(object, relationship);
@@ -69,6 +70,19 @@ export default function BvsObjectCard({
   function primary(action: BvsAction) {
     if (["play", "play-next", "queue"].includes(action.intent)) runQueueAction(action, object);
   }
+
+  const detailProps = supportsDetails
+    ? {
+        "data-flow-detail-trigger": object.kind,
+        "data-flow-detail-id": object.id,
+        "data-flow-detail-title": object.title,
+        "data-flow-detail-artist": object.media?.artist || object.subtitle || "BVS creator",
+        "data-flow-detail-image": object.artwork || "",
+        "data-flow-detail-collection": object.media?.project || object.contextLabel || "",
+        "data-flow-detail-src": object.media?.src || "",
+        "data-flow-detail-href": object.route,
+      }
+    : {};
 
   const hasUsableArtwork = Boolean(object.artwork && !object.artwork.includes("default-avatar"));
   const image = hasUsableArtwork && failedArtwork !== object.artwork ? (
@@ -99,14 +113,14 @@ export default function BvsObjectCard({
     <article className={`group ${surfaceByVariant[variant]}`} data-flow-focus-id={`${object.kind}:${object.id}`} tabIndex={-1}>
       {compact ? (
         <>
-          <Link href={object.route} onClick={openObject} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{image}</Link>
-          <Link href={object.route} onClick={openObject} className="min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link>
+          <Link {...detailProps} href={object.route} onClick={openObject} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{image}</Link>
+          <Link {...detailProps} href={object.route} onClick={openObject} className="min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link>
         </>
       ) : (
         <>
-          <Link href={object.route} onClick={openObject} className={`relative block overflow-hidden bg-white/5 ${feature ? "aspect-[16/9] sm:aspect-[2/1]" : "aspect-square"}`}>{image}</Link>
+          <Link {...detailProps} href={object.route} onClick={openObject} className={`relative block overflow-hidden bg-white/5 ${feature ? "aspect-[16/9] sm:aspect-[2/1]" : "aspect-square"}`}>{image}</Link>
           <div className={feature ? "p-6 sm:p-8" : "p-4 sm:p-5"}>
-            <Link href={object.route} onClick={openObject} className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link>
+            <Link {...detailProps} href={object.route} onClick={openObject} className="block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{content}</Link>
           </div>
         </>
       )}
@@ -114,7 +128,7 @@ export default function BvsObjectCard({
       <div className={`${compact ? "shrink-0" : "px-4 pb-4 sm:px-5 sm:pb-5"} flex items-center gap-2`}>
         {object.primaryAction ? (
           object.primaryAction.intent === "navigate" && object.primaryAction.href ? (
-            <Link href={object.primaryAction.href} onClick={openObject} className="min-h-11 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+            <Link data-flow-detail-skip="true" href={object.primaryAction.href} onClick={openObject} className="min-h-11 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
               {object.primaryAction.label}
             </Link>
           ) : (
