@@ -5,6 +5,7 @@ import VisitorAssistant from "@/components/VisitorAssistant";
 import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
+import DeepLinkFocusManager from "@/components/DeepLinkFocusManager";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
@@ -93,6 +94,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <MobileFlowNav />
               <PersistentPlayer />
               <NowPlayingExperienceGuard />
+              <DeepLinkFocusManager />
             </FlowNavigationProvider>
           </StationPlayerProvider>
         </LibrarySyncProvider>
