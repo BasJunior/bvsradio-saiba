@@ -57,6 +57,7 @@ type ReleaseListing = {
 }
 
 const detailKinds = new Set(['track', 'beat', 'release'])
+const interactiveSelector = 'a[href],button,input,select,textarea,[role="button"],[contenteditable="true"]'
 
 function normalise(value?: string | null) {
   return (value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
@@ -127,6 +128,51 @@ function baseFromTrigger(trigger: HTMLElement, kind: ExploreDetail['kind'], href
     href,
     actionHref: href,
     src: trigger.dataset.flowDetailSrc || undefined,
+  }
+}
+
+function articleFallback(target: HTMLElement) {
+  const article = target.closest<HTMLElement>('article[data-flow-focus-id]')
+  if (!article) return null
+  const focusId = article.dataset.flowFocusId || ''
+  const [kind, id] = focusId.split(':', 2)
+  if (kind !== 'track' && kind !== 'beat') return null
+  if (target.closest(interactiveSelector)) return null
+  const title = article.querySelector('h3')?.textContent?.trim() || ''
+  if (!title) return null
+  const image = article.querySelector('img')?.getAttribute('src') || undefined
+  const artist = document.querySelector('h1')?.textContent?.trim() || 'BVS creator'
+  const href = kind === 'beat'
+    ? `/catalogue?type=beat&q=${encodeURIComponent(title)}#browse`
+    : `/catalogue?q=${encodeURIComponent(title)}`
+  return {
+    kind: kind as ExploreDetail['kind'],
+    id: id || title,
+    title,
+    artist,
+    image,
+    href,
+  }
+}
+
+function libraryFallback(target: HTMLElement, anchor: HTMLAnchorElement | null) {
+  if (window.location.pathname !== '/library' || !anchor) return null
+  const row = anchor.parentElement
+  if (!row?.classList.contains('rounded-xl') || !row.classList.contains('p-4')) return null
+  const activeTab = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find(button => {
+    const label = button.textContent?.trim()
+    return (label === 'Saved' || label === 'Following' || label === 'History') && button.className.includes('bg-brand')
+  })
+  if (activeTab?.textContent?.trim() === 'Following') return null
+  const title = row.querySelector('h2')?.textContent?.trim() || ''
+  const artist = row.querySelector('p')?.textContent?.trim() || 'BVS creator'
+  if (!title) return null
+  return {
+    kind: 'track' as const,
+    id: title,
+    title,
+    artist,
+    href: `/catalogue?q=${encodeURIComponent(title)}`,
   }
 }
 
@@ -242,9 +288,7 @@ export default function FlowDetailsBridge() {
 
       const trigger = target.closest<HTMLElement>('[data-flow-detail-trigger]')
       const anchor = target.closest<HTMLAnchorElement>('a[href]')
-      let shouldOpen = Boolean(trigger)
       let url: URL | null = null
-
       if (anchor) {
         try {
           url = new URL(anchor.href, window.location.origin)
@@ -253,19 +297,25 @@ export default function FlowDetailsBridge() {
         }
       }
 
-      if (!shouldOpen && window.location.pathname === '/search' && url?.origin === window.location.origin) {
-        shouldOpen = url.pathname === '/catalogue' || url.pathname.startsWith('/album/')
+      const artistObject = !trigger && window.location.pathname.startsWith('/artist/')
+        ? articleFallback(target)
+        : null
+      const libraryObject = !trigger && !artistObject ? libraryFallback(target, anchor) : null
+
+      let shouldOpen = Boolean(trigger || artistObject || libraryObject)
+      if (!shouldOpen && url?.origin === window.location.origin) {
+        shouldOpen = url.pathname.startsWith('/album/') || (url.pathname === '/catalogue' && Boolean(url.searchParams.get('q')))
       }
       if (!shouldOpen) return
 
-      let kind = trigger?.dataset.flowDetailTrigger || ''
+      let kind = trigger?.dataset.flowDetailTrigger || artistObject?.kind || libraryObject?.kind || ''
       if (!detailKinds.has(kind)) {
         if (url?.pathname.startsWith('/album/')) kind = 'release'
         else kind = kindFromSearchArticle(target) || ''
       }
 
       const queryTitle = url?.pathname === '/catalogue' ? url.searchParams.get('q') || '' : ''
-      const domTitle = trigger?.dataset.flowDetailTitle || target.closest('article')?.querySelector('h3')?.textContent || ''
+      const domTitle = trigger?.dataset.flowDetailTitle || artistObject?.title || libraryObject?.title || target.closest('article')?.querySelector('h3')?.textContent || ''
       const title = domTitle.trim() || queryTitle
       const curated = curatedFor(title || queryTitle)
 
@@ -276,14 +326,15 @@ export default function FlowDetailsBridge() {
 
       event.preventDefault()
 
-      const href = relativeHref(trigger?.dataset.flowDetailHref || anchor?.href || url?.toString() || '')
+      const fallbackHref = artistObject?.href || libraryObject?.href || ''
+      const href = relativeHref(trigger?.dataset.flowDetailHref || anchor?.href || url?.toString() || fallbackHref)
       const explicit = trigger
         ? baseFromTrigger(trigger, kind as ExploreDetail['kind'], href)
         : null
       const curatedDetail = baseFromCurated(kind as ExploreDetail['kind'], title || queryTitle, href)
       const releaseId = url?.pathname.startsWith('/album/') ? decodeURIComponent(url.pathname.split('/').filter(Boolean)[1] || '') : ''
       const base: ExploreDetail = {
-        ...(curatedDetail || explicit || {
+        ...(curatedDetail || explicit || artistObject || libraryObject || {
           id: releaseId || title || href,
           kind: kind as ExploreDetail['kind'],
           title: title || queryTitle || 'BVS item',
@@ -291,9 +342,9 @@ export default function FlowDetailsBridge() {
           href,
           actionHref: href,
         }),
-        id: trigger?.dataset.flowDetailId || releaseId || curatedDetail?.id || explicit?.id || title || href,
+        id: trigger?.dataset.flowDetailId || releaseId || curatedDetail?.id || explicit?.id || artistObject?.id || libraryObject?.id || title || href,
         kind: kind as ExploreDetail['kind'],
-        title: title || curatedDetail?.title || explicit?.title || queryTitle || 'BVS item',
+        title: title || curatedDetail?.title || explicit?.title || artistObject?.title || libraryObject?.title || queryTitle || 'BVS item',
         href,
         actionHref: href,
       }
