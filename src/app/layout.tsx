@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import VisitorAssistant from "@/components/VisitorAssistant";
+import EditorialCommandCenter from "@/components/EditorialCommandCenter";
 import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
@@ -88,7 +89,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <FlowNavigationProvider>
               <Navbar />
               <AuthLinkRescue />
-              <main className="pt-16 pb-44 md:pb-28">{children}</main>
+              <main className="pt-16 pb-44 md:pb-28">
+                <EditorialCommandCenter />
+                {children}
+              </main>
               <Footer />
               <VisitorAssistant />
               <PwaRegister />
