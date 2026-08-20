@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 const shelves = [
   { id: "radio-on-air", label: "On air" },
   { id: "radio-session", label: "Session" },
+  { id: "radio-context", label: "Track context" },
   { id: "radio-coming-up", label: "Coming up" },
   { id: "radio-shows", label: "Shows" },
 ] as const;
