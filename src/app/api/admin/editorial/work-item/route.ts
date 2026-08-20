@@ -22,7 +22,7 @@ type WorkKind =
   | 'audit'
 
 type Field = { label: string; value: string }
-type Related = { label: string; value: string; meta?: string }
+type Related = { label: string; value: string; meta?: string; kind?: string; id?: string }
 type QuickAction = {
   id: string
   label: string
@@ -49,6 +49,13 @@ type WorkItem = {
   related: Related[]
   audit: Related[]
   quickActions: QuickAction[]
+  distro?: {
+    premium: boolean
+    canQueue: boolean
+    job?: { id: string; status: string; distributor?: string | null; notes?: string | null }
+    trackId?: string
+    releaseId?: string
+  }
 }
 
 async function rows(path: string) {
@@ -86,6 +93,13 @@ async function signStoredMedia(value?: string | null) {
 
 function has(identity: Awaited<ReturnType<typeof editorialIdentity>>, permission: EditorialPermission) {
   return Boolean(identity && can(identity, permission))
+}
+
+function artistPremiumOn(profile?: Record<string, unknown> | null) {
+  if (!profile || profile.premium_active !== true) return false
+  const until = text(profile.premium_until)
+  if (until && Number.isFinite(Date.parse(until)) && Date.parse(until) < Date.now()) return false
+  return true
 }
 
 async function recentAudit(entityId: string) {
@@ -175,28 +189,54 @@ function identityActions(
 async function workTrack(identity: Awaited<ReturnType<typeof editorialIdentity>>, id: string): Promise<WorkItem | null> {
   const track = (await rows(`tracks?id=eq.${encodeURIComponent(id)}&reclassified_to_beat_id=is.null&select=*&limit=1`))[0]
   if (!track) return null
-  const [profiles, credits, messages, clearances, audit] = await Promise.all([
-    rows(`profiles?id=eq.${encodeURIComponent(text(track.user_id))}&select=id,username,display_name,creator_public_name,creator_name_status&limit=1`),
+  const userId = text(track.user_id)
+  const releaseId = text(track.release_id)
+  const [profiles, credits, messages, clearances, siblings, distJobs, audit] = await Promise.all([
+    rows(`profiles?id=eq.${encodeURIComponent(userId)}&select=id,username,display_name,creator_public_name,creator_name_status,premium_active,distribution_enabled,premium_until&limit=1`),
     rows(`track_credits?track_id=eq.${encodeURIComponent(id)}&select=person_name,credit_role,is_verified&order=created_at.asc&limit=100`),
     rows(`track_review_messages?track_id=eq.${encodeURIComponent(id)}&select=author_kind,message,created_at&order=created_at.asc&limit=100`),
     rows(`mobile_distribution_clearances?track_id=eq.${encodeURIComponent(id)}&select=surface,status,rights_basis,evidence_reference,reviewed_at&limit=20`),
+    userId
+      ? rows(`tracks?user_id=eq.${encodeURIComponent(userId)}&reclassified_to_beat_id=is.null&select=id,title,genre,editorial_status,created_at&order=created_at.desc&limit=40`)
+      : Promise.resolve([] as Array<Record<string, unknown>>),
+    rows(
+      releaseId
+        ? `distribution_jobs?or=(track_id.eq.${encodeURIComponent(id)},release_id.eq.${encodeURIComponent(releaseId)})&select=id,status,distributor,notes,track_id,release_id&order=updated_at.desc&limit=5`
+        : `distribution_jobs?track_id=eq.${encodeURIComponent(id)}&select=id,status,distributor,notes,track_id,release_id&order=updated_at.desc&limit=5`,
+    ),
     recentAudit(id),
   ])
   const profile = profiles[0]
   const artist = creatorPublicName({ publicName: text(profile?.creator_public_name), publicNameStatus: text(profile?.creator_name_status), username: text(profile?.username) }) || text(track.artist_name)
+  const premium = artistPremiumOn(profile)
+  const job = distJobs[0]
   return {
     kind: 'track', id, title: text(track.title) || 'Untitled track', subtitle: [artist, text(track.genre)].filter(Boolean).join(' · '), status: text(track.editorial_status), section: 'ed-tracks', createdAt: text(track.created_at) || undefined,
     artwork: await signStoredMedia(text(track.artwork_url)), audio: await signStoredMedia(text(track.file_url)), description: text(track.description) || undefined,
     fields: [
-      { label: 'Artist', value: artist || '—' }, { label: 'Genre', value: text(track.genre) || '—' }, { label: 'Public', value: yesNo(track.is_public) }, { label: 'In rotation', value: yesNo(track.in_rotation) }, { label: 'Licence', value: pretty(track.licence_type) }, { label: 'Price', value: `$${Number(track.download_price || 0).toFixed(2)}` }, { label: 'Submitted', value: dateValue(track.created_at) },
+      { label: 'Artist', value: artist || '—' }, { label: 'Genre', value: text(track.genre) || '—' }, { label: 'Public', value: yesNo(track.is_public) }, { label: 'In rotation', value: yesNo(track.in_rotation) }, { label: 'Licence', value: pretty(track.licence_type) }, { label: 'Price', value: `$${Number(track.download_price || 0).toFixed(2)}` }, { label: 'Premium', value: premium ? 'Active' : 'Off' }, { label: 'Submitted', value: dateValue(track.created_at) },
     ],
     related: [
+      ...siblings.filter((row) => text(row.id) !== id).map((row) => ({
+        label: text(row.title) || 'Untitled track',
+        value: `${pretty(row.editorial_status)}${text(row.genre) ? ` · ${text(row.genre)}` : ''}`,
+        meta: 'same artist',
+        kind: 'track',
+        id: text(row.id),
+      })),
       ...credits.map((row) => ({ label: text(row.person_name), value: text(row.credit_role), meta: row.is_verified === true ? 'verified credit' : 'credit' })),
       ...clearances.map((row) => ({ label: `${text(row.surface).toUpperCase()} clearance`, value: pretty(row.status), meta: text(row.rights_basis) || undefined })),
       ...messages.slice(-5).map((row) => ({ label: `${pretty(row.author_kind)} message`, value: text(row.message), meta: dateValue(row.created_at) })),
     ],
     audit,
     quickActions: trackActions(identity, track),
+    distro: {
+      premium,
+      canQueue: has(identity, 'manage_artist_wallet'),
+      job: job?.id ? { id: text(job.id), status: text(job.status), distributor: text(job.distributor) || null, notes: text(job.notes) || null } : undefined,
+      trackId: id,
+      releaseId: releaseId || undefined,
+    },
   }
 }
 
@@ -229,27 +269,37 @@ async function workBeat(identity: Awaited<ReturnType<typeof editorialIdentity>>,
 async function workRelease(identity: Awaited<ReturnType<typeof editorialIdentity>>, id: string): Promise<WorkItem | null> {
   const release = (await rows(`releases?id=eq.${encodeURIComponent(id)}&select=*&limit=1`))[0]
   if (!release) return null
-  const [members, contributors, evidence, mediaJobs, distJobs, audit] = await Promise.all([
+  const [members, contributors, evidence, mediaJobs, distJobs, profiles, audit] = await Promise.all([
     rows(`release_tracks?release_id=eq.${encodeURIComponent(id)}&select=id,position,title,isrc,track_id,in_rotation&order=position.asc&limit=300`),
     rows(`release_contributors?release_id=eq.${encodeURIComponent(id)}&select=person_name,contribution_role,rights_confirmed&order=created_at.asc&limit=200`),
     rows(`release_clearance_evidence?release_id=eq.${encodeURIComponent(id)}&select=material_type,review_status,original_file_name,created_at&order=created_at.asc&limit=200`),
     rows(`media_processing_jobs?release_id=eq.${encodeURIComponent(id)}&select=status,malware_status,error_code,release_track_id&order=created_at.asc&limit=300`),
-    rows(`distribution_jobs?release_id=eq.${encodeURIComponent(id)}&select=status,updated_at&order=updated_at.desc&limit=5`),
+    rows(`distribution_jobs?release_id=eq.${encodeURIComponent(id)}&select=id,status,distributor,notes,updated_at&order=updated_at.desc&limit=5`),
+    text(release.user_id)
+      ? rows(`profiles?id=eq.${encodeURIComponent(text(release.user_id))}&select=id,premium_active,distribution_enabled,premium_until&limit=1`)
+      : Promise.resolve([] as Array<Record<string, unknown>>),
     recentAudit(id),
   ])
   const blockers = Array.isArray(release.preflight_blockers) ? (release.preflight_blockers as unknown[]).map(text).filter(Boolean) : []
+  const premium = artistPremiumOn(profiles[0])
+  const job = distJobs[0]
   return {
     kind: 'release', id, title: text(release.title) || 'Untitled release', subtitle: [text(release.artist_name), pretty(release.release_type)].filter(Boolean).join(' · '), status: text(release.editorial_status), section: 'ed-releases', createdAt: text(release.created_at) || undefined,
     artwork: await signStoredMedia(text(release.cover_url)), description: blockers.length ? `Preflight blockers: ${blockers.join(' · ')}` : text(release.editorial_notes) || undefined,
     fields: [
-      { label: 'Artist', value: text(release.artist_name) || '—' }, { label: 'Type', value: pretty(release.release_type) }, { label: 'Tracks', value: String(members.length || Number(release.track_count || 0)) }, { label: 'Preflight', value: pretty(release.preflight_status) }, { label: 'Public', value: yesNo(release.is_public) }, { label: 'In rotation', value: yesNo(release.in_rotation) }, { label: 'Submitted', value: dateValue(release.created_at) },
+      { label: 'Artist', value: text(release.artist_name) || '—' }, { label: 'Type', value: pretty(release.release_type) }, { label: 'Tracks', value: String(members.length || Number(release.track_count || 0)) }, { label: 'Preflight', value: pretty(release.preflight_status) }, { label: 'Public', value: yesNo(release.is_public) }, { label: 'In rotation', value: yesNo(release.in_rotation) }, { label: 'Premium', value: premium ? 'Active' : 'Off' }, { label: 'Submitted', value: dateValue(release.created_at) },
     ],
     related: [
-      ...members.map((row) => ({ label: `${text(row.position)}. ${text(row.title)}`, value: text(row.isrc) || 'No ISRC', meta: row.in_rotation === true ? 'in rotation' : undefined })),
+      ...members.map((row) => ({
+        label: `${text(row.position)}. ${text(row.title)}`,
+        value: text(row.isrc) || 'No ISRC',
+        meta: row.in_rotation === true ? 'in rotation' : undefined,
+        kind: text(row.track_id) ? 'track' : undefined,
+        id: text(row.track_id) || undefined,
+      })),
       ...contributors.map((row) => ({ label: text(row.person_name), value: text(row.contribution_role), meta: row.rights_confirmed === true ? 'rights confirmed' : 'rights not confirmed' })),
       ...evidence.map((row) => ({ label: pretty(row.material_type), value: pretty(row.review_status), meta: text(row.original_file_name) })),
       ...mediaJobs.filter((row) => text(row.status) !== 'ready').map((row) => ({ label: 'Media processing', value: pretty(row.status), meta: text(row.error_code) || pretty(row.malware_status) })),
-      ...distJobs.slice(0, 1).map((row) => ({ label: 'Distribution', value: pretty(row.status), meta: dateValue(row.updated_at) })),
     ],
     audit,
     // Publishing a release has preflight, ISRC, rights and rotation choices. Keep
@@ -257,6 +307,12 @@ async function workRelease(identity: Awaited<ReturnType<typeof editorialIdentity
     quickActions: has(identity, 'approve_submissions') && ['submitted', 'in_review'].includes(text(release.editorial_status))
       ? [{ id: 'reject', label: 'Reject release', tone: 'danger', action: 'reject_release', body: { releaseId: id }, noteKey: 'notes', noteRequired: true, confirm: 'Reject this release submission?' }]
       : [],
+    distro: {
+      premium,
+      canQueue: has(identity, 'manage_artist_wallet'),
+      job: job?.id ? { id: text(job.id), status: text(job.status), distributor: text(job.distributor) || null, notes: text(job.notes) || null } : undefined,
+      releaseId: id,
+    },
   }
 }
 
@@ -267,16 +323,28 @@ async function workCreator(identity: Awaited<ReturnType<typeof editorialIdentity
   const producerName = producerPublicName({ producerPublicName: text(profile.producer_public_name), producerNameStatus: text(profile.producer_name_status), publicName: text(profile.creator_public_name), publicNameStatus: text(profile.creator_name_status), username: text(profile.username) })
   const request = kind === 'artist_name' ? text(profile.creator_name_request) : kind === 'producer_name' ? text(profile.producer_name_request) : ''
   const status = kind === 'artist_name' ? text(profile.creator_name_status) : kind === 'producer_name' ? text(profile.producer_name_status) : profile.is_published === true ? 'published' : 'not_published'
-  const audit = await recentAudit(id)
+  const [audit, tracks] = await Promise.all([
+    recentAudit(id),
+    rows(`tracks?user_id=eq.${encodeURIComponent(id)}&reclassified_to_beat_id=is.null&select=id,title,genre,editorial_status,created_at&order=created_at.desc&limit=40`),
+  ])
+  const premium = artistPremiumOn(profile)
   return {
     kind, id, title: kind === 'producer_name' ? producerName : artistName, subtitle: [`@${text(profile.username)}`, text(profile.role), profile.is_producer === true ? 'producer' : ''].filter(Boolean).join(' · '), status, section: kind === 'creator' ? 'ed-artists' : 'ed-identities', createdAt: text(profile.created_at) || undefined,
     artwork: await signStoredMedia(text(profile.avatar_url)), description: text(profile.bio) || undefined,
     fields: [
-      { label: 'Username', value: `@${text(profile.username)}` }, { label: 'Member display name', value: text(profile.display_name) || '—' }, { label: 'Artist public name', value: artistName || '—' }, { label: 'Artist review', value: pretty(profile.creator_name_status) }, { label: 'Producer public name', value: producerName || '—' }, { label: 'Producer review', value: pretty(profile.producer_name_status) }, { label: 'Published profile', value: yesNo(profile.is_published) }, { label: 'Verified', value: yesNo(profile.is_verified) },
+      { label: 'Username', value: `@${text(profile.username)}` }, { label: 'Member display name', value: text(profile.display_name) || '—' }, { label: 'Artist public name', value: artistName || '—' }, { label: 'Artist review', value: pretty(profile.creator_name_status) }, { label: 'Producer public name', value: producerName || '—' }, { label: 'Producer review', value: pretty(profile.producer_name_status) }, { label: 'Published profile', value: yesNo(profile.is_published) }, { label: 'Verified', value: yesNo(profile.is_verified) }, { label: 'Premium', value: premium ? 'Active · Amuse queue available' : 'Off' },
       ...(request ? [{ label: 'Requested identity', value: request === PRODUCER_NAME_USE_ARTIST ? 'Use approved artist public name' : request }] : []),
     ],
-    related: [], audit,
+    related: tracks.map((row) => ({
+      label: text(row.title) || 'Untitled track',
+      value: `${pretty(row.editorial_status)}${text(row.genre) ? ` · ${text(row.genre)}` : ''}`,
+      meta: 'song',
+      kind: 'track',
+      id: text(row.id),
+    })),
+    audit,
     quickActions: kind === 'artist_name' || kind === 'producer_name' ? identityActions(identity, profile, kind) : [],
+    distro: { premium, canQueue: false },
   }
 }
 

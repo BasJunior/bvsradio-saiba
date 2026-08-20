@@ -1,12 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import {
-  AMUSE_PILOT_HANDOFF_CHECKLIST,
+import EditorialAmuseQueue, {
   PRIVATE_DSP_PARTNER_AMUSE,
-  editorialDistributionStatusLabel,
   partnerHandoffNotes,
-} from '@/lib/distribution-path'
+} from '@/components/EditorialAmuseQueue'
 import {
   bestIsrcMatch,
   normalizeIsrc,
@@ -16,6 +14,7 @@ import {
 
 type Release = {
   id: string
+  user_id?: string
   title: string
   artist_name: string
   genre?: string
@@ -85,7 +84,8 @@ type ReleaseClearanceEvidence = {
 
 type DistJob = {
   id: string
-  release_id: string
+  release_id?: string | null
+  track_id?: string | null
   status: string
   distributor?: string | null
   notes?: string | null
@@ -102,6 +102,7 @@ export default function ReleaseEditorialPanel({
   canApprove,
   canRotate,
   canDistro,
+  artistPremium,
   act,
   busy,
 }: {
@@ -115,6 +116,7 @@ export default function ReleaseEditorialPanel({
   canApprove: boolean
   canRotate: boolean
   canDistro: boolean
+  artistPremium?: (userId?: string) => boolean
   act: (action: string, body: Record<string, unknown>) => Promise<void>
   busy: string
 }) {
@@ -468,61 +470,22 @@ export default function ReleaseEditorialPanel({
                   </div>
                 </div>
               )}
-              {job && (
-                <div className="mt-4 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                  <p className="text-[11px] uppercase tracking-wide text-brand">Multi-platform path · Amuse pilot (staff only)</p>
-                  <p className="mt-1">
-                    Distribution job:{' '}
-                    <strong className="text-text-primary">{editorialDistributionStatusLabel(job.status)}</strong>
-                    {job.distributor ? ` · internal: ${job.distributor}` : ' · internal partner unset'}
-                  </p>
-                  {job.notes && <p className="mt-2 opacity-90">{job.notes}</p>}
-                  <p className="mt-2 text-[11px] opacity-80">
-                    Flow: eligible → queued (ops) → submitted (Amuse pilot account) → live_on_dsp (stores live).
-                    Public/artist UI stays partner-anonymous — never market Amuse on the storefront.
-                  </p>
-                  <details className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
-                    <summary className="cursor-pointer font-medium text-text-primary">Amuse hand-off checklist</summary>
-                    <ol className="mt-2 list-decimal space-y-1 pl-4 text-[11px] text-text-secondary">
-                      {AMUSE_PILOT_HANDOFF_CHECKLIST.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ol>
-                  </details>
-                  {canDistro && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {[
-                        ['eligible', 'Eligible'],
-                        ['queued', 'Queue Amuse hand-off'],
-                        ['submitted', 'Submitted to Amuse'],
-                        ['live_on_dsp', 'Live on DSPs'],
-                        ['failed', 'Failed'],
-                        ['not_eligible', 'Not eligible'],
-                      ].map(([status, label]) => (
-                        <button
-                          key={status}
-                          type="button"
-                          disabled={Boolean(busy)}
-                          onClick={() =>
-                            void act('update_distribution_job', {
-                              jobId: job.id,
-                              status,
-                              distributor:
-                                status === 'not_eligible' || status === 'cancelled'
-                                  ? null
-                                  : PRIVATE_DSP_PARTNER_AMUSE,
-                              notes: partnerHandoffNotes(status),
-                            })
-                          }
-                          className="rounded-full border border-white/15 px-3 py-1 hover:border-brand"
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+              <EditorialAmuseQueue
+                premium={Boolean(artistPremium?.(release.user_id))}
+                job={job}
+                canDistro={canDistro}
+                busy={Boolean(busy)}
+                onEnsure={() => act('ensure_distribution_job', { releaseId: release.id })}
+                onUpdate={(status) =>
+                  act('update_distribution_job', {
+                    jobId: job?.id,
+                    status,
+                    distributor:
+                      status === 'not_eligible' || status === 'cancelled' ? null : PRIVATE_DSP_PARTNER_AMUSE,
+                    notes: partnerHandoffNotes(status),
+                  })
+                }
+              />
             </article>
           )
         })}

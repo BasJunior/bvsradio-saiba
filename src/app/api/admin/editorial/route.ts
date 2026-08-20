@@ -18,6 +18,21 @@ async function patchTable(table: string, query: string, body: Record<string, unk
   }))
 }
 
+async function insertRow(table: string, body: Record<string, unknown>) {
+  return jsonOrError(await fetch(editorialUrl(table), {
+    method: 'POST',
+    headers: { ...serviceHeaders, Prefer: 'return=representation' },
+    body: JSON.stringify(body),
+  }))
+}
+
+function artistPremiumOn(profile?: Record<string, unknown> | null) {
+  if (!profile || profile.premium_active !== true) return false
+  const until = String(profile.premium_until || '')
+  if (until && Number.isFinite(Date.parse(until)) && Date.parse(until) < Date.now()) return false
+  return true
+}
+
 async function optionalJson(path: string) {
   const response = await fetch(editorialUrl(path), { headers: serviceHeaders, cache: 'no-store' })
   if (!response.ok) return []
@@ -72,7 +87,7 @@ async function loadTracksSection() {
   const [tracksRes, mobileClearances] = await Promise.all([
     fetch(
       editorialUrl(
-        'tracks?reclassified_to_beat_id=is.null&select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at&order=created_at.desc&limit=100',
+        'tracks?reclassified_to_beat_id=is.null&select=id,user_id,title,artist_name,genre,description,file_url,artwork_url,is_public,is_featured,is_downloadable,download_price,editorial_status,editorial_notes,in_rotation,licence_type,licence_summary,created_at,release_id,isrc,spotify_url&order=created_at.desc&limit=100',
       ),
       { headers: serviceHeaders, cache: 'no-store' },
     ),
@@ -88,12 +103,13 @@ async function loadTracksSection() {
       artwork_url: await signStoredMedia(String(track.artwork_url || '')),
     })),
   )
-  const [trackRequests, trackReviewMessages, credits, rawArtworkChangeRequests, beatPacks] = await Promise.all([
+  const [trackRequests, trackReviewMessages, credits, rawArtworkChangeRequests, beatPacks, distributionJobs] = await Promise.all([
     optionalJson('track_review_requests?select=*&order=created_at.desc&limit=100'),
     optionalJson('track_review_messages?select=*&order=created_at.asc&limit=500'),
     optionalJson('track_credits?select=*&order=created_at.desc&limit=100'),
     optionalJson('artwork_change_requests?select=*&order=created_at.desc&limit=100'),
     optionalJson('beat_packs?select=id,title,producer_user_id,artwork_path,status&order=created_at.desc&limit=200'),
+    optionalJson('distribution_jobs?select=*&order=updated_at.desc&limit=200'),
   ])
   const artworkChangeRequests = await Promise.all(
     (rawArtworkChangeRequests as Array<Record<string, unknown>>).map(async (row) => ({
@@ -102,7 +118,7 @@ async function loadTracksSection() {
       current_artwork_url: await signStoredMedia(String(row.current_artwork_path || '')),
     })),
   )
-  return { tracks, trackRequests, trackReviewMessages, credits, artworkChangeRequests, beatPacks }
+  return { tracks, trackRequests, trackReviewMessages, credits, artworkChangeRequests, beatPacks, distributionJobs }
 }
 
 async function loadBeatsSection() {
@@ -170,7 +186,7 @@ async function loadReleasesSection() {
 async function loadProfilesSection() {
   const profilesRes = await fetch(
     editorialUrl(
-      'profiles?select=id,username,display_name,avatar_url,bio,website_url,location,role,is_producer,is_verified,is_published,spotify_url,created_at,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,creator_name_reviewed_at,producer_public_name,producer_name_request,producer_name_status,producer_name_review_notes,producer_name_reviewed_at&order=created_at.desc&limit=200',
+      'profiles?select=id,username,display_name,avatar_url,bio,website_url,location,role,is_producer,is_verified,is_published,spotify_url,created_at,premium_active,distribution_enabled,premium_until,premium_plan_id,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,creator_name_reviewed_at,producer_public_name,producer_name_request,producer_name_status,producer_name_review_notes,producer_name_reviewed_at&order=created_at.desc&limit=200',
     ),
     { headers: serviceHeaders, cache: 'no-store' },
   )
@@ -868,6 +884,67 @@ export async function PATCH(request: Request) {
         })
         await audit(identity.user.id, enabled ? 'release_rotation_on' : 'release_rotation_off', 'release', releaseId)
         return NextResponse.json({ result })
+      }
+      case 'ensure_distribution_job': {
+        requirePermission('manage_artist_wallet')
+        const { PRIVATE_DSP_PARTNER_AMUSE, partnerHandoffNotes } = await import('@/lib/distribution-path')
+        const trackId = String(body.trackId || '')
+        const releaseIdIn = String(body.releaseId || '')
+        if (!trackId && !releaseIdIn) {
+          return NextResponse.json({ error: 'trackId or releaseId required.' }, { status: 400 })
+        }
+        let artistUserId = ''
+        let releaseId = releaseIdIn || ''
+        if (trackId) {
+          const track = (await optionalJson(
+            `tracks?id=eq.${encodeURIComponent(trackId)}&select=id,user_id,release_id,title&limit=1`,
+          ))[0] as { user_id?: string; release_id?: string | null } | undefined
+          if (!track?.user_id) return NextResponse.json({ error: 'Track not found.' }, { status: 404 })
+          artistUserId = String(track.user_id)
+          if (!releaseId && track.release_id) releaseId = String(track.release_id)
+        }
+        if (releaseId && !artistUserId) {
+          const release = (await optionalJson(
+            `releases?id=eq.${encodeURIComponent(releaseId)}&select=id,user_id,title&limit=1`,
+          ))[0] as { user_id?: string } | undefined
+          if (!release?.user_id) return NextResponse.json({ error: 'Release not found.' }, { status: 404 })
+          artistUserId = String(release.user_id)
+        }
+        const profile = (await optionalJson(
+          `profiles?id=eq.${encodeURIComponent(artistUserId)}&select=id,premium_active,distribution_enabled,premium_until&limit=1`,
+        ))[0] as Record<string, unknown> | undefined
+        if (!artistPremiumOn(profile)) {
+          return NextResponse.json(
+            { error: 'Amuse queue is only available when this artist has active Premium.' },
+            { status: 409 },
+          )
+        }
+        const existingQuery = releaseId
+          ? `distribution_jobs?release_id=eq.${encodeURIComponent(releaseId)}&select=*&limit=1`
+          : `distribution_jobs?track_id=eq.${encodeURIComponent(trackId)}&select=*&limit=1`
+        const existing = (await optionalJson(existingQuery))[0] as Record<string, unknown> | undefined
+        if (existing?.id) {
+          return NextResponse.json({ result: [existing], created: false })
+        }
+        const status = ['not_eligible', 'eligible', 'queued', 'submitted', 'live_on_dsp', 'failed', 'cancelled'].includes(String(body.status || ''))
+          ? String(body.status)
+          : 'eligible'
+        const payload: Record<string, unknown> = {
+          artist_user_id: artistUserId,
+          status,
+          distributor: PRIVATE_DSP_PARTNER_AMUSE,
+          notes: partnerHandoffNotes(status),
+        }
+        if (releaseId) payload.release_id = releaseId
+        if (trackId) payload.track_id = trackId
+        const result = await insertRow('distribution_jobs', payload)
+        await audit(identity.user.id, 'distribution_job_created', 'distribution_job', String((result as Array<{ id?: string }>)?.[0]?.id || artistUserId), {
+          status,
+          releaseId: releaseId || null,
+          trackId: trackId || null,
+          partner: 'amuse_pilot',
+        })
+        return NextResponse.json({ result, created: true })
       }
       case 'update_distribution_job': {
         requirePermission('manage_artist_wallet')

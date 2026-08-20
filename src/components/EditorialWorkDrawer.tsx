@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
+import EditorialAmuseQueue, { PRIVATE_DSP_PARTNER_AMUSE, partnerHandoffNotes } from '@/components/EditorialAmuseQueue'
 
 export type EditorialCommandItem = {
   id: string
@@ -16,7 +17,7 @@ export type EditorialCommandItem = {
   keywords: string[]
 }
 
-type Related = { label: string; value: string; meta?: string }
+type Related = { label: string; value: string; meta?: string; kind?: string; id?: string }
 type Field = { label: string; value: string }
 type QuickAction = {
   id: string
@@ -44,6 +45,13 @@ type WorkItem = {
   related: Related[]
   audit: Related[]
   quickActions: QuickAction[]
+  distro?: {
+    premium: boolean
+    canQueue: boolean
+    job?: { id: string; status: string; distributor?: string | null; notes?: string | null }
+    trackId?: string
+    releaseId?: string
+  }
 }
 
 type WorkResponse = {
@@ -256,9 +264,66 @@ export default function EditorialWorkDrawer({
                 <section>
                   <h3 className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Related work context</h3>
                   <div className="mt-3 max-h-80 space-y-2 overflow-y-auto rounded-2xl border border-white/10 p-3">
-                    {work.related.map((row, index) => <div key={`${row.label}:${row.value}:${index}`} className="rounded-xl bg-white/[.03] p-3"><div className="flex flex-wrap items-start justify-between gap-2"><p className="text-sm font-medium">{row.label}</p>{row.meta ? <span className="text-[10px] uppercase tracking-wider text-text-secondary">{row.meta}</span> : null}</div><p className="mt-1 whitespace-pre-wrap break-words text-xs text-text-secondary">{row.value}</p></div>)}
+                    {work.related.map((row, index) => {
+                      const openRelated = row.kind && row.id
+                        ? () => onSelect({
+                            id: row.id as string,
+                            kind: row.kind as string,
+                            title: row.label,
+                            subtitle: row.value,
+                            section: row.kind === 'track' ? 'ed-tracks' : command.section,
+                            priority: 0,
+                            keywords: [],
+                          })
+                        : undefined
+                      return (
+                        <button
+                          key={`${row.label}:${row.value}:${index}`}
+                          type="button"
+                          disabled={!openRelated}
+                          onClick={openRelated}
+                          className={`w-full rounded-xl bg-white/[.03] p-3 text-left ${openRelated ? 'hover:bg-white/[.06] hover:ring-1 hover:ring-brand/40' : ''}`}
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <p className="text-sm font-medium">{row.label}</p>
+                            {row.meta ? <span className="text-[10px] uppercase tracking-wider text-text-secondary">{row.meta}</span> : null}
+                          </div>
+                          <p className="mt-1 whitespace-pre-wrap break-words text-xs text-text-secondary">{row.value}</p>
+                        </button>
+                      )
+                    })}
                   </div>
                 </section>
+              ) : null}
+
+              {work.distro?.premium ? (
+                <EditorialAmuseQueue
+                  premium
+                  job={work.distro.job}
+                  canDistro={work.distro.canQueue}
+                  busy={Boolean(acting)}
+                  onEnsure={async () => {
+                    await runAction({
+                      id: 'ensure-amuse',
+                      label: 'Create Amuse queue',
+                      action: 'ensure_distribution_job',
+                      body: { trackId: work.distro?.trackId, releaseId: work.distro?.releaseId },
+                    })
+                  }}
+                  onUpdate={async (status) => {
+                    await runAction({
+                      id: `amuse-${status}`,
+                      label: status,
+                      action: 'update_distribution_job',
+                      body: {
+                        jobId: work.distro?.job?.id,
+                        status,
+                        distributor: status === 'not_eligible' || status === 'cancelled' ? null : PRIVATE_DSP_PARTNER_AMUSE,
+                        notes: partnerHandoffNotes(status),
+                      },
+                    })
+                  }}
+                />
               ) : null}
 
               {work.quickActions.length ? (

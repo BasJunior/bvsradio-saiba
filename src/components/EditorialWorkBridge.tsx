@@ -38,7 +38,7 @@ function parseWork(value: string | null) {
 
 export default function EditorialWorkBridge() {
   const pathname = usePathname()
-  const active = pathname === '/editorial' || pathname === '/admin/editorial'
+  const active = pathname === '/editorial' || pathname === '/editorial/queues' || pathname === '/admin/editorial'
   const [payload, setPayload] = useState<CommandPayload | null>(null)
   const [workKey, setWorkKey] = useState('')
 
