@@ -1,29 +1,25 @@
-# BVS Supabase project
+# BVS Radio Beta Supabase project
 
 | Field | Value |
 |-------|--------|
-| **Project ref** | `rdwwyolrxahimcgpkzzy` |
-| **Dashboard** | https://supabase.com/dashboard/project/rdwwyolrxahimcgpkzzy |
-| **SQL Editor** | https://supabase.com/dashboard/project/rdwwyolrxahimcgpkzzy/sql/new |
-| **API URL** | `https://rdwwyolrxahimcgpkzzy.supabase.co` |
+| **Project ref** | `kuqdhuomcqonhnwfgrlw` |
+| **Dashboard** | https://supabase.com/dashboard/project/kuqdhuomcqonhnwfgrlw |
+| **SQL Editor** | https://supabase.com/dashboard/project/kuqdhuomcqonhnwfgrlw/sql/new |
+| **API URL** | `https://kuqdhuomcqonhnwfgrlw.supabase.co` |
 
-## Apply packs (Abias — SQL Editor)
+This worktree must never use the production project ref `rdwwyolrxahimcgpkzzy`.
 
-Paste-ready files on VPS:
+## Agent-owned setup
 
-`bvsradio/ops/sql-runs/paste-ready/`
+1. Export beta credentials from `~/.openclaw/secrets/bvs-supabase-beta.env`.
+2. Run `python3 scripts/apply-supabase-packs.py --apply-missing --yes`.
+3. Run `python3 scripts/verify-supabase-schema.py --full`.
+4. Auth Site URL and redirects must use `https://bvsradio-beta.vercel.app`.
+5. Media objects use the isolated `beta/` R2 key prefix.
 
-1. Open SQL Editor (link above)  
-2. Run **in order** `01` … `08` (or one-shot `ALL-PACKS-01-to-08.sql`)  
-3. Storage → create private bucket **`show-episodes`** if missing  
-4. Auth → URL config → Site URL `https://bvsradio.com` (see `SUPABASE_AUTH_REDIRECTS.md`)  
-5. Telegram agents: **sql packs done**
-
-## Agent apply (after one-time secret)
+The database-only compatibility secret is stored separately:
 
 ```bash
-# ~/.openclaw/secrets/bvs-supabase-db.env  (chmod 600)
-DATABASE_URL=postgresql://postgres.[ref]:[password]@...:5432/postgres
+# ~/.openclaw/secrets/bvs-supabase-beta-db.env  (chmod 600)
+DATABASE_URL=postgresql://postgres:[password]@db.kuqdhuomcqonhnwfgrlw.supabase.co:5432/postgres
 ```
-
-Then: `python3 scripts/apply-supabase-packs.py --apply-missing --yes`
