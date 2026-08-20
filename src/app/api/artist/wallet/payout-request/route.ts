@@ -17,6 +17,13 @@ async function currentUser(request: Request) {
 }
 
 export async function POST(request: Request) {
+  // Financial writes are opt-in even in beta. This keeps Flow v2 UI work from
+  // accidentally enabling a payout programme merely because the endpoint was
+  // merged. Enable only in an explicitly approved staging/production lane.
+  if (process.env.BVS_ARTIST_PAYOUT_REQUESTS_ENABLED !== "1") {
+    return NextResponse.json({ error: "Artist payout requests are not enabled." }, { status: 503 });
+  }
+
   const user = await currentUser(request);
   if (!user) return NextResponse.json({ error: "Sign in to request a payout." }, { status: 401 });
   if (!service) return NextResponse.json({ error: "Payout requests are not configured." }, { status: 503 });
