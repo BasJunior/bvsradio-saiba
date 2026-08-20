@@ -10,6 +10,8 @@ import {
 import Link from "next/link";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import MyBeatStore from "@/components/MyBeatStore";
+import BeatPackUploadForm from "@/components/BeatPackUploadForm";
+import ReleaseSubmitForm from "@/components/ReleaseSubmitForm";
 import CreatorInsights from "@/components/CreatorInsights";
 import StudioPremiumDesk from "@/components/StudioPremiumDesk";
 import DistributionPathTimeline from "@/components/DistributionPathTimeline";
@@ -206,15 +208,28 @@ export default function CreatorStudio() {
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h2 id="artist-access-heading" className="text-3xl font-semibold">Music and releases</h2>
-              <p className="mt-2 max-w-2xl text-sm text-text-secondary">Submit music, follow editorial decisions, manage published recordings and track the path to distribution.</p>
+              <p className="mt-2 max-w-2xl text-sm text-text-secondary">Submit music, multi-track albums/EPs, follow editorial decisions, manage published recordings and track the path to distribution — without leaving Studio.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href="/upload" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Submit music</Link>
-              <Link href="/artists" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Wallet &amp; earnings</Link>
+              <a href="#artist-upload" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Upload music</a>
+              <Link href="/upload" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Full upload page</Link>
+              <Link href="/artists" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Wallet & earnings</Link>
               <Link href="/artist/premium" className="rounded-full border border-brand/40 px-5 py-2.5 text-sm text-brand hover:bg-brand/10">Artist Premium</Link>
             </div>
           </div>
         </section>
+      )}
+      {artist && (
+        <div id="artist-upload" className="scroll-mt-24">
+          <CreatorDropDown label="Upload album / EP / single" defaultOpen>
+            <div className="space-y-3 pt-2">
+              <p className="text-sm text-text-secondary">
+                Artist form only: multi-track Album / EP or a single recording. Files go to private storage, then editorial review. Separate from producer BeatStore packs below.
+              </p>
+              <ReleaseSubmitForm onSuccess={() => void load(token)} />
+            </div>
+          </CreatorDropDown>
+        </div>
       )}
       {artist && (
         <div id="release-path" className="scroll-mt-24">
@@ -231,7 +246,53 @@ export default function CreatorStudio() {
         </div>
       )}
       {(artist || producer) && <div id="insights" className="scroll-mt-24"><CreatorDropDown label="Performance and editorial insights" defaultOpen><CreatorInsights token={token} /></CreatorDropDown></div>}
-      {producer && <div id="beatstore" className="scroll-mt-24"><CreatorDropDown label="My BeatStore"><MyBeatStore /></CreatorDropDown></div>}
+      {producer && (
+        <section id="producer-access" className="scroll-mt-24 pt-12" aria-labelledby="producer-access-heading">
+          <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Producer access</p>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 id="producer-access-heading" className="text-3xl font-semibold">BeatStore packs & singles</h2>
+              <p className="mt-2 max-w-2xl text-sm text-text-secondary">
+                Upload a multi-beat pack/EP (for example 10 previews at once) or a single beat, then track editorial status here. Packs stay grouped through approve → publish.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <a href="#beat-pack-upload" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Upload beat pack</a>
+              <a href="#beat-single-upload" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Single beat</a>
+              <Link href="/upload?type=pack" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Full upload page</Link>
+            </div>
+          </div>
+        </section>
+      )}
+      {producer && (
+        <div id="beat-pack-upload" className="scroll-mt-24">
+          <CreatorDropDown label="Upload a beat pack / EP" defaultOpen>
+            <div className="space-y-3 pt-2">
+              <p className="text-sm text-text-secondary">
+                Producer form: multi-select 2–20 tagged previews as one ordered pack. Same flow as /upload?type=pack — private storage → editorial pack queue → approve whole pack → publish to BeatStore.
+              </p>
+              <BeatPackUploadForm />
+            </div>
+          </CreatorDropDown>
+        </div>
+      )}
+      {producer && (
+        <div id="beat-single-upload" className="scroll-mt-24">
+          <CreatorDropDown label="Upload a single beat">
+            <div className="space-y-3 pt-2">
+              <p className="text-sm text-text-secondary">One beat at a time when you are not shipping a pack.</p>
+              <MyBeatStore creationOnly />
+            </div>
+          </CreatorDropDown>
+        </div>
+      )}
+      {producer && (
+        <div id="beatstore" className="scroll-mt-24">
+          <CreatorDropDown label="My BeatStore catalogue & review" defaultOpen>
+            <MyBeatStore />
+          </CreatorDropDown>
+        </div>
+      )}
 
       <section id="business" className="scroll-mt-24 pt-12" aria-labelledby="business-heading">
         <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Creator business</p>
@@ -341,9 +402,10 @@ function StudioOverview({
 }) {
   const roles = [artist && "Artist", producer && "Producer", writer && "Writer", showCreator && "Show creator"].filter(Boolean) as string[];
   const tasks = [
-    artist && { href: "/upload", eyebrow: "Music", title: "Submit a release", copy: "Upload a single, EP or album for editorial review." },
+    artist && { href: "#artist-upload", eyebrow: "Music", title: "Upload album / EP", copy: "Multi-track artist release from Studio — no need to leave for /upload." },
     artist && { href: "#releases", eyebrow: `${trackCount} track${trackCount === 1 ? "" : "s"}`, title: "Manage releases", copy: "Check decisions, requests, publication and distribution status." },
-    producer && { href: "#beatstore", eyebrow: "BeatStore", title: "Manage beats", copy: "Upload, price and review your published beat catalogue." },
+    producer && { href: "#beat-pack-upload", eyebrow: "Pack / EP", title: "Upload beat pack", copy: "Multi-select 2–20 previews (e.g. 10-pack) without leaving Studio." },
+    producer && { href: "#beatstore", eyebrow: "BeatStore", title: "Manage beats", copy: "Track pack and single status, editorial replies and live catalogue." },
     { href: "#marketplace-desk", eyebrow: "Marketplace", title: "Products & services", copy: "Manage listings without mixing commerce with editorial decisions." },
     (artist || producer) && { href: "#insights", eyebrow: "Performance", title: "View insights", copy: "See plays and editorially meaningful performance signals." },
     { href: "/artists", eyebrow: "Money", title: "Wallet & earnings", copy: "Review sales, fees, processing, refunds and payout readiness." },
@@ -356,6 +418,9 @@ function StudioOverview({
     </div>
     <nav className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Studio sections">
       {artist && <Link href="#artist-access" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Artist access</Link>}
+      {artist && <Link href="#artist-upload" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Upload music</Link>}
+      {producer && <Link href="#producer-access" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Producer</Link>}
+      {producer && <Link href="#beat-pack-upload" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Beat pack</Link>}
       {producer && <Link href="#beatstore" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">BeatStore</Link>}
       <Link href="#business" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Business</Link>
       {writer && <Link href="#writer-work" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Writing</Link>}
