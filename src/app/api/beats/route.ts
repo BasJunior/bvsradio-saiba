@@ -23,6 +23,10 @@ import { ensureBeatArtworkPath } from '@/lib/beat-cover-autogen'
 
 export const runtime = 'nodejs'
 
+const beatBackendReady = Boolean(
+  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY,
+)
+
 async function privateMediaUrl(value?: string | null) {
   if (!value) return value
   const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
@@ -32,6 +36,18 @@ async function privateMediaUrl(value?: string | null) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const scope = searchParams.get('scope') || 'public'
+
+  if (!beatBackendReady) {
+    if (scope === 'mine') {
+      return NextResponse.json({ error: 'Beta BeatStore backend is not configured yet.' }, { status: 503 })
+    }
+    return NextResponse.json({
+      beats: [],
+      count: 0,
+      ready: false,
+      summary: { count: 0, producerCount: 0, minPrice: null, updatedAt: new Date().toISOString() },
+    })
+  }
 
   if (scope === 'mine') {
     const identity = await beatIdentity(request)
@@ -115,6 +131,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    if (!beatBackendReady) {
+      return NextResponse.json({ error: 'Beta BeatStore backend is not configured yet.' }, { status: 503 })
+    }
     const identity = await beatIdentity(request)
     if (!identity?.user?.id) {
       return NextResponse.json({ error: 'Sign in required.' }, { status: 401 })
