@@ -140,17 +140,31 @@ export default function LibraryPage() {
       </div>
 
       <div className="mt-6 space-y-3">
-        {items.map((item) => (
-          <div key={item.id} className="flex items-center gap-4 rounded-xl border border-white/10 p-4">
-            <Link href={item.href} className="min-w-0 flex-1">
-              <h2 className="truncate font-medium">{item.title}</h2>
-              <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
-            </Link>
-            {active !== "history" ? (
-              <LibraryAction item={item} section={active === "follows" ? "follows" : "favourites"} compact />
-            ) : null}
-          </div>
-        ))}
+        {items.map((item) => {
+          const detailProps = item.kind === "track"
+            ? {
+                "data-flow-detail-trigger": "track",
+                "data-flow-detail-id": item.id,
+                "data-flow-detail-title": item.title,
+                "data-flow-detail-artist": item.subtitle,
+                "data-flow-detail-image": item.image || "",
+                "data-flow-detail-href": item.href,
+              }
+            : {};
+          return (
+            <div key={item.id} className="flex items-center gap-4 rounded-xl border border-white/10 p-4">
+              <Link {...detailProps} href={item.href} className="min-w-0 flex-1">
+                <h2 className="truncate font-medium">{item.title}</h2>
+                <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
+              </Link>
+              {active !== "history" ? (
+                <div data-flow-detail-skip="true">
+                  <LibraryAction item={item} section={active === "follows" ? "follows" : "favourites"} compact />
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
 
       {items.length === 0 ? (
