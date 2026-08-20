@@ -1,4 +1,6 @@
 import type { BvsObject, BvsObjectKind } from "@/lib/bvs-object";
+import { flowV2Flags } from "@/lib/feature-flags";
+import { recordRecentFlowObject } from "@/lib/flow-memory";
 
 export type FlowTrailItem = {
   id: string;
@@ -62,6 +64,9 @@ export function recordFlowOpen(object: BvsObject, relationship?: string) {
     ? [...current.slice(0, -1), nextItem]
     : [...current, nextItem].slice(-MAX_TRAIL);
   window.sessionStorage.setItem(TRAIL_KEY, JSON.stringify(next));
+  if (flowV2Flags.yourBvs || flowV2Flags.sceneTrailUi) {
+    recordRecentFlowObject(nextItem);
+  }
   window.dispatchEvent(new CustomEvent("bvs:flow-trail-change", { detail: { item: nextItem } }));
 }
 
