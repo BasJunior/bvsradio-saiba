@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import LibraryAction from "@/components/LibraryAction";
 import SceneTrail from "@/components/flow/SceneTrail";
+import YourBvsActivity from "@/components/flow/YourBvsActivity";
 import { useLibrarySync } from "@/components/LibrarySyncProvider";
 import { useStationPlayer } from "@/components/StationPlayer";
 import { trackEvent } from "@/lib/analytics";
@@ -14,7 +15,7 @@ import { readLibrary, type LibrarySection } from "@/lib/library";
 const sections: Array<{ id: LibrarySection; label: string; empty: string }> = [
   { id: "favourites", label: "Saved", empty: "Save tracks you want to find again." },
   { id: "follows", label: "Following", empty: "Follow artists as their BVS profiles go live." },
-  { id: "history", label: "History", empty: "Tracks you listen to on BVS will appear here." },
+  { id: "history", label: "History", empty: "Tracks you actually play on BVS will appear here." },
 ];
 
 export default function LibraryPage() {
@@ -61,7 +62,7 @@ export default function LibraryPage() {
       <h1 className="text-4xl md:text-5xl">{flowV2Flags.yourBvs ? "BVS remembers your path" : "Library"}</h1>
       <p className="mt-3 max-w-2xl text-text-secondary">
         {flowV2Flags.yourBvs
-          ? "Return to your listening session, recent discoveries, saves and follows."
+          ? "Return to your listening session, recent discoveries, saves, follows and what changed while you were away."
           : !signedIn
             ? "Saved on this device. Sign in to sync across devices."
             : "Your saved BVS music and creators."}
@@ -114,6 +115,8 @@ export default function LibraryPage() {
           </div>
         </section>
       ) : null}
+
+      {flowV2Flags.yourBvs && flowV2Flags.pulse ? <YourBvsActivity /> : null}
 
       {flowV2Flags.sceneTrailUi ? (
         <div className="mt-6">
