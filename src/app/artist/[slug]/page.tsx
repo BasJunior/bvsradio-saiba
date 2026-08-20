@@ -4,8 +4,10 @@ import type { Metadata } from "next";
 import LibraryAction from "@/components/LibraryAction";
 import ShareCreatorButton from "@/components/ShareCreatorButton";
 import FlowRelationships from "@/components/flow/FlowRelationships";
+import CreatorActivity from "@/components/flow/CreatorActivity";
 import ArtistProfileMusic from "@/components/ArtistProfileMusic";
 import ArtistProfileBeats from "@/components/ArtistProfileBeats";
+import { flowV2Flags } from "@/lib/feature-flags";
 
 function external(value: string) {
   return /^https?:\/\//i.test(value)
@@ -157,6 +159,8 @@ export default async function ArtistPage({
           {producerFirst && profile.beats ? <ArtistProfileBeats artist={profile.name} username={profile.username} beats={profile.beats} /> : null}
 
           {hasMusic ? <ArtistProfileMusic artist={profile.name} username={profile.username} tracks={profile.tracks} /> : null}
+
+          {flowV2Flags.pulse ? <CreatorActivity creatorId={profile.id} /> : null}
 
           {hasConnections ? <section id="connections" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="connections" /></section> : null}
           {hasBeats && !producerFirst && profile.beats ? <ArtistProfileBeats artist={profile.name} username={profile.username} beats={profile.beats} /> : null}
