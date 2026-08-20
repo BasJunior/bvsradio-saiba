@@ -71,6 +71,26 @@ if (!trackId) {
   trackId = created[0].id;
 }
 
+// A public show event must always have a public programme shell. Without this,
+// Pulse can legitimately discover the event but /shows/<slug> has no route
+// content to render and becomes a dead link.
+await json("/rest/v1/programmes?on_conflict=slug", {
+  method: "POST",
+  headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+  body: JSON.stringify({
+    slug: "beta-sunrise-show",
+    title: "Beta Sunrise Show",
+    tagline: "A safe Flow v2 staging programme.",
+    description: "Beta-only programme used to verify BVS show lifecycle, rooms, TV mode and connected discovery.",
+    image_url: "/images/editorial/radio-studio-harare.webp",
+    host: "Beta Producer",
+    day_label: "Beta staging",
+    start_time: "09:00:00",
+    timezone: "Africa/Harare",
+    status: "scheduled",
+  }),
+});
+
 const showRows = await json("/rest/v1/show_events?room_id=eq.beta-sunrise-room&select=id&limit=1");
 let showId = showRows?.[0]?.id;
 if (!showId) {
