@@ -108,6 +108,7 @@ Agents **do not** re-ask Abias to paste SQL when `DATABASE_URL` works.
 | 27 | `marketplace-services` | `supabase-marketplace-services.sql` | professional profile fields and held creator-service fulfilment lifecycle |
 | 28 | `mobile-distribution` | `supabase-mobile-distribution.sql` | evidence-gated iOS catalogue now; same surface model reserved for Android later |
 | 29 | `artwork-change-requests` | `supabase-artwork-change-requests.sql` | artist/producer cover replacements for tracks, releases, beats and beat packs; editorial apply-on-approve |
+| 30 | `flow-v2-measurement` | `supabase-flow-v2-measurement.sql` | server-only 30-second stream qualification records; settlement remains separate |
 
 Bookkeeping table (created by applier): `public.bvs_schema_packs`  
 Stores pack id, file sha256, applied_at — so agents know what changed.

@@ -6,6 +6,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import type { StationTrack } from "@/lib/station";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
 import { listeningBucket, trackEvent } from "@/lib/analytics";
+import { flowV2Flags } from "@/lib/feature-flags";
+import {
+  accumulateListening,
+  createQualificationState,
+  QUALIFIED_STREAM_SECONDS,
+  type StreamQualificationState,
+} from "@/lib/stream-qualification";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -126,6 +133,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const audio = useRef<HTMLAudioElement>(null);
   const startedAt = useRef<number | null>(null);
   const countedStarts = useRef(new Set<string>());
+  const qualification = useRef<StreamQualificationState | null>(null);
+  const qualificationSent = useRef(false);
   const failStreak = useRef(0);
   const hydrated = useRef(false);
   const [tracks, setTracks] = useState<StationTrack[]>(initialTracks);
@@ -205,6 +214,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     const i = tracks.findIndex((t) => trackKey(t) === trackKey(current));
     return i >= 0 ? i : 0;
   }, [current, tracks]);
+
+  useEffect(() => {
+    qualificationSent.current = false;
+    qualification.current = flowV2Flags.qualifiedStreams && current?.id
+      ? createQualificationState(current.id, audio.current?.currentTime || 0)
+      : null;
+  }, [current?.id, current?.src]);
 
   const flushListening = useCallback(() => {
     if (startedAt.current === null || !current) return;
@@ -457,7 +473,47 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     if (!el) return;
     setElapsed(el.currentTime || 0);
     if (el.duration && Number.isFinite(el.duration)) setDuration(el.duration);
-  }, []);
+
+    if (
+      !flowV2Flags.qualifiedStreams ||
+      !current?.id ||
+      !isPlaying ||
+      el.paused ||
+      el.seeking
+    ) {
+      return;
+    }
+
+    let state = qualification.current;
+    if (!state || state.trackId !== current.id) {
+      state = createQualificationState(current.id, el.currentTime || 0);
+      qualification.current = state;
+      qualificationSent.current = false;
+      return;
+    }
+
+    accumulateListening(state, el.currentTime || 0);
+    if (!state.qualified || qualificationSent.current) return;
+
+    qualificationSent.current = true;
+    const source = modeRef.current === "station" ? "station" : "ondemand";
+    trackEvent("stream_qualified_30s", {
+      track_id: state.trackId,
+      listened_seconds: QUALIFIED_STREAM_SECONDS,
+      source,
+    });
+    void fetch("/api/streams/qualified", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        playInstanceId: state.playInstanceId,
+        trackId: state.trackId,
+        listenedSeconds: QUALIFIED_STREAM_SECONDS,
+        source,
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  }, [current, isPlaying]);
 
   const onLoadedMetadata = useCallback(() => {
     const el = audio.current;

@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test:safe-floor": "node --experimental-strip-types scripts/safe-floor-tests.mjs",
     "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
+    "test:stream-qualification": "node --experimental-strip-types scripts/stream-qualification-tests.mjs",
     "typecheck": "tsc --noEmit",
     "cap:sync": "npx cap sync",
     "cap:sync:beta:ios": "BVS_APP_VARIANT=beta npx cap sync ios",

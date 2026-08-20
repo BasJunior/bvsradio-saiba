@@ -151,6 +151,11 @@ PACKS: dict[str, dict[str, Any]] = {
         "file": "supabase-artwork-change-requests.sql",
         "tables": ["artwork_change_requests"],
     },
+    "flow-v2-measurement": {
+        "step": 30,
+        "file": "supabase-flow-v2-measurement.sql",
+        "tables": ["stream_qualifications"],
+    },
 }
 
 ORDER = sorted(PACKS.keys(), key=lambda k: PACKS[k]["step"])
