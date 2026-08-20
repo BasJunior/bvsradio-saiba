@@ -112,6 +112,22 @@ function orderForExploreMode(items: SearchItem[], mode: ExploreMode) {
   return items
 }
 
+function supportsContextDetails(kind: SearchKind) {
+  return kind === 'track' || kind === 'beat' || kind === 'release'
+}
+
+function flowDetailProps(item: SearchItem) {
+  if (!supportsContextDetails(item.kind)) return {}
+  return {
+    'data-flow-detail-trigger': item.kind,
+    'data-flow-detail-id': item.id.replace(/^(track|beat|release)-/, ''),
+    'data-flow-detail-title': item.title,
+    'data-flow-detail-artist': item.subtitle.split('·')[0]?.trim() || 'BVS creator',
+    'data-flow-detail-image': item.image || '',
+    'data-flow-detail-href': item.href,
+  }
+}
+
 export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | SearchKind>('all')
@@ -309,13 +325,13 @@ export default function SearchPage() {
           {group.items.map(item => <article key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-3 transition hover:border-brand/35">
             <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</div>
             {item.detail ? (
-              <button type="button" onClick={() => openResult(item)} className="min-w-0 flex-1 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70 rounded-lg">
+              <button type="button" onClick={() => openResult(item)} className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || item.kind}</span>
                 <h3 className="truncate text-lg">{item.title}</h3>
                 <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
               </button>
             ) : (
-              <Link href={item.href} onClick={() => trackEvent('search_result_open', { object_kind: item.kind, object_id: item.id })} className="min-w-0 flex-1">
+              <Link {...flowDetailProps(item)} href={item.href} onClick={() => trackEvent('search_result_open', { object_kind: item.kind, object_id: item.id })} className="min-w-0 flex-1 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || item.kind}</span>
                 <h3 className="truncate text-lg">{item.title}</h3>
                 <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
@@ -323,11 +339,13 @@ export default function SearchPage() {
             )}
             {['track','artist','producer'].includes(item.kind) ? (
               <div className="flex items-center gap-2">
-                <LibraryAction item={{ ...item, kind: item.kind === 'track' ? 'track' : 'artist' }} section={item.kind === 'track' ? 'favourites' : 'follows'} compact />
-                {item.detail ? <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-brand hover:border-brand">Details</button> : null}
+                <div data-flow-detail-skip="true"><LibraryAction item={{ ...item, kind: item.kind === 'track' ? 'track' : 'artist' }} section={item.kind === 'track' ? 'favourites' : 'follows'} compact /></div>
+                {item.detail ? <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-brand hover:border-brand">Details</button> : item.kind === 'track' ? <Link {...flowDetailProps(item)} href={item.href} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-brand hover:border-brand">Details</Link> : null}
               </div>
             ) : item.detail ? (
               <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">Details</button>
+            ) : supportsContextDetails(item.kind) ? (
+              <Link {...flowDetailProps(item)} href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">Details</Link>
             ) : (
               <Link href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">{item.kind === 'story' ? 'Read' : 'Open'}</Link>
             )}
