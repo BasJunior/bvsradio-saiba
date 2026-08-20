@@ -8,6 +8,7 @@ import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
+import NowPlayingExperienceGuard from "@/components/flow/NowPlayingExperienceGuard";
 import MobileFlowNav from "@/components/layout/MobileFlowNav";
 import "./globals.css";
 
@@ -91,6 +92,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <ClientErrorBeacon />
               <MobileFlowNav />
               <PersistentPlayer />
+              <NowPlayingExperienceGuard />
             </FlowNavigationProvider>
           </StationPlayerProvider>
         </LibrarySyncProvider>
