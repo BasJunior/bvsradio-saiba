@@ -246,7 +246,17 @@ def columns_ok(url: str, key: str, table: str, columns: list[str]) -> tuple[str,
 
 def rpc_ok(url: str, key: str, name: str) -> tuple[str, str]:
     # Call with invalid uuid should still prove function exists (not 404 schema)
-    body = json.dumps({"p_track_id": "00000000-0000-0000-0000-000000000000", "p_source": "station"}).encode()
+    rpc_bodies = {
+        "consume_qr_login_pairing": {
+            "pairing_id": "00000000-0000-0000-0000-000000000000",
+            "supplied_poll_hash": "schema-check",
+        },
+    }
+    payload = rpc_bodies.get(
+        name,
+        {"p_track_id": "00000000-0000-0000-0000-000000000000", "p_source": "station"},
+    )
+    body = json.dumps(payload).encode()
     code, data = rest(url, key, f"/rest/v1/rpc/{name}", method="POST", body=body)
     text = json.dumps(data) if not isinstance(data, str) else data
     if code in (200, 204):

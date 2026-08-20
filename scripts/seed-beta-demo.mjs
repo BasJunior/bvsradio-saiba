@@ -46,6 +46,7 @@ async function ensureUser(email, username, role) {
   return user;
 }
 
+const founder = await ensureUser("founder@beta.bvsradio.test", "BasJunior", "admin");
 const producer = await ensureUser("producer@beta.bvsradio.test", "Beta Producer", "artist");
 const buyer = await ensureUser("buyer@beta.bvsradio.test", "Beta Buyer", "listener");
 
@@ -87,4 +88,4 @@ await json("/rest/v1/beat_licence_options?on_conflict=beat_id,licence_code", {
   }),
 });
 
-console.log(JSON.stringify({ ok: true, users: 2, beats: 1, producerId: producer.id, buyerId: buyer.id }));
+console.log(JSON.stringify({ ok: true, users: 3, beats: 1, founderId: founder.id, producerId: producer.id, buyerId: buyer.id }));
