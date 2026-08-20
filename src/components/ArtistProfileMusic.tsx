@@ -29,8 +29,9 @@ export default function ArtistProfileMusic({ artist, username, tracks }: { artis
     <div className="mt-5 space-y-3">
       {tracks.map(track => {
         const stationTrack = stationTracks.find(item => item.id === track.id)
-        const item: DiscoveryItem = { id: track.id, kind: 'track', title: track.title, subtitle: artist, image: track.artwork_url, href: `/artist/${encodeURIComponent(username)}#music` }
-        return <article key={track.id} className="rounded-xl border border-white/10 p-3" data-flow-focus-id={`track:${track.id}`}>
+        const focusId = `track:${track.id}`
+        const item: DiscoveryItem = { id: track.id, kind: 'track', title: track.title, subtitle: artist, image: track.artwork_url, href: `/artist/${encodeURIComponent(username)}?focus=${encodeURIComponent(focusId)}#music` }
+        return <article key={track.id} className="scroll-mt-28 rounded-xl border border-white/10 p-3" data-flow-focus-id={focusId}>
           <div className="flex gap-3 sm:gap-4">
             <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white/5">{track.artwork_url ? <Image src={track.artwork_url} alt={`${track.title} artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /> : <div className="grid h-full place-items-center text-2xl text-brand/50">♪</div>}</div>
             <div className="min-w-0 flex-1">
