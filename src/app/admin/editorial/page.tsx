@@ -12,7 +12,7 @@ import EditorialAnalytics from '@/components/EditorialAnalytics'
 
 type MobileClearance = { id?: string; track_id: string; surface: 'ios' | 'android'; status: 'not_reviewed' | 'cleared' | 'blocked'; rights_basis?: string; evidence_reference?: string; review_notes?: string; reviewed_at?: string }
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string; mobile_clearances?: MobileClearance[] }
-type Profile = { id: string; username: string; display_name?: string; avatar_url?: string; bio?: string; website_url?: string; location?: string; spotify_url?: string; created_at?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string; onboarding_artist_name?: string; onboarding_status?: string; onboarding_location?: string; social_links?: { instagram?: string; spotify?: string; website?: string } }
+type Profile = { id: string; username: string; display_name?: string; avatar_url?: string; bio?: string; website_url?: string; location?: string; spotify_url?: string; created_at?: string; role: string; is_verified: boolean; is_published: boolean; is_producer?: boolean; creator_public_name?: string; creator_name_request?: string; creator_name_status?: string; creator_name_review_notes?: string; creator_name_reviewed_at?: string; producer_public_name?: string; producer_name_request?: string; producer_name_status?: string; producer_name_review_notes?: string; producer_name_reviewed_at?: string; onboarding_artist_name?: string; onboarding_status?: string; onboarding_location?: string; social_links?: { instagram?: string; spotify?: string; website?: string } }
 type Programme = { id: string; slug: string; title: string; host: string; day_label: string; start_time?: string; timezone: string; status: string }
 type Credit = { id: string; track_id: string; person_name: string; credit_role: string }
 type Staff = { user_id: string; role: EditorialRole; active: boolean }
@@ -273,7 +273,7 @@ export default function EditorialDashboard() {
     ['submitted', 'information_requested'].includes(application.status),
   ).length
   const identityQueue = data.profiles.filter((profile) =>
-    ['pending', 'changes_requested'].includes(profile.creator_name_status || ''),
+    ['pending', 'changes_requested'].includes(profile.creator_name_status || '') || ['pending', 'changes_requested'].includes(profile.producer_name_status || ''),
   ).length
 
   const releaseNeedsReview = (data.releases || []).filter((r) =>
@@ -656,11 +656,11 @@ function IdentityReviewPanel({
     <div>
       <h2 className="text-2xl font-semibold">Creator public-name review</h2>
       <p className="mt-2 text-sm text-text-secondary">
-        Legal names stay private. Public creator pages use only an approved artist/producer name, otherwise the permanent @username.
+        Legal names stay private. Dual-role creators may hold separate approved artist and producer public names; otherwise each role falls back to the permanent @username.
       </p>
       <div className="mt-5 space-y-4">
         {creators.map((profile) => (
-          <IdentityReviewCard
+          <CreatorNamePanel
             key={profile.id}
             profile={profile}
             enabled={enabled}
@@ -674,7 +674,7 @@ function IdentityReviewPanel({
   )
 }
 
-function IdentityReviewCard({
+function CreatorNamePanel({
   profile,
   enabled,
   act,
@@ -685,52 +685,99 @@ function IdentityReviewCard({
   act: (action: string, body: Record<string, unknown>) => Promise<void>
   busy: string
 }) {
-  const [publicName, setPublicName] = useState(profile.creator_name_request || profile.creator_public_name || '')
-  const [notes, setNotes] = useState(profile.creator_name_review_notes || '')
-  const decide = (decision: 'approved' | 'changes_requested' | 'rejected') =>
-    act('review_creator_name', { profileId: profile.id, decision, publicName, notes })
-  const status = profile.creator_name_status || 'not_submitted'
+  const [artistName, setArtistName] = useState(profile.creator_name_request || profile.creator_public_name || '')
+  const [producerName, setProducerName] = useState(profile.producer_name_request || profile.producer_public_name || '')
+  const [artistNotes, setArtistNotes] = useState(profile.creator_name_review_notes || '')
+  const [producerNotes, setProducerNotes] = useState(profile.producer_name_review_notes || '')
+  const artistStatus = profile.creator_name_status || 'not_submitted'
+  const producerStatus = profile.producer_name_status || 'not_submitted'
+  const isArtist = profile.role === 'artist'
+  const isProducer = Boolean(profile.is_producer)
+  const decideArtist = (decision: 'approved' | 'changes_requested' | 'rejected') =>
+    act('review_creator_name', { profileId: profile.id, decision, publicName: artistName, notes: artistNotes })
+  const decideProducer = (decision: 'approved' | 'changes_requested' | 'rejected') =>
+    act('review_producer_name', { profileId: profile.id, decision, publicName: producerName, notes: producerNotes })
   return (
     <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[status] || 'text-text-secondary'}`}>
-            {status.replaceAll('_', ' ')}
-          </p>
-          <h3 className="mt-1 text-xl font-semibold">@{profile.username}</h3>
+          <h3 className="text-xl font-semibold">@{profile.username}</h3>
           <p className="text-sm text-text-secondary">Member display name: {profile.display_name || 'not set'}</p>
           <p className="mt-1 text-sm text-text-secondary">
-            Current public output: {creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })}
+            Roles: {isArtist ? 'artist' : '—'}{isArtist && isProducer ? ' + ' : ''}{isProducer ? 'producer' : ''}
           </p>
         </div>
-        {profile.creator_name_reviewed_at && <p className="text-xs text-text-secondary">{new Date(profile.creator_name_reviewed_at).toLocaleString()}</p>}
       </div>
-      <label className="mt-4 block text-sm font-medium">
-        Artist / producer public name
-        <input
-          value={publicName}
-          onChange={(event) => setPublicName(event.target.value)}
-          maxLength={120}
-          placeholder={`@${profile.username}`}
-          className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand"
-        />
-      </label>
-      <textarea
-        value={notes}
-        onChange={(event) => setNotes(event.target.value)}
-        placeholder="Editorial note or information request…"
-        className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"
-      />
-      {enabled && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button disabled={Boolean(busy) || !publicName.trim()} onClick={() => decide('approved')} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Approve public name</button>
-          <button disabled={Boolean(busy) || notes.trim().length < 3} onClick={() => decide('changes_requested')} className="rounded-full border border-amber-300 px-4 py-2 text-xs text-amber-200 disabled:opacity-40">Request changes</button>
-          <button disabled={Boolean(busy) || notes.trim().length < 3} onClick={() => decide('rejected')} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Reject</button>
+      {isArtist ? (
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-4">
+          <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[artistStatus] || 'text-text-secondary'}`}>
+            Artist name · {artistStatus.replaceAll('_', ' ')}
+          </p>
+          <p className="mt-1 text-sm text-text-secondary">
+            Current public artist output: {creatorPublicName({ publicName: profile.creator_public_name, publicNameStatus: profile.creator_name_status, username: profile.username })}
+          </p>
+          <label className="mt-3 block text-sm font-medium">
+            Artist public name
+            <input
+              value={artistName}
+              onChange={(event) => setArtistName(event.target.value)}
+              maxLength={120}
+              placeholder={`@${profile.username}`}
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand"
+            />
+          </label>
+          <textarea
+            value={artistNotes}
+            onChange={(event) => setArtistNotes(event.target.value)}
+            placeholder="Editorial note for the artist name…"
+            className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"
+          />
+          {enabled && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button disabled={Boolean(busy) || !artistName.trim()} onClick={() => decideArtist('approved')} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Approve artist name</button>
+              <button disabled={Boolean(busy) || artistNotes.trim().length < 3} onClick={() => decideArtist('changes_requested')} className="rounded-full border border-amber-300 px-4 py-2 text-xs text-amber-200 disabled:opacity-40">Request changes</button>
+              <button disabled={Boolean(busy) || artistNotes.trim().length < 3} onClick={() => decideArtist('rejected')} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Reject</button>
+            </div>
+          )}
         </div>
-      )}
+      ) : null}
+      {isProducer ? (
+        <div className="mt-4 rounded-xl border border-white/10 bg-black/15 p-4">
+          <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[producerStatus] || 'text-text-secondary'}`}>
+            Producer name · {producerStatus.replaceAll('_', ' ')}
+          </p>
+          <p className="mt-1 text-sm text-text-secondary">
+            Current public producer output: {creatorPublicName({ publicName: profile.producer_public_name || profile.creator_public_name, publicNameStatus: profile.producer_name_status || profile.creator_name_status, username: profile.username })}
+          </p>
+          <label className="mt-3 block text-sm font-medium">
+            Producer public name
+            <input
+              value={producerName}
+              onChange={(event) => setProducerName(event.target.value)}
+              maxLength={120}
+              placeholder={profile.creator_public_name || `@${profile.username}`}
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand"
+            />
+          </label>
+          <textarea
+            value={producerNotes}
+            onChange={(event) => setProducerNotes(event.target.value)}
+            placeholder="Editorial note for the producer name…"
+            className="mt-3 min-h-20 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"
+          />
+          {enabled && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button disabled={Boolean(busy) || !producerName.trim()} onClick={() => decideProducer('approved')} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Approve producer name</button>
+              <button disabled={Boolean(busy) || producerNotes.trim().length < 3} onClick={() => decideProducer('changes_requested')} className="rounded-full border border-amber-300 px-4 py-2 text-xs text-amber-200 disabled:opacity-40">Request changes</button>
+              <button disabled={Boolean(busy) || producerNotes.trim().length < 3} onClick={() => decideProducer('rejected')} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Reject</button>
+            </div>
+          )}
+        </div>
+      ) : null}
     </article>
   )
 }
+
 
 function RoleApplicationPanel({
   applications,

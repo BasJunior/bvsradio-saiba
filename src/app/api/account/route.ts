@@ -32,7 +32,7 @@ export async function GET(request: Request) {
 
   const [profileResponse, ordersResponse] = await Promise.all([
     fetch(
-      `${url}/rest/v1/profiles?id=eq.${user.id}&select=id,username,display_name,avatar_url,bio,role,is_producer,is_verified,is_published,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,created_at&limit=1`,
+      `${url}/rest/v1/profiles?id=eq.${user.id}&select=id,username,display_name,avatar_url,bio,role,is_producer,is_verified,is_published,creator_public_name,creator_name_request,creator_name_status,creator_name_review_notes,producer_public_name,producer_name_request,producer_name_status,producer_name_review_notes,created_at&limit=1`,
       { headers: serviceHeaders, cache: 'no-store' },
     ),
     fetch(
@@ -73,10 +73,11 @@ export async function PATCH(request: Request) {
   const fullName = String(body.fullName || '').trim().slice(0, 160)
   const bio = String(body.bio || '').trim().slice(0, 1000)
   const avatarUrl = String(body.avatarUrl || '').trim().slice(0, 500)
-  const creatorNameRequest = String(body.creatorPublicName || '').trim().slice(0, 120)
+  const creatorNameRequest = String(body.creatorPublicName || body.artistPublicName || '').trim().slice(0, 120)
+  const producerNameRequest = String(body.producerPublicName || '').trim().slice(0, 120)
 
   const existingResponse = await fetch(
-    `${url}/rest/v1/profiles?id=eq.${user.id}&select=id,username,role,is_producer,creator_public_name,creator_name_request,creator_name_status&limit=1`,
+    `${url}/rest/v1/profiles?id=eq.${user.id}&select=id,username,role,is_producer,creator_public_name,creator_name_request,creator_name_status,producer_public_name,producer_name_request,producer_name_status&limit=1`,
     { headers: serviceHeaders, cache: 'no-store' },
   )
   const existingRows = existingResponse.ok ? await existingResponse.json() : []
@@ -87,6 +88,9 @@ export async function PATCH(request: Request) {
     creator_public_name?: string
     creator_name_request?: string
     creator_name_status?: string
+    producer_public_name?: string
+    producer_name_request?: string
+    producer_name_status?: string
   } | undefined
   if (!existing) {
     return NextResponse.json({ error: 'Your profile could not be loaded.' }, { status: 404 })
@@ -107,12 +111,18 @@ export async function PATCH(request: Request) {
   if (!displayName) return NextResponse.json({ error: 'Display name is required.' }, { status: 400 })
   if (!fullName) return NextResponse.json({ error: 'Full/legal name is required and remains private.' }, { status: 400 })
 
-  const creatorCapable = existing.role === 'artist' || Boolean(existing.is_producer)
+  const artistCapable = existing.role === 'artist'
+  const producerCapable = Boolean(existing.is_producer)
   const creatorNameChanged =
-    creatorCapable &&
+    artistCapable &&
     creatorNameRequest.length > 0 &&
     creatorNameRequest !== String(existing.creator_name_request || '') &&
     creatorNameRequest !== String(existing.creator_public_name || '')
+  const producerNameChanged =
+    producerCapable &&
+    producerNameRequest.length > 0 &&
+    producerNameRequest !== String(existing.producer_name_request || '') &&
+    producerNameRequest !== String(existing.producer_public_name || '')
 
   const profilePatch: Record<string, unknown> = {
     username,
@@ -127,6 +137,13 @@ export async function PATCH(request: Request) {
     profilePatch.creator_name_review_notes = null
     profilePatch.creator_name_reviewed_by = null
     profilePatch.creator_name_reviewed_at = null
+  }
+  if (producerNameChanged) {
+    profilePatch.producer_name_request = producerNameRequest
+    profilePatch.producer_name_status = 'pending'
+    profilePatch.producer_name_review_notes = null
+    profilePatch.producer_name_reviewed_by = null
+    profilePatch.producer_name_reviewed_at = null
   }
 
   const response = await fetch(`${url}/rest/v1/profiles?id=eq.${user.id}`, {

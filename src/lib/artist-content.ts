@@ -1,5 +1,5 @@
 import 'server-only'
-import { creatorPublicName, publicHandleAccountCandidates, resolvePublicHandle } from '@/lib/public-name'
+import { creatorPublicName, producerPublicName, publicHandleAccountCandidates, resolvePublicHandle } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 export type PublicArtistTrack = {
@@ -374,16 +374,18 @@ export async function getPublishedProducers(): Promise<PublishedProducerSummary[
     const beats = await beatsResponse.json() as Array<{ producer_user_id: string; genre?: string; artwork_path?: string }>
     const producerIds = [...new Set(beats.map(beat => beat.producer_user_id).filter(Boolean))]
     if (!producerIds.length) return []
-    const profilesResponse = await fetch(`${url}/rest/v1/profiles?id=in.(${producerIds.join(',')})&select=id,username,display_name,avatar_url,creator_public_name,creator_name_status&order=username.asc`, { headers, cache: 'no-store' })
+    const profilesResponse = await fetch(`${url}/rest/v1/profiles?id=in.(${producerIds.join(',')})&select=id,username,display_name,avatar_url,creator_public_name,creator_name_status,producer_public_name,producer_name_status&order=username.asc`, { headers, cache: 'no-store' })
     if (!profilesResponse.ok) return []
-    const profiles = await profilesResponse.json() as Array<{ id: string; username: string; display_name?: string; avatar_url?: string; creator_public_name?: string; creator_name_status?: string }>
+    const profiles = await profilesResponse.json() as Array<{ id: string; username: string; display_name?: string; avatar_url?: string; creator_public_name?: string; creator_name_status?: string; producer_public_name?: string; producer_name_status?: string }>
     return profiles.map(profile => {
       const producerBeats = beats.filter(beat => beat.producer_user_id === profile.id)
       const artworkPath = producerBeats.find(beat => beat.artwork_path)?.artwork_path
       return {
         id: profile.id,
         username: profile.username,
-        name: creatorPublicName({
+        name: producerPublicName({
+          producerPublicName: profile.producer_public_name,
+          producerNameStatus: profile.producer_name_status,
           publicName: profile.creator_public_name,
           publicNameStatus: profile.creator_name_status,
           username: profile.username,

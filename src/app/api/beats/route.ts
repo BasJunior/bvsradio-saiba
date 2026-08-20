@@ -15,7 +15,7 @@ import {
 } from '@/lib/beatstore-server'
 // beat licence templates: src/lib/beat-licences.ts
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
-import { creatorPublicName } from '@/lib/public-name'
+import { creatorPublicName, producerPublicName } from '@/lib/public-name'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
 import { resolveProducerBeatEntitlements } from '@/lib/producer-entitlements'
 import { licenceOptionSeed } from '@/lib/beat-licences'
@@ -81,9 +81,9 @@ export async function GET(request: Request) {
   const beats = await listPublishedBeats(120)
   const producerIds = [...new Set(beats.map(beat => beat.producer_user_id))]
   const producerResponse = producerIds.length
-    ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status`), { headers: beatHeaders, cache: 'no-store' })
+    ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status,producer_public_name,producer_name_status`), { headers: beatHeaders, cache: 'no-store' })
     : null
-  const producers = producerResponse?.ok ? await producerResponse.json() as Array<{ id: string; username: string; creator_public_name?: string; creator_name_status?: string }> : []
+  const producers = producerResponse?.ok ? await producerResponse.json() as Array<{ id: string; username: string; creator_public_name?: string; creator_name_status?: string; producer_public_name?: string; producer_name_status?: string }> : []
   const shaped = beats.map((b) => {
     const licences = (b.beat_licence_options || []).filter((l) => l.is_active !== false && !l.is_sold_out)
     const priced = licences
@@ -101,7 +101,9 @@ export async function GET(request: Request) {
       bpm: b.bpm,
       musical_key: b.musical_key,
       producer_user_id: b.producer_user_id,
-      producer: creatorPublicName({
+      producer: producerPublicName({
+        producerPublicName: producers.find(producer => producer.id === b.producer_user_id)?.producer_public_name,
+        producerNameStatus: producers.find(producer => producer.id === b.producer_user_id)?.producer_name_status,
         publicName: producers.find(producer => producer.id === b.producer_user_id)?.creator_public_name,
         publicNameStatus: producers.find(producer => producer.id === b.producer_user_id)?.creator_name_status,
         username: producers.find(producer => producer.id === b.producer_user_id)?.username,
@@ -181,7 +183,8 @@ export async function POST(request: Request) {
     // On submit (or when no art provided), fill a BVS-branded placeholder cover.
     if (!artworkPath) {
       const producerLabel =
-        creatorPublicName({
+        producerPublicName({
+          producerPublicName: (profile as { producer_public_name?: string }).producer_public_name,
           publicName: (profile as { creator_public_name?: string }).creator_public_name,
           username: profile.username,
         }) ||
