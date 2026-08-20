@@ -40,6 +40,15 @@ function normalizeFollowId(value: unknown) {
   return String(value || "").replace(/^(artist|producer|creator)-/, "");
 }
 
+function validUuid(value: string | null) {
+  return Boolean(value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value));
+}
+
+function showSlugFromRoute(route: string) {
+  const match = route.match(/^\/shows\/([^/?#]+)/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 async function signedInUserId() {
   try {
     const supabase = await createServerSupabaseClient();
@@ -60,6 +69,16 @@ async function followedCreatorIds(userId: string) {
   return new Set(rows.map((row) => normalizeFollowId(row.item?.id)).filter(Boolean));
 }
 
+async function publicProgrammeSlugs() {
+  const response = await fetch(
+    `${url}/rest/v1/programmes?select=slug&limit=500`,
+    { headers, cache: "no-store" },
+  );
+  if (!response.ok) return new Set<string>();
+  const rows = await response.json() as Array<{ slug?: string }>;
+  return new Set(rows.map((row) => String(row.slug || "")).filter(Boolean));
+}
+
 export async function GET(request: Request) {
   if (process.env.NEXT_PUBLIC_BVS_PULSE !== "1") {
     return NextResponse.json({ items: [] });
@@ -74,12 +93,32 @@ export async function GET(request: Request) {
       { headers, cache: "no-store" },
     );
     if (!response.ok) return NextResponse.json({ error: "Pulse is not ready." }, { status: 503 });
-    const rows = await response.json() as ActivityRow[];
-    const scope = new URL(request.url).searchParams.get("scope") === "following" ? "following" : "global";
-    let selected = rows.slice(0, 10);
+
+    const rawRows = await response.json() as ActivityRow[];
+    const programmeSlugs = rawRows.some((row) => row.subject_kind === "show")
+      ? await publicProgrammeSlugs()
+      : new Set<string>();
+
+    // A Pulse item is only useful if its public destination exists. In
+    // particular, show events can be created before their public programme
+    // shell. Suppress those events instead of sending listeners to a 404.
+    const rows = rawRows.filter((row) => {
+      if (row.subject_kind !== "show") return true;
+      const slug = showSlugFromRoute(row.route);
+      return Boolean(slug && programmeSlugs.has(slug));
+    });
+
+    const params = new URL(request.url).searchParams;
+    const scope = params.get("scope") === "following" ? "following" : "global";
+    const requestedCreatorId = params.get("creator");
+    const creatorId = validUuid(requestedCreatorId) ? requestedCreatorId : null;
+
+    let selected = creatorId
+      ? rows.filter((row) => row.creator_id === creatorId).slice(0, 12)
+      : rows.slice(0, 10);
     let following = new Set<string>();
 
-    if (scope === "following") {
+    if (!creatorId && scope === "following") {
       const userId = await signedInUserId();
       if (userId) following = await followedCreatorIds(userId);
       if (following.size) {
@@ -103,10 +142,18 @@ export async function GET(request: Request) {
         artwork: mediaUrlForStoredValue(row.artwork) || undefined,
       },
       label: label(row.kind),
-      reason: row.creator_id && following.has(row.creator_id) ? "following" : row.kind === "show_live" ? "live" : "fresh",
+      reason: row.creator_id && following.has(row.creator_id)
+        ? "following"
+        : row.kind === "show_live"
+          ? "live"
+          : "fresh",
     }));
 
-    return NextResponse.json({ items, scope: following.size ? "following" : "global" });
+    return NextResponse.json({
+      items,
+      scope: creatorId ? "creator" : following.size ? "following" : "global",
+      creatorId: creatorId || undefined,
+    });
   } catch {
     return NextResponse.json({ error: "Pulse could not load." }, { status: 503 });
   }
