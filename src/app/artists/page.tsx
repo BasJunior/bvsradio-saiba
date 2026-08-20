@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import { validatePayoutRequest } from '@/lib/artist-payouts'
 
 type Settlement = {
   id: string
@@ -31,6 +32,7 @@ type WalletData = {
   waitlist: { artist_name: string; status: string; created_at: string } | null
   deposits: Array<{ id: string; amount: number | string; currency: string; status: string; source: string; created_at: string }>
   ledger: Array<{ id: string; direction: string; entry_type: string; amount: number | string; currency: string; status: string; memo?: string; effective_at: string; metadata?: Record<string, unknown> }>
+  payoutMethods: Array<{ id: string; label: string; method_type: string; currency: string; status: string; is_default?: boolean }>
   payoutRequests: Array<{ id: string; requested_amount: number | string; currency: string; status: string; requested_at: string }>
   sellerSettlements: Settlement[]
   settings: { payoutMinimumUsd: number; currency: string }
@@ -54,6 +56,7 @@ const emptyData: WalletData = {
   waitlist: null,
   deposits: [],
   ledger: [],
+  payoutMethods: [],
   payoutRequests: [],
   sellerSettlements: [],
   settings: { payoutMinimumUsd: 25, currency: 'USD' },
@@ -77,6 +80,11 @@ export default function ArtistsPage() {
   const [data, setData] = useState<WalletData>(emptyData)
   const [loading, setLoading] = useState(configured)
   const [error, setError] = useState('')
+  const [payoutAmount, setPayoutAmount] = useState('')
+  const [payoutMethodId, setPayoutMethodId] = useState('')
+  const [payoutNote, setPayoutNote] = useState('')
+  const [payoutBusy, setPayoutBusy] = useState(false)
+  const [payoutMessage, setPayoutMessage] = useState('')
 
   const load = async (accessToken: string) => {
     const response = await fetch('/api/artist/wallet', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
@@ -99,6 +107,37 @@ export default function ArtistsPage() {
 
   const nextPayout = useMemo(() => Math.max(0, data.settings.payoutMinimumUsd - data.balances.available), [data])
   const hasCommerce = data.sellerSettlements.length > 0 || data.earnings.lifetimeGrossSales > 0 || data.balances.pendingEarnings > 0
+  const hasOpenPayout = data.payoutRequests.some((request) => ['requested', 'approved', 'processing'].includes(request.status))
+
+  const requestPayout = async () => {
+    setError('')
+    setPayoutMessage('')
+    const validation = validatePayoutRequest({
+      available: data.balances.available,
+      minimum: data.settings.payoutMinimumUsd,
+      requested: payoutAmount === '' ? null : Number(payoutAmount),
+      hasOpenRequest: hasOpenPayout,
+    })
+    if (!validation.ok) { setError(validation.message); return }
+    setPayoutBusy(true)
+    try {
+      const response = await fetch('/api/artist/wallet/payout-request', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: validation.amount, payoutMethodId: payoutMethodId || null, note: payoutNote }),
+      })
+      const payload = await response.json()
+      if (!response.ok) throw new Error(payload.error || 'Could not request payout.')
+      setPayoutMessage('Payout request submitted. BVS will review the destination and processing details.')
+      setPayoutAmount('')
+      setPayoutNote('')
+      await load(token)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not request payout.')
+    } finally {
+      setPayoutBusy(false)
+    }
+  }
 
   if (!configured) return <AccessNotice title="Artist access unavailable" text="Account service is not configured." />
   if (loading) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Loading artist wallet...</main>
@@ -119,7 +158,18 @@ export default function ArtistsPage() {
 
     <section className="mt-12 rounded-2xl border border-white/10 bg-white/[0.025] p-6"><div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs uppercase tracking-[.16em] text-brand">Sale statements</p><h2 className="mt-1 text-2xl font-semibold">Marketplace earnings</h2></div><p className="text-xs text-text-secondary">Gross below is pre-tax. The policy and economics are frozen at checkout.</p></div>{data.sellerSettlements.length ? <div className="mt-5 overflow-x-auto"><table className="min-w-[1080px] w-full text-left text-sm"><thead className="text-xs uppercase tracking-[.08em] text-text-secondary"><tr><th className="pb-3 pr-4">Sale</th><th className="pb-3 pr-4">Plan</th><th className="pb-3 pr-4">Gross ex-tax</th><th className="pb-3 pr-4">BVS fee</th><th className="pb-3 pr-4">Processing</th><th className="pb-3 pr-4">Initial net</th><th className="pb-3 pr-4">Refunds</th><th className="pb-3 pr-4">Payout net</th><th className="pb-3 pr-4">Status</th><th className="pb-3">Policy</th></tr></thead><tbody>{data.sellerSettlements.map((settlement) => { const firstLine = settlement.breakdown?.lines?.[0]; return <tr key={settlement.id} className="border-t border-white/10"><td className="py-4 pr-4"><div className="font-medium">{firstLine?.title || settlement.order_reference}</div><div className="text-xs text-text-secondary">{settlement.order_reference} · {settlement.provider}</div></td><td className="py-4 pr-4 text-text-secondary">{(settlement.seller_plan_id || 'free').replaceAll('_', ' ')}</td><td className="py-4 pr-4">{money(settlement.gross_product_revenue)}</td><td className="py-4 pr-4">{money(settlement.platform_fee_amount)}<div className="text-xs text-text-secondary">{pctFromBps(settlement.platform_fee_bps)}</div></td><td className="py-4 pr-4">{money(settlement.processor_fee_allocated)}<div className="text-xs capitalize text-text-secondary">{settlement.processor_fee_status.replaceAll('_', ' ')}</div></td><td className="py-4 pr-4">{money(settlement.seller_net)}</td><td className="py-4 pr-4 text-amber-200">{money(settlement.refunds || 0)}</td><td className="py-4 pr-4 font-semibold text-brand">{money(settlement.payout_net ?? settlement.seller_net)}</td><td className={`py-4 pr-4 capitalize ${settlement.settlement_status === 'posted' ? 'text-emerald-300' : settlement.settlement_status === 'reversed' ? 'text-red-300' : 'text-amber-200'}`}>{settlement.settlement_status.replaceAll('_', ' ')}</td><td className="py-4 text-xs text-text-secondary">{settlement.policy_version}</td></tr> })}</tbody></table></div> : <p className="mt-5 rounded-xl border border-dashed border-white/15 p-6 text-sm text-text-secondary">No marketplace sale statements yet. Once a verified sale is attributed to you, its BVS fee, processing, refund adjustments and payout net appear here.</p>}</section>
 
-    <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.025] p-6"><h2 className="text-2xl font-semibold">Payout readiness</h2><p className="mt-2 text-sm text-text-secondary">{nextPayout > 0 ? `${money(nextPayout)} more in posted balance is needed before payout requests open.` : 'Posted balance is above the current payout threshold.'}</p><p className="mt-3 text-xs text-text-secondary">Funded posted credits from eligible sources combine toward the payout threshold. Pending settlements do not count. Refunds and chargebacks remain visible as separate debits.</p></section>
+    <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.025] p-6">
+      <h2 className="text-2xl font-semibold">Payout readiness</h2>
+      <p className="mt-2 text-sm text-text-secondary">{hasOpenPayout ? 'A payout request is already in progress.' : nextPayout > 0 ? `${money(nextPayout)} more in posted balance is needed before payout requests open.` : 'Posted balance is above the current payout threshold.'}</p>
+      <p className="mt-3 text-xs text-text-secondary">Funded posted credits from eligible sources combine toward the payout threshold. Pending settlements do not count. Refunds and chargebacks remain visible as separate debits.</p>
+      {nextPayout === 0 && !hasOpenPayout ? <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <label className="text-sm">Amount (USD)<input type="number" min={data.settings.payoutMinimumUsd} max={data.balances.available} step="0.01" value={payoutAmount} onChange={(event) => setPayoutAmount(event.target.value)} placeholder={data.balances.available.toFixed(2)} className="mt-2 w-full rounded-xl border border-white/15 bg-black/25 px-4 py-3" /></label>
+        <label className="text-sm">Payout method<select value={payoutMethodId} onChange={(event) => setPayoutMethodId(event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-black/25 px-4 py-3"><option value="">Confirm manually with BVS</option>{data.payoutMethods.filter((method) => method.status === 'active').map((method) => <option key={method.id} value={method.id}>{method.label} · {method.method_type.replaceAll('_', ' ')}</option>)}</select></label>
+        <label className="text-sm md:col-span-2">Note (optional)<textarea value={payoutNote} onChange={(event) => setPayoutNote(event.target.value.slice(0, 500))} rows={3} className="mt-2 w-full rounded-xl border border-white/15 bg-black/25 px-4 py-3" placeholder="Reference or payout note" /></label>
+        <div className="md:col-span-2"><button type="button" disabled={payoutBusy} onClick={requestPayout} className="rounded-full bg-brand px-6 py-3 font-semibold text-black disabled:opacity-50">{payoutBusy ? 'Submitting…' : 'Request payout'}</button>{payoutMessage ? <p className="mt-3 text-sm text-emerald-300">{payoutMessage}</p> : null}</div>
+      </div> : null}
+      {data.payoutRequests.length ? <div className="mt-6 overflow-x-auto"><table className="w-full min-w-[520px] text-left text-sm"><thead className="text-xs uppercase text-text-secondary"><tr><th className="pb-3">Requested</th><th className="pb-3">Amount</th><th className="pb-3">Status</th></tr></thead><tbody>{data.payoutRequests.map((request) => <tr key={request.id} className="border-t border-white/10"><td className="py-3">{new Date(request.requested_at).toLocaleDateString()}</td><td className="py-3">{money(request.requested_amount, request.currency)}</td><td className="py-3 capitalize text-text-secondary">{request.status}</td></tr>)}</tbody></table></div> : null}
+    </section>
 
     <section className="mt-12 grid gap-8 lg:grid-cols-2"><ActivityTable title="Wallet ledger" rows={data.ledger.map((entry) => [ledgerLabel(entry), entry.status, `${entry.direction === 'debit' ? '−' : '+'}${money(entry.amount, entry.currency)}`, new Date(entry.effective_at).toLocaleDateString()])} empty="No wallet entries yet." /><ActivityTable title="Deposits" rows={data.deposits.map((deposit) => [deposit.source, deposit.status, money(deposit.amount, deposit.currency), new Date(deposit.created_at).toLocaleDateString()])} empty="No deposits yet." /></section>
   </main>

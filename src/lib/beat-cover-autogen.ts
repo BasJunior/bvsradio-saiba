@@ -4,7 +4,7 @@
  * Marked via path suffix `-artwork-generated.svg` (no schema migration required).
  */
 import { PutObjectCommand } from '@aws-sdk/client-s3'
-import { r2Bucket, r2Client, r2Configured } from '@/lib/r2-storage'
+import { r2Bucket, r2Client, r2Configured, r2StorageKey } from '@/lib/r2-storage'
 
 export function isGeneratedBeatArtworkPath(path?: string | null) {
   const p = String(path || '')
@@ -115,7 +115,7 @@ export async function uploadGeneratedBeatCover(input: {
   await r2Client().send(
     new PutObjectCommand({
       Bucket: r2Bucket(),
-      Key: key,
+      Key: r2StorageKey(key),
       Body: Buffer.from(svg, 'utf8'),
       ContentType: 'image/svg+xml',
       CacheControl: 'public, max-age=31536000, immutable',

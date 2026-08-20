@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { isAllowedAudioFile } from "@/lib/audio-formats";
-import { r2Bucket, r2Client, r2Configured } from "@/lib/r2-storage";
+import { r2Bucket, r2Client, r2Configured, r2StorageKey } from "@/lib/r2-storage";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -30,7 +30,7 @@ async function signedUpload(path: string, contentType: string) {
     r2Client(),
     new PutObjectCommand({
       Bucket: r2Bucket(),
-      Key: path,
+      Key: r2StorageKey(path),
       ContentType: contentType,
     }),
     { expiresIn: 900 },

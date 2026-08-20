@@ -20,7 +20,7 @@ Before distributing the beta app, provision:
 1. A separate Vercel project or protected staging deployment.
 2. A separate Supabase project for staging auth, database and storage.
 3. Test-only Stripe/Paynow configuration; never use live payment credentials.
-4. A stable HTTPS URL such as `https://beta.bvsradio.com/app/ios`.
+4. Stable staging URL: `https://bvsradio-beta.vercel.app`.
 
 Copy configuration names and schema, not production user data or secrets. Apply
 the normal idempotent SQL packs to the staging database.
@@ -32,8 +32,8 @@ cd bvsradio-beta
 npm ci
 mkdir -p out
 printf '<!doctype html><title>BVS Beta</title>' > out/index.html
-BVS_MOBILE_URL=https://beta.bvsradio.com/app/ios npm run cap:sync:beta:ios
-BVS_MOBILE_URL=https://beta.bvsradio.com/app/ios npm run cap:ios:beta
+BVS_MOBILE_URL=https://bvsradio-beta.vercel.app npm run cap:sync:beta:ios
+BVS_MOBILE_URL=https://bvsradio-beta.vercel.app npm run cap:ios:beta
 ```
 
 In Xcode:

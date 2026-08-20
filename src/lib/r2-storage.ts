@@ -13,6 +13,9 @@ const endpoint = process.env.R2_ENDPOINT || "";
 const bucket = process.env.R2_BUCKET || "bvsradio-media";
 const accessKeyId = process.env.R2_ACCESS_KEY_ID || "";
 const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || "";
+const keyPrefix = String(process.env.R2_KEY_PREFIX || "")
+  .trim()
+  .replace(/^\/+|\/+$/g, "");
 
 export function r2Configured() {
   return Boolean(endpoint && bucket && accessKeyId && secretAccessKey);
@@ -20,6 +23,11 @@ export function r2Configured() {
 
 export function r2Bucket() {
   return bucket;
+}
+
+/** Logical DB paths stay stable; the physical object key may be lane-prefixed. */
+export function r2StorageKey(key: string) {
+  return keyPrefix ? `${keyPrefix}/${key}` : key;
 }
 
 export function r2Client() {
@@ -33,7 +41,7 @@ export function r2Client() {
 
 export async function r2ObjectExists(key: string) {
   try {
-    await r2Client().send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    await r2Client().send(new HeadObjectCommand({ Bucket: bucket, Key: r2StorageKey(key) }));
     return true;
   } catch {
     return false;
@@ -49,7 +57,7 @@ export async function signedR2DownloadUrl(
     r2Client(),
     new GetObjectCommand({
       Bucket: bucket,
-      Key: key,
+      Key: r2StorageKey(key),
       ResponseContentDisposition: filename
         ? `attachment; filename="${filename.replace(/["\r\n]/g, "_")}"`
         : undefined,
@@ -67,7 +75,7 @@ export async function signedR2UploadUrl(
     r2Client(),
     new PutObjectCommand({
       Bucket: bucket,
-      Key: key,
+      Key: r2StorageKey(key),
       ContentType: contentType || "application/octet-stream",
       CacheControl: "private, max-age=3600",
     }),
