@@ -4,6 +4,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import VisitorAssistant from "@/components/VisitorAssistant";
 import EditorialCommandCenter from "@/components/EditorialCommandCenter";
+import EditorialWorkBridge from "@/components/EditorialWorkBridge";
 import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
@@ -91,6 +92,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <AuthLinkRescue />
               <main className="pt-16 pb-44 md:pb-28">
                 <EditorialCommandCenter />
+                <EditorialWorkBridge />
                 {children}
               </main>
               <Footer />
