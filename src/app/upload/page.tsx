@@ -433,7 +433,7 @@ function UploadPageInner() {
             </button>
             </> : <>
               <button type="button" onClick={() => setBeatMode('single')} className={`rounded-full px-4 py-2 text-sm font-medium ${beatMode === 'single' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}>Single beat</button>
-              <button type="button" onClick={() => setBeatMode('pack')} className={`rounded-full px-4 py-2 text-sm font-medium ${beatMode === 'pack' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}>Beat pack</button>
+              <button type="button" onClick={() => setBeatMode('pack')} className={`rounded-full px-4 py-2 text-sm font-medium ${beatMode === 'pack' ? 'bg-brand text-black' : 'border border-white/20 text-text-secondary'}`}>Beat pack / EP</button>
             </>}
             <Link href="/artist/premium" className="rounded-full border border-white/20 px-4 py-2 text-sm text-text-secondary hover:border-brand">
               Premium
@@ -443,7 +443,8 @@ function UploadPageInner() {
           {uploadType === 'beats' ? (
             <div className="rounded-2xl border border-white/10 bg-bg-card/30 p-6">
               <p className="mb-5 rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-xs text-text-secondary">
-                <strong className="text-text-primary">Where it goes:</strong> files upload directly to private BVS storage, then the listing goes to editorial review. Published beats appear in BeatStore; drafts and review messages remain in Creator Studio.
+                <strong className="text-text-primary">Flow:</strong> producer upload (single or multi-file pack) → private storage → editorial queue → approve → publish to BeatStore.
+                Packs stay grouped for staff (approve/publish whole EP) and for you in Creator Studio. Drafts and review replies stay private until publish.
               </p>
               {beatMode === 'single' ? <MyBeatStore creationOnly /> : <BeatPackUploadForm />}
             </div>

@@ -108,7 +108,7 @@ async function loadTracksSection() {
     optionalJson('track_review_messages?select=*&order=created_at.asc&limit=500'),
     optionalJson('track_credits?select=*&order=created_at.desc&limit=100'),
     optionalJson('artwork_change_requests?select=*&order=created_at.desc&limit=100'),
-    optionalJson('beat_packs?select=id,title,producer_user_id,artwork_path,status&order=created_at.desc&limit=200'),
+    optionalJson('beat_packs?select=id,title,description,genre,producer_user_id,artwork_path,status,is_public,created_at,updated_at&order=created_at.desc&limit=200'),
     optionalJson('distribution_jobs?select=*&order=updated_at.desc&limit=200'),
   ])
   const artworkChangeRequests = await Promise.all(
@@ -1122,6 +1122,152 @@ export async function PATCH(request: Request) {
         }
         await audit(identity.user.id, publish ? 'beat_published' : 'beat_unpublished', 'beat', beatId)
         return NextResponse.json({ result })
+      }
+      case 'review_beat_pack': {
+        requirePermission('approve_submissions')
+        const packId = String(body.packId || '')
+        const status =
+          body.status === 'approved'
+            ? 'approved'
+            : body.status === 'rejected'
+              ? 'rejected'
+              : body.status === 'changes_requested'
+                ? 'changes_requested'
+                : 'in_review'
+        if (!packId) return NextResponse.json({ error: 'Pack id is required.' }, { status: 400 })
+        const pack = (await optionalJson(
+          `beat_packs?id=eq.${encodeURIComponent(packId)}&select=id,title,producer_user_id,status&limit=1`,
+        ))[0] as { id?: string; title?: string; producer_user_id?: string; status?: string } | undefined
+        if (!pack?.id) return NextResponse.json({ error: 'Beat pack not found.' }, { status: 404 })
+        const members = (await optionalJson(
+          `beats?pack_id=eq.${encodeURIComponent(packId)}&select=id,title,status,producer_user_id&order=pack_position.asc.nullslast,created_at.asc`,
+        )) as Array<{ id?: string; title?: string; status?: string; producer_user_id?: string }>
+        if (!members.length) return NextResponse.json({ error: 'This pack has no beats to review.' }, { status: 404 })
+        const notes = String(body.notes || '').slice(0, 2000)
+        const now = new Date().toISOString()
+        const beatPatch: Record<string, unknown> = {
+          status,
+          editorial_notes: notes,
+          reviewed_by: identity.user.id,
+          reviewed_at: now,
+          updated_at: now,
+          ...(status === 'rejected' || status === 'changes_requested' ? { is_public: false } : {}),
+        }
+        const result = await patchTable('beats', `pack_id=eq.${encodeURIComponent(packId)}`, beatPatch)
+        await patchTable('beat_packs', `id=eq.${encodeURIComponent(packId)}`, {
+          status,
+          updated_at: now,
+        })
+        const reviewNote = notes.trim()
+        if (reviewNote) {
+          for (const member of members) {
+            if (!member.id) continue
+            await jsonOrError(await fetch(editorialUrl('beat_review_messages'), {
+              method: 'POST',
+              headers: { ...serviceHeaders, Prefer: 'return=representation' },
+              body: JSON.stringify({
+                beat_id: member.id,
+                author_user_id: identity.user.id,
+                author_kind: 'editor',
+                message: reviewNote,
+              }),
+            }))
+          }
+        }
+        await audit(identity.user.id, `beat_pack_${status}`, 'beat_pack', packId, {
+          notes: notes.slice(0, 300),
+          count: members.length,
+        })
+        if (status === 'approved' && pack.status !== 'approved' && pack.status !== 'published') {
+          await notifyApproval({
+            userId: pack.producer_user_id,
+            title: pack.title || `${members.length}-beat pack`,
+            kind: 'beat',
+          })
+        }
+        return NextResponse.json({ result, count: members.length, packId })
+      }
+      case 'publish_beat_pack': {
+        requirePermission('approve_submissions')
+        const packId = String(body.packId || '')
+        const publish = Boolean(body.publish)
+        if (!packId) return NextResponse.json({ error: 'Pack id is required.' }, { status: 400 })
+        const pack = (await optionalJson(
+          `beat_packs?id=eq.${encodeURIComponent(packId)}&select=id,title,producer_user_id,status&limit=1`,
+        ))[0] as { id?: string; title?: string; producer_user_id?: string; status?: string } | undefined
+        if (!pack?.id || !pack.producer_user_id) {
+          return NextResponse.json({ error: 'Beat pack not found.' }, { status: 404 })
+        }
+        const members = (await optionalJson(
+          `beats?pack_id=eq.${encodeURIComponent(packId)}&select=id,title,status,is_public,producer_user_id&order=pack_position.asc.nullslast,created_at.asc`,
+        )) as Array<{ id?: string; title?: string; status?: string; is_public?: boolean; producer_user_id?: string }>
+        if (!members.length) return NextResponse.json({ error: 'This pack has no beats to publish.' }, { status: 404 })
+        if (publish) {
+          const blocked = members.filter(member => !['approved', 'published'].includes(String(member.status || '')))
+          if (blocked.length) {
+            return NextResponse.json(
+              { error: `Approve every beat in the pack before publishing (${blocked.length} still need approval).` },
+              { status: 409 },
+            )
+          }
+          for (const member of members) {
+            if (!member.id) continue
+            const alreadyLive = Boolean(member.is_public) && String(member.status) === 'published'
+            const gate = await assertCanPublishLiveBeat({
+              producerUserId: pack.producer_user_id,
+              beatId: member.id,
+              alreadyLive,
+            })
+            if (!gate.ok) {
+              return NextResponse.json(
+                {
+                  error: gate.error || `Live beat limit blocked “${member.title || member.id}”.`,
+                  entitlements: gate.entitlements,
+                  beatId: member.id,
+                },
+                { status: 409 },
+              )
+            }
+          }
+        }
+        const now = new Date().toISOString()
+        const result = await patchTable(
+          'beats',
+          `pack_id=eq.${encodeURIComponent(packId)}&status=in.(approved,published)`,
+          {
+            is_public: publish,
+            status: publish ? 'published' : 'approved',
+            published_at: publish ? now : null,
+            updated_at: now,
+          },
+        )
+        if (!result?.length) {
+          return NextResponse.json({ error: 'Only approved pack members can be published.' }, { status: 409 })
+        }
+        await patchTable('beat_packs', `id=eq.${encodeURIComponent(packId)}`, {
+          status: publish ? 'published' : 'approved',
+          is_public: publish,
+          updated_at: now,
+        })
+        if (publish) {
+          const profiles = await patchTable(
+            'profiles',
+            `id=eq.${encodeURIComponent(pack.producer_user_id)}`,
+            {
+              is_producer: true,
+              is_published: true,
+              is_verified: true,
+              updated_at: now,
+            },
+          )
+          if (!profiles?.length) {
+            return NextResponse.json({ error: 'Producer profile could not be published.' }, { status: 409 })
+          }
+        }
+        await audit(identity.user.id, publish ? 'beat_pack_published' : 'beat_pack_unpublished', 'beat_pack', packId, {
+          count: Array.isArray(result) ? result.length : members.length,
+        })
+        return NextResponse.json({ result, count: Array.isArray(result) ? result.length : members.length, packId })
       }
       default: return NextResponse.json({ error: 'Unknown editorial action.' }, { status: 400 })
     }

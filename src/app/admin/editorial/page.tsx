@@ -20,7 +20,7 @@ type Staff = { user_id: string; role: EditorialRole; active: boolean }
 type Audit = { id: number; action: string; entity_type: string; entity_id: string; created_at: string }
 type TrackRequest = { id: string; track_id: string; artist_user_id: string; request_type: string; message: string; status: string; staff_notes?: string; created_at: string }
 type ArtworkChangeRequest = { id: string; requester_user_id: string; target_kind: 'track' | 'release' | 'beat' | 'beat_pack'; target_id: string; request_type: string; message: string; status: string; staff_notes?: string; proposed_artwork_path?: string | null; proposed_artwork_url?: string | null; current_artwork_url?: string | null; apply_to_pack_members?: boolean; created_at: string }
-type BeatPack = { id: string; title: string; producer_user_id: string; artwork_path?: string | null; status?: string }
+type BeatPack = { id: string; title: string; producer_user_id: string; artwork_path?: string | null; status?: string; is_public?: boolean; description?: string | null; genre?: string | null }
 type ArtistWaitlist = { id: string; email: string; artist_name: string; country?: string; city?: string; status: string; source: string; created_at: string }
 type ArtistDeposit = { id: string; artist_user_id: string; amount: number | string; currency: string; status: string; source: string; created_at: string }
 type ArtistPayoutRequest = { id: string; artist_user_id: string; requested_amount: number | string; currency: string; status: string; requested_at: string }
@@ -32,7 +32,7 @@ type ReleaseClearanceEvidence = { id: string; release_id: string; material_type:
 type MediaProcessingJob = { id: string; release_id: string; release_track_id: string; status: string; codec_name?: string; duration_seconds?: number; sample_rate?: number; channels?: number; loudness_lufs?: number; true_peak_db?: number; malware_status: string; blockers?: string[]; waveform_path?: string; preview_path?: string; error_code?: string }
 type DistJob = { id: string; release_id?: string | null; track_id?: string | null; artist_user_id?: string; status: string; distributor?: string | null; notes?: string | null }
 type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
-type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
+type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; pack_id?: string | null; pack_position?: number | null; beat_licence_options?: BeatLicence[] }
 type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' | 'editor'; message: string; created_at: string }
 type TrackReviewMessage = { id: string; track_id: string; author_kind: 'artist' | 'editor'; message: string; created_at: string }
 type RoleApplication = { id: string; user_id: string; requested_role: string; status: string; message?: string; review_notes?: string; updated_at: string }
@@ -417,6 +417,7 @@ export default function EditorialDashboard() {
       <EditorialDropDown id="ed-beats" label="Producer BeatStore" count={beatQueue} defaultOpen={beatQueue > 0}>
         <BeatStoreEditorialPanel
           beats={data.beats || []}
+          packs={data.beatPacks || []}
           messages={data.beatReviewMessages || []}
           profiles={data.profiles}
           enabled={allowed('approve_submissions')}
@@ -914,6 +915,7 @@ function RoleApplicationCard({
 
 function BeatStoreEditorialPanel({
   beats,
+  packs,
   messages,
   profiles,
   enabled,
@@ -921,6 +923,7 @@ function BeatStoreEditorialPanel({
   busy,
 }: {
   beats: Beat[]
+  packs: BeatPack[]
   messages: BeatReviewMessage[]
   profiles: Profile[]
   enabled: boolean
@@ -932,95 +935,180 @@ function BeatStoreEditorialPanel({
     profiles.find((p) => p.id === id)?.username ||
     id.slice(0, 8)
   const publicUrl = (path?: string | null) => mediaUrlForStoredValue(path) || ''
+  const packById = new Map(packs.map((pack) => [pack.id, pack]))
+  const singles = beats.filter((beat) => !beat.pack_id)
+  const packIds = [...new Set(beats.map((beat) => beat.pack_id).filter((id): id is string => Boolean(id)))]
+  // Include submitted packs that somehow lost member rows in the limited beat fetch.
+  for (const pack of packs) {
+    if (!packIds.includes(pack.id) && ['submitted', 'in_review', 'changes_requested', 'approved'].includes(String(pack.status || ''))) {
+      packIds.push(pack.id)
+    }
+  }
+
+  const renderBeatCard = (beat: Beat, nested = false) => {
+    const price = beat.beat_licence_options?.[0]?.price_usd
+    const audioSrc = publicUrl(beat.preview_path)
+    const artSrc = publicUrl(beat.artwork_path)
+    return (
+      <article key={beat.id} className={`rounded-2xl border border-white/10 bg-white/[.025] p-5 ${nested ? 'bg-black/20' : ''}`}>
+        <div className="flex flex-wrap justify-between gap-4">
+          <div className="flex min-w-0 flex-1 gap-4">
+            {artSrc ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={artSrc}
+                alt=""
+                className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+                onError={(e) => {
+                  ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                }}
+              />
+            ) : (
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[10px] text-text-secondary">
+                No art
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[beat.status] || 'text-text-secondary'}`}>
+                {beat.status.replaceAll('_', ' ')}
+                {beat.pack_position != null ? ` · #${beat.pack_position}` : ''}
+              </p>
+              <h3 className="mt-1 text-xl font-semibold">{beat.title}</h3>
+              <p className="text-sm text-text-secondary">
+                {nameFor(beat.producer_user_id)} · {beat.genre || 'Beat'}
+                {beat.bpm ? ` · ${beat.bpm} BPM` : ''}
+                {price != null ? ` · $${Number(price).toFixed(2)} standard lease` : ''}
+                {beat.is_public ? ' · public' : ' · not public'}
+              </p>
+              {beat.editorial_notes && (
+                <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>
+              )}
+            </div>
+          </div>
+          {audioSrc ? <audio controls preload="none" src={audioSrc} className="h-10 max-w-full" /> : null}
+        </div>
+        {enabled && (
+          <div className="mt-4">
+            <BeatReviewThread beat={beat} messages={messages.filter((message) => message.beat_id === beat.id)} profiles={profiles} act={act} busy={busy} />
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                disabled={Boolean(busy)}
+                onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: '' })}
+                className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
+              >
+                Approve
+              </button>
+              <button
+                disabled={Boolean(busy)}
+                onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: 'Please review the editorial conversation and revise before resubmitting.' })}
+                className="rounded-full border border-white/20 px-4 py-2 text-xs"
+              >
+                Request changes
+              </button>
+              <button
+                disabled={Boolean(busy)}
+                onClick={() => act('review_beat', { beatId: beat.id, status: 'rejected', notes: beat.editorial_notes || '' })}
+                className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black"
+              >
+                Reject
+              </button>
+              {['approved', 'published'].includes(beat.status) && (
+                <button
+                  disabled={Boolean(busy)}
+                  onClick={() => act('publish_beat', { beatId: beat.id, publish: !beat.is_public })}
+                  className="rounded-full border border-brand px-4 py-2 text-xs text-brand"
+                >
+                  {beat.is_public ? 'Unpublish' : 'Publish to BeatStore'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </article>
+    )
+  }
+
   return (
     <section className="mt-12">
       <h2 className="text-2xl font-semibold">Producer BeatStore queue</h2>
       <p className="mt-2 text-sm text-text-secondary">
-        Approve and publish producer beat listings. Publishing makes them visible in Beats / BeatStore.
+        Review single beats and multi-beat packs/EPs together. Pack actions approve or publish every member; individual beat controls stay available inside each pack.
       </p>
-      <div className="mt-5 space-y-4">
-        {beats.map((beat) => {
-          const price = beat.beat_licence_options?.[0]?.price_usd
-          const audioSrc = publicUrl(beat.preview_path)
-          const artSrc = publicUrl(beat.artwork_path)
+      <div className="mt-5 space-y-6">
+        {packIds.map((packId) => {
+          const pack = packById.get(packId)
+          const members = beats
+            .filter((beat) => beat.pack_id === packId)
+            .slice()
+            .sort((a, b) => (a.pack_position || 0) - (b.pack_position || 0))
+          const producerId = pack?.producer_user_id || members[0]?.producer_user_id || ''
+          const statuses = members.map((beat) => beat.status)
+          const allApproved = members.length > 0 && members.every((beat) => ['approved', 'published'].includes(beat.status))
+          const anyPublic = members.some((beat) => beat.is_public)
+          const packStatus = pack?.status || (allApproved ? (anyPublic ? 'published' : 'approved') : statuses[0] || 'submitted')
           return (
-            <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
-              <div className="flex flex-wrap justify-between gap-4">
-                <div className="flex min-w-0 flex-1 gap-4">
-                  {artSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={artSrc}
-                      alt=""
-                      className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
-                      onError={(e) => {
-                        ;(e.currentTarget as HTMLImageElement).style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[10px] text-text-secondary">
-                      No art
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[beat.status] || 'text-text-secondary'}`}>
-                    {beat.status.replaceAll('_', ' ')}
+            <section key={packId} className="rounded-3xl border border-brand/25 bg-brand/[.04] p-5">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Beat pack / EP</p>
+                  <h3 className="mt-1 text-2xl font-semibold">{pack?.title || 'Untitled pack'}</h3>
+                  <p className="mt-1 text-sm text-text-secondary">
+                    {producerId ? nameFor(producerId) : 'Producer'} · {members.length} beat{members.length === 1 ? '' : 's'} · {String(packStatus).replaceAll('_', ' ')}
+                    {anyPublic ? ' · some public' : ' · not public'}
                   </p>
-                  <h3 className="mt-1 text-xl font-semibold">{beat.title}</h3>
-                  <p className="text-sm text-text-secondary">
-                    {nameFor(beat.producer_user_id)} · {beat.genre || 'Beat'}
-                    {beat.bpm ? ` · ${beat.bpm} BPM` : ''}
-                    {price != null ? ` · $${Number(price).toFixed(2)} standard lease` : ''}
-                    {beat.is_public ? ' · public' : ' · not public'}
-                  </p>
-                  {beat.editorial_notes && (
-                    <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>
-                  )}
-                  </div>
+                  {pack?.genre && <p className="mt-1 text-xs text-text-secondary">{pack.genre}</p>}
                 </div>
-                {audioSrc ? <audio controls preload="none" src={audioSrc} className="h-10 max-w-full" /> : null}
-              </div>
-              {enabled && (
-                <div className="mt-4">
-                  <BeatReviewThread beat={beat} messages={messages.filter((message) => message.beat_id === beat.id)} profiles={profiles} act={act} busy={busy} />
-                  <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    disabled={Boolean(busy)}
-                    onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: '' })}
-                    className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    disabled={Boolean(busy)}
-                    onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: 'Please review the editorial conversation and revise before resubmitting.' })}
-                    className="rounded-full border border-white/20 px-4 py-2 text-xs"
-                  >
-                    Request changes
-                  </button>
-                  <button
-                    disabled={Boolean(busy)}
-                    onClick={() => act('review_beat', { beatId: beat.id, status: 'rejected', notes: beat.editorial_notes || '' })}
-                    className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black"
-                  >
-                    Reject
-                  </button>
-                  {['approved', 'published'].includes(beat.status) && (
+                {enabled && (
+                  <div className="flex flex-wrap gap-2">
                     <button
                       disabled={Boolean(busy)}
-                      onClick={() => act('publish_beat', { beatId: beat.id, publish: !beat.is_public })}
-                      className="rounded-full border border-brand px-4 py-2 text-xs text-brand"
+                      onClick={() => act('review_beat_pack', { packId, status: 'approved', notes: '' })}
+                      className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
                     >
-                      {beat.is_public ? 'Unpublish' : 'Publish to BeatStore'}
+                      Approve whole pack
                     </button>
-                  )}
+                    <button
+                      disabled={Boolean(busy)}
+                      onClick={() => act('review_beat_pack', { packId, status: 'changes_requested', notes: 'Please revise this pack before resubmitting. Check every beat preview, cover and lease price.' })}
+                      className="rounded-full border border-white/20 px-4 py-2 text-xs"
+                    >
+                      Request pack changes
+                    </button>
+                    <button
+                      disabled={Boolean(busy)}
+                      onClick={() => act('review_beat_pack', { packId, status: 'rejected', notes: 'Pack rejected.' })}
+                      className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black"
+                    >
+                      Reject pack
+                    </button>
+                    {allApproved && (
+                      <button
+                        disabled={Boolean(busy)}
+                        onClick={() => act('publish_beat_pack', { packId, publish: !anyPublic })}
+                        className="rounded-full border border-brand px-4 py-2 text-xs text-brand"
+                      >
+                        {anyPublic ? 'Unpublish pack' : 'Publish pack to BeatStore'}
+                      </button>
+                    )}
                   </div>
-                </div>
-              )}
-            </article>
+                )}
+              </div>
+              <div className="mt-4 space-y-3">
+                {members.map((beat) => renderBeatCard(beat, true))}
+                {!members.length && <Empty text="Pack shell exists but no member beats were loaded." />}
+              </div>
+            </section>
           )
         })}
-        {!beats.length && <Empty text="No producer beats in queue yet." />}
+
+        {singles.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Single beats</h3>
+            {singles.map((beat) => renderBeatCard(beat))}
+          </div>
+        )}
+
+        {!beats.length && !packIds.length && <Empty text="No producer beats in queue yet." />}
       </div>
     </section>
   )

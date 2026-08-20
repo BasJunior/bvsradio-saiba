@@ -9,7 +9,19 @@ type Slot = { signedUrl: string; path: string; contentType?: string }
 type PackBeat = { id: string; title: string; mood: string; bpm: string; musicalKey: string; price: string; preview: File | null; master: File | null }
 
 const field = 'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
+const MAX_PACK_BEATS = 20
 const newBeat = (): PackBeat => ({ id: crypto.randomUUID(), title: '', mood: '', bpm: '', musicalKey: '', price: '29', preview: null, master: null })
+
+function titleFromAudioName(name: string) {
+  const base = name.replace(/\.[^.]+$/, '')
+  return base
+    .replace(/[_]+/g, ' ')
+    .replace(/\s*-\s*/g, ' - ')
+    .replace(/\s+/g, ' ')
+    .replace(/^\d{1,2}[\.\-_\s]+/, '')
+    .trim()
+    .slice(0, 160)
+}
 
 function validateArtwork(file: File) {
   if (!/\.(jpe?g|png|webp)$/i.test(file.name)) return 'Cover art must be JPG, PNG, or WebP.'
@@ -80,6 +92,48 @@ export default function BeatPackUploadForm() {
     setBeats(current => current.map(beat => beat.id === id ? { ...beat, ...patch } : beat))
   }
 
+  const importPreviewFiles = (fileList: FileList | null) => {
+    if (!fileList?.length) return
+    setError('')
+    const files = Array.from(fileList)
+    const next: PackBeat[] = []
+    const rejected: string[] = []
+    for (const file of files) {
+      if (next.length >= MAX_PACK_BEATS) {
+        rejected.push(`${file.name} (pack full at ${MAX_PACK_BEATS})`)
+        continue
+      }
+      const check = isAllowedAudioFile(file)
+      if (!check.ok) {
+        rejected.push(`${file.name}: ${check.error}`)
+        continue
+      }
+      next.push({
+        ...newBeat(),
+        title: titleFromAudioName(file.name) || `Beat ${next.length + 1}`,
+        preview: file,
+      })
+    }
+    if (next.length < 2 && next.length > 0) {
+      // Keep at least two pack slots so the producer can still finish the EP.
+      while (next.length < 2) next.push(newBeat())
+    }
+    if (!next.length) {
+      setError(rejected[0] || 'No valid audio files selected.')
+      return
+    }
+    setBeats(next)
+    if (!title.trim() && next[0]?.title) {
+      const guessed = titleFromAudioName(files[0]?.name || next[0].title)
+      if (guessed) setTitle(`${guessed} Pack`.slice(0, 160))
+    }
+    if (rejected.length) {
+      setMessage(`Imported ${next.filter(b => b.preview).length} previews. Skipped: ${rejected.slice(0, 3).join(' · ')}${rejected.length > 3 ? '…' : ''}`)
+    } else {
+      setMessage(`Imported ${next.filter(b => b.preview).length} previews as an ordered pack. Edit titles/prices, then submit for editorial review.`)
+    }
+  }
+
   const submit = async (event: FormEvent, submitForReview: boolean) => {
     event.preventDefault()
     setError('')
@@ -87,12 +141,13 @@ export default function BeatPackUploadForm() {
     if (!token) return setError('Sign in with an artist/producer account before uploading a pack.')
     if (!title.trim()) return setError('Enter a pack title.')
     if (submitForReview && !rights) return setError('Confirm that you control the rights to every beat in the pack.')
-    if (beats.length < 2) return setError('A pack needs at least two beats.')
+    if (beats.length < 2) return setError('A pack needs at least two beats (for example a 10-pack EP).')
+    if (beats.length > MAX_PACK_BEATS) return setError(`A pack can include at most ${MAX_PACK_BEATS} beats.`)
     if (beats.some(beat => !beat.title.trim() || Number(beat.price) < 1)) {
       return setError('Every beat needs a title and Standard lease price of at least $1.')
     }
     if (submitForReview && beats.some(beat => !beat.preview)) {
-      return setError('Every beat needs a tagged preview before the pack can be submitted.')
+      return setError('Every beat needs a tagged preview before the pack can be submitted. Use “Import previews” to drop a whole pack at once.')
     }
     for (const beat of beats) {
       for (const file of [beat.preview, beat.master].filter((value): value is File => Boolean(value))) {
@@ -157,8 +212,15 @@ export default function BeatPackUploadForm() {
   return <form onSubmit={event => void submit(event, true)} noValidate className="grid gap-4 rounded-2xl border border-white/10 p-6">
     <div>
       <p className="text-xs uppercase tracking-[0.22em] text-brand">Producer</p>
-      <h2 className="mt-1 text-2xl">Upload a beat pack</h2>
-      <p className="mt-2 text-sm text-text-secondary">Upload 2–20 ordered beats under one pack identity. Every beat receives its own preview, master and lease price.</p>
+      <h2 className="mt-1 text-2xl">Upload a beat pack / EP</h2>
+      <p className="mt-2 text-sm text-text-secondary">
+        Drop 2–{MAX_PACK_BEATS} tagged previews as one ordered pack (for example a 10-pack). Files go to private BVS storage, then the whole pack waits in editorial until staff approve and publish. Live BeatStore limits apply per public beat, not only the pack shell.
+      </p>
+      <ol className="mt-3 list-decimal space-y-1 pl-5 text-xs text-text-secondary">
+        <li>Import previews (multi-select) or add beats one by one</li>
+        <li>Set pack title, shared cover, and each lease price</li>
+        <li>Submit pack → editorial reviews the set → publish opens each beat in BeatStore</li>
+      </ol>
     </div>
     {error && <p className="rounded-xl bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
     {message && <p className="rounded-xl bg-brand/10 p-4 text-sm text-brand">{message}</p>}
@@ -170,6 +232,22 @@ export default function BeatPackUploadForm() {
         <input type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" onChange={event => setArtwork(event.target.files?.[0] || null)} className={`${field} mt-1`} />
       </label>
     </div>
+    <label className="rounded-2xl border border-dashed border-brand/40 bg-brand/5 p-4 text-sm text-text-secondary">
+      <span className="block font-medium text-text-primary">Import pack previews (multi-select)</span>
+      <span className="mt-1 block text-xs">Select many audio files at once — order is kept from your selection. Titles are guessed from filenames; you can edit before submit.</span>
+      <input
+        type="file"
+        multiple
+        accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac,.flac"
+        disabled={busy}
+        onChange={event => {
+          importPreviewFiles(event.target.files)
+          event.currentTarget.value = ''
+        }}
+        className={`${field} mt-3`}
+      />
+    </label>
+    <p className="text-xs text-text-secondary">{beats.filter(b => b.preview).length} of {beats.length} slots have previews · max {MAX_PACK_BEATS}</p>
     <div className="space-y-4">
       {beats.map((beat, index) => <fieldset key={beat.id} className="rounded-xl border border-white/10 p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -191,7 +269,7 @@ export default function BeatPackUploadForm() {
         </div>
       </fieldset>)}
     </div>
-    <button type="button" disabled={beats.length >= 20 || busy} onClick={() => setBeats(current => [...current, newBeat()])} className="rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">+ Add another beat</button>
+    <button type="button" disabled={beats.length >= MAX_PACK_BEATS || busy} onClick={() => setBeats(current => current.length >= MAX_PACK_BEATS ? current : [...current, newBeat()])} className="rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">+ Add another beat</button>
     <label className="flex items-start gap-3 text-sm text-text-secondary">
       <input type="checkbox" checked={rights} onChange={event => setRights(event.target.checked)} className="mt-1" />
       I own or control the rights to every beat in this pack and can offer Standard leases on BVS.

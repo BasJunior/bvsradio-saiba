@@ -25,6 +25,8 @@ type Beat = {
   preview_path?: string | null
   editorial_notes?: string | null
   created_at?: string
+  pack_id?: string | null
+  pack_position?: number | null
   beat_licence_options?: Licence[]
   beat_review_messages?: Array<{
     id: string
@@ -442,58 +444,96 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
       </form>
 
       {!creationOnly && <div className="mt-8 space-y-3">
-        <h3 className="text-xl">Your beats</h3>
-        {beats.map((beat) => {
-          const priceUsd = beat.beat_licence_options?.[0]?.price_usd
-          return (
-            <article key={beat.id} className="rounded-xl border border-white/10 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h4 className="font-medium">{beat.title}</h4>
-                  <p className="mt-1 text-xs capitalize text-text-secondary">
-                    {beat.genre || 'Beat'} · {beat.status.replaceAll('_', ' ')}
-                    {beat.is_public ? ' · public' : ' · not public'}
-                    {priceUsd != null ? ` · $${Number(priceUsd).toFixed(2)}` : ''}
-                  </p>
-                  {beat.editorial_notes && (
-                    <p className="mt-2 text-sm text-text-secondary">Editor: {beat.editorial_notes}</p>
-                  )}
-                  <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
-                    <div className="mt-2 space-y-2">
-                      {(beat.beat_review_messages || []).map(item => (
-                        <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs">
-                          <span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}
-                          <span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span>
-                        </p>
-                      ))}
-                      {!beat.beat_review_messages?.length && <p className="text-xs text-text-secondary">Editorial messages will appear here.</p>}
-                    </div>
-                    <div className="mt-2 flex gap-2">
-                      <input value={reviewReplies[beat.id] || ''} onChange={event => setReviewReplies(current => ({ ...current, [beat.id]: event.target.value }))} placeholder="Reply to editorial…" className={`${field} py-2 text-sm`} />
-                      <button type="button" disabled={busy || !(reviewReplies[beat.id] || '').trim()} onClick={() => void sendReviewMessage(beat.id)} className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40">Send</button>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h3 className="text-xl">Your beats & packs</h3>
+            <p className="mt-1 text-xs text-text-secondary">
+              Packs/EPs stay grouped after multi-upload. Status and editorial replies appear here until each beat is approved and published to BeatStore.
+            </p>
+          </div>
+          <Link href="/upload?type=pack" className="text-sm text-brand">Upload multi-beat pack →</Link>
+        </div>
+        {(() => {
+          const singles = beats.filter((beat) => !beat.pack_id)
+          const packIds = [...new Set(beats.map((beat) => beat.pack_id).filter((id): id is string => Boolean(id)))]
+          const renderBeat = (beat: Beat, nested = false) => {
+            const priceUsd = beat.beat_licence_options?.[0]?.price_usd
+            return (
+              <article key={beat.id} className={`rounded-xl border border-white/10 p-4 ${nested ? 'bg-black/20' : ''}`}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-medium">{beat.title}</h4>
+                    <p className="mt-1 text-xs capitalize text-text-secondary">
+                      {beat.genre || 'Beat'} · {beat.status.replaceAll('_', ' ')}
+                      {beat.pack_position != null ? ` · #${beat.pack_position}` : ''}
+                      {beat.is_public ? ' · public' : ' · not public'}
+                      {priceUsd != null ? ` · $${Number(priceUsd).toFixed(2)}` : ''}
+                    </p>
+                    {beat.editorial_notes && (
+                      <p className="mt-2 text-sm text-text-secondary">Editor: {beat.editorial_notes}</p>
+                    )}
+                    <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
+                      <div className="mt-2 space-y-2">
+                        {(beat.beat_review_messages || []).map(item => (
+                          <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs">
+                            <span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}
+                            <span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span>
+                          </p>
+                        ))}
+                        {!beat.beat_review_messages?.length && <p className="text-xs text-text-secondary">Editorial messages will appear here.</p>}
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <input value={reviewReplies[beat.id] || ''} onChange={event => setReviewReplies(current => ({ ...current, [beat.id]: event.target.value }))} placeholder="Reply to editorial…" className={`${field} py-2 text-sm`} />
+                        <button type="button" disabled={busy || !(reviewReplies[beat.id] || '').trim()} onClick={() => void sendReviewMessage(beat.id)} className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40">Send</button>
+                      </div>
                     </div>
                   </div>
+                  {['draft', 'changes_requested', 'rejected'].includes(beat.status) && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => void submitExisting(beat.id)}
+                      className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40"
+                    >
+                      Submit
+                    </button>
+                  )}
                 </div>
-                {['draft', 'changes_requested', 'rejected'].includes(beat.status) && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void submitExisting(beat.id)}
-                    className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40"
-                  >
-                    Submit
-                  </button>
-                )}
-              </div>
-            </article>
+              </article>
+            )
+          }
+          return (
+            <>
+              {packIds.map((packId) => {
+                const members = beats
+                  .filter((beat) => beat.pack_id === packId)
+                  .slice()
+                  .sort((a, b) => (a.pack_position || 0) - (b.pack_position || 0))
+                const titleHint = members[0]?.title ? `${members[0].title} pack` : 'Beat pack'
+                const statuses = [...new Set(members.map((beat) => beat.status.replaceAll('_', ' ')))]
+                return (
+                  <section key={packId} className="space-y-3 rounded-2xl border border-brand/20 bg-brand/[.04] p-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Pack / EP</p>
+                      <h4 className="mt-1 font-medium">{titleHint}</h4>
+                      <p className="mt-1 text-xs text-text-secondary">
+                        {members.length} beats · {statuses.join(' · ') || 'submitted'} · stays together through editorial approve → publish
+                      </p>
+                    </div>
+                    {members.map((beat) => renderBeat(beat, true))}
+                  </section>
+                )
+              })}
+              {singles.map((beat) => renderBeat(beat))}
+              {!beats.length && (
+                <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">
+                  No beats yet. Add a single listing above or upload a multi-beat pack.
+                </p>
+              )}
+            </>
           )
-        })}
-        {!beats.length && (
-          <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">
-            No beats yet. Add your first listing above.
-          </p>
-        )}
+        })()}
         <div className="pt-4">
           <ArtworkChangeRequestForm
             token={token}
