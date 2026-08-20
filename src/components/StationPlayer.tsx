@@ -13,6 +13,7 @@ import {
   QUALIFIED_STREAM_SECONDS,
   type StreamQualificationState,
 } from "@/lib/stream-qualification";
+import FlowRelationships from "@/components/flow/FlowRelationships";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -1175,11 +1176,15 @@ function QueueSheet() {
 export function PersistentPlayer() {
   const player = useStationPlayer();
   const { nowPlayingOpen, closeNowPlaying } = player;
+  const currentTrackId = player.current?.id;
   const art = player.current?.artwork;
   const repeatLabel = player.repeat === "off" ? "Repeat off" : player.repeat === "all" ? "Repeat all" : "Repeat one";
 
   useEffect(() => {
     if (!nowPlayingOpen) return;
+    if (flowV2Flags.nowPlayingContext) {
+      trackEvent("now_playing_context_open", { track_id: currentTrackId || null });
+    }
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
@@ -1190,7 +1195,7 @@ export function PersistentPlayer() {
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [nowPlayingOpen, closeNowPlaying]);
+  }, [nowPlayingOpen, closeNowPlaying, currentTrackId]);
 
   return (
     <>
@@ -1250,10 +1255,15 @@ export function PersistentPlayer() {
                 <p className="mt-6 text-sm leading-relaxed text-white/50">Playback stays continuous while you move through artists, credits, stories and BeatStore.</p>
               </div>
             </div>
+            {flowV2Flags.nowPlayingContext && player.current?.id ? (
+              <div className="mx-auto w-full max-w-4xl border-t border-white/10 pb-6 pt-2">
+                <FlowRelationships kind="track" id={player.current.id} compact />
+              </div>
+            ) : null}
           </div>
         </section>
       )}
-      <section className="fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
+      {!nowPlayingOpen ? <section className="fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
         <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
         {(player.error || player.notice) && (
           <p className={`px-4 py-1 text-center text-xs ${player.error ? "bg-red-500/15 text-red-200" : "bg-brand/10 text-brand"}`} role="status">
@@ -1343,7 +1353,7 @@ export function PersistentPlayer() {
             Library
           </Link>
         </div>
-      </section>
+      </section> : null}
     </>
   );
 }

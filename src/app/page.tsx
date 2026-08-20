@@ -5,6 +5,8 @@ import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import HomeBeatRail from "@/components/flow/HomeBeatRail";
 import { getPublicProgrammes } from "@/lib/station-content";
+import BvsPulse from "@/components/flow/BvsPulse";
+import { flowV2Flags } from "@/lib/feature-flags";
 
 export default async function HomePage() {
   const shows = await getPublicProgrammes();
@@ -67,6 +69,8 @@ export default async function HomePage() {
         <PublishedArtistsShelf limit={6} />
         <PublishedAlbumsShelf />
       </section>
+
+      {flowV2Flags.pulse ? <BvsPulse /> : null}
 
       <HomeBeatRail />
 
