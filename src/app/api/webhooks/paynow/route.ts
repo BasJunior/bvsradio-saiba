@@ -4,7 +4,9 @@ import {
   loadOrder,
   notifyCustomerOrderEmail,
   notifyOwnerNewOrder,
+  saveOrderToSupabase,
   updateOrder,
+  type StoredOrder,
 } from "@/lib/orders";
 import { recordServerEvent } from "@/lib/analytics-server";
 import {
@@ -15,9 +17,89 @@ import { sameMoney, verifyPaynowHash } from "@/lib/paynow-security";
 import { recordVerifiedPayment } from "@/lib/commerce-ledger";
 import {
   activatePaidArtistPremium,
+  artistPremiumPriceUsd,
+  artistPremiumSku,
+  normalizeArtistPlanId,
+  normalizeInterval,
   parsePremiumOrderItem,
+  type ArtistPremiumPlanId,
+  type BillingInterval,
 } from "@/lib/premium-billing";
 import { initializePaidCreatorServiceOrder } from "@/lib/creator-service-orders";
+
+/**
+ * Recover a missing Artist Premium order when Paynow confirms a BVS-PREM-* payment.
+ * ZVSJQ (2026-08-18): paid EcoCash, no local/Supabase order → webhook 404, no activation.
+ * Public copy never invents buyer identity beyond what Paynow / body provides.
+ */
+function recoverPremiumOrderFromPaynow(input: {
+  reference: string;
+  pollUrl: string;
+  body: Record<string, string>;
+  trustedAmount?: string | number;
+}): StoredOrder | null {
+  const reference = String(input.reference || "").trim();
+  if (!/^BVS-PREM-/i.test(reference)) return null;
+
+  // Optional recovery hints if a future subscribe path stamps them into Paynow meta / notes.
+  // Without them we still open a recoverable shell so activate can run once userId is known.
+  const planRaw =
+    input.body.planid ||
+    input.body.planId ||
+    input.body.PlanId ||
+    input.body.additionalinfo ||
+    "artist_founding";
+  const intervalRaw = input.body.interval || input.body.Interval || "month";
+  const planId: ArtistPremiumPlanId = normalizeArtistPlanId(String(planRaw));
+  const interval: BillingInterval = normalizeInterval(String(intervalRaw));
+  const amountFromPoll = Number(input.trustedAmount);
+  const amount =
+    Number.isFinite(amountFromPoll) && amountFromPoll > 0
+      ? amountFromPoll
+      : artistPremiumPriceUsd(planId, interval);
+  const sku = artistPremiumSku(planId, interval);
+  const email =
+    String(input.body.email || input.body.Email || input.body.authemail || "").trim() ||
+    "premium-recovery@users.bvsradio.com";
+  const userId =
+    String(input.body.customeruserid || input.body.customerUserId || input.body.userid || "").trim() ||
+    undefined;
+  const title =
+    planId === "artist_founding"
+      ? `BVS Founding Artist Premium (${interval})`
+      : `BVS Standard Artist Premium (${interval})`;
+
+  return {
+    reference,
+    customerUserId: userId,
+    createdAt: new Date().toISOString(),
+    customer: {
+      name: email.split("@")[0] || "Artist",
+      email,
+    },
+    items: [
+      {
+        id: sku,
+        title,
+        type: "artist_premium",
+        price: amount,
+        quantity: 1,
+      },
+    ],
+    paymentMethod: "paynow",
+    projectNotes: `artist_premium:${planId}:${interval}:recovered_missing_order`,
+    subtotal: amount,
+    taxAmount: 0,
+    taxRate: 0,
+    taxMode: "none",
+    total: amount,
+    currency: "usd",
+    status: "pending_payment",
+    deliveryStatus: "awaiting_payment",
+    paynowPollUrl: input.pollUrl,
+    source: "artist_premium_recovery",
+  };
+}
 
 /**
  * Paynow result URL — they POST status updates here.
@@ -59,10 +141,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const order = await loadOrder(reference);
-    if (!order) {
-      return NextResponse.json({ error: "Order not found." }, { status: 404 });
-    }
+    let order = await loadOrder(reference);
     let result: {
       status?: string;
       paid?: boolean;
@@ -89,6 +168,50 @@ export async function POST(req: Request) {
       result.paid === true;
     const referenceMatches =
       !result.reference || result.reference === reference;
+
+    // Missing BVS-PREM-* order + trusted paid poll → recover durable row (ZVSJQ class).
+    if (!order && paid && referenceMatches && /^BVS-PREM-/i.test(reference)) {
+      const recovered = recoverPremiumOrderFromPaynow({
+        reference,
+        pollUrl,
+        body,
+        trustedAmount: result.amount,
+      });
+      if (recovered) {
+        try {
+          const saved = await saveOrderToSupabase(recovered);
+          if (saved.saved) {
+            order = (await loadOrder(reference)) || recovered;
+            await recordServerEvent("checkout_complete", {
+              provider: "paynow",
+              status: "premium_order_recovered",
+              reference,
+            });
+          }
+        } catch (recoverErr) {
+          console.error("paynow premium order recovery failed", recoverErr);
+        }
+      }
+    }
+
+    if (!order) {
+      const isPremiumRef = /^BVS-PREM-/i.test(reference);
+      await recordServerEvent("payment_error", {
+        provider: "paynow",
+        stage: "order_not_found",
+        reference,
+        premiumRef: isPremiumRef,
+      });
+      // Do not 404 Premium refs — Paynow treats 404 as terminal (ZVSJQ drop).
+      if (isPremiumRef) {
+        return NextResponse.json(
+          { error: "Premium order not stored yet. Retry." },
+          { status: 503 },
+        );
+      }
+      return NextResponse.json({ error: "Order not found." }, { status: 404 });
+    }
+
     const amountMatches = sameMoney(result.amount, order.total);
 
     if (!paid || !referenceMatches || !amountMatches) {
@@ -186,20 +309,45 @@ export async function POST(req: Request) {
             interval: premiumLine.interval,
           });
         }
+      } else if (premiumLine && !order.customerUserId) {
+        // Recovered shell without user id — paid, but ops must link buyer + re-run activate.
+        console.error("premium paid without customerUserId", reference);
+        await recordServerEvent("payment_error", {
+          provider: "paynow",
+          stage: "premium_missing_user",
+          reference,
+        });
       }
 
       const updated = await updateOrder(reference, {
         status: "paid",
-        deliveryStatus: premiumLine ? "premium_active" : "paid_processing",
+        deliveryStatus: premiumLine
+          ? order.customerUserId
+            ? "premium_active"
+            : "premium_paid_needs_user_link"
+          : "paid_processing",
         paynowPollUrl: pollUrl || undefined,
       });
       const paidOrder = updated || {
         ...order,
         status: "paid" as const,
-        deliveryStatus: premiumLine ? "premium_active" : "paid_processing",
+        deliveryStatus: premiumLine
+          ? order.customerUserId
+            ? "premium_active"
+            : "premium_paid_needs_user_link"
+          : "paid_processing",
       };
-      await notifyOwnerNewOrder(paidOrder);
-      await notifyCustomerOrderEmail(paidOrder, "paid");
+      // Always notify on paid Premium — Stripe path was silent historically; fix both.
+      try {
+        await notifyOwnerNewOrder(paidOrder);
+      } catch (notifyErr) {
+        console.error("paynow owner notify failed", notifyErr);
+      }
+      try {
+        await notifyCustomerOrderEmail(paidOrder, "paid");
+      } catch (notifyErr) {
+        console.error("paynow customer receipt failed", notifyErr);
+      }
     }
 
     return NextResponse.json({ ok: true });

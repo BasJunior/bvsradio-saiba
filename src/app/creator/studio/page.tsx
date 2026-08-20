@@ -784,12 +784,15 @@ function ArtistPathBoard({ data }: { data: Data }) {
             optional).
           </li>
           <li>
-            If Premium: release enters multi-platform queue automatically.
+            If Premium: release becomes multi-platform eligible automatically after BVS publish.
           </li>
-          <li>BVS ops hand off to the private distribution partner.</li>
           <li>
-            After partner/store approval → live on Spotify and other major
-            platforms.
+            BVS ops hand off through the private distribution partner (internal pilot).
+            You will only see partner-anonymous status here — never a third-party brand name.
+          </li>
+          <li>
+            After partner/store approval → live on Spotify and other major platforms;
+            ISRCs and store links land back on your BVS tracks.
           </li>
         </ol>
         <div className="mt-5 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">

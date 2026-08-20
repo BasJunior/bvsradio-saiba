@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import {
-  PRIVATE_DSP_PARTNER_CODE,
+  AMUSE_PILOT_HANDOFF_CHECKLIST,
+  PRIVATE_DSP_PARTNER_AMUSE,
   editorialDistributionStatusLabel,
+  partnerHandoffNotes,
 } from '@/lib/distribution-path'
 import {
   bestIsrcMatch,
@@ -468,7 +470,7 @@ export default function ReleaseEditorialPanel({
               )}
               {job && (
                 <div className="mt-4 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                  <p className="text-[11px] uppercase tracking-wide text-brand">Multi-platform path</p>
+                  <p className="text-[11px] uppercase tracking-wide text-brand">Multi-platform path · Amuse pilot (staff only)</p>
                   <p className="mt-1">
                     Distribution job:{' '}
                     <strong className="text-text-primary">{editorialDistributionStatusLabel(job.status)}</strong>
@@ -476,15 +478,23 @@ export default function ReleaseEditorialPanel({
                   </p>
                   {job.notes && <p className="mt-2 opacity-90">{job.notes}</p>}
                   <p className="mt-2 text-[11px] opacity-80">
-                    Flow: eligible → queued (ops) → submitted (private partner) → live_on_dsp (stores live).
-                    Do not name aggregator brands in artist-facing copy.
+                    Flow: eligible → queued (ops) → submitted (Amuse pilot account) → live_on_dsp (stores live).
+                    Public/artist UI stays partner-anonymous — never market Amuse on the storefront.
                   </p>
+                  <details className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
+                    <summary className="cursor-pointer font-medium text-text-primary">Amuse hand-off checklist</summary>
+                    <ol className="mt-2 list-decimal space-y-1 pl-4 text-[11px] text-text-secondary">
+                      {AMUSE_PILOT_HANDOFF_CHECKLIST.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ol>
+                  </details>
                   {canDistro && (
                     <div className="mt-2 flex flex-wrap gap-2">
                       {[
                         ['eligible', 'Eligible'],
-                        ['queued', 'Queue partner hand-off'],
-                        ['submitted', 'Submitted to partner'],
+                        ['queued', 'Queue Amuse hand-off'],
+                        ['submitted', 'Submitted to Amuse'],
                         ['live_on_dsp', 'Live on DSPs'],
                         ['failed', 'Failed'],
                         ['not_eligible', 'Not eligible'],
@@ -498,15 +508,10 @@ export default function ReleaseEditorialPanel({
                               jobId: job.id,
                               status,
                               distributor:
-                                status === 'not_eligible' ? null : PRIVATE_DSP_PARTNER_CODE,
-                              notes:
-                                status === 'queued'
-                                  ? 'Queued for private DSP partner hand-off after BVS publish.'
-                                  : status === 'submitted'
-                                    ? 'Delivered to private DSP partner — awaiting store approval.'
-                                    : status === 'live_on_dsp'
-                                      ? 'Live on major platforms. Link ISRC / Spotify URLs on tracks.'
-                                      : undefined,
+                                status === 'not_eligible' || status === 'cancelled'
+                                  ? null
+                                  : PRIVATE_DSP_PARTNER_AMUSE,
+                              notes: partnerHandoffNotes(status),
                             })
                           }
                           className="rounded-full border border-white/15 px-3 py-1 hover:border-brand"

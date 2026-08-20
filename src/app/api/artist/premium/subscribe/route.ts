@@ -11,7 +11,7 @@ import {
   resolveCheckoutPlan,
   type BillingInterval,
 } from "@/lib/premium-billing";
-import { saveOrderLocal, saveOrderToSupabase, type StoredOrder } from "@/lib/orders";
+import { saveOrderLocal, saveOrderToSupabase, updateOrder, type StoredOrder } from "@/lib/orders";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -66,40 +66,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Paynow unavailable." }, { status: 503 });
   }
 
-  paynow.resultUrl = `${siteUrl()}/api/webhooks/paynow`;
-  paynow.returnUrl = `${siteUrl()}/artist/premium?checkout=return&ref=${encodeURIComponent(reference)}`;
-
-  // Test-mode integrations reject non-merchant authemail — use paynowAuthEmail().
-  const payment = paynow.createPayment(reference, paynowAuthEmail(email));
   const title =
     planId === "artist_founding"
       ? `BVS Founding Artist Premium (${interval})`
       : `BVS Standard Artist Premium (${interval})`;
-  payment.add(title, amount);
-
-  let redirectUrl: string | undefined;
-  let pollUrl: string | undefined;
-  try {
-    const response = await paynow.send(payment);
-    const url =
-      response?.redirectUrl ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (response as any)?.browserurl ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (response as any)?.browserUrl;
-    if (!response?.success || !url) {
-      console.error("paynow premium init failed", response?.error);
-      return NextResponse.json(
-        { error: humanizePaynowError(response?.error) },
-        { status: 502 },
-      );
-    }
-    redirectUrl = String(url);
-    pollUrl = response.pollUrl;
-  } catch (e) {
-    console.error("paynow premium exception", e);
-    return NextResponse.json({ error: "Payment provider error. Try again shortly." }, { status: 502 });
-  }
 
   const order: StoredOrder = {
     reference,
@@ -128,16 +98,84 @@ export async function POST(req: Request) {
     currency: "usd",
     status: "pending_payment",
     deliveryStatus: "awaiting_payment",
-    paynowPollUrl: pollUrl,
     source: "artist_premium",
   };
 
+  // Fail closed (ZVSJQ): save the durable order BEFORE creating a Paynow payment.
+  // saveOrderToSupabase returns {saved} and does not throw on HTTP failure.
   try {
     await saveOrderLocal(order);
-    await saveOrderToSupabase(order);
   } catch (e) {
-    console.error("premium order save", e);
-    // Still return redirect — webhook may fail without order; surface soft warning
+    console.warn("premium order local save skipped", e);
+  }
+
+  let supabaseSave: { saved: boolean; reason?: string } = { saved: false };
+  try {
+    supabaseSave = await saveOrderToSupabase(order);
+  } catch (e) {
+    console.error("premium order supabase save exception", e);
+    return NextResponse.json(
+      {
+        error:
+          "Could not start Premium checkout because the order could not be saved. No payment was taken. Please try again in a moment.",
+        code: "premium_order_save_failed",
+        reference,
+      },
+      { status: 500 },
+    );
+  }
+  if (!supabaseSave.saved) {
+    console.error("premium order supabase save rejected", supabaseSave.reason, reference);
+    return NextResponse.json(
+      {
+        error:
+          "Could not start Premium checkout because the order could not be saved. No payment was taken. Please try again in a moment.",
+        code: "premium_order_save_failed",
+        reference,
+        reason: supabaseSave.reason || "not_saved",
+      },
+      { status: 500 },
+    );
+  }
+
+  paynow.resultUrl = `${siteUrl()}/api/webhooks/paynow`;
+  paynow.returnUrl = `${siteUrl()}/artist/premium?checkout=return&ref=${encodeURIComponent(reference)}`;
+
+  // Test-mode integrations reject non-merchant authemail — use paynowAuthEmail().
+  const payment = paynow.createPayment(reference, paynowAuthEmail(email));
+  payment.add(title, amount);
+
+  let redirectUrl: string | undefined;
+  let pollUrl: string | undefined;
+  try {
+    const response = await paynow.send(payment);
+    const url =
+      response?.redirectUrl ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (response as any)?.browserurl ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (response as any)?.browserUrl;
+    if (!response?.success || !url) {
+      console.error("paynow premium init failed", response?.error, reference);
+      return NextResponse.json(
+        { error: humanizePaynowError(response?.error) },
+        { status: 502 },
+      );
+    }
+    redirectUrl = String(url);
+    pollUrl = response.pollUrl;
+  } catch (e) {
+    console.error("paynow premium exception", e);
+    return NextResponse.json({ error: "Payment provider error. Try again shortly." }, { status: 502 });
+  }
+
+  // Best-effort: stamp poll URL on the durable order so webhook reconciliation is easier.
+  if (pollUrl) {
+    try {
+      await updateOrder(reference, { paynowPollUrl: pollUrl });
+    } catch (e) {
+      console.warn("premium order pollUrl stamp skipped", e);
+    }
   }
 
   return NextResponse.json({

@@ -64,8 +64,8 @@ function deskSectionsFor(
           ? "Advanced release analytics (when live)"
           : "Basic release packaging support",
       ],
-      href: "/upload",
-      cta: "Submit / manage releases",
+      href: "/creator/studio#release-path",
+      cta: "Open release path",
     });
   }
 

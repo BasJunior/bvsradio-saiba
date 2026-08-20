@@ -238,7 +238,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
 
   // Full path: BVS publish first; multi-platform only if Premium distribution enabled.
   // Private partner code stays internal — never surface aggregator brands on public UI.
-  const { distributionJobNotes, PRIVATE_DSP_PARTNER_CODE } = await import(
+  const { distributionJobNotes, PRIVATE_DSP_PARTNER_AMUSE } = await import(
     "@/lib/distribution-path",
   );
   const profiles = await restGet<Array<{ distribution_enabled?: boolean; premium_active?: boolean }>>(
@@ -250,7 +250,8 @@ export async function materializeReleaseTracks(releaseId: string, options: {
     const existing = await restGet<Array<{ id: string; status?: string }>>(
       `distribution_jobs?release_id=eq.${releaseId}&select=id,status&limit=1`,
     );
-    const notes = distributionJobNotes({ distroOk, publish: true });
+    const status = distroOk ? "eligible" : "not_eligible";
+    const notes = distributionJobNotes({ distroOk, publish: true, status });
     // Do not downgrade jobs already past eligible (queued/submitted/live).
     const terminalOrProgress = new Set([
       "queued",
@@ -259,18 +260,20 @@ export async function materializeReleaseTracks(releaseId: string, options: {
       "failed",
       "cancelled",
     ]);
+    // Premium path uses internal Amuse pilot code; public UI stays partner-anonymous.
+    const distributor = distroOk ? PRIVATE_DSP_PARTNER_AMUSE : null;
     if (!existing?.length) {
       await restPost("distribution_jobs", {
         release_id: releaseId,
         artist_user_id: release.user_id,
-        status: distroOk ? "eligible" : "not_eligible",
-        distributor: distroOk ? PRIVATE_DSP_PARTNER_CODE : null,
+        status,
+        distributor,
         notes,
       });
     } else if (!terminalOrProgress.has(String(existing[0].status || ""))) {
       await restPatch(`distribution_jobs?id=eq.${existing[0].id}`, {
-        status: distroOk ? "eligible" : "not_eligible",
-        distributor: distroOk ? PRIVATE_DSP_PARTNER_CODE : null,
+        status,
+        distributor,
         notes,
         updated_at: now,
       });

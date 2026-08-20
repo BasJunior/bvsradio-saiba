@@ -16,8 +16,74 @@ export const DISTRIBUTION_JOB_STATUSES = [
 
 export type DistributionJobStatus = (typeof DISTRIBUTION_JOB_STATUSES)[number];
 
-/** Internal ops code only — never show on public marketing pages. */
+/**
+ * Internal ops codes only — never show aggregator brand names on public marketing pages.
+ * Amuse is the controlled pilot backend partner (label imprint stays BVS / Best Virtual Studios).
+ */
 export const PRIVATE_DSP_PARTNER_CODE = "private_dsp_partner";
+/** Canonical internal distributor id for the Amuse pilot hand-off. */
+export const PRIVATE_DSP_PARTNER_AMUSE = "amuse_pilot";
+/** Accept either generic private partner or Amuse pilot code in editorial ops. */
+export const PRIVATE_DSP_PARTNER_CODES = [
+  PRIVATE_DSP_PARTNER_CODE,
+  PRIVATE_DSP_PARTNER_AMUSE,
+] as const;
+
+export function isPrivateDspPartnerCode(value?: string | null): boolean {
+  const v = String(value || "").trim().toLowerCase();
+  return (PRIVATE_DSP_PARTNER_CODES as readonly string[]).includes(v);
+}
+
+/** Staff-only Amuse pilot checklist (never render on artist-facing surfaces). */
+export const AMUSE_PILOT_HANDOFF_CHECKLIST = [
+  "Confirm Artist Premium active + distribution_enabled on the creator profile",
+  "Confirm BVS editorial approved + published the release (catalogue / optional rotation)",
+  "Rights Passport / clearance evidence complete; no unresolved rights blocks",
+  "ISRC (and UPC when multi-track) filled or matched from known catalogue",
+  "Cover art, metadata, contributors, and territories ready for store delivery",
+  "Queue job → deliver inside BVS-operated Amuse pilot account (do not market Amuse publicly)",
+  "Mark submitted when partner accepts delivery; mark live_on_dsp when stores are live",
+  "Paste Spotify / Apple / other store URLs + ISRCs back onto BVS tracks",
+] as const;
+
+export function partnerHandoffNotes(status: string): string {
+  switch (status) {
+    case "eligible":
+      return [
+        "BVS publish complete.",
+        "Premium distribution eligible.",
+        "Next: queue private DSP partner hand-off (internal: amuse_pilot).",
+        "Artist-facing copy must not name the aggregator brand.",
+      ].join(" ");
+    case "queued":
+      return [
+        "Queued for private DSP partner hand-off after BVS publish.",
+        "Ops: prepare Amuse pilot delivery under BVS label imprint (internal only).",
+      ].join(" ");
+    case "submitted":
+      return [
+        "Delivered to private DSP partner — awaiting store approval.",
+        "Internal partner: amuse_pilot. Track partner dashboard until live.",
+      ].join(" ");
+    case "live_on_dsp":
+      return [
+        "Live on major platforms.",
+        "Link ISRC / Spotify (and other store) URLs on BVS tracks.",
+        "Internal partner: amuse_pilot.",
+      ].join(" ");
+    case "failed":
+      return "Partner or store rejected — fix metadata / rights, then re-queue.";
+    case "cancelled":
+      return "Distribution cancelled — Premium off or ops cancelled hand-off.";
+    case "not_eligible":
+      return [
+        "BVS publish path complete (catalogue / optional rotation).",
+        "Multi-platform distribution locked: artist needs active Premium + distribution_enabled.",
+      ].join(" ");
+    default:
+      return "Distribution status pending.";
+  }
+}
 
 export type PathStepId =
   | "premium"
@@ -82,22 +148,23 @@ export function editorialDistributionStatusLabel(status?: string | null): string
 export function distributionJobNotes(input: {
   distroOk: boolean;
   publish: boolean;
+  status?: string | null;
 }): string {
   if (!input.publish) {
     return "Not published on BVS yet.";
   }
   if (!input.distroOk) {
-    return [
-      "BVS publish path complete (catalogue / optional rotation).",
-      "Multi-platform distribution locked: artist needs active Premium + distribution_enabled.",
-    ].join(" ");
+    return partnerHandoffNotes("not_eligible");
   }
-  return [
-    "BVS publish complete.",
-    "Premium distribution eligible.",
-    "Next: queue private DSP partner hand-off (internal code: private_dsp_partner).",
-    "Artist-facing copy must not name the aggregator brand.",
-  ].join(" ");
+  const status = String(input.status || "eligible");
+  if (
+    ["eligible", "queued", "submitted", "live_on_dsp", "failed", "cancelled", "not_eligible"].includes(
+      status,
+    )
+  ) {
+    return partnerHandoffNotes(status);
+  }
+  return partnerHandoffNotes("eligible");
 }
 
 export function buildArtistPathSteps(input: {

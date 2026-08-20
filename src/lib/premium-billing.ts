@@ -197,6 +197,8 @@ export async function activatePaidArtistPremium(input: {
       distribution_enabled: true,
       premium_plan_id: input.planId,
     });
+    // Best-effort: unlock multi-platform queue for already-published BVS releases.
+    await syncPremiumDistributionJobsForArtist(input.userId).catch(() => undefined);
     return { ok: true, reason: "idempotent", endsAt };
   }
 
@@ -213,6 +215,7 @@ export async function activatePaidArtistPremium(input: {
       distribution_enabled: true,
       premium_plan_id: input.planId,
     });
+    await syncPremiumDistributionJobsForArtist(input.userId).catch(() => undefined);
     return { ok: true, reason: "reactivated", endsAt };
   }
 
@@ -270,7 +273,73 @@ export async function activatePaidArtistPremium(input: {
     }
   }
 
+  // Premium ON → flip published BVS releases into multi-platform eligible (Amuse pilot path).
+  await syncPremiumDistributionJobsForArtist(input.userId).catch(() => undefined);
+
   return { ok: true, endsAt };
+}
+
+/**
+ * When Artist Premium activates, published BVS releases become multi-platform eligible.
+ * Internal partner code is amuse_pilot; public UI never names Amuse.
+ * Does not downgrade jobs already past eligible (queued/submitted/live).
+ */
+export async function syncPremiumDistributionJobsForArtist(userId: string): Promise<{
+  ok: boolean;
+  created: number;
+  upgraded: number;
+}> {
+  if (!url || !service || !userId) return { ok: false, created: 0, upgraded: 0 };
+  const {
+    PRIVATE_DSP_PARTNER_AMUSE,
+    partnerHandoffNotes,
+  } = await import("@/lib/distribution-path");
+
+  const published = await restGet<
+    Array<{ id: string; editorial_status?: string; is_public?: boolean }>
+  >(
+    `releases?user_id=eq.${userId}&is_public.eq.true&editorial_status=eq.approved&select=id,editorial_status,is_public&limit=200`,
+  );
+  const releases = published || [];
+  if (!releases.length) return { ok: true, created: 0, upgraded: 0 };
+
+  const existing = await restGet<
+    Array<{ id: string; release_id: string; status?: string }>
+  >(
+    `distribution_jobs?artist_user_id=eq.${userId}&select=id,release_id,status&limit=200`,
+  );
+  const byRelease = new Map((existing || []).map((row) => [row.release_id, row]));
+  const terminalOrProgress = new Set(["queued", "submitted", "live_on_dsp", "failed", "cancelled"]);
+  const now = new Date().toISOString();
+  const notes = partnerHandoffNotes("eligible");
+  let created = 0;
+  let upgraded = 0;
+
+  for (const release of releases) {
+    const job = byRelease.get(release.id);
+    if (!job) {
+      const post = await restPost("distribution_jobs", {
+        release_id: release.id,
+        artist_user_id: userId,
+        status: "eligible",
+        distributor: PRIVATE_DSP_PARTNER_AMUSE,
+        notes,
+      });
+      if (post.ok) created += 1;
+      continue;
+    }
+    if (terminalOrProgress.has(String(job.status || ""))) continue;
+    // Upgrade not_eligible / eligible drafts onto Amuse pilot code.
+    const patch = await restPatch(`distribution_jobs?id=eq.${job.id}`, {
+      status: "eligible",
+      distributor: PRIVATE_DSP_PARTNER_AMUSE,
+      notes,
+      updated_at: now,
+    });
+    if (patch.ok) upgraded += 1;
+  }
+
+  return { ok: true, created, upgraded };
 }
 
 export async function deactivateStripeArtistPremium(subscriptionId: string, userId: string) {

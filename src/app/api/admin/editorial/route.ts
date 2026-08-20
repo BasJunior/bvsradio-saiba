@@ -877,13 +877,28 @@ export async function PATCH(request: Request) {
         if (!jobId || !allowed.includes(status)) {
           return NextResponse.json({ error: 'jobId and valid status required.' }, { status: 400 })
         }
+        const { PRIVATE_DSP_PARTNER_AMUSE, partnerHandoffNotes } = await import('@/lib/distribution-path')
+        const distributor =
+          status === 'not_eligible' || status === 'cancelled'
+            ? null
+            : body.distributor
+              ? String(body.distributor).slice(0, 120)
+              : PRIVATE_DSP_PARTNER_AMUSE
+        const notes =
+          body.notes != null && String(body.notes).trim()
+            ? String(body.notes).slice(0, 2000)
+            : partnerHandoffNotes(status)
         const result = await patchTable('distribution_jobs', `id=eq.${encodeURIComponent(jobId)}`, {
           status,
-          distributor: body.distributor ? String(body.distributor).slice(0, 120) : null,
-          notes: body.notes != null ? String(body.notes).slice(0, 2000) : undefined,
+          distributor,
+          notes,
           updated_at: new Date().toISOString(),
         })
-        await audit(identity.user.id, 'distribution_job_updated', 'distribution_job', jobId, { status })
+        await audit(identity.user.id, 'distribution_job_updated', 'distribution_job', jobId, {
+          status,
+          distributor,
+          partner: distributor === PRIVATE_DSP_PARTNER_AMUSE ? 'amuse_pilot' : distributor,
+        })
         return NextResponse.json({ result })
       }
       case 'review_beat': {
