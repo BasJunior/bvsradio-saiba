@@ -13,6 +13,7 @@
     "test:artist-payouts": "node --experimental-strip-types scripts/artist-payout-tests.mjs",
     "beta:preflight": "node scripts/beta-staging-preflight.mjs",
     "beta:seed": "node scripts/seed-beta-demo.mjs",
+    "test:beta-flow:live": "node scripts/beta-flow-live-acceptance.mjs",
     "test:stream-qualification": "node --experimental-strip-types scripts/stream-qualification-tests.mjs",
     "test:show-lifecycle": "node --experimental-strip-types scripts/show-lifecycle-tests.mjs",
     "typecheck": "tsc --noEmit",
