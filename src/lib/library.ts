@@ -39,6 +39,13 @@ export function toggleLibraryItem(section: LibrarySection, item: DiscoveryItem) 
 
 export function recordListening(item: DiscoveryItem) {
   if (typeof window === 'undefined') return
+
+  // Listening history is reserved for playback events. Explore/search result
+  // opens use catalogue/search routes and belong in Flow memory instead.
+  // The global player records its history item with the canonical /radio route,
+  // even when playback was initiated from another BVS surface.
+  if (item.kind !== 'track' || !/^\/radio(?:$|[?#])/.test(item.href)) return
+
   const next = [item, ...readLibrary('history').filter((saved) => saved.id !== item.id)].slice(0, 30)
   writeLibrary('history', next)
   window.dispatchEvent(new CustomEvent('bvs:library-mutation', { detail: { section: 'history', item, saved: true } }))
