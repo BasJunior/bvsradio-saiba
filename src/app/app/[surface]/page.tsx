@@ -4,7 +4,6 @@ import AppListenHero from "@/components/app/AppListenHero";
 import AppRail from "@/components/app/AppRail";
 import AppSceneTrail from "@/components/app/AppSceneTrail";
 import { getAppEditionBeats } from "@/lib/app-edition-data";
-import { getPublishedArtists } from "@/lib/artist-content";
 import { blogPosts } from "@/lib/blog";
 import {
   beatToObject,
@@ -12,10 +11,12 @@ import {
   showToObject,
   stationTrackToObject,
   storyToObject,
+  type BuildableCreator,
 } from "@/lib/bvs-object-builders";
 import { getPublicProgrammes } from "@/lib/station-content";
 import { getStationTracks, type MobileSurface } from "@/lib/station-library";
 import { appBeats, appExplore } from "@/lib/app-surface";
+import { mobileCreatorSlug } from "@/lib/mobile-app";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,9 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
   const { surface: rawSurface } = await params;
   if (rawSurface !== "ios" && rawSurface !== "android") notFound();
   const surface = rawSurface as MobileSurface;
-  const [tracks, beats, artists, programmes] = await Promise.all([
+  const [tracks, beats, programmes] = await Promise.all([
     getStationTracks(surface),
     getAppEditionBeats(10),
-    getPublishedArtists(),
     getPublicProgrammes(),
   ]);
 
@@ -35,7 +35,39 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
     availabilityLabel: "Available in the BVS app",
   }));
   const beatObjects = beats.map((beat) => beatToObject(beat, { surface }));
-  const artistObjects = artists.slice(0, 8).map(creatorToObject);
+
+  const creatorMap = new Map<string, BuildableCreator>();
+  for (const track of tracks) {
+    const username = mobileCreatorSlug(track.artist);
+    const current = creatorMap.get(username) || {
+      id: `mobile-track-creator:${username}`,
+      username,
+      name: track.artist,
+      role: "Artist",
+      image: track.artwork,
+      trackCount: 0,
+      beatCount: 0,
+    };
+    current.trackCount = (current.trackCount || 0) + 1;
+    if (!current.image && track.artwork) current.image = track.artwork;
+    creatorMap.set(username, current);
+  }
+  for (const beat of beats) {
+    const username = beat.producer_username || mobileCreatorSlug(beat.producer || "BVS producer");
+    const current = creatorMap.get(username) || {
+      id: `mobile-beat-creator:${username}`,
+      username,
+      name: beat.producer || "BVS producer",
+      role: "Producer",
+      image: beat.artworkUrl,
+      trackCount: 0,
+      beatCount: 0,
+    };
+    current.beatCount = (current.beatCount || 0) + 1;
+    if (!current.image && beat.artworkUrl) current.image = beat.artworkUrl;
+    creatorMap.set(username, current);
+  }
+  const artistObjects = [...creatorMap.values()].slice(0, 8).map((creator) => creatorToObject(creator, { surface }));
   const storyObjects = blogPosts.slice(0, 4).map(storyToObject);
   const showObjects = programmes.slice(0, 3).map(showToObject);
   const surfaceLabel = surface === "ios" ? "iPhone and iPad" : "Android";
@@ -65,7 +97,7 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
       <AppRail
         eyebrow="BeatStore"
         title="Beats from BVS producers"
-        description="Preview here. Licence on the full listing."
+        description="Preview here. Licence on the full BVS website listing."
         href={appBeats(surface)}
         hrefLabel="All beats →"
         objects={beatObjects}
@@ -75,7 +107,7 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
       <AppRail
         eyebrow="People"
         title="Artists to know"
-        href="/artists"
+        href={`/app/${surface}/artists`}
         objects={artistObjects}
         scrollKey="app-home-artists"
       />
@@ -101,12 +133,12 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
       <section className="rounded-3xl border border-white/10 bg-white/[.03] px-5 py-6">
         <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">BVS Radio</p>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-          A focused listening edition of BVS. Accounts, library and creator identity stay connected with the full site.
+          A focused listening edition of BVS. Accounts and library stay connected with the full site while the native listening catalogue remains rights-gated.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href="/account" className="rounded-full border border-white/15 px-4 py-2 text-sm">Account</Link>
-          <Link href="/contact" className="rounded-full border border-white/15 px-4 py-2 text-sm">Support</Link>
-          <Link href="/privacy" className="rounded-full border border-white/15 px-4 py-2 text-sm">Privacy</Link>
+          <Link href={`/app/${surface}/account`} className="rounded-full border border-white/15 px-4 py-2 text-sm">Account</Link>
+          <Link href="/contact" className="rounded-full border border-white/15 px-4 py-2 text-sm">Support ↗</Link>
+          <Link href="/privacy" className="rounded-full border border-white/15 px-4 py-2 text-sm">Privacy ↗</Link>
         </div>
       </section>
     </div>
