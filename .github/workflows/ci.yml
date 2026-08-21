@@ -20,6 +20,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:safe-floor
+      - run: npm run test:rights-compliance
+      - run: npm run test:app-flow
+      - run: npm run test:apple-ios-surface
       - run: npm run typecheck
       - run: npm run build
       - name: Reject newly tracked sensitive or oversized artifacts
