@@ -11,6 +11,7 @@
     "test:safe-floor": "node --experimental-strip-types scripts/safe-floor-tests.mjs",
     "test:rights-compliance": "node --experimental-strip-types scripts/rights-compliance-tests.mjs",
     "test:app-flow": "node --experimental-strip-types scripts/app-flow-tests.mjs",
+    "test:apple-ios-surface": "node scripts/apple-ios-surface-tests.mjs",
     "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
     "typecheck": "tsc --noEmit",
     "cap:sync": "npx cap sync",
