@@ -10,6 +10,12 @@ function isAllowedIosPath(pathname: string) {
   return pathname === IOS_ROOT || pathname.startsWith(`${IOS_ROOT}/`);
 }
 
+function containedLegacyPath(url: URL) {
+  if (url.pathname === "/account") return `${IOS_ROOT}/account${url.search}${url.hash}`;
+  if (url.pathname === "/artists" || url.pathname === "/music/artists") return `${IOS_ROOT}/artists${url.search}${url.hash}`;
+  return null;
+}
+
 function openOutsideNativeShell(url: URL) {
   const opened = window.open(url.toString(), "_blank", "noopener,noreferrer");
   if (opened) opened.opener = null;
@@ -18,10 +24,10 @@ function openOutsideNativeShell(url: URL) {
 /**
  * App Store boundary for the native iOS listener edition.
  *
- * Native iOS is allowed to navigate only within /app/ios/*. Same-origin BVS
- * website destinations outside that namespace are opened outside the native
- * listener surface. Any non-approved route reached by another mechanism fails
- * closed back to /app/ios.
+ * Native iOS is allowed to navigate only within /app/ios/*. A small set of
+ * legacy listener links are remapped into contained app routes. Other BVS
+ * website destinations are opened outside the native listener surface. Any
+ * non-approved route reached by another mechanism fails closed to /app/ios.
  */
 export default function MobileIosBoundary() {
   const pathname = usePathname();
@@ -57,8 +63,13 @@ export default function MobileIosBoundary() {
       const allowed = sameOrigin && isAllowedIosPath(url.pathname);
       if (allowed) return;
 
+      const contained = sameOrigin ? containedLegacyPath(url) : null;
       event.preventDefault();
       event.stopPropagation();
+      if (contained) {
+        window.location.assign(contained);
+        return;
+      }
       openOutsideNativeShell(url);
     };
 
