@@ -2,8 +2,12 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 /**
  * Native shell for App Store / Play Store.
- * Loads the live site so content updates deploy with Vercel (no store resubmit for catalogue).
- * For fully offline packages later: switch to local `webDir` after a static export strategy.
+ * Loads the dedicated mobile surface on the live BVS origin.
+ *
+ * Build 3 deliberately defines no extra allowNavigation hosts. The WebView is
+ * rooted at server.url, while same-origin paths outside /app/ios are handled by
+ * the in-app iOS boundary and opened externally rather than becoming native
+ * catalogue surfaces.
  */
 const mobileSurface = process.env.BVS_MOBILE_SURFACE === "android" ? "android" : "ios";
 
@@ -12,15 +16,8 @@ const config: CapacitorConfig = {
   appName: "BVS Radio",
   webDir: "out",
   server: {
-    // Live hybrid: always serve production web app inside the native shell
-    // Default build is iOS. Play builds use BVS_MOBILE_SURFACE=android.
     url: `https://bvsradio.com/app/${mobileSurface}`,
     cleartext: false,
-    allowNavigation: [
-      "bvsradio.com",
-      "*.bvsradio.com",
-      "https://bvsradio.com/*",
-    ],
   },
   plugins: {
     SplashScreen: {
