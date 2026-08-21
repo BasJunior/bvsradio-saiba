@@ -69,17 +69,28 @@ function mediaFromTrack(track: BuildableTrack) {
   };
 }
 
+function creatorSlug(value: string) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100) || "bvs-creator";
+}
+
 export function stationTrackToObject(
   track: BuildableTrack,
   opts: { surface?: AppSurface | null; availabilityLabel?: string } = {},
 ): BvsObject {
   const id = track.id || track.src;
-  const artistHref = hrefForAppSurface(`/search?q=${encodeURIComponent(track.artist)}`, opts.surface);
+  const artistHref = hrefForAppSurface(`/search?q=${encodeURIComponent(track.artist)}&type=creator`, opts.surface);
+  const detailHref = opts.surface && track.id
+    ? `/app/${opts.surface}/track/${encodeURIComponent(track.id)}`
+    : artistHref;
   const media = mediaFromTrack(track);
   return {
     id,
     kind: "track",
-    route: artistHref,
+    route: detailHref,
     title: track.title,
     subtitle: track.artist,
     artwork: track.artwork,
@@ -89,9 +100,10 @@ export function stationTrackToObject(
     media,
     primaryAction: { id: "play", label: "Play", intent: "play", media },
     overflowActions: [
+      ...(detailHref !== artistHref ? [{ id: "details", label: "Recording details", intent: "navigate" as const, href: detailHref }] : []),
       { id: "next", label: "Play next", intent: "play-next", media },
       { id: "queue", label: "Add to queue", intent: "queue", media },
-      { id: "artist", label: `Go to ${track.artist}`, intent: "navigate", href: artistHref },
+      { id: "artist", label: `Find ${track.artist}`, intent: "navigate", href: artistHref },
     ],
     rightsState: "published",
   };
@@ -102,17 +114,22 @@ export function beatToObject(
   opts: { surface?: AppSurface | null } = {},
 ): BvsObject {
   const catalogueHref = `/catalogue?type=beat&q=${encodeURIComponent(beat.slug || beat.title)}#beatstore`;
-  const route = hrefForAppSurface(catalogueHref, opts.surface);
-  const producerHref = beat.producer_username
-    ? `/artist/${beat.producer_username}`
-    : hrefForAppSurface(`/search?q=${encodeURIComponent(beat.producer || "")}`, opts.surface);
+  const detailHref = opts.surface
+    ? `/app/${opts.surface}/beat/${encodeURIComponent(beat.id)}`
+    : catalogueHref;
+  const producerKey = beat.producer_username || creatorSlug(beat.producer || "");
+  const producerHref = opts.surface
+    ? `/app/${opts.surface}/artist/${encodeURIComponent(producerKey)}`
+    : beat.producer_username
+      ? `/artist/${beat.producer_username}`
+      : hrefForAppSurface(`/search?q=${encodeURIComponent(beat.producer || "")}`, opts.surface);
   const media = beat.previewUrl
     ? { src: beat.previewUrl, artist: beat.producer, project: "BVS BeatStore", artwork: beat.artworkUrl, genre: beat.genre }
     : undefined;
   return {
     id: beat.id,
     kind: "beat",
-    route,
+    route: detailHref,
     title: beat.title,
     subtitle: beat.producer || "BVS producer",
     artwork: beat.artworkUrl,
@@ -122,21 +139,27 @@ export function beatToObject(
     media,
     primaryAction: media
       ? { id: "preview", label: "Preview", intent: "play", media }
-      : { id: "licence", label: "View licence", intent: "navigate", href: catalogueHref },
+      : { id: "details", label: "View details", intent: "navigate", href: detailHref },
     overflowActions: [
+      { id: "details", label: "Beat details", intent: "navigate", href: detailHref },
       ...(media ? [
         { id: "next", label: "Preview next", intent: "play-next" as const, media },
         { id: "queue", label: "Add preview to queue", intent: "queue" as const, media },
       ] : []),
-      { id: "licence", label: "View licence", intent: "navigate", href: catalogueHref },
+      { id: "licence", label: "View licence on BVS website", intent: "navigate", href: catalogueHref },
       ...(beat.producer ? [{ id: "producer", label: `Go to ${beat.producer}`, intent: "navigate" as const, href: producerHref }] : []),
     ],
     rightsState: "preview",
   };
 }
 
-export function creatorToObject(creator: BuildableCreator): BvsObject {
-  const route = `/artist/${creator.username}`;
+export function creatorToObject(
+  creator: BuildableCreator,
+  opts: { surface?: AppSurface | null } = {},
+): BvsObject {
+  const route = opts.surface
+    ? `/app/${opts.surface}/artist/${encodeURIComponent(creator.username)}`
+    : `/artist/${creator.username}`;
   const count = creator.beatCount && !creator.trackCount
     ? `${creator.beatCount} published ${creator.beatCount === 1 ? "beat" : "beats"}`
     : creator.trackCount != null
