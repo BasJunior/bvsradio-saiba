@@ -86,7 +86,6 @@ function orderLocalFiles(files: string[]): string[] {
 function publicStorageUrl(fileUrl: string) {
   if (!fileUrl) return "";
   const cleaned = fileUrl.replace(/^\/+/, "");
-  // Local public path already hosted by Next
   if (cleaned.startsWith("music/")) return `/${cleaned}`;
   return mediaUrlForStoredValue(fileUrl) || fileUrl;
 }
@@ -101,7 +100,6 @@ function basenameFromUrl(url: string) {
   }
 }
 
-/** Rejected / demo archive names that must never auto-play once editorial is live. */
 const BLOCKED_HOUSE_SUBSTRINGS = [
   "want sumo",
   "never ending",
@@ -121,11 +119,6 @@ function isBlockedHouseTitle(title: string) {
   return BLOCKED_HOUSE_SUBSTRINGS.some((s) => n.includes(s));
 }
 
-/**
- * Continuous rotation:
- * 1) ONLY approved + public + in_rotation Supabase tracks when any exist
- * 2) Tiny house fallback only if rotation is empty (and still filter demos)
- */
 export type MobileSurface = "ios" | "android";
 
 export async function getStationTracks(surface?: MobileSurface): Promise<StationTrack[]> {
@@ -142,8 +135,8 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
     .filter((t) => !isBlockedHouseTitle(t.title));
 
   if (!url || !key) {
-    console.warn("getStationTracks: missing Supabase env — using filtered house fallback");
-    return shuffleDaily(localFallback);
+    console.warn("getStationTracks: missing Supabase env");
+    return surface ? [] : shuffleDaily(localFallback);
   }
 
   try {
@@ -191,17 +184,14 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
           genre: track.genre || undefined,
         };
       })
-      .filter((t) => Boolean(t.src));
+      .filter((track) => Boolean(track.src) && (!surface || track.src.startsWith("/")));
 
-    // Source of truth: editorial rotation only. Never append disk archive on top.
     if (remoteTracks.length > 0) {
       return shuffleDaily(remoteTracks);
     }
 
-    // Mobile surfaces fail closed: never expose house/archive content without a clearance row.
     if (surface) return [];
 
-    // Empty website rotation — filter house against rejected DB titles
     const blockRes = await fetch(
       `${url}/rest/v1/tracks?or=(editorial_status.eq.rejected,in_rotation.eq.false)&select=title,file_url&limit=1000`,
       { headers, cache: "no-store" },
