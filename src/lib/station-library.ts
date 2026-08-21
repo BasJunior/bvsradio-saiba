@@ -142,8 +142,9 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
     .filter((t) => !isBlockedHouseTitle(t.title));
 
   if (!url || !key) {
-    console.warn("getStationTracks: missing Supabase env — using filtered house fallback");
-    return shuffleDaily(localFallback);
+    console.warn("getStationTracks: missing Supabase env");
+    // Mobile never broadens to an archive fallback when rights data is unavailable.
+    return surface ? [] : shuffleDaily(localFallback);
   }
 
   try {
@@ -180,18 +181,21 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       .filter((t) => Boolean(t.file_url) && !String(t.file_url).includes("scdn.co"))
       .map((track) => {
         const src = publicStorageUrl(track.file_url);
+        const artwork = mediaUrlForStoredValue(track.artwork_url) || artworkForMusicSrc(src) || undefined;
         return {
           id: track.id,
           title: track.title,
           artist: track.artist_name || "BVS Radio",
           src,
-          artwork: mediaUrlForStoredValue(track.artwork_url) || artworkForMusicSrc(src) || undefined,
+          artwork: surface && artwork && !artwork.startsWith("/") ? undefined : artwork,
           project: track.release_id ? "Artist release" : "BVS Station",
           playCount: Number(track.play_count || 0),
           genre: track.genre || undefined,
         };
       })
-      .filter((t) => Boolean(t.src));
+      // Native mobile playback is first-party only. Unknown absolute CDN URLs
+      // (Spotify/YouTube/other third-party previews) are never admitted.
+      .filter((t) => Boolean(t.src) && (!surface || t.src.startsWith("/")));
 
     // Source of truth: editorial rotation only. Never append disk archive on top.
     if (remoteTracks.length > 0) {

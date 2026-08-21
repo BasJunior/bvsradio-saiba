@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import VisitorAssistant from "@/components/VisitorAssistant";
+import VisitorAssistantGate from "@/components/VisitorAssistantGate";
 import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
+import MobileIosBoundary from "@/components/MobileIosBoundary";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
@@ -82,11 +83,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <LibrarySyncProvider>
           <StationPlayerProvider tracks={[]}>
             <FlowNavigationProvider>
+              <MobileIosBoundary />
               <Navbar />
               <AuthLinkRescue />
               <main className="pt-16 pb-44 md:pb-28">{children}</main>
               <Footer />
-              <VisitorAssistant />
+              <VisitorAssistantGate />
               <PwaRegister />
               <ClientErrorBeacon />
               <MobileFlowNav />
