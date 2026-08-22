@@ -4,6 +4,7 @@ import {
   sendConfirmAccountEmail,
   supabaseAdmin,
 } from '@/lib/auth-email'
+import { isSignupRole, profileRoleForSignup, type SignupRole } from '@/lib/signup-roles'
 
 type Body = {
   email?: string
@@ -18,13 +19,9 @@ function bad(msg: string, status = 400) {
   return NextResponse.json({ error: msg }, { status })
 }
 
-function profileRoleFor(requestedRole: string) {
-  return requestedRole === 'producer' ? 'listener' : requestedRole
-}
-
-async function ensureProfile(userId: string, username: string, role: string) {
+async function ensureProfile(userId: string, username: string, role: SignupRole) {
   const producer = role === 'producer'
-  const profileRole = profileRoleFor(role)
+  const profileRole = profileRoleForSignup(role)
   await supabaseAdmin('/rest/v1/profiles', {
     method: 'POST',
     headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
@@ -71,12 +68,11 @@ export async function POST(req: Request) {
     }
 
     const requestedRole = (body.role || '').trim()
-    const allowedRoles = new Set(['listener', 'artist', 'producer', 'writer', 'show_creator'])
-    if (!allowedRoles.has(requestedRole)) {
+    if (!isSignupRole(requestedRole)) {
       return bad('Choose what you want to do first on BVS.')
     }
     const role = requestedRole
-    const profileRole = profileRoleFor(role)
+    const profileRole = profileRoleForSignup(role)
 
     if (!password || password.length < 8) {
       return bad('Password must be at least 8 characters.')
