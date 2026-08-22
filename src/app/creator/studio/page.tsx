@@ -14,6 +14,7 @@ import BeatPackUploadForm from "@/components/BeatPackUploadForm";
 import ReleaseSubmitForm from "@/components/ReleaseSubmitForm";
 import CreatorInsights from "@/components/CreatorInsights";
 import StudioPremiumDesk from "@/components/StudioPremiumDesk";
+import StudioMoneySummary from "@/components/StudioMoneySummary";
 import DistributionPathTimeline from "@/components/DistributionPathTimeline";
 import { CreatorMarketplaceDesk } from "@/components/CreatorMarketplaceDesk";
 import CreatorServiceOrders from "@/components/CreatorServiceOrders";
@@ -213,7 +214,7 @@ export default function CreatorStudio() {
             <div className="flex flex-wrap gap-2">
               <a href="#artist-upload" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Upload music</a>
               <Link href="/upload" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Full upload page</Link>
-              <Link href="/artists" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Wallet & earnings</Link>
+              <a href="#money-desk" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Wallet summary</a>
               <Link href="/artist/premium" className="rounded-full border border-brand/40 px-5 py-2.5 text-sm text-brand hover:bg-brand/10">Artist Premium</Link>
             </div>
           </div>
@@ -298,8 +299,9 @@ export default function CreatorStudio() {
       <section id="business" className="scroll-mt-24 pt-12" aria-labelledby="business-heading">
         <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Creator business</p>
         <h2 id="business-heading" className="mt-2 text-3xl font-semibold">Sell, deliver and grow</h2>
-        <p className="mt-2 max-w-2xl text-sm text-text-secondary">Marketplace listings, customer service orders and optional Premium capabilities live here—separate from editorial approval and radio rotation.</p>
+        <p className="mt-2 max-w-2xl text-sm text-text-secondary">Marketplace listings, customer service orders, wallet visibility and optional Premium capabilities live here—separate from editorial approval and radio rotation.</p>
       </section>
+      {(artist || producer) && <div id="money-desk" className="scroll-mt-24"><CreatorDropDown label="Wallet & settlement summary" defaultOpen><StudioMoneySummary token={token} /></CreatorDropDown></div>}
       <div id="marketplace-desk" className="scroll-mt-24"><CreatorDropDown label="Marketplace listings"><CreatorMarketplaceDesk accessToken={token} embedded /></CreatorDropDown></div>
       <div id="service-orders" className="scroll-mt-24"><CreatorDropDown label="Service orders"><CreatorServiceOrders token={token} /></CreatorDropDown></div>
       <div id="premium-desk" className="scroll-mt-24"><CreatorDropDown label="Premium capabilities"><StudioPremiumDesk token={token} /></CreatorDropDown></div>
@@ -409,7 +411,7 @@ function StudioOverview({
     producer && { href: "#beatstore", eyebrow: "BeatStore", title: "Manage beats", copy: "Track pack and single status, editorial replies and live catalogue." },
     { href: "#marketplace-desk", eyebrow: "Marketplace", title: "Products & services", copy: "Manage listings without mixing commerce with editorial decisions." },
     (artist || producer) && { href: "#insights", eyebrow: "Performance", title: "View insights", copy: "See plays and editorially meaningful performance signals." },
-    { href: "/artists", eyebrow: "Money", title: "Wallet & earnings", copy: "Review sales, fees, processing, refunds and payout readiness." },
+    (artist || producer) && { href: "#money-desk", eyebrow: "Money", title: "Wallet & earnings", copy: "Review balance, fees, refunds and the latest frozen settlement snapshot inside Studio." },
   ].filter(Boolean) as Array<{ href: string; eyebrow: string; title: string; copy: string }>;
 
   return <section className="mt-10 scroll-mt-24" aria-labelledby="studio-overview-heading">
@@ -424,6 +426,7 @@ function StudioOverview({
       {producer && <Link href="#beat-pack-upload" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Beat pack</Link>}
       {producer && <Link href="#beatstore" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">BeatStore</Link>}
       <Link href="#business" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Business</Link>
+      {(artist || producer) && <Link href="#money-desk" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Money</Link>}
       {writer && <Link href="#writer-work" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Writing</Link>}
       {showCreator && <Link href="#show-work" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Shows</Link>}
     </nav>
