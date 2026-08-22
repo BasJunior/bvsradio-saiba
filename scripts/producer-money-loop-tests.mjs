@@ -1,14 +1,26 @@
 import assert from "node:assert/strict";
-import {
+import { registerHooks } from "node:module";
+
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.startsWith("./") && !specifier.match(/\.[a-z]+$/i)) {
+      return nextResolve(`${specifier}.ts`, context);
+    }
+    return nextResolve(specifier, context);
+  },
+});
+
+const {
   PRODUCER_BILLING_POLICY_VERSION,
+  hasActiveStripeProducerMembership,
   normalizeProducerInterval,
   normalizeProducerPlanId,
   producerBillingGuard,
   producerPlanEntitlements,
   producerPremiumPriceUsd,
-} from "../src/lib/producer-billing.ts";
-import { entitlementsForPlan } from "../src/lib/premium-catalog.ts";
-import { marketplaceCommissionBps } from "../src/lib/marketplace-economics.ts";
+} = await import("../src/lib/producer-billing.ts");
+const { entitlementsForPlan } = await import("../src/lib/premium-catalog.ts");
+const { marketplaceCommissionBps } = await import("../src/lib/marketplace-economics.ts");
 
 assert.equal(PRODUCER_BILLING_POLICY_VERSION, "2026-08-08-v1");
 assert.equal(normalizeProducerPlanId("plus"), "producer_plus");
@@ -24,6 +36,10 @@ for (const planId of ["producer_plus", "producer_pro"]) {
   assert.deepEqual(producerPlanEntitlements(planId), entitlementsForPlan(planId));
 }
 assert.deepEqual(producerPlanEntitlements("creator_complete"), entitlementsForPlan("producer_pro"));
+assert.deepEqual(producerPlanEntitlements("producer_free"), entitlementsForPlan("producer_free"));
+assert.deepEqual(producerPlanEntitlements("unknown"), entitlementsForPlan("producer_free"));
+assert.equal(hasActiveStripeProducerMembership([{ id: "active-producer-membership" }]), true);
+assert.equal(hasActiveStripeProducerMembership([]), false);
 assert.deepEqual(entitlementsForPlan("producer_free"), {
   beatstore_tier: "free",
   beat_live_limit: 25,
@@ -41,10 +57,12 @@ const safe = {
   NEXT_PUBLIC_SUPABASE_URL: "https://beta.example.supabase.co",
   SUPABASE_SERVICE_ROLE_KEY: "test-service",
   STRIPE_SECRET_KEY: "sk_test_example",
+  STRIPE_WEBHOOK_SECRET: "whsec_test_example",
 };
 assert.deepEqual(producerBillingGuard(safe), { ok: true });
 assert.equal(producerBillingGuard({ ...safe, BVS_ENABLE_BETA_PRODUCER_STRIPE: "0" }).reason, "flag_off");
 assert.equal(producerBillingGuard({ ...safe, BVS_ENV_LANE: "production" }).reason, "not_beta");
 assert.equal(producerBillingGuard({ ...safe, STRIPE_SECRET_KEY: "sk_live_forbidden" }).reason, "stripe_not_test");
+assert.equal(producerBillingGuard({ ...safe, STRIPE_WEBHOOK_SECRET: "" }).reason, "missing_webhook");
 
 console.log("producer money-loop contract: ok");

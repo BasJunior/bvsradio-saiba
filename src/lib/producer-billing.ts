@@ -1,3 +1,5 @@
+import { entitlementsForPlan } from "./premium-catalog";
+
 export type ProducerPaidPlanId = "producer_plus" | "producer_pro";
 export type ProducerBillingInterval = "month" | "year";
 
@@ -23,28 +25,20 @@ export function producerPremiumPriceUsd(
 }
 
 export function producerPlanEntitlements(planId: string): Record<string, unknown> {
-  if (
-    normalizeProducerPlanId(planId) === "producer_pro" ||
-    String(planId || "").toLowerCase() === "creator_complete"
-  ) {
-    return {
-      beatstore_tier: "pro",
-      beat_live_limit: null,
-      marketplace_commission_bps: 300,
-      licence_template_limit: null,
-    };
+  const normalized = String(planId || "").toLowerCase();
+  if (normalized === "creator_complete") return entitlementsForPlan("producer_pro");
+  if (normalized === "producer_pro" || normalized === "pro") {
+    return entitlementsForPlan("producer_pro");
   }
-  return {
-    beatstore_tier: "plus",
-    beat_live_limit: 150,
-    marketplace_commission_bps: 800,
-    licence_template_limit: 4,
-  };
+  if (normalized === "producer_plus" || normalized === "plus") {
+    return entitlementsForPlan("producer_plus");
+  }
+  return entitlementsForPlan("producer_free");
 }
 
 export function producerBillingGuard(env: NodeJS.ProcessEnv = process.env): {
   ok: boolean;
-  reason?: "flag_off" | "not_beta" | "stripe_not_test" | "missing_backend";
+  reason?: "flag_off" | "not_beta" | "stripe_not_test" | "missing_webhook" | "missing_backend";
 } {
   if (env.BVS_ENABLE_BETA_PRODUCER_STRIPE !== "1") return { ok: false, reason: "flag_off" };
   if (
@@ -55,6 +49,9 @@ export function producerBillingGuard(env: NodeJS.ProcessEnv = process.env): {
   }
   if (!String(env.STRIPE_SECRET_KEY || "").startsWith("sk_test_")) {
     return { ok: false, reason: "stripe_not_test" };
+  }
+  if (!String(env.STRIPE_WEBHOOK_SECRET || "").startsWith("whsec_")) {
+    return { ok: false, reason: "missing_webhook" };
   }
   if (!env.NEXT_PUBLIC_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
     return { ok: false, reason: "missing_backend" };
@@ -95,6 +92,19 @@ async function restPost(path: string, body: unknown) {
     body: JSON.stringify(body),
   });
   return response.ok;
+}
+
+export function hasActiveStripeProducerMembership(rows?: Array<{ id?: string }> | null): boolean {
+  return Boolean(rows?.some((row) => row.id));
+}
+
+export async function hasActiveStripeProducerSubscription(userId: string): Promise<boolean | null> {
+  if (!url || !service || !userId) return null;
+  const rows = await restGet<Array<{ id: string }>>(
+    `bvs_memberships?user_id=eq.${encodeURIComponent(userId)}&family=eq.producer&provider=eq.stripe&status=in.(active,trialing,shell)&select=id&limit=1`,
+  );
+  if (rows === null) return null;
+  return hasActiveStripeProducerMembership(rows);
 }
 
 function periodEndIso(interval: ProducerBillingInterval, from = new Date()) {

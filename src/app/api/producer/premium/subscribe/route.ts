@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authUserId } from "@/lib/storage-upload";
 import { getStripe, siteUrl } from "@/lib/stripe";
 import {
+  hasActiveStripeProducerSubscription,
   normalizeProducerInterval,
   normalizeProducerPlanId,
   producerBillingGuard,
@@ -39,6 +40,20 @@ export async function POST(req: Request) {
   const producerCapable = Boolean(profile?.is_producer) || ["producer", "admin", "editor"].includes(String(profile?.role || ""));
   if (!producerCapable) {
     return NextResponse.json({ error: "Producer access is required before choosing a Producer plan." }, { status: 403 });
+  }
+
+  const activeProducerSubscription = await hasActiveStripeProducerSubscription(user.id);
+  if (activeProducerSubscription === null) {
+    return NextResponse.json(
+      { error: "Producer subscription status could not be verified. Please try again." },
+      { status: 503 },
+    );
+  }
+  if (activeProducerSubscription) {
+    return NextResponse.json(
+      { error: "A paid Producer subscription is already active. Plan switching is not available in beta yet." },
+      { status: 409 },
+    );
   }
 
   const body = (await req.json().catch(() => ({}))) as { planId?: string; interval?: string };
