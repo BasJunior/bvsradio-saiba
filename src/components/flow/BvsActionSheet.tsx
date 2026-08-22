@@ -1,11 +1,27 @@
 "use client";
 
+import { Capacitor } from "@capacitor/core";
 import { useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { BvsAction, BvsObject } from "@/lib/bvs-object";
 import { recordFlowOpen } from "@/lib/flow-session";
 import { trackEvent } from "@/lib/analytics";
 import { clearCurrentTransientLayer, currentTransientLayer, dismissTransientLayer, openTransientLayer } from "@/lib/transient-navigation";
+
+const IOS_ROOT = "/app/ios";
+
+function openOutsideNativeIosShell(href: string) {
+  if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") return false;
+
+  const url = new URL(href, window.location.origin);
+  const contained = url.origin === window.location.origin
+    && (url.pathname === IOS_ROOT || url.pathname.startsWith(`${IOS_ROOT}/`));
+  if (contained) return false;
+
+  const opened = window.open(url.toString(), "_blank", "noopener,noreferrer");
+  if (opened) opened.opener = null;
+  return true;
+}
 
 function queueAction(action: BvsAction, object: BvsObject) {
   const media = action.media || object.media;
@@ -98,6 +114,7 @@ export default function BvsActionSheet({
         trackEvent("flow_object_open", { object_id: object.id, object_kind: object.kind, source: "action_sheet" });
         clearCurrentTransientLayer("action-sheet");
         onClose();
+        if (openOutsideNativeIosShell(action.href)) return;
         router.push(action.href);
         return;
       }
