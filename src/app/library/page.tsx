@@ -13,7 +13,7 @@ import { flowV2Flags } from "@/lib/feature-flags";
 import { readLibrary, type LibrarySection } from "@/lib/library";
 
 const sections: Array<{ id: LibrarySection; label: string; empty: string }> = [
-  { id: "favourites", label: "Saved", empty: "Save tracks you want to find again." },
+  { id: "favourites", label: "Saved", empty: "Save tracks, beats and releases you want to find again." },
   { id: "follows", label: "Following", empty: "Follow artists as their BVS profiles go live." },
   { id: "history", label: "History", empty: "Tracks you actually play on BVS will appear here." },
 ];
