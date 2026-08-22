@@ -11,6 +11,7 @@
     "test:safe-floor": "node --experimental-strip-types scripts/safe-floor-tests.mjs",
     "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
     "test:artist-payouts": "node --experimental-strip-types scripts/artist-payout-tests.mjs",
+    "test:signup-roles": "node --experimental-strip-types scripts/signup-role-tests.mjs",
     "beta:preflight": "node scripts/beta-staging-preflight.mjs",
     "beta:seed": "node scripts/seed-beta-demo.mjs",
     "test:beta-flow:live": "node scripts/beta-flow-live-acceptance.mjs",
