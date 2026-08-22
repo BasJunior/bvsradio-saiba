@@ -21,6 +21,11 @@ type ActivityRow = {
   occurred_at: string;
 };
 
+type FollowedTargets = {
+  creators: Set<string>;
+  shows: Set<string>;
+};
+
 function label(kind: BvsActivityKind) {
   switch (kind) {
     case "track_added_to_rotation": return "Recently added to rotation";
@@ -49,6 +54,22 @@ function showSlugFromRoute(route: string) {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+function followedShowSlug(item?: { id?: string; kind?: string; href?: string }) {
+  if (!item) return null;
+  if (item.kind !== "show" && !String(item.id || "").startsWith("show-")) return null;
+  const fromRoute = showSlugFromRoute(String(item.href || ""));
+  if (fromRoute) return fromRoute;
+  const id = String(item.id || "");
+  return id.startsWith("show-") ? id.slice(5) || null : null;
+}
+
+function matchesFollow(row: ActivityRow, followed: FollowedTargets) {
+  if (row.creator_id && followed.creators.has(row.creator_id)) return true;
+  if (row.subject_kind !== "show") return false;
+  const slug = showSlugFromRoute(row.route);
+  return Boolean(slug && followed.shows.has(slug));
+}
+
 async function signedInUserId() {
   try {
     const supabase = await createServerSupabaseClient();
@@ -59,14 +80,25 @@ async function signedInUserId() {
   }
 }
 
-async function followedCreatorIds(userId: string) {
+async function followedTargets(userId: string): Promise<FollowedTargets> {
   const response = await fetch(
     `${url}/rest/v1/user_library_items?user_id=eq.${userId}&section=eq.follows&select=item&limit=200`,
     { headers, cache: "no-store" },
   );
-  if (!response.ok) return new Set<string>();
-  const rows = await response.json() as Array<{ item?: { id?: string } }>;
-  return new Set(rows.map((row) => normalizeFollowId(row.item?.id)).filter(Boolean));
+  if (!response.ok) return { creators: new Set<string>(), shows: new Set<string>() };
+  const rows = await response.json() as Array<{ item?: { id?: string; kind?: string; href?: string } }>;
+  const creators = new Set<string>();
+  const shows = new Set<string>();
+  for (const row of rows) {
+    const showSlug = followedShowSlug(row.item);
+    if (showSlug) {
+      shows.add(showSlug);
+      continue;
+    }
+    const creatorId = normalizeFollowId(row.item?.id);
+    if (creatorId) creators.add(creatorId);
+  }
+  return { creators, shows };
 }
 
 async function publicProgrammeSlugs() {
@@ -116,13 +148,13 @@ export async function GET(request: Request) {
     let selected = creatorId
       ? rows.filter((row) => row.creator_id === creatorId).slice(0, 12)
       : rows.slice(0, 10);
-    let following = new Set<string>();
+    let followed: FollowedTargets = { creators: new Set<string>(), shows: new Set<string>() };
 
     if (!creatorId && scope === "following") {
       const userId = await signedInUserId();
-      if (userId) following = await followedCreatorIds(userId);
-      if (following.size) {
-        const matched = rows.filter((row) => row.creator_id && following.has(row.creator_id)).slice(0, 8);
+      if (userId) followed = await followedTargets(userId);
+      if (followed.creators.size || followed.shows.size) {
+        const matched = rows.filter((row) => matchesFollow(row, followed)).slice(0, 8);
         const global = rows.filter((row) => !matched.some((item) => item.id === row.id)).slice(0, 2);
         selected = [...matched, ...global];
       }
@@ -142,7 +174,7 @@ export async function GET(request: Request) {
         artwork: mediaUrlForStoredValue(row.artwork) || undefined,
       },
       label: label(row.kind),
-      reason: row.creator_id && following.has(row.creator_id)
+      reason: matchesFollow(row, followed)
         ? "following"
         : row.kind === "show_live"
           ? "live"
@@ -151,7 +183,11 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       items,
-      scope: creatorId ? "creator" : following.size ? "following" : "global",
+      scope: creatorId
+        ? "creator"
+        : followed.creators.size || followed.shows.size
+          ? "following"
+          : "global",
       creatorId: creatorId || undefined,
     });
   } catch {
