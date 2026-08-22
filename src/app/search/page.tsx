@@ -254,7 +254,28 @@ export default function SearchPage() {
           },
         }
       }),
-      ...releases.map(item => ({ id: `release-${item.id}`, kind: 'release' as const, title: item.title, subtitle: `${item.artist || 'BVS creator'} · Release`, href: `/album/${item.id}`, image: item.cover, publishedAt: item.publishedAt })),
+      ...releases.map(item => {
+        const href = `/album/${item.id}`
+        return {
+          id: `release-${item.id}`,
+          kind: 'release' as const,
+          title: item.title,
+          subtitle: `${item.artist || 'BVS creator'} · Release`,
+          href,
+          image: item.cover,
+          publishedAt: item.publishedAt,
+          detail: {
+            id: item.id,
+            kind: 'release' as const,
+            title: item.title,
+            artist: item.artist || 'BVS creator',
+            image: item.cover,
+            collection: 'Published release',
+            href,
+            publishedAt: item.publishedAt,
+          },
+        }
+      }),
       ...services.map(item => ({ id: `service-${item.id}`, kind: 'service' as const, title: item.title, subtitle: `${item.category?.replaceAll('_', ' ') || 'Creator service'}${item.price_usd ? ` · $${item.price_usd}` : ''}`, href: `/marketplace?listing=${encodeURIComponent(item.slug)}`, image: imageUrl(item.artwork_path), tags: [item.category || '', item.description || ''] })),
       ...officialBvsServices.map(item => ({ id: `official-service-${item.id}`, kind: 'service' as const, title: item.title, subtitle: `${item.category} · ${item.price}`, href: `/shop#services`, image: '/images/hero-studio.jpg', tags: [item.category, item.desc, item.engineer, 'official bvs'], badge: 'Official BVS' })),
       ...blogPosts.map(item => ({ id: `story-${item.slug}`, kind: 'story' as const, title: item.title, subtitle: `${item.readTime} · BVS story`, href: `/blog/${item.slug}`, tags: [item.description], publishedAt: item.date })),
