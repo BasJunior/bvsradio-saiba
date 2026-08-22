@@ -53,6 +53,11 @@ const focusableSelector = [
   '[tabindex]:not([tabindex="-1"])',
 ].join(',')
 
+function canonicalLibraryId(kind: ExploreDetail['kind'], id: string) {
+  const prefix = `${kind}-`
+  return id.startsWith(prefix) ? id : `${prefix}${id}`
+}
+
 export default function ExploreItemDetails({
   detail,
   onClose,
@@ -119,8 +124,8 @@ export default function ExploreItemDetails({
     detail.kind !== 'release' || detail.price !== undefined || detail.streamOnly === true || detail.albumPackage === true
   const actionHref = detail.actionHref || detail.href
   const libraryItem: DiscoveryItem = {
-    id: detail.id,
-    kind: 'track',
+    id: canonicalLibraryId(detail.kind, detail.id),
+    kind: detail.kind,
     title: detail.title,
     subtitle: detail.artist,
     href: detail.href,
@@ -282,7 +287,7 @@ export default function ExploreItemDetails({
                 </button>
               ) : null}
 
-              {detail.kind === 'track' ? <LibraryAction item={libraryItem} section="favourites" /> : null}
+              <LibraryAction item={libraryItem} section="favourites" />
 
               <Link
                 href={actionHref}
