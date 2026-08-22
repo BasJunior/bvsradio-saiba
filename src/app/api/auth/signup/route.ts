@@ -34,7 +34,7 @@ async function ensureProfile(userId: string, username: string, role: string) {
       // A legal/full name stays private in Auth metadata. Public/member identity
       // starts from the chosen handle until the member edits it deliberately.
       display_name: username,
-      role: profileRole || 'listener',
+      role: profileRole,
       is_producer: producer,
     }),
   })
@@ -56,11 +56,6 @@ export async function POST(req: Request) {
     const password = body.password || ''
     const username = (body.username || '').trim()
     const fullName = (body.fullName || '').trim()
-    const requestedRole = (body.role || 'listener').trim() || 'listener'
-    const allowedRoles = new Set(['listener', 'artist', 'producer', 'writer', 'show_creator'])
-    if (!allowedRoles.has(requestedRole)) return bad('Choose a valid account type.')
-    const role = requestedRole
-    const profileRole = profileRoleFor(role)
     const resendOnly = Boolean(body.resendOnly)
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -74,6 +69,14 @@ export async function POST(req: Request) {
         message: 'A new confirmation link was sent from BVS Radio. Check inbox and Spam.',
       })
     }
+
+    const requestedRole = (body.role || '').trim()
+    const allowedRoles = new Set(['listener', 'artist', 'producer', 'writer', 'show_creator'])
+    if (!allowedRoles.has(requestedRole)) {
+      return bad('Choose what you want to do first on BVS.')
+    }
+    const role = requestedRole
+    const profileRole = profileRoleFor(role)
 
     if (!password || password.length < 8) {
       return bad('Password must be at least 8 characters.')
