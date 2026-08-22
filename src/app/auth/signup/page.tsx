@@ -5,8 +5,36 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
+const signupRoles = [
+  {
+    value: 'artist',
+    title: 'Artist',
+    copy: 'Submit music and start with artist tools.',
+  },
+  {
+    value: 'producer',
+    title: 'Producer',
+    copy: 'Upload beats and start with producer tools.',
+  },
+  {
+    value: 'writer',
+    title: 'Writer',
+    copy: 'Pitch stories and start with writing tools.',
+  },
+  {
+    value: 'show_creator',
+    title: 'Show or podcast creator',
+    copy: 'Start a show and manage episode workflows.',
+  },
+  {
+    value: 'listener',
+    title: 'Listener',
+    copy: 'Discover, save and support BVS creators.',
+  },
+] as const
+
 export default function SignupPage() {
-  const [form, setForm] = useState({ email: '', password: '', fullName: '', username: '', role: 'listener' })
+  const [form, setForm] = useState({ email: '', password: '', fullName: '', username: '', role: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
@@ -38,6 +66,12 @@ export default function SignupPage() {
     setLoading(true)
     setError(null)
     setInfo(null)
+
+    if (!form.role) {
+      setError('Choose what you want to do first on BVS.')
+      setLoading(false)
+      return
+    }
 
     if (!isSupabaseConfigured()) {
       setError('Account service is not configured. Please try again later.')
@@ -99,7 +133,7 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center justify-center mb-6" aria-label="BVS Radio home">
             <Image
@@ -112,7 +146,9 @@ export default function SignupPage() {
             />
           </Link>
           <h1 className="text-3xl font-bold">Join the movement</h1>
-          <p className="text-text-secondary mt-1">Create your free account to upload music and connect.</p>
+          <p className="text-text-secondary mt-2">
+            Create your free account and choose what you want to do first. You can add more roles later.
+          </p>
         </div>
 
         {verificationEmail ? (
@@ -149,42 +185,73 @@ export default function SignupPage() {
             {resendMessage && <p className="mt-3 text-xs text-text-secondary">{resendMessage}</p>}
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            <label className="block text-sm font-medium">
-              I am joining as
-              <select
-                value={form.role}
-                onChange={(e) => setForm({ ...form, role: e.target.value })}
-                className="mt-2 w-full rounded-xl border border-white/10 bg-bg-card px-4 py-3 outline-none focus:border-brand"
-              >
-                <option value="listener">Listener — discover, save and interact</option>
-                <option value="artist">Artist — submit music and use creator tools</option>
-                <option value="producer">Producer — upload and manage beats</option>
-                <option value="writer">Writer — pitch and publish stories</option>
-                <option value="show_creator">Show or podcast creator — upload weekly episodes</option>
-              </select>
-              <span className="mt-2 block text-xs text-text-secondary">
-                This sets up your starting workspace. Every account can still listen and discover.
-              </span>
-            </label>
-            <input
-              type="text"
-              placeholder="Full name"
-              value={form.fullName}
-              onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-              required
-              autoComplete="name"
-              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
-            />
-            <input
-              type="text"
-              placeholder="Username (no spaces)"
-              value={form.username}
-              onChange={(e) => setForm({ ...form, username: e.target.value })}
-              required
-              autoComplete="username"
-              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
-            />
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+            <fieldset>
+              <legend className="text-base font-semibold">What do you want to do first?</legend>
+              <p className="mt-1 text-sm text-text-secondary">
+                Choose your starting workspace. Nothing is selected for you, and every account can still listen and discover.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {signupRoles.map((option) => {
+                  const selected = form.role === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => {
+                        setForm({ ...form, role: option.value })
+                        setError(null)
+                      }}
+                      className={`rounded-2xl border p-4 text-left transition ${
+                        selected
+                          ? 'border-brand bg-brand/10 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]'
+                          : 'border-white/10 bg-bg-card hover:border-brand/50 hover:bg-white/[.03]'
+                      } ${option.value === 'listener' ? 'sm:col-span-2' : ''}`}
+                    >
+                      <span className="flex items-start justify-between gap-4">
+                        <span>
+                          <span className="block font-semibold text-text-primary">{option.title}</span>
+                          <span className="mt-1 block text-sm text-text-secondary">{option.copy}</span>
+                        </span>
+                        <span
+                          aria-hidden="true"
+                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs ${
+                            selected ? 'border-brand bg-brand text-black' : 'border-white/20 text-transparent'
+                          }`}
+                        >
+                          ✓
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-3 text-xs text-text-secondary">
+                Your first choice is not permanent. Add or apply for other creator roles later from Account Centre.
+              </p>
+            </fieldset>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <input
+                type="text"
+                placeholder="Full name"
+                value={form.fullName}
+                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
+                required
+                autoComplete="name"
+                className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Username (no spaces)"
+                value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })}
+                required
+                autoComplete="username"
+                className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
+              />
+            </div>
             <input
               type="email"
               placeholder="you@email.com"
