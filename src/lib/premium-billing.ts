@@ -299,17 +299,19 @@ export async function syncPremiumDistributionJobsForArtist(userId: string): Prom
   const published = await restGet<
     Array<{ id: string; editorial_status?: string; is_public?: boolean }>
   >(
-    `releases?user_id=eq.${userId}&is_public.eq.true&editorial_status=eq.approved&select=id,editorial_status,is_public&limit=200`,
+    `releases?user_id=eq.${encodeURIComponent(userId)}&is_public=eq.true&editorial_status=eq.approved&select=id,editorial_status,is_public&limit=200`,
   );
-  const releases = published || [];
+  if (published === null) return { ok: false, created: 0, upgraded: 0 };
+  const releases = published;
   if (!releases.length) return { ok: true, created: 0, upgraded: 0 };
 
   const existing = await restGet<
     Array<{ id: string; release_id: string; status?: string }>
   >(
-    `distribution_jobs?artist_user_id=eq.${userId}&select=id,release_id,status&limit=200`,
+    `distribution_jobs?artist_user_id=eq.${encodeURIComponent(userId)}&select=id,release_id,status&limit=200`,
   );
-  const byRelease = new Map((existing || []).map((row) => [row.release_id, row]));
+  if (existing === null) return { ok: false, created: 0, upgraded: 0 };
+  const byRelease = new Map(existing.map((row) => [row.release_id, row]));
   const terminalOrProgress = new Set(["queued", "submitted", "live_on_dsp", "failed", "cancelled"]);
   const now = new Date().toISOString();
   let created = 0;
