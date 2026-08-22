@@ -145,7 +145,7 @@ export default async function ShowPage({ params }: { params: Promise<{ slug: str
           <h2 id="show-setlist-heading" className="mt-1 text-3xl font-semibold">{setlistHeading}</h2>
           <ol className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[.02]">
             {context.setlist.map((item, index) => {
-              const active = currentLiveSetlistItem?.id === item.id
+              const active = currentSetlistItem?.id === item.id
               return (
                 <li key={item.id} className={`flex items-center gap-4 border-b border-white/10 px-4 py-4 last:border-b-0 ${active ? 'bg-brand/[.07]' : ''}`}>
                   <span className={`w-8 shrink-0 text-center text-sm tabular-nums ${active ? 'text-brand' : 'text-text-secondary'}`}>{index + 1}</span>
