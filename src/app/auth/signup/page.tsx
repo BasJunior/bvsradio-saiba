@@ -4,37 +4,18 @@ import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { isSupabaseConfigured } from '@/lib/supabase'
+import { SIGNUP_ROLES, type SignupRole } from '@/lib/signup-roles'
 
-const signupRoles = [
-  {
-    value: 'artist',
-    title: 'Artist',
-    copy: 'Submit music and start with artist tools.',
-  },
-  {
-    value: 'producer',
-    title: 'Producer',
-    copy: 'Upload beats and start with producer tools.',
-  },
-  {
-    value: 'writer',
-    title: 'Writer',
-    copy: 'Pitch stories and start with writing tools.',
-  },
-  {
-    value: 'show_creator',
-    title: 'Show or podcast creator',
-    copy: 'Start a show and manage episode workflows.',
-  },
-  {
-    value: 'listener',
-    title: 'Listener',
-    copy: 'Discover, save and support BVS creators.',
-  },
-] as const
+type SignupForm = {
+  email: string
+  password: string
+  fullName: string
+  username: string
+  role: SignupRole | ''
+}
 
 export default function SignupPage() {
-  const [form, setForm] = useState({ email: '', password: '', fullName: '', username: '', role: '' })
+  const [form, setForm] = useState<SignupForm>({ email: '', password: '', fullName: '', username: '', role: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
@@ -192,7 +173,7 @@ export default function SignupPage() {
                 Choose your starting workspace. Nothing is selected for you, and every account can still listen and discover.
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {signupRoles.map((option) => {
+                {SIGNUP_ROLES.map((option) => {
                   const selected = form.role === option.value
                   return (
                     <button
