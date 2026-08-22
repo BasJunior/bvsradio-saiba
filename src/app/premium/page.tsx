@@ -60,7 +60,7 @@ export default function PremiumEcosystemPage() {
           <p className="mt-2 text-sm text-text-secondary">
             Listening, editorial publish, and BVS rotation stay free. Artist Premium lets BVS{" "}
             <strong className="text-text-primary">send</strong> approved releases to stores — eligible is not live on
-            Spotify. Only Artist Founding/Standard can be bought today. Other families are waitlist.
+            Spotify. Artist Founding/Standard are live; Producer Plus/Pro use Stripe test checkout on beta only. Other families remain waitlist.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-text-secondary">
             <span className="rounded-full border border-white/15 px-3 py-1">Listen free</span>
@@ -157,7 +157,14 @@ export default function PremiumEcosystemPage() {
               ))}
             </ul>
             <div className="mt-5">
-              {planHasPaidCheckout(plan) ? (
+              {plan.family === "producer" && (plan.id === "producer_plus" || plan.id === "producer_pro") ? (
+                <Link
+                  href={`/producer/premium?tier=${plan.id.replace("producer_", "")}`}
+                  className="inline-flex rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
+                >
+                  Open beta desk
+                </Link>
+              ) : planHasPaidCheckout(plan) ? (
                 <Link
                   href={`/artist/premium?tier=${plan.id.replace("artist_", "")}`}
                   className="inline-flex rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
@@ -236,6 +243,7 @@ export default function PremiumEcosystemPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-emerald-200">Live today</p>
             <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-text-secondary">
               <li>Artist Premium desk + Stripe auto-renew and Paynow prepaid billing</li>
+              <li>Beta-only Producer Plus/Pro Stripe-test upgrade desk</li>
               <li>Founding eligibility: through {FOUNDING_WINDOW_LABEL} and first 50 seats</li>
               <li>Distribution entitlement on paid Artist Premium for approved releases</li>
               <li>Producer BeatStore free/plus/pro limits and marketplace fee bands</li>

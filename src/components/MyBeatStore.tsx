@@ -302,16 +302,21 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
                   : `${entitlements.liveCount ?? 0} / ${entitlements.beatLiveLimit}`}
               </p>
               <p className="mt-1 text-xs opacity-90">
-                Tier: {entitlements.tier || 'free'}
+                Plan: {entitlements.planId || `producer_${entitlements.tier || 'free'}`}
                 {typeof entitlements.marketplaceCommissionBps === 'number'
                   ? ` · platform fee ${(entitlements.marketplaceCommissionBps / 100).toFixed(0)}%`
                   : ''}
                 {entitlements.canGoLive === false
-                  ? ' · Limit reached — archive a live beat or upgrade on Premium before new go-live.'
+                  ? ' · Limit reached — archive a live beat or upgrade before a new go-live.'
                   : entitlements.softWarn
-                    ? ' · Near your live limit — upgrade anytime on /premium.'
+                    ? ' · Near your live limit.'
                     : ' · Growth-era free tier allows up to 25 live beats.'}
               </p>
+              {(entitlements.planId === 'producer_free' || entitlements.softWarn || entitlements.canGoLive === false) && (
+                <Link href="/producer/premium" className="mt-3 inline-flex rounded-full border border-brand/40 px-4 py-2 text-xs font-semibold text-brand hover:bg-brand/10">
+                  Compare Producer plans →
+                </Link>
+              )}
             </div>
           )}
         </div>

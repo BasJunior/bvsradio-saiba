@@ -257,6 +257,7 @@ export default function CreatorStudio() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Link href="/producer/premium" className="rounded-full border border-brand/50 bg-brand/10 px-5 py-2.5 text-sm font-semibold text-brand">Producer plans</Link>
               <a href="#beat-pack-upload" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Upload beat pack</a>
               <a href="#beat-single-upload" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Single beat</a>
               <Link href="/upload?type=pack" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Full upload page</Link>

@@ -21,6 +21,13 @@ import {
 import { resolveStripeProcessorFee } from "@/lib/stripe-processor-fee";
 import { reverseMarketplaceSellerCredits } from "@/lib/marketplace-refunds";
 import { initializePaidCreatorServiceOrder } from "@/lib/creator-service-orders";
+import {
+  activatePaidProducerPremium,
+  deactivateStripeProducerPremium,
+  normalizeProducerInterval,
+  normalizeProducerPlanId,
+  producerBillingGuard,
+} from "@/lib/producer-billing";
 
 export const runtime = "nodejs";
 
@@ -74,6 +81,30 @@ export async function POST(req: Request) {
         interval?: string;
       };
     };
+
+    if (
+      session.mode === "subscription" &&
+      session.metadata?.kind === "producer_premium" &&
+      session.metadata.user_id &&
+      typeof session.subscription === "string" &&
+      (session.payment_status === "paid" || session.payment_status === "no_payment_required")
+    ) {
+      if (!producerBillingGuard().ok) {
+        return NextResponse.json({ error: "Producer beta billing is disabled." }, { status: 503 });
+      }
+      const subscription = await stripe.subscriptions.retrieve(session.subscription);
+      const periodEnd = subscription.items.data[0]?.current_period_end;
+      const result = await activatePaidProducerPremium({
+        userId: session.metadata.user_id,
+        planId: normalizeProducerPlanId(session.metadata.plan_id),
+        interval: normalizeProducerInterval(session.metadata.interval),
+        reference: subscription.id,
+        amountUsd: Number(session.amount_total || 0) / 100,
+        endsAt: periodEnd ? new Date(periodEnd * 1000).toISOString() : undefined,
+      });
+      if (!result.ok) return NextResponse.json({ error: "Producer plan activation failed." }, { status: 500 });
+      return NextResponse.json({ received: true });
+    }
 
     if (
       session.mode === "subscription" &&
@@ -187,6 +218,24 @@ export async function POST(req: Request) {
   if (event.type === "customer.subscription.updated") {
     const subscription = event.data.object;
     if (
+      subscription.metadata?.kind === "producer_premium" &&
+      subscription.metadata.user_id &&
+      producerBillingGuard().ok
+    ) {
+      const periodEnd = subscription.items.data[0]?.current_period_end;
+      if (["active", "trialing", "past_due"].includes(subscription.status) && periodEnd) {
+        const result = await activatePaidProducerPremium({
+          userId: subscription.metadata.user_id,
+          planId: normalizeProducerPlanId(subscription.metadata.plan_id),
+          interval: normalizeProducerInterval(subscription.metadata.interval),
+          reference: subscription.id,
+          amountUsd: 0,
+          endsAt: new Date(periodEnd * 1000).toISOString(),
+        });
+        if (!result.ok) return NextResponse.json({ error: "Producer plan synchronization failed." }, { status: 500 });
+      }
+    }
+    if (
       subscription.metadata?.kind === "artist_premium" &&
       subscription.metadata.user_id
     ) {
@@ -215,6 +264,13 @@ export async function POST(req: Request) {
 
   if (event.type === "customer.subscription.deleted") {
     const subscription = event.data.object;
+    if (
+      subscription.metadata?.kind === "producer_premium" &&
+      subscription.metadata.user_id
+    ) {
+      const result = await deactivateStripeProducerPremium(subscription.id, subscription.metadata.user_id);
+      if (!result.ok) return NextResponse.json({ error: "Producer plan deactivation failed." }, { status: 500 });
+    }
     if (
       subscription.metadata?.kind === "artist_premium" &&
       subscription.metadata.user_id
