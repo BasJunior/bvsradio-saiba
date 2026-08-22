@@ -2,45 +2,158 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import RadioPlayer from "@/components/RadioPlayer";
-import { RecentListening } from "@/components/RecentListening";
-import { schedule as fallbackSchedule } from "@/lib/station";
+import RadioSessionHome from "@/components/RadioSessionHome";
+import RadioShelfNav from "@/components/RadioShelfNav";
 import { getPublicProgrammes } from "@/lib/station-content";
+import type { Show } from "@/lib/station";
 
 export const metadata: Metadata = {
   title: "Listen | BVS Radio",
-  description: "Listen now to the live BVS continuous rotation — approved artist releases and curated sound, 24/7.",
+  description: "Settle into BVS Radio: continuous rotation, scheduled programmes, verified music context and the live listener room.",
 };
+
+const dayOrder: Record<string, number> = {
+  sunday: 0,
+  monday: 1,
+  tuesday: 2,
+  wednesday: 3,
+  thursday: 4,
+  friday: 5,
+  saturday: 6,
+};
+
+function nextOccurrence(show: Show) {
+  const [dayLabel = "", timeLabel = ""] = show.schedule.split(" · ");
+  const day = dayOrder[dayLabel.trim().toLowerCase()];
+  const match = timeLabel.match(/(\d{1,2}):(\d{2})/);
+  if (day === undefined || !match) return Number.POSITIVE_INFINITY;
+
+  const nowParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Harare",
+    weekday: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const get = (type: Intl.DateTimeFormatPartTypes) => nowParts.find((part) => part.type === type)?.value || "";
+  const currentDay = dayOrder[get("weekday").toLowerCase()] ?? 0;
+  const currentMinutes = Number(get("hour") || 0) * 60 + Number(get("minute") || 0);
+  const showMinutes = Number(match[1]) * 60 + Number(match[2]);
+  let deltaDays = (day - currentDay + 7) % 7;
+  if (deltaDays === 0 && showMinutes <= currentMinutes) deltaDays = 7;
+  return deltaDays * 24 * 60 + showMinutes - currentMinutes;
+}
 
 export default async function RadioPage() {
   const shows = await getPublicProgrammes();
-  const schedule = shows.some(show => show.status === 'active') ? shows.map(show => { const [day, time = 'Time TBA'] = show.schedule.split(' · '); return { day, time, title: show.title, note: show.status === 'active' ? `Presented by ${show.host}` : 'Upcoming programme' }; }) : fallbackSchedule;
-  return <div className="mx-auto max-w-6xl px-6 py-12">
-    <section className="grid items-center gap-10 lg:grid-cols-2">
-      <div>
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[.22em] text-brand">On air now</p>
-        <h1 className="text-5xl font-semibold tracking-tight">Zimbabwean sound, always within reach.</h1>
-        <p className="mt-5 max-w-xl text-lg text-text-secondary">The BVS continuous rotation is live: approved artist releases and selected curated tracks, ready whenever you press play. Named shows appear below as they get scheduled; full episode drops go live after editorial publish.</p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs text-brand">Live rotation</span>
-          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-text-secondary">CAT / Harare</span>
+  const activeShow = shows.find((show) => show.status === "active");
+  const upcoming = shows
+    .filter((show) => show.status !== "active")
+    .sort((a, b) => nextOccurrence(a) - nextOccurrence(b));
+  const nextShow = upcoming[0];
+  const laterShow = upcoming[1];
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-10">
+      <header className="mb-7 flex flex-wrap items-end justify-between gap-5">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
+              <span className="h-1.5 w-1.5 rounded-full bg-brand" /> On air
+            </span>
+            <span className="text-xs text-text-secondary">CAT · Harare</span>
+          </div>
+          <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">BVS Radio</h1>
+          <p className="mt-2 max-w-2xl text-base text-text-secondary sm:text-lg">Zimbabwean sound. Stay awhile.</p>
         </div>
+        <nav className="flex flex-wrap gap-2 text-sm" aria-label="Radio pages">
+          <Link href="/radio/schedule" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">Schedule</Link>
+          <Link href="/radio/room" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">Live room</Link>
+          <Link href="/shows" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">Shows</Link>
+        </nav>
+      </header>
+
+      <RadioShelfNav />
+
+      <section id="radio-on-air" className="scroll-mt-28" aria-labelledby="now-playing-heading">
+        <h2 id="now-playing-heading" className="sr-only">Now playing on BVS Radio</h2>
+        <RadioPlayer />
+      </section>
+
+      <div id="radio-session" className="mt-8 scroll-mt-28">
+        <RadioSessionHome />
       </div>
-      <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-white/10"><Image src="/images/editorial/radio-studio-harare.webp" alt="BVS radio studio overlooking Harare" fill priority className="object-cover" /></div>
-    </section>
 
-    <section className="mx-auto my-14 max-w-5xl" aria-labelledby="now-playing"><h2 id="now-playing" className="sr-only">Now playing</h2><RadioPlayer /><div className="mt-4 text-center"><Link href="/community" className="inline-flex rounded-full border border-brand/30 bg-brand/10 px-5 py-2.5 text-sm font-medium text-brand hover:bg-brand/20">Join the member conversation →</Link></div></section>
+      <section id="radio-coming-up" className="mt-12 scroll-mt-28" aria-labelledby="coming-up-heading">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Station clock</p>
+            <h2 id="coming-up-heading" className="mt-1 text-3xl font-semibold">Now, next, later.</h2>
+          </div>
+          <Link href="/radio/schedule" className="text-sm text-brand hover:underline">Full schedule →</Link>
+        </div>
 
-    <section className="grid gap-8 lg:grid-cols-[1.2fr_.8fr]">
-      <div>
-        <div className="mb-5 flex items-end justify-between"><div><p className="text-xs uppercase tracking-[.18em] text-brand">Schedule</p><h2 className="mt-1 text-3xl font-semibold">Coming up on BVS</h2></div><Link href="/shows" className="text-sm text-brand hover:underline">All shows →</Link></div>
-        <div className="space-y-3">{schedule.map((slot) => <div key={`${slot.day}-${slot.title}`} className="grid gap-2 rounded-xl border border-white/10 bg-white/[.03] p-4 sm:grid-cols-[8rem_7rem_1fr]"><span className="text-sm text-text-secondary">{slot.day}</span><span className="text-sm font-medium">{slot.time}</span><div><p className="font-medium">{slot.title}</p><p className="mt-1 text-xs text-text-secondary">{slot.note}</p></div></div>)}</div>
-      </div>
-      <RecentListening />
-    </section>
+        <div className="grid gap-3 md:grid-cols-3">
+          <article className="rounded-2xl border border-brand/30 bg-brand/[0.06] p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Now</p>
+            <h3 className="mt-2 text-xl font-semibold">{activeShow?.title || "BVS Continuous Rotation"}</h3>
+            <p className="mt-2 text-sm text-text-secondary">
+              {activeShow ? `${activeShow.schedule} · Presented by ${activeShow.host}` : "Approved artist releases and selected curated tracks keep the station moving."}
+            </p>
+            {activeShow ? <Link href={`/shows/${activeShow.slug}`} className="mt-4 inline-block text-sm text-brand hover:underline">Open show →</Link> : null}
+          </article>
 
-    <section className="mt-16">
-      <div className="mb-6 flex items-end justify-between"><div><p className="text-xs uppercase tracking-[.18em] text-brand">Shows</p><h2 className="mt-1 text-3xl font-semibold">Made for the scene</h2></div><Link href="/upload" className="text-sm text-brand hover:underline">Submit music →</Link></div>
-      <div className="grid gap-5 md:grid-cols-3">{shows.map((show) => <Link key={show.slug} href={`/shows/${show.slug}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-card/40"><div className="relative aspect-[16/10]"><Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-105" /></div><div className="p-5"><span className="text-[10px] font-semibold uppercase tracking-widest text-brand">{show.status === 'active' ? 'On the schedule' : 'Upcoming'}</span><h3 className="mt-2 text-xl font-semibold group-hover:text-brand">{show.title}</h3><p className="mt-2 text-sm text-text-secondary">{show.tagline}</p></div></Link>)}</div>
-    </section>
-  </div>;
+          <article className="rounded-2xl border border-white/10 bg-bg-card/30 p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Next scheduled</p>
+            <h3 className="mt-2 text-xl font-semibold">{nextShow?.title || "Continuous rotation"}</h3>
+            <p className="mt-2 text-sm text-text-secondary">{nextShow ? `${nextShow.schedule} · ${nextShow.host}` : "More named programmes will appear here as editorial schedules them."}</p>
+            {nextShow ? <Link href={`/shows/${nextShow.slug}`} className="mt-4 inline-block text-sm text-brand hover:underline">Show details →</Link> : null}
+          </article>
+
+          <article className="rounded-2xl border border-white/10 bg-bg-card/30 p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Later</p>
+            <h3 className="mt-2 text-xl font-semibold">{laterShow?.title || "BVS stays on"}</h3>
+            <p className="mt-2 text-sm text-text-secondary">{laterShow ? `${laterShow.schedule} · ${laterShow.host}` : "The station returns to continuous rotation between named programmes."}</p>
+            {laterShow ? <Link href={`/shows/${laterShow.slug}`} className="mt-4 inline-block text-sm text-brand hover:underline">Show details →</Link> : null}
+          </article>
+        </div>
+      </section>
+
+      {shows.length ? (
+        <section id="radio-shows" className="mt-14 scroll-mt-28" aria-labelledby="continue-bvs-heading">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Continue with BVS</p>
+              <h2 id="continue-bvs-heading" className="mt-1 text-3xl font-semibold">Shows worth staying for.</h2>
+            </div>
+            <Link href="/shows" className="text-sm text-brand hover:underline">All shows →</Link>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {shows.slice(0, 3).map((show) => (
+              <Link key={show.slug} href={`/shows/${show.slug}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-card/35">
+                <div className="relative aspect-[16/9] overflow-hidden">
+                  <Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-105" />
+                  {show.status === "active" ? <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black">Live</span> : null}
+                </div>
+                <div className="p-5">
+                  <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">{show.schedule}</p>
+                  <h3 className="mt-2 text-xl font-semibold group-hover:text-brand">{show.title}</h3>
+                  <p className="mt-2 line-clamp-2 text-sm text-text-secondary">{show.tagline}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="mt-14 flex flex-col gap-4 rounded-2xl border border-white/10 bg-bg-card/25 p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">For artists</p>
+          <h2 className="mt-1 text-2xl font-semibold">Want your music in the BVS ecosystem?</h2>
+          <p className="mt-2 text-sm text-text-secondary">Submit for editorial review. Publishing and rotation remain separate from Premium distribution.</p>
+        </div>
+        <Link href="/upload" className="shrink-0 rounded-full bg-brand px-5 py-2.5 text-center text-sm font-medium text-black">Submit music</Link>
+      </section>
+    </main>
+  );
 }
