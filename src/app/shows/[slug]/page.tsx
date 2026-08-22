@@ -70,12 +70,10 @@ export default async function ShowPage({ params }: { params: Promise<{ slug: str
             <div><dt className="text-xs uppercase tracking-wider text-text-secondary">Presented by</dt><dd className="mt-1 font-medium">{show.host}</dd></div>
             <div><dt className="text-xs uppercase tracking-wider text-text-secondary">{event?.startsAt ? 'Broadcast time' : 'Planned slot'}</dt><dd className="mt-1 font-medium">{dateLabel(event?.startsAt || null) || show.schedule}</dd></div>
           </dl>
-          {flowV2Flags.showRooms ? (
-            <div className="mt-6 flex flex-wrap gap-3">
-              <ShowFollowButton slug={slug} title={show.title} subtitle={show.tagline} image={show.image} />
-              {hasWatchExperience ? <Link href={`/shows/${slug}/watch`} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 font-semibold hover:border-brand/40">Open TV mode</Link> : null}
-            </div>
-          ) : null}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <ShowFollowButton slug={slug} title={show.title} subtitle={show.tagline} image={show.image} />
+            {hasWatchExperience ? <Link href={`/shows/${slug}/watch`} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 font-semibold hover:border-brand/40">Open TV mode</Link> : null}
+          </div>
 
           {context.creators.length ? (
             <div className="mt-7">
@@ -147,7 +145,7 @@ export default async function ShowPage({ params }: { params: Promise<{ slug: str
           <h2 id="show-setlist-heading" className="mt-1 text-3xl font-semibold">{setlistHeading}</h2>
           <ol className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-white/[.02]">
             {context.setlist.map((item, index) => {
-              const active = currentSetlistItem?.id === item.id
+              const active = currentLiveSetlistItem?.id === item.id
               return (
                 <li key={item.id} className={`flex items-center gap-4 border-b border-white/10 px-4 py-4 last:border-b-0 ${active ? 'bg-brand/[.07]' : ''}`}>
                   <span className={`w-8 shrink-0 text-center text-sm tabular-nums ${active ? 'text-brand' : 'text-text-secondary'}`}>{index + 1}</span>
