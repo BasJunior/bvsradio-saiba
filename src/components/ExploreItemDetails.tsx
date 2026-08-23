@@ -69,9 +69,14 @@ export default function ExploreItemDetails({
   const dialogRef = useRef<HTMLDivElement | null>(null)
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
+  const suspendedForPlayerRef = useRef(false)
 
   useEffect(() => {
-    returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    if (player.nowPlayingOpen) return
+    if (!returnFocusRef.current) {
+      returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    }
+    suspendedForPlayerRef.current = false
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     window.requestAnimationFrame(() => closeRef.current?.focus())
@@ -104,9 +109,11 @@ export default function ExploreItemDetails({
     return () => {
       document.body.style.overflow = previousOverflow
       document.removeEventListener('keydown', onKeyDown)
-      window.requestAnimationFrame(() => returnFocusRef.current?.focus())
+      if (!suspendedForPlayerRef.current) {
+        window.requestAnimationFrame(() => returnFocusRef.current?.focus())
+      }
     }
-  }, [onClose])
+  }, [onClose, player.nowPlayingOpen])
 
   const priced = useMemo(
     () => ({
@@ -133,9 +140,9 @@ export default function ExploreItemDetails({
   }
 
   const enterNowPlaying = () => {
-    // Keep the same StationPlayer session, close the content layer, and reveal
-    // the immersive player instead of opening the queue sheet.
-    onClose()
+    // Preserve this detail state beneath the immersive player so collapsing
+    // Now Playing returns to the exact content screen without resetting audio.
+    suspendedForPlayerRef.current = true
     player.setQueueOpen(false)
     player.openNowPlaying()
   }
@@ -186,6 +193,10 @@ export default function ExploreItemDetails({
     detail.copyrightYear && detail.kind === 'release' ? `© ${detail.copyrightYear}` : undefined,
     detail.inRotation ? 'In BVS rotation' : undefined,
   ].filter(Boolean)
+
+  // The detail remains mounted while Now Playing is open. This is the reverse
+  // transition target when the user collapses the immersive player.
+  if (player.nowPlayingOpen) return null
 
   return (
     <div
