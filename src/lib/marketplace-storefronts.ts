@@ -63,6 +63,17 @@ type MarketplaceListingRow = {
   revisions_included?: number | null
 }
 
+export type SeededMarketplaceSelection = {
+  providerSlug: string
+  providerName: string
+  serviceId: string
+  title: string
+  category: string
+  description: string
+  priceUsd: number
+  packageName?: string
+}
+
 export function storefrontSlug(value: string) {
   return value
     .toLowerCase()
@@ -107,7 +118,7 @@ export const seededStorefronts: MarketplaceStorefront[] = [
         category: 'Beat package',
         description: 'MP3 beat lease from the WolfBridges catalogue.',
         priceUsd: 30,
-        bookingMode: 'enquiry',
+        bookingMode: 'checkout',
       },
       {
         id: 'beat-lease-mp3-wav',
@@ -115,7 +126,7 @@ export const seededStorefronts: MarketplaceStorefront[] = [
         category: 'Beat package',
         description: 'Beat lease supplied as MP3 and WAV files.',
         priceUsd: 50,
-        bookingMode: 'enquiry',
+        bookingMode: 'checkout',
       },
     ],
     policyNotes: ['No custom beats.', 'No beat remakes.'],
@@ -144,10 +155,51 @@ export const seededStorefronts: MarketplaceStorefront[] = [
         description: tier.desc,
         priceUsd: Number(tier.price.replace(/[^0-9.]/g, '')) || service.startingPriceUsd,
       })),
-      bookingMode: 'enquiry' as const,
+      bookingMode: 'checkout' as const,
     })),
   },
 ]
+
+export function seededMarketplaceServiceRef(providerSlug: string, serviceId: string, packageIndex?: number) {
+  const base = `${providerSlug}:${serviceId}`
+  return typeof packageIndex === 'number' && Number.isInteger(packageIndex) && packageIndex >= 0
+    ? `${base}:${packageIndex}`
+    : base
+}
+
+export function resolveSeededMarketplaceService(ref: string): SeededMarketplaceSelection | null {
+  const [providerSlug, serviceId, packageIndexRaw] = String(ref || '').split(':')
+  const provider = seededStorefronts.find((item) => item.slug === providerSlug)
+  const service = provider?.services.find((item) => item.id === serviceId)
+  if (!provider || !service) return null
+
+  let packageName: string | undefined
+  let priceUsd = service.priceUsd
+  let title = service.title
+
+  if (packageIndexRaw !== undefined) {
+    const packageIndex = Number(packageIndexRaw)
+    if (!Number.isInteger(packageIndex) || packageIndex < 0) return null
+    const selectedPackage = service.packages?.[packageIndex]
+    if (!selectedPackage) return null
+    packageName = selectedPackage.name
+    priceUsd = selectedPackage.priceUsd
+    title = `${service.title} — ${selectedPackage.name}`
+  }
+
+  if (!Number.isFinite(priceUsd) || priceUsd <= 0) return null
+
+  return {
+    providerSlug: provider.slug,
+    providerName: provider.name,
+    serviceId: service.id,
+    title,
+    category: service.category,
+    description: service.description,
+    priceUsd: Math.round(priceUsd * 100) / 100,
+    packageName,
+  }
+}
 
 export function liveStorefronts(
   profiles: MarketplaceProfileRow[],
