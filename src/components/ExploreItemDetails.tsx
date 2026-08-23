@@ -132,6 +132,14 @@ export default function ExploreItemDetails({
     image: detail.image,
   }
 
+  const enterNowPlaying = () => {
+    // Keep the same StationPlayer session, close the content layer, and reveal
+    // the immersive player instead of opening the queue sheet.
+    onClose()
+    player.setQueueOpen(false)
+    player.openNowPlaying()
+  }
+
   const play = () => {
     if (!detail.src) return
     player.playNow(
@@ -146,6 +154,7 @@ export default function ExploreItemDetails({
       },
       { from: detail.kind === 'beat' ? 'BVS BeatStore' : detail.kind === 'release' ? 'BVS Release' : 'Explore BVS' },
     )
+    enterNowPlaying()
   }
 
   const playableReleaseTracks = useMemo(
@@ -165,6 +174,7 @@ export default function ExploreItemDetails({
       genre: detail.genre,
     }))
     player.playAll(tracks, { from: `${detail.title} release` })
+    enterNowPlaying()
   }
 
   const meta = [
