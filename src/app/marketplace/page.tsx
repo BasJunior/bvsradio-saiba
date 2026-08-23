@@ -3,16 +3,15 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
-  liveStorefronts,
-  seededStorefronts,
+  marketplaceStorefronts,
   type MarketplaceStorefront,
 } from "@/lib/marketplace-storefronts";
 import { mediaUrlForStoredValue } from "@/lib/media-url";
 import { readCartLines, writeCartLines } from "@/lib/cart-client";
 
 type MarketplacePayload = {
-  profiles?: Parameters<typeof liveStorefronts>[0];
-  listings?: Parameters<typeof liveStorefronts>[1];
+  profiles?: Parameters<typeof marketplaceStorefronts>[0];
+  listings?: Parameters<typeof marketplaceStorefronts>[1];
 };
 
 function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
@@ -84,12 +83,7 @@ export default function MarketplacePage() {
   }, []);
 
   const storefronts = useMemo(
-    () => [
-      ...seededStorefronts,
-      ...liveStorefronts(data.profiles || [], data.listings || []).filter(
-        (provider) => !seededStorefronts.some((seed) => seed.slug === provider.slug),
-      ),
-    ],
+    () => marketplaceStorefronts(data.profiles || [], data.listings || []),
     [data],
   );
 
