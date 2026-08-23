@@ -1,5 +1,6 @@
 'use client'
 
+import { playAllOnBvs } from '@/lib/bvs-playback'
 import type { PublicRelease } from '@/lib/public-releases'
 
 export default function AlbumPlayer({ release }: { release: PublicRelease }) {
@@ -14,7 +15,7 @@ export default function AlbumPlayer({ release }: { release: PublicRelease }) {
   }))
   const dispatch = (startIndex = 0) => {
     const ordered = [...stationTracks.slice(startIndex), ...stationTracks.slice(0, startIndex)].filter((track) => track.src)
-    window.dispatchEvent(new CustomEvent('bvs:queue', { detail: { action: 'play-all', tracks: ordered, from: release.title } }))
+    playAllOnBvs(ordered, { from: release.title })
   }
 
   return (
