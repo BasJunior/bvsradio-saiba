@@ -115,3 +115,71 @@ revoke all on function public.request_marketplace_booking(uuid,text,uuid,text,te
   from public, anon, authenticated;
 grant execute on function public.request_marketplace_booking(uuid,text,uuid,text,text,numeric,uuid,text,text,text,text)
   to service_role;
+
+create or replace function public.respond_marketplace_booking(
+  p_booking_id uuid,
+  p_owner_user_id uuid,
+  p_decision text
+)
+returns public.marketplace_booking_requests
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_booking public.marketplace_booking_requests%rowtype;
+  v_slot public.marketplace_provider_slots%rowtype;
+begin
+  if p_decision not in ('confirm', 'decline') then
+    raise exception 'MARKETPLACE_BOOKING_DECISION_INVALID';
+  end if;
+
+  select * into v_booking
+  from public.marketplace_booking_requests
+  where id = p_booking_id
+  for update;
+
+  if not found or v_booking.status <> 'requested' then
+    raise exception 'MARKETPLACE_BOOKING_NOT_PENDING';
+  end if;
+
+  select * into v_slot
+  from public.marketplace_provider_slots
+  where id = v_booking.slot_id
+    and owner_user_id = p_owner_user_id
+    and provider_key = v_booking.provider_key
+  for update;
+
+  if not found or v_slot.status <> 'held' then
+    raise exception 'MARKETPLACE_BOOKING_NOT_OWNED';
+  end if;
+
+  if p_decision = 'confirm' then
+    update public.marketplace_booking_requests
+    set status = 'confirmed', updated_at = now()
+    where id = v_booking.id
+    returning * into v_booking;
+
+    update public.marketplace_provider_slots
+    set status = 'booked', updated_at = now()
+    where id = v_slot.id;
+  else
+    update public.marketplace_booking_requests
+    set status = 'declined', updated_at = now()
+    where id = v_booking.id
+    returning * into v_booking;
+
+    update public.marketplace_provider_slots
+    set status = case when starts_at > now() then 'available' else 'blocked' end,
+        updated_at = now()
+    where id = v_slot.id;
+  end if;
+
+  return v_booking;
+end;
+$$;
+
+revoke all on function public.respond_marketplace_booking(uuid,uuid,text)
+  from public, anon, authenticated;
+grant execute on function public.respond_marketplace_booking(uuid,uuid,text)
+  to service_role;
