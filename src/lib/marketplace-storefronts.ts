@@ -81,7 +81,7 @@ export const seededStorefronts: MarketplaceStorefront[] = [
     headline: 'Recording, mixing, mastering and beat-based production in Harare.',
     bio: 'WolfBridges Studio offers music production services for artists who need recording, mixing, mastering and beat-based production support in one place.',
     location: 'Madokero, Harare',
-    heroImage: '/images/marketplace/wolfbridges-studio.png',
+    heroImage: '/images/marketplace/wolfbridges-studio.jpg',
     specialties: ['Recording', 'Mixing', 'Mastering', 'Music production', 'Beat leases'],
     verified: false,
     services: [
@@ -203,6 +203,37 @@ export function liveStorefronts(
       services,
     }
   })
+}
+
+function serviceKey(service: StorefrontService) {
+  return service.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function mergeServices(seed: StorefrontService[], live: StorefrontService[]) {
+  const merged = new Map(seed.map((service) => [serviceKey(service), service]))
+  for (const service of live) merged.set(serviceKey(service), service)
+  return [...merged.values()]
+}
+
+export function marketplaceStorefronts(
+  profiles: MarketplaceProfileRow[],
+  listings: MarketplaceListingRow[],
+): MarketplaceStorefront[] {
+  const live = liveStorefronts(profiles, listings)
+  const claimed = new Set<string>()
+  const seeded = seededStorefronts.map((seed) => {
+    const claim = live.find((item) => item.slug === seed.slug)
+    if (!claim) return seed
+    claimed.add(claim.slug)
+    return {
+      ...seed,
+      sellerUserId: claim.sellerUserId,
+      username: claim.username,
+      verified: seed.verified || claim.verified,
+      services: mergeServices(seed.services, claim.services),
+    }
+  })
+  return [...seeded, ...live.filter((item) => !claimed.has(item.slug))]
 }
 
 export function seededStorefront(slug: string) {
