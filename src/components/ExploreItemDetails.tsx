@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef } from 'react'
 import LibraryAction from '@/components/LibraryAction'
 import { useStationPlayer } from '@/components/StationPlayer'
+import { playAllOnBvs, playOnBvs } from '@/lib/bvs-playback'
 import { catalogueUnitPrice, offerLabel, priceBadge, rightsSummary } from '@/lib/catalogue-pricing'
 import type { DiscoveryItem } from '@/lib/discovery'
 
@@ -69,14 +70,14 @@ export default function ExploreItemDetails({
   const dialogRef = useRef<HTMLDivElement | null>(null)
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
-  const suspendedForPlayerRef = useRef(false)
+  const nowPlayingOpenRef = useRef(player.nowPlayingOpen)
+  nowPlayingOpenRef.current = player.nowPlayingOpen
 
   useEffect(() => {
     if (player.nowPlayingOpen) return
     if (!returnFocusRef.current) {
       returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     }
-    suspendedForPlayerRef.current = false
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     window.requestAnimationFrame(() => closeRef.current?.focus())
@@ -109,7 +110,7 @@ export default function ExploreItemDetails({
     return () => {
       document.body.style.overflow = previousOverflow
       document.removeEventListener('keydown', onKeyDown)
-      if (!suspendedForPlayerRef.current) {
+      if (!nowPlayingOpenRef.current) {
         window.requestAnimationFrame(() => returnFocusRef.current?.focus())
       }
     }
@@ -139,17 +140,9 @@ export default function ExploreItemDetails({
     image: detail.image,
   }
 
-  const enterNowPlaying = () => {
-    // Preserve this detail state beneath the immersive player so collapsing
-    // Now Playing returns to the exact content screen without resetting audio.
-    suspendedForPlayerRef.current = true
-    player.setQueueOpen(false)
-    player.openNowPlaying()
-  }
-
   const play = () => {
     if (!detail.src) return
-    player.playNow(
+    playOnBvs(
       {
         id: detail.id,
         title: detail.title,
@@ -161,7 +154,6 @@ export default function ExploreItemDetails({
       },
       { from: detail.kind === 'beat' ? 'BVS BeatStore' : detail.kind === 'release' ? 'BVS Release' : 'Explore BVS' },
     )
-    enterNowPlaying()
   }
 
   const playableReleaseTracks = useMemo(
@@ -180,8 +172,7 @@ export default function ExploreItemDetails({
       project: detail.title,
       genre: detail.genre,
     }))
-    player.playAll(tracks, { from: `${detail.title} release` })
-    enterNowPlaying()
+    playAllOnBvs(tracks, { from: `${detail.title} release` })
   }
 
   const meta = [
@@ -194,8 +185,8 @@ export default function ExploreItemDetails({
     detail.inRotation ? 'In BVS rotation' : undefined,
   ].filter(Boolean)
 
-  // The detail remains mounted while Now Playing is open. This is the reverse
-  // transition target when the user collapses the immersive player.
+  // The detail remains mounted while Now Playing is open. The universal player
+  // presentation policy owns the forward transition; collapsing restores this.
   if (player.nowPlayingOpen) return null
 
   return (
