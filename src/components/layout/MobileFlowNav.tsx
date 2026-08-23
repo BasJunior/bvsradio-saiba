@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const destinations = [
-  { href: "/radio", label: "Radio", icon: "◉", matches: (path: string) => path === "/radio" },
-  { href: "/search", label: "Explore", icon: "⌕", matches: (path: string) => path === "/search" || path.startsWith("/music/") },
-  { href: "/catalogue?type=beat#beatstore", label: "Beats", icon: "◫", matches: (path: string) => path.startsWith("/catalogue") },
+  { href: "/radio", label: "Listen", icon: "◉", matches: (path: string) => path === "/radio" || path.startsWith("/shows/") },
+  { href: "/search", label: "Discover", icon: "⌕", matches: (path: string) => path === "/search" || path.startsWith("/music/") || path.startsWith("/catalogue") || path.startsWith("/artist/") },
+  { href: "/marketplace", label: "Market", icon: "◇", matches: (path: string) => path.startsWith("/marketplace") || path === "/shop" },
   { href: "/library", label: "Library", icon: "♡", matches: (path: string) => path.startsWith("/library") },
 ];
 
