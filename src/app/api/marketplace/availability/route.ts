@@ -40,7 +40,7 @@ export async function GET(request: Request) {
   if ("error" in provider) return NextResponse.json({ error: provider.error }, { status: provider.status });
   const [slots, rawBookings] = await Promise.all([
     rows(
-      `marketplace_provider_slots?owner_user_id=eq.${provider.identity.user.id}&starts_at=gt.${encodeURIComponent(new Date().toISOString())}&select=id,provider_key,starts_at,ends_at,timezone,status,note&order=starts_at.asc&limit=200`,
+      `marketplace_provider_slots?owner_user_id=eq.${provider.identity.user.id}&select=id,provider_key,starts_at,ends_at,timezone,status,note&order=starts_at.desc&limit=500`,
     ),
     rows(
       `marketplace_booking_requests?provider_key=eq.${encodeURIComponent(provider.providerKey)}&status=in.(requested,confirmed)&select=id,slot_id,service_ref,service_title,price_usd,customer_name,customer_email,customer_phone,project_notes,status,created_at&order=created_at.desc&limit=100`,
@@ -70,22 +70,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "A single booking slot cannot exceed 12 hours." }, { status: 400 });
     }
     const timezone = String(body.timezone || "Africa/Harare").trim().slice(0, 80) || "Africa/Harare";
-    const response = await fetch(creatorUrl("marketplace_provider_slots?on_conflict=provider_key,starts_at,ends_at"), {
+    const response = await fetch(creatorUrl("rpc/publish_marketplace_slot"), {
       method: "POST",
-      headers: { ...creatorHeaders, Prefer: "resolution=merge-duplicates,return=representation" },
+      headers: { ...creatorHeaders, Prefer: "return=representation" },
       body: JSON.stringify({
-        provider_key: provider.providerKey,
-        owner_user_id: provider.identity.user.id,
-        starts_at: new Date(startMs).toISOString(),
-        ends_at: new Date(endMs).toISOString(),
-        timezone,
-        status: "available",
-        note: String(body.note || "").trim().slice(0, 300) || null,
-        updated_at: new Date().toISOString(),
+        p_provider_key: provider.providerKey,
+        p_owner_user_id: provider.identity.user.id,
+        p_starts_at: new Date(startMs).toISOString(),
+        p_ends_at: new Date(endMs).toISOString(),
+        p_timezone: timezone,
+        p_note: String(body.note || "").trim().slice(0, 300) || null,
       }),
     });
-    if (!response.ok) return NextResponse.json({ error: "Booking calendar is not ready." }, { status: 503 });
-    return NextResponse.json({ slot: (await response.json())[0] });
+    if (!response.ok) {
+      const detail = await response.text();
+      if (detail.includes("MARKETPLACE_SLOT_OVERLAP")) {
+        return NextResponse.json({ error: "That time overlaps another open, held or booked slot." }, { status: 409 });
+      }
+      return NextResponse.json({ error: "Booking calendar is not ready." }, { status: 503 });
+    }
+    return NextResponse.json({ slot: await response.json() });
   }
 
   if (action === "block_slot") {
@@ -101,7 +105,7 @@ export async function POST(request: Request) {
     );
     if (!response.ok) return NextResponse.json({ error: "Could not close that slot." }, { status: 503 });
     const updated = await response.json();
-    if (!updated.length) return NextResponse.json({ error: "Only your available future slots can be closed." }, { status: 409 });
+    if (!updated.length) return NextResponse.json({ error: "Only your available slots can be closed." }, { status: 409 });
     return NextResponse.json({ slot: updated[0] });
   }
 
