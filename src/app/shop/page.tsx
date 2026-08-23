@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function ServicesPage() {
-  redirect("/marketplace#providers");
+  redirect("/marketplace/bvs-studio-services");
 }
