@@ -1,9 +1,10 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-export default function MobileFlowNav() {
+function MobileFlowNavContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const beatCatalogue =
@@ -68,5 +69,13 @@ export default function MobileFlowNav() {
         ))}
       </div>
     </nav>
+  );
+}
+
+export default function MobileFlowNav() {
+  return (
+    <Suspense fallback={null}>
+      <MobileFlowNavContent />
+    </Suspense>
   );
 }
