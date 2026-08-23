@@ -26,10 +26,11 @@ assert.match(pulse, /variant="compact-row"/, 'Pulse must stay compact instead of
 assert.match(pulse, /items\.slice\(0, 6\)/, 'home Pulse must remain a high-signal subset')
 assert.match(pulse, /\/api\/pulse\?scope=following/, 'Pulse must keep real follow-aware activity data')
 
-assert.match(mobile, /href: "\/radio", label: "Listen"/, 'mobile navigation must expose the Listen intent')
-assert.match(mobile, /href: "\/search", label: "Discover"/, 'mobile navigation must expose the Discover intent')
-assert.match(mobile, /href: "\/marketplace", label: "Market"/, 'mobile navigation must route services through Marketplace')
-assert.match(mobile, /href: "\/library", label: "Library"/, 'mobile navigation must preserve the Keep/Library intent')
+assert.match(mobile, /href:\s*"\/radio"[\s\S]*?label:\s*"Listen"/, 'mobile navigation must expose the Listen intent')
+assert.match(mobile, /href:\s*"\/search"[\s\S]*?label:\s*"Discover"/, 'mobile navigation must expose the Discover intent')
+assert.match(mobile, /href:\s*"\/catalogue\?type=beat#beatstore"[\s\S]*?label:\s*"Beats"/, 'mobile navigation must give BeatStore the permanent commerce/discovery slot')
+assert.match(mobile, /href:\s*"\/library"[\s\S]*?label:\s*"Library"/, 'mobile navigation must preserve the Keep/Library intent')
+assert.doesNotMatch(mobile, /label:\s*"Market"/, 'Marketplace must remain prominent without consuming a permanent mobile tab')
 
 assert.doesNotMatch(footer, /href="\/shop"/, 'footer must not present BVS Studio Services as a separate shop')
 assert.match(footer, /href="\/marketplace\/wolfbridges-studio"/, 'WolfBridges must remain a provider storefront')
