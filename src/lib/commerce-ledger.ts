@@ -6,6 +6,7 @@ import {
   licenceTermsVersionTag,
 } from "@/lib/beat-licences";
 import { resolveSellerMarketplacePolicy } from "@/lib/seller-marketplace-policy";
+import { resolveSeededMarketplaceService } from "@/lib/marketplace-storefronts";
 
 const SERVICE_PRICES: Record<string, number> = {
   "basic-mix": 89,
@@ -287,11 +288,22 @@ export async function resolveCommerceItems(
         unitAmount = 14;
         sku = "album:16-bit";
       } else if (item.type === "service") {
-        if (SERVICE_PRICES[key] === undefined)
-          throw new Error("UNKNOWN_SERVICE");
-        productType = "service";
-        unitAmount = SERVICE_PRICES[key];
-        sku = `service:${key}`;
+        const seededRef = id.startsWith("marketplace:") ? id.slice("marketplace:".length) : "";
+        const seededService = seededRef ? resolveSeededMarketplaceService(seededRef) : null;
+        if (seededService) {
+          productType = "service";
+          unitAmount = seededService.priceUsd;
+          sku = `marketplace-service:${seededRef}`;
+          authoritativeTitle = seededService.title;
+          licenceSummary = `${seededService.providerName} service package`;
+          licenceTerms = seededService.description || licenceSummary;
+        } else {
+          if (SERVICE_PRICES[key] === undefined)
+            throw new Error("UNKNOWN_SERVICE");
+          productType = "service";
+          unitAmount = SERVICE_PRICES[key];
+          sku = `service:${key}`;
+        }
       } else if (item.type === "beat") {
         productType = "beat";
         const licence = await fetchBeatLicenceOption(id, licenceOptionId);
