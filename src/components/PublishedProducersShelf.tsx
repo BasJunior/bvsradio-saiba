@@ -43,16 +43,11 @@ export default function PublishedProducersShelf({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs uppercase tracking-[3px] text-brand">Producer directory</p>
-          <h3 className="mt-1 text-xl font-semibold">Find a producer, then open their crate.</h3>
-        </div>
+      <div className="mb-3 flex justify-end">
         <Link href="/music/producers" className="text-sm font-medium text-brand hover:underline">
           All producers →
         </Link>
       </div>
-
       <div className="grid gap-2 md:grid-cols-2">
         {producers.map((producer) => (
           <article
