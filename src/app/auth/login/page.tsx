@@ -12,7 +12,7 @@ function safeNextPath(raw: string | null): string {
 }
 
 async function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> {
-  let timer: ReturnType<typeof window.setTimeout> | undefined
+  let timer: number | undefined
   try {
     return await Promise.race([
       Promise.resolve(promise),
