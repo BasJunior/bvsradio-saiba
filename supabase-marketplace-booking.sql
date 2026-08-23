@@ -53,6 +53,70 @@ grant select, insert, update on table public.marketplace_provider_slots, public.
 -- Public availability contains no customer data. Direct public table access remains disabled;
 -- the application API returns only available slot id/time/timezone.
 
+create or replace function public.publish_marketplace_slot(
+  p_provider_key text,
+  p_owner_user_id uuid,
+  p_starts_at timestamptz,
+  p_ends_at timestamptz,
+  p_timezone text,
+  p_note text
+)
+returns public.marketplace_provider_slots
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_result public.marketplace_provider_slots%rowtype;
+begin
+  if p_provider_key is null or trim(p_provider_key) = '' or p_owner_user_id is null then
+    raise exception 'MARKETPLACE_SLOT_OWNER_REQUIRED';
+  end if;
+  if p_starts_at is null or p_ends_at is null or p_starts_at <= now() or p_ends_at <= p_starts_at then
+    raise exception 'MARKETPLACE_SLOT_TIME_INVALID';
+  end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(trim(p_provider_key), 0));
+
+  if exists (
+    select 1
+    from public.marketplace_provider_slots s
+    where s.provider_key = trim(p_provider_key)
+      and s.status in ('available','held','booked')
+      and tstzrange(s.starts_at, s.ends_at, '[)') && tstzrange(p_starts_at, p_ends_at, '[)')
+  ) then
+    raise exception 'MARKETPLACE_SLOT_OVERLAP';
+  end if;
+
+  delete from public.marketplace_provider_slots
+  where provider_key = trim(p_provider_key)
+    and owner_user_id = p_owner_user_id
+    and starts_at = p_starts_at
+    and ends_at = p_ends_at
+    and status = 'blocked';
+
+  insert into public.marketplace_provider_slots (
+    provider_key, owner_user_id, starts_at, ends_at, timezone, status, note
+  ) values (
+    left(trim(p_provider_key), 100),
+    p_owner_user_id,
+    p_starts_at,
+    p_ends_at,
+    left(trim(coalesce(p_timezone, 'Africa/Harare')), 80),
+    'available',
+    nullif(left(trim(coalesce(p_note, '')), 300), '')
+  )
+  returning * into v_result;
+
+  return v_result;
+end;
+$$;
+
+revoke all on function public.publish_marketplace_slot(text,uuid,timestamptz,timestamptz,text,text)
+  from public, anon, authenticated;
+grant execute on function public.publish_marketplace_slot(text,uuid,timestamptz,timestamptz,text,text)
+  to service_role;
+
 create or replace function public.request_marketplace_booking(
   p_slot_id uuid,
   p_provider_key text,
