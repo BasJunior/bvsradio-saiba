@@ -188,7 +188,7 @@ export function liveStorefronts(
         revisionsIncluded: listing.revisions_included,
       }))
     return {
-      slug: storefrontSlug(username || displayName),
+      slug: storefrontSlug(displayName),
       sellerUserId: profile.user_id,
       source: 'creator',
       name: displayName,
