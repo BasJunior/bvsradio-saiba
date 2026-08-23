@@ -1,8 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import { useStationPlayer } from '@/components/StationPlayer'
 import LibraryAction from '@/components/LibraryAction'
+import { playAllOnBvs, playOnBvs } from '@/lib/bvs-playback'
 import type { PublicArtistTrack } from '@/lib/artist-content'
 import type { DiscoveryItem } from '@/lib/discovery'
 
@@ -14,7 +14,6 @@ function creditLabel(person: string, role: string) {
 }
 
 export default function ArtistProfileMusic({ artist, username, tracks }: { artist: string; username: string; tracks: PublicArtistTrack[] }) {
-  const player = useStationPlayer()
   const playable = tracks.filter(track => Boolean(track.audio_url))
   const stationTracks = playable.map(track => ({ id: track.id, title: track.title, artist, src: track.audio_url!, artwork: track.artwork_url, project: `${artist} on BVS`, genre: track.genre }))
 
@@ -23,7 +22,7 @@ export default function ArtistProfileMusic({ artist, username, tracks }: { artis
       <div><p className="text-xs uppercase tracking-[0.2em] text-brand">BVS catalogue</p><h2 className="mt-1 text-2xl font-semibold">Published music</h2></div>
       <div className="flex items-center gap-3">
         <span className="text-sm text-text-secondary">{tracks.length} {tracks.length === 1 ? 'track' : 'tracks'}</span>
-        {stationTracks.length > 0 && <button type="button" onClick={() => player.playAll(stationTracks, { from: `${artist} profile` })} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">▶ Play all</button>}
+        {stationTracks.length > 0 && <button type="button" onClick={() => playAllOnBvs(stationTracks, { from: `${artist} profile` })} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">▶ Play all</button>}
       </div>
     </div>
     <div className="mt-5 space-y-3">
@@ -60,7 +59,7 @@ export default function ArtistProfileMusic({ artist, username, tracks }: { artis
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0"><h3 className="truncate font-semibold">{track.title}</h3><p className="text-xs text-text-secondary">{track.genre || 'Music'}{track.in_rotation ? ' · In BVS rotation' : ''}</p></div>
                 <div data-flow-detail-skip="true" className="flex flex-wrap gap-2">
-                  {stationTrack ? <button type="button" onClick={() => player.playNow(stationTrack, { from: `${artist} profile`, related: stationTracks })} className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-black">▶ Play</button> : null}
+                  {stationTrack ? <button type="button" onClick={() => playOnBvs(stationTrack, { from: `${artist} profile` })} className="rounded-full bg-brand px-3 py-1.5 text-xs font-semibold text-black">▶ Play</button> : null}
                   <LibraryAction item={item} compact />
                   {track.spotify_url ? <a href={track.spotify_url} target="_blank" rel="noreferrer" className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-text-secondary hover:border-brand">Spotify ↗</a> : null}
                 </div>
