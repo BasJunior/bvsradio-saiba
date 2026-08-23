@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import QrLoginPanel from '@/components/QrLoginPanel'
@@ -10,6 +9,20 @@ import QrLoginPanel from '@/components/QrLoginPanel'
 function safeNextPath(raw: string | null): string {
   if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/'
   return raw
+}
+
+async function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof window.setTimeout> | undefined
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_resolve, reject) => {
+        timer = window.setTimeout(() => reject(new Error(message)), ms)
+      }),
+    ])
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer)
+  }
 }
 
 export default function LoginPage() {
@@ -21,7 +34,6 @@ export default function LoginPage() {
     ? '/'
     : safeNextPath(new URLSearchParams(window.location.search).get('next')))
   const [alreadyIn, setAlreadyIn] = useState<string | null>(null)
-  const router = useRouter()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -51,7 +63,7 @@ export default function LoginPage() {
     }
 
     try {
-      // Server resolves username → email, then authenticates
+      // Server resolves username → email, then authenticates.
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,23 +81,23 @@ export default function LoginPage() {
       }
 
       const supabase = createClient()
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token,
-        refresh_token,
-      })
+      const { error: sessionError } = await withTimeout(
+        supabase.auth.setSession({ access_token, refresh_token }),
+        12000,
+        'Sign-in session setup timed out. Please try again.',
+      )
       if (sessionError) throw sessionError
 
-      // Ensure profile row exists (best effort)
-      await fetch('/api/auth/profile', {
+      // Ensure the profile row exists without holding a successful login on this best-effort step.
+      void fetch('/api/auth/profile', {
         method: 'POST',
         headers: { Authorization: `Bearer ${access_token}` },
       }).catch(() => null)
 
-      router.push(nextPath || '/')
-      router.refresh()
+      // A full navigation rehydrates all auth-aware shell providers from the persisted session.
+      window.location.assign(nextPath || '/')
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
-    } finally {
       setLoading(false)
     }
   }
