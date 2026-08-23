@@ -2,11 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   marketplaceStorefronts,
+  seededMarketplaceServiceRef,
   type MarketplaceStorefront,
+  type StorefrontService,
 } from "@/lib/marketplace-storefronts";
+import { readCartLines, writeCartLines } from "@/lib/cart-client";
 
 type MarketplacePayload = {
   profiles?: Parameters<typeof marketplaceStorefronts>[0];
@@ -15,6 +18,7 @@ type MarketplacePayload = {
 
 export default function MarketplaceStorefrontPage() {
   const params = useParams<{ slug: string }>();
+  const router = useRouter();
   const search = useSearchParams();
   const slug = String(params.slug || "");
   const selectedService = search.get("service") || "";
@@ -51,6 +55,45 @@ export default function MarketplaceStorefrontPage() {
 
   const wolf = provider.slug === "wolfbridges-studio";
 
+  function checkoutService(service: StorefrontService, packageIndex?: number) {
+    if (!provider) return;
+    const selectedPackage = typeof packageIndex === "number" ? service.packages?.[packageIndex] : undefined;
+    const title = selectedPackage ? `${service.title} — ${selectedPackage.name}` : service.title;
+    const price = selectedPackage?.priceUsd ?? service.priceUsd;
+    const isCreatorListing = Boolean(service.listingId);
+    const type = isCreatorListing
+      ? service.listingType === "digital_product" ? "creator_product" : "creator_service"
+      : "service";
+    const id = isCreatorListing
+      ? String(service.listingId)
+      : `marketplace:${seededMarketplaceServiceRef(provider.slug, service.id, packageIndex)}`;
+    const line = {
+      id,
+      title,
+      artist: provider.name,
+      type,
+      price,
+      quantity: 1,
+      delivery: type === "creator_product"
+        ? "Private digital delivery after confirmed payment."
+        : `${provider.name} service order — project brief and delivery are handled through BVS.`,
+    };
+
+    if (type === "creator_product") {
+      const current = readCartLines();
+      const existing = current.findIndex((item) => String(item.id) === id && item.type === type);
+      const next = [...current];
+      if (existing >= 0) next[existing] = line;
+      else next.push(line);
+      writeCartLines(next);
+    } else {
+      // Service checkout is deliberately one job at a time so its brief, payment and
+      // fulfilment stay attached to one provider/order.
+      writeCartLines([line]);
+    }
+    router.push("/checkout");
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
       <Link href="/marketplace" className="text-sm text-brand hover:underline">← Marketplace</Link>
@@ -81,7 +124,7 @@ export default function MarketplaceStorefrontPage() {
               {provider.services.map((service) => {
                 const active = selectedService === service.id;
                 const bookingHref = `/marketplace/${provider.slug}/book?service=${encodeURIComponent(service.id)}`;
-                const enquiryHref = `/contact?subject=${encodeURIComponent(`${provider.name} — ${service.title}`)}`;
+                const packageCheckout = service.bookingMode === "checkout" && !service.listingId && Boolean(service.packages?.length);
                 return (
                   <article id={`service-${service.id}`} key={service.id} className={`rounded-2xl border p-5 ${active ? "border-brand/60 bg-brand/[.06]" : "border-white/10 bg-white/[.025]"}`}>
                     <div className="flex items-start justify-between gap-4">
@@ -94,10 +137,24 @@ export default function MarketplaceStorefrontPage() {
                     <p className="mt-3 text-sm leading-relaxed text-text-secondary">{service.description}</p>
                     {service.packages?.length ? (
                       <div className="mt-4 space-y-2">
-                        {service.packages.map((pkg) => (
+                        {service.packages.map((pkg, packageIndex) => (
                           <div key={pkg.name} className="rounded-xl border border-white/10 p-3 text-sm">
-                            <div className="flex justify-between gap-3"><span className="font-medium">{pkg.name}</span><span className="text-brand">${pkg.priceUsd.toFixed(2)}</span></div>
-                            {pkg.description ? <p className="mt-1 text-xs text-text-secondary">{pkg.description}</p> : null}
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <span className="font-medium">{pkg.name}</span>
+                                {pkg.description ? <p className="mt-1 text-xs text-text-secondary">{pkg.description}</p> : null}
+                              </div>
+                              <span className="shrink-0 text-brand">${pkg.priceUsd.toFixed(2)}</span>
+                            </div>
+                            {packageCheckout ? (
+                              <button
+                                type="button"
+                                onClick={() => checkoutService(service, packageIndex)}
+                                className="mt-3 inline-flex min-h-10 items-center rounded-full bg-brand px-4 text-xs font-semibold text-black"
+                              >
+                                Checkout {pkg.name}
+                              </button>
+                            ) : null}
                           </div>
                         ))}
                       </div>
@@ -106,11 +163,13 @@ export default function MarketplaceStorefrontPage() {
                     <div className="mt-5">
                       {service.bookingMode === "calendar" ? (
                         <Link href={bookingHref} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">See availability &amp; book</Link>
-                      ) : service.bookingMode === "checkout" && service.listingId ? (
-                        <Link href={`/marketplace?listing=${encodeURIComponent(service.listingId)}`} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">Open listing</Link>
-                      ) : (
-                        <Link href={enquiryHref} className="inline-flex min-h-11 items-center rounded-full border border-brand/45 px-5 text-sm font-semibold text-brand">Ask about this offer</Link>
-                      )}
+                      ) : service.bookingMode === "checkout" && !packageCheckout ? (
+                        <button type="button" onClick={() => checkoutService(service)} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">
+                          {service.listingType === "digital_product" ? "Buy now" : "Continue to checkout"}
+                        </button>
+                      ) : service.bookingMode === "enquiry" ? (
+                        <Link href="/marketplace" className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-text-secondary">Compare providers</Link>
+                      ) : null}
                     </div>
                   </article>
                 );
