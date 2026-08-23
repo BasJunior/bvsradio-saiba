@@ -4,14 +4,13 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
-  liveStorefronts,
-  seededStorefronts,
+  marketplaceStorefronts,
   type MarketplaceStorefront,
 } from "@/lib/marketplace-storefronts";
 
 type MarketplacePayload = {
-  profiles?: Parameters<typeof liveStorefronts>[0];
-  listings?: Parameters<typeof liveStorefronts>[1];
+  profiles?: Parameters<typeof marketplaceStorefronts>[0];
+  listings?: Parameters<typeof marketplaceStorefronts>[1];
 };
 type Slot = { id: string; startsAt: string; endsAt: string; timezone: string };
 
@@ -65,8 +64,7 @@ export default function MarketplaceBookingPage() {
   }, [providerKey]);
 
   const provider = useMemo<MarketplaceStorefront | null>(() => {
-    const all = [...seededStorefronts, ...liveStorefronts(marketplace.profiles || [], marketplace.listings || [])];
-    return all.find((item) => item.slug === providerKey) || null;
+    return marketplaceStorefronts(marketplace.profiles || [], marketplace.listings || []).find((item) => item.slug === providerKey) || null;
   }, [marketplace, providerKey]);
   const service = provider?.services.find((item) => item.id === serviceRef) || null;
 
