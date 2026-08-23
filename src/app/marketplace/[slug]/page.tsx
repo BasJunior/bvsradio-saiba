@@ -4,14 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import {
-  liveStorefronts,
-  seededStorefronts,
+  marketplaceStorefronts,
   type MarketplaceStorefront,
 } from "@/lib/marketplace-storefronts";
 
 type MarketplacePayload = {
-  profiles?: Parameters<typeof liveStorefronts>[0];
-  listings?: Parameters<typeof liveStorefronts>[1];
+  profiles?: Parameters<typeof marketplaceStorefronts>[0];
+  listings?: Parameters<typeof marketplaceStorefronts>[1];
 };
 
 export default function MarketplaceStorefrontPage() {
@@ -33,11 +32,7 @@ export default function MarketplaceStorefrontPage() {
   }, []);
 
   const provider = useMemo<MarketplaceStorefront | null>(() => {
-    const all = [
-      ...seededStorefronts,
-      ...liveStorefronts(data.profiles || [], data.listings || []),
-    ];
-    return all.find((item) => item.slug === slug) || null;
+    return marketplaceStorefronts(data.profiles || [], data.listings || []).find((item) => item.slug === slug) || null;
   }, [data, slug]);
 
   if (!provider && !loaded) {
