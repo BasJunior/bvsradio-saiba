@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { BvsAction, BvsObject } from "@/lib/bvs-object";
 import { recordFlowOpen } from "@/lib/flow-session";
 import { trackEvent } from "@/lib/analytics";
-import { useStationPlayer } from "@/components/StationPlayer";
+import { dispatchBvsPlayback } from "@/lib/bvs-playback";
 
 function queueAction(action: BvsAction, object: BvsObject) {
   const media = action.media || object.media;
@@ -20,7 +20,7 @@ function queueAction(action: BvsAction, object: BvsObject) {
     artwork: media.artwork || object.artwork,
   };
   const queueAction = action.intent === "play-next" ? "play-next" : action.intent === "queue" ? "add" : "play";
-  window.dispatchEvent(new CustomEvent("bvs:queue", { detail: { action: queueAction, track, from: object.contextLabel || "BVS Flow" } }));
+  dispatchBvsPlayback({ action: queueAction, track, from: object.contextLabel || "BVS Flow" });
   return true;
 }
 
@@ -45,7 +45,6 @@ export default function BvsActionSheet({
   returnFocus?: React.RefObject<HTMLElement | null>;
 }) {
   const router = useRouter();
-  const player = useStationPlayer();
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -95,13 +94,8 @@ export default function BvsActionSheet({
         return;
       }
       if (["play", "play-next", "queue"].includes(action.intent)) {
-        const queued = queueAction(action, object);
+        queueAction(action, object);
         onClose();
-        if (queued && action.intent === "play") {
-          // Explicit play enters the immersive player; queue/add actions stay in context.
-          player.setQueueOpen(false);
-          player.openNowPlaying();
-        }
         return;
       }
       if (action.intent === "share") {
