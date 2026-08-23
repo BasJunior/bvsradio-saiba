@@ -11,6 +11,7 @@ import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import DeepLinkFocusManager from "@/components/DeepLinkFocusManager";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
+import UniversalPlayerPresentation from "@/components/UniversalPlayerPresentation";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import FlowDetailsBridge from "@/components/flow/FlowDetailsBridge";
@@ -103,6 +104,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <ClientErrorBeacon />
               <MobileFlowNav />
               <PersistentPlayer />
+              <UniversalPlayerPresentation />
               <NowPlayingExperienceGuard />
               <FlowDetailsBridge />
               <Suspense fallback={null}>
