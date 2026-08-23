@@ -30,7 +30,7 @@ async function providerFor(request: Request) {
   if (market?.status !== "approved") {
     return { error: "Editorial must approve your Marketplace profile before you publish availability.", status: 403 as const };
   }
-  const providerKey = storefrontSlug(profile?.username || profile?.creator_public_name || profile?.display_name || "");
+  const providerKey = storefrontSlug(profile?.creator_public_name || profile?.display_name || profile?.username || "");
   if (!providerKey) return { error: "Set a public creator name or username before publishing availability.", status: 409 as const };
   return { identity, providerKey, profile };
 }
@@ -38,11 +38,18 @@ async function providerFor(request: Request) {
 export async function GET(request: Request) {
   const provider = await providerFor(request);
   if ("error" in provider) return NextResponse.json({ error: provider.error }, { status: provider.status });
-  const slots = await rows(
-    `marketplace_provider_slots?owner_user_id=eq.${provider.identity.user.id}&starts_at=gt.${encodeURIComponent(new Date().toISOString())}&select=id,provider_key,starts_at,ends_at,timezone,status,note&order=starts_at.asc&limit=200`,
-  );
-  if (slots === null) return NextResponse.json({ error: "Booking calendar is not ready." }, { status: 503 });
-  return NextResponse.json({ providerKey: provider.providerKey, slots });
+  const [slots, rawBookings] = await Promise.all([
+    rows(
+      `marketplace_provider_slots?owner_user_id=eq.${provider.identity.user.id}&starts_at=gt.${encodeURIComponent(new Date().toISOString())}&select=id,provider_key,starts_at,ends_at,timezone,status,note&order=starts_at.asc&limit=200`,
+    ),
+    rows(
+      `marketplace_booking_requests?provider_key=eq.${encodeURIComponent(provider.providerKey)}&status=in.(requested,confirmed)&select=id,slot_id,service_ref,service_title,price_usd,customer_name,customer_email,customer_phone,project_notes,status,created_at&order=created_at.desc&limit=100`,
+    ),
+  ]);
+  if (slots === null || rawBookings === null) return NextResponse.json({ error: "Booking calendar is not ready." }, { status: 503 });
+  const ownedSlotIds = new Set(slots.map((slot) => String(slot.id)));
+  const bookings = rawBookings.filter((booking) => ownedSlotIds.has(String(booking.slot_id)));
+  return NextResponse.json({ providerKey: provider.providerKey, slots, bookings });
 }
 
 export async function POST(request: Request) {
@@ -96,6 +103,35 @@ export async function POST(request: Request) {
     const updated = await response.json();
     if (!updated.length) return NextResponse.json({ error: "Only your available future slots can be closed." }, { status: 409 });
     return NextResponse.json({ slot: updated[0] });
+  }
+
+  if (action === "respond_booking") {
+    const bookingId = String(body.bookingId || "").trim();
+    const decision = body.decision === "confirm" ? "confirm" : body.decision === "decline" ? "decline" : "";
+    if (!bookingId || !decision) {
+      return NextResponse.json({ error: "Booking and confirm/decline decision are required." }, { status: 400 });
+    }
+    const response = await fetch(creatorUrl("rpc/respond_marketplace_booking"), {
+      method: "POST",
+      headers: { ...creatorHeaders, Prefer: "return=representation" },
+      body: JSON.stringify({
+        p_booking_id: bookingId,
+        p_owner_user_id: provider.identity.user.id,
+        p_decision: decision,
+      }),
+    });
+    if (!response.ok) {
+      const detail = await response.text();
+      if (detail.includes("MARKETPLACE_BOOKING_NOT_PENDING")) {
+        return NextResponse.json({ error: "That booking request has already been handled." }, { status: 409 });
+      }
+      if (detail.includes("MARKETPLACE_BOOKING_NOT_OWNED")) {
+        return NextResponse.json({ error: "That booking does not belong to your provider store." }, { status: 403 });
+      }
+      return NextResponse.json({ error: "Could not update that booking." }, { status: 503 });
+    }
+    const result = await response.json().catch(() => null);
+    return NextResponse.json({ booking: result, status: decision === "confirm" ? "confirmed" : "declined" });
   }
 
   return NextResponse.json({ error: "Unknown availability action." }, { status: 400 });
