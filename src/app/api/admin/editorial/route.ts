@@ -23,6 +23,12 @@ async function optionalJson(path: string) {
   return response.json()
 }
 
+async function requiredJson(path: string) {
+  const response = await fetch(editorialUrl(path), { headers: serviceHeaders, cache: 'no-store' })
+  if (!response.ok) throw new Error('MIGRATION')
+  return response.json()
+}
+
 async function signStoredMedia(value?: string | null) {
   if (!value) return value
   const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
@@ -96,7 +102,7 @@ async function loadTracksSection() {
 }
 
 async function loadBeatsSection() {
-  const rawBeats = await optionalJson('beats?select=*,beat_licence_options(*)&order=updated_at.desc&limit=100')
+  const rawBeats = await requiredJson('beats?select=*,beat_licence_options(*)&order=updated_at.desc&limit=100')
   const beats = await Promise.all(
     (rawBeats as Array<Record<string, unknown>>).map(async (beat) => ({
       ...beat,
@@ -111,9 +117,9 @@ async function loadBeatsSection() {
 async function loadReleasesSection(identity: NonNullable<Awaited<ReturnType<typeof editorialIdentity>>>) {
   const [releases, rawReleaseTracks, releaseCatalogueTracks, knownIsrcMap, releaseContributors, rawReleaseClearanceEvidence, rawMediaProcessingJobs, distributionJobs] =
     await Promise.all([
-      optionalJson('releases?select=*&order=created_at.desc&limit=100'),
-      optionalJson('release_tracks?select=*&order=position.asc&limit=500'),
-      optionalJson('tracks?release_id=not.is.null&select=id,in_rotation,isrc,spotify_url&limit=1000'),
+      requiredJson('releases?select=*&order=created_at.desc&limit=100'),
+      requiredJson('release_tracks?select=*&order=position.asc&limit=500'),
+      requiredJson('tracks?release_id=not.is.null&select=id,in_rotation,isrc,spotify_url&limit=1000'),
       optionalJson('known_isrc_map?select=isrc,title,artist_name,upc,spotify_album_url,source&order=title.asc&limit=2000'),
       optionalJson('release_contributors?select=*&order=created_at.asc&limit=1000'),
       optionalJson('release_clearance_evidence?select=*&order=created_at.asc&limit=1000'),
