@@ -42,51 +42,51 @@ export default function PublishedProducersShelf({
     );
 
   return (
-    <>
-      <div className="mb-5 flex justify-end">
-        <Link
-          href="/music/producers"
-          className="rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand"
-        >
-          View all producers →
+    <div>
+      <div className="mb-3 flex justify-end">
+        <Link href="/music/producers" className="text-sm font-medium text-brand hover:underline">
+          All producers →
         </Link>
       </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-2 md:grid-cols-2">
         {producers.map((producer) => (
           <article
             key={producer.id}
-            className="group min-w-0"
+            className="group flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-3 transition hover:border-brand/40 hover:bg-white/[0.035]"
           >
-            <Link href={`/artist/${producer.username}`} className="relative block aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+            <Link
+              href={`/artist/${producer.username}`}
+              className="relative block h-14 w-14 flex-none overflow-hidden rounded-full border border-white/10 bg-black/40"
+            >
               <Image
                 src={producer.image}
                 alt={producer.name}
                 fill
                 unoptimized={/^https?:\/\//i.test(producer.image)}
-                sizes="(max-width:768px) 50vw, 160px"
-                className="object-cover object-center transition duration-300 group-hover:scale-[1.04]"
+                sizes="56px"
+                className="object-cover object-center"
               />
             </Link>
-            <Link href={`/artist/${producer.username}`} className="mt-3 block truncate font-semibold group-hover:text-brand">{producer.name}</Link>
+            <div className="min-w-0 flex-1">
+              <Link href={`/artist/${producer.username}`} className="block truncate text-sm font-semibold group-hover:text-brand">
+                {producer.name}
+              </Link>
               <p className="truncate text-xs text-text-secondary">
-                {producer.beatCount} published{" "}
-                {producer.beatCount === 1 ? "beat" : "beats"}
-                {producer.genres.length
-                  ? ` · ${producer.genres.join(" · ")}`
-                  : ""}
+                {producer.beatCount} published {producer.beatCount === 1 ? "beat" : "beats"}
+                {producer.genres.length ? ` · ${producer.genres.slice(0, 2).join(" · ")}` : ""}
               </p>
-              <div className="mt-2 flex gap-3 text-xs">
-                <button
-                  type="button"
-                  onClick={() => onBrowse(producer)}
-                  className="text-brand"
-                >
-                  View catalogue →
+              <div className="mt-2 flex flex-wrap gap-3 text-xs">
+                <button type="button" onClick={() => onBrowse(producer)} className="font-semibold text-brand hover:underline">
+                  Open crate →
                 </button>
+                <Link href={`/artist/${producer.username}`} className="text-text-secondary hover:text-white">
+                  Profile
+                </Link>
               </div>
+            </div>
           </article>
         ))}
       </div>
-    </>
+    </div>
   );
 }
