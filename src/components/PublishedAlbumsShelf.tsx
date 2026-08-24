@@ -16,19 +16,36 @@ export default function PublishedAlbumsShelf() {
   }, [])
 
   if (!releases.length) return null
+
   return (
-    <section className="mb-10 rounded-3xl border border-white/10 bg-bg-card/35 p-5 sm:p-7">
-      <p className="text-xs uppercase tracking-[3px] text-brand">Published releases</p>
-      <h2 className="mt-2 text-3xl font-semibold tracking-tight">Albums &amp; EPs</h2>
-      <p className="mt-2 text-sm text-text-secondary">Open a release and listen in its intended track order.</p>
-      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+    <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+      <p className="text-xs uppercase tracking-[3px] text-brand">Release directory</p>
+      <h2 className="mt-1 text-2xl font-semibold tracking-tight">Albums &amp; EPs</h2>
+      <p className="mt-1 text-sm text-text-secondary">Open a release directly instead of browsing another row of cover cards.</p>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
         {releases.map((release) => (
-          <Link key={release.id} href={`/album/${release.id}`} className="group min-w-0">
-            <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-black/40">
-              <Image src={release.cover} alt={`${release.title} cover`} fill unoptimized={/^https?:\/\//i.test(release.cover)} sizes="(max-width:768px) 50vw, 20vw" className="object-cover object-center transition duration-300 group-hover:scale-[1.04]" />
+          <Link
+            key={release.id}
+            href={`/album/${release.id}`}
+            className="group flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-2.5 transition hover:border-brand/40 hover:bg-white/[0.035]"
+          >
+            <div className="relative h-14 w-14 flex-none overflow-hidden rounded-lg border border-white/10 bg-black/40">
+              <Image
+                src={release.cover}
+                alt={`${release.title} cover`}
+                fill
+                unoptimized={/^https?:\/\//i.test(release.cover)}
+                sizes="56px"
+                className="object-cover object-center"
+              />
             </div>
-            <h3 className="mt-3 truncate font-semibold group-hover:text-brand">{release.title}</h3>
-            <p className="truncate text-xs text-text-secondary">{release.artist} · {release.tracks.length} tracks</p>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate text-sm font-semibold group-hover:text-brand">{release.title}</h3>
+              <p className="truncate text-xs text-text-secondary">{release.artist}</p>
+              <p className="mt-0.5 truncate text-[11px] text-white/45">{release.releaseType} · {release.tracks.length} tracks</p>
+            </div>
+            <span className="flex-none text-sm text-white/40 transition group-hover:translate-x-0.5 group-hover:text-brand" aria-hidden="true">→</span>
           </Link>
         ))}
       </div>
