@@ -41,15 +41,20 @@ export default function StudioProductionShell({ children }: { children: ReactNod
   }, []);
 
   useEffect(() => {
-    const timer = window.requestAnimationFrame(() => {
-      setAvailableSections(
-        sectionLinks
-          .filter((item) => document.getElementById(item.id))
-          .map((item) => item.id),
+    const refreshSections = () => {
+      const next = sectionLinks
+        .filter((item) => document.getElementById(item.id))
+        .map((item) => item.id);
+      setAvailableSections((current) =>
+        current.join("|") === next.join("|") ? current : next,
       );
-    });
-    return () => window.cancelAnimationFrame(timer);
-  }, [children]);
+    };
+
+    refreshSections();
+    const observer = new MutationObserver(refreshSections);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
 
   const links = useMemo(
     () => sectionLinks.filter((item) => availableSections.includes(item.id)),
