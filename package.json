@@ -18,6 +18,7 @@
     "test:stream-qualification": "node --experimental-strip-types scripts/stream-qualification-tests.mjs",
     "test:show-lifecycle": "node --experimental-strip-types scripts/show-lifecycle-tests.mjs",
     "test:bvs-live-phase1": "node --experimental-strip-types scripts/bvs-live-phase1-tests.mjs",
+    "bvs-live:provision-phase1": "node scripts/bvs-live-phase1-provision.mjs",
     "test:premium-save": "node scripts/premium-order-save-tests.mjs",
     "typecheck": "tsc --noEmit",
     "cap:sync": "npx cap sync",
