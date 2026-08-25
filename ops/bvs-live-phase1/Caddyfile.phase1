@@ -1,9 +1,12 @@
 # BVS Live Phase 1 — beta media-origin HTTP layer only.
-# Caddy serves public HTTPS HLS and injects the SRS hook bearer on loopback.
-# It does NOT terminate RTMPS; SRS does that on its native RTMPS listener.
+# HAProxy owns public TLS/443 and forwards decrypted HTTP for stream-beta here.
+# Caddy also injects the SRS hook bearer on a separate loopback listener.
 # Do not use production BVS hostnames in this file.
 
-stream-beta.bvsradio.com {
+http://127.0.0.1:8081 {
+    @wrongHost not host stream-beta.bvsradio.com
+    respond @wrongHost 421
+
     # HLS is public/unlisted in Phase 1. CORS allows the beta BVS web origin only.
     header {
         Access-Control-Allow-Origin "https://bvsradio-beta.vercel.app"
