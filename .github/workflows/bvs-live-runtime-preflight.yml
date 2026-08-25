@@ -1,0 +1,68 @@
+name: BVS Live Runtime Preflight
+
+on:
+  push:
+    branches:
+      - chatgpt/bvs-live-runtime-preflight
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Verify DNS, TLS, ports and hook rejection
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for host in ingest-beta.bvsradio.com stream-beta.bvsradio.com; do
+            echo "== DNS ${host} =="
+            addresses="$(getent ahostsv4 "${host}" | awk '{print $1}' | sort -u)"
+            test -n "${addresses}"
+            printf '%s\n' "${addresses}"
+          done
+
+          for host in ingest-beta.bvsradio.com stream-beta.bvsradio.com; do
+            echo "== trusted TLS ${host}:443 =="
+            openssl s_client \
+              -connect "${host}:443" \
+              -servername "${host}" \
+              -verify_return_error \
+              -verify_hostname "${host}" \
+              </dev/null 2>/tmp/bvs-live-tls.err \
+              | openssl x509 -noout -subject -issuer -dates
+          done
+
+          echo "== stream HTTPS responds =="
+          stream_status="$(curl -sS -o /dev/null --max-time 10 -w '%{http_code}' https://stream-beta.bvsradio.com/)"
+          test "${stream_status}" != "000"
+          echo "stream_https_status=${stream_status}"
+
+          echo "== private media ports are not public =="
+          for host in ingest-beta.bvsradio.com stream-beta.bvsradio.com; do
+            for port in 1935 8080 8081 9080; do
+              if timeout 3 bash -c "</dev/tcp/${host}/${port}" 2>/dev/null; then
+                echo "ERROR: ${host}:${port} is publicly reachable"
+                exit 1
+              fi
+              echo "blocked ${host}:${port}"
+            done
+          done
+
+          echo "== unauthenticated publish hook rejects =="
+          hook_response="$(curl -sS --max-time 15 \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            --data '{"action":"on_publish","client_id":"external-preflight","ip":"127.0.0.1","vhost":"__defaultVhost__","app":"live","stream":"evt_phase1test","param":"?sk=00000000000000000000000000000000","server_id":"external-preflight"}' \
+            -w $'\n%{http_code}' \
+            https://bvsradio-beta.vercel.app/api/live/srs/on-publish)"
+          hook_code="$(printf '%s\n' "${hook_response}" | tail -n 1)"
+          hook_body="$(printf '%s\n' "${hook_response}" | sed '$d')"
+          test "${hook_code}" = "200"
+          test "${hook_body}" = "1"
+          echo "hook_status=${hook_code} body=${hook_body}"
+
+          echo "BVS Live public runtime preflight passed"
