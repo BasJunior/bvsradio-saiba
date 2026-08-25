@@ -58,6 +58,8 @@ const [
   playbackIdentity,
   srs,
   caddy,
+  haproxy,
+  provision,
   pkg,
 ] = await Promise.all([
   read('src/lib/bvs-live-server.ts'),
@@ -68,6 +70,8 @@ const [
   read('supabase-bvs-live-phase1-playback-identity.sql'),
   read('ops/bvs-live-phase1/srs.conf'),
   read('ops/bvs-live-phase1/Caddyfile.phase1'),
+  read('ops/bvs-live-phase1/haproxy.cfg'),
+  read('scripts/bvs-live-phase1-provision.mjs'),
   read('package.json'),
 ])
 
@@ -102,22 +106,36 @@ assert.match(schema, /grant execute on function public\.bvs_live_mark_unpublishe
 assert.match(playbackIdentity, /playback_id = public_id/)
 assert.match(playbackIdentity, /show_streams_phase1_playback_matches_public/)
 
-assert.match(srs, /rtmps\s*\{/)
-assert.match(srs, /enabled\s+on;/)
-assert.match(srs, /listen\s+1443;/)
+assert.match(srs, /v6\.0-r1/)
+assert.match(srs, /listen\s+127\.0\.0\.1:1935;/)
+assert.doesNotMatch(srs, /rtmps\s*\{/)
 assert.match(srs, /on_publish\s+http:\/\/127\.0\.0\.1:9080\/api\/live\/srs\/on-publish;/)
 assert.match(srs, /hls_m3u8_file\s+\[app\]\/\[stream\]\/index\.m3u8;/)
 assert.match(srs, /hls_ts_file\s+\[app\]\/\[stream\]\/segment-\[seq\]\.ts;/)
 assert.doesNotMatch(srs, /\[stream\].*sk=/i)
 
+assert.match(caddy, /127\.0\.0\.1:8081/)
+assert.match(caddy, /127\.0\.0\.1:9080/)
 assert.match(caddy, /stream-beta\.bvsradio\.com/)
 assert.match(caddy, /https:\/\/bvsradio-beta\.vercel\.app/)
 assert.match(caddy, /Authorization "Bearer \{\$BVS_LIVE_HOOK_SECRET\}"/)
-assert.match(caddy, /127\.0\.0\.1:9080/)
-assert.doesNotMatch(caddy, /ingest\.bvsradio\.com|stream\.bvsradio\.com/)
+
+assert.match(haproxy, /bind :443 ssl/)
+assert.match(haproxy, /ssl_fc_sni -i ingest-beta\.bvsradio\.com/)
+assert.match(haproxy, /ssl_fc_sni -i stream-beta\.bvsradio\.com/)
+assert.match(haproxy, /127\.0\.0\.1:1935/)
+assert.match(haproxy, /127\.0\.0\.1:8081/)
+assert.doesNotMatch(haproxy, /ingest\.bvsradio\.com|stream\.bvsradio\.com/)
+
+assert.match(provision, /randomBytes\(32\)/)
+assert.match(provision, /createHmac\('sha256'/)
+assert.match(provision, /key_active: true/)
+assert.match(provision, /status: 'ready'/)
+assert.match(provision, /evt_phase1test\?sk=/)
 
 const packageJson = JSON.parse(pkg)
 assert.equal(packageJson.dependencies['hls.js'], '1.6.14')
 assert.equal(packageJson.scripts['test:bvs-live-phase1'], 'node --experimental-strip-types scripts/bvs-live-phase1-tests.mjs')
+assert.equal(packageJson.scripts['bvs-live:provision-phase1'], 'node scripts/bvs-live-phase1-provision.mjs')
 
 console.log('BVS Live Phase 1 contract tests passed')
