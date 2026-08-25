@@ -131,7 +131,7 @@ assert.match(provision, /randomBytes\(32\)/)
 assert.match(provision, /createHmac\('sha256'/)
 assert.match(provision, /key_active: true/)
 assert.match(provision, /status: 'ready'/)
-assert.match(provision, /evt_phase1test\?sk=/)
+assert.match(provision, /\$\{publicId\}\?sk=\$\{secret\}/)
 
 const packageJson = JSON.parse(pkg)
 assert.equal(packageJson.dependencies['hls.js'], '1.6.14')
