@@ -92,7 +92,7 @@ export const seededStorefronts: MarketplaceStorefront[] = [
     headline: 'Recording, mixing, mastering and beat-based production in Harare.',
     bio: 'WolfBridges Studio offers music production services for artists who need recording, mixing, mastering and beat-based production support in one place.',
     location: 'Madokero, Harare',
-    heroImage: '/images/marketplace/wolfbridges-studio.jpg',
+    heroImage: '/images/marketplace/wolfbridges-studio.webp',
     specialties: ['Recording', 'Mixing', 'Mastering', 'Music production', 'Beat leases'],
     verified: false,
     services: [
