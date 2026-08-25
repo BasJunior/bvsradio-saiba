@@ -74,7 +74,6 @@ export default function ShowVideo({
       controls
       playsInline
       preload="metadata"
-      crossOrigin="anonymous"
       aria-label={title}
       className={`aspect-video w-full bg-black ${className}`}
       onPlay={() => {
