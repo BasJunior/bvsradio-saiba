@@ -9,11 +9,31 @@ permissions:
   contents: read
 
 jobs:
-  preflight:
+  control-plane:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify unauthenticated publish hook rejects
+        shell: bash
+        run: |
+          set -euo pipefail
+          hook_response="$(curl -sS --max-time 15 \
+            -X POST \
+            -H 'Content-Type: application/json' \
+            --data '{"action":"on_publish","client_id":"external-preflight","ip":"127.0.0.1","vhost":"__defaultVhost__","app":"live","stream":"evt_phase1test","param":"?sk=00000000000000000000000000000000","server_id":"external-preflight"}' \
+            -w $'\n%{http_code}' \
+            https://bvsradio-beta.vercel.app/api/live/srs/on-publish)"
+          hook_code="$(printf '%s\n' "${hook_response}" | tail -n 1)"
+          hook_body="$(printf '%s\n' "${hook_response}" | sed '$d')"
+          test "${hook_code}" = "200"
+          test "${hook_body}" = "1"
+          echo "hook_status=${hook_code} body=${hook_body}"
+
+  media-plane:
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
-      - name: Verify DNS, TLS, ports and hook rejection
+      - name: Verify public DNS, TLS and private ports
         shell: bash
         run: |
           set -euo pipefail
@@ -21,7 +41,10 @@ jobs:
           for host in ingest-beta.bvsradio.com stream-beta.bvsradio.com; do
             echo "== DNS ${host} =="
             addresses="$(getent ahostsv4 "${host}" | awk '{print $1}' | sort -u)"
-            test -n "${addresses}"
+            if [ -z "${addresses}" ]; then
+              echo "ERROR: ${host} does not resolve publicly"
+              exit 1
+            fi
             printf '%s\n' "${addresses}"
           done
 
@@ -52,17 +75,4 @@ jobs:
             done
           done
 
-          echo "== unauthenticated publish hook rejects =="
-          hook_response="$(curl -sS --max-time 15 \
-            -X POST \
-            -H 'Content-Type: application/json' \
-            --data '{"action":"on_publish","client_id":"external-preflight","ip":"127.0.0.1","vhost":"__defaultVhost__","app":"live","stream":"evt_phase1test","param":"?sk=00000000000000000000000000000000","server_id":"external-preflight"}' \
-            -w $'\n%{http_code}' \
-            https://bvsradio-beta.vercel.app/api/live/srs/on-publish)"
-          hook_code="$(printf '%s\n' "${hook_response}" | tail -n 1)"
-          hook_body="$(printf '%s\n' "${hook_response}" | sed '$d')"
-          test "${hook_code}" = "200"
-          test "${hook_body}" = "1"
-          echo "hook_status=${hook_code} body=${hook_body}"
-
-          echo "BVS Live public runtime preflight passed"
+          echo "BVS Live media-plane preflight passed"
