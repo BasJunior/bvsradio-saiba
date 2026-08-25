@@ -49,12 +49,25 @@ const json = await parseSrsHookBody(new Request('https://beta.invalid/hook', {
 assert.equal(json?.action, 'on_unpublish')
 assert.equal(json?.clientId, '42')
 
-const [server, publishRoute, unpublishRoute, showVideo, schema, pkg] = await Promise.all([
+const [
+  server,
+  publishRoute,
+  unpublishRoute,
+  showVideo,
+  schema,
+  playbackIdentity,
+  srs,
+  caddy,
+  pkg,
+] = await Promise.all([
   read('src/lib/bvs-live-server.ts'),
   read('src/app/api/live/srs/on-publish/route.ts'),
   read('src/app/api/live/srs/on-unpublish/route.ts'),
   read('src/components/ShowVideo.tsx'),
   read('supabase-bvs-live-phase1.sql'),
+  read('supabase-bvs-live-phase1-playback-identity.sql'),
+  read('ops/bvs-live-phase1/srs.conf'),
+  read('ops/bvs-live-phase1/Caddyfile.phase1'),
   read('package.json'),
 ])
 
@@ -86,6 +99,22 @@ assert.match(schema, /enable row level security/)
 assert.match(schema, /revoke all on table public\.show_streams, public\.show_stream_events from public, anon, authenticated/)
 assert.match(schema, /grant execute on function public\.bvs_live_mark_published/)
 assert.match(schema, /grant execute on function public\.bvs_live_mark_unpublished/)
+assert.match(playbackIdentity, /playback_id = public_id/)
+assert.match(playbackIdentity, /show_streams_phase1_playback_matches_public/)
+
+assert.match(srs, /rtmps\s*\{/)
+assert.match(srs, /enabled\s+on;/)
+assert.match(srs, /listen\s+1443;/)
+assert.match(srs, /on_publish\s+http:\/\/127\.0\.0\.1:9080\/api\/live\/srs\/on-publish;/)
+assert.match(srs, /hls_m3u8_file\s+\[app\]\/\[stream\]\/index\.m3u8;/)
+assert.match(srs, /hls_ts_file\s+\[app\]\/\[stream\]\/segment-\[seq\]\.ts;/)
+assert.doesNotMatch(srs, /\[stream\].*sk=/i)
+
+assert.match(caddy, /stream-beta\.bvsradio\.com/)
+assert.match(caddy, /https:\/\/bvsradio-beta\.vercel\.app/)
+assert.match(caddy, /Authorization "Bearer \{\$BVS_LIVE_HOOK_SECRET\}"/)
+assert.match(caddy, /127\.0\.0\.1:9080/)
+assert.doesNotMatch(caddy, /ingest\.bvsradio\.com|stream\.bvsradio\.com/)
 
 const packageJson = JSON.parse(pkg)
 assert.equal(packageJson.dependencies['hls.js'], '1.6.14')
