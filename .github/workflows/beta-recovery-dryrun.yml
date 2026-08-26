@@ -1,0 +1,40 @@
+name: Beta recovery merge dry run
+
+on:
+  push:
+    branches:
+      - saiba/beta-recover-2026-08-26
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout recovery branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Attempt beta-only merge and report conflicts
+        shell: bash
+        run: |
+          set -uo pipefail
+          git fetch origin saiba/beta-2026-08-26
+          set +e
+          git merge --no-commit --no-ff origin/saiba/beta-2026-08-26
+          status=$?
+          set -e
+          echo "merge_status=$status"
+          echo "--- CONFLICTS ---"
+          git diff --name-only --diff-filter=U | sort
+          echo "--- AUTO-MERGED / STAGED ---"
+          git diff --cached --name-status | sort
+          if [ "$status" -eq 0 ]; then
+            echo "MERGE_CLEAN=true"
+          else
+            echo "MERGE_CLEAN=false"
+          fi
+          git merge --abort || true
