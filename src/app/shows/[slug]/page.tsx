@@ -71,6 +71,7 @@ export default async function ShowPage({ params }: { params: Promise<{ slug: str
             <div><dt className="text-xs uppercase tracking-wider text-text-secondary">{event?.startsAt ? 'Broadcast time' : 'Planned slot'}</dt><dd className="mt-1 font-medium">{dateLabel(event?.startsAt || null) || show.schedule}</dd></div>
           </dl>
           <div className="mt-6 flex flex-wrap gap-3">
+            <Link href={`/shows/${slug}/watch`} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black hover:bg-brand-dark">Watch live</Link>
             <ShowFollowButton slug={slug} title={show.title} subtitle={show.tagline} image={show.image} />
             {hasWatchExperience ? <Link href={`/shows/${slug}/watch`} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 font-semibold hover:border-brand/40">Open TV mode</Link> : null}
           </div>

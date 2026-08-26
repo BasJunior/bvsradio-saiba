@@ -2,9 +2,12 @@ import { NextResponse } from "next/server";
 import { stripeEnabled } from "@/lib/stripe";
 import { paynowEnabled } from "@/lib/paynow";
 import { TAX_COUNTRIES, stripeAutomaticTaxEnabled } from "@/lib/tax";
+import { betaFeatureConfig } from "@/lib/beta-features";
 
 export async function GET() {
+  const features = betaFeatureConfig();
   return NextResponse.json({
+    features,
     stripeEnabled: stripeEnabled(),
     paynowEnabled: paynowEnabled(),
     currency: "USD",
@@ -34,6 +37,7 @@ export async function GET() {
       mobile_money: true,
       manual_bank: true,
       paypal: true,
+      creator_services: features.serviceOrders,
     },
   });
 }

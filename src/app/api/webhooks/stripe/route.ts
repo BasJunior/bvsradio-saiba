@@ -134,6 +134,11 @@ export async function POST(req: Request) {
           { error: "Premium activation failed." },
           { status: 500 },
         );
+      await recordServerEvent("subscription_started", {
+        provider: "stripe",
+        planId: session.metadata.plan_id || null,
+        interval: session.metadata.interval || null,
+      });
       return NextResponse.json({ received: true });
     }
 

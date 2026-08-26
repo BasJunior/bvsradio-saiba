@@ -19,6 +19,7 @@ import DistributionPathTimeline from "@/components/DistributionPathTimeline";
 import { CreatorMarketplaceDesk } from "@/components/CreatorMarketplaceDesk";
 import CreatorServiceOrders from "@/components/CreatorServiceOrders";
 import ArtworkChangeRequestForm from "@/components/ArtworkChangeRequestForm";
+import CreatorBroadcastDesk from "@/components/CreatorBroadcastDesk";
 import {
   buildArtistPathSteps,
   publicDistributionStatusLabel,
@@ -353,6 +354,11 @@ export default function CreatorStudio() {
         <section id="show-work" className="scroll-mt-24 pt-12">
           <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Shows</p>
           <h2 className="mt-2 text-3xl font-semibold">Programmes and episodes</h2>
+          <div id="broadcast" className="scroll-mt-24">
+            <CreatorDropDown label="Broadcast" defaultOpen>
+              <CreatorBroadcastDesk token={token} />
+            </CreatorDropDown>
+          </div>
           <CreatorDropDown label="Propose a weekly show">
             <ShowForm act={act} />
           </CreatorDropDown>
@@ -412,6 +418,7 @@ function StudioOverview({
     { href: "#marketplace-desk", eyebrow: "Marketplace", title: "Products & services", copy: "Manage listings without mixing commerce with editorial decisions." },
     (artist || producer) && { href: "#insights", eyebrow: "Performance", title: "View insights", copy: "See plays and editorially meaningful performance signals." },
     (artist || producer) && { href: "#money-desk", eyebrow: "Money", title: "Wallet & earnings", copy: "Review balance, fees, refunds and the latest frozen settlement snapshot inside Studio." },
+    showCreator && { href: "#broadcast", eyebrow: "BVS Live", title: "Prepare broadcast", copy: "Arm the show, copy OBS setup and watch verified ingest health." },
   ].filter(Boolean) as Array<{ href: string; eyebrow: string; title: string; copy: string }>;
 
   return <section className="mt-10 scroll-mt-24" aria-labelledby="studio-overview-heading">

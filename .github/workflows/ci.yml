@@ -3,7 +3,9 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - saiba/beta-2026-08-26
 
 permissions:
   contents: read
@@ -20,9 +22,44 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:safe-floor
+      - run: npm run test:beta-features
+      - run: npm run test:bvs-live-state
+      - run: npm run test:premium-growth
       - run: npm run typecheck
       - run: npm run build
       - name: Reject newly tracked sensitive or oversized artifacts
         run: |
           test -z "$(git ls-files | grep -E '(^|/)(\\.env($|\\.)|.*\\.(pem|key|p12|jks|keystore)$)' || true)"
           test -z "$(git ls-files -z | xargs -0 -r du -b | awk '$1 > 104857600 {print $2}' || true)"
+
+  deploy_beta:
+    name: Deploy beta only
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/saiba/beta-2026-08-26'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_ORG_ID: team_HYmWoU6WIW4IHXmh3mrB10Oq
+      VERCEL_PROJECT_ID: prj_gv9stqkz190faX23mT3dy3wWStEo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Pin checkout to bvsradio-beta
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+          node scripts/deploy-beta-guard.mjs
+      - name: Require Vercel deployment credential
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN repository secret is not configured; refusing deployment."
+            exit 1
+          fi
+      - name: Deploy to bvsradio-beta production target
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN" --scope saiba-bvs
