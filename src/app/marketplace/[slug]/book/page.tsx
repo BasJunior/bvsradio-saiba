@@ -35,6 +35,8 @@ export default function MarketplaceBookingPage() {
   const search = useSearchParams();
   const providerKey = String(params.slug || "");
   const serviceRef = search.get("service") || "";
+  const packageRaw = search.get("package");
+  const packageIndex = packageRaw == null ? undefined : Number(packageRaw);
   const [marketplace, setMarketplace] = useState<MarketplacePayload>({});
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotState, setSlotState] = useState<"loading" | "ready" | "unavailable">("loading");
@@ -67,6 +69,7 @@ export default function MarketplaceBookingPage() {
     return marketplaceStorefronts(marketplace.profiles || [], marketplace.listings || []).find((item) => item.slug === providerKey) || null;
   }, [marketplace, providerKey]);
   const service = provider?.services.find((item) => item.id === serviceRef) || null;
+  const selectedPackage = service && packageIndex !== undefined && Number.isInteger(packageIndex) && packageIndex >= 0 ? service.packages?.[packageIndex] : undefined;
 
   const grouped = useMemo(() => {
     const groups = new Map<string, Slot[]>();
@@ -89,6 +92,7 @@ export default function MarketplaceBookingPage() {
         body: JSON.stringify({
           providerKey: provider.slug,
           serviceRef: service.id,
+          packageIndex: selectedPackage ? packageIndex : undefined,
           slotId: selectedSlot,
           customerName: form.name,
           customerEmail: form.email,
@@ -124,9 +128,9 @@ export default function MarketplaceBookingPage() {
       <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <section>
           <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Book with {provider.name}</p>
-          <h1 className="mt-2 text-balance text-4xl font-semibold sm:text-5xl">{service.title}</h1>
+          <h1 className="mt-2 text-balance text-4xl font-semibold sm:text-5xl">{selectedPackage ? `${service.title} — ${selectedPackage.name}` : service.title}</h1>
           <p className="mt-3 text-text-secondary">{service.description}</p>
-          <p className="mt-4 text-2xl font-semibold text-brand">{service.priceLabel || `$${service.priceUsd.toFixed(2)}`}</p>
+          <p className="mt-4 text-2xl font-semibold text-brand">{selectedPackage ? `${selectedPackage.priceUsd.toFixed(2)}` : service.priceLabel || `${service.priceUsd.toFixed(2)}`}</p>
 
           <div className="mt-9">
             <h2 className="text-2xl font-semibold">Choose an available time</h2>

@@ -26,6 +26,10 @@ const productCategories = [
   "other",
 ];
 const serviceCategories = [
+  "recording",
+  "studio_session",
+  "rehearsal",
+  "podcast_recording",
   "mixing",
   "mastering",
   "production",

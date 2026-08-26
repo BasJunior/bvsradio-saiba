@@ -118,7 +118,8 @@ export default function MarketplacePage() {
           One marketplace for independent BVS providers and official BVS services. Open a provider store, compare what they offer and book real published studio availability when a calendar is available.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
-          <a href="#providers" className="rounded-full bg-brand px-5 py-2.5 font-semibold text-black">Studios &amp; engineers</a>
+          <Link href="/marketplace/studios" className="rounded-full bg-brand px-5 py-2.5 font-semibold text-black">Book a studio session near you</Link>
+          <a href="#providers" className="rounded-full border border-white/20 px-5 py-2.5">Studios &amp; engineers</a>
           <a href="#services" className="rounded-full border border-white/20 px-5 py-2.5">Browse services</a>
           <Link href="/catalogue?type=beat#beatstore" className="rounded-full border border-white/20 px-5 py-2.5">BeatStore</Link>
           <Link href="/creator/marketplace" className="rounded-full border border-brand/45 px-5 py-2.5 text-brand">Open a provider store</Link>

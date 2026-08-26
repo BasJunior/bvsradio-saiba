@@ -21,10 +21,17 @@ async function rows(path: string) {
   return Array.isArray(payload) ? payload : [];
 }
 
-async function authoritativeService(providerKey: string, serviceRef: string) {
+async function authoritativeService(providerKey: string, serviceRef: string, packageIndex?: number) {
   const seeded = seededStorefront(providerKey);
   const seededService = seeded?.services.find((service) => service.id === serviceRef);
-  if (seededService) return { service: seededService, listingId: null as string | null };
+  if (seededService) {
+    if (packageIndex !== undefined) {
+      const selectedPackage = seededService.packages?.[packageIndex];
+      if (!selectedPackage) return null;
+      return { service: { ...seededService, title: `${seededService.title} — ${selectedPackage.name}`, priceUsd: selectedPackage.priceUsd, packages: [] }, listingId: null as string | null };
+    }
+    return { service: seededService, listingId: null as string | null };
+  }
 
   const listings = await rows(
     `creator_marketplace_listings?id=eq.${encodeURIComponent(serviceRef)}&status=eq.published&listing_type=eq.service&select=id,seller_user_id,title,category,description,price_usd,packages,turnaround_days,revisions_included,profiles!inner(username,display_name,creator_public_name)&limit=1`,
@@ -34,7 +41,7 @@ async function authoritativeService(providerKey: string, serviceRef: string) {
   const profile = row.profiles as { username?: string; display_name?: string; creator_public_name?: string } | undefined;
   const providerSlug = storefrontSlug(profile?.creator_public_name || profile?.display_name || profile?.username || "");
   if (!providerSlug || providerSlug !== providerKey) return null;
-  const service: StorefrontService = {
+  let service: StorefrontService = {
     id: String(row.id),
     listingId: String(row.id),
     listingType: "service",
@@ -53,6 +60,11 @@ async function authoritativeService(providerKey: string, serviceRef: string) {
     turnaroundDays: Number(row.turnaround_days) || null,
     revisionsIncluded: Number(row.revisions_included) || 0,
   };
+  if (packageIndex !== undefined) {
+    const selectedPackage = service.packages?.[packageIndex];
+    if (!selectedPackage) return null;
+    service = { ...service, title: `${service.title} — ${selectedPackage.name}`, priceUsd: selectedPackage.priceUsd, packages: [] };
+  }
   return { service, listingId: String(row.id) };
 }
 
@@ -81,20 +93,21 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const providerKey = clean(body.providerKey, 100);
   const serviceRef = clean(body.serviceRef, 160);
+  const packageIndex = body.packageIndex === undefined || body.packageIndex === null || body.packageIndex === "" ? undefined : Number(body.packageIndex);
   const slotId = clean(body.slotId, 80);
   const customerName = clean(body.customerName, 160);
   const customerEmail = clean(body.customerEmail, 254).toLowerCase();
   const customerPhone = clean(body.customerPhone, 80);
   const projectNotes = clean(body.projectNotes, 3000);
 
-  if (!providerKey || !serviceRef || !slotId || !customerName || !customerEmail) {
+  if (!providerKey || !serviceRef || !slotId || !customerName || !customerEmail || (packageIndex !== undefined && (!Number.isInteger(packageIndex) || packageIndex < 0 || packageIndex > 20))) {
     return NextResponse.json({ error: "Choose a slot and enter your name and email." }, { status: 400 });
   }
   if (!/^\S+@\S+\.\S+$/.test(customerEmail)) {
     return NextResponse.json({ error: "Enter a valid email address." }, { status: 400 });
   }
 
-  const authoritative = await authoritativeService(providerKey, serviceRef);
+  const authoritative = await authoritativeService(providerKey, serviceRef, packageIndex);
   if (!authoritative || authoritative.service.bookingMode !== "calendar") {
     return NextResponse.json({ error: "This service is not available for calendar booking." }, { status: 404 });
   }

@@ -61,19 +61,24 @@ export default function StudioMarketplacePage() {
   );
 
   const cards = useMemo<StudioCard[]>(() => {
-    return (studioPayload.studios || [])
-      .map((studio) => {
-        const provider = storefronts.find((item) => item.slug === studio.providerKey);
-        if (!provider) return null;
-        const servicePrices = provider.services.filter((service) => service.bookingMode === "calendar" && service.priceUsd > 0).map((service) => service.priceUsd);
-        const lowest = servicePrices.length ? Math.min(...servicePrices) : null;
-        const enrichedStudio = { ...studio, hourlyFromUsd: lowest ?? studio.hourlyFromUsd };
-        const distanceKm = geo && Number.isFinite(enrichedStudio.latitude) && Number.isFinite(enrichedStudio.longitude)
-          ? haversineKm(geo.lat, geo.lng, Number(enrichedStudio.latitude), Number(enrichedStudio.longitude))
-          : null;
-        return { studio: enrichedStudio, provider, distanceKm };
-      })
-      .filter((item): item is StudioCard => Boolean(item));
+    const result: StudioCard[] = [];
+    for (const studio of studioPayload.studios || []) {
+      const provider = storefronts.find((item) => item.slug === studio.providerKey);
+      if (!provider) continue;
+      const servicePrices = provider.services
+        .filter((service) => service.bookingMode === "calendar" && service.priceUsd > 0)
+        .map((service) => service.priceUsd);
+      const lowest = servicePrices.length ? Math.min(...servicePrices) : null;
+      const enrichedStudio: StudioDiscoveryProfile = {
+        ...studio,
+        hourlyFromUsd: lowest ?? studio.hourlyFromUsd ?? null,
+      };
+      const distanceKm = geo && Number.isFinite(enrichedStudio.latitude) && Number.isFinite(enrichedStudio.longitude)
+        ? haversineKm(geo.lat, geo.lng, Number(enrichedStudio.latitude), Number(enrichedStudio.longitude))
+        : null;
+      result.push({ studio: enrichedStudio, provider, distanceKm });
+    }
+    return result;
   }, [studioPayload.studios, storefronts, geo]);
 
   const filtered = useMemo(() => {

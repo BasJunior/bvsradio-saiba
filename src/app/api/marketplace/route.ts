@@ -31,6 +31,10 @@ const productCategories = new Set([
   "other",
 ]);
 const serviceCategories = new Set([
+  "recording",
+  "studio_session",
+  "rehearsal",
+  "podcast_recording",
   "mixing",
   "mastering",
   "production",
