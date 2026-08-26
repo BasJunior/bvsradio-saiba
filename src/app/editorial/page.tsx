@@ -10,6 +10,12 @@ export default function EditorialHome() {
         full table.
       </p>
       <div className="mt-8 grid gap-3">
+        <Link href="/admin/copilot" className="rounded-2xl border border-brand/40 bg-brand/10 p-5 hover:border-brand">
+          <p className="font-semibold text-brand">Ops Copilot</p>
+          <p className="mt-1 text-sm text-text-secondary">
+            Staff-only beta assistant for queues, live status, QA health, and order lookup. Read tools only.
+          </p>
+        </Link>
         <Link href="/editorial/queues" className="rounded-2xl border border-white/15 p-5 hover:border-brand">
           <p className="font-semibold">Queue lists</p>
           <p className="mt-1 text-sm text-text-secondary">Tracks, beats, releases, names, wallet — the classic table.</p>

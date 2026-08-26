@@ -64,7 +64,7 @@ export default function StaffCopilotDesk() {
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <div><p className="text-xs uppercase tracking-[.18em] text-brand">BVS operations</p><h1 className="mt-1 text-3xl font-semibold">Ops Copilot</h1></div>
-        <div className="flex gap-2"><Link href="/beta/qa" className="rounded-full border border-white/15 px-4 py-2 text-sm">Beta QA</Link><button type="button" onClick={newThread} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">New thread</button></div>
+        <div className="flex gap-2"><Link href="/editorial" className="rounded-full border border-white/15 px-4 py-2 text-sm">Editorial home</Link><Link href="/beta/qa" className="rounded-full border border-white/15 px-4 py-2 text-sm">Beta QA</Link><button type="button" onClick={newThread} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">New thread</button></div>
       </div>
 
       {error ? <p className="mt-5 rounded-xl border border-red-300/30 bg-red-300/5 p-4 text-sm text-red-100">{error}</p> : null}
