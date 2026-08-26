@@ -21,7 +21,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Apply narrow recovered-navbar insertion
+      - name: Apply narrow beta finalization
         run: node scripts/staff-copilot-finalize.mjs
       - run: npm ci
       - run: npm run test:staff-copilot
@@ -37,14 +37,14 @@ jobs:
           mkdir -p .vercel
           printf '{"orgId":"team_HYmWoU6WIW4IHXmh3mrB10Oq","projectId":"prj_gv9stqkz190faX23mT3dy3wWStEo"}\n' > .vercel/project.json
           npm run deploy:beta:guard
-      - name: Commit finalized navbar only
+      - name: Commit finalized beta-only files
         run: |
-          if git diff --quiet -- src/components/layout/Navbar.tsx; then
-            echo "Navbar already finalized."
+          if git diff --quiet -- src/components/layout/Navbar.tsx src/lib/staff-copilot/tools.ts scripts/staff-copilot-tests.mjs; then
+            echo "Staff Copilot already finalized."
             exit 0
           fi
           git config user.name "BVS Staff Copilot Beta"
           git config user.email "83550884+BasJunior@users.noreply.github.com"
-          git add src/components/layout/Navbar.tsx
-          git commit -m "feat(beta): expose staff-only Ops Copilot nav [staff-copilot-finalized]"
+          git add src/components/layout/Navbar.tsx src/lib/staff-copilot/tools.ts scripts/staff-copilot-tests.mjs
+          git commit -m "fix(beta): harden staff copilot output [staff-copilot-finalized]"
           git push origin HEAD:saiba/beta-staff-copilot-2026-08-26
