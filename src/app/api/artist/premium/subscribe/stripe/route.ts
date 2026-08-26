@@ -27,7 +27,12 @@ export async function POST(req: Request) {
   const resolved = await resolveCheckoutPlan(normalizeArtistPlanId(body.planId));
   const planId = resolved.planId;
   const amount = artistPremiumPriceUsd(planId, interval);
-  const label = planId === "artist_founding" ? "BVS Founding Artist Premium" : "BVS Standard Artist Premium";
+  const label =
+    planId === "artist_instant"
+      ? "BVS Premium Instant"
+      : planId === "artist_founding"
+        ? "BVS Founding Artist Premium"
+        : "BVS Premium";
   const current = await getArtistPremiumStatus(user.id);
   const paidThrough = current.premiumUntil ? Math.floor(new Date(current.premiumUntil).getTime() / 1000) : 0;
   const trialEnd = current.premiumActive && paidThrough > Math.floor(Date.now() / 1000) + 48 * 3600

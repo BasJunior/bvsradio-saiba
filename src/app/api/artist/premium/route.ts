@@ -53,16 +53,17 @@ export async function GET(req: Request) {
     familyPlans: PREMIUM_CATALOG.filter((p) => p.family === "artist"),
     distributionStores: PREMIUM_DISTRIBUTION_STORES,
     pricing,
-    priceNote: `Founding US$${pricing.foundingMonthly}/mo or US$${pricing.foundingYearly}/yr · Standard US$${pricing.standardMonthly}/mo or US$${pricing.standardYearly}/yr. ${pricing.distributionNote}`,
+    priceNote: `Premium Instant US$${pricing.instantMonthly}/mo or US$${pricing.instantYearly}/yr · Premium US$${pricing.standardMonthly}/mo or US$${pricing.standardYearly}/yr · Founding US$${pricing.foundingMonthly}/mo legacy where eligible. ${pricing.distributionNote}`,
     copy: {
-      title: "BVS Premium Artist",
+      title: "BVS Artist Premium",
       summary:
-        "Stripe auto-renews. Paynow is prepaid — resubscribe when the period ends. Neither is live-on-Spotify; BVS sends approved packs after packaging is complete. BVS rotation after editorial publish does not require Premium.",
+        "Stripe auto-renews. Paynow is prepaid — resubscribe when the period ends. Premium manages approved, release-ready music through BVS without selling monthly upload dumping. BVS rotation after editorial publish does not require Premium.",
       includes: [
-        "Founding: US$9/month or US$90/year (first 50 seats, then Standard)",
-        "Standard: US$12/month or US$120/year",
+        "Premium Instant: US$5.99/month or US$60/year · up to 25 active distributed tracks",
+        "Premium: US$12/month or US$120/year · unlimited catalogue and release submissions",
+        "Founding: US$9/month or US$90/year legacy full Premium for eligible early supporters",
         `Distribution path covering ${PREMIUM_DISTRIBUTION_STORES.length}+ store destinations`,
-        "Cancel anytime (period-end keeps access until paid-through date)",
+        "Cancel anytime; existing releases stay live subject to catalogue-maintenance policy",
         "Studio Premium desk shows your live plan details",
       ],
     },

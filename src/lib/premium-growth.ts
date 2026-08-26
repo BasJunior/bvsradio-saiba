@@ -65,13 +65,13 @@ export function recommendPlan(input: {
 }): PlanRecommendation {
   if (input.approvedReleaseCount > 0 && !input.premiumActive) {
     return {
-      planId: "artist_standard",
-      planName: "Artist Premium",
-      monthlyUsd: 12,
-      headline: "Best for you: Artist Premium",
+      planId: "artist_instant",
+      planName: "Premium Instant",
+      monthlyUsd: 5.99,
+      headline: "Best for you: Premium Instant",
       reason:
-        "You have approved music ready for the distribution path. Premium unlocks wider delivery while BVS editorial publish stays free.",
-      href: "/artist/premium?tier=standard",
+        "You have approved music ready for the distribution path. Premium Instant starts a managed catalogue without turning distribution into a monthly upload dump.",
+      href: "/artist/premium?tier=instant",
     };
   }
 
@@ -176,8 +176,8 @@ export function contextualUpgradePrompts(input: {
       id: "artist_distribution",
       title: "Approved release ready",
       body:
-        "Artist Premium can prepare approved music for the wider distribution path.",
-      href: "/artist/premium?tier=standard",
+        "Premium Instant can prepare approved music for the wider distribution path.",
+      href: "/artist/premium?tier=instant",
     });
   }
 

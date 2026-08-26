@@ -1,6 +1,7 @@
 /**
  * BVS Premium membership family — product catalogue.
- * Artist Founding/Standard prices remain locked from the 2026-07-28 financial plan.
+ * Artist Instant/Standard prices follow the 2026-08-26 Rights + Money pricing model.
+ * Founding remains a grandfathered full-Premium reward for early artists.
  * Producer economics follow Marketplace Economics policy 2026-08-08-v1.
  */
 
@@ -101,43 +102,67 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     ],
   },
   {
-    id: "artist_founding",
+    id: "artist_instant",
     family: "artist",
-    name: "Founding Artist Premium",
-    monthlyUsd: 9,
-    yearlyUsd: 90,
-    badge: "Launch · locked",
+    name: "Premium Instant",
+    monthlyUsd: 5.99,
+    yearlyUsd: 60,
+    badge: "Starter",
     status: "live",
     featured: true,
     commissionPercent: 15,
     summary:
-      "Founding rate through 27 Aug 2026. Distribution path for approved releases.",
+      "Start a professional BVS-managed distribution catalogue without making uploads disposable.",
     includes: [
       "Everything in Artist Free",
-      "Distribution entitlement for approved releases",
-      "Major streaming, social & regional store targets",
-      "Priority release-packaging support",
-      "15% BVS fee on eligible BVS music sales instead of the Free low-ticket rate",
-      "Founding rate locked in if you join by 27 Aug 2026 (first 50 seats) and stay subscribed",
+      "Up to 25 active distributed tracks in the BVS-managed catalogue",
+      "One new release submission per month",
+      "Rights Passport-ready release records and income-tracking entitlement",
+      "Managed DSP delivery for approved, release-ready music",
+      "BVS Radio eligibility, basic analytics and basic support",
+      "Existing releases stay live subject to catalogue-maintenance policy",
     ],
   },
   {
     id: "artist_standard",
     family: "artist",
-    name: "Standard Artist Premium",
+    name: "Premium",
     monthlyUsd: 12,
     yearlyUsd: 120,
-    badge: "Ongoing · locked",
+    badge: "Full",
     status: "live",
     commissionPercent: 15,
     summary:
-      "Accessible ongoing Artist Premium with approved-release distribution.",
+      "Full BVS artist business tools for active artists and labels.",
     includes: [
-      "Same distribution path as Founding",
-      "Release status in the artist desk",
+      "Unlimited active distributed catalogue",
+      "Unlimited release submissions subject to editorial and delivery checks",
+      "Album/EP support and priority release review",
+      "Advanced Rights & Money, split-management and release status tools",
+      "Priority support and promotional/service advantages",
       "15% BVS fee on eligible BVS music sales",
-      "Payment processing remains a transparent transaction cost",
-      "Mix/master and beat purchases remain separate",
+      "Payment processing, mix/master and beat purchases remain separate",
+    ],
+  },
+  {
+    id: "artist_founding",
+    family: "artist",
+    name: "Founding Artist Premium",
+    monthlyUsd: 9,
+    yearlyUsd: 90,
+    badge: "Legacy · locked",
+    status: "live",
+    commissionPercent: 15,
+    summary:
+      "Grandfathered full Premium rate for artists who supported BVS early.",
+    includes: [
+      "Everything in Artist Free",
+      "Full Premium distribution entitlement while continuously subscribed",
+      "Unlimited active distributed catalogue subject to release readiness",
+      "Unlimited release submissions subject to editorial and delivery checks",
+      "Priority release-packaging support",
+      "15% BVS fee on eligible BVS music sales instead of the Free low-ticket rate",
+      "Founding rate remains locked for eligible early supporters",
     ],
   },
   {
@@ -152,7 +177,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     summary:
       "Only after advanced analytics and release-growth tools actually ship.",
     includes: [
-      "Everything in Standard",
+      "Everything in Premium",
       "Advanced release & audience analytics",
       "Smart links and fan-email collection",
       "Release scheduling / pre-save controls",
@@ -235,9 +260,9 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     featured: true,
     commissionPercent: 3,
     summary:
-      "Standard Artist Premium + Producer Pro tools for under US$20/month.",
+      "Full artist Premium + Producer Pro tools for under US$20/month.",
     includes: [
-      "Standard Artist Premium distribution",
+      "Full artist Premium distribution",
       "Producer Pro BeatStore tools",
       "3% BeatStore fee + Artist Premium music-sale rate",
       "Shared dashboard and billing cycle",
@@ -481,7 +506,7 @@ export function liveArtistPlans(): CatalogPlan[] {
   );
 }
 
-export type PremiumTierId = "founding" | "standard";
+export type PremiumTierId = "instant" | "founding" | "standard";
 export type PremiumTier = {
   id: PremiumTierId;
   name: string;
@@ -495,32 +520,50 @@ export type PremiumTier = {
 
 export const PREMIUM_TIERS: PremiumTier[] = [
   {
-    id: "founding",
-    name: "Founding Artist Premium",
-    monthlyUsd: 9,
-    yearlyUsd: 90,
-    badge: "Launch offer",
+    id: "instant",
+    name: "Premium Instant",
+    monthlyUsd: 5.99,
+    yearlyUsd: 60,
+    badge: "Starter",
     featured: true,
     summary:
-      "Early artist rate through 27 Aug 2026. Distribution path for approved releases.",
+      "Build a professional catalogue of up to 25 active distributed tracks.",
     notes: [
-      "Founding price available through 27 August 2026 while founding seats remain.",
-      "Multi-platform distribution path to major streaming & social stores.",
-      "BVS submit → editorial → publish → rotation stays available without Premium.",
-      "Eligible BVS music sales use the Premium 15% platform fee; payment processing stays separate.",
+      "Up to 25 active distributed tracks total, not 25 uploads every month.",
+      "One new release submission per month.",
+      "Rights Passport-ready release records, income-tracking entitlement, managed delivery, BVS Radio eligibility and basic support.",
+      "Existing releases stay live subject to catalogue-maintenance policy if membership ends.",
     ],
   },
   {
     id: "standard",
-    name: "Standard Artist Premium",
+    name: "Premium",
     monthlyUsd: 12,
     yearlyUsd: 120,
-    badge: "Ongoing",
+    badge: "Full",
     featured: false,
-    summary: "Ongoing Artist Premium after the founding offer.",
+    summary: "Unlimited catalogue, unlimited submissions and full artist business tools.",
     notes: [
-      "Same multi-platform distribution path as Founding.",
+      "Unlimited active distributed catalogue.",
+      "Unlimited release submissions subject to editorial and delivery checks.",
+      "Priority release review, advanced Rights & Money and split-management tools.",
       "Yearly option saves two months vs monthly.",
+      "Eligible BVS music sales use the Premium 15% platform fee; payment processing stays separate.",
+    ],
+  },
+  {
+    id: "founding",
+    name: "Founding Artist Premium",
+    monthlyUsd: 9,
+    yearlyUsd: 90,
+    badge: "Legacy reward",
+    featured: false,
+    summary:
+      "Grandfathered full Premium rate for early BVS supporters.",
+    notes: [
+      "Full Premium access at US$9/month while continuously subscribed.",
+      "Designed as an early-support reward, not the new public entry tier.",
+      "Unlimited catalogue and submissions subject to editorial and delivery checks.",
       "Eligible BVS music sales use the Premium 15% platform fee; payment processing stays separate.",
     ],
   },
@@ -529,7 +572,7 @@ export const PREMIUM_TIERS: PremiumTier[] = [
 export function defaultPremiumMonthlyUsd(): number {
   const n = Number(process.env.BVS_PREMIUM_MONTHLY_USD || "");
   if (Number.isFinite(n) && n > 0) return n;
-  return 9;
+  return 5.99;
 }
 
 export const FOUNDING_WINDOW_ENDS = "2026-08-27";
@@ -557,43 +600,58 @@ export function foundingWindowPublicCopy(at: Date = new Date()) {
     seatCap: 50,
     headline: open
       ? `Founding available until ${FOUNDING_WINDOW_LABEL} · ${daysRemaining} day${daysRemaining === 1 ? "" : "s"} left · first 50 seats`
-      : `Founding window closed ${FOUNDING_WINDOW_LABEL} — Standard pricing applies`,
+      : `Founding window closed ${FOUNDING_WINDOW_LABEL} — Premium pricing applies`,
   };
 }
 
-/** Only Artist Founding/Standard have a real checkout. Other families are catalogue/waitlist. */
+/** Live artist paid tiers have real checkout. Other families are catalogue/waitlist. */
 export function planHasPaidCheckout(plan: CatalogPlan): boolean {
   return (
     plan.family === "artist" &&
     plan.status === "live" &&
-    (plan.id === "artist_founding" || plan.id === "artist_standard")
+    (plan.id === "artist_instant" || plan.id === "artist_founding" || plan.id === "artist_standard")
   );
 }
 
 export function premiumPricingCopy() {
   return {
-    headline: "From US$9/month",
+    headline: "From US$5.99/month",
+    instantMonthly: 5.99,
+    instantYearly: 60,
     foundingMonthly: 9,
     foundingYearly: 90,
     standardMonthly: 12,
     standardYearly: 120,
-    source: "BVS financial plan 2026-07-28 + marketplace economics 2026-08-08",
+    source: "BVS Rights + Money pricing model 2026-08-26 + marketplace economics 2026-08-08",
     distributionNote:
-      "Artist Premium lets BVS send approved releases to major stores. Eligible is not the same as live on Spotify — stores approve after BVS sends. Producer, Supporter and other roles are separate products.",
+      "Premium Instant is capped by active distributed catalogue, not monthly dumping. Artist Premium lets BVS send approved releases to major stores. Eligible is not the same as live on Spotify — stores approve after BVS sends. Producer, Supporter and other roles are separate products.",
     storeCount: PREMIUM_DISTRIBUTION_STORES.length,
     positioning:
-      "Your music lives on BVS Radio. Premium takes approved releases to the major platforms. BVS Store tools help creators earn directly from their work.",
+      "BVS is the Zimbabwean artist workspace for rights, money, release readiness and direct value. Distribution is one managed pipe inside that system.",
   };
 }
 
 export function entitlementsForPlan(planId: string): Record<string, unknown> {
   switch (planId) {
+    case "artist_instant":
+      return {
+        artist_distribution_enabled: true,
+        artist_profile_limit: 1,
+        artist_distributed_track_limit: 25,
+        artist_monthly_release_submission_limit: 1,
+        release_analytics_level: "basic",
+        rights_money_level: "basic",
+        marketplace_commission_bps: 1500,
+      };
     case "artist_founding":
     case "artist_standard":
       return {
         artist_distribution_enabled: true,
         artist_profile_limit: 1,
+        artist_distributed_track_limit: null,
+        artist_monthly_release_submission_limit: null,
         release_analytics_level: "basic",
+        rights_money_level: "advanced",
         marketplace_commission_bps: 1500,
       };
     case "artist_plus":

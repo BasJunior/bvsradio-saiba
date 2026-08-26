@@ -18,11 +18,12 @@ const headers = {
 /** Founding cohort hard cap (financial plan). */
 export const ARTIST_FOUNDING_SEAT_CAP = Number(process.env.BVS_FOUNDING_SEAT_CAP || 50);
 
-export type ArtistPremiumPlanId = "artist_founding" | "artist_standard";
+export type ArtistPremiumPlanId = "artist_instant" | "artist_founding" | "artist_standard";
 export type BillingInterval = "month" | "year";
 
 export function normalizeArtistPlanId(raw?: string | null): ArtistPremiumPlanId {
   const v = String(raw || "").toLowerCase();
+  if (v === "instant" || v === "starter" || v === "artist_instant") return "artist_instant";
   if (v === "standard" || v === "artist_standard") return "artist_standard";
   return "artist_founding";
 }
@@ -32,6 +33,7 @@ export function normalizeInterval(raw?: string | null): BillingInterval {
 }
 
 export function artistPremiumPriceUsd(planId: ArtistPremiumPlanId, interval: BillingInterval): number {
+  if (planId === "artist_instant") return interval === "year" ? 60 : 5.99;
   if (planId === "artist_standard") return interval === "year" ? 120 : 12;
   return interval === "year" ? 90 : 9;
 }
@@ -163,7 +165,7 @@ export async function resolveCheckoutPlan(
     return {
       planId: "artist_standard",
       founding,
-      reason: `${founding.reason} Offering Standard Artist Premium.`,
+      reason: `${founding.reason} Offering full Premium.`,
     };
   }
   return { planId: requested, founding };
@@ -672,8 +674,10 @@ export function parsePremiumOrderItem(items: Array<{ type?: string; id?: string 
     const id = String(item.id || "");
     if (type === "artist_premium" || id.startsWith("premium:") || id.startsWith("artist_premium")) {
       const sku = id.includes(":") ? id : String(item.title || "");
-      let planId: ArtistPremiumPlanId = "artist_founding";
+      let planId: ArtistPremiumPlanId = "artist_instant";
       let interval: BillingInterval = "month";
+      if (sku.includes("instant") || sku.includes("starter")) planId = "artist_instant";
+      if (sku.includes("founding")) planId = "artist_founding";
       if (sku.includes("standard")) planId = "artist_standard";
       if (sku.includes("year")) interval = "year";
       // parse premium:artist_founding:month

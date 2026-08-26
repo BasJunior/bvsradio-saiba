@@ -18,7 +18,7 @@ const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 /**
  * Start Paynow checkout for Artist Premium (prepaid month/year).
- * Body: { planId?: 'founding'|'standard'|'artist_founding'|..., interval?: 'month'|'year', email?: string }
+ * Body: { planId?: 'instant'|'founding'|'standard'|'artist_instant'|..., interval?: 'month'|'year', email?: string }
  */
 export async function POST(req: Request) {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
@@ -67,9 +67,11 @@ export async function POST(req: Request) {
   }
 
   const title =
-    planId === "artist_founding"
-      ? `BVS Founding Artist Premium (${interval})`
-      : `BVS Standard Artist Premium (${interval})`;
+    planId === "artist_instant"
+      ? `BVS Premium Instant (${interval})`
+      : planId === "artist_founding"
+        ? `BVS Founding Artist Premium (${interval})`
+        : `BVS Premium (${interval})`;
 
   const order: StoredOrder = {
     reference,

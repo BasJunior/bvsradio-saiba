@@ -163,9 +163,11 @@ function deskSectionsFor(
           ? "Distribution entitlement: ON"
           : "Distribution entitlement: pending ops flag",
         `Target destinations: ${PREMIUM_DISTRIBUTION_STORES.length}+ stores (Spotify, Apple Music, Boomplay, …)`,
-        planId.includes("founding")
-          ? `Founding rate (join by ${FOUNDING_WINDOW_LABEL}) while continuously subscribed`
-          : "Standard Artist Premium path",
+        planId.includes("instant")
+          ? "Premium Instant: up to 25 active distributed tracks and one new release submission per month"
+          : planId.includes("founding")
+            ? `Founding legacy full Premium rate (joined by ${FOUNDING_WINDOW_LABEL}) while continuously subscribed`
+            : "Full Premium path: unlimited catalogue and release submissions",
         String(ents.release_analytics_level || "basic") === "advanced"
           ? "Advanced release analytics (when live)"
           : "Basic release packaging support",
