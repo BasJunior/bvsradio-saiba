@@ -39,5 +39,6 @@ assert.deepEqual(orderWithEmail[0]?.args, { email: 'test@example.com' })
 const toolsSource = await readFile(new URL('../src/lib/staff-copilot/tools.ts', import.meta.url), 'utf8')
 assert.match(toolsSource, /if \(!reference && !email\).*Order reference or customer email is required/s, 'order tool must deny missing identifiers')
 assert.doesNotMatch(toolsSource, /child_process|execSync|spawn\(|\brpc\/.*sql|vercel deploy|force[_-]?live/i, 'read tool implementation must not contain shell/sql/deploy/force-live capabilities')
+assert.doesNotMatch(toolsSource, /reconciliation_error/, 'raw reconciliation errors must never be selected for copilot output')
 
 console.log('staff copilot tests passed')

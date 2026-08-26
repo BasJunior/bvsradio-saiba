@@ -161,7 +161,7 @@ async function lookupOrder(args: Record<string, unknown>): Promise<StaffCopilotT
   let paymentEvents: unknown[] = []
   if (ids.length) {
     const joined = ids.join(',')
-    paymentEvents = await optionalRest(`commerce_payment_events?order_id=in.(${joined})&select=order_id,order_reference,provider,event_type,provider_status,amount,currency,verified,reconciled,reconciliation_error,received_at&order=received_at.desc&limit=20`) || []
+    paymentEvents = await optionalRest(`commerce_payment_events?order_id=in.(${joined})&select=order_id,order_reference,provider,event_type,provider_status,amount,currency,verified,reconciled,received_at&order=received_at.desc&limit=20`) || []
   }
   return {
     tool: 'commerce.lookupOrder', status: orders === null ? 'unavailable' : 'ok', data: sanitizeCopilotValue({ orders: orders ?? [], paymentEvents }),
