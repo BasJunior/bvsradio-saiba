@@ -9,4 +9,9 @@ export const betaSchemaPacks = [
     file: "supabase-beta-security-hardening.sql",
     checksum: "beta-security-hardening-service-only-upload-v1",
   },
+  {
+    id: "202608260003_staff_copilot_beta",
+    file: "supabase-staff-copilot-beta.sql",
+    checksum: "staff-copilot-beta-readonly-v1",
+  },
 ];
