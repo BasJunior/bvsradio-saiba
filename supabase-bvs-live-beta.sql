@@ -1,5 +1,8 @@
 -- BVS Live beta broadcast state machine.
 -- Apply to staging first. Safe to rerun.
+-- Compatibility note: beta already had a legacy show_stream_events table.
+-- Preserve its stream_id/type/metadata/occurred_at columns and add the new
+-- broadcast event-ledger columns rather than replacing/dropping legacy data.
 
 create table if not exists public.creator_live_broadcasts (
   id uuid primary key default gen_random_uuid(),
@@ -45,22 +48,27 @@ create unique index if not exists creator_live_broadcasts_key_hash_idx
   on public.creator_live_broadcasts(stream_key_hash)
   where status in ('ready','rehearsal','armed','signal_detected','live','signal_lost','ending');
 
-create table if not exists public.show_stream_events (
-  id uuid primary key default gen_random_uuid(),
-  broadcast_id uuid not null references public.creator_live_broadcasts(id) on delete cascade,
-  event_source text not null default 'srs'
-    check (event_source in ('srs','creator_studio','system')),
-  event_type text not null,
-  event_id text,
-  payload jsonb not null default '{}'::jsonb,
-  previous_status text,
-  next_status text,
-  reason text,
-  duplicate boolean not null default false,
-  created_at timestamptz not null default now(),
-  unique (event_source, event_id)
-);
+-- Legacy beta show_stream_events is bigint identity + stream_id/type/metadata/occurred_at.
+-- Add the Pass 3 ledger fields in-place so old stream history remains intact.
+alter table public.show_stream_events
+  add column if not exists broadcast_id uuid references public.creator_live_broadcasts(id) on delete cascade,
+  add column if not exists event_source text not null default 'srs',
+  add column if not exists event_type text,
+  add column if not exists event_id text,
+  add column if not exists payload jsonb not null default '{}'::jsonb,
+  add column if not exists previous_status text,
+  add column if not exists next_status text,
+  add column if not exists reason text,
+  add column if not exists duplicate boolean not null default false,
+  add column if not exists created_at timestamptz not null default now();
 
+-- New BVS Live rows do not populate legacy stream_id/type fields.
+alter table public.show_stream_events alter column stream_id drop not null;
+alter table public.show_stream_events alter column type drop not null;
+
+create unique index if not exists show_stream_events_source_event_uidx
+  on public.show_stream_events(event_source, event_id)
+  where event_id is not null;
 create index if not exists show_stream_events_broadcast_idx
   on public.show_stream_events(broadcast_id, created_at desc);
 
@@ -103,3 +111,5 @@ create policy "Creators read own stream events"
       where b.id = broadcast_id and b.user_id = auth.uid()
     )
   );
+
+notify pgrst, 'reload schema';
