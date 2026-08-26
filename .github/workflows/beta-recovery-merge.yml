@@ -1,0 +1,140 @@
+name: Beta recovery consolidation
+
+on:
+  push:
+    branches:
+      - saiba/beta-recover-2026-08-26
+    paths:
+      - .github/workflows/beta-recovery-merge.yml
+
+permissions:
+  contents: write
+
+jobs:
+  consolidate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout rich recovery branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Merge new beta work over rich UX
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "BVS Beta Recovery"
+          git config user.email "83550884+BasJunior@users.noreply.github.com"
+          git fetch origin saiba/beta-2026-08-26
+
+          set +e
+          git merge --no-commit --no-ff origin/saiba/beta-2026-08-26
+          merge_status=$?
+          set -e
+
+          allowed='ops/SQL_APPLICATION_WORKFLOW.md
+          ops/STAGING_URL.md
+          scripts/apply-supabase-packs.py
+          scripts/verify-supabase-schema.py
+          src/app/admin/editorial/page.tsx
+          src/app/api/admin/editorial/route.ts
+          src/app/artists/page.tsx
+          src/app/creator/studio/page.tsx
+          src/app/marketplace/page.tsx
+          src/app/shows/[slug]/page.tsx
+          src/app/shows/[slug]/watch/page.tsx
+          src/components/MyBeatStore.tsx
+          src/components/VisitorAssistant.tsx
+          src/components/layout/Navbar.tsx'
+
+          conflicts="$(git diff --name-only --diff-filter=U | sort)"
+          echo "Conflicts to resolve:"
+          printf '%s\n' "$conflicts"
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            if ! printf '%s\n' "$allowed" | sed 's/^          //' | grep -Fxq "$file"; then
+              echo "Unexpected conflict: $file"
+              exit 1
+            fi
+            git checkout --ours -- "$file"
+            git add "$file"
+          done <<< "$conflicts"
+
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo "Unresolved conflicts remain"
+            git diff --name-only --diff-filter=U
+            exit 1
+          fi
+
+          python - <<'PY'
+          from pathlib import Path
+
+          studio = Path('src/app/creator/studio/page.tsx')
+          s = studio.read_text()
+          if 'import CreatorBroadcastDesk from "@/components/CreatorBroadcastDesk";' not in s:
+              marker = 'import ArtworkChangeRequestForm from "@/components/ArtworkChangeRequestForm";\n'
+              if marker not in s:
+                  raise SystemExit('Creator Studio import marker missing')
+              s = s.replace(marker, marker + 'import CreatorBroadcastDesk from "@/components/CreatorBroadcastDesk";\n', 1)
+          if '<CreatorBroadcastDesk token={token} />' not in s:
+              marker = '          <h2 className="mt-2 text-3xl font-semibold">Programmes and episodes</h2>\n'
+              block = marker + '          <div id="broadcast" className="scroll-mt-24">\n            <CreatorDropDown label="Broadcast" defaultOpen>\n              <CreatorBroadcastDesk token={token} />\n            </CreatorDropDown>\n          </div>\n'
+              if marker not in s:
+                  raise SystemExit('Creator Studio show section marker missing')
+              s = s.replace(marker, block, 1)
+          if 'href: "#broadcast"' not in s:
+              marker = '    (artist || producer) && { href: "#money-desk", eyebrow: "Money", title: "Wallet & earnings", copy: "Review balance, fees, refunds and the latest frozen settlement snapshot inside Studio." },\n'
+              if marker in s:
+                  s = s.replace(marker, marker + '    showCreator && { href: "#broadcast", eyebrow: "BVS Live", title: "Prepare broadcast", copy: "Arm the show, copy OBS setup and watch verified ingest health." },\n', 1)
+          studio.write_text(s)
+
+          show_page = Path('src/app/shows/[slug]/page.tsx')
+          p = show_page.read_text()
+          watch = '            <Link href={`/shows/${slug}/watch`} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black hover:bg-brand-dark">Watch live</Link>\n'
+          marker = '          <div className="mt-6 flex flex-wrap gap-3">\n'
+          if 'bg-brand px-5 font-semibold text-black hover:bg-brand-dark">Watch live</Link>' not in p:
+              if marker not in p:
+                  raise SystemExit('Show page action marker missing')
+              p = p.replace(marker, marker + watch, 1)
+          show_page.write_text(p)
+
+          watch_page = Path('src/app/shows/[slug]/watch/page.tsx')
+          watch_page.write_text('''import type { Metadata } from 'next'\nimport { notFound } from 'next/navigation'\nimport LiveShowViewer from '@/components/LiveShowViewer'\nimport ShowTvExperience from '@/components/ShowTvExperience'\nimport { flowV2Flags } from '@/lib/feature-flags'\nimport { getPublicProgramme, getPublicShowContext, getPublicShowEvent } from '@/lib/station-content'\nimport { resolveShowPhase, showPhaseLabel } from '@/lib/show-events'\n\nexport async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {\n  const show = await getPublicProgramme((await params).slug)\n  return show ? { title: `${show.title} Live`, description: show.description } : {}\n}\n\nexport default async function ShowWatchPage({ params }: { params: Promise<{ slug: string }> }) {\n  const { slug } = await params\n  const [show, event] = await Promise.all([getPublicProgramme(slug), getPublicShowEvent(slug)])\n  if (!show) notFound()\n\n  if (flowV2Flags.tvExperience && event) {\n    const phase = resolveShowPhase(event)\n    const videoUrl = phase === 'live' ? event.liveVideoUrl : phase === 'archived' ? event.replayVideoUrl : null\n    if (videoUrl) {\n      const context = await getPublicShowContext(event.id)\n      const now = Date.now()\n      const played = context.setlist\n        .filter(item => item.playedAt && Date.parse(item.playedAt) <= now)\n        .sort((a, b) => Date.parse(a.playedAt || '') - Date.parse(b.playedAt || ''))\n      const currentItem = phase === 'live' ? played[played.length - 1] || context.setlist[0] : context.setlist[0]\n      const currentArtist = currentItem?.artistName || context.creators[0]?.publicName\n      return (\n        <ShowTvExperience\n          slug={slug}\n          title={event.title || show.title}\n          videoUrl={videoUrl}\n          poster={show.image}\n          replay={phase === 'archived'}\n          phaseLabel={showPhaseLabel(phase)}\n          currentTitle={currentItem?.title}\n          currentArtist={currentArtist}\n        />\n      )\n    }\n  }\n\n  return (\n    <LiveShowViewer\n      slug={slug}\n      fallbackShow={{\n        slug: show.slug,\n        title: show.title,\n        host: show.host,\n        artwork: show.image,\n        schedule: show.schedule,\n        description: show.description,\n        tagline: show.tagline,\n      }}\n    />\n  )\n}\n''')
+          PY
+
+          git add src/app/creator/studio/page.tsx src/app/shows/[slug]/page.tsx src/app/shows/[slug]/watch/page.tsx
+
+          # Guard the UX that was missing from the bad deployment.
+          test -f src/lib/ask-bvs-flow.ts
+          grep -q 'UniversalPlayerPresentation' src/app/layout.tsx
+          test -f src/components/flow/BvsObjectCard.tsx
+          test -f src/components/layout/MobileFlowNav.tsx
+          grep -q 'CreatorBroadcastDesk' src/app/creator/studio/page.tsx
+          grep -q 'LiveShowViewer' src/app/shows/[slug]/watch/page.tsx
+          grep -q 'BETA / TEST MONEY / TEST BROADCAST' src/app/beta/qa/page.tsx
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run rich UX and new beta tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run test:safe-floor
+          npm run test:beta-features
+          npm run test:bvs-live-state
+          npm run test:premium-growth
+          node scripts/now-playing-transition-tests.mjs
+          node scripts/catalogue-discovery-tests.mjs
+          node scripts/discovery-library-tests.mjs
+          node scripts/flow-pulse-depth-tests.mjs
+          npm run typecheck
+          npm run build
+
+      - name: Commit and push consolidated beta only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short
+          git commit -m "fix(beta): restore rich UX and consolidate live growth passes"
+          git push origin HEAD:saiba/beta-recover-2026-08-26
