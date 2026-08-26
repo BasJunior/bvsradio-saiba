@@ -12,6 +12,7 @@
     "test:bvs-live-state": "node --experimental-strip-types scripts/bvs-live-state-tests.mjs",
     "test:premium-instant": "node --experimental-strip-types scripts/premium-instant-tests.mjs",
     "test:premium-growth": "node --experimental-strip-types scripts/premium-growth-tests.mjs",
+    "test:artist-royalty-share": "node --experimental-strip-types scripts/artist-royalty-share-tests.mjs",
     "test:staff-copilot": "node --experimental-strip-types scripts/staff-copilot-tests.mjs",
     "test:studio-marketplace": "node --experimental-strip-types scripts/studio-marketplace-tests.mjs",
     "deploy:beta:guard": "node scripts/deploy-beta-guard.mjs",

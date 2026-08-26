@@ -80,6 +80,8 @@ export const FAMILY_LABELS: Record<MembershipFamily, string> = {
   brand: "Brands & partners",
 };
 
+export const PREMIUM_UNLOCK_CONSECUTIVE_MONTHS = 3;
+
 export const PREMIUM_CATALOG: CatalogPlan[] = [
   {
     id: "artist_free",
@@ -96,9 +98,10 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "Submit music for editorial review",
       "Approved catalogue publishing + continuous BVS rotation",
       "Basic artist profile",
+      "Release-readiness tools only; no off-platform DSP distribution queue",
+      `${royaltySharePercentLine("artist_free")} on BVS-managed master royalties only if BVS later accepts a Launch / Free Distribution release`,
       "On-site music sales · 20% platform fee on low-ticket music sales",
       "Payment processing shown separately from BVS commission",
-      "No off-platform DSP distribution queue",
     ],
   },
   {
@@ -119,6 +122,8 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "One new release submission per month",
       "Rights Passport-ready release records and income-tracking entitlement",
       "Managed DSP delivery for approved, release-ready music",
+      `${royaltySharePercentLine("artist_instant")} on net master royalties through BVS-managed distribution for that release`,
+      `${PREMIUM_UNLOCK_CONSECUTIVE_MONTHS} consecutive Premium months unlock eligible Instant releases to 100% artist share going forward`,
       "BVS Radio eligibility, basic analytics and basic support",
       "Existing releases stay live subject to catalogue-maintenance policy",
     ],
@@ -139,6 +144,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "Unlimited release submissions subject to editorial and delivery checks",
       "Album/EP support and priority release review",
       "Advanced Rights & Money, split-management and release status tools",
+      `${royaltySharePercentLine("artist_standard")} on net master royalties through BVS-managed distribution`,
       "Priority support and promotional/service advantages",
       "15% BVS fee on eligible BVS music sales",
       "Payment processing, mix/master and beat purchases remain separate",
@@ -161,6 +167,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "Unlimited active distributed catalogue subject to release readiness",
       "Unlimited release submissions subject to editorial and delivery checks",
       "Priority release-packaging support",
+      `${royaltySharePercentLine("artist_founding")} on net master royalties through BVS-managed distribution`,
       "15% BVS fee on eligible BVS music sales instead of the Free low-ticket rate",
       "Founding rate remains locked for eligible early supporters",
     ],
@@ -532,6 +539,8 @@ export const PREMIUM_TIERS: PremiumTier[] = [
       "Up to 25 active distributed tracks total, not 25 uploads every month.",
       "One new release submission per month.",
       "Rights Passport-ready release records, income-tracking entitlement, managed delivery, BVS Radio eligibility and basic support.",
+      `${royaltySharePercentLine("artist_instant")} on net master royalties through BVS-managed distribution for that release.`,
+      `${PREMIUM_UNLOCK_CONSECUTIVE_MONTHS} consecutive Premium months unlock eligible Instant releases to 100% artist share going forward.`,
       "Existing releases stay live subject to catalogue-maintenance policy if membership ends.",
     ],
   },
@@ -547,6 +556,7 @@ export const PREMIUM_TIERS: PremiumTier[] = [
       "Unlimited active distributed catalogue.",
       "Unlimited release submissions subject to editorial and delivery checks.",
       "Priority release review, advanced Rights & Money and split-management tools.",
+      `${royaltySharePercentLine("artist_standard")} on net master royalties through BVS-managed distribution.`,
       "Yearly option saves two months vs monthly.",
       "Eligible BVS music sales use the Premium 15% platform fee; payment processing stays separate.",
     ],
@@ -564,10 +574,17 @@ export const PREMIUM_TIERS: PremiumTier[] = [
       "Full Premium access at US$9/month while continuously subscribed.",
       "Designed as an early-support reward, not the new public entry tier.",
       "Unlimited catalogue and submissions subject to editorial and delivery checks.",
+      `${royaltySharePercentLine("artist_founding")} on net master royalties through BVS-managed distribution.`,
       "Eligible BVS music sales use the Premium 15% platform fee; payment processing stays separate.",
     ],
   },
 ];
+
+function royaltySharePercentLine(planId: string): string {
+  if (planId === "artist_free") return "Artist keeps 80% / BVS 20%";
+  if (planId === "artist_instant") return "Artist keeps 90% / BVS 10%";
+  return "Artist keeps 100% / BVS 0%";
+}
 
 export function defaultPremiumMonthlyUsd(): number {
   const n = Number(process.env.BVS_PREMIUM_MONTHLY_USD || "");
@@ -624,7 +641,7 @@ export function premiumPricingCopy() {
     standardYearly: 120,
     source: "BVS Rights + Money pricing model 2026-08-26 + marketplace economics 2026-08-08",
     distributionNote:
-      "Premium Instant is capped by active distributed catalogue, not monthly dumping. Artist Premium lets BVS send approved releases to major stores. Eligible is not the same as live on Spotify — stores approve after BVS sends. Producer, Supporter and other roles are separate products.",
+      "Premium Instant is capped by active distributed catalogue, not monthly dumping. Instant releases use a transparent 90/10 BVS-managed master royalty split; Premium and Founding keep 100% of BVS-managed master royalties, and 3 consecutive Premium months unlock eligible Instant releases going forward. Eligible is not the same as live on Spotify — stores approve after BVS sends.",
     storeCount: PREMIUM_DISTRIBUTION_STORES.length,
     positioning:
       "BVS is the Zimbabwean artist workspace for rights, money, release readiness and direct value. Distribution is one managed pipe inside that system.",
@@ -639,6 +656,9 @@ export function entitlementsForPlan(planId: string): Record<string, unknown> {
         artist_profile_limit: 1,
         artist_distributed_track_limit: 25,
         artist_monthly_release_submission_limit: 1,
+        artist_master_royalty_share_bps: 9000,
+        bvs_master_royalty_share_bps: 1000,
+        premium_unlock_consecutive_months: PREMIUM_UNLOCK_CONSECUTIVE_MONTHS,
         release_analytics_level: "basic",
         rights_money_level: "basic",
         marketplace_commission_bps: 1500,
@@ -650,6 +670,9 @@ export function entitlementsForPlan(planId: string): Record<string, unknown> {
         artist_profile_limit: 1,
         artist_distributed_track_limit: null,
         artist_monthly_release_submission_limit: null,
+        artist_master_royalty_share_bps: 10000,
+        bvs_master_royalty_share_bps: 0,
+        premium_unlock_consecutive_months: PREMIUM_UNLOCK_CONSECUTIVE_MONTHS,
         release_analytics_level: "basic",
         rights_money_level: "advanced",
         marketplace_commission_bps: 1500,

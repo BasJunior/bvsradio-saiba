@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import {
+  ARTIST_ROYALTY_SHARE_POLICIES,
+  PREMIUM_UNLOCK_CONSECUTIVE_MONTHS,
+  ROYALTY_SHARE_SCOPE_EXCLUSIONS,
+} from "@/lib/artist-royalty-share";
+import {
   FAMILY_LABELS,
   FOUNDING_WINDOW_LABEL,
   PREMIUM_CATALOG,
@@ -89,6 +94,8 @@ export default function PremiumEcosystemPage() {
             Unlimited active catalogue and unlimited release submissions
             <br />
             Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong> legacy full Premium
+            <br />
+            Premium and Founding keep 100% of BVS-managed master royalties
             <br />
             <span className="text-text-primary">{foundingWindow.headline}</span>
           </p>
@@ -209,6 +216,38 @@ export default function PremiumEcosystemPage() {
             </div>
           </article>
         ))}
+      </section>
+
+      <section className="mt-12 rounded-2xl border border-emerald-400/25 bg-emerald-500/5 p-6 md:p-8">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200">Artist economics</p>
+        <h2 className="mt-2 text-2xl font-semibold">Pay less upfront, or keep 100% on Premium</h2>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
+          BVS models royalty share per release, not as a claim on everything an artist earns. The split applies only to
+          net master recording royalties actually received through BVS-managed distribution for that release.
+        </p>
+        <div className="mt-5 grid gap-3 md:grid-cols-4">
+          {[
+            ARTIST_ROYALTY_SHARE_POLICIES.artist_free,
+            ARTIST_ROYALTY_SHARE_POLICIES.artist_instant,
+            ARTIST_ROYALTY_SHARE_POLICIES.artist_standard,
+            ARTIST_ROYALTY_SHARE_POLICIES.artist_founding,
+          ].map((policy) => (
+            <div key={policy.planId} className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <p className="text-sm font-semibold">{policy.label}</p>
+              <p className="mt-2 text-2xl font-semibold text-emerald-100">
+                {policy.artistShareBps / 100}% / {policy.bvsShareBps / 100}%
+              </p>
+              <p className="mt-1 text-xs text-text-secondary">artist / BVS master split</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-5 text-sm text-emerald-100">
+          {PREMIUM_UNLOCK_CONSECUTIVE_MONTHS} consecutive Premium months unlock eligible Instant releases to 100%
+          artist share going forward.
+        </p>
+        <p className="mt-3 text-xs leading-5 text-text-secondary">
+          Excludes {ROYALTY_SHARE_SCOPE_EXCLUSIONS.join(", ")}.
+        </p>
       </section>
 
       <section className="mt-16">
