@@ -238,6 +238,7 @@ export default function Navbar() {
             <>
               {showCreator && <span className="relative"><Link href="/creator/studio" className="block px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>{!showEditorial && notificationBadge}</span>}
               {showEditorial && <span className="relative"><Link href="/editorial" className="block px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>{notificationBadge}</span>}
+              {showEditorial && <Link href="/admin/copilot" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Ops Copilot</Link>}
               {premiumBadge && (
                 <Link
                   href="/artist/premium"
@@ -368,6 +369,7 @@ export default function Navbar() {
                   <Link href="/account" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Account Centre</span>{!showCreator && !showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
                   {showCreator && <Link href="/creator/studio" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Creator studio</span>{!showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
                   {showEditorial && <Link href="/editorial" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Editorial home</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
+                  {showEditorial && <Link href="/admin/copilot" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Ops Copilot</Link>}
                   {showEditorial && <Link href="/admin/creator-workflows" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Writing &amp; research review</Link>}
                   <Link href="/notifications" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={openNotifications}><span>Notifications</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
                   <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
