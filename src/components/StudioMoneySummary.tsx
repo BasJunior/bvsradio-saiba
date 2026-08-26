@@ -92,7 +92,7 @@ export default function StudioMoneySummary({ token }: { token: string }) {
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">BVS marketplace accounting</p>
             <h3 className="mt-1 text-xl font-semibold">Wallet & settlement detail</h3>
             <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-              This section is the BVS seller ledger only. Rights + Money above is the broader music-economy view and also includes outside royalty/income records.
+              This section is the BVS seller ledger only. Rights + Money above is the broader music-economy view and also includes outside royalty/income records. The marketplace policy is frozen on each settlement.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

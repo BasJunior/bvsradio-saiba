@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { incomeEntriesFromCsv, type IncomeCsvFormat } from "@/lib/income-statement-import";
 
 type IncomeEntry = {
   id?: string;
@@ -88,63 +89,6 @@ function usd(value: number | string | undefined) {
   }).format(Number(value) || 0);
 }
 
-function csvRows(text: string) {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
-  let quoted = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const char = text[i];
-    if (char === '"') {
-      if (quoted && text[i + 1] === '"') {
-        field += '"';
-        i += 1;
-      } else {
-        quoted = !quoted;
-      }
-    } else if (char === "," && !quoted) {
-      row.push(field.trim());
-      field = "";
-    } else if ((char === "\n" || char === "\r") && !quoted) {
-      if (char === "\r" && text[i + 1] === "\n") i += 1;
-      row.push(field.trim());
-      if (row.some(Boolean)) rows.push(row);
-      row = [];
-      field = "";
-    } else {
-      field += char;
-    }
-  }
-  row.push(field.trim());
-  if (row.some(Boolean)) rows.push(row);
-  return rows;
-}
-
-function normalisedCsvEntries(text: string) {
-  const rows = csvRows(text);
-  if (rows.length < 2) throw new Error("CSV needs a header row and at least one income row.");
-  const headers = rows[0].map((item) => item.toLowerCase().replaceAll(" ", "_"));
-  const pick = (record: Record<string, string>, ...keys: string[]) => keys.map((key) => record[key]).find((value) => value != null && value !== "") || "";
-  return rows.slice(1).map((values) => {
-    const record = Object.fromEntries(headers.map((header, index) => [header, values[index] || ""]));
-    return {
-      sourceCategory: pick(record, "source_category", "source"),
-      providerName: pick(record, "provider_name", "provider", "service", "payer"),
-      netAmount: pick(record, "net_amount", "net", "amount"),
-      grossAmount: pick(record, "gross_amount", "gross"),
-      feesAmount: pick(record, "fees_amount", "fees"),
-      currency: pick(record, "currency") || "USD",
-      status: pick(record, "status") || "received",
-      externalReference: pick(record, "external_reference", "reference", "transaction_id"),
-      periodStart: pick(record, "period_start"),
-      periodEnd: pick(record, "period_end"),
-      occurredAt: pick(record, "occurred_at", "date"),
-      territory: pick(record, "territory", "country"),
-      statementName: pick(record, "statement_name", "statement"),
-    };
-  });
-}
-
 export default function CreatorMusicValue({ token, embedded = false }: { token: string; embedded?: boolean }) {
   const [income, setIncome] = useState<IncomePayload | null>(null);
   const [wallet, setWallet] = useState<WalletPayload | null>(null);
@@ -152,6 +96,7 @@ export default function CreatorMusicValue({ token, embedded = false }: { token: 
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const [csvFormat, setCsvFormat] = useState<IncomeCsvFormat>("normalised");
   const [form, setForm] = useState({
     sourceCategory: "streaming_master" as SourceKey,
     providerName: "",
@@ -246,7 +191,7 @@ export default function CreatorMusicValue({ token, embedded = false }: { token: 
     event.target.value = "";
     if (!file) return;
     try {
-      const entries = normalisedCsvEntries(await file.text());
+      const entries = incomeEntriesFromCsv(await file.text(), csvFormat, file.name);
       if (entries.length > 250) throw new Error("Import a maximum of 250 rows at a time.");
       await postEntries(entries);
     } catch (caught) {
@@ -379,15 +324,21 @@ export default function CreatorMusicValue({ token, embedded = false }: { token: 
             <div>
               <h3 className="text-lg font-semibold">Import a statement</h3>
               <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-                BVS v1 accepts a normalized CSV so the data stays provider-independent. Required columns: source_category, provider_name, net_amount. Optional: currency, status, date, reference, territory, gross_amount and fees_amount.
+                Import normalized BVS rows or Amuse royalty CSV exports. Required normalized columns: source_category, provider_name, net_amount. Amuse imports are mapped to streaming/master income and keep Amuse as the replaceable delivery pipe.
               </p>
             </div>
-            <label className="cursor-pointer rounded-full border border-brand/40 px-4 py-2 text-sm font-medium text-brand hover:bg-brand/10">
-              {saving ? "Importing…" : "Import CSV"}
-              <input type="file" accept=".csv,text/csv" className="hidden" disabled={saving} onChange={importCsv} />
-            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              <select className="rounded-full border border-white/15 bg-black/20 px-4 py-2 text-sm" value={csvFormat} onChange={(event) => setCsvFormat(event.target.value as IncomeCsvFormat)}>
+                <option value="normalised">BVS normalized CSV</option>
+                <option value="amuse">Amuse royalty CSV</option>
+              </select>
+              <label className="cursor-pointer rounded-full border border-brand/40 px-4 py-2 text-sm font-medium text-brand hover:bg-brand/10">
+                {saving ? "Importing…" : "Import CSV"}
+                <input type="file" accept=".csv,text/csv" className="hidden" disabled={saving} onChange={importCsv} />
+              </label>
+            </div>
           </div>
-          <p className="mt-3 text-xs text-text-secondary">Raw provider-specific mappings can be added later without changing the BVS ledger. This is deliberate: provider = pipe, BVS = source of truth.</p>
+          <p className="mt-3 text-xs text-text-secondary">BVS stores economic source, original currency and statement references. Provider = pipe, BVS = source of truth.</p>
         </section>
       )}
 
