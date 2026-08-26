@@ -1,17 +1,20 @@
 -- BVS beta security hardening pack.
 -- Apply to staging first after reviewing Supabase advisor output.
 
--- SECURITY DEFINER functions should not be invocable directly by public roles
--- unless they are intentionally RPC APIs. These helpers are used by triggers,
--- service role, or RLS policy evaluation only.
+-- SECURITY DEFINER functions should not be broadly invocable unless intentionally needed.
+-- handle_new_user is trigger-only; rls_auto_enable is service/admin maintenance only.
 revoke all on function public.handle_new_user() from public, anon, authenticated;
-revoke all on function public.is_artist_wallet_admin() from public, anon, authenticated;
 revoke all on function public.rls_auto_enable() from public, anon, authenticated;
 
+-- is_artist_wallet_admin() is referenced directly by active RLS policies.
+-- Keep authenticated EXECUTE so policy evaluation does not fail, while removing broad public/anon use.
+revoke all on function public.is_artist_wallet_admin() from public, anon;
+grant execute on function public.is_artist_wallet_admin() to authenticated;
+
 -- Keep function name resolution stable for the known advisor warnings.
-alter function if exists public.handle_new_user() set search_path = public;
-alter function if exists public.is_artist_wallet_admin() set search_path = public;
-alter function if exists public.rls_auto_enable() set search_path = public;
+alter function public.handle_new_user() set search_path = public;
+alter function public.is_artist_wallet_admin() set search_path = public;
+alter function public.rls_auto_enable() set search_path = public;
 
 -- Service-only tables: RLS enabled with no client policies is intentional.
 -- Agents should classify these as SERVICE ONLY in /beta/qa, not as ambiguous.
@@ -62,3 +65,5 @@ create policy "Creators read own upload verification"
 
 create index if not exists marketplace_upload_verifications_user_status_idx
   on public.marketplace_upload_verifications(user_id, status, updated_at desc);
+
+notify pgrst, 'reload schema';
