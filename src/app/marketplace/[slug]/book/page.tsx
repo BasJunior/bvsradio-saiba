@@ -30,6 +30,10 @@ function timeLabel(slot: Slot) {
   return `${format.format(new Date(slot.startsAt))}–${format.format(new Date(slot.endsAt))}`;
 }
 
+function usd(value: number) {
+  return `$${Number(value || 0).toFixed(2)}`;
+}
+
 export default function MarketplaceBookingPage() {
   const params = useParams<{ slug: string }>();
   const search = useSearchParams();
@@ -130,7 +134,7 @@ export default function MarketplaceBookingPage() {
           <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Book with {provider.name}</p>
           <h1 className="mt-2 text-balance text-4xl font-semibold sm:text-5xl">{selectedPackage ? `${service.title} — ${selectedPackage.name}` : service.title}</h1>
           <p className="mt-3 text-text-secondary">{service.description}</p>
-          <p className="mt-4 text-2xl font-semibold text-brand">{selectedPackage ? `${selectedPackage.priceUsd.toFixed(2)}` : service.priceLabel || `${service.priceUsd.toFixed(2)}`}</p>
+          <p className="mt-4 text-2xl font-semibold text-brand">{selectedPackage ? usd(selectedPackage.priceUsd) : service.priceLabel || usd(service.priceUsd)}</p>
 
           <div className="mt-9">
             <h2 className="text-2xl font-semibold">Choose an available time</h2>
