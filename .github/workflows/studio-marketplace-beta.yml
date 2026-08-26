@@ -21,10 +21,8 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - name: Apply narrow Studio Marketplace integration
-        run: |
-          node scripts/studio-marketplace-finalize.mjs
-          node scripts/studio-marketplace-typefix.mjs
+      - name: Apply narrow Studio Marketplace polish
+        run: node scripts/studio-marketplace-typefix.mjs
       - run: npm ci
       - run: npm run test:studio-marketplace
       - run: npm run test:beta-features
@@ -40,21 +38,14 @@ jobs:
           mkdir -p .vercel
           printf '{"orgId":"team_HYmWoU6WIW4IHXmh3mrB10Oq","projectId":"prj_gv9stqkz190faX23mT3dy3wWStEo"}\n' > .vercel/project.json
           npm run deploy:beta:guard
-      - name: Commit finalized Studio Marketplace integration
+      - name: Commit finalized Studio Marketplace polish
         run: |
           git config user.name "BVS Studios Beta"
           git config user.email "83550884+BasJunior@users.noreply.github.com"
-          git add package.json \
-            src/app/marketplace/page.tsx \
-            src/app/creator/marketplace/page.tsx \
-            src/app/api/marketplace/route.ts \
-            src/components/CreatorMarketplaceDesk.tsx \
-            src/app/api/marketplace/bookings/route.ts \
-            'src/app/marketplace/[slug]/book/page.tsx' \
-            src/app/marketplace/studios/page.tsx
+          git add 'src/app/marketplace/[slug]/book/page.tsx' src/app/marketplace/studios/page.tsx
           if git diff --cached --quiet; then
-            echo "Studio Marketplace integration already finalized."
+            echo "Studio Marketplace polish already finalized."
             exit 0
           fi
-          git commit -m "feat(beta): finalize BVS Studios discovery [studio-finalized]"
+          git commit -m "fix(beta): polish BVS Studios booking [studio-finalized]"
           git push origin HEAD:saiba/beta-studio-discovery-2026-08-26
