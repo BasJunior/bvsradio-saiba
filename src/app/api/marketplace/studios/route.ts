@@ -6,6 +6,7 @@ import {
   normalizeStudioCity,
   roundPublicCoordinate,
   seededStudioDiscovery,
+  type StudioAvailabilitySlot,
   type StudioDiscoveryProfile,
   type StudioLocationPrecision,
 } from "@/lib/studio-marketplace";
@@ -16,6 +17,9 @@ const clean = (value: unknown, max: number) => String(value || "").trim().slice(
 const list = (value: unknown, max = 20) => Array.isArray(value)
   ? [...new Set(value.map((item) => clean(item, 80)).filter(Boolean))].slice(0, max)
   : [];
+const galleryList = (value: unknown) => Array.isArray(value)
+  ? [...new Set(value.map((item) => clean(item, 600)).filter((item) => item.startsWith("/") || /^https:\/\//i.test(item)))].slice(0, 12)
+  : [];
 
 async function rows(path: string) {
   const response = await fetch(creatorUrl(path), { headers: creatorHeaders, cache: "no-store" });
@@ -24,7 +28,12 @@ async function rows(path: string) {
   return Array.isArray(payload) ? payload : [];
 }
 
-function publicStudio(row: Record<string, unknown>, rating: number | null, reviewCount: number, nextAvailableAt: string | null): StudioDiscoveryProfile {
+function publicStudio(
+  row: Record<string, unknown>,
+  rating: number | null,
+  reviewCount: number,
+  availableSlots: StudioAvailabilitySlot[],
+): StudioDiscoveryProfile {
   const locationPrecision = (["city", "neighborhood", "exact"].includes(String(row.location_precision))
     ? String(row.location_precision)
     : "city") as StudioLocationPrecision;
@@ -50,7 +59,8 @@ function publicStudio(row: Record<string, unknown>, rating: number | null, revie
     verified: row.verified === true,
     rating,
     reviewCount,
-    nextAvailableAt,
+    nextAvailableAt: availableSlots[0]?.startsAt || null,
+    availableSlots,
   };
 }
 
@@ -81,9 +91,35 @@ export async function GET(request: Request) {
     if (!identity?.user?.id) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
     const provider = await marketplaceProvider(identity.user.id);
     if ("error" in provider) return NextResponse.json({ error: provider.error }, { status: provider.status });
-    const studioRows = await rows(`marketplace_studio_profiles?provider_key=eq.${encodeURIComponent(provider.providerKey)}&select=*&limit=1`);
-    if (studioRows === null) return NextResponse.json({ error: "Studio discovery profile is not ready." }, { status: 503 });
-    return NextResponse.json({ providerKey: provider.providerKey, displayName: provider.displayName, profile: studioRows[0] || null });
+    const now = new Date().toISOString();
+    const [studioRows, serviceRows, slotRows] = await Promise.all([
+      rows(`marketplace_studio_profiles?provider_key=eq.${encodeURIComponent(provider.providerKey)}&select=*&limit=1`),
+      rows(`creator_marketplace_listings?seller_user_id=eq.${identity.user.id}&status=eq.published&listing_type=eq.service&select=id,title,price_usd,packages&limit=100`),
+      rows(`marketplace_provider_slots?owner_user_id=eq.${identity.user.id}&status=eq.available&starts_at=gt.${encodeURIComponent(now)}&select=id,starts_at,ends_at,timezone&order=starts_at.asc&limit=100`),
+    ]);
+    if (studioRows === null || serviceRows === null || slotRows === null) {
+      return NextResponse.json({ error: "Studio discovery profile is not ready." }, { status: 503 });
+    }
+    const profile = studioRows[0] || null;
+    const gallery = profile && Array.isArray(profile.gallery) ? profile.gallery.filter(Boolean) : [];
+    const locationReady = Boolean(profile?.city && profile?.country);
+    const serviceReady = serviceRows.some((row) => Number(row.price_usd) > 0 || (Array.isArray(row.packages) && row.packages.length > 0));
+    const checklist = {
+      approvedStudioRole: true,
+      location: locationReady,
+      gallery: gallery.length > 0,
+      package: serviceReady,
+      availability: slotRows.length > 0,
+      ready: Boolean(locationReady && gallery.length > 0 && serviceReady && slotRows.length > 0),
+    };
+    return NextResponse.json({
+      providerKey: provider.providerKey,
+      displayName: provider.displayName,
+      profile,
+      launchChecklist: checklist,
+      futureSlots: slotRows.slice(0, 8),
+      publishedServices: serviceRows.length,
+    });
   }
 
   if (!features.marketplacePublic || !features.serviceOrders) {
@@ -94,7 +130,7 @@ export async function GET(request: Request) {
   const [studioRows, reviewRows, slotRows] = await Promise.all([
     rows("marketplace_studio_profiles?status=eq.approved&select=provider_key,display_name,city,country,country_code,neighborhood,location_label,latitude,longitude,location_precision,timezone,amenities,genres,room_types,capacity,hourly_from_usd,gallery,verified&order=verified.desc,updated_at.desc&limit=250"),
     rows("marketplace_studio_reviews?status=eq.published&select=provider_key,rating&limit=3000"),
-    rows(`marketplace_provider_slots?status=eq.available&starts_at=gt.${encodeURIComponent(now)}&select=provider_key,starts_at&order=starts_at.asc&limit=1000`),
+    rows(`marketplace_provider_slots?status=eq.available&starts_at=gt.${encodeURIComponent(now)}&select=provider_key,starts_at,ends_at,timezone&order=starts_at.asc&limit=2000`),
   ]);
 
   if (studioRows === null) {
@@ -112,19 +148,26 @@ export async function GET(request: Request) {
     current.count += 1;
     ratingMap.set(key, current);
   }
-  const nextMap = new Map<string, string>();
+
+  const slotMap = new Map<string, StudioAvailabilitySlot[]>();
   for (const row of slotRows || []) {
     const key = String(row.provider_key || "");
-    if (key && !nextMap.has(key)) nextMap.set(key, String(row.starts_at));
+    const startsAt = String(row.starts_at || "");
+    const endsAt = String(row.ends_at || "");
+    if (!key || !startsAt || !endsAt) continue;
+    const current = slotMap.get(key) || [];
+    if (current.length < 24) current.push({ startsAt, endsAt, timezone: String(row.timezone || "UTC") });
+    slotMap.set(key, current);
   }
 
   const studios = studioRows.map((row) => {
-    const summary = ratingMap.get(String(row.provider_key || ""));
+    const key = String(row.provider_key || "");
+    const summary = ratingMap.get(key);
     return publicStudio(
       row as Record<string, unknown>,
       summary?.count ? Math.round((summary.total / summary.count) * 10) / 10 : null,
       summary?.count || 0,
-      nextMap.get(String(row.provider_key || "")) || null,
+      slotMap.get(key) || [],
     );
   });
 
@@ -184,7 +227,7 @@ export async function POST(request: Request) {
     room_types: list(body.roomTypes, 20),
     capacity: Number.isFinite(capacity) && capacity > 0 ? Math.min(500, Math.round(capacity)) : null,
     hourly_from_usd: Number.isFinite(hourly) && hourly > 0 ? Math.round(hourly * 100) / 100 : null,
-    gallery: [],
+    gallery: galleryList(body.gallery),
     // Marketplace studio role was already editorial-approved; operational profile can publish,
     // while the separate verified badge remains false until staff verification exists.
     status: "approved",
