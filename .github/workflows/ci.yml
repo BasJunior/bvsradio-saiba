@@ -3,7 +3,9 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
+      - saiba/beta-2026-08-26
 
 permissions:
   contents: read
@@ -20,6 +22,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:safe-floor
+      - run: npm run test:beta-features
+      - run: npm run test:bvs-live-state
+      - run: npm run test:premium-growth
       - run: npm run typecheck
       - run: npm run build
       - name: Reject newly tracked sensitive or oversized artifacts
