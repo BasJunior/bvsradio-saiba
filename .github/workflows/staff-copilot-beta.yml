@@ -1,0 +1,50 @@
+name: Staff Copilot Beta
+
+on:
+  push:
+    branches:
+      - saiba/beta-staff-copilot-2026-08-26
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-finalize:
+    if: ${{ !contains(github.event.head_commit.message, '[staff-copilot-finalized]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply narrow recovered-navbar insertion
+        run: node scripts/staff-copilot-finalize.mjs
+      - run: npm ci
+      - run: npm run test:staff-copilot
+      - run: npm run test:beta-features
+      - run: npm run test:bvs-live-state
+      - run: npm run test:premium-growth
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Verify beta-only Vercel target guard
+        env:
+          VERCEL_PROJECT_ID: prj_gv9stqkz190faX23mT3dy3wWStEo
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"team_HYmWoU6WIW4IHXmh3mrB10Oq","projectId":"prj_gv9stqkz190faX23mT3dy3wWStEo"}\n' > .vercel/project.json
+          npm run deploy:beta:guard
+      - name: Commit finalized navbar only
+        run: |
+          if git diff --quiet -- src/components/layout/Navbar.tsx; then
+            echo "Navbar already finalized."
+            exit 0
+          fi
+          git config user.name "BVS Staff Copilot Beta"
+          git config user.email "83550884+BasJunior@users.noreply.github.com"
+          git add src/components/layout/Navbar.tsx
+          git commit -m "feat(beta): expose staff-only Ops Copilot nav [staff-copilot-finalized]"
+          git push origin HEAD:saiba/beta-staff-copilot-2026-08-26
