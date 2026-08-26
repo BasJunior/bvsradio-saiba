@@ -115,6 +115,14 @@ export default function MarketplaceAvailabilityDesk() {
   const pendingBookings = useMemo(() => bookings.filter((booking) => booking.status === "requested"), [bookings]);
   const confirmedBookings = useMemo(() => bookings.filter((booking) => booking.status === "confirmed"), [bookings]);
   const slotById = useMemo(() => new Map(slots.map((slot) => [slot.id, slot])), [slots]);
+  const upcomingConfirmedBookings = useMemo(() => confirmedBookings.filter((booking) => {
+    const slot = slotById.get(booking.slot_id);
+    return !slot || Date.parse(slot.ends_at) >= Date.now();
+  }), [confirmedBookings, slotById]);
+  const completedBookings = useMemo(() => confirmedBookings.filter((booking) => {
+    const slot = slotById.get(booking.slot_id);
+    return Boolean(slot && Date.parse(slot.ends_at) < Date.now());
+  }), [confirmedBookings, slotById]);
 
   async function post(body: Record<string, unknown>) {
     const response = await fetch("/api/marketplace/availability", {
@@ -239,17 +247,37 @@ export default function MarketplaceAvailabilityDesk() {
             </div>
           </div>
 
-          {confirmedBookings.length ? (
+          {upcomingConfirmedBookings.length ? (
             <div className="mt-8 border-t border-white/10 pt-7">
-              <p className="text-xs font-semibold uppercase tracking-[.16em] text-brand">Confirmed sessions</p>
+              <p className="text-xs font-semibold uppercase tracking-[.16em] text-brand">Upcoming confirmed sessions</p>
               <div className="mt-3 space-y-2">
-                {confirmedBookings.map((booking) => {
+                {upcomingConfirmedBookings.map((booking) => {
                   const slot = slotById.get(booking.slot_id);
                   return (
                     <div key={booking.id} className="rounded-xl border border-white/10 p-4">
                       <div className="flex flex-wrap justify-between gap-3">
                         <div><p className="font-medium">{booking.service_title} · {booking.customer_name}</p>{slot ? <p className="mt-1 text-xs text-text-secondary">{label(slot)}</p> : null}</div>
-                        <span className="text-xs font-semibold text-brand">Confirmed</span>
+                        <span className="text-xs font-semibold text-brand">Confirmed · upcoming</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {completedBookings.length ? (
+            <div className="mt-8 border-t border-white/10 pt-7">
+              <p className="text-xs font-semibold uppercase tracking-[.16em] text-brand">Completed sessions</p>
+              <p className="mt-1 text-xs text-text-secondary">Completed is derived from a confirmed booking whose published slot has ended. The client can now leave one verified BVS studio review.</p>
+              <div className="mt-3 space-y-2">
+                {completedBookings.map((booking) => {
+                  const slot = slotById.get(booking.slot_id);
+                  return (
+                    <div key={booking.id} className="rounded-xl border border-white/10 bg-white/[.02] p-4">
+                      <div className="flex flex-wrap justify-between gap-3">
+                        <div><p className="font-medium">{booking.service_title} · {booking.customer_name}</p>{slot ? <p className="mt-1 text-xs text-text-secondary">{label(slot)}</p> : null}</div>
+                        <span className="text-xs font-semibold text-text-secondary">Completed · review eligible</span>
                       </div>
                     </div>
                   );
