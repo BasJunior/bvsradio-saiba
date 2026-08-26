@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test:beta-features": "node --experimental-strip-types scripts/beta-feature-tests.mjs",
     "test:bvs-live-state": "node --experimental-strip-types scripts/bvs-live-state-tests.mjs",
+    "test:premium-instant": "node --experimental-strip-types scripts/premium-instant-tests.mjs",
     "test:premium-growth": "node --experimental-strip-types scripts/premium-growth-tests.mjs",
     "test:staff-copilot": "node --experimental-strip-types scripts/staff-copilot-tests.mjs",
     "test:studio-marketplace": "node --experimental-strip-types scripts/studio-marketplace-tests.mjs",

@@ -41,7 +41,7 @@ function priceLine(plan: CatalogPlan) {
 function annualSavings(plan: CatalogPlan) {
   if (!plan.monthlyUsd || !plan.yearlyUsd) return null;
   const savings = plan.monthlyUsd * 12 - plan.yearlyUsd;
-  return savings > 0 ? savings : null;
+  return savings > 0 ? Math.round(savings * 100) / 100 : null;
 }
 
 export default function PremiumEcosystemPage() {
@@ -62,12 +62,12 @@ export default function PremiumEcosystemPage() {
         <div className="rounded-2xl border border-brand/30 bg-brand/10 p-6">
           <p className="text-xs uppercase tracking-wider text-brand">Pipeline</p>
           <p className="mt-2 text-xl font-semibold text-text-primary">
-            Submit → Publish → Rotate & sell → Premium ships wider
+            Submit → Publish → Rotate & sell → Premium manages wider delivery
           </p>
           <p className="mt-2 text-sm text-text-secondary">
-            Listening, editorial publish, and BVS rotation stay free. Artist Premium lets BVS{" "}
-            <strong className="text-text-primary">send</strong> approved releases to stores — eligible is not live on
-            Spotify. Artist Founding/Standard are live; Producer Plus/Pro use Stripe test checkout on beta only. Other families remain waitlist.
+            Listening, editorial publish, and BVS rotation stay free. Premium Instant starts a professional BVS-managed
+            catalogue of up to 25 active distributed tracks; Premium removes the catalogue and submission limits. Producer
+            Plus/Pro use Stripe test checkout on beta only. Other families remain waitlist.
           </p>
           <div className="mt-4 flex flex-wrap gap-2 text-xs text-text-secondary">
             <span className="rounded-full border border-white/15 px-3 py-1">Listen free</span>
@@ -77,23 +77,20 @@ export default function PremiumEcosystemPage() {
           </div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-          <p className="text-xs uppercase tracking-wider text-text-secondary">Artist list prices (locked)</p>
+          <p className="text-xs uppercase tracking-wider text-text-secondary">Artist ladder</p>
           <p className="mt-2 text-3xl font-semibold">{pricing.headline}</p>
           <p className="mt-2 text-sm text-text-secondary">
-            Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong>
+            Premium Instant <strong className="text-text-primary">US$5.99/mo · US$60/yr</strong>
+            <br />
+            Up to 25 active distributed tracks, one new release submission per month
+            <br />
+            Premium <strong className="text-text-primary">US$12/mo · US$120/yr</strong>
+            <br />
+            Unlimited active catalogue and unlimited release submissions
+            <br />
+            Founding <strong className="text-text-primary">US$9/mo · US$90/yr</strong> legacy full Premium
             <br />
             <span className="text-text-primary">{foundingWindow.headline}</span>
-            {foundingWindow.open
-              ? ` · first ${foundingWindow.seatCap} seats · ${foundingWindow.daysRemaining} day${foundingWindow.daysRemaining === 1 ? "" : "s"} left`
-              : " · Standard pricing applies"}
-            <br />
-            Standard <strong className="text-text-primary">US$12/mo · US$120/yr</strong>
-            {!foundingWindow.open && (
-              <>
-                {" "}
-                (after {FOUNDING_WINDOW_LABEL})
-              </>
-            )}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
@@ -243,8 +240,8 @@ export default function PremiumEcosystemPage() {
           <h2 className="text-xl font-semibold">Status labels</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-secondary">
             <li>
-              <strong className="text-emerald-200">Live</strong> — Artist Free / Founding / Standard with Paynow
-              checkout, founding date+seat gate, and distribution entitlement flags
+              <strong className="text-emerald-200">Live</strong> — Artist Free / Premium Instant / Premium / legacy
+              Founding with Paynow checkout, founding date+seat gate, and distribution entitlement flags
             </li>
             <li>
               <strong className="text-amber-100">Pilot</strong> — Producer / Supporter bands published; catalogue
@@ -266,8 +263,9 @@ export default function PremiumEcosystemPage() {
             <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-text-secondary">
               <li>Artist Premium desk + Stripe auto-renew and Paynow prepaid billing</li>
               <li>Beta-only Producer Plus/Pro Stripe-test upgrade desk</li>
-              <li>Founding eligibility: through {FOUNDING_WINDOW_LABEL} and first 50 seats</li>
-              <li>Distribution entitlement on paid Artist Premium for approved releases</li>
+              <li>Premium Instant: 25 active distributed tracks, one new release submission per month</li>
+              <li>Founding eligibility: through {FOUNDING_WINDOW_LABEL} and first 50 seats as a legacy full-Premium reward</li>
+              <li>Distribution entitlement on paid artist plans for approved releases</li>
               <li>Producer BeatStore free/plus/pro limits and marketplace fee bands</li>
             </ul>
           </div>

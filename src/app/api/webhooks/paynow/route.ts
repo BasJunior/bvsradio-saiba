@@ -48,7 +48,7 @@ function recoverPremiumOrderFromPaynow(input: {
     input.body.planId ||
     input.body.PlanId ||
     input.body.additionalinfo ||
-    "artist_founding";
+    "artist_instant";
   const intervalRaw = input.body.interval || input.body.Interval || "month";
   const planId: ArtistPremiumPlanId = normalizeArtistPlanId(String(planRaw));
   const interval: BillingInterval = normalizeInterval(String(intervalRaw));
@@ -65,9 +65,11 @@ function recoverPremiumOrderFromPaynow(input: {
     String(input.body.customeruserid || input.body.customerUserId || input.body.userid || "").trim() ||
     undefined;
   const title =
-    planId === "artist_founding"
-      ? `BVS Founding Artist Premium (${interval})`
-      : `BVS Standard Artist Premium (${interval})`;
+    planId === "artist_instant"
+      ? `BVS Premium Instant (${interval})`
+      : planId === "artist_founding"
+        ? `BVS Founding Artist Premium (${interval})`
+        : `BVS Premium (${interval})`;
 
   return {
     reference,

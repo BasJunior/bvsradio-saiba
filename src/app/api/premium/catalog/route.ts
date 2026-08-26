@@ -18,7 +18,7 @@ export async function GET() {
       "Payment never guarantees editorial approval, rotation, charts, or streams.",
       "Listening on BVS Radio stays free.",
       "Artist Premium is the distribution switch for approved releases.",
-      "Producer/Supporter/Team prices outside Artist Founding/Standard are pilot bands until billing ships.",
+      "Producer/Supporter/Team prices outside Artist Premium Instant/Premium are pilot bands until billing ships.",
       "Sponsored placements are labelled; no payola.",
     ],
   });

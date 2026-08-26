@@ -129,6 +129,7 @@ export function marketplaceCommissionBps(
 
   if (input.productType === "single" || input.productType === "mix") {
     if (
+      plan.includes("artist_instant") ||
       plan.includes("artist_founding") ||
       plan.includes("artist_standard") ||
       plan.includes("artist_plus") ||

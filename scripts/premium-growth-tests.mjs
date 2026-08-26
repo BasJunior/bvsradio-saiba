@@ -41,7 +41,8 @@ import {
     serviceOrderCount: 0,
     liveBroadcastCount: 0,
   });
-  assert.equal(plan.planId, "artist_standard");
+  assert.equal(plan.planId, "artist_instant");
+  assert.equal(plan.monthlyUsd, 5.99);
 }
 
 {

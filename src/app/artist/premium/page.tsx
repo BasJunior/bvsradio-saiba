@@ -50,7 +50,7 @@ function ArtistPremiumInner() {
   const [busy, setBusy] = useState(false)
   const [info, setInfo] = useState('')
   const [interval, setInterval] = useState<'month' | 'year'>('month')
-  const [planChoice, setPlanChoice] = useState<'founding' | 'standard'>('founding')
+  const [planChoice, setPlanChoice] = useState<'instant' | 'founding' | 'standard'>('instant')
 
   const load = useCallback(async (accessToken: string) => {
     const res = await fetch('/api/artist/premium', {
@@ -60,10 +60,16 @@ function ArtistPremiumInner() {
     const payload = await res.json()
     if (!res.ok) throw new Error(payload.error || 'Could not load premium status')
     setData(payload)
-    if (payload.founding && !payload.founding.available) setPlanChoice('standard')
-    if (payload.foundingWindow && !payload.foundingWindow.open) setPlanChoice('standard')
+    const requestedTier = searchParams.get('tier')
+    if (requestedTier === 'standard' || requestedTier === 'founding' || requestedTier === 'instant') {
+      setPlanChoice(requestedTier)
+    }
+    if (payload.founding && !payload.founding.available && requestedTier === 'founding') setPlanChoice('standard')
+    if (payload.foundingWindow && !payload.foundingWindow.open && requestedTier === 'founding') setPlanChoice('standard')
+    if (payload.planId?.includes('instant')) setPlanChoice('instant')
+    if (payload.planId?.includes('founding')) setPlanChoice('founding')
     if (payload.planId?.includes('standard')) setPlanChoice('standard')
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -98,7 +104,8 @@ function ArtistPremiumInner() {
 
   const priceLabel = useMemo(() => {
     if (planChoice === 'standard') return interval === 'year' ? 'US$120/year' : 'US$12/month'
-    return interval === 'year' ? 'US$90/year' : 'US$9/month'
+    if (planChoice === 'founding') return interval === 'year' ? 'US$90/year' : 'US$9/month'
+    return interval === 'year' ? 'US$60/year' : 'US$5.99/month'
   }, [planChoice, interval])
 
   const subscribe = async (provider: 'paynow' | 'stripe') => {
@@ -152,9 +159,9 @@ function ArtistPremiumInner() {
       <p className="text-xs uppercase tracking-[.2em] text-brand">Artists</p>
       <h1 className="mt-2 text-4xl font-semibold">Premium Artist</h1>
       <p className="mt-3 text-text-secondary">
-        Stripe auto-renew or Paynow prepaid membership for multi-platform distribution of{' '}
-        <strong className="text-text-primary">approved</strong> releases. Continuous BVS rotation after editorial
-        publish does <strong className="text-text-primary">not</strong> require Premium.
+        Premium Instant starts a BVS-managed catalogue of up to 25 active distributed tracks. Full Premium removes
+        the catalogue and submission limits. Continuous BVS rotation after editorial publish does{' '}
+        <strong className="text-text-primary">not</strong> require Premium.
       </p>
 
       {error && <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
@@ -213,9 +220,9 @@ function ArtistPremiumInner() {
           </p>
 
           {data.tiers && data.tiers.length > 0 && !data.premiumActive && (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-3">
               {data.tiers.map((tier) => {
-                const id = tier.id === 'standard' ? 'standard' : 'founding'
+                const id = tier.id === 'standard' ? 'standard' : tier.id === 'founding' ? 'founding' : 'instant'
                 const disabled = id === 'founding' && data.founding && !data.founding.available
                 return (
                   <button
@@ -234,6 +241,7 @@ function ArtistPremiumInner() {
                       <span className="text-xs font-normal text-text-secondary">/mo</span>
                     </p>
                     <p className="text-xs text-text-secondary">or US${tier.yearlyUsd}/year</p>
+                    {tier.notes?.[0] && <p className="mt-3 text-xs text-text-secondary">{tier.notes[0]}</p>}
                   </button>
                 )
               })}
