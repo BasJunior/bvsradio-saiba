@@ -22,6 +22,8 @@ jobs:
         shell: bash
         run: |
           set -uo pipefail
+          git config user.name "BVS Beta Recovery"
+          git config user.email "83550884+BasJunior@users.noreply.github.com"
           git fetch origin saiba/beta-2026-08-26
           set +e
           git merge --no-commit --no-ff origin/saiba/beta-2026-08-26
