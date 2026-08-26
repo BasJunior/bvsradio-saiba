@@ -1,5 +1,11 @@
 export type StudioLocationPrecision = "city" | "neighborhood" | "exact";
 
+export type StudioAvailabilitySlot = {
+  startsAt: string;
+  endsAt: string;
+  timezone: string;
+};
+
 export type StudioDiscoveryProfile = {
   providerKey: string;
   ownerUserId?: string | null;
@@ -23,6 +29,7 @@ export type StudioDiscoveryProfile = {
   rating: number | null;
   reviewCount: number;
   nextAvailableAt?: string | null;
+  availableSlots?: StudioAvailabilitySlot[];
 };
 
 export type StudioReview = {
@@ -60,6 +67,7 @@ export const seededStudioDiscovery: StudioDiscoveryProfile[] = [
     rating: null,
     reviewCount: 0,
     nextAvailableAt: null,
+    availableSlots: [],
   },
 ];
 
@@ -94,4 +102,34 @@ export function haversineKm(
 
 export function studioPriceLabel(value: number | null | undefined) {
   return value && value > 0 ? `From $${value.toFixed(0)}` : "See packages";
+}
+
+export function studioSlotLocalDate(slot: StudioAvailabilitySlot) {
+  const date = new Date(slot.startsAt);
+  if (!Number.isFinite(date.getTime())) return "";
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: slot.timezone || "UTC",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+    return `${values.year}-${values.month}-${values.day}`;
+  } catch {
+    return date.toISOString().slice(0, 10);
+  }
+}
+
+export function studioSlotMinutes(slot: StudioAvailabilitySlot) {
+  const start = Date.parse(slot.startsAt);
+  const end = Date.parse(slot.endsAt);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return 0;
+  return Math.round((end - start) / 60000);
+}
+
+export function studioSlotMatches(slot: StudioAvailabilitySlot, date: string, minimumMinutes: number) {
+  if (date && studioSlotLocalDate(slot) !== date) return false;
+  if (minimumMinutes > 0 && studioSlotMinutes(slot) < minimumMinutes) return false;
+  return true;
 }
