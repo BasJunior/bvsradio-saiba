@@ -22,7 +22,9 @@ jobs:
           node-version: 22
           cache: npm
       - name: Apply narrow Studio Marketplace integration
-        run: node scripts/studio-marketplace-finalize.mjs
+        run: |
+          node scripts/studio-marketplace-finalize.mjs
+          node scripts/studio-marketplace-typefix.mjs
       - run: npm ci
       - run: npm run test:studio-marketplace
       - run: npm run test:beta-features
@@ -48,7 +50,8 @@ jobs:
             src/app/api/marketplace/route.ts \
             src/components/CreatorMarketplaceDesk.tsx \
             src/app/api/marketplace/bookings/route.ts \
-            'src/app/marketplace/[slug]/book/page.tsx'
+            'src/app/marketplace/[slug]/book/page.tsx' \
+            src/app/marketplace/studios/page.tsx
           if git diff --cached --quiet; then
             echo "Studio Marketplace integration already finalized."
             exit 0
