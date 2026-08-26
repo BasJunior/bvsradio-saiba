@@ -7,6 +7,12 @@ import {
   entitlementsForPlan,
   type CatalogPlan,
 } from "@/lib/premium-catalog";
+import {
+  contextualUpgradePrompts,
+  producerCommissionSavings,
+  recommendPlan,
+  type CreatorValueSummary,
+} from "@/lib/premium-growth";
 import { resolveProducerBeatEntitlements } from "@/lib/producer-entitlements";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -28,6 +34,106 @@ type MembershipRow = {
 
 function planMeta(planId: string): CatalogPlan | undefined {
   return PREMIUM_CATALOG.find((p) => p.id === planId);
+}
+
+async function getRows<T>(path: string): Promise<T[]> {
+  if (!SUPABASE_URL || !SERVICE) return [];
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: serviceHeaders(SERVICE),
+      cache: "no-store",
+    });
+    if (!response.ok) return [];
+    const data = await response.json();
+    return Array.isArray(data) ? (data as T[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function exactCount(path: string): Promise<number> {
+  if (!SUPABASE_URL || !SERVICE) return 0;
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      headers: { ...serviceHeaders(SERVICE), Prefer: "count=exact" },
+      cache: "no-store",
+    });
+    if (!response.ok) return 0;
+    const range = response.headers.get("content-range") || "";
+    const total = Number(range.split("/")[1] || 0);
+    if (Number.isFinite(total)) return total;
+    const data = await response.json().catch(() => []);
+    return Array.isArray(data) ? data.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+async function creatorValueSummary(userId: string): Promise<{
+  value: CreatorValueSummary;
+  approvedReleaseCount: number;
+  monthlySalesUsd: number;
+  serviceOrderCount: number;
+  liveBroadcastCount: number;
+}> {
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const [
+    settlements,
+    serviceOrderCount,
+    liveBroadcastCount,
+    approvedReleaseCount,
+    saves,
+  ] = await Promise.all([
+    getRows<{ gross_product_revenue?: number | string }>(
+      `commerce_seller_settlements?seller_user_id=eq.${encodeURIComponent(
+        userId,
+      )}&created_at=gte.${encodeURIComponent(
+        since,
+      )}&select=gross_product_revenue&limit=500`,
+    ),
+    exactCount(
+      `creator_service_orders?seller_user_id=eq.${encodeURIComponent(
+        userId,
+      )}&created_at=gte.${encodeURIComponent(since)}&select=id`,
+    ),
+    exactCount(
+      `creator_live_broadcasts?user_id=eq.${encodeURIComponent(
+        userId,
+      )}&created_at=gte.${encodeURIComponent(since)}&select=id`,
+    ),
+    exactCount(
+      `releases?artist_user_id=eq.${encodeURIComponent(
+        userId,
+      )}&editorial_status=in.(approved,published)&select=id`,
+    ),
+    exactCount(
+      `library_saves?user_id=eq.${encodeURIComponent(
+        userId,
+      )}&created_at=gte.${encodeURIComponent(since)}&select=id`,
+    ),
+  ]);
+  const monthlySalesUsd = settlements.reduce(
+    (sum, row) => sum + (Number(row.gross_product_revenue) || 0),
+    0,
+  );
+  const value: CreatorValueSummary = {
+    trackPlays: 0,
+    profileVisits: 0,
+    beatPreviews: 0,
+    saves,
+    followers: 0,
+    salesUsd: Math.round(monthlySalesUsd * 100) / 100,
+    serviceEnquiries: serviceOrderCount,
+    liveBroadcasts: liveBroadcastCount,
+    countries: 0,
+  };
+  return {
+    value,
+    approvedReleaseCount,
+    monthlySalesUsd: value.salesUsd,
+    serviceOrderCount,
+    liveBroadcastCount,
+  };
 }
 
 /** Human desk sections derived from plan + entitlements. */
@@ -257,6 +363,28 @@ export async function GET(req: Request) {
 
   const subscribed = memberships.length > 0;
   const producerUsage = await resolveProducerBeatEntitlements(user.id);
+  const growth = await creatorValueSummary(user.id);
+  const recommendation = recommendPlan({
+    profileRole: typeof profile.role === "string" ? String(profile.role) : null,
+    isProducer: Boolean(profile.is_producer) || producerUsage.planId !== "producer_free",
+    distributionEnabled: Boolean(profile.distribution_enabled),
+    premiumActive: Boolean(profile.premium_active),
+    beatLiveCount: producerUsage.liveCount,
+    beatLiveLimit: producerUsage.beatLiveLimit,
+    monthlySalesUsd: growth.monthlySalesUsd,
+    approvedReleaseCount: growth.approvedReleaseCount,
+    serviceOrderCount: growth.serviceOrderCount,
+    liveBroadcastCount: growth.liveBroadcastCount,
+  });
+  const commissionSavings = producerCommissionSavings(growth.monthlySalesUsd);
+  const upgradePrompts = contextualUpgradePrompts({
+    beatLiveCount: producerUsage.liveCount,
+    beatLiveLimit: producerUsage.beatLiveLimit,
+    monthlySalesUsd: growth.monthlySalesUsd,
+    approvedReleaseCount: growth.approvedReleaseCount,
+    serviceOrderCount: growth.serviceOrderCount,
+    liveBroadcastCount: growth.liveBroadcastCount,
+  });
   const desks = memberships.map((m) => {
     const plan = planMeta(m.plan_id);
     const isProducerish =
@@ -314,6 +442,61 @@ export async function GET(req: Request) {
     upgradeHref: "/premium",
     artistDeskHref: "/artist/premium",
     distributionStoreCount: PREMIUM_DISTRIBUTION_STORES.length,
+    growth: {
+      recommendation,
+      value: growth.value,
+      commissionSavings,
+      upgradePrompts,
+      trials: [
+        {
+          id: "producer_plus_trial",
+          label: "14 days of Producer Plus tools",
+          status: "scaffold",
+        },
+        {
+          id: "artist_distribution_trial",
+          label: "First approved distribution submission trial",
+          status: "scaffold",
+        },
+        {
+          id: "supporter_trial",
+          label: "7-day Supporter access",
+          status: "scaffold",
+        },
+      ],
+      referral: {
+        label: "Invite verified creators",
+        creditUsd: 5,
+        trigger: "credited only after invited creator becomes paid",
+        status: "scaffold",
+      },
+      demandReadiness: [
+        {
+          id: "first_100_plays",
+          label: "First 100 real plays",
+          done: growth.value.trackPlays >= 100,
+          detail: "Proves BVS can get a creator heard before asking for a subscription.",
+        },
+        {
+          id: "first_sale",
+          label: "First paid sale",
+          done: growth.value.salesUsd > 0,
+          detail: "Marketplace paid tiers make sense after BVS helps generate revenue.",
+        },
+        {
+          id: "first_service_enquiry",
+          label: "First service enquiry",
+          done: growth.value.serviceEnquiries > 0,
+          detail: "Service Pro should follow actual booking demand, not precede it.",
+        },
+        {
+          id: "first_live_audience",
+          label: "First live audience",
+          done: growth.value.liveBroadcasts > 0,
+          detail: "Live Premium is strongest when shows create listeners, followers and replay value.",
+        },
+      ],
+    },
     message: subscribed
       ? "Premium desk reflects your active membership(s)."
       : "No active Premium membership — free studio tools stay available. Upgrade on the Premium page when ready.",

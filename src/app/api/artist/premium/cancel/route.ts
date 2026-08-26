@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { recordServerEvent } from "@/lib/analytics-server";
 import { authUserId } from "@/lib/storage-upload";
 import {
   cancelArtistPremium,
@@ -33,6 +34,10 @@ export async function POST(req: Request) {
   if (body.confirm !== true) {
     const jobs = await listArtistDistributionJobs(user.id);
     const consequences = premiumCancelConsequences(jobs);
+    await recordServerEvent("cancel_started", {
+      product: "artist_premium",
+      mode,
+    });
     return NextResponse.json({
       requireConfirm: true,
       mode,
@@ -60,6 +65,11 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
+
+  await recordServerEvent("cancelled", {
+    product: "artist_premium",
+    mode: result.mode,
+  });
 
   return NextResponse.json({
     ok: true,

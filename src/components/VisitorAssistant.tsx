@@ -4,7 +4,15 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 
 type Answer = { reply: string; links?: Array<{ label: string; href: string }> };
-type Message = Answer & { role: "user" | "assistant" };
+
+type Message = Answer & {
+  role: "user" | "assistant" | "support_offer";
+};
+
+type SupportOffer = Message & {
+  role: "support_offer";
+  showHumanSupport: boolean;
+};
 
 export default function VisitorAssistant() {
   const [open, setOpen] = useState(false);
@@ -21,6 +29,25 @@ export default function VisitorAssistant() {
     setInput("");
     setBusy(true);
     setMessages((items) => [...items, { role: "user", reply: message }]);
+    
+    // Check if user wants human support
+    if (message.toLowerCase().includes("human") || message.toLowerCase().includes("support") || message.toLowerCase().includes("agent")) {
+      setMessages((items) => [
+        ...items,
+        {
+          role: "assistant",
+          reply: "I've got you! Let me connect you with our human support team.",
+        },
+        {
+          role: "support_offer",
+          reply: "",
+          showHumanSupport: true,
+        }
+      ]);
+      setBusy(false);
+      return;
+    }
+    
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -44,13 +71,41 @@ export default function VisitorAssistant() {
         <button onClick={() => setOpen(false)} aria-label="Close assistant" className="text-2xl text-text-secondary">×</button>
       </header>
       <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
-        {messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-10" : "mr-8"}>
-          <p className={message.role === "user" ? "rounded-2xl rounded-br-md bg-brand px-4 py-3 text-sm text-black" : "rounded-2xl rounded-bl-md bg-white/[0.07] px-4 py-3 text-sm"}>{message.reply}</p>
-          {message.links && <div className="mt-2 flex gap-2">{message.links.map((link) => <Link key={link.href} href={link.href} className="rounded-full border border-brand/40 px-3 py-1.5 text-xs text-brand">{link.label} →</Link>)}</div>}
-        </div>)}
+        {messages.map((message, index) => {
+          if (message.role === "support_offer") {
+            return (
+              <div key={index} className="flex items-start">
+                <div className="mr-4 flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <p className="rounded-2xl rounded-bl-md bg-white/[0.07] px-4 py-3 text-sm">
+                    I’ve created a support ticket for you. Our team will get back to you shortly via email.
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <a href="/contact" className="rounded-full border border-brand/40 px-3 py-1.5 text-xs text-brand">
+                      View all support options →
+                    </a>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          
+          return (
+            <div key={index} className={message.role === "user" ? "ml-10" : "mr-8"}>
+              <p className={message.role === "user" ? "rounded-2xl rounded-br-md bg-brand px-4 py-3 text-sm text-black" : "rounded-2xl rounded-bl-md bg-white/[0.07] px-4 py-3 text-sm"}>{message.reply}</p>
+              {message.links && <div className="mt-2 flex gap-2">{message.links.map((link) => <Link key={link.href} href={link.href} className="rounded-full border border-brand/40 px-3 py-1.5 text-xs text-brand">{link.label} →</Link>)}</div>}
+            </div>
+          );
+        })}
         {busy && <p className="text-sm text-text-secondary">Thinking…</p>}
       </div>
-      {messages.length === 1 && <div className="flex flex-wrap gap-2 px-4 pb-3">{["How do I listen?", "Submit my music", "Audio services"].map((text) => <button key={text} onClick={() => void send(undefined, text)} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-text-secondary">{text}</button>)}</div>}
+      {messages.length === 1 && <div className="flex flex-wrap gap-2 px-4 pb-3">{["How do I listen?", "Submit my music", "Audio services", "Talk to human"].map((text) => <button key={text} onClick={() => void send(undefined, text === "Talk to human" ? "I want to speak with a human support agent" : text)} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-text-secondary">{text}</button>)}</div>}
       <form onSubmit={(event) => void send(event)} className="flex gap-2 border-t border-white/10 p-3">
         <input value={input} onChange={(event) => setInput(event.target.value)} maxLength={500} placeholder="Ask about BVS Radio…" aria-label="Message BVS guide" className="min-w-0 flex-1 rounded-full bg-white/[0.07] px-4 py-2.5 text-sm outline-none focus:ring-1 focus:ring-brand" />
         <button disabled={!input.trim() || busy} aria-label="Send message" className="h-10 w-10 rounded-full bg-brand text-black disabled:opacity-40">↑</button>

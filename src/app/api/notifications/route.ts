@@ -26,13 +26,14 @@ export async function GET(request: Request) {
 
   let events: Event[] = []
   if (editorial) {
-    const [messages, trackMessages, beats, tracks, releases, requests, applications, articles, shows, episodes, payouts] = await Promise.all([
+    const [messages, trackMessages, beats, tracks, releases, requests, coverRequests, applications, articles, shows, episodes, payouts] = await Promise.all([
       rows('beat_review_messages?author_kind=eq.producer&select=id,beat_id,message,created_at&order=created_at.desc&limit=30'),
       rows('track_review_messages?author_kind=eq.artist&select=id,track_id,message,created_at&order=created_at.desc&limit=30'),
       rows('beats?status=in.(submitted,changes_requested)&select=id,title,status,updated_at&order=updated_at.desc&limit=30'),
       rows('tracks?editorial_status=in.(submitted,in_review)&select=id,title,editorial_status,updated_at&order=updated_at.desc&limit=30'),
       rows('releases?editorial_status=in.(submitted,in_review)&select=id,title,editorial_status,updated_at&order=updated_at.desc&limit=30'),
       rows('track_review_requests?status=in.(open,reviewing)&select=id,request_type,status,created_at&order=created_at.desc&limit=30'),
+      rows('artwork_change_requests?status=in.(open,reviewing)&select=id,request_type,target_kind,status,created_at&order=created_at.desc&limit=30').catch(() => [] as Array<Record<string, string>>),
       rows('writer_applications?status=eq.submitted&select=id,status,created_at&order=created_at.desc&limit=30'),
       rows('editorial_articles?status=in.(submitted,changes_requested)&select=id,title,status,updated_at&order=updated_at.desc&limit=30'),
       rows('show_creator_profiles?status=eq.submitted&select=id,title,status,updated_at&order=updated_at.desc&limit=30'),
@@ -46,6 +47,7 @@ export async function GET(request: Request) {
       ...tracks.map(item => ({ id: `track-${item.id}-${item.editorial_status}`, title: 'Track submission', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/editorial#ed-tracks', kind: 'track' })),
       ...releases.map(item => ({ id: `release-${item.id}-${item.editorial_status}`, title: 'Release submission', detail: `${item.title} · ${String(item.editorial_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: '/editorial#ed-releases', kind: 'release' })),
       ...requests.map(item => ({ id: `request-${item.id}-${item.status}`, title: 'Artist request', detail: String(item.request_type || '').replaceAll('_', ' '), created_at: String(item.created_at), href: '/editorial#ed-requests', kind: 'request' })),
+      ...coverRequests.map(item => ({ id: `cover-${item.id}-${item.status}`, title: 'Cover change request', detail: `${String(item.target_kind || '').replaceAll('_', ' ')} · ${String(item.request_type || '').replaceAll('_', ' ')}`, created_at: String(item.created_at), href: '/editorial#ed-requests', kind: 'request' })),
       ...applications.map(item => ({ id: `writer-${item.id}`, title: 'Writer application', detail: 'New application waiting for review', created_at: String(item.created_at), href: '/admin/creator-workflows', kind: 'writer' })),
       ...articles.map(item => ({ id: `article-${item.id}-${item.status}`, title: 'Article submission', detail: String(item.title || 'Untitled article'), created_at: String(item.updated_at), href: '/admin/creator-workflows', kind: 'article' })),
       ...shows.map(item => ({ id: `show-${item.id}-${item.status}`, title: 'Show proposal', detail: String(item.title || 'Untitled show'), created_at: String(item.updated_at), href: '/admin/creator-workflows', kind: 'show' })),

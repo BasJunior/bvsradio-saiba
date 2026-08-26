@@ -18,6 +18,8 @@ type Credit = { id: string; track_id: string; person_name: string; credit_role: 
 type Staff = { user_id: string; role: EditorialRole; active: boolean }
 type Audit = { id: number; action: string; entity_type: string; entity_id: string; created_at: string }
 type TrackRequest = { id: string; track_id: string; artist_user_id: string; request_type: string; message: string; status: string; staff_notes?: string; created_at: string }
+type ArtworkChangeRequest = { id: string; requester_user_id: string; target_kind: 'track' | 'release' | 'beat' | 'beat_pack'; target_id: string; request_type: string; message: string; status: string; staff_notes?: string; proposed_artwork_path?: string | null; proposed_artwork_url?: string | null; current_artwork_url?: string | null; apply_to_pack_members?: boolean; created_at: string }
+type BeatPack = { id: string; title: string; producer_user_id: string; artwork_path?: string | null; status?: string }
 type ArtistWaitlist = { id: string; email: string; artist_name: string; country?: string; city?: string; status: string; source: string; created_at: string }
 type ArtistDeposit = { id: string; artist_user_id: string; amount: number | string; currency: string; status: string; source: string; created_at: string }
 type ArtistPayoutRequest = { id: string; artist_user_id: string; requested_amount: number | string; currency: string; status: string; requested_at: string }
@@ -33,7 +35,7 @@ type Beat = { id: string; producer_user_id: string; title: string; genre?: strin
 type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' | 'editor'; message: string; created_at: string }
 type TrackReviewMessage = { id: string; track_id: string; author_kind: 'artist' | 'editor'; message: string; created_at: string }
 type RoleApplication = { id: string; user_id: string; requested_role: string; status: string; message?: string; review_notes?: string; updated_at: string }
-type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; roleApplications?: RoleApplication[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; trackReviewMessages?: TrackReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; releaseContributors?: ReleaseContributor[]; releaseClearanceEvidence?: ReleaseClearanceEvidence[]; mediaProcessingJobs?: MediaProcessingJob[]; distributionJobs?: DistJob[]; knownIsrcMap?: KnownIsrcMapEntry[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
+type EditorialData = { identity: { role: EditorialRole; permissions: EditorialPermission[]; profile?: Profile }; tracks: Track[]; profiles: Profile[]; programmes: Programme[]; credits: Credit[]; staff: Staff[]; auditLog: Audit[]; trackRequests: TrackRequest[]; artworkChangeRequests?: ArtworkChangeRequest[]; beatPacks?: BeatPack[]; roleApplications?: RoleApplication[]; beats?: Beat[]; beatReviewMessages?: BeatReviewMessage[]; trackReviewMessages?: TrackReviewMessage[]; releases?: Release[]; releaseTracks?: ReleaseTrack[]; releaseContributors?: ReleaseContributor[]; releaseClearanceEvidence?: ReleaseClearanceEvidence[]; mediaProcessingJobs?: MediaProcessingJob[]; distributionJobs?: DistJob[]; knownIsrcMap?: KnownIsrcMapEntry[]; artistWaitlist: ArtistWaitlist[]; artistDeposits: ArtistDeposit[]; artistPayoutRequests: ArtistPayoutRequest[] }
 
 const statusClass: Record<string, string> = { submitted: 'text-amber-300', pending: 'text-amber-300', in_review: 'text-blue-300', approved: 'text-emerald-300', published: 'text-emerald-300', rejected: 'text-red-300', changes_requested: 'text-orange-300', draft: 'text-text-secondary', not_submitted: 'text-text-secondary' }
 
@@ -55,6 +57,8 @@ export default function EditorialDashboard() {
     staff: [],
     auditLog: [],
     trackRequests: [],
+    artworkChangeRequests: [],
+    beatPacks: [],
     roleApplications: [],
     beats: [],
     beatReviewMessages: [],
@@ -99,6 +103,8 @@ export default function EditorialDashboard() {
       staff: pick('staff') || [],
       auditLog: pick('auditLog') || [],
       trackRequests: pick('trackRequests') || [],
+      artworkChangeRequests: pick('artworkChangeRequests') || [],
+      beatPacks: pick('beatPacks') || [],
       roleApplications: pick('roleApplications') || [],
       beats: pick('beats') || [],
       beatReviewMessages: pick('beatReviewMessages') || [],
@@ -177,6 +183,7 @@ export default function EditorialDashboard() {
   const allowed = (permission: EditorialPermission) => Boolean(data?.identity.permissions.includes(permission))
 
   const sectionsForAction = (action: string): string[] => {
+    if (/artwork_change|cover/i.test(action)) return ['tracks', 'beats', 'releases', 'bootstrap']
     if (/track|credit|rotation|licence|reclassif/i.test(action) && !/beat/i.test(action)) return ['tracks', 'bootstrap']
     if (/beat/i.test(action)) return ['beats', 'bootstrap']
     if (/release|clearance|dist|isrc|media_job|passport|preflight/i.test(action)) return ['releases', 'bootstrap']
@@ -260,7 +267,8 @@ export default function EditorialDashboard() {
   ).length
   const trackQueue = trackNeedsReview  // only badge items needing action
 
-  const requestQueue = data.trackRequests.filter((r) => ['open', 'reviewing'].includes(r.status)).length
+  const coverQueue = (data.artworkChangeRequests || []).filter((r) => ['open', 'reviewing'].includes(r.status)).length
+  const requestQueue = data.trackRequests.filter((r) => ['open', 'reviewing'].includes(r.status)).length + coverQueue
   const roleQueue = (data.roleApplications || []).filter((application) =>
     ['submitted', 'information_requested'].includes(application.status),
   ).length
@@ -433,6 +441,17 @@ export default function EditorialDashboard() {
       </EditorialDropDown>
 
       <EditorialDropDown id="ed-requests" label="Artist requests" count={requestQueue} defaultOpen={requestQueue > 0}>
+        <ArtworkChangePanel
+          requests={data.artworkChangeRequests || []}
+          tracks={data.tracks}
+          releases={data.releases || []}
+          beats={data.beats || []}
+          packs={data.beatPacks || []}
+          profiles={data.profiles}
+          enabled={allowed('approve_submissions')}
+          act={act}
+          busy={busy}
+        />
         <ArtistRequestPanel
           requests={data.trackRequests}
           tracks={data.tracks}
@@ -965,6 +984,62 @@ function TrackCard({ track, profile, credits, messages, allowed, act, busy }: { 
       {allowed('approve_submissions') && <div className="mt-3 grid gap-2 md:grid-cols-2"><select value={iosStatus} onChange={e => setIosStatus(e.target.value as MobileClearance['status'])} className="rounded-lg border border-white/10 bg-bg-primary p-2 text-xs"><option value="not_reviewed">Not reviewed</option><option value="cleared">Cleared for iOS</option><option value="blocked">Blocked from iOS</option></select><input value={iosRightsBasis} onChange={e => setIosRightsBasis(e.target.value)} placeholder="Rights basis: founder-owned / direct licence" className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs"/><input value={iosEvidence} onChange={e => setIosEvidence(e.target.value)} placeholder="Evidence reference / agreement ID" className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs"/><input value={iosNotes} onChange={e => setIosNotes(e.target.value)} placeholder="Private review notes" className="rounded-lg border border-white/10 bg-black/20 p-2 text-xs"/><button disabled={disabled || (iosStatus === 'cleared' && (!iosRightsBasis.trim() || !iosEvidence.trim()))} onClick={() => act('set_mobile_clearance', { trackId: track.id, surface: 'ios', status: iosStatus, rightsBasis: iosRightsBasis, evidenceReference: iosEvidence, notes: iosNotes })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40 md:col-span-2">Save iOS clearance</button></div>}
     </div>
   </article>
+}
+
+function ArtworkChangePanel({ requests, tracks, releases, beats, packs, profiles, enabled, act, busy }: { requests: ArtworkChangeRequest[]; tracks: Track[]; releases: Release[]; beats: Beat[]; packs: BeatPack[]; profiles: Profile[]; enabled: boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
+  const [notesById, setNotesById] = useState<Record<string, string>>({})
+  const nameFor = (id: string) => profiles.find(profile => profile.id === id)?.display_name || profiles.find(profile => profile.id === id)?.username || id.slice(0, 8)
+  const titleFor = (request: ArtworkChangeRequest) => {
+    if (request.target_kind === 'track') return tracks.find(item => item.id === request.target_id)?.title
+    if (request.target_kind === 'release') return releases.find(item => item.id === request.target_id)?.title
+    if (request.target_kind === 'beat') return beats.find(item => item.id === request.target_id)?.title
+    return packs.find(item => item.id === request.target_id)?.title
+  }
+  return (
+    <section className="mb-10">
+      <h2 className="text-2xl font-semibold">Cover change requests</h2>
+      <p className="mt-2 text-sm text-text-secondary">New pictures from Creator Studio and My BeatStore. Approving artwork replacement applies the cover immediately.</p>
+      <div className="mt-5 space-y-3">
+        {requests.map((request) => (
+          <article key={request.id} className="rounded-xl border border-white/10 p-4">
+            <p className="text-xs uppercase tracking-wider text-brand">{request.target_kind.replaceAll('_', ' ')} · {request.request_type.replaceAll('_', ' ')} · {request.status}</p>
+            <h3 className="mt-1 font-medium">{titleFor(request) || 'Cover request'}</h3>
+            <p className="text-xs text-text-secondary">{nameFor(request.requester_user_id)} · {new Date(request.created_at).toLocaleString()}</p>
+            <p className="mt-3 whitespace-pre-wrap text-sm text-text-secondary">{request.message}</p>
+            {(request.current_artwork_url || request.proposed_artwork_url) && (
+              <div className="mt-3 flex flex-wrap gap-4">
+                {request.current_artwork_url && (
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase text-text-secondary">Current</p>
+                    <img src={request.current_artwork_url} alt="" className="h-20 w-20 rounded-lg object-cover border border-white/10" />
+                  </div>
+                )}
+                {request.proposed_artwork_url && (
+                  <div>
+                    <p className="mb-1 text-[10px] uppercase text-text-secondary">Proposed</p>
+                    <img src={request.proposed_artwork_url} alt="" className="h-20 w-20 rounded-lg object-cover border border-white/10" />
+                  </div>
+                )}
+              </div>
+            )}
+            {request.apply_to_pack_members && <p className="mt-2 text-xs text-amber-100">Also apply to every beat in this pack.</p>}
+            {request.staff_notes && <p className="mt-3 text-sm text-brand">Staff: {request.staff_notes}</p>}
+            {enabled && (
+              <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+                <textarea value={notesById[request.id] || ''} onChange={(event) => setNotesById({ ...notesById, [request.id]: event.target.value })} placeholder="Staff notes" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm" />
+                <div className="flex flex-wrap gap-2">
+                  <button disabled={Boolean(busy)} onClick={() => act('review_artwork_change', { requestId: request.id, status: 'reviewing', notes: notesById[request.id] || '' })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Reviewing</button>
+                  <button disabled={Boolean(busy)} onClick={() => act('review_artwork_change', { requestId: request.id, status: 'resolved', notes: notesById[request.id] || '' })} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black">Approve & apply</button>
+                  <button disabled={Boolean(busy)} onClick={() => act('review_artwork_change', { requestId: request.id, status: 'rejected', notes: notesById[request.id] || '' })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button>
+                </div>
+              </div>
+            )}
+          </article>
+        ))}
+        {!requests.length && <Empty text="No cover change requests yet." />}
+      </div>
+    </section>
+  )
 }
 
 function ArtistRequestPanel({ requests, tracks, profiles, enabled, act, busy }: { requests: TrackRequest[]; tracks: Track[]; profiles: Profile[]; enabled: boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {

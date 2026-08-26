@@ -6,6 +6,7 @@ import {
 } from "@/lib/creator-server";
 import { r2ObjectExists } from "@/lib/r2-storage";
 import { creatorMarketplaceEntitlements } from "@/lib/creator-marketplace-entitlements";
+import { betaFeatureConfig } from "@/lib/beta-features";
 
 export const runtime = "nodejs";
 
@@ -72,8 +73,14 @@ async function rows(path: string) {
 }
 
 export async function GET(request: Request) {
+  const features = betaFeatureConfig();
   const scope = new URL(request.url).searchParams.get("scope") || "public";
   if (scope === "mine") {
+    if (!features.creatorMarketplace)
+      return NextResponse.json(
+        { error: "Creator Marketplace is not enabled on this environment." },
+        { status: 404 },
+      );
     const identity = await creatorIdentity(request);
     if (!identity?.user?.id)
       return NextResponse.json({ error: "Sign in required." }, { status: 401 });
@@ -87,11 +94,15 @@ export async function GET(request: Request) {
       creatorMarketplaceEntitlements(identity.user.id),
     ]);
     return NextResponse.json({
+      features,
       profile: profiles[0] || null,
       listings,
       entitlements,
     });
   }
+
+  if (!features.marketplacePublic)
+    return NextResponse.json({ features, profiles: [], listings: [] });
 
   const [profiles, listings] = await Promise.all([
     rows(
@@ -101,10 +112,16 @@ export async function GET(request: Request) {
       "creator_marketplace_listings?status=eq.published&select=id,seller_user_id,listing_type,category,title,slug,description,price_usd,artwork_path,preview_path,compatibility,licence_summary,packages,addons,turnaround_days,revisions_included,published_at,profiles!inner(username,display_name,creator_public_name,creator_name_status)&order=published_at.desc&limit=300",
     ),
   ]);
-  return NextResponse.json({ profiles, listings });
+  return NextResponse.json({ features, profiles, listings });
 }
 
 export async function POST(request: Request) {
+  const features = betaFeatureConfig();
+  if (!features.creatorMarketplace)
+    return NextResponse.json(
+      { error: "Creator Marketplace is not enabled on this environment." },
+      { status: 404 },
+    );
   const identity = await creatorIdentity(request);
   if (!identity?.user?.id)
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
@@ -192,6 +209,11 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Choose product or service." },
         { status: 400 },
+      );
+    if (listingType === "service" && !features.serviceOrders)
+      return NextResponse.json(
+        { error: "Creator service listings are not enabled here." },
+        { status: 404 },
       );
     const category = clean(body.category, 40);
     const allowedCategories =

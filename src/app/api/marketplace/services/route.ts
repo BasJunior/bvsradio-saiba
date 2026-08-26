@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { featureEnabled } from "@/lib/beta-features";
 import {
   creatorHeaders,
   creatorIdentity,
@@ -20,6 +21,11 @@ async function read(path: string) {
 }
 
 export async function GET(request: Request) {
+  if (!featureEnabled("serviceOrders"))
+    return NextResponse.json(
+      { error: "Creator service orders are not enabled here." },
+      { status: 404 },
+    );
   const identity = await creatorIdentity(request);
   if (!identity?.user?.id)
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });
@@ -30,6 +36,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  if (!featureEnabled("serviceOrders"))
+    return NextResponse.json(
+      { error: "Creator service orders are not enabled here." },
+      { status: 404 },
+    );
   const identity = await creatorIdentity(request);
   if (!identity?.user?.id)
     return NextResponse.json({ error: "Sign in required." }, { status: 401 });

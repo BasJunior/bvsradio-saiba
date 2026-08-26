@@ -15,6 +15,8 @@ import StudioPremiumDesk from "@/components/StudioPremiumDesk";
 import DistributionPathTimeline from "@/components/DistributionPathTimeline";
 import { CreatorMarketplaceDesk } from "@/components/CreatorMarketplaceDesk";
 import CreatorServiceOrders from "@/components/CreatorServiceOrders";
+import ArtworkChangeRequestForm from "@/components/ArtworkChangeRequestForm";
+import CreatorBroadcastDesk from "@/components/CreatorBroadcastDesk";
 import {
   buildArtistPathSteps,
   publicDistributionStatusLabel,
@@ -234,12 +236,12 @@ export default function CreatorStudio() {
           defaultOpen
         >
           <ArtistReleases
+            token={token}
             tracks={data.tracks || []}
             requests={data.trackRequests || []}
             jobs={data.distributionJobs || []}
             releases={data.releases || []}
             flags={data.profileFlags}
-            act={act}
           />
         </CreatorDropDown>
       )}
@@ -287,6 +289,11 @@ export default function CreatorStudio() {
       )}
       {showCreator && (
         <>
+          <div id="broadcast">
+            <CreatorDropDown label="Broadcast">
+              <CreatorBroadcastDesk token={token} />
+            </CreatorDropDown>
+          </div>
           <CreatorDropDown label="Propose a weekly show">
             <ShowForm act={act} />
           </CreatorDropDown>
@@ -788,27 +795,20 @@ function ArtistPathBoard({ data }: { data: Data }) {
 }
 
 function ArtistReleases({
+  token,
   tracks,
   requests,
   jobs,
   releases,
   flags,
-  act,
 }: {
+  token: string;
   tracks: Release[];
   requests: TrackRequest[];
   jobs: DistJob[];
   releases: AlbumRelease[];
   flags?: ProfileFlags;
-  act: (b: Record<string, unknown>) => Promise<void>;
 }) {
-  const [trackId, setTrack] = useState(""),
-    [requestType, setType] = useState("takedown"),
-    [message, setMessage] = useState("");
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    void act({ action: "track_request", trackId, requestType, message });
-  };
   const jobByRelease = new Map(jobs.map((j) => [j.release_id, j]));
   return (
     <section className="mt-10">
@@ -929,66 +929,27 @@ function ArtistReleases({
             )}
           </div>
         </div>
-        <form
-          onSubmit={submit}
-          className="rounded-xl border border-white/10 p-4"
-        >
-          <h2 className="text-xl">Request a change</h2>
-          <p className="mt-1 text-sm text-text-secondary">
-            Ask editorial for takedown, metadata, artwork, rights or payout
-            help.
-          </p>
-          <select
-            required
-            value={trackId}
-            onChange={(e) => setTrack(e.target.value)}
-            className={`${field} mt-4`}
-          >
-            <option value="">Select release</option>
-            {tracks.map((track) => (
-              <option key={track.id} value={track.id}>
-                {track.title}
-              </option>
-            ))}
-          </select>
-          <select
-            value={requestType}
-            onChange={(e) => setType(e.target.value)}
-            className={`${field} mt-3`}
-          >
-            <option value="takedown">Takedown / unpublish</option>
-            <option value="metadata_correction">Metadata correction</option>
-            <option value="artwork_replacement">Artwork replacement</option>
-            <option value="rights_update">Rights update</option>
-            <option value="payout_question">Payout question</option>
-            <option value="other">Other</option>
-          </select>
-          <textarea
-            required
-            minLength={10}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="What should the team change or review?"
-            className={`${field} mt-3 min-h-28`}
+        <div>
+          <ArtworkChangeRequestForm
+            token={token}
+            scope="releases"
+            heading="Request a change"
+            copy="Select any of your tracks or albums, upload a new cover, and editorial will approve it before it goes live."
           />
-          <button
-            disabled={!tracks.length}
-            className="mt-3 rounded-full bg-brand px-5 py-2 font-semibold text-black disabled:opacity-40"
-          >
-            Send request
-          </button>
-          <div className="mt-5 space-y-2">
-            {requests.slice(0, 5).map((item) => (
-              <p
-                key={item.id}
-                className="rounded-lg border border-white/10 p-3 text-xs text-text-secondary"
-              >
-                {item.request_type.replaceAll("_", " ")} · {item.status} ·{" "}
-                {new Date(item.created_at).toLocaleDateString()}
-              </p>
-            ))}
-          </div>
-        </form>
+          {requests.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {requests.slice(0, 5).map((item) => (
+                <p
+                  key={item.id}
+                  className="rounded-lg border border-white/10 p-3 text-xs text-text-secondary"
+                >
+                  {item.request_type.replaceAll("_", " ")} · {item.status} ·{" "}
+                  {new Date(item.created_at).toLocaleDateString()}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );

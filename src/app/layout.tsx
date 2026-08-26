@@ -74,7 +74,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `try{const t=localStorage.getItem('bvs_theme');const v=t==='light'||t==='dark'?t:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.dataset.theme=v;document.documentElement.style.colorScheme=v}catch(e){}` }} />
+        <script dangerouslySetInnerHTML={{ __html: `try{const t=localStorage.getItem('bvs_theme');const v=t==='light'||t==='dark'?t:'dark';document.documentElement.dataset.theme=v;document.documentElement.style.colorScheme=v}catch(e){}` }} />
       </head>
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
         <LibrarySyncProvider>

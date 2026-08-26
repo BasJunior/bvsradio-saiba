@@ -292,6 +292,7 @@ export default function Navbar() {
               </Link>
               {showCreator && <Link href="/creator/studio" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>}
               {showEditorial && <Link href="/editorial" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>}
+              {showEditorial && <Link href="/beta/qa" className="px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Beta QA</Link>}
               {premiumBadge && (
                 <Link
                   href="/artist/premium"
@@ -425,6 +426,7 @@ export default function Navbar() {
                   {showCreator && <Link href="/creator/studio" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Creator studio</Link>}
                   {showEditorial && <Link href="/editorial" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Editorial dashboard</Link>}
                   {showEditorial && <Link href="/admin/creator-workflows" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Writing &amp; research review</Link>}
+                  {showEditorial && <Link href="/beta/qa" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Beta QA cockpit</Link>}
                   <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
                     Sign out
                   </button>

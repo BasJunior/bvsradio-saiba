@@ -146,6 +146,11 @@ PACKS: dict[str, dict[str, Any]] = {
         "tables": ["qr_login_pairings"],
         "rpcs": ["consume_qr_login_pairing"],
     },
+    "artwork-change-requests": {
+        "step": 29,
+        "file": "supabase-artwork-change-requests.sql",
+        "tables": ["artwork_change_requests"],
+    },
 }
 
 ORDER = sorted(PACKS.keys(), key=lambda k: PACKS[k]["step"])

@@ -23,6 +23,12 @@ type Listing = {
     display_name?: string;
   };
 };
+type Features = {
+  marketplacePublic?: boolean;
+  creatorMarketplace?: boolean;
+  serviceOrders?: boolean;
+  runtimeLabel?: string;
+};
 type Profile = {
   user_id: string;
   roles: string[];
@@ -48,6 +54,7 @@ export default function MarketplacePage() {
   const [data, setData] = useState<{
     listings: Listing[];
     profiles: Profile[];
+    features?: Features;
   }>({ listings: [], profiles: [] });
   const [added, setAdded] = useState<string | null>(null);
   useEffect(() => {
@@ -98,6 +105,12 @@ export default function MarketplacePage() {
         Explore production assets from BVS creators, find skilled music
         professionals and connect with the people behind the sound.
       </p>
+      {data.features?.marketplacePublic === false ? (
+        <div className="mt-8 rounded-xl border border-amber-300/30 p-5 text-amber-100">
+          Creator Marketplace is prepared for beta/staging. The public
+          production surface stays dormant until BVS promotes the release.
+        </div>
+      ) : null}
       <div className="mt-8 flex flex-wrap gap-3">
         <Link
           href="/catalogue?type=beat#beatstore"
@@ -182,17 +195,24 @@ export default function MarketplacePage() {
                   </p>
                 ) : null}
                 <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => addProduct(item)}
-                    className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
-                  >
-                    {added === item.id
-                      ? "Added to basket"
-                      : item.listing_type === "service"
-                        ? "Book service"
-                        : "Add to basket"}
-                  </button>
+                  {item.listing_type !== "service" ||
+                  data.features?.serviceOrders !== false ? (
+                    <button
+                      type="button"
+                      onClick={() => addProduct(item)}
+                      className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
+                    >
+                      {added === item.id
+                        ? "Added to basket"
+                        : item.listing_type === "service"
+                          ? "Book service"
+                          : "Add to basket"}
+                    </button>
+                  ) : (
+                    <span className="rounded-full border border-white/15 px-4 py-2 text-sm text-text-secondary">
+                      Beta only
+                    </span>
+                  )}
                   {added === item.id ? (
                     <Link
                       href="/checkout"

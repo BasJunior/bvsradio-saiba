@@ -185,6 +185,11 @@ export async function POST(req: Request) {
             planId: premiumLine.planId,
             interval: premiumLine.interval,
           });
+          await recordServerEvent("subscription_started", {
+            provider: "paynow",
+            planId: premiumLine.planId,
+            interval: premiumLine.interval,
+          });
         }
       }
 

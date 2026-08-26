@@ -24,6 +24,7 @@ import {
   recordOrderSnapshot,
   resolveCommerceItems,
 } from "@/lib/commerce-ledger";
+import { featureEnabled } from "@/lib/beta-features";
 
 function isOrderItem(item: unknown): item is OrderItem {
   if (!item || typeof item !== "object") return false;
@@ -110,6 +111,11 @@ export async function POST(req: Request) {
       (item) => item.productType === "creator_service",
     );
     if (creatorServices.length) {
+      if (!featureEnabled("serviceOrders"))
+        return NextResponse.json(
+          { error: "Creator-service checkout is not enabled here." },
+          { status: 404 },
+        );
       if (!customerUserId)
         return NextResponse.json(
           { error: "Sign in before booking a creator service." },

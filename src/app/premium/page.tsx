@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { trackEvent } from "@/lib/analytics";
 import {
   FAMILY_LABELS,
   FOUNDING_WINDOW_LABEL,
@@ -34,6 +35,12 @@ function priceLine(plan: CatalogPlan) {
   if (plan.quoteOnly || plan.monthlyUsd == null) return "Quote";
   if (plan.monthlyUsd === 0) return "US$0";
   return `US$${plan.monthlyUsd}`;
+}
+
+function annualSavings(plan: CatalogPlan) {
+  if (!plan.monthlyUsd || !plan.yearlyUsd) return null;
+  const savings = plan.monthlyUsd * 12 - plan.yearlyUsd;
+  return savings > 0 ? savings : null;
 }
 
 export default function PremiumEcosystemPage() {
@@ -141,7 +148,10 @@ export default function PremiumEcosystemPage() {
               )}
             </p>
             {plan.yearlyUsd != null && plan.yearlyUsd > 0 && (
-              <p className="text-xs text-text-secondary">or US${plan.yearlyUsd}/year</p>
+              <p className="text-xs text-text-secondary">
+                Yearly US${plan.yearlyUsd}
+                {annualSavings(plan) ? ` - save US$${annualSavings(plan)}` : ""}
+              </p>
             )}
             <p className="mt-1 text-[11px] uppercase tracking-wide text-brand">{plan.badge}</p>
             <p className="mt-3 text-sm text-text-secondary">{plan.summary}</p>
@@ -157,6 +167,12 @@ export default function PremiumEcosystemPage() {
               {plan.family === "artist" && plan.id !== "artist_free" && plan.status === "live" ? (
                 <Link
                   href={`/artist/premium?tier=${plan.id.replace("artist_", "")}`}
+                  onClick={() =>
+                    trackEvent("premium_viewed", {
+                      source: "premium_catalog",
+                      plan: plan.id,
+                    })
+                  }
                   className="inline-flex rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black"
                 >
                   Open desk
@@ -168,6 +184,12 @@ export default function PremiumEcosystemPage() {
               ) : plan.status === "live" || plan.status === "pilot" ? (
                 <Link
                   href={plan.family === "producer" ? "/catalogue?type=beat#beatstore" : "/auth/signup"}
+                  onClick={() =>
+                    trackEvent("premium_viewed", {
+                      source: "premium_catalog",
+                      plan: plan.id,
+                    })
+                  }
                   className="inline-flex rounded-full border border-white/20 px-4 py-2 text-sm hover:border-brand"
                 >
                   {plan.monthlyUsd === 0 ? "Start free" : "Join waitlist / desk"}
