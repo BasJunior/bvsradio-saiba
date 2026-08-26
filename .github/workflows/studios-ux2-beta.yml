@@ -1,0 +1,54 @@
+name: BVS Studios UX2 Beta
+
+on:
+  push:
+    branches:
+      - saiba/beta-studios-ux2-2026-08-26
+
+permissions:
+  contents: write
+
+jobs:
+  verify-and-finalize:
+    if: ${{ !contains(github.event.head_commit.message, '[studios-ux2-finalized]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply narrow Studios UX2 finalization
+        run: node scripts/studios-ux2-finalize.mjs
+      - run: npm ci
+      - run: npm run test:studio-marketplace
+      - run: npm run test:beta-features
+      - run: npm run test:bvs-live-state
+      - run: npm run test:premium-growth
+      - run: npm run test:staff-copilot
+      - run: npm run typecheck
+      - run: npm run build
+      - name: Verify beta-only Vercel target guard
+        env:
+          VERCEL_PROJECT_ID: prj_gv9stqkz190faX23mT3dy3wWStEo
+        run: |
+          mkdir -p .vercel
+          printf '{"orgId":"team_HYmWoU6WIW4IHXmh3mrB10Oq","projectId":"prj_gv9stqkz190faX23mT3dy3wWStEo"}\n' > .vercel/project.json
+          npm run deploy:beta:guard
+      - name: Commit finalized Studios UX2 integration
+        run: |
+          git config user.name "BVS Studios UX2 Beta"
+          git config user.email "83550884+BasJunior@users.noreply.github.com"
+          git add \
+            src/components/layout/Navbar.tsx \
+            src/components/MarketplaceAvailabilityDesk.tsx \
+            'src/app/marketplace/studios/[slug]/page.tsx'
+          if git diff --cached --quiet; then
+            echo "Studios UX2 narrow integration already finalized."
+            exit 0
+          fi
+          git commit -m "feat(beta): finalize BVS Studios UX2 [studios-ux2-finalized]"
+          git push origin HEAD:saiba/beta-studios-ux2-2026-08-26
