@@ -15,6 +15,7 @@
 | S10 | Production Candidate 01 — intent-first Studio | Saiba + BVS | READY FOR HUMAN PREVIEW | Isolated from `main`; branch `saiba/prod-candidate-studio-intent-2026-08-28` at `ba9dd2e6...`; 8-file diff, no DB migration, Vercel READY. Requires explicit production approval after preview. |
 | S11 | Production Candidate 02 — Lyrics Pad | Saiba + BVS | BUILD READY · NOT APPROVED | Downstream of Candidate 01; branch `saiba/prod-candidate-lyrics-pad-2026-08-28` at `30889df8...`; entitlement regression + TypeScript/build pass. Requires production `song_workspaces` migration and explicit approval before deploy. |
 | S12 | iOS clearance operating runbook | Saiba + BVS | DONE | Existing Editorial clearance UI/API retained as source of truth. Human evidence review → beta stage → `surface=ios` smoke → explicit prod approval. No parallel admin feature needed. |
+| S13 | Recover existing iOS rights evidence from connected accounts | VPS agent | TODO · ACCESS-DEPENDENT | Search the BVS-connected Drive/Gmail and any VPS-accessible rights archive for existing Amuse/master-rights/licence evidence for the current iOS five, prioritising Heavy, Jegera and Thugging. For Heavy, also check whether a later/final mixed-mastered version exists. Record only evidence references/findings in the sprint handoff; do **not** auto-clear tracks, alter production clearance rows, or treat an Amuse delivery record by itself as proof of all underlying rights. |
 
 ## Product decision — Lyrics Pad
 
@@ -79,6 +80,7 @@ Promoted and deployed to canonical beta:
 ## Content operations
 - `IOS_RIGHTS_EVIDENCE_GATE.md` contains the detailed current-five and expansion evidence review.
 - `IOS_CLEARANCE_RUNBOOK.md` locks the operating procedure around the existing Editorial clearance controls.
+- S13 is parked for the VPS agent that has the required connected-account/archive access.
 - No production mobile clearance row was changed during this sprint.
 
 ## Handoff rule
