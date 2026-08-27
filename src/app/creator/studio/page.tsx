@@ -165,7 +165,7 @@ export default function CreatorStudioHome() {
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <ManageLink href="/creator/studio/manage#releases" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
-          <ManageLink href="/creator/money" label="Money" detail="Rights + Money" />
+          <ManageLink href="/artists" label="Money" detail="Wallet & earnings" />
           <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" />
           <ManageLink href="/creator/marketplace" label="Profile & storefront" detail="Advanced setup" />
         </div>
