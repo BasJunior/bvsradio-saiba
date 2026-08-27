@@ -252,7 +252,9 @@ export async function presentSongWorkspace(
     musicalKey: beat?.musical_key ?? null,
     genre: beat?.genre || null,
     mood: beat?.mood || null,
-    audioUrl: includeAudio && beat ? await signedAudio(beat.master_path || beat.preview_path) : null,
+    // The writing surface only needs playback. Keep private masters/stems behind the
+    // licence-aware download fulfilment path instead of exposing them in Lyrics Pad.
+    audioUrl: includeAudio && beat ? await signedAudio(beat.preview_path) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
