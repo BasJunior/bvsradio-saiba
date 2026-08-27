@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
+import { trackEvent, trackEventOnce } from "@/lib/analytics";
 
 type WorkspaceData = {
   profile: { role: string; display_name?: string; is_producer?: boolean };
@@ -61,10 +62,20 @@ export default function CreatorStudioHome() {
       setSongs(songRows);
       if (workspaceResponse.ok) {
         setData(workspacePayload);
+        trackEventOnce("studio_open", {
+          role: String(workspacePayload?.profile?.role || "creator"),
+          has_song_workspaces: songRows.length > 0,
+          song_workspace_count: songRows.length,
+        }, "creator-studio");
         return;
       }
       if (songRows.length) {
         setData({ profile: { role: "listener", display_name: "creator" }, tracks: [], releases: [], distributionJobs: [] });
+        trackEventOnce("studio_open", {
+          role: "listener",
+          has_song_workspaces: true,
+          song_workspace_count: songRows.length,
+        }, "creator-studio");
         return;
       }
       setError(workspacePayload.error || "Could not open Studio.");
@@ -98,10 +109,10 @@ export default function CreatorStudioHome() {
   const displayName = data.profile.display_name || "creator";
 
   const createActions = [
-    artist && { href: "/creator/studio/create/release", label: "Release music", copy: "Send a single, EP or album to BVS for rights checks, review and distribution.", cta: "Start a release" },
-    producer && { href: "/creator/studio/create/beat", label: "Sell a beat", copy: "Upload the beat, choose a price and send it to BVS. We handle the BeatStore listing behind the scenes.", cta: "Post a beat" },
-    creatorAccess && { href: "/creator/studio/create/service", label: "Offer a service", copy: "List mixing, mastering, production, artwork or another music service without navigating the full marketplace desk.", cta: "Add a service" },
-  ].filter(Boolean) as Array<{ href: string; label: string; copy: string; cta: string }>;
+    artist && { href: "/creator/studio/create/release", intent: "release", label: "Release music", copy: "Send a single, EP or album to BVS for rights checks, review and distribution.", cta: "Start a release" },
+    producer && { href: "/creator/studio/create/beat", intent: "beat", label: "Sell a beat", copy: "Upload the beat, choose a price and send it to BVS. We handle the BeatStore listing behind the scenes.", cta: "Post a beat" },
+    creatorAccess && { href: "/creator/studio/create/service", intent: "service", label: "Offer a service", copy: "List mixing, mastering, production, artwork or another music service without navigating the full marketplace desk.", cta: "Add a service" },
+  ].filter(Boolean) as Array<{ href: string; intent: "release" | "beat" | "service"; label: string; copy: string; cta: string }>;
 
   return (
     <main className="mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-6 sm:pt-12">
@@ -132,7 +143,12 @@ export default function CreatorStudioHome() {
       {createActions.length > 0 && (
         <section className="mt-8 grid gap-3 md:grid-cols-3" aria-label="Create in BVS">
           {createActions.map((action, index) => (
-            <Link key={action.href} href={action.href} className="group flex min-h-52 flex-col justify-between rounded-3xl border border-white/10 bg-white/[.025] p-6 transition hover:border-brand/45 hover:bg-brand/[.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+            <Link
+              key={action.href}
+              href={action.href}
+              onClick={() => trackEvent("create_intent_selected", { intent: action.intent, source: "studio_home" })}
+              className="group flex min-h-52 flex-col justify-between rounded-3xl border border-white/10 bg-white/[.025] p-6 transition hover:border-brand/45 hover:bg-brand/[.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
               <div><span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-brand/30 bg-brand/10 px-2 text-xs font-semibold text-brand">{index + 1}</span><h2 className="mt-5 text-2xl font-semibold group-hover:text-brand">{action.label}</h2><p className="mt-2 text-sm leading-6 text-text-secondary">{action.copy}</p></div>
               <span className="mt-6 text-sm font-semibold text-brand">{action.cta} →</span>
             </Link>
