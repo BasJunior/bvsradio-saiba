@@ -59,6 +59,18 @@ export const analyticsEvents = [
   "tv_companion_qr_shown",
   "creator_activity_open",
   "contextual_commerce_open",
+  "studio_open",
+  "create_intent_selected",
+  "create_form_started",
+  "create_submission_complete",
+  "beat_view",
+  "licence_selected",
+  "payment_confirmed",
+  "lyrics_pad_open",
+  "lyrics_first_save",
+  "lyrics_return_session",
+  "prepare_release",
+  "release_submitted",
 ] as const
 
 export type AnalyticsEvent = (typeof analyticsEvents)[number]
@@ -80,7 +92,7 @@ export function analyticsAllowed() {
   return navigator.doNotTrack !== "1" && window.localStorage.getItem("bvs.analytics.disabled") !== "1"
 }
 
-export function trackEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
+function sendEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
   if (!analyticsAllowed()) return
   const body = JSON.stringify({ event, properties, sessionId: sessionId(), path: window.location.pathname })
   if (navigator.sendBeacon) {
@@ -88,6 +100,42 @@ export function trackEvent(event: AnalyticsEvent, properties: AnalyticsPropertie
     return
   }
   void fetch("/api/analytics", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true })
+}
+
+export function trackEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
+  sendEvent(event, properties)
+
+  // Existing upload completion is the canonical creator submit signal. Derive the
+  // sprint funnel events here so older upload surfaces keep working without duplicate
+  // analytics wiring in every form.
+  if (event === "upload_complete") {
+    sendEvent("create_submission_complete", {
+      content_type: typeof properties.song_workspace === "boolean" && properties.song_workspace ? "release_from_song_workspace" : "creator_upload",
+      ...(typeof properties.release_type === "string" ? { release_type: properties.release_type } : {}),
+      ...(typeof properties.track_count === "number" ? { track_count: properties.track_count } : {}),
+    })
+    if (properties.song_workspace === true) {
+      sendEvent("release_submitted", {
+        source: "song_workspace",
+        ...(typeof properties.release_type === "string" ? { release_type: properties.release_type } : {}),
+        ...(typeof properties.track_count === "number" ? { track_count: properties.track_count } : {}),
+      })
+    }
+  }
+}
+
+export function trackEventOnce(
+  event: AnalyticsEvent,
+  properties: AnalyticsProperties = {},
+  key = event,
+  scope: "session" | "local" = "session",
+) {
+  if (typeof window === "undefined" || !analyticsAllowed()) return
+  const storage = scope === "local" ? window.localStorage : window.sessionStorage
+  const storageKey = `bvs.analytics.once.${event}.${key}`
+  if (storage.getItem(storageKey) === "1") return
+  storage.setItem(storageKey, "1")
+  sendEvent(event, properties)
 }
 
 export function listeningBucket(seconds: number) {
