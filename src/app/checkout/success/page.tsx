@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { clearCartLines } from "@/lib/cart-client";
+import { trackEventOnce } from "@/lib/analytics";
 
 type OrderItem = {
   title: string;
@@ -104,6 +105,18 @@ function SuccessBody() {
     const st = String(order?.status || "").toLowerCase();
     return st === "paid" || st === "fulfilled";
   }, [order?.status]);
+
+  useEffect(() => {
+    if (!paid || !order || !ref) return;
+    const items = order.items || [];
+    trackEventOnce("payment_confirmed", {
+      payment_method: String(order.paymentMethod || order.payment_method || "unknown").slice(0, 40),
+      item_count: items.length,
+      has_beat: items.some((item) => item.type === "beat"),
+      total: Number(order.total || 0),
+      currency: String(order.currency || "USD").slice(0, 8),
+    }, `order:${ref}`, "local");
+  }, [order, paid, ref]);
 
   const currency = order?.currency || "USD";
   const paymentMethod = order?.paymentMethod || order?.payment_method || "—";
