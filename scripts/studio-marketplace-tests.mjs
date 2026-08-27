@@ -76,4 +76,9 @@ const availabilityDesk = fs.readFileSync("src/components/MarketplaceAvailability
 assert.match(availabilityDesk, /completedBookings/, "provider booking desk must derive completed confirmed sessions");
 assert.match(availabilityDesk, /review eligible/i, "completed studio sessions must explain review eligibility");
 
+const quickBeatCreate = fs.readFileSync("src/components/QuickBeatCreate.tsx", "utf8");
+assert.match(quickBeatCreate, /BeatPackUploadForm/, "Studio sell-a-beat flow must expose beat pack upload");
+assert.match(quickBeatCreate, /Beat pack \/ EP/, "Studio beat mode switch must include pack/EP creation");
+assert.match(quickBeatCreate, /loginNext="\/creator\/studio\/create\/beat"/, "pack sign-in must return creators to the Studio beat flow");
+
 console.log("studio marketplace tests passed");

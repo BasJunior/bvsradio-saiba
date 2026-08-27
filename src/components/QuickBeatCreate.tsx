@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { isAllowedAudioFile } from "@/lib/audio-formats";
+import BeatPackUploadForm from "@/components/BeatPackUploadForm";
 
 const field = "w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand";
 
@@ -20,6 +21,7 @@ async function uploadSlot(slot: UploadSlot, file: File) {
 }
 
 export default function QuickBeatCreate() {
+  const [mode, setMode] = useState<"single" | "pack">("single");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState("29");
   const [preview, setPreview] = useState<File | null>(null);
@@ -132,8 +134,39 @@ export default function QuickBeatCreate() {
     );
   }
 
+  const modeSwitcher = (
+    <div className="grid gap-2 rounded-2xl border border-white/10 bg-white/[.02] p-1.5 sm:grid-cols-2">
+      <button
+        type="button"
+        onClick={() => setMode("single")}
+        className={`rounded-xl px-4 py-3 text-left text-sm transition ${mode === "single" ? "bg-brand text-black" : "text-text-secondary hover:bg-white/[.04] hover:text-text-primary"}`}
+      >
+        <span className="block font-semibold">Single beat</span>
+        <span className="mt-1 block text-xs opacity-80">One tagged preview, one Standard lease.</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setMode("pack")}
+        className={`rounded-xl px-4 py-3 text-left text-sm transition ${mode === "pack" ? "bg-brand text-black" : "text-text-secondary hover:bg-white/[.04] hover:text-text-primary"}`}
+      >
+        <span className="block font-semibold">Beat pack / EP</span>
+        <span className="mt-1 block text-xs opacity-80">Two to twenty ordered beats reviewed together.</span>
+      </button>
+    </div>
+  );
+
+  if (mode === "pack") {
+    return (
+      <div className="space-y-5">
+        {modeSwitcher}
+        <BeatPackUploadForm loginNext="/creator/studio/create/beat" />
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={submit} className="space-y-5">
+      {modeSwitcher}
       {error && <p className="rounded-2xl border border-red-400/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</p>}
 
       <section className="rounded-3xl border border-white/10 bg-white/[.02] p-5 sm:p-6">

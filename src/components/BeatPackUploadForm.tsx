@@ -65,7 +65,7 @@ async function uploadFiles(token: string, files: { preview?: File | null; master
   return paths
 }
 
-export default function BeatPackUploadForm() {
+export default function BeatPackUploadForm({ loginNext = '/upload' }: { loginNext?: string }) {
   const supabaseReady = isSupabaseConfigured()
   const [token, setToken] = useState('')
   const [authReady, setAuthReady] = useState(!supabaseReady)
@@ -205,7 +205,7 @@ export default function BeatPackUploadForm() {
     return <div className="rounded-2xl border border-white/10 p-6">
       <h2 className="text-2xl">Upload a beat pack</h2>
       <p className="mt-3 text-sm text-text-secondary">Sign in with an artist/producer account to upload two or more ordered beats together.</p>
-      <Link href="/auth/login?next=/upload" className="mt-4 inline-block text-brand">Sign in →</Link>
+      <Link href={`/auth/login?next=${encodeURIComponent(loginNext)}`} className="mt-4 inline-block text-brand">Sign in →</Link>
     </div>
   }
 
