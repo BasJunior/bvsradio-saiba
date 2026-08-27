@@ -105,6 +105,17 @@ function sendEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) 
 export function trackEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
   sendEvent(event, properties)
 
+  // Catalogue already emits player_start for every preview. Treat a beat preview as
+  // an engaged beat view so we measure real listening interest rather than card impressions.
+  if (event === "player_start" && properties.content_type === "beat") {
+    sendEvent("beat_view", {
+      ...(typeof properties.track_id === "string" || typeof properties.track_id === "number"
+        ? { beat_id: properties.track_id }
+        : {}),
+      ...(typeof properties.source === "string" ? { source: properties.source } : {}),
+    })
+  }
+
   // Existing upload completion is the canonical creator submit signal. Derive the
   // sprint funnel events here so older upload surfaces keep working without duplicate
   // analytics wiring in every form.
