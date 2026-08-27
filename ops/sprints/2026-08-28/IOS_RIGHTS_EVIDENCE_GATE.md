@@ -35,31 +35,61 @@ Human pack to retain:
 Current state:
 - iOS cleared
 - explicit
+- uploaded/owned in BVS by the BasJunior creator account
+- one verified BasJunior track credit
 - rights basis recorded as founder-owned master
 - evidence reference currently points to BVS Founder catalogue instruction, Telegram 18196, 2026-08-12
 - clearance note explicitly says supporting master-rights documentation remains required for the Apple evidence pack
+- **production editorial note says: `Heavier is a demo made by BasJunior still not mixed and mastered`**
+- licence summary says `Still in progress`
+- no later `Heavy` / `Heavier` track row was found in the production catalogue
+- no linked release, release-clearance-evidence row or distribution job was found for this track
 
-**Open gate:** add durable master-rights evidence beyond the catalogue instruction; preserve composition/songwriter authority basis.
+**Open gate — QUALITY + RIGHTS HOLD:**
+1. Confirm whether this exact audio file is intentionally acceptable as the public/iOS version despite the existing demo/in-progress note.
+2. If a later final master exists outside the current catalogue, ingest/review that version rather than treating this file as final.
+3. If the current file is intentionally retained, add durable master-rights evidence and preserve the composition/songwriter authority basis.
+4. Do not use Heavy as precedent for expanding iOS while this intent conflict remains unresolved.
+
+Recommended operational stance: **review keep/replace/remove before adding new iOS tracks.** No production change is authorized by this document.
 
 ### Jegera — I Ratty
 Current state:
 - iOS cleared
 - explicit
+- track row is owned/uploaded by the BasJunior creator account
+- credited public artist: I Ratty
+- verified credits: I Ratty — Singer; Wolfbridges — Producer
 - rights basis recorded as founder-owned master
 - evidence reference currently points to the same founder catalogue instruction
 - clearance note explicitly says supporting master-rights documentation remains required
+- no linked release, release-clearance-evidence row or distribution job was found
 
-**Open gate:** document why BVS/founder controls this master despite the credited artist being I Ratty; preserve composition/songwriter authority basis.
+**Open gate — THIRD-PARTY CONTROL:**
+1. Document why BVS/BasJunior owns or controls the master despite the credited performing artist being I Ratty.
+2. Retain direct authority/permission covering I Ratty's performance and BVS mobile/radio streaming use.
+3. Retain producer/master authority involving Wolfbridges where applicable.
+4. Record the composition/songwriter/publishing authority basis; verified performance/producer credits alone are not composition clearance.
+
+This is the most important rights-control gap in the current five because the public artist and producer are third parties while the recorded rights basis says founder-owned master.
 
 ### Thugging — BasJunior
 Current state:
 - iOS cleared
 - explicit
+- uploaded/owned by the BasJunior creator account
+- verified BasJunior artist credit
 - rights basis recorded as founder-owned master
 - evidence reference currently points to the founder catalogue instruction
 - clearance note explicitly says supporting master-rights documentation remains required
+- no linked release, release-clearance-evidence row or distribution job was found
 
-**Open gate:** add durable master-rights evidence; preserve composition/songwriter authority basis.
+**Open gate:**
+1. Add a durable BasJunior/BVS master-control declaration or equivalent ownership record.
+2. Preserve composition/songwriter/publishing authority basis.
+3. Confirm no uncleared third-party beat/sample/material is present before treating the founder declaration as complete.
+
+Of Heavy / Jegera / Thugging, this is currently the most straightforward evidence pack to close because the uploader, credited artist and asserted master controller align.
 
 ## Gate 1 — proposed first expansion package
 
@@ -116,13 +146,16 @@ Human evidence required before iOS clearance:
 
 ## Decision order
 
-1. Close Heavy / Jegera / Thugging evidence gaps first.
-2. Review Whisper II Drive evidence package.
-3. Review FRESHMAN MUSIK evidence package.
-4. Only after human approval, stage the selected track clearance rows in **beta** first.
-5. Verify `GET /api/station/tracks?surface=ios` in beta.
-6. Smoke playback, artwork, metadata and explicit-content handling.
-7. Require explicit BVS approval before any production clearance write.
+1. Decide whether the current Heavy file should remain iOS-cleared, be replaced by a final master, or be removed from the cleared set.
+2. Close the Thugging durable master/composition pack.
+3. Close the Jegera third-party master/performance/producer/composition pack.
+4. Confirm the retained evidence pack for On the Moon / Party Tarpy remains accessible.
+5. Review Whisper II Drive evidence package.
+6. Review FRESHMAN MUSIK evidence package.
+7. Only after human approval, stage the selected track clearance rows in **beta** first.
+8. Verify `GET /api/station/tracks?surface=ios` in beta.
+9. Smoke playback, artwork, metadata and explicit-content handling.
+10. Require explicit BVS approval before any production clearance write.
 
 ## Important distinction
 A Rights Passport / preflight-ready state is a strong internal signal, but it is **not by itself the same thing as a durable external evidence pack**. The iOS clearance gate requires both a coherent rights declaration and enough retained evidence that BVS can explain the basis later.
