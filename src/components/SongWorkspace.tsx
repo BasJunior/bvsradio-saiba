@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import { trackEvent, trackEventOnce } from '@/lib/analytics'
 
 type Workspace = {
   id: string
@@ -53,6 +54,21 @@ export default function SongWorkspace({ id }: { id: string }) {
       setLyrics(next.lyrics || '')
       setNotes(next.notes || '')
       setSaveState('saved')
+
+      const seenKey = `bvs.song-workspace.seen.${id}`
+      const seenBefore = window.localStorage.getItem(seenKey) === '1'
+      trackEventOnce('lyrics_pad_open', {
+        beat_id: next.beatId,
+        licence_code: next.licenceCode,
+        has_existing_lyrics: Boolean((next.lyrics || '').trim()),
+      }, id)
+      if (seenBefore) {
+        trackEventOnce('lyrics_return_session', {
+          beat_id: next.beatId,
+          has_existing_lyrics: Boolean((next.lyrics || '').trim()),
+        }, id)
+      }
+      window.localStorage.setItem(seenKey, '1')
     }).catch(() => setError('Could not open Song Workspace.'))
   }, [id])
 
@@ -72,6 +88,13 @@ export default function SongWorkspace({ id }: { id: string }) {
     }
     setDirty(false)
     setSaveState('saved')
+    if (lyrics.trim() || songTitle.trim()) {
+      trackEventOnce('lyrics_first_save', {
+        beat_id: workspace.beatId,
+        has_title: Boolean(songTitle.trim()),
+        word_count: lyrics.trim() ? lyrics.trim().split(/\s+/).length : 0,
+      }, workspace.id, 'local')
+    }
     return true
   }, [lyrics, notes, songTitle, token, workspace])
 
@@ -89,6 +112,11 @@ export default function SongWorkspace({ id }: { id: string }) {
 
   async function prepareRelease() {
     if (await save('ready_to_release')) {
+      trackEvent('prepare_release', {
+        beat_id: workspace?.beatId || null,
+        licence_code: workspace?.licenceCode || null,
+        word_count: lyrics.trim() ? lyrics.trim().split(/\s+/).length : 0,
+      })
       window.location.href = `/creator/studio/create/release?songWorkspace=${encodeURIComponent(id)}`
     }
   }
