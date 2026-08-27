@@ -9,13 +9,13 @@
 | S04 | Mobile Studio friction fixes | Saiba | CORE STUDIO ONLY | Lyrics Pad is accepted for this stage and will be checked naturally on the live website. Spend mobile QA time on the higher-frequency Studio jobs (Release music / Sell a beat / Offer a service); fix only observed friction. |
 | S05 | Rotation admissibility inventory | Saiba + BVS | DONE | Production mapped read-only: 65 web / 5 iOS. 26 current-Passport candidates; 1 legacy release; 18 standalone verified-credit; 15 standalone evidence-poor. |
 | S06 | Runtime/API smoke QA | Saiba | API/RUNTIME DONE | Canonical beta runtime errors: none in last 24h. Station/web+iOS and auth fail-closed endpoints checked. Real payment rail intentionally not exercised. Mobile/human UX remains under S04. |
-| S07 | First iOS candidate batch | Saiba + BVS | HUMAN RIGHTS GATE | Current five audited in depth. Heavy now requires keep/replace/remove decision because production itself marks the audio an unfinished demo. Thugging evidence is simplest to close; Jegera has a third-party-control gap. Whisper II Drive and FRESHMAN MUSIK remain review candidates only. No clearance rows changed. |
+| S07 | First iOS candidate batch | Editorial + BVS | EDITORIAL PRIORITY QUEUE | Editorial now chooses which tracks deserve first publication using `EDITORIAL_IOS_PRIORITY.md`. Evidence retrieval happens only for selected tracks with a specific gap. No clearance rows changed. |
 | S08 | Beta → prod promotion checklist | Saiba | DONE | Feature-level surface classification, smoke gates, rollback and explicit production-approval rule documented. |
 | S09 | Standalone canonical beta deploy | VPS agent | DONE | `bvsradio-beta.vercel.app` deployed from clean detached worktree at `09e6a361...`; guard/preflight/build passed; station remains 1 web / 0 iOS fail-closed. Production not targeted. |
 | S10 | Production Candidate 01 — intent-first Studio | Saiba + BVS | READY FOR HUMAN PREVIEW | Isolated from `main`; branch `saiba/prod-candidate-studio-intent-2026-08-28` at `ba9dd2e6...`; 8-file diff, no DB migration, Vercel READY. Requires explicit production approval after preview. |
 | S11 | Production Candidate 02 — Lyrics Pad | Saiba + BVS | BUILD READY · NOT APPROVED | Downstream of Candidate 01; branch `saiba/prod-candidate-lyrics-pad-2026-08-28` at `30889df8...`; entitlement regression + TypeScript/build pass. Requires production `song_workspaces` migration and explicit approval before deploy. |
 | S12 | iOS clearance operating runbook | Saiba + BVS | DONE | Existing Editorial clearance UI/API retained as source of truth. Human evidence review → beta stage → `surface=ios` smoke → explicit prod approval. No parallel admin feature needed. |
-| S13 | Recover existing iOS rights evidence from connected accounts | VPS agent | TODO · ACCESS-DEPENDENT | Search the BVS-connected Drive/Gmail and any VPS-accessible rights archive for existing Amuse/master-rights/licence evidence for the current iOS five, prioritising Heavy, Jegera and Thugging. For Heavy, also check whether a later/final mixed-mastered version exists. Record only evidence references/findings in the sprint handoff; do **not** auto-clear tracks, alter production clearance rows, or treat an Amuse delivery record by itself as proof of all underlying rights. |
+| S13 | Recover evidence for selected priority tracks | M1/VPS agent | ON DEMAND · DEFERRED | Do **not** search all connected Drive/Gmail/archive records just to rank tracks. Editorial selects priority tracks first. If a selected track has a specific missing document/master/authority question, hand only that targeted lookup to the agent with M1/VPS/connected-account access. No automatic clearance or production writes. |
 
 ## Product decision — Lyrics Pad
 
@@ -79,8 +79,9 @@ Promoted and deployed to canonical beta:
 
 ## Content operations
 - `IOS_RIGHTS_EVIDENCE_GATE.md` contains the detailed current-five and expansion evidence review.
+- `EDITORIAL_IOS_PRIORITY.md` is now the operational shortlist for deciding which tracks Editorial reviews/publishes first.
 - `IOS_CLEARANCE_RUNBOOK.md` locks the operating procedure around the existing Editorial clearance controls.
-- S13 is parked for the VPS agent that has the required connected-account/archive access.
+- M1/VPS evidence recovery is now on-demand only after Editorial selects a priority track with a concrete evidence gap.
 - No production mobile clearance row was changed during this sprint.
 
 ## Handoff rule
