@@ -12,7 +12,7 @@
 | S07 | First iOS candidate batch | Editorial + BVS | EDITORIAL PRIORITY QUEUE | Editorial now chooses which tracks deserve first publication using `EDITORIAL_IOS_PRIORITY.md`. Evidence retrieval happens only for selected tracks with a specific gap. No clearance rows changed. |
 | S08 | Beta → prod promotion checklist | Saiba | DONE | Feature-level surface classification, smoke gates, rollback and explicit production-approval rule documented. |
 | S09 | Standalone canonical beta deploy | VPS agent | DONE | `bvsradio-beta.vercel.app` deployed from clean detached worktree at `09e6a361...`; guard/preflight/build passed; station remains 1 web / 0 iOS fail-closed. Production not targeted. |
-| S10 | Production Candidate 01 — intent-first Studio | Saiba + BVS | AUTO GATE DONE · HUMAN PREVIEW ONLY | Isolated from `main`; branch `saiba/prod-candidate-studio-intent-2026-08-28` at `ba9dd2e6...`; 8-file diff, no DB migration, Vercel READY. Auth, legacy deep-links, full Studio fallback, focused create routes, current production wallet path and service-category compatibility verified. Only a short visual/mobile preview + explicit production approval remains. |
+| S10 | Production Candidate 01 — intent-first Studio | Saiba + BVS | PROMOTION PACK READY · HUMAN PREVIEW/APPROVAL | Candidate remains exactly 3 commits ahead / 0 behind `main`, 8-file approved scope, no DB migration, preview READY. Automated/code smoke passed and `PROD_PROMOTION_STUDIO_01.md` now records exact fast-forward, post-deploy checks and rollback. No production action until explicit approval. |
 | S11 | Production Candidate 02 — Lyrics Pad | Saiba + BVS | BUILD READY · NOT APPROVED | Downstream of Candidate 01; branch `saiba/prod-candidate-lyrics-pad-2026-08-28` at `30889df8...`; entitlement regression + TypeScript/build pass. Requires production `song_workspaces` migration and explicit approval before deploy. |
 | S12 | iOS clearance operating runbook | Saiba + BVS | DONE | Existing Editorial clearance UI/API retained as source of truth. Human evidence review → beta stage → `surface=ios` smoke → explicit prod approval. No parallel admin feature needed. |
 | S13 | Recover evidence for selected priority tracks | M1/VPS agent | ON DEMAND · DEFERRED | Do **not** search all connected Drive/Gmail/archive records just to rank tracks. Editorial selects priority tracks first. If a selected track has a specific missing document/master/authority question, hand only that targeted lookup to the agent with M1/VPS/connected-account access. No automatic clearance or production writes. |
@@ -26,11 +26,13 @@ BVS accepts the current Lyrics Pad / Song Workspace implementation as sufficient
 ### Candidate 01 — Studio
 - branch: `saiba/prod-candidate-studio-intent-2026-08-28`
 - head: `ba9dd2e6d5b2dd38d07a686406e5dcd7c9bc211c`
+- production base: `9b2c7a9dcbda5915ecaf7cf492bf3d0a7b684ca8`
+- compare: 3 commits ahead / 0 behind
 - preview deployment: `dpl_63EYJyDypMctRnV9S6BGQZkEnUrV` — READY
 - no production schema migration
 - automated/code-level smoke gate complete
-- human visual/mobile preview remains
-- documented in `PROD_CANDIDATE_STUDIO.md` and `PROD_CANDIDATE_STUDIO_SMOKE.md`
+- production promotion package prepared in `PROD_PROMOTION_STUDIO_01.md`
+- human visual/mobile preview + explicit production approval remain
 
 ### Candidate 02 — Lyrics Pad
 - branch: `saiba/prod-candidate-lyrics-pad-2026-08-28`
