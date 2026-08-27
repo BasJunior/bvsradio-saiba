@@ -1,5 +1,5 @@
 import { authUserId, serviceHeaders } from '@/lib/storage-upload'
-import { producerPublicName } from '@/lib/public-name'
+import { creatorPublicName } from '@/lib/public-name'
 import { publicStorageUrl } from '@/lib/beatstore-server'
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 
@@ -66,8 +66,6 @@ type ProfileRow = {
   username?: string
   creator_public_name?: string
   creator_name_status?: string
-  producer_public_name?: string
-  producer_name_status?: string
 }
 
 export type BeatEntitlement = {
@@ -136,11 +134,9 @@ export async function findBeatEntitlement(
   if (!beat) return null
 
   const profile = (await rows<ProfileRow>(
-    `profiles?id=eq.${encodeURIComponent(beat.producer_user_id)}&select=username,creator_public_name,creator_name_status,producer_public_name,producer_name_status&limit=1`,
+    `profiles?id=eq.${encodeURIComponent(beat.producer_user_id)}&select=username,creator_public_name,creator_name_status&limit=1`,
   ))[0]
-  const producerName = producerPublicName({
-    producerPublicName: profile?.producer_public_name,
-    producerNameStatus: profile?.producer_name_status,
+  const producerName = creatorPublicName({
     publicName: profile?.creator_public_name,
     publicNameStatus: profile?.creator_name_status,
     username: profile?.username,
