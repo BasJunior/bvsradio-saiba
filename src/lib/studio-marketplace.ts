@@ -78,8 +78,8 @@ export function normalizeStudioCity(value: string) {
 export function roundPublicCoordinate(value: unknown, precision: StudioLocationPrecision) {
   const number = Number(value);
   if (!Number.isFinite(number)) return null;
-  // Do not expose a creator's exact coordinates through public discovery unless explicitly marked exact.
-  const decimals = precision === "exact" ? 5 : precision === "neighborhood" ? 3 : 2;
+  // Public discovery never exposes a studio's door pin. Exact arrival details belong in the booking flow.
+  const decimals = precision === "city" ? 2 : 3;
   const factor = 10 ** decimals;
   return Math.round(number * factor) / factor;
 }

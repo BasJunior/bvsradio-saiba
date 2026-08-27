@@ -37,6 +37,7 @@ function publicStudio(
   const locationPrecision = (["city", "neighborhood", "exact"].includes(String(row.location_precision))
     ? String(row.location_precision)
     : "city") as StudioLocationPrecision;
+  const publicPrecision: StudioLocationPrecision = locationPrecision === "city" ? "city" : "neighborhood";
   return {
     providerKey: String(row.provider_key),
     ownerUserId: null,
@@ -46,9 +47,9 @@ function publicStudio(
     countryCode: row.country_code ? String(row.country_code) : null,
     neighborhood: row.neighborhood ? String(row.neighborhood) : null,
     locationLabel: String(row.location_label || row.neighborhood || row.city || ""),
-    latitude: roundPublicCoordinate(row.latitude, locationPrecision),
-    longitude: roundPublicCoordinate(row.longitude, locationPrecision),
-    locationPrecision,
+    latitude: roundPublicCoordinate(row.latitude, publicPrecision),
+    longitude: roundPublicCoordinate(row.longitude, publicPrecision),
+    locationPrecision: publicPrecision,
     timezone: String(row.timezone || "Africa/Harare"),
     amenities: Array.isArray(row.amenities) ? row.amenities.map(String).slice(0, 30) : [],
     genres: Array.isArray(row.genres) ? row.genres.map(String).slice(0, 30) : [],

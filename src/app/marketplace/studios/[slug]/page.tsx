@@ -161,7 +161,7 @@ export default function StudioDetailPage() {
         <aside className="space-y-5 lg:sticky lg:top-24 lg:self-start">
           <div className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><p className="text-xs font-semibold uppercase tracking-[.16em] text-brand">Book this studio</p><p className="mt-2 text-2xl font-semibold">{studioPriceLabel(studio.hourlyFromUsd)}</p><p className="mt-2 text-sm text-text-secondary">Packages, published time slots and booking requests stay inside BVS.</p>{bookable[0] ? <Link href={`/marketplace/${provider.slug}/book?service=${encodeURIComponent(bookable[0].id)}`} className="mt-5 flex min-h-12 items-center justify-center rounded-full bg-brand px-5 font-semibold text-black">Check availability</Link> : <Link href={`/marketplace/${provider.slug}`} className="mt-5 flex min-h-12 items-center justify-center rounded-full border border-brand/40 px-5 font-semibold text-brand">View services</Link>}</div>
           <StudioDiscoveryMap studios={[studio]} selectedKey={studio.providerKey} onSelect={() => null} />
-          <div className="rounded-2xl border border-white/10 p-4 text-xs text-text-secondary"><strong className="text-white">Location privacy:</strong> {studio.locationPrecision === "exact" ? "this provider chose to publish an exact pin." : "the public discovery pin is approximate. Exact arrival details can stay within the confirmed booking flow."}</div>
+          <div className="rounded-2xl border border-white/10 p-4 text-xs text-text-secondary"><strong className="text-white">Location privacy:</strong> public discovery shows the studio area only. Exact address and arrival instructions belong inside the confirmed booking flow.</div>
         </aside>
       </div>
     </main>

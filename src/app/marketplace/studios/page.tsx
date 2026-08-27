@@ -154,7 +154,7 @@ export default function StudioMarketplacePage() {
           setSelectedCity(located[0].studio.city);
           setCityQuery(located[0].studio.city);
           setSelectedKey(located[0].studio.providerKey);
-          setLocationMessage(`Showing the closest BVS studio city: ${located[0].studio.city}.`);
+          setLocationMessage(`Showing the closest BVS studio area: ${located[0].studio.city}. Public distances use approximate discovery pins.`);
         } else {
           setLocationMessage("Location found. Studio distance will appear when providers publish map pins.");
         }
@@ -175,7 +175,7 @@ export default function StudioMarketplacePage() {
           <Link href="/marketplace" className="text-sm text-brand hover:underline">← Services Marketplace</Link>
           <p className="mt-6 text-xs font-semibold uppercase tracking-[.22em] text-brand">BVS Studios</p>
           <h1 className="mt-3 text-balance text-4xl font-semibold sm:text-5xl lg:text-6xl">Book a studio session near you.</h1>
-          <p className="mt-4 max-w-3xl text-base text-text-secondary sm:text-lg">Search real BVS studio availability by city, date and session length. Compare packages and verified client ratings, then book the creator’s published slot.</p>
+          <p className="mt-4 max-w-3xl text-base text-text-secondary sm:text-lg">Search real BVS studio availability by city, date and session length. Public map pins show the studio area for discovery; exact arrival details stay inside confirmed bookings.</p>
         </div>
 
         <div className="mt-7 grid gap-2 rounded-2xl border border-white/10 bg-black/20 p-3 md:grid-cols-[minmax(0,1.35fr)_minmax(150px,.7fr)_minmax(150px,.7fr)_auto]">
@@ -218,7 +218,7 @@ export default function StudioMarketplacePage() {
             return <article id={`studio-card-${studio.providerKey}`} key={studio.providerKey} onMouseEnter={() => setSelectedKey(studio.providerKey)} onClick={() => setSelectedKey(studio.providerKey)} className={`group scroll-mt-24 overflow-hidden rounded-[1.75rem] border bg-white/[.025] transition ${selectedKey === studio.providerKey ? "border-brand/50 shadow-xl shadow-brand/5" : "border-white/10 hover:border-white/20"}`}>
               <div className="grid sm:grid-cols-[240px_minmax(0,1fr)]">
                 <Link href={detailHref} className="relative block min-h-52 overflow-hidden bg-black/30">{image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" /> : null}<div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent sm:bg-gradient-to-r" />{studio.verified ? <span className="absolute left-3 top-3 rounded-full bg-brand px-3 py-1 text-[10px] font-bold uppercase tracking-[.12em] text-black">BVS verified</span> : null}{studio.gallery.length > 1 ? <span className="absolute bottom-3 left-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] text-white backdrop-blur">{studio.gallery.length} photos</span> : null}</Link>
-                <div className="p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-text-secondary">{studio.locationLabel}{distanceKm != null ? ` · ${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km away` : ""}</p><Link href={detailHref} className="mt-1 block text-2xl font-semibold hover:text-brand">{studio.displayName}</Link></div><div className="text-right">{studio.rating ? <p className="font-semibold">★ {studio.rating.toFixed(1)} <span className="text-xs font-normal text-text-secondary">({studio.reviewCount})</span></p> : <p className="text-xs text-text-secondary">New on BVS</p>}<p className="mt-1 text-sm font-semibold text-brand">{studioPriceLabel(studio.hourlyFromUsd)}</p></div></div>
+                <div className="p-5 sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-xs text-text-secondary">{studio.locationLabel}{distanceKm != null ? ` · approx. ${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} km away` : ""}</p><Link href={detailHref} className="mt-1 block text-2xl font-semibold hover:text-brand">{studio.displayName}</Link></div><div className="text-right">{studio.rating ? <p className="font-semibold">★ {studio.rating.toFixed(1)} <span className="text-xs font-normal text-text-secondary">({studio.reviewCount})</span></p> : <p className="text-xs text-text-secondary">New on BVS</p>}<p className="mt-1 text-sm font-semibold text-brand">{studioPriceLabel(studio.hourlyFromUsd)}</p></div></div>
                   <p className="mt-3 line-clamp-2 text-sm text-text-secondary">{provider.headline}</p><div className="mt-4 flex flex-wrap gap-2">{provider.services.filter((service) => service.bookingMode === "calendar").slice(0, 3).map((service) => <span key={service.id} className="rounded-full bg-white/5 px-3 py-1 text-xs text-text-secondary">{service.title}</span>)}</div><div className="mt-5 flex flex-wrap items-center justify-between gap-3"><span className={`text-xs ${slot ? "font-semibold text-brand" : "text-text-secondary"}`}>{slot ? slotLabel(slot) : nextSlotLabel(studio.nextAvailableAt)}</span><Link href={detailHref} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">View studio</Link></div>
                 </div>
               </div>

@@ -122,7 +122,7 @@ export default function StudioMarketplaceProfileDesk() {
           longitude: position.coords.longitude.toFixed(5),
           locationPrecision: "neighborhood",
         }));
-        setMessage("Approximate studio pin captured. BVS rounds public coordinates unless you explicitly publish an exact pin.");
+        setMessage("Studio pin captured. BVS only shows an approximate public area; exact arrival details stay for confirmed bookings.");
       },
       () => setMessage("Location permission was not granted. City-only discovery still works."),
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 },
@@ -210,8 +210,8 @@ export default function StudioMarketplaceProfileDesk() {
         </label>
 
         <div className="rounded-xl border border-white/10 p-4 md:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold">Discovery map pin</p><p className="mt-1 text-xs text-text-secondary">Optional. BVS can show a city-only pin, or capture your current location and round it for public discovery.</p></div><button type="button" onClick={useCurrentLocation} className="rounded-full border border-brand/40 px-4 py-2 text-xs font-semibold text-brand">Use current location</button></div>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3"><input className={field} value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} placeholder="Latitude" /><input className={field} value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder="Longitude" /><select className={field} value={form.locationPrecision} onChange={(e) => setForm({ ...form, locationPrecision: e.target.value })}><option value="city">City-level pin</option><option value="neighborhood">Approximate area</option><option value="exact">Publish exact pin</option></select></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-semibold">Discovery map area</p><p className="mt-1 text-xs text-text-secondary">Optional. BVS shows city or neighborhood-level discovery only. Door/address details should be shared after a booking is accepted.</p></div><button type="button" onClick={useCurrentLocation} className="rounded-full border border-brand/40 px-4 py-2 text-xs font-semibold text-brand">Use current location</button></div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3"><input className={field} value={form.latitude} onChange={(e) => setForm({ ...form, latitude: e.target.value })} placeholder="Latitude" /><input className={field} value={form.longitude} onChange={(e) => setForm({ ...form, longitude: e.target.value })} placeholder="Longitude" /><select className={field} value={form.locationPrecision} onChange={(e) => setForm({ ...form, locationPrecision: e.target.value })}><option value="city">City-level area</option><option value="neighborhood">Approximate neighborhood</option></select></div>
         </div>
         <div className="md:col-span-2"><button disabled={busy} className="min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black disabled:opacity-40">{busy ? "Saving…" : "Save studio discovery profile"}</button></div>
       </form>

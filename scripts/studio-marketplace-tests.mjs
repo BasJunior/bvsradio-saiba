@@ -15,7 +15,7 @@ assert.equal(seededStudioDiscovery[0].rating, null, "seeded studios must not inv
 
 assert.equal(roundPublicCoordinate(-17.82523, "city"), -17.83, "city pins must be coarse");
 assert.equal(roundPublicCoordinate(31.03351, "neighborhood"), 31.034, "neighborhood pins must be rounded");
-assert.equal(roundPublicCoordinate(31.033512, "exact"), 31.03351, "exact pins retain useful map precision");
+assert.equal(roundPublicCoordinate(31.033512, "exact"), 31.034, "public discovery must not expose exact studio coordinates");
 
 const distance = haversineKm(-17.825, 31.033, -17.83, 31.04);
 assert.equal(distance > 0 && distance < 2, true, "nearby studio distance should be plausible");
@@ -40,6 +40,7 @@ assert.doesNotMatch(reviewRoute, /reviewerLabel:.*customer/i, "public review out
 
 const studiosRoute = fs.readFileSync("src/app/api/marketplace/studios/route.ts", "utf8");
 assert.match(studiosRoute, /roundPublicCoordinate/, "public studio API must round map coordinates");
+assert.match(studiosRoute, /publicPrecision/, "public studio API must downgrade exact stored pins before discovery output");
 assert.match(studiosRoute, /approved Marketplace studio role/i, "studio profile writes must require approved studio role");
 assert.match(studiosRoute, /ends_at,timezone/, "studio discovery must use real slot end-times and timezones");
 assert.match(studiosRoute, /availableSlots/, "public studio discovery should expose bounded real future slots for filtering");
@@ -61,6 +62,8 @@ assert.match(discoveryPage, /scrollIntoView\(\{ behavior: "smooth"/, "map select
 const map = fs.readFileSync("src/components/StudioDiscoveryMap.tsx", "utf8");
 assert.match(map, /tile\.openstreetmap\.org/, "beta studio map must use real street-map tiles");
 assert.match(map, /OpenStreetMap contributors/, "street-map attribution must remain visible");
+assert.match(map, /area map/, "studio map should present itself as an area map, not a door-pin map");
+assert.match(map, /Exact address and arrival instructions/, "studio map must explain exact locations stay in booking flow");
 
 const navbar = fs.readFileSync("src/components/layout/Navbar.tsx", "utf8");
 assert.doesNotMatch(navbar, /href="\/admin\/copilot"/, "Ops Copilot must not appear in the global header or mobile nav");
@@ -75,6 +78,9 @@ assert.match(detailPage, /valueRating/, "verified studio review form must captur
 const availabilityDesk = fs.readFileSync("src/components/MarketplaceAvailabilityDesk.tsx", "utf8");
 assert.match(availabilityDesk, /completedBookings/, "provider booking desk must derive completed confirmed sessions");
 assert.match(availabilityDesk, /review eligible/i, "completed studio sessions must explain review eligibility");
+const studioProfileDesk = fs.readFileSync("src/components/StudioMarketplaceProfileDesk.tsx", "utf8");
+assert.doesNotMatch(studioProfileDesk, /Publish exact pin/, "provider desk must not encourage public exact studio pins");
+assert.match(studioProfileDesk, /Door\/address details should be shared after a booking is accepted/, "provider desk must steer exact details into accepted bookings");
 
 const quickBeatCreate = fs.readFileSync("src/components/QuickBeatCreate.tsx", "utf8");
 assert.match(quickBeatCreate, /BeatPackUploadForm/, "Studio sell-a-beat flow must expose beat pack upload");

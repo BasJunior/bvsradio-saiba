@@ -76,23 +76,27 @@ export default function StudioDiscoveryMap({ studios, selectedKey, onSelect }: P
   }
 
   return (
-    <div className="relative min-h-[430px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c1718] shadow-2xl shadow-black/20">
-      <div className="absolute inset-0 bg-[#10201f]" aria-hidden>
+    <div className="relative min-h-[430px] overflow-hidden rounded-[2rem] border border-brand/20 bg-[#070707] shadow-2xl shadow-black/30">
+      <div className="absolute inset-0 bg-[#0b0b0a]" aria-hidden>
         {tiles.map((tile) => (
           <img
             key={tile.key}
             src={tile.src}
             alt=""
             draggable={false}
-            className="pointer-events-none absolute h-64 w-64 max-w-none select-none opacity-80 saturate-[.72] contrast-[.9] brightness-[.72]"
+            className="pointer-events-none absolute h-64 w-64 max-w-none select-none opacity-70 grayscale invert saturate-[.25] contrast-[1.12] brightness-[.5]"
             style={{ left: `calc(50% + ${tile.left}px)`, top: `calc(50% + ${tile.top}px)` }}
           />
         ))}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(5,15,15,.08),rgba(5,15,15,.34))]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(212,175,55,.18),transparent_34%),radial-gradient(circle_at_80%_90%,rgba(255,255,255,.07),transparent_28%),linear-gradient(135deg,rgba(10,10,10,.2),rgba(10,10,10,.72))]" />
+        <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(212,175,55,.15)_1px,transparent_1px),linear-gradient(90deg,rgba(212,175,55,.12)_1px,transparent_1px)] [background-size:44px_44px]" />
       </div>
 
-      <div className="absolute left-4 top-4 z-30 rounded-full border border-white/10 bg-black/70 px-3 py-2 text-[11px] font-semibold backdrop-blur-xl">
-        BVS Studios · street map
+      <div className="absolute left-4 top-4 z-30 rounded-full border border-brand/25 bg-black/75 px-3 py-2 text-[11px] font-semibold text-brand backdrop-blur-xl">
+        BVS Studios · area map
+      </div>
+      <div className="absolute left-4 top-14 z-30 max-w-[250px] rounded-2xl border border-white/10 bg-black/70 px-3 py-2 text-[11px] leading-5 text-white/65 backdrop-blur-xl">
+        Public pins show the booking area, not the studio door. Exact arrival details come after confirmation.
       </div>
       <div className="absolute right-4 top-4 z-30 flex overflow-hidden rounded-full border border-white/10 bg-black/70 backdrop-blur-xl">
         <button type="button" aria-label="Zoom out" onClick={() => setZoomOffset((value) => Math.max(-4, value - 1))} className="px-3 py-2 text-sm text-white/80 hover:bg-white/10">−</button>
@@ -108,11 +112,14 @@ export default function StudioDiscoveryMap({ studios, selectedKey, onSelect }: P
             key={studio.providerKey}
             type="button"
             onClick={() => onSelect(studio.providerKey)}
-            className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full px-3 py-2 text-xs font-bold shadow-xl transition duration-200 ${active ? "scale-110 bg-brand text-black ring-4 ring-brand/20" : "bg-white text-black hover:scale-105"}`}
+            className={`group absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-full text-xs font-bold transition duration-200 ${active ? "scale-110" : "hover:scale-105"}`}
             style={{ left: `calc(50% + ${point.x - centre.x}px)`, top: `calc(50% + ${point.y - centre.y}px)` }}
             aria-label={`Select ${studio.displayName}`}
           >
-            {studioPriceLabel(studio.hourlyFromUsd)}
+            <span className={`absolute left-1/2 top-1/2 h-14 w-14 -translate-x-1/2 -translate-y-1/2 rounded-full border ${active ? "border-brand/40 bg-brand/15" : "border-white/15 bg-white/10"}`} aria-hidden />
+            <span className={`relative flex min-h-9 items-center rounded-full border px-3 shadow-xl backdrop-blur ${active ? "border-brand bg-brand text-black shadow-brand/20" : "border-white/15 bg-black/80 text-white shadow-black/40"}`}>
+              {studioPriceLabel(studio.hourlyFromUsd)}
+            </span>
           </button>
         );
       })}
@@ -123,14 +130,14 @@ export default function StudioDiscoveryMap({ studios, selectedKey, onSelect }: P
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Selected studio</p>
               <h3 className="mt-1 text-lg font-semibold text-white">{selected.displayName}</h3>
-              <p className="mt-1 text-xs text-white/60">{selected.locationLabel}</p>
+              <p className="mt-1 text-xs text-white/60">{selected.locationLabel} · approximate area</p>
             </div>
             <div className="text-right text-xs">
               {selected.rating ? <p className="font-semibold text-white">★ {selected.rating.toFixed(1)}</p> : <p className="text-white/60">New on BVS</p>}
               <p className="mt-1 text-brand">{studioPriceLabel(selected.hourlyFromUsd)}</p>
             </div>
           </div>
-          {selected.locationPrecision !== "exact" ? <p className="mt-3 text-[11px] text-white/50">Pin is approximate for discovery; exact arrival details stay with the provider.</p> : null}
+          <p className="mt-3 text-[11px] text-white/50">Exact address and arrival instructions are handled after the provider accepts a booking.</p>
         </div>
       ) : null}
 
