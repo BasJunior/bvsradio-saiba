@@ -1,7 +1,12 @@
 import Link from "next/link";
 import ReleaseSubmitForm from "@/components/ReleaseSubmitForm";
 
-export default function CreateReleasePage() {
+export default async function CreateReleasePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ songWorkspace?: string }>;
+}) {
+  const songWorkspaceId = String((await searchParams).songWorkspace || "").trim();
   return (
     <main className="mx-auto max-w-4xl px-5 pb-20 pt-10 sm:px-6 sm:pt-12">
       <Link href="/creator/studio" className="text-sm text-brand">← Studio</Link>
@@ -11,7 +16,7 @@ export default function CreateReleasePage() {
         This screen only asks for what BVS needs to prepare the release, check the rights and send it through review. You can manage status later from Studio.
       </p>
       <div className="mt-8 rounded-3xl border border-white/10 bg-white/[.02] p-5 sm:p-6">
-        <ReleaseSubmitForm />
+        <ReleaseSubmitForm songWorkspaceId={songWorkspaceId || undefined} />
       </div>
     </main>
   );
