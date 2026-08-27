@@ -2,6 +2,8 @@
 
 Beta UX change based on creator feedback that posting a beat exposed too much of the BVS system at once.
 
+Promoted to the active beta code line on 2026-08-27. Production/main remains untouched.
+
 ## Front door
 
 `/creator/studio` now asks what the creator wants to do first:
