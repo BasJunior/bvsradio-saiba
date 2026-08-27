@@ -127,7 +127,7 @@ export function trackEvent(event: AnalyticsEvent, properties: AnalyticsPropertie
 export function trackEventOnce(
   event: AnalyticsEvent,
   properties: AnalyticsProperties = {},
-  key = event,
+  key: string = event,
   scope: "session" | "local" = "session",
 ) {
   if (typeof window === "undefined" || !analyticsAllowed()) return
