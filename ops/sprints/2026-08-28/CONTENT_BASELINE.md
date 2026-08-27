@@ -17,21 +17,29 @@ Current five iOS-visible titles:
 ### Canonical beta (`bvsradio-beta.vercel.app`)
 - `GET /api/station/tracks`: **1** web track (`Beta Qualification Track`)
 - `GET /api/station/tracks?surface=ios`: **0** tracks
+- `/api/build` reports beta SHA `124690a7f4dc1c7c` and environment `staging`.
 
 ### Connected beta Supabase (`kuqdhuomcqonhnwfgrlw`)
-At sprint start/current check:
+At sprint check:
 - public tracks: 2
 - in-rotation tracks: 2
 - public + in-rotation: 2
 - editorial approved: 2
 - `mobile_distribution_clearances`: 0 rows
 
-## Important finding
-The canonical beta station response and the connected beta Supabase inventory do not currently match each other, and neither mirrors production's 65/5 content state. Do **not** bulk-copy, clear, or expand rotation until the beta deployment's exact Supabase/environment mapping is resolved.
+The two approved rotation rows are:
+- `Beta Qualification Track` — local BVS placeholder media; returned by the station API.
+- `River Lights (QA)` — Spotify preview URL (`p.scdn.co`); deliberately excluded by `station-library.ts`, which filters Spotify CDN preview URLs from rotation.
+
+## Resolved finding
+The canonical beta station result is consistent with the connected beta Supabase project: two approved rows exist, but one is intentionally filtered, leaving one playable beta station track. The deployment/data mapping therefore appears aligned.
+
+Beta is intentionally a much smaller content environment than production; it does **not** mirror production's 65 web / 5 iOS catalogue.
 
 ## Sprint implication
-Content rollout work splits into two immediate tasks:
-1. Resolve beta station data-source/environment mapping.
-2. Build the admissibility inventory from the **production 65-track source of truth**, then deliberately stage approved candidates into the correct beta environment for QA.
+1. Build the admissibility inventory from the **production 65-track source of truth**.
+2. Select a small evidence-backed candidate batch.
+3. Deliberately stage only those candidates into beta for iOS/content QA rather than bulk-copying production rotation.
+4. Keep `surface=ios` fail-closed until explicit clearance rows are created after BVS review.
 
 No track is automatically deemed iOS-admissible by this inventory. Final rights decisions remain editorial/BVS decisions.
