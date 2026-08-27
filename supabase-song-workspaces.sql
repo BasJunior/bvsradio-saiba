@@ -1,5 +1,5 @@
 -- BVS beta: purchased-beat Song Workspace / Lyrics Pad
--- Entitlement creation is service-role only after a paid/fulfilled beat order is verified.
+-- Entitlement creation and mutation are service-role only after a paid/fulfilled beat order is verified.
 
 create table if not exists public.song_workspaces (
   id uuid primary key default gen_random_uuid(),
@@ -32,11 +32,10 @@ alter table public.song_workspaces enable row level security;
 drop policy if exists "song workspaces select own" on public.song_workspaces;
 create policy "song workspaces select own" on public.song_workspaces for select using (auth.uid() = user_id);
 
+-- Do not permit direct browser inserts/updates/deletes. The BVS API uses the service role
+-- after checking the signed-in account and paid beat entitlement. This keeps release_id,
+-- status and licence snapshots server-controlled while lyrics still autosave through the API.
 drop policy if exists "song workspaces update own" on public.song_workspaces;
-create policy "song workspaces update own" on public.song_workspaces for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
-
--- Deliberately no client INSERT policy. BVS creates a workspace only after verifying
--- a paid/fulfilled order belonging to the signed-in user contains the beat licence.
 
 create or replace function public.verify_bvs_song_workspace_clearance()
 returns trigger
