@@ -1,9 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import { trackEvent } from '@/lib/analytics'
+
+type WorkspaceContext = {
+  id: string
+  beatTitle: string
+  producerName: string
+  licenceCode: string
+  licenceSummary: string
+}
+
+function xml(value: string) {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
+function bvsLicenceEvidence(workspace: WorkspaceContext) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700"><rect width="1200" height="700" fill="#0b0b0b"/><text x="70" y="110" fill="#f6c900" font-size="34" font-family="Arial">BVS BEAT LICENCE RECORD</text><text x="70" y="190" fill="white" font-size="46" font-family="Arial">${xml(workspace.beatTitle)}</text><text x="70" y="250" fill="#bbbbbb" font-size="28" font-family="Arial">Producer: ${xml(workspace.producerName)}</text><text x="70" y="305" fill="#bbbbbb" font-size="26" font-family="Arial">Licence: ${xml(workspace.licenceCode.replaceAll('_', ' '))}</text><text x="70" y="380" fill="#dddddd" font-size="22" font-family="Arial">Verified from paid BVS purchase and Song Workspace entitlement.</text><text x="70" y="435" fill="#888888" font-size="20" font-family="Arial">Workspace ${xml(workspace.id)}</text></svg>`
+  return new File([svg], `bvs-beat-licence-${workspace.id}.svg`, { type: 'image/svg+xml' })
+}
 
 type Slot = { path: string; signedUrl: string; contentType: string; index?: number }
 
@@ -30,7 +47,7 @@ const materialOptions = [
   ['other_third_party', 'Other third-party material'],
 ] as const
 
-export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => void }) {
+export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSuccess?: () => void; songWorkspaceId?: string }) {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [description, setDescription] = useState('')
@@ -59,6 +76,27 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
   const [materialTypes, setMaterialTypes] = useState<string[]>(['original'])
   const [evidenceFiles, setEvidenceFiles] = useState<Record<string, File | null>>({})
   const [evidenceNotes, setEvidenceNotes] = useState<Record<string, string>>({})
+  const [workspaceContext, setWorkspaceContext] = useState<WorkspaceContext | null>(null)
+
+  useEffect(() => {
+    if (!songWorkspaceId || !isSupabaseConfigured()) return
+    void createClient().auth.getSession().then(async ({ data }) => {
+      const token = data.session?.access_token
+      if (!token) return
+      const response = await fetch(`/api/creator/song-workspaces/${encodeURIComponent(songWorkspaceId)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok || !payload.workspace) return
+      const context = payload.workspace as WorkspaceContext
+      setWorkspaceContext(context)
+      setMaterialTypes(['leased_beat'])
+      trackEvent('prepare_release', { workspace: true })
+    })
+  }, [songWorkspaceId])
+
+  const autoLicensedBeat = Boolean(songWorkspaceId && workspaceContext)
   const containsCover = materialTypes.includes('cover')
   const containsRemix = materialTypes.includes('remix')
   const containsSamples = materialTypes.includes('sample')
@@ -118,8 +156,8 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       return
     }
     const requiredEvidenceTypes = materialTypes.filter((type) => type !== 'original')
-    if (!materialTypes.length || requiredEvidenceTypes.some((type) => !evidenceFiles[type])) {
-      setError('Declare the material type and upload clearance evidence for every cover, remix, sample, leased beat or third-party element.')
+    if (!materialTypes.length || requiredEvidenceTypes.some((type) => !(type === 'leased_beat' && autoLicensedBeat) && !evidenceFiles[type])) {
+      setError('Declare the material type and upload clearance evidence for every cover, remix, sample, leased beat or third-party element not already licensed through BVS.')
       return
     }
     if (!isSupabaseConfigured()) {
@@ -137,7 +175,12 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
         Authorization: `Bearer ${session.access_token}`,
         'Content-Type': 'application/json',
       }
-      const evidenceEntries = requiredEvidenceTypes.map((materialType) => ({ materialType, file: evidenceFiles[materialType] as File }))
+      const evidenceEntries = requiredEvidenceTypes.map((materialType) => ({
+        materialType,
+        file: materialType === 'leased_beat' && autoLicensedBeat && workspaceContext
+          ? bvsLicenceEvidence(workspaceContext)
+          : evidenceFiles[materialType] as File,
+      }))
 
       setProgress('Preparing secure upload slots…')
       const prepRes = await fetch('/api/releases/prepare', {
@@ -192,7 +235,9 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
             originalFileName: file.name,
             mimeType: file.type,
             size: file.size,
-            artistNotes: evidenceNotes[materialType] || '',
+            artistNotes: materialType === 'leased_beat' && autoLicensedBeat
+              ? `BVS_SONG_WORKSPACE:${songWorkspaceId}`
+              : evidenceNotes[materialType] || '',
           })),
           clearanceItems: evidenceEntries.map(({ materialType }, index) => ({
             materialType: materialType === 'other_third_party' ? 'third_party' : materialType,
@@ -232,7 +277,8 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
       const fin = await finRes.json()
       if (!finRes.ok) throw new Error(fin.error || 'Submit failed')
 
-      trackEvent('upload_complete', { genre, track_count: files.length, release_type: releaseType })
+      trackEvent('upload_complete', { genre, track_count: files.length, release_type: releaseType, song_workspace: Boolean(autoLicensedBeat) })
+      trackEvent('release_submitted', { song_workspace: Boolean(autoLicensedBeat) })
       setProgress('')
       setTitle('')
       setGenre('')
@@ -368,6 +414,7 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
               <input
                 type="checkbox"
                 checked={materialTypes.includes(value)}
+                disabled={value === 'leased_beat' && autoLicensedBeat}
                 onChange={(event) => {
                   setMaterialTypes(event.target.checked ? [...new Set([...materialTypes, value])] : materialTypes.filter((item) => item !== value))
                 }}
@@ -377,7 +424,14 @@ export default function ReleaseSubmitForm({ onSuccess }: { onSuccess?: () => voi
             </label>
           ))}
         </div>
-        {materialTypes.filter((type) => type !== 'original').map((type) => {
+        {autoLicensedBeat ? (
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/[.06] p-4 text-sm">
+            <p className="font-medium text-emerald-200">Leased beat evidence: verified by BVS</p>
+            <p className="mt-1 text-text-secondary">{workspaceContext?.licenceSummary}</p>
+            <p className="mt-2 text-xs text-text-secondary">This only covers the purchased BVS beat licence. Samples, features, compositions and third-party masters still need their own evidence.</p>
+          </div>
+        ) : null}
+        {materialTypes.filter((type) => type !== 'original' && !(type === 'leased_beat' && autoLicensedBeat)).map((type) => {
           const label = materialOptions.find(([value]) => value === type)?.[1] || type
           return (
             <div key={type} className="rounded-xl border border-amber-200/20 p-4">

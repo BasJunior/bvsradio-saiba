@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run test:ios-surface-gates && npm run test:studio-intent && next build",
-    "vercel-build": "npm run test:ios-surface-gates && npm run test:studio-intent && next build",
+    "build": "npm run test:ios-surface-gates && npm run test:studio-intent && npm run test:song-workspace && next build",
+    "vercel-build": "npm run test:ios-surface-gates && npm run test:studio-intent && npm run test:song-workspace && next build",
     "test:ios-surface-gates": "npm run test:ios-surface-lock && npm run test:apple-ios-surface",
     "start": "next start",
     "lint": "eslint",
@@ -15,6 +15,7 @@
     "test:apple-ios-surface": "node scripts/apple-ios-surface-tests.mjs",
     "test:ios-surface-lock": "node --experimental-strip-types scripts/ios-surface-lock-tests.mjs",
     "test:studio-intent": "node scripts/studio-intent-tests.mjs",
+    "test:song-workspace": "node scripts/song-workspace-tests.mjs",
     "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
     "typecheck": "tsc --noEmit",
     "cap:sync": "npx cap sync",

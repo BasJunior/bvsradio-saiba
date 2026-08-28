@@ -459,6 +459,7 @@ function UploadPageInner() {
                 </p>
               )}
               <ReleaseSubmitForm
+                songWorkspaceId={searchParams.get('songWorkspace') || undefined}
                 onSuccess={() => {
                   setSuccess(true)
                   setMode('release')
