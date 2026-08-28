@@ -3,9 +3,7 @@ import { authUserId } from "@/lib/storage-upload";
 import { getStripe, siteUrl } from "@/lib/stripe";
 import {
   artistPremiumPriceUsd,
-  normalizeArtistPlanId,
   normalizeInterval,
-  resolveCheckoutPlan,
   getArtistPremiumStatus,
 } from "@/lib/premium-billing";
 
@@ -22,12 +20,10 @@ export async function POST(req: Request) {
   const user = await authUserId(SUPABASE_URL, SERVICE, token);
   if (!user?.id || !user.email) return NextResponse.json({ error: "Session expired." }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { planId?: string; interval?: string };
+  const body = (await req.json().catch(() => ({}))) as { interval?: string };
   const interval = normalizeInterval(body.interval);
-  const resolved = await resolveCheckoutPlan(normalizeArtistPlanId(body.planId));
-  const planId = resolved.planId;
+  const planId = "artist_standard" as const;
   const amount = artistPremiumPriceUsd(planId, interval);
-  const label = planId === "artist_founding" ? "BVS Founding Artist Premium" : "BVS Standard Artist Premium";
   const current = await getArtistPremiumStatus(user.id);
   const paidThrough = current.premiumUntil ? Math.floor(new Date(current.premiumUntil).getTime() / 1000) : 0;
   const trialEnd = current.premiumActive && paidThrough > Math.floor(Date.now() / 1000) + 48 * 3600
@@ -46,7 +42,10 @@ export async function POST(req: Request) {
         currency: "usd",
         unit_amount: Math.round(amount * 100),
         recurring: { interval: interval === "year" ? "year" : "month" },
-        product_data: { name: label },
+        product_data: {
+          name: "BVS Artist Premium",
+          description: "Ongoing distribution access for approved releases while the membership remains active.",
+        },
       },
     }],
     metadata: { kind: "artist_premium", user_id: user.id, plan_id: planId, interval },
@@ -59,7 +58,8 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     redirectUrl: session.url,
-    note: resolved.reason || null,
+    planId,
+    amountUsd: amount,
     trialEndsAt: trialEnd ? new Date(trialEnd * 1000).toISOString() : null,
   });
 }

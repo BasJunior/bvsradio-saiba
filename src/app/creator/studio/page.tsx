@@ -93,19 +93,12 @@ export default function CreatorStudioHome() {
         <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">BVS Studio</p>
         <h1 className="mt-3 text-3xl font-semibold">Studio needs your creator account</h1>
         <p className="mt-4 text-text-secondary">{error}</p>
-        <Link
-          href="/auth/login?next=/creator/studio"
-          className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 py-3 font-semibold text-black"
-        >
-          Sign in
-        </Link>
+        <Link href="/auth/login?next=/creator/studio" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 py-3 font-semibold text-black">Sign in</Link>
       </main>
     );
   }
 
-  if (!data) {
-    return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Opening Studio…</main>;
-  }
+  if (!data) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Opening Studio…</main>;
 
   const artist = ["artist", "admin"].includes(data.profile.role);
   const producer = Boolean(data.profile.is_producer) || data.profile.role === "admin";
@@ -147,16 +140,9 @@ export default function CreatorStudioHome() {
 
       <section className="mt-8 grid gap-3 md:grid-cols-3" aria-label="Create in BVS">
         {createActions.map((action, index) => (
-          <Link
-            key={action.href}
-            href={action.href}
-            onClick={() => trackEvent("create_intent_selected", { intent: action.intent })}
-            className="group flex min-h-52 flex-col justify-between rounded-3xl border border-white/10 bg-white/[.025] p-6 transition hover:border-brand/45 hover:bg-brand/[.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
+          <Link key={action.href} href={action.href} onClick={() => trackEvent("create_intent_selected", { intent: action.intent })} className="group flex min-h-52 flex-col justify-between rounded-3xl border border-white/10 bg-white/[.025] p-6 transition hover:border-brand/45 hover:bg-brand/[.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
             <div>
-              <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-brand/30 bg-brand/10 px-2 text-xs font-semibold text-brand">
-                {index + 1}
-              </span>
+              <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-brand/30 bg-brand/10 px-2 text-xs font-semibold text-brand">{index + 1}</span>
               <h2 className="mt-5 text-2xl font-semibold group-hover:text-brand">{action.label}</h2>
               <p className="mt-2 text-sm leading-6 text-text-secondary">{action.copy}</p>
             </div>
@@ -171,12 +157,11 @@ export default function CreatorStudioHome() {
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Your work</p>
             <h2 className="mt-2 text-xl font-semibold">Manage when you need to</h2>
           </div>
-          <Link href="/creator/studio/manage" className="inline-flex min-h-11 items-center text-sm text-brand">
-            Open full Studio →
-          </Link>
+          <Link href="/creator/studio/manage" className="inline-flex min-h-11 items-center text-sm text-brand">Open full Studio →</Link>
         </div>
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <ManageLink href="/creator/studio/manage#releases" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
+          {artist && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" />}
           <ManageLink href="/artists" label="Money" detail="Wallet & earnings" />
           <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" />
           <ManageLink href="/creator/marketplace" label="Profile & storefront" detail="Advanced setup" />

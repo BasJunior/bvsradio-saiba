@@ -1,13 +1,8 @@
 import { NextResponse } from "next/server";
 import { authUserId } from "@/lib/storage-upload";
-import {
-  PREMIUM_CATALOG,
-  PREMIUM_DISTRIBUTION_STORES,
-  PREMIUM_TIERS,
-  defaultPremiumMonthlyUsd,
-  premiumPricingCopy,
-} from "@/lib/premium-catalog";
+import { PREMIUM_DISTRIBUTION_STORES } from "@/lib/premium-catalog";
 import { getArtistPremiumStatus } from "@/lib/premium-billing";
+import { PREMIUM_INSTANT_PRICE_USD } from "@/lib/premium-instant";
 import { paynowEnabled } from "@/lib/paynow";
 import { stripeEnabled } from "@/lib/stripe";
 
@@ -24,9 +19,6 @@ export async function GET(req: Request) {
   if (!user?.id) return NextResponse.json({ error: "Session expired." }, { status: 401 });
 
   const status = await getArtistPremiumStatus(user.id);
-  const pricing = premiumPricingCopy();
-  const billingReady = paynowEnabled();
-
   return NextResponse.json({
     premiumActive: status.premiumActive,
     premiumUntil: status.premiumUntil,
@@ -38,53 +30,41 @@ export async function GET(req: Request) {
     provider: status.provider,
     providerRef: status.providerRef,
     foundingSeat: status.foundingSeat,
-    founding: status.founding,
-    billingReady,
-    paynowEnabled: billingReady,
+    legacyFounding: Boolean(status.planId?.includes("founding")),
+    paynowEnabled: paynowEnabled(),
     stripeEnabled: stripeEnabled(),
-    monthlyUsd: defaultPremiumMonthlyUsd(),
-    tiers: PREMIUM_TIERS,
-    catalogHref: "/premium",
-    familyPlans: PREMIUM_CATALOG.filter((p) => p.family === "artist"),
+    standardMonthlyUsd: 12,
+    standardYearlyUsd: 120,
+    instantPriceUsd: PREMIUM_INSTANT_PRICE_USD,
     distributionStores: PREMIUM_DISTRIBUTION_STORES,
-    pricing,
-    priceNote: `Founding US$${pricing.foundingMonthly}/mo or US$${pricing.foundingYearly}/yr · Standard US$${pricing.standardMonthly}/mo or US$${pricing.standardYearly}/yr. ${pricing.distributionNote}`,
-    copy: {
-      title: "BVS Premium Artist",
-      summary:
-        "Choose Stripe auto-renew or Paynow prepaid. Either activates distribution entitlement for approved releases. BVS rotation after editorial publish does not require Premium.",
-      includes: [
-        "Founding: US$9/month or US$90/year (first 50 seats, then Standard)",
-        "Standard: US$12/month or US$120/year",
-        `Distribution path covering ${PREMIUM_DISTRIBUTION_STORES.length}+ store destinations`,
-        "Cancel anytime (period-end keeps access until paid-through date)",
-        "Studio Premium desk shows your live plan details",
-      ],
+    offers: {
+      instant: {
+        name: "Premium Instant",
+        priceUsd: PREMIUM_INSTANT_PRICE_USD,
+        billing: "per_release",
+        label: "US$5.99 per release",
+        note: "One-time release fee. No monthly subscription.",
+        href: "/artist/premium/instant",
+      },
+      standard: {
+        name: "Artist Premium",
+        monthlyUsd: 12,
+        yearlyUsd: 120,
+        billing: "subscription",
+        note: "Ongoing distribution access for approved releases while membership is active.",
+      },
     },
-    endpoints: {
-      subscribe: "/api/artist/premium/subscribe",
-      subscribeStripe: "/api/artist/premium/subscribe/stripe",
-      cancel: "/api/artist/premium/cancel",
-    },
+    guardrails: [
+      "Founding Artist Premium is closed to new purchases; existing founding memberships remain grandfathered while valid.",
+      "Premium Instant applies to one selected approved release only.",
+      "Payment never guarantees editorial approval, BVS rotation, charts or streams.",
+    ],
   });
 }
 
-/**
- * Legacy shell toggle — disabled when Paynow is configured (use subscribe/cancel).
- * Kept for emergency ops only when PAYNOW is off.
- */
-export async function POST(req: Request) {
-  if (paynowEnabled()) {
-    return NextResponse.json(
-      {
-        error:
-          "Use Paynow checkout: POST /api/artist/premium/subscribe or cancel via /api/artist/premium/cancel.",
-      },
-      { status: 400 },
-    );
-  }
+export async function POST() {
   return NextResponse.json(
-    { error: "Paynow is not configured. Premium billing is unavailable." },
-    { status: 503 },
+    { error: "Use the Standard subscription or Premium Instant checkout endpoints." },
+    { status: 400 },
   );
 }

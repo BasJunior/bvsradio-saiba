@@ -1,0 +1,57 @@
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+
+const read = (path) => fs.readFileSync(path, 'utf8')
+
+const studio = read('src/app/creator/studio/page.tsx')
+const artworkForm = read('src/components/ArtworkChangeRequestForm.tsx')
+const artworkRoute = read('src/app/api/creator/artwork-changes/route.ts')
+const artworkPrepare = read('src/app/api/creator/artwork-changes/prepare/route.ts')
+const artworkLib = read('src/lib/artwork-change-requests.ts')
+const editorialArtwork = read('src/app/api/admin/editorial/artwork-changes/route.ts')
+const premiumPage = read('src/app/artist/premium/page.tsx')
+const premiumOverview = read('src/app/premium/page.tsx')
+const instantApi = read('src/app/api/artist/premium/instant/route.ts')
+const instantLib = read('src/lib/premium-instant.ts')
+const stripeWebhook = read('src/app/api/webhooks/stripe/route.ts')
+const paynowWebhook = read('src/app/api/webhooks/paynow/route.ts')
+const paynowSubscription = read('src/app/api/artist/premium/subscribe/route.ts')
+const stripeSubscription = read('src/app/api/artist/premium/subscribe/stripe/route.ts')
+
+assert.match(studio, /href="\/creator\/studio\/artwork"/, 'Studio must expose release artwork replacement')
+assert.match(artworkForm, /New cover image/, 'artwork form must expose a new cover upload')
+assert.match(artworkForm, /JPG, PNG or WebP/, 'artwork form must state accepted image formats')
+assert.match(artworkPrepare, /artwork-changes\/\$\{identity\.user\.id\}/, 'replacement artwork must be stored under the signed-in creator path')
+assert.match(artworkRoute, /assertOwnsArtworkTarget\(identity\.user\.id/, 'artwork requests must verify target ownership')
+assert.match(artworkRoute, /verifyProposedArtwork\(proposedArtworkPath, identity\.user\.id\)/, 'artwork request must verify the creator-owned upload')
+assert.match(artworkLib, /applyApprovedArtwork/, 'approved artwork must have a server-side apply path')
+assert.match(editorialArtwork, /can\(identity, "approve_submissions"\)/, 'only editorial approvers may review replacement artwork')
+assert.match(editorialArtwork, /status === "resolved"[\s\S]*applyApprovedArtwork/, 'replacement art may be applied only on editorial resolution')
+
+assert.match(premiumPage, /US\$5\.99 per release/, 'Artist Premium must advertise Premium Instant per release')
+assert.match(premiumPage, /One-time release fee\. No monthly subscription\./, 'Premium Instant must be clearly non-recurring')
+assert.match(premiumPage, /US\$12\/month/, 'ongoing Artist Premium must remain clearly priced')
+assert.match(premiumOverview, /The Founding Artist Premium offer closed on 27 August 2026/, 'public Premium page must mark Founding as closed')
+assert.doesNotMatch(premiumOverview, /href=\{`\/artist\/premium\?tier=founding/, 'public Premium page must not offer a founding checkout')
+
+assert.match(instantApi, /assertPremiumInstantRelease\(user\.id, releaseId\)/, 'Instant checkout must verify the selected release server-side')
+assert.match(instantApi, /mode: "payment"/, 'Stripe Premium Instant must be a one-time payment')
+assert.match(instantApi, /kind: "artist_premium_instant"/, 'Instant checkout must carry a dedicated trusted payment kind')
+assert.match(instantLib, /PREMIUM_INSTANT_PRICE_USD = 5\.99/, 'Premium Instant price must be fixed server-side at US$5.99')
+assert.match(instantLib, /user_id=eq\.\$\{encodeURIComponent\(input\.userId\)\}/, 'Instant entitlement must bind the release to the paying owner')
+assert.match(instantLib, /releaseApproved\(release\)/, 'Instant entitlement must require an approved published BVS release')
+assert.match(instantLib, /status: "eligible"/, 'paid Instant must make only the selected distribution job eligible')
+assert.doesNotMatch(instantLib, /premium_active|distribution_enabled/, 'Instant must not turn on an account-wide Premium membership')
+
+assert.match(stripeWebhook, /artist_premium_instant/, 'Stripe webhook must process Premium Instant separately')
+assert.match(stripeWebhook, /grantPremiumInstant/, 'Stripe webhook must grant release-scoped distribution after verified payment')
+assert.match(paynowWebhook, /parsePremiumInstantOrderItem/, 'Paynow webhook must recognize Premium Instant orders')
+assert.match(paynowWebhook, /specialPremiumOrder/, 'Premium product payments must be separated from marketplace seller-credit flows')
+assert.match(paynowWebhook, /grantPremiumInstant/, 'Paynow webhook must grant release-scoped distribution after verification')
+
+assert.match(paynowSubscription, /const planId = "artist_standard" as const/, 'new Paynow subscriptions must use Standard, not Founding')
+assert.match(stripeSubscription, /const planId = "artist_standard" as const/, 'new Stripe subscriptions must use Standard, not Founding')
+assert.doesNotMatch(paynowSubscription, /Founding Artist Premium/, 'new Paynow purchase copy must not advertise Founding')
+assert.doesNotMatch(stripeSubscription, /Founding Artist Premium/, 'new Stripe purchase copy must not advertise Founding')
+
+console.log('web artwork + Premium Instant assertions passed')

@@ -18,6 +18,7 @@ import {
   normalizeArtistPlanId,
   normalizeInterval,
 } from "@/lib/premium-billing";
+import { grantPremiumInstant } from "@/lib/premium-instant";
 import { resolveStripeProcessorFee } from "@/lib/stripe-processor-fee";
 import { reverseMarketplaceSellerCredits } from "@/lib/marketplace-refunds";
 import { initializePaidCreatorServiceOrder } from "@/lib/creator-service-orders";
@@ -72,8 +73,56 @@ export async function POST(req: Request) {
         user_id?: string;
         plan_id?: string;
         interval?: string;
+        release_id?: string;
       };
     };
+
+    if (
+      session.mode === "payment" &&
+      session.metadata?.kind === "artist_premium_instant" &&
+      session.metadata.user_id &&
+      session.metadata.release_id &&
+      session.payment_status === "paid"
+    ) {
+      const reference = session.metadata.reference || session.client_reference_id || "";
+      if (!reference) {
+        return NextResponse.json({ error: "Premium Instant reference missing." }, { status: 400 });
+      }
+      const amountUsd = Number(session.amount_total || 0) / 100;
+      const result = await grantPremiumInstant({
+        userId: session.metadata.user_id,
+        releaseId: session.metadata.release_id,
+        reference,
+        amountUsd,
+        provider: "stripe",
+      });
+      if (!result.ok) {
+        await recordServerEvent("payment_error", {
+          provider: "stripe",
+          stage: "premium_instant_grant_failed",
+          reason: result.reason,
+        });
+        return NextResponse.json({ error: "Premium Instant activation failed." }, { status: 500 });
+      }
+      const updated = await updateOrder(reference, {
+        status: "paid",
+        deliveryStatus: "distribution_eligible",
+        stripeSessionId: session.id,
+        stripePaymentIntent: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+      });
+      const existing = updated || await loadOrder(reference);
+      if (existing) {
+        const paid = { ...existing, status: "paid" as const, deliveryStatus: "distribution_eligible" };
+        await notifyOwnerNewOrder(paid);
+        await notifyCustomerOrderEmail(paid, "paid");
+      }
+      await recordServerEvent("checkout_complete", {
+        provider: "stripe",
+        status: "premium_instant_eligible",
+        releaseId: session.metadata.release_id,
+      });
+      return NextResponse.json({ received: true });
+    }
 
     if (
       session.mode === "subscription" &&
@@ -173,7 +222,6 @@ export async function POST(req: Request) {
         await notifyOwnerNewOrder(paid);
         await notifyCustomerOrderEmail(paid, "paid");
       } else {
-        // Order may only exist remotely if filesystem missed write
         const existing = await loadOrder(reference);
         if (existing) {
           const paid = { ...existing, status: "paid" as const };

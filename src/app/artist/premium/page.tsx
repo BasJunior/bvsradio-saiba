@@ -1,21 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Suspense } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
-
-type PremiumTier = {
-  id: string
-  name: string
-  monthlyUsd: number
-  yearlyUsd: number
-  badge: string
-  summary: string
-  featured: boolean
-  notes: string[]
-}
 
 type PremiumState = {
   premiumActive: boolean
@@ -26,307 +14,198 @@ type PremiumState = {
   cancelAt?: string | null
   membershipStatus?: string
   provider?: string | null
-  foundingSeat?: boolean
-  founding?: { used: number; cap: number; available: boolean }
-  billingReady?: boolean
-  paynowEnabled?: boolean
   stripeEnabled?: boolean
-  monthlyUsd: number | null
-  priceNote: string
-  tiers?: PremiumTier[]
+  paynowEnabled?: boolean
+  standardMonthlyUsd: number
+  standardYearlyUsd: number
+  instantPriceUsd: number
   distributionStores?: string[]
-  copy: { title: string; summary: string; includes: string[] }
 }
 
 function ArtistPremiumInner() {
   const searchParams = useSearchParams()
   const configured = isSupabaseConfigured()
-  const checkoutReference = searchParams.get('ref')
-  const returnedFromCheckout = searchParams.get('checkout') === 'return'
   const [data, setData] = useState<PremiumState | null>(null)
   const [token, setToken] = useState('')
   const [error, setError] = useState(configured ? '' : 'Account service not configured.')
   const [busy, setBusy] = useState(false)
-  const [info, setInfo] = useState(() => returnedFromCheckout
-    ? checkoutReference
-      ? `Returned from Paynow (ref ${checkoutReference}). If you paid, Premium activates within a minute — refresh this page.`
-      : 'Returned from Paynow. If you paid, refresh in a moment to see active Premium.'
-    : '')
   const [interval, setInterval] = useState<'month' | 'year'>('month')
-  const [planChoice, setPlanChoice] = useState<'founding' | 'standard'>('founding')
+  const [info, setInfo] = useState(() => {
+    const checkout = searchParams.get('checkout')
+    if (checkout === 'stripe-success') return 'Stripe checkout completed. Premium status updates after verified payment confirmation.'
+    if (checkout === 'stripe-cancelled') return 'Stripe checkout cancelled.'
+    if (checkout === 'return') return 'Returned from Paynow. If payment completed, Premium activates after verification.'
+    return ''
+  })
 
   const load = useCallback(async (accessToken: string) => {
-    const res = await fetch('/api/artist/premium', {
+    const response = await fetch('/api/artist/premium', {
       headers: { Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     })
-    const payload = await res.json()
-    if (!res.ok) throw new Error(payload.error || 'Could not load premium status')
+    const payload = await response.json().catch(() => ({}))
+    if (!response.ok) throw new Error(payload.error || 'Could not load Premium status.')
     setData(payload)
-    if (payload.founding && !payload.founding.available) setPlanChoice('standard')
-    if (payload.planId?.includes('standard')) setPlanChoice('standard')
   }, [])
 
   useEffect(() => {
     if (!configured) return
-    createClient()
-      .auth.getSession()
-      .then(({ data: s }) => {
-        const t = s.session?.access_token
-        if (!t) {
-          setError('Sign in with an artist account.')
-          return
-        }
-        setToken(t)
-        load(t).catch((e: Error) => setError(e.message))
-      })
-  }, [configured, load])
-
-  useEffect(() => {
-    if (!returnedFromCheckout || !token) return
-    const timer = window.setTimeout(() => void load(token), 0)
-    return () => window.clearTimeout(timer)
-  }, [returnedFromCheckout, token, load])
-
-  const priceLabel = useMemo(() => {
-    if (planChoice === 'standard') return interval === 'year' ? 'US$120/year' : 'US$12/month'
-    return interval === 'year' ? 'US$90/year' : 'US$9/month'
-  }, [planChoice, interval])
-
-  const subscribe = async (provider: 'paynow' | 'stripe') => {
-    setBusy(true)
-    setInfo('')
-    setError('')
-    try {
-      const res = await fetch(provider === 'stripe' ? '/api/artist/premium/subscribe/stripe' : '/api/artist/premium/subscribe', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: planChoice, interval }),
-      })
-      const payload = await res.json()
-      if (!res.ok) throw new Error(payload.error || 'Could not start checkout')
-      if (payload.note) setInfo(payload.note)
-      if (payload.redirectUrl) {
-        window.location.href = payload.redirectUrl as string
+    createClient().auth.getSession().then(async ({ data: sessionData }) => {
+      const accessToken = sessionData.session?.access_token
+      if (!accessToken) {
+        setError('Sign in with an artist account.')
         return
       }
-      throw new Error('Payment provider did not return a checkout URL.')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Checkout failed')
-    } finally {
+      setToken(accessToken)
+      await load(accessToken)
+    }).catch((caught) => setError(caught instanceof Error ? caught.message : 'Could not open Artist Premium.'))
+  }, [configured, load])
+
+  const standardPrice = useMemo(
+    () => interval === 'year' ? `US$${data?.standardYearlyUsd ?? 120}/year` : `US$${data?.standardMonthlyUsd ?? 12}/month`,
+    [data, interval],
+  )
+
+  const subscribe = async (provider: 'stripe' | 'paynow') => {
+    if (!token) return
+    setBusy(true)
+    setError('')
+    setInfo('')
+    try {
+      const response = await fetch(provider === 'stripe' ? '/api/artist/premium/subscribe/stripe' : '/api/artist/premium/subscribe', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId: 'standard', interval }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'Could not start checkout.')
+      if (payload.note) setInfo(payload.note)
+      if (!payload.redirectUrl) throw new Error('Payment provider did not return a checkout URL.')
+      window.location.href = payload.redirectUrl as string
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Checkout failed.')
       setBusy(false)
     }
   }
 
   const cancel = async (mode: 'period_end' | 'immediate') => {
+    if (!token) return
     setBusy(true)
-    setInfo('')
     setError('')
+    setInfo('')
     try {
-      const res = await fetch('/api/artist/premium/cancel', {
+      const response = await fetch('/api/artist/premium/cancel', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ mode }),
       })
-      const payload = await res.json()
-      if (!res.ok) throw new Error(payload.error || 'Cancel failed')
-      setInfo(payload.message || 'Canceled')
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(payload.error || 'Cancel failed.')
+      setInfo(payload.message || 'Premium updated.')
       await load(token)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Cancel failed')
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Cancel failed.')
     } finally {
       setBusy(false)
     }
   }
 
+  const activePlanName = data?.planId?.includes('founding')
+    ? 'Founding Artist Premium (grandfathered)'
+    : data?.planId?.includes('standard')
+      ? 'Artist Premium'
+      : 'Artist Premium'
+
   return (
-    <main className="mx-auto max-w-2xl px-6 py-14">
-      <p className="text-xs uppercase tracking-[.2em] text-brand">Artists</p>
-      <h1 className="mt-2 text-4xl font-semibold">Premium Artist</h1>
-      <p className="mt-3 text-text-secondary">
-        Stripe auto-renew or Paynow prepaid membership for multi-platform distribution of{' '}
-        <strong className="text-text-primary">approved</strong> releases. Continuous BVS rotation after editorial
-        publish does <strong className="text-text-primary">not</strong> require Premium.
+    <main className="mx-auto max-w-4xl px-5 py-12 sm:px-6 sm:py-14">
+      <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Artists · Distribution</p>
+      <h1 className="mt-2 text-4xl font-semibold">Choose how you distribute</h1>
+      <p className="mt-3 max-w-3xl text-text-secondary">
+        BVS editorial submission, publishing and radio rotation remain separate. Pay for wider distribution only when it makes sense for your release schedule.
       </p>
 
       {error && <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
       {info && <p className="mt-6 rounded-xl border border-brand/30 bg-brand/10 p-4 text-sm">{info}</p>}
 
-      {data && (
-        <section className="mt-10 space-y-6 rounded-2xl border border-white/10 bg-white/[.03] p-6">
-          <div>
-            <h2 className="text-2xl font-semibold">{data.copy.title}</h2>
-            <p className="mt-2 text-sm text-text-secondary">{data.copy.summary}</p>
+      {data?.premiumActive && (
+        <section className="mt-8 rounded-2xl border border-emerald-400/25 bg-emerald-500/[.06] p-5 sm:p-6">
+          <p className="text-xs font-semibold uppercase tracking-[.16em] text-emerald-200">Active membership</p>
+          <h2 className="mt-2 text-2xl font-semibold">{activePlanName}</h2>
+          <p className="mt-2 text-sm text-text-secondary">
+            Ongoing distribution access is active{data.premiumUntil ? ` until ${new Date(data.premiumUntil).toLocaleDateString()}` : ''}.
+            {data.provider ? ` Billing provider: ${data.provider}.` : ''}
+          </p>
+          {data.planId?.includes('founding') && (
+            <p className="mt-3 text-sm text-brand">Your founding rate is grandfathered. The founding offer is closed to new purchases.</p>
+          )}
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button disabled={busy} onClick={() => void cancel('period_end')} className="min-h-11 rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">Cancel at period end</button>
+            <button disabled={busy} onClick={() => void cancel('immediate')} className="min-h-11 rounded-full border border-red-400/40 px-5 py-2 text-sm text-red-200 disabled:opacity-40">Cancel now</button>
           </div>
-          <ul className="list-disc space-y-2 pl-5 text-sm text-text-secondary">
-            {data.copy.includes.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-
-          {data.founding && (
-            <p className="text-sm text-text-secondary">
-              Founding seats:{' '}
-              <strong className="text-text-primary">
-                {data.founding.used}/{data.founding.cap} used
-              </strong>
-              {data.founding.available ? ' · still open' : ' · full — Standard only'}
-            </p>
-          )}
-
-          <p className="text-sm">
-            Status:{' '}
-            <strong className="text-text-primary">
-              {data.premiumActive ? 'Premium active' : 'Free artist path'}
-            </strong>
-            {data.planId && <> · {data.planId.replaceAll('_', ' ')}</>}
-            {data.billingInterval && <> · {data.billingInterval}</>}
-            {data.premiumUntil && data.premiumActive && (
-              <> · until {new Date(data.premiumUntil).toLocaleDateString()}</>
-            )}
-            {data.distributionEnabled && <> · distribution eligible</>}
-            {data.cancelAt && <> · cancel scheduled</>}
-            {data.provider && <> · via {data.provider}</>}
-          </p>
-
-          {data.tiers && data.tiers.length > 0 && !data.premiumActive && (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {data.tiers.map((tier) => {
-                const id = tier.id === 'standard' ? 'standard' : 'founding'
-                const disabled = id === 'founding' && data.founding && !data.founding.available
-                return (
-                  <button
-                    key={tier.id}
-                    type="button"
-                    disabled={Boolean(disabled)}
-                    onClick={() => setPlanChoice(id)}
-                    className={`rounded-xl border p-4 text-left text-sm transition ${
-                      planChoice === id ? 'border-brand bg-brand/10' : 'border-white/10 bg-black/20'
-                    } disabled:opacity-40`}
-                  >
-                    <p className="text-[11px] uppercase tracking-wide text-brand">{tier.badge}</p>
-                    <p className="mt-1 font-semibold">{tier.name}</p>
-                    <p className="mt-2 text-lg font-semibold">
-                      US${tier.monthlyUsd}
-                      <span className="text-xs font-normal text-text-secondary">/mo</span>
-                    </p>
-                    <p className="text-xs text-text-secondary">or US${tier.yearlyUsd}/year</p>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {!data.premiumActive && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setInterval('month')}
-                className={`rounded-full px-4 py-2 text-sm ${interval === 'month' ? 'bg-brand text-black' : 'border border-white/20'}`}
-              >
-                Monthly
-              </button>
-              <button
-                type="button"
-                onClick={() => setInterval('year')}
-                className={`rounded-full px-4 py-2 text-sm ${interval === 'year' ? 'bg-brand text-black' : 'border border-white/20'}`}
-              >
-                Yearly (2 months free)
-              </button>
-            </div>
-          )}
-
-          <p className="text-sm text-text-secondary">
-            <strong className="text-brand">Price:</strong> {data.premiumActive ? data.priceNote : priceLabel}
-          </p>
-
-          {data.distributionStores && data.distributionStores.length > 0 && (
-            <div>
-              <p className="text-sm font-medium text-text-primary">
-                Distribution destinations ({data.distributionStores.length})
-              </p>
-              <ul className="mt-2 grid max-h-40 grid-cols-2 gap-1 overflow-y-auto text-xs text-text-secondary sm:grid-cols-3">
-                {data.distributionStores.map((s) => (
-                  <li key={s} className="truncate rounded border border-white/5 px-2 py-1">
-                    {s}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-3">
-            {!data.premiumActive ? (
-              <>
-              <button
-                type="button"
-                disabled={busy || !token || data.stripeEnabled === false}
-                onClick={() => void subscribe('stripe')}
-                className="rounded-full bg-brand px-6 py-3 font-semibold text-black disabled:opacity-50"
-              >
-                {busy ? 'Starting checkout…' : `Auto-renew ${priceLabel} with Stripe`}
-              </button>
-              <button
-                type="button"
-                disabled={busy || !token || data.paynowEnabled === false}
-                onClick={() => void subscribe('paynow')}
-                className="rounded-full border border-white/20 px-6 py-3 text-sm disabled:opacity-50"
-              >
-                Pay once with Paynow
-              </button>
-              </>
-            ) : (
-              <>
-                {data.provider !== 'stripe' && data.stripeEnabled !== false && (
-                  <button
-                    type="button"
-                    disabled={busy || !token}
-                    onClick={() => void subscribe('stripe')}
-                    className="rounded-full bg-brand px-6 py-3 text-sm font-semibold text-black disabled:opacity-50"
-                  >
-                    Connect Stripe auto-renew
-                  </button>
-                )}
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void cancel('period_end')}
-                  className="rounded-full border border-white/20 px-6 py-3 text-sm"
-                >
-                  Cancel at period end
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void cancel('immediate')}
-                  className="rounded-full border border-red-400/40 px-6 py-3 text-sm text-red-200"
-                >
-                  Cancel now
-                </button>
-              </>
-            )}
-            <Link href="/creator/studio#premium-desk" className="rounded-full border border-white/20 px-6 py-3 text-sm hover:border-brand">
-              Studio Premium desk
-            </Link>
-            <Link href="/upload" className="rounded-full border border-white/20 px-6 py-3 text-sm hover:border-brand">
-              Submit a release
-            </Link>
-          </div>
-
-          <p className="text-xs text-text-secondary">
-            Stripe renews automatically until cancelled. Paynow (EcoCash, cards, OneMoney) is prepaid and must be
-            renewed manually when the period ends. Payment never buys editorial approval or BVS rotation.
-          </p>
         </section>
       )}
+
+      <section className="mt-8 grid gap-5 md:grid-cols-2">
+        <article className="flex flex-col rounded-3xl border border-brand/40 bg-brand/[.06] p-6">
+          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Premium Instant</p>
+          <h2 className="mt-3 text-3xl font-semibold">US$5.99 per release</h2>
+          <p className="mt-2 text-sm font-medium">One-time release fee. No monthly subscription.</p>
+          <p className="mt-4 flex-1 text-sm leading-6 text-text-secondary">
+            Best when you release occasionally. Choose one BVS-approved release and pay only for that release to enter the wider distribution path.
+          </p>
+          <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-text-secondary">
+            <li>One approved release per payment</li>
+            <li>No recurring membership</li>
+            <li>No duplicate fee once that release is already eligible or in delivery</li>
+            <li>Payment never buys editorial approval or guaranteed streams</li>
+          </ul>
+          <Link href="/artist/premium/instant" className={`mt-6 inline-flex min-h-11 items-center justify-center rounded-full px-6 py-3 font-semibold ${data?.premiumActive ? 'border border-white/15 text-text-secondary' : 'bg-brand text-black'}`}>
+            {data?.premiumActive ? 'View Premium Instant' : 'Choose a release — US$5.99'}
+          </Link>
+        </article>
+
+        <article className="flex flex-col rounded-3xl border border-white/15 bg-white/[.025] p-6">
+          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Artist Premium</p>
+          <h2 className="mt-3 text-3xl font-semibold">US$12/month</h2>
+          <p className="mt-2 text-sm font-medium">Ongoing distribution access for artists releasing regularly.</p>
+          <p className="mt-4 flex-1 text-sm leading-6 text-text-secondary">
+            Keep distribution eligibility active across approved releases while your membership remains active. Annual billing is US$120/year.
+          </p>
+          {!data?.premiumActive && (
+            <>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button type="button" onClick={() => setInterval('month')} className={`min-h-11 rounded-full px-4 py-2 text-sm ${interval === 'month' ? 'bg-brand text-black' : 'border border-white/20'}`}>Monthly</button>
+                <button type="button" onClick={() => setInterval('year')} className={`min-h-11 rounded-full px-4 py-2 text-sm ${interval === 'year' ? 'bg-brand text-black' : 'border border-white/20'}`}>Yearly · US$120</button>
+              </div>
+              <p className="mt-4 text-sm text-text-secondary"><strong className="text-text-primary">Selected:</strong> {standardPrice}</p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <button disabled={busy || !token || data?.stripeEnabled === false} onClick={() => void subscribe('stripe')} className="min-h-11 rounded-full bg-brand px-5 py-2 font-semibold text-black disabled:opacity-40">{busy ? 'Starting…' : `Subscribe ${standardPrice}`}</button>
+                <button disabled={busy || !token || data?.paynowEnabled === false} onClick={() => void subscribe('paynow')} className="min-h-11 rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">Pay prepaid with Paynow</button>
+              </div>
+            </>
+          )}
+          {data?.premiumActive && <p className="mt-5 rounded-xl border border-white/10 p-4 text-sm text-text-secondary">Your current membership already provides ongoing distribution eligibility; you do not need a new subscription checkout.</p>}
+        </article>
+      </section>
+
+      {data?.distributionStores?.length ? (
+        <section className="mt-10 rounded-2xl border border-white/10 p-5 sm:p-6">
+          <h2 className="text-xl font-semibold">Distribution destinations</h2>
+          <p className="mt-2 text-sm text-text-secondary">Availability still depends on rights, metadata, territory and partner delivery readiness.</p>
+          <ul className="mt-4 grid grid-cols-2 gap-2 text-xs text-text-secondary sm:grid-cols-3 md:grid-cols-4">
+            {data.distributionStores.map((store) => <li key={store} className="rounded-lg border border-white/10 px-3 py-2">{store}</li>)}
+          </ul>
+        </section>
+      ) : null}
+
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link href="/creator/studio/create/release" className="min-h-11 rounded-full border border-white/20 px-5 py-2.5 text-sm">Submit a release</Link>
+        <Link href="/premium" className="min-h-11 rounded-full border border-white/20 px-5 py-2.5 text-sm">All BVS plans</Link>
+      </div>
     </main>
   )
 }
 
 export default function ArtistPremiumPage() {
-  return (
-    <Suspense fallback={<main className="p-16 text-center text-text-secondary">Loading Premium…</main>}>
-      <ArtistPremiumInner />
-    </Suspense>
-  )
+  return <Suspense fallback={<main className="p-20 text-center text-text-secondary">Opening Artist Premium…</main>}><ArtistPremiumInner /></Suspense>
 }
