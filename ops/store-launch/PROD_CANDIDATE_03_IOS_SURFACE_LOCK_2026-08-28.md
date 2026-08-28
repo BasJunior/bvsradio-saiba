@@ -18,11 +18,13 @@
 | Production created | 2026-08-24 20:13 Europe/Berlin |
 | Lineage | apple-rights / iOS harden (`a8cd140`) ⊂ prod-safe chain → `eb80df4` |
 | GitHub `origin/main` | `9b2c7a9` — **not** live production UI (do not branch candidates from bare main for iOS shell) |
-| Candidate branch tip | `b83f4980ec31a730bf3ee51ca1026eef13914c00` |
-| Preview deployment | `dpl_FEfqAAEzmApy629bvRQiRc6f4Td5` Ready (Preview only) |
-| Preview URL | https://bvsradio-saiba-el05d0qqw-saiba-bvs.vercel.app |
-| Preview git alias | https://bvsradio-saiba-git-saiba-prod-candidate-ios-su-885367-saiba-bvs.vercel.app |
-| Inspect | https://vercel.com/saiba-bvs/bvsradio-saiba/FEfqAAEzmApy629bvRQiRc6f4Td5 |
+| Candidate branch tip | _(filled after gate commit)_ |
+| Runtime code tip | `b83f498` + automatic build gate commit |
+| Prior preview (pre-gate) | `dpl_FEfqAAEzmApy629bvRQiRc6f4Td5` |
+| Preview deployment | _(filled after gated preview)_ |
+| Preview URL | _(filled after gated preview)_ |
+| Preview git alias | _(filled after gated preview)_ |
+| Inspect | _(filled after gated preview)_ |
 | DB migrations | **none** |
 | Clearance row changes | **none** |
 | Native / Capacitor changes | **none** |
@@ -56,7 +58,7 @@
 | `src/app/app/[surface]/beats/page.tsx` | iOS empty-state copy from lane |
 | `src/components/MobileAccountPanel.tsx` | Account help copy from lane |
 | `scripts/ios-surface-lock-tests.mjs` | Regression guards |
-| `package.json` | `test:ios-surface-lock` script |
+| `package.json` | `test:ios-surface-lock`, `test:ios-surface-gates`, and **build/`vercel-build` run gates before `next build`** |
 | `ops/store-launch/PROD_CANDIDATE_03_IOS_SURFACE_LOCK_2026-08-28.md` | This evidence package |
 
 **Not changed:** `capacitor.config.ts`, `ios/**`, plugins, entitlements, SQL packs, clearance tables, Studio/Lyrics candidate code.
@@ -104,10 +106,17 @@ Isolation proof (local): mutating web `HomeListenPanel` text does **not** change
 | **iOS-visible product change** | new in-app surface, new primary nav, commerce inside shell | Explicit BVS review + usually App Store release |
 | **Native** | Capacitor, plugins, permissions, bundle id, MinOS | New binary / App Store process |
 
-### Regression commands
+### Automatic build gate (required)
+Vercel / local production builds now run:
 ```bash
-npm run test:ios-surface-lock
-npm run test:apple-ios-surface
+npm run test:ios-surface-gates   # = test:ios-surface-lock && test:apple-ios-surface
+next build
+```
+via both `build` and `vercel-build`. A green deploy cannot skip the iOS lock.
+
+### Manual regression commands
+```bash
+npm run test:ios-surface-gates
 npm run test:app-flow
 npm run typecheck
 ```
@@ -120,16 +129,25 @@ npm run typecheck
 |-------|--------|
 | `test:ios-surface-lock` | **PASS** |
 | `test:apple-ios-surface` | **PASS** |
+| `test:ios-surface-gates` | **PASS** (composite gate) |
 | `test:app-flow` | **PASS** |
 | `typecheck` | **PASS** (tsc --noEmit) |
-| Preview build | **Ready** `dpl_FEfqAAEzmApy629bvRQiRc6f4Td5` (28s) target=`preview` |
-| Preview `/app/ios` HTTP | **302 → Vercel SSO** (deployment protection; not public). Build outputs present. |
+| `build` / `vercel-build` scripts | run gates **before** `next build` |
+| Preview build | _(filled after gated preview)_ |
+| Preview `/app/ios` HTTP | expected SSO on protected previews |
 | Isolation proof (local) | Mutating web `HomeListenPanel` did **not** change `IosHomeListenPanel`; files differ; iOS home imports locked hero only |
-| Production alias untouched | **Confirmed** `bvsradio.com` still `dpl_ANWXUhGAiPmxYNM5hFYKmVTW1WKd` / Ready |
+| Production alias untouched | must remain `dpl_ANWXUhGAiPmxYNM5hFYKmVTW1WKd` until explicit promote |
 | Live iOS station (unchanged by candidate) | count **16**, surface `ios`, source `mobile-ios` |
 | Live web station | count **65** |
 | Capacitor / native files in diff | **none** |
 | Studio / Lyrics bundled | **no** |
+
+## 5b. Release sequence after this gate freezes
+1. Explicit BVS production approval for Candidate 03 only.
+2. Promote Candidate 03 → verify installed App Store shell still listen-only.
+3. **Do not** promote old Candidate 01 as-is (it was cut from GitHub `main`, not live prod lineage).
+4. Recut Studio from the **new** production tip; transplant only intended Studio changes → preview → web production.
+5. No App Store resubmission in that sequence.
 
 ---
 
