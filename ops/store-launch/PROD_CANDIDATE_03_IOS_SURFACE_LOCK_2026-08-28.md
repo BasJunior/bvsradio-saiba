@@ -1,6 +1,6 @@
 # Candidate 03 — iOS Surface Lock (2026-08-28)
 
-**Status:** PREVIEW ONLY — awaiting BVS production approval  
+**Status:** PREVIEW FROZEN — awaiting explicit BVS production approval  
 **Branch:** `saiba/prod-candidate-ios-surface-lock-2026-08-28`  
 **Worktree:** `/home/admin/.openclaw/workspace/bvsradio-prod-candidate-ios-surface-lock-2026-08-28`  
 **Hard stop:** no `main` update, no production alias, no native/Capacitor change, no DB/clearance writes, no Studio/Lyrics bundling.
@@ -18,13 +18,16 @@
 | Production created | 2026-08-24 20:13 Europe/Berlin |
 | Lineage | apple-rights / iOS harden (`a8cd140`) ⊂ prod-safe chain → `eb80df4` |
 | GitHub `origin/main` | `9b2c7a9` — **not** live production UI (do not branch candidates from bare main for iOS shell) |
-| Candidate branch tip | _(filled after gate commit)_ |
-| Runtime code tip | `b83f498` + automatic build gate commit |
+| Candidate gated runtime SHA | `c0ede38eace1312471b86ce6faea6e5976e859a1` |
+| Evidence freeze | docs-only commit on this branch after `c0ede38`; runtime remains the gated preview |
+| Runtime code tip | `b83f498` (iOS listen lock) + `c0ede38` (automatic build gate) |
 | Prior preview (pre-gate) | `dpl_FEfqAAEzmApy629bvRQiRc6f4Td5` |
-| Preview deployment | _(filled after gated preview)_ |
-| Preview URL | _(filled after gated preview)_ |
-| Preview git alias | _(filled after gated preview)_ |
-| Inspect | _(filled after gated preview)_ |
+| Gated preview deployment | `dpl_7hwSwfbJn6nBteZmAouzxLeFQSkD` |
+| Preview URL | https://bvsradio-saiba-iip9g3gy4-saiba-bvs.vercel.app *(SSO-protected)* |
+| Preview git alias | https://bvsradio-saiba-git-saiba-prod-candidate-ios-su-885367-saiba-bvs.vercel.app |
+| Inspect | https://vercel.com/saiba-bvs/bvsradio-saiba/7hwSwfbJn6nBteZmAouzxLeFQSkD |
+| Gated preview created | 2026-08-28 10:16 Europe/Berlin |
+| Sibling preview | `dpl_9kotmR7jTjnXrGGYqaXo4DxDdftN` **BLOCKED** (non-blocking; Ready gated deploy is the freeze target) |
 | DB migrations | **none** |
 | Clearance row changes | **none** |
 | Native / Capacitor changes | **none** |
@@ -133,10 +136,11 @@ npm run typecheck
 | `test:app-flow` | **PASS** |
 | `typecheck` | **PASS** (tsc --noEmit) |
 | `build` / `vercel-build` scripts | run gates **before** `next build` |
-| Preview build | _(filled after gated preview)_ |
-| Preview `/app/ios` HTTP | expected SSO on protected previews |
+| Gated preview build (`c0ede38`) | **Ready** `dpl_7hwSwfbJn6nBteZmAouzxLeFQSkD` — cloned `saiba/prod-candidate-ios-surface-lock-2026-08-28` @ `c0ede38`; ran `npm run vercel-build` → `test:ios-surface-gates && next build`; lock assertions passed; Apple iOS-surface assertions passed; Next compiled |
+| Preview `/app/ios` HTTP | **302** Vercel SSO (protected preview, expected) |
 | Isolation proof (local) | Mutating web `HomeListenPanel` did **not** change `IosHomeListenPanel`; files differ; iOS home imports locked hero only |
-| Production alias untouched | must remain `dpl_ANWXUhGAiPmxYNM5hFYKmVTW1WKd` until explicit promote |
+| Production alias untouched | **confirmed** `dpl_ANWXUhGAiPmxYNM5hFYKmVTW1WKd` on `bvsradio.com` / `www.bvsradio.com` (created 2026-08-24 20:13 Berlin) |
+| Live production `/app/ios` | **HTTP 200** (unchanged live shell) |
 | Live iOS station (unchanged by candidate) | count **16**, surface `ios`, source `mobile-ios` |
 | Live web station | count **65** |
 | Capacitor / native files in diff | **none** |
