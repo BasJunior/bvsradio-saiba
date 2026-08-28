@@ -31,6 +31,10 @@ MOBILE.md
 DEPLOYMENT_SECURITY.md
 supabase-*.sql
 
+# C02 keeps its small migration snapshot in the build context so test:song-workspace
+# can enforce database security invariants. Next.js does not ship this file as a route.
+!supabase-song-workspaces.sql
+
 # Env samples (secrets never go to Vercel via git; avoid clutter)
 .env*
 !.env.local.example
