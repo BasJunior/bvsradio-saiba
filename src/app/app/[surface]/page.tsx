@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import AppListenHero from "@/components/app/AppListenHero";
 import AppRail from "@/components/app/AppRail";
 import AppSceneTrail from "@/components/app/AppSceneTrail";
+import IosListenHero from "@/components/app/IosListenHero";
 import { getAppEditionBeats } from "@/lib/app-edition-data";
 import { blogPosts } from "@/lib/blog";
 import {
@@ -13,6 +14,7 @@ import {
   storyToObject,
   type BuildableCreator,
 } from "@/lib/bvs-object-builders";
+import { IOS_SURFACE_COPY } from "@/lib/ios-surface-copy";
 import { getPublicProgrammes } from "@/lib/station-content";
 import { getStationTracks, type MobileSurface } from "@/lib/station-library";
 import { appBeats, appExplore } from "@/lib/app-surface";
@@ -24,6 +26,7 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
   const { surface: rawSurface } = await params;
   if (rawSurface !== "ios" && rawSurface !== "android") notFound();
   const surface = rawSurface as MobileSurface;
+  const isIos = surface === "ios";
   const [tracks, beats, programmes] = await Promise.all([
     getStationTracks(surface),
     getAppEditionBeats(10),
@@ -72,16 +75,42 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
   const showObjects = programmes.slice(0, 3).map(showToObject);
   const surfaceLabel = surface === "ios" ? "iPhone and iPad" : "Android";
 
+  const featuredEyebrow = isIos ? IOS_SURFACE_COPY.homeFeaturedEyebrow : "Featured music";
+  const featuredTitle = isIos ? IOS_SURFACE_COPY.homeFeaturedTitle : "Cleared for this edition";
+  const featuredDescription = isIos
+    ? IOS_SURFACE_COPY.homeFeaturedDescription
+    : "Play from the card. Playback stays with you while you move.";
+  const beatsEyebrow = isIos ? IOS_SURFACE_COPY.homeBeatsEyebrow : "BeatStore";
+  const beatsTitle = isIos ? IOS_SURFACE_COPY.homeBeatsTitle : "Beats from BVS producers";
+  const beatsDescription = isIos
+    ? IOS_SURFACE_COPY.homeBeatsDescription
+    : "Preview here. Licence on the full BVS website listing.";
+  const peopleTitle = isIos ? IOS_SURFACE_COPY.homePeopleTitle : "Artists to know";
+  const showsTitle = isIos ? IOS_SURFACE_COPY.homeShowsTitle : "Shows around the scene";
+  const storiesTitle = isIos ? IOS_SURFACE_COPY.homeStoriesTitle : "Stories";
+  const aboutEyebrow = isIos ? IOS_SURFACE_COPY.homeAboutEyebrow : "BVS Radio";
+  const aboutBody = isIos
+    ? IOS_SURFACE_COPY.homeAboutBody
+    : "A focused listening edition of BVS. Accounts and library stay connected with the full site while the native listening catalogue remains rights-gated.";
+  const emptyTitle = isIos ? IOS_SURFACE_COPY.homeEmptyTitle : "More music is on the way";
+  const emptyBody = isIos
+    ? IOS_SURFACE_COPY.homeEmptyBody
+    : "The BVS team is preparing the next rights-cleared selection for this edition.";
+
   return (
     <div className="mx-auto max-w-5xl space-y-10 px-4 pb-8 pt-5 sm:px-6">
       <AppSceneTrail />
-      <AppListenHero surfaceLabel={surfaceLabel} trackCount={tracks.length} />
+      {isIos ? (
+        <IosListenHero trackCount={tracks.length} />
+      ) : (
+        <AppListenHero surfaceLabel={surfaceLabel} trackCount={tracks.length} />
+      )}
 
       {trackObjects.length ? (
         <AppRail
-          eyebrow="Featured music"
-          title="Cleared for this edition"
-          description="Play from the card. Playback stays with you while you move."
+          eyebrow={featuredEyebrow}
+          title={featuredTitle}
+          description={featuredDescription}
           href={appExplore(surface, undefined)}
           hrefLabel="Explore music →"
           objects={trackObjects}
@@ -89,15 +118,15 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
         />
       ) : (
         <section className="rounded-3xl border border-dashed border-white/15 px-6 py-10 text-center">
-          <h2 className="text-2xl font-semibold">More music is on the way</h2>
-          <p className="mt-2 text-sm text-text-secondary">The BVS team is preparing the next rights-cleared selection for this edition.</p>
+          <h2 className="text-2xl font-semibold">{emptyTitle}</h2>
+          <p className="mt-2 text-sm text-text-secondary">{emptyBody}</p>
         </section>
       )}
 
       <AppRail
-        eyebrow="BeatStore"
-        title="Beats from BVS producers"
-        description="Preview here. Licence on the full BVS website listing."
+        eyebrow={beatsEyebrow}
+        title={beatsTitle}
+        description={beatsDescription}
         href={appBeats(surface)}
         hrefLabel="All beats →"
         objects={beatObjects}
@@ -106,7 +135,7 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
 
       <AppRail
         eyebrow="People"
-        title="Artists to know"
+        title={peopleTitle}
         href={`/app/${surface}/artists`}
         objects={artistObjects}
         scrollKey="app-home-artists"
@@ -114,7 +143,7 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
 
       <AppRail
         eyebrow="Programmes"
-        title="Shows around the scene"
+        title={showsTitle}
         href="/shows"
         objects={showObjects}
         variant="feature-card"
@@ -123,7 +152,7 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
 
       <AppRail
         eyebrow="Behind the sound"
-        title="Stories"
+        title={storiesTitle}
         href="/blog"
         objects={storyObjects}
         variant="compact-row"
@@ -131,10 +160,8 @@ export default async function MobileAppHomePage({ params }: { params: Promise<{ 
       />
 
       <section className="rounded-3xl border border-white/10 bg-white/[.03] px-5 py-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">BVS Radio</p>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-          A focused listening edition of BVS. Accounts and library stay connected with the full site while the native listening catalogue remains rights-gated.
-        </p>
+        <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">{aboutEyebrow}</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{aboutBody}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link href={`/app/${surface}/account`} className="rounded-full border border-white/15 px-4 py-2 text-sm">Account</Link>
           <Link href="/contact" className="rounded-full border border-white/15 px-4 py-2 text-sm">Support ↗</Link>

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import { getAppEditionBeats } from "@/lib/app-edition-data";
 import { beatToObject } from "@/lib/bvs-object-builders";
+import { IOS_SURFACE_COPY } from "@/lib/ios-surface-copy";
 import type { MobileSurface } from "@/lib/station-library";
 
 export const dynamic = "force-dynamic";
@@ -29,8 +30,8 @@ export default async function AppBeatsPage({ params }: { params: Promise<{ surfa
         </div>
       ) : (
         <div className="mt-8 rounded-3xl border border-dashed border-white/15 px-6 py-12 text-center">
-          <h2 className="text-xl font-semibold">Published beats will appear here</h2>
-          <p className="mt-2 text-sm text-text-secondary">BeatStore listings are added after BVS Editorial approval.</p>
+          <h2 className="text-xl font-semibold">{surface === "ios" ? IOS_SURFACE_COPY.beatsEmptyTitle : "Published beats will appear here"}</h2>
+          <p className="mt-2 text-sm text-text-secondary">{surface === "ios" ? IOS_SURFACE_COPY.beatsEmptyBody : "BeatStore listings are added after BVS Editorial approval."}</p>
         </div>
       )}
       <p className="mt-8 text-center text-sm text-text-secondary">
