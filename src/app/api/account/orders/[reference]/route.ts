@@ -9,11 +9,16 @@ const service = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 
 type OrderItem = {
   id?: string
+  sourceId?: string
   title?: string
   quantity?: number
   price?: number
   type?: string
+  productType?: string
   licence?: string
+  licenceCode?: string
+  licenceSummary?: string
+  licenceTermsVersion?: string
   delivery?: string
 }
 
@@ -43,13 +48,7 @@ export async function GET(
       const id = String(item.id || '')
       if (!id) continue
       const asset = await resolveProductAsset(id, item.title)
-      if (asset) {
-        downloads.push({
-          itemId: id,
-          title: item.title || 'BVS download',
-          href: `/api/download?token=${createDownloadToken(reference, id)}`,
-        })
-      }
+      if (asset) downloads.push({ itemId: id, title: item.title || 'BVS download', href: `/api/download?token=${createDownloadToken(reference, id)}` })
     }
   }
 
@@ -60,9 +59,9 @@ export async function GET(
       downloads,
       licenceSummary: items.map((item) => ({
         title: item.title || 'BVS item',
-        licence: item.licence || item.delivery || (
-          item.type === 'beat'
-            ? 'Beat licence terms shown at purchase'
+        licence: item.licenceSummary || item.licence || item.delivery || (
+          item.type === 'beat' || item.productType === 'beat'
+            ? 'Beat licence terms recorded at purchase'
             : item.type === 'service'
               ? 'BVS studio service'
               : 'Personal listening download; no sampling, sync, redistribution or resale rights'
