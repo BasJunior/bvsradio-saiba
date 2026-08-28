@@ -318,6 +318,12 @@ export default function CheckoutPage() {
         total,
         status: data.status || "pending_payment",
       });
+      trackEvent("payment_confirmed", {
+        payment_method: data.paymentMode || paymentMethod,
+        item_count: items.length,
+        total,
+        status: data.status || "pending_payment",
+      });
     } catch (caught) {
       trackEvent("payment_error", {
         payment_method: paymentMethod,
