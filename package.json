@@ -12,6 +12,8 @@
     "test:rights-compliance": "node --experimental-strip-types scripts/rights-compliance-tests.mjs",
     "test:app-flow": "node --experimental-strip-types scripts/app-flow-tests.mjs",
     "test:apple-ios-surface": "node scripts/apple-ios-surface-tests.mjs",
+    "test:song-workspace": "node scripts/song-workspace-tests.mjs",
+    "prod-candidate-preflight": "node scripts/prod-candidate-preflight.mjs",
     "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
     "typecheck": "tsc --noEmit",
     "cap:sync": "npx cap sync",
