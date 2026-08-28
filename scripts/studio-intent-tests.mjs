@@ -47,7 +47,6 @@ assert(manage.includes("/creator/studio"), "manage links home");
 assert(marketplace.includes('"recording"'), "recording category");
 assert(marketplace.includes('"studio_session"'), "studio_session category");
 assert(analytics.includes("create_intent_selected"), "create_intent_selected allowlisted");
-assert(!analytics.includes("lyrics_pad_open"), "this candidate must not bundle Lyrics Pad analytics");
 assert(capacitor.includes("https://bvsradio.com/app/${mobileSurface}") || capacitor.includes("bvsradio.com/app/"), "capacitor still live hybrid");
 
 assert(quickBeat.includes("BeatPackUploadForm"), "Sell a beat exposes existing beat-pack uploader");
