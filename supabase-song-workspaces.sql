@@ -83,6 +83,11 @@ begin
 end;
 $$;
 
+-- This function exists only for the database trigger. Do not expose the SECURITY DEFINER
+-- function as a callable RPC to browser roles.
+revoke execute on function public.verify_bvs_song_workspace_clearance() from public, anon, authenticated;
+grant execute on function public.verify_bvs_song_workspace_clearance() to service_role;
+
 drop trigger if exists verify_bvs_song_workspace_clearance on public.release_clearance_evidence;
 create trigger verify_bvs_song_workspace_clearance
 before insert on public.release_clearance_evidence
