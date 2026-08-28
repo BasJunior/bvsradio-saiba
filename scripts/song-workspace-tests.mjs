@@ -20,6 +20,8 @@ if (fs.existsSync('supabase-song-workspaces.sql')) {
   assert.match(sql, /o\.status in \('paid', 'fulfilled'\)/i, 'BVS clearance trigger must verify paid status')
   assert.match(sql, /r\.user_id = sw\.user_id/i, 'BVS clearance trigger must bind the release to the workspace owner')
   assert.match(sql, /BVS_SONG_WORKSPACE:/, 'BVS-issued clearance must use a recognizable server-verifiable marker')
+  assert.match(sql, /revoke execute on function public\.verify_bvs_song_workspace_clearance\(\) from public, anon, authenticated/i, 'Song Workspace SECURITY DEFINER trigger must not be callable by browser roles')
+  assert.match(sql, /grant execute on function public\.verify_bvs_song_workspace_clearance\(\) to service_role/i, 'Song Workspace trigger execution must remain available to trusted server operations')
 }
 
 assert.match(server, /customer_user_id=eq\.\$\{encodeURIComponent\(userId\)\}/, 'entitlement lookup must bind the order to the signed-in buyer')
