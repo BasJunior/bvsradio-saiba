@@ -28,6 +28,9 @@ const manage = read("src/app/creator/studio/manage/page.tsx");
 const marketplace = read("src/app/api/marketplace/route.ts");
 const analytics = read("src/lib/analytics.ts");
 const capacitor = read("capacitor.config.ts");
+const quickBeat = read("src/components/QuickBeatCreate.tsx");
+const beatPack = read("src/components/BeatPackUploadForm.tsx");
+const beatPackRoute = read("src/app/api/beat-packs/route.ts");
 
 assert(home.includes("/creator/studio/create/release"), "home has Release music");
 assert(home.includes("/creator/studio/create/beat"), "home has Sell a beat");
@@ -47,6 +50,13 @@ assert(analytics.includes("create_intent_selected"), "create_intent_selected all
 assert(!analytics.includes("lyrics_pad_open"), "this candidate must not bundle Lyrics Pad analytics");
 assert(capacitor.includes("https://bvsradio.com/app/${mobileSurface}") || capacitor.includes("bvsradio.com/app/"), "capacitor still live hybrid");
 
+assert(quickBeat.includes("BeatPackUploadForm"), "Sell a beat exposes existing beat-pack uploader");
+assert(quickBeat.includes("Beat pack / EP"), "Sell a beat includes Beat pack / EP mode");
+assert(quickBeat.includes('setMode("pack")'), "beat-pack mode can be selected");
+assert(quickBeat.includes('trackEvent("create_submission_complete"'), "single-beat submission analytics remain intact");
+assert(beatPack.includes("/api/beat-packs"), "beat-pack form uses existing pack API");
+assert(beatPackRoute.includes("items.length < 2 || items.length > 20"), "beat-pack API preserves 2–20 item bound");
+
 const pkg = JSON.parse(read("package.json"));
 const build = pkg.scripts.build || "";
 const vercelBuild = pkg.scripts["vercel-build"] || "";
@@ -63,6 +73,7 @@ const iosFiles = walk(path.join(root, "src/app/app")).map((file) => read(path.re
 const iosJoined = iosFiles.join("\n");
 assert(!iosJoined.includes("creator/studio/create"), "iOS shell does not mount Studio create routes");
 assert(!iosJoined.includes("QuickBeatCreate"), "iOS shell does not import beat create");
+assert(!iosJoined.includes("BeatPackUploadForm"), "iOS shell does not import beat-pack create");
 assert(!iosJoined.includes("SongWorkspace"), "iOS shell does not import Lyrics Pad");
 assert(!/from ["']@\/app\/creator\//.test(iosJoined), "iOS shell does not import creator app routes");
 
