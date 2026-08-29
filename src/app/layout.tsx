@@ -7,6 +7,7 @@ import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import MobileIosBoundary from "@/components/MobileIosBoundary";
+import PremiumInstantPromoBanner from "@/components/PremiumInstantPromoBanner";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import NowPlayingSwipeGestures from "@/components/NowPlayingSwipeGestures";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
@@ -98,7 +99,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <FlowNavigationProvider>
                 <Navbar />
                 <AuthLinkRescue />
-                <main className="bvs-page-main pt-16 pb-44 md:pb-28">{children}</main>
+                <main className="bvs-page-main pt-16 pb-44 md:pb-28">
+                  <PremiumInstantPromoBanner />
+                  {children}
+                </main>
                 <Footer />
                 <div className="bvs-app-bottom-spacer" aria-hidden="true" />
                 <VisitorAssistant />

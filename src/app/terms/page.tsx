@@ -13,7 +13,7 @@ export default function TermsPage() {
       <section className="rounded-2xl border border-white/10 bg-bg-card/50 p-8 backdrop-blur md:p-12">
         <p className="mb-2 text-xs uppercase tracking-[3px] text-brand">Best Virtual Sound · Zimbabwe roots · global reach</p>
         <h1 className="mb-2 text-3xl font-bold md:text-4xl">Terms of Service</h1>
-        <p className="mb-8 text-text-secondary">Last updated: 3 August 2026 · Applies to bvsradio.com and related BVS apps</p>
+        <p className="mb-8 text-text-secondary">Last updated: 29 August 2026 · Applies to bvsradio.com and related BVS apps</p>
 
         <div className="max-w-none space-y-6 leading-relaxed text-text-secondary">
           <p>
@@ -101,6 +101,48 @@ export default function TermsPage() {
             bank transfer options depend on payment provider availability (including Zimbabwe-facing methods where
             configured).
           </p>
+
+          <h2 className="mt-10 text-2xl font-semibold text-text-primary">5A. Premium, Premium Instant, royalties & payouts</h2>
+          <ul className="list-disc space-y-2 pl-5">
+            <li>
+              <strong className="text-text-primary">Artist Premium</strong> (subscription) and{" "}
+              <strong className="text-text-primary">Premium Instant</strong> (one-time fee per approved release) are
+              optional commercial products. They may unlock distribution entitlement and related artist-desk tooling for
+              eligible, editorially approved releases. Current plan names, prices, and inclusions are shown on{" "}
+              <Link href="/premium" className="text-brand hover:underline">
+                /premium
+              </Link>
+              .
+            </li>
+            <li>
+              Payment for Premium or Premium Instant does <strong className="text-text-primary">not</strong> buy
+              editorial approval, BVS rotation, chart placement, playlist adds, guaranteed streams, guaranteed sales, or
+              guaranteed royalty earnings.
+            </li>
+            <li>
+              Where offered, <strong className="text-text-primary">royalty and payout reporting support</strong> means
+              BVS may help surface statements, eligibility status, and payout readiness for money actually received
+              through BVS-managed sales and/or future partner distribution statements for that release or membership
+              period. It is support and reporting readiness — not a promise that royalties will accrue, that a partner
+              will deliver statements on a fixed schedule, or that any particular amount will be paid.
+            </li>
+            <li>
+              Premium Instant applies only to the selected approved release you purchase for. It does not convert into a
+              full Artist Premium subscription unless you separately subscribe. Duplicate Instant fees are not charged
+              once that same release is already eligible or moving through delivery, subject to the product rules shown
+              at purchase time.
+            </li>
+            <li>
+              Founding Artist Premium is closed to new purchases. Existing founding memberships remain grandfathered while
+              continuously eligible under the plan terms that applied when they joined.
+            </li>
+            <li>
+              Any artist share of net amounts actually received by BVS for a release is governed by the then-current
+              product terms, partner contracts, tax/withholding rules, and payout method on file. BVS may withhold,
+              delay, or reverse payouts for chargebacks, fraud, rights disputes, incomplete KYC/payout details, or legal
+              process. <span className="text-amber-200/90">Lawyer review: final royalty-share / MoR wording.</span>
+            </li>
+          </ul>
 
           <h2 className="mt-10 text-2xl font-semibold text-text-primary">6. Intellectual property</h2>
           <p>
