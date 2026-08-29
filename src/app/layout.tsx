@@ -15,7 +15,15 @@ import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
 import MobileFlowNav from "@/components/layout/MobileFlowNav";
 import "./globals.css";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com";
+const defaultSiteUrl = "https://bvsradio.com";
+const siteUrl = (() => {
+  const value = process.env.NEXT_PUBLIC_SITE_URL || defaultSiteUrl;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return defaultSiteUrl;
+  }
+})();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
