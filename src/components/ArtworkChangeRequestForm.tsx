@@ -80,7 +80,7 @@ export default function ArtworkChangeRequestForm({
       cache: "no-store",
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || "Could not load your releases.");
+    if (!response.ok) throw new Error(payload.error || "Could not load your artwork items.");
     setTargets(payload.targets || []);
     setRequests(payload.requests || []);
   }, [scope, token]);
@@ -150,6 +150,8 @@ export default function ArtworkChangeRequestForm({
     }
   };
 
+  const placeholder = scope === "beats" ? "Select beat or beat pack" : "Select track or release";
+
   return (
     <form id={formId} onSubmit={submit} className="rounded-xl border border-white/10 p-4 sm:p-5">
       <h2 className="text-xl">{heading}</h2>
@@ -157,7 +159,7 @@ export default function ArtworkChangeRequestForm({
         {copy ||
           (scope === "beats"
             ? "Select a beat or beat pack, upload a new cover, and BVS editorial will approve it."
-            : "Select a track or album, upload a new cover, and BVS editorial will approve it.")}
+            : "Select a track or release, upload a new cover, and BVS editorial will approve it.")}
       </p>
       {error && <p className="mt-3 rounded-lg bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
       {saved && <p className="mt-3 rounded-lg bg-brand/10 p-3 text-sm text-brand">{saved}</p>}
@@ -167,10 +169,16 @@ export default function ArtworkChangeRequestForm({
         onChange={(event) => setSelected(event.target.value)}
         className={`${field} mt-4 min-h-11 text-base`}
       >
-        <option value="">Select release</option>
+        <option value="">{placeholder}</option>
         {targets.map((item) => (
           <option key={`${item.kind}:${item.id}`} value={`${item.kind}:${item.id}`}>
-            {item.kind === "beat_pack" ? "Pack · " : item.kind === "release" ? "Album · " : ""}
+            {item.kind === "beat_pack"
+              ? "Beat pack · "
+              : item.kind === "beat"
+                ? "Beat · "
+                : item.kind === "release"
+                  ? "Release · "
+                  : "Track · "}
             {item.title}
           </option>
         ))}
