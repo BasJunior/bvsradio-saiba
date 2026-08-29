@@ -38,12 +38,21 @@ export default function StudioArtworkClient() {
   if (!token) return <p className="text-sm text-text-secondary">Opening artwork tools…</p>;
 
   return (
-    <ArtworkChangeRequestForm
-      token={token}
-      scope="releases"
-      heading="Change release cover artwork"
-      copy="Choose one of your tracks or releases, upload the replacement cover, and send it to BVS editorial. The current artwork stays live until the replacement is approved."
-      formId="studio-release-cover-change"
-    />
+    <div className="space-y-8">
+      <ArtworkChangeRequestForm
+        token={token}
+        scope="releases"
+        heading="Change release cover artwork"
+        copy="Choose one of your tracks or releases, upload the replacement cover, and send it to BVS editorial. The current artwork stays live until the replacement is approved."
+        formId="studio-release-cover-change"
+      />
+      <ArtworkChangeRequestForm
+        token={token}
+        scope="beats"
+        heading="Change beat or beat pack cover artwork"
+        copy="Choose one of your beats or beat packs, upload the replacement cover, and send it to BVS editorial. The current artwork stays live until the replacement is approved. For a beat pack, you can also apply the approved cover to every beat in that pack."
+        formId="studio-beat-cover-change"
+      />
+    </div>
   );
 }
