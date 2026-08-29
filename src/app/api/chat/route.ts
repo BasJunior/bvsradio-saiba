@@ -12,7 +12,7 @@ const topics: Array<{ words: string[]; answer: Omit<Answer, "mode"> }> = [
   { words: ["login", "account", "register", "password", "sign in", "sign up"], answer: { reply: "Sign in to your BVS account or create a new one.", links: [{ label: "Sign in", href: "/auth/login" }, { label: "Create account", href: "/auth/signup" }] } },
   { words: ["contact", "email", "support", "help", "advert", "partner", "press"], answer: { reply: "The BVS team can help with questions, partnerships, submissions, advertising, and press enquiries.", links: [{ label: "Contact BVS", href: "/contact" }] } },
   { words: ["about", "who", "zimbabwe"], answer: { reply: "BVS means Best Virtual Sound — an international online radio and music platform rooted in Zimbabwe for sound, culture, artists, and community.", links: [{ label: "About BVS", href: "/about" }] } },
-  { words: ["blog", "news", "article", "culture"], answer: { reply: "Read stories about independent music, production, radio, culture, and practical guidance for artists.", links: [{ label: "Read the blog", href: "/blog" }] } },
+  { words: ["blog", "news", "article", "culture"], answer: { reply: "Read stories about studio music, production, radio, culture, and practical guidance for artists.", links: [{ label: "Read the blog", href: "/blog" }] } },
 ];
 
 const defaultAnswer: Omit<Answer, "mode"> = {

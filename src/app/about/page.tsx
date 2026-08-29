@@ -39,7 +39,7 @@ export default function AboutPage() {
           <div className="space-y-4 text-text-secondary leading-relaxed">
             <p>
               BVS Radio was born from a simple belief: Zimbabwe has some of the most powerful music
-              and stories on the planet, and those roots can help carry independent sound worldwide.
+              and stories on the planet, and those roots can help carry studio sound worldwide.
             </p>
             <p>
               What started as an independent online stream is growing into a home for radio, releases,

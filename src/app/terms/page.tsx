@@ -19,13 +19,13 @@ export default function TermsPage() {
           <p>
             These Terms govern how you use <strong className="text-text-primary">BVS Radio (Best Virtual Sound)</strong> —
             the website, mobile/hybrid apps, catalogue, radio stream, music submissions, and studio services operated by
-            Best Virtual Studios. BVS is built from Zimbabwean roots for independent sound and the wider diaspora, while serving listeners
+            Best Virtual Studios. BVS is built from Zimbabwean roots for studio sound and the wider diaspora, while serving listeners
             and artists internationally.
           </p>
 
           <h2 className="mt-10 text-2xl font-semibold text-text-primary">1. Who we are</h2>
           <p>
-            BVS Radio is a digital radio and music platform focused on Zimbabwean and independent music culture. We offer
+            BVS Radio is a digital radio and music platform focused on Zimbabwean and studio music culture. We offer
             listening, discovery, paid downloads/services where listed, and a path for artists to submit original work for
             editorial review. Company communications may come from Best Virtual Studios staff in Zimbabwe (CAT) and Europe.
           </p>
@@ -150,7 +150,7 @@ export default function TermsPage() {
           <p>
             Best Virtual Studios / BVS Radio
             <br />
-            Focus: independent music rooted in Zimbabwe · CAT timezone for ops replies
+            Focus: studio music rooted in Zimbabwe · CAT timezone for ops replies
             <br />
             Email:{" "}
             <a href="mailto:contact@bvsradio.com" className="text-brand hover:underline">
