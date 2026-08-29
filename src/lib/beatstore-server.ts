@@ -1,6 +1,7 @@
 import 'server-only'
 import { creatorHeaders, creatorIdentity, creatorUrl } from '@/lib/creator-server'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
+import { fairCreatorDailyOrder } from '@/lib/fair-discovery-order'
 
 export type BeatStatus =
   | 'draft'
@@ -156,7 +157,8 @@ export async function listPublishedBeats(limit = 48) {
     console.warn("listPublishedBeats: missing Supabase env — returning no beats")
     return []
   }
-  // Prefer embed with licences; fall back if relationship/filter fails so published beats still show.
+  // Fetch newest-first as a complete source window, then apply fair creator rotation
+  // before returning public marketplace results. Producer dashboards stay newest-first.
   const withLicences = await fetch(
     creatorUrl(
       `beats?is_public=eq.true&status=eq.published&rights_confirmed=eq.true&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,pack_id,pack_position,created_at,published_at,beat_licence_options(id,licence_code,licence_name,price_usd,currency,is_active,is_sold_out)&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
@@ -167,10 +169,15 @@ export async function listPublishedBeats(limit = 48) {
     const rows = (await withLicences.json()) as Array<
       BeatRow & { beat_licence_options?: BeatLicenceRow[] }
     >
-    return rows.map((row) => ({
+    const activeRows = rows.map((row) => ({
       ...row,
       beat_licence_options: (row.beat_licence_options || []).filter((l) => l.is_active !== false),
     }))
+    return fairCreatorDailyOrder(
+      activeRows,
+      'catalogue-beatstore',
+      (row) => row.producer_user_id,
+    )
   }
 
   console.error('listPublishedBeats embed failed', withLicences.status, await withLicences.text().catch(() => ''))
@@ -185,7 +192,8 @@ export async function listPublishedBeats(limit = 48) {
     console.error('listPublishedBeats plain failed', plain.status, await plain.text().catch(() => ''))
     return []
   }
-  return (await plain.json()) as Array<BeatRow & { beat_licence_options?: BeatLicenceRow[] }>
+  const rows = (await plain.json()) as Array<BeatRow & { beat_licence_options?: BeatLicenceRow[] }>
+  return fairCreatorDailyOrder(rows, 'catalogue-beatstore', (row) => row.producer_user_id)
 }
 
 export async function listSubmittedBeats(limit = 100) {
