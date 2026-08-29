@@ -17,6 +17,7 @@ import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import FlowDetailsBridge from "@/components/flow/FlowDetailsBridge";
 import NowPlayingExperienceGuard from "@/components/flow/NowPlayingExperienceGuard";
 import MobileFlowNav from "@/components/layout/MobileFlowNav";
+import PremiumInstantPromoBanner from "@/components/PremiumInstantPromoBanner";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://bvsradio.com";
@@ -93,6 +94,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Navbar />
               <AuthLinkRescue />
               <main className="pt-16 pb-44 md:pb-28">
+                <PremiumInstantPromoBanner />
                 <EditorialCommandCenter />
                 <EditorialWorkBridge />
                 {children}
