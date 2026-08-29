@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
+import { fetchJson, humanizeUploadError, putToSignedSlot } from '@/lib/signed-upload'
 import ReleaseSubmitForm from '@/components/ReleaseSubmitForm'
 import MyBeatStore from '@/components/MyBeatStore'
 import BeatPackUploadForm from '@/components/BeatPackUploadForm'
@@ -16,22 +17,6 @@ type SignedSlot = {
   token?: string
   signedUrl: string
   contentType: string
-}
-
-async function putToSignedSlot(slot: SignedSlot, file: File) {
-  const res = await fetch(slot.signedUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': slot.contentType || file.type || 'application/octet-stream',
-    },
-    body: file,
-  })
-  if (!res.ok) {
-    const text = await res.text().catch(() => '')
-    throw new Error(
-      `Storage rejected the file (${res.status}). ${text.slice(0, 120) || 'Try again or contact BVS.'}`,
-    )
-  }
 }
 
 function UploadPageInner() {
@@ -165,77 +150,71 @@ function UploadPageInner() {
 
       // 1) Prepare signed upload slots (tiny JSON — never hits Vercel body limit)
       setProgress('Preparing secure upload…')
-      const prepRes = await fetch('/api/tracks/upload/prepare', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          audio: {
-            name: audioFile.name,
-            type: audioFile.type,
-            size: audioFile.size,
-          },
-          artwork: artworkFile
-            ? {
-                name: artworkFile.name,
-                type: artworkFile.type,
-                size: artworkFile.size,
-              }
-            : null,
-        }),
-      })
-      let prep: {
+      const prepResult = await fetchJson<{
         error?: string
         audio?: SignedSlot
         artwork?: SignedSlot | null
-      } = {}
-      try {
-        prep = await prepRes.json()
-      } catch {
-        throw new Error(
-          prepRes.status === 413
-            ? 'File is too large for the old upload path. Hard-refresh this page and try again.'
-            : `Could not prepare upload (server ${prepRes.status}).`,
-        )
-      }
-      if (!prepRes.ok || !prep.audio) {
-        throw new Error(prep.error || `Could not prepare upload (${prepRes.status})`)
+      }>(
+        '/api/tracks/upload/prepare',
+        {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            audio: {
+              name: audioFile.name,
+              type: audioFile.type,
+              size: audioFile.size,
+            },
+            artwork: artworkFile
+              ? {
+                  name: artworkFile.name,
+                  type: artworkFile.type,
+                  size: artworkFile.size,
+                }
+              : null,
+          }),
+        },
+        'preparing upload',
+      )
+      const prep = prepResult.data
+      if (!prepResult.ok || !prep.audio) {
+        throw new Error(prep.error || `Could not prepare upload (${prepResult.status})`)
       }
 
-      // 2) Upload audio (and artwork) straight to Supabase — bypasses Vercel 4.5MB limit
+      // 2) Upload audio (and artwork) straight to storage — bypasses Vercel 4.5MB limit
       const mb = (audioFile.size / (1024 * 1024)).toFixed(1)
       setProgress(`Uploading audio (${mb} MB) to BVS storage…`)
       console.info('[bvs upload] direct storage', { path: prep.audio.path, size: audioFile.size })
-      await putToSignedSlot(prep.audio, audioFile)
+      await putToSignedSlot(prep.audio, audioFile, { label: 'audio file' })
 
       if (artworkFile && prep.artwork) {
         setProgress('Uploading cover artwork…')
-        await putToSignedSlot(prep.artwork, artworkFile)
+        await putToSignedSlot(prep.artwork, artworkFile, { label: 'cover art' })
       }
 
       // 3) Register the review row (JSON metadata only)
       setProgress('Registering submission for review…')
-      const finRes = await fetch('/api/tracks/upload', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          title: title.trim(),
-          genre,
-          description: description.trim(),
-          rightsConfirmed: true,
-          explicit,
-          audioPath: prep.audio.path,
-          artworkPath: prep.artwork?.path || null,
-        }),
-      })
-      let data: { error?: string; message?: string; track?: { id?: string } } = {}
-      try {
-        data = await finRes.json()
-      } catch {
-        throw new Error(`Upload failed (server ${finRes.status}). Try again or contact BVS.`)
-      }
-      if (!finRes.ok) {
-        console.error('[bvs upload] finalize error', finRes.status, data)
-        throw new Error(data.error || `Upload failed (${finRes.status})`)
+      const finResult = await fetchJson<{ error?: string; message?: string; track?: { id?: string } }>(
+        '/api/tracks/upload',
+        {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({
+            title: title.trim(),
+            genre,
+            description: description.trim(),
+            rightsConfirmed: true,
+            explicit,
+            audioPath: prep.audio.path,
+            artworkPath: prep.artwork?.path || null,
+          }),
+        },
+        'registering submission',
+      )
+      const data = finResult.data
+      if (!finResult.ok) {
+        console.error('[bvs upload] finalize error', finResult.status, data)
+        throw new Error(data.error || `Upload failed (${finResult.status})`)
       }
 
       trackEvent('upload_complete', { genre, has_artwork: Boolean(artworkFile) })
@@ -243,7 +222,7 @@ function UploadPageInner() {
     } catch (err: unknown) {
       console.error('[bvs upload] failed', err)
       const raw = err instanceof Error ? err.message : String(err)
-      let msg = raw
+      let msg = humanizeUploadError(err)
       if (/413|Payload Too Large|request entity too large/i.test(raw)) {
         msg =
           'This file is too large for the site host. Hard-refresh /upload (new direct-to-storage path) and try again. WAV/FLAC up to 100MB, compressed audio up to 40MB.'

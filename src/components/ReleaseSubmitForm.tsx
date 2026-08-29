@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import { trackEvent } from '@/lib/analytics'
+import { fetchJson, humanizeUploadError, putToSignedSlot } from '@/lib/signed-upload'
 
 type WorkspaceContext = {
   id: string
@@ -23,15 +24,6 @@ function bvsLicenceEvidence(workspace: WorkspaceContext) {
 }
 
 type Slot = { path: string; signedUrl: string; contentType: string; index?: number }
-
-async function putToSignedSlot(slot: Slot, file: File) {
-  const res = await fetch(slot.signedUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': slot.contentType || file.type || 'application/octet-stream' },
-    body: file,
-  })
-  if (!res.ok) throw new Error(`Upload failed (${res.status})`)
-}
 
 const genres = [
   'Hip-Hop', 'Trap', 'Afrobeats', 'Amapiano', 'R&B', 'Dancehall', 'Electronic', 'Lofi',
@@ -183,34 +175,50 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       }))
 
       setProgress('Preparing secure upload slots…')
-      const prepRes = await fetch('/api/releases/prepare', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          tracks: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
-          cover: cover ? { name: cover.name, type: cover.type, size: cover.size } : null,
-          evidence: evidenceEntries.map(({ materialType, file }) => ({ materialType, name: file.name, type: file.type, size: file.size })),
-        }),
-      })
-      const prep = await prepRes.json()
-      if (!prepRes.ok) throw new Error(prep.error || 'Prepare failed')
+      const prepResult = await fetchJson<{ error?: string; tracks?: Slot[]; cover?: Slot | null; evidence?: Slot[] }>(
+        '/api/releases/prepare',
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            tracks: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
+            cover: cover ? { name: cover.name, type: cover.type, size: cover.size } : null,
+            evidence: evidenceEntries.map(({ materialType, file }) => ({ materialType, name: file.name, type: file.type, size: file.size })),
+          }),
+        },
+        'preparing upload',
+      )
+      const prep = prepResult.data
+      if (!prepResult.ok) throw new Error(prep.error || 'Prepare failed')
+      const preparedTracks = prep.tracks
+      const preparedEvidence = Array.isArray(prep.evidence) ? prep.evidence : []
+      if (!Array.isArray(preparedTracks) || preparedTracks.length !== files.length) {
+        throw new Error('Upload preparation returned incomplete track slots. Try again.')
+      }
+      if (evidenceEntries.length > 0 && preparedEvidence.length !== evidenceEntries.length) {
+        throw new Error('Upload preparation returned incomplete clearance slots. Try again.')
+      }
 
       for (let i = 0; i < files.length; i++) {
         setProgress(`Uploading track ${i + 1} of ${files.length}…`)
-        const slot = prep.tracks[i] as Slot
-        await putToSignedSlot(slot, files[i])
+        const slot = preparedTracks[i] as Slot
+        await putToSignedSlot(slot, files[i], { label: `track ${i + 1} of ${files.length}` })
       }
       if (cover && prep.cover) {
         setProgress('Uploading cover…')
-        await putToSignedSlot(prep.cover as Slot, cover)
+        await putToSignedSlot(prep.cover as Slot, cover, { label: 'cover art' })
       }
       for (let i = 0; i < evidenceEntries.length; i++) {
         setProgress(`Uploading clearance evidence ${i + 1} of ${evidenceEntries.length}…`)
-        await putToSignedSlot(prep.evidence[i] as Slot, evidenceEntries[i].file)
+        await putToSignedSlot(preparedEvidence[i] as Slot, evidenceEntries[i].file, {
+          label: `clearance evidence ${i + 1}`,
+        })
       }
 
       setProgress('Registering release for review…')
-      const finRes = await fetch('/api/releases', {
+      const finResult = await fetchJson<{ error?: string }>(
+        '/api/releases',
+        {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -231,7 +239,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
           materialTypes,
           evidence: evidenceEntries.map(({ materialType, file }, index) => ({
             materialType,
-            path: prep.evidence[index].path,
+            path: preparedEvidence[index].path,
             originalFileName: file.name,
             mimeType: file.type,
             size: file.size,
@@ -244,13 +252,13 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
             riskLevel: 'medium',
             title: `${materialOptions.find(([value]) => value === materialType)?.[1] || materialType} clearance`,
             description: evidenceNotes[materialType] || 'Documentary clearance evidence uploaded with this release.',
-            licenceOrPermissionRef: evidenceNotes[materialType] || `Uploaded evidence: ${prep.evidence[index].path}`,
-            documentStoragePath: prep.evidence[index].path,
+            licenceOrPermissionRef: evidenceNotes[materialType] || `Uploaded evidence: ${preparedEvidence[index].path}`,
+            documentStoragePath: preparedEvidence[index].path,
           })),
           coverPath: prep.cover?.path || null,
           tracks: files.map((_, i) => ({
             title: (trackTitles[i] || `Track ${i + 1}`).trim(),
-            audioPath: prep.tracks[i].path,
+            audioPath: preparedTracks[i].path,
             position: i + 1,
           })),
           containsCover,
@@ -273,9 +281,11 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
             .join('; ')
             .slice(0, 2000) || undefined,
         }),
-      })
-      const fin = await finRes.json()
-      if (!finRes.ok) throw new Error(fin.error || 'Submit failed')
+        },
+        'registering release',
+      )
+      const fin = finResult.data
+      if (!finResult.ok) throw new Error(fin.error || 'Submit failed')
 
       trackEvent('upload_complete', { genre, track_count: files.length, release_type: releaseType, song_workspace: Boolean(autoLicensedBeat) })
       trackEvent('release_submitted', { song_workspace: Boolean(autoLicensedBeat) })
@@ -307,7 +317,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       setAccuracyConfirmed(false)
       onSuccess?.()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Submit failed')
+      setError(humanizeUploadError(err))
     } finally {
       setLoading(false)
       setProgress('')
