@@ -8,6 +8,7 @@ import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import MobileIosBoundary from "@/components/MobileIosBoundary";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
+import NowPlayingSwipeGestures from "@/components/NowPlayingSwipeGestures";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
@@ -99,6 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <MobileFlowNav />
                 </Suspense>
                 <PersistentPlayer />
+                <NowPlayingSwipeGestures />
               </FlowNavigationProvider>
             </AppSurfaceProvider>
           </StationPlayerProvider>
