@@ -7,6 +7,7 @@ export const analyticsEvents = [
   "search_to_beat_preview",
   "search_to_creator",
   "explore_rail_open",
+  "explore_mode_change",
   "beat_licence_view",
   "track_save",
   "upload_complete",

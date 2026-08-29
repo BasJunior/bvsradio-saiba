@@ -1,4 +1,4 @@
-export type DiscoveryKind = 'track' | 'artist' | 'show'
+export type DiscoveryKind = 'track' | 'artist' | 'show' | 'beat' | 'release'
 
 export interface DiscoveryItem {
   id: string
