@@ -1214,50 +1214,62 @@ export function PersistentPlayer() {
     <>
       <QueueSheet />
       {nowPlayingOpen && (
-        <section className="fixed inset-0 z-[70] overflow-y-auto overscroll-none touch-none bg-[#090909] text-white" role="dialog" aria-modal="true" aria-label="Now Playing World" data-now-playing-shell="true" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "none", touchAction: "none" }}>
+        <section
+          className="fixed inset-0 z-[70] overflow-y-auto overscroll-y-contain bg-[#090909] text-white"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Now Playing World"
+          data-now-playing-shell="true"
+          style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}
+        >
           {art ? (
             // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
             <img src={art} alt="" className="pointer-events-none fixed inset-0 h-full w-full scale-110 object-cover opacity-25 blur-3xl" />
           ) : null}
           <div className="fixed inset-0 bg-gradient-to-b from-black/25 via-[#090909]/80 to-[#090909]" aria-hidden="true" />
-          <div className="relative mx-auto flex min-h-full max-w-6xl flex-col px-5 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8">
-            <header className="flex items-center justify-between">
-              <button type="button" onClick={player.closeNowPlaying} className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/20 text-xl backdrop-blur" aria-label="Close Now Playing">⌄</button>
-              <div className="text-center">
-                <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Now Playing World</p>
-                <p className="mt-1 text-xs text-white/60">{player.playingFrom || "BVS Radio"}</p>
+          <div className="relative mx-auto flex min-h-[100dvh] max-w-6xl flex-col px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-8 sm:pb-12 sm:pt-[max(1.25rem,env(safe-area-inset-top))]">
+            <header data-np-dismiss-zone="true" className="sticky top-0 z-10 -mx-4 bg-gradient-to-b from-[#090909] via-[#090909]/95 to-transparent px-4 pb-3 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0">
+              <div className="mx-auto mb-2 flex justify-center sm:mb-3" aria-hidden="true">
+                <span className="h-1.5 w-12 rounded-full bg-white/35" />
               </div>
-              <button type="button" onClick={() => player.setQueueOpen(true)} className="grid h-11 min-w-11 place-items-center rounded-full border border-white/15 bg-black/20 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
+              <div className="flex items-center justify-between gap-3">
+                <button type="button" onClick={player.closeNowPlaying} className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/20 text-xl backdrop-blur" aria-label="Close Now Playing">⌄</button>
+                <div className="min-w-0 flex-1 text-center">
+                  <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Now Playing World</p>
+                  <p className="mt-1 truncate text-xs text-white/60">{player.playingFrom || "BVS Radio"}</p>
+                </div>
+                <button type="button" onClick={() => player.setQueueOpen(true)} className="grid h-11 min-w-11 place-items-center rounded-full border border-white/15 bg-black/20 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
+              </div>
             </header>
 
-            <div className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:gap-16">
-              <div className="mx-auto w-full max-w-[34rem]">
-                <div className="relative aspect-square overflow-hidden rounded-[2rem] border border-white/10 bg-white/5 shadow-[0_35px_100px_rgba(0,0,0,.55)]">
+            <div className="grid flex-1 content-center gap-5 py-4 sm:gap-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:items-center lg:gap-16">
+              <div data-np-swipe-track="true" className="mx-auto w-full max-w-[18rem] sm:max-w-[28rem] lg:max-w-[34rem]">
+                <div className="relative mx-auto aspect-square w-full max-h-[min(42vh,18rem)] overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/5 shadow-[0_35px_100px_rgba(0,0,0,.55)] sm:max-h-none sm:rounded-[2rem]">
                   {art ? (
                     // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
-                    <img src={art} alt={`Artwork for ${player.current?.title || "BVS Radio"}`} className="h-full w-full object-cover" />
+                    <img src={art} alt={`Artwork for ${player.current?.title || "BVS Radio"}`} className="h-full w-full object-cover" draggable={false} />
                   ) : (
                     <div className="grid h-full place-items-center bg-gradient-to-br from-brand/25 via-white/5 to-black text-4xl font-semibold tracking-[.2em] text-brand">BVS</div>
                   )}
                 </div>
-                <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} className="mt-7 overflow-hidden rounded-full" />
+                <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} className="mt-5 overflow-hidden rounded-full sm:mt-7" />
                 <div className="mt-2 flex justify-between text-xs tabular-nums text-white/50"><span>{formatTime(player.elapsed)}</span><span>{formatTime(player.duration)}</span></div>
               </div>
 
               <div className="mx-auto w-full max-w-xl">
-                <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">{player.current?.project || "Continuous rotation"}</p>
-                <h2 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">{player.current?.title || "BVS Radio rotation"}</h2>
-                <ArtistSearchLink artist={player.current?.artist || "BVS Radio"} className="mt-3 inline-block text-lg text-white/65 hover:text-brand">{player.current?.artist || "BVS Radio"}</ArtistSearchLink>
+                <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand sm:text-xs">{player.current?.project || "Continuous rotation"}</p>
+                <h2 className="mt-2 text-[1.75rem] font-semibold leading-tight tracking-tight sm:mt-3 sm:text-4xl lg:text-5xl">{player.current?.title || "BVS Radio rotation"}</h2>
+                <ArtistSearchLink artist={player.current?.artist || "BVS Radio"} className="mt-2 inline-block text-base text-white/65 hover:text-brand sm:mt-3 sm:text-lg">{player.current?.artist || "BVS Radio"}</ArtistSearchLink>
 
-                <div className="mt-8 flex items-center justify-between gap-3 sm:justify-start sm:gap-6">
-                  <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-full px-4 text-sm ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60"}`}>Shuffle</button>
+                <div className="mt-6 flex items-center justify-between gap-2 sm:mt-8 sm:justify-start sm:gap-6">
+                  <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-full px-3 text-sm sm:px-4 ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60"}`}>Shuffle</button>
                   <button type="button" onClick={player.previous} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Previous recording">◀</button>
-                  <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-16 w-16 place-items-center rounded-full bg-brand text-xl font-bold text-black disabled:opacity-40" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
+                  <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-14 w-14 place-items-center rounded-full bg-brand text-xl font-bold text-black disabled:opacity-40 sm:h-16 sm:w-16" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
                   <button type="button" onClick={player.next} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Next recording">▶</button>
                   <button type="button" onClick={player.toggleLike} aria-pressed={player.liked} className={`grid h-11 w-11 place-items-center rounded-full text-2xl ${player.liked ? "bg-brand/15 text-brand" : "text-white/60"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥" : "♡"}</button>
                 </div>
 
-                <div className="mt-10 grid gap-3 sm:grid-cols-2">
+                <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2">
                   <ArtistSearchLink artist={player.current?.artist || ""} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Go deeper</span><span className="mt-1 block font-medium">Explore artist and credits</span>
                   </ArtistSearchLink>
@@ -1265,7 +1277,7 @@ export function PersistentPlayer() {
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Coming next</span><span className="mt-1 block font-medium">Open queue · {player.upNext.length} tracks</span>
                   </button>
                 </div>
-                <p className="mt-6 text-sm leading-relaxed text-white/50">Playback stays continuous while you move through artists, credits, stories and BeatStore.</p>
+                <p className="mt-5 text-sm leading-relaxed text-white/50 sm:mt-6">Playback stays continuous while you move through artists, credits, stories and BeatStore.</p>
               </div>
             </div>
           </div>
