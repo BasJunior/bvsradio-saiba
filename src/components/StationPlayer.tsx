@@ -1214,7 +1214,7 @@ export function PersistentPlayer() {
     <>
       <QueueSheet />
       {nowPlayingOpen && (
-        <section className="fixed inset-0 z-[70] overflow-y-auto bg-[#090909] text-white" role="dialog" aria-modal="true" aria-label="Now Playing World">
+        <section className="fixed inset-0 z-[70] overflow-y-auto overscroll-none touch-none bg-[#090909] text-white" role="dialog" aria-modal="true" aria-label="Now Playing World" data-now-playing-shell="true" style={{ WebkitOverflowScrolling: "touch", overscrollBehavior: "none", touchAction: "none" }}>
           {art ? (
             // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
             <img src={art} alt="" className="pointer-events-none fixed inset-0 h-full w-full scale-110 object-cover opacity-25 blur-3xl" />
