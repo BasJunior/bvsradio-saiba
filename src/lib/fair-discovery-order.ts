@@ -28,3 +28,57 @@ export function fairDailyOrder<T extends { id: string }>(items: T[], scope: stri
 
   return stable
 }
+
+/**
+ * Public marketplace ordering: rotate creators once per BVS day, then round-robin
+ * one item per creator before any creator receives a second slot. This keeps browse
+ * stable during a session/day while preventing prolific uploaders from owning the
+ * first screen. Creator dashboards should continue using their normal newest-first
+ * management order.
+ */
+export function fairCreatorDailyOrder<T extends { id: string }>(
+  items: T[],
+  scope: string,
+  creatorKey: (item: T) => string | null | undefined,
+  now = new Date(),
+): T[] {
+  if (items.length < 2) return [...items]
+
+  const groups = new Map<string, T[]>()
+  const canonical = [...items].sort((a, b) => a.id.localeCompare(b.id))
+  for (const item of canonical) {
+    const rawKey = String(creatorKey(item) || '').trim().toLocaleLowerCase('en')
+    const key = rawKey || `unknown:${item.id}`
+    const group = groups.get(key) || []
+    group.push(item)
+    groups.set(key, group)
+  }
+
+  const creators = fairDailyOrder(
+    [...groups.keys()].map((id) => ({ id })),
+    `${scope}:creators`,
+    now,
+  )
+
+  const queues = new Map<string, T[]>()
+  for (const creator of creators) {
+    queues.set(
+      creator.id,
+      fairDailyOrder(groups.get(creator.id) || [], `${scope}:items:${creator.id}`, now),
+    )
+  }
+
+  const result: T[] = []
+  let remaining = items.length
+  while (remaining > 0) {
+    for (const creator of creators) {
+      const queue = queues.get(creator.id)
+      const next = queue?.shift()
+      if (!next) continue
+      result.push(next)
+      remaining -= 1
+    }
+  }
+
+  return result
+}
