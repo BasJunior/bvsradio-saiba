@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
-const [search, layout, mobileCss, details, flags, order, artistApi, producerApi, artistsPage, producersPage, iosShell, catalogueLayout, catalogueJump, cataloguePage] = await Promise.all([
+const [search, layout, mobileCss, details, flags, order, artistApi, producerApi, artistsPage, producersPage, iosShell, catalogueLayout, catalogueJump, cataloguePage, beatstoreServer, catalogueListings] = await Promise.all([
   read('src/app/search/page.tsx'),
   read('src/app/search/layout.tsx'),
   read('src/app/search/explore-mobile.css'),
@@ -18,6 +18,8 @@ const [search, layout, mobileCss, details, flags, order, artistApi, producerApi,
   read('src/app/catalogue/layout.tsx'),
   read('src/components/CatalogueDeepLinkJump.tsx'),
   read('src/app/catalogue/page.tsx'),
+  read('src/lib/beatstore-server.ts'),
+  read('src/lib/catalogue-listings.ts'),
 ])
 
 assert.match(search, /ExploreItemDetails/, 'Explore must ship contextual item details')
@@ -42,11 +44,21 @@ assert.match(flags, /NEXT_PUBLIC_BVS_EXPLORE_MODES !== "0"/, 'Explore v2 must be
 assert.match(order, /Africa\/Harare/, 'fair discovery rotation must use the BVS day')
 assert.match(order, /sort\(\(a, b\) => a\.id\.localeCompare\(b\.id\)\)/, 'fair rotation must start from a stable canonical order')
 assert.match(order, /scope.*day/s, 'fair rotation must vary by surface and day')
+assert.match(order, /fairCreatorDailyOrder/, 'marketplace discovery must expose creator-aware fair rotation')
+assert.match(order, /while \(remaining > 0\)[\s\S]*for \(const creator of creators\)/, 'creator-aware ordering must round-robin creators')
 for (const source of [artistApi, producerApi, artistsPage, producersPage]) {
   assert.match(source, /fairDailyOrder/, 'artist and producer discovery surfaces must use fair daily rotation')
 }
 assert.match(artistApi, /Cache-Control.*no-store/s, 'artist API must not freeze a prior daily order in cache')
 assert.match(producerApi, /Cache-Control.*no-store/s, 'producer API must not freeze a prior daily order in cache')
+
+assert.match(beatstoreServer, /fairCreatorDailyOrder/, 'public BeatStore browse must use creator-aware fair ordering')
+assert.match(beatstoreServer, /catalogue-beatstore/, 'BeatStore fairness must use its own daily rotation scope')
+assert.match(beatstoreServer, /producer_user_id/, 'BeatStore fairness must group results by producer ownership')
+assert.match(beatstoreServer, /listBeatsForProducer[\s\S]*order=created_at\.desc/, 'producer management must remain newest-first')
+assert.match(catalogueListings, /fairCreatorDailyOrder/, 'public music catalogue must use artist-aware fair ordering')
+assert.match(catalogueListings, /catalogue-music/, 'music fairness must use its own daily rotation scope')
+assert.match(catalogueListings, /\(listing\) => listing\.artist/, 'music fairness must group public listings by artist')
 
 assert.match(catalogueLayout, /CatalogueDeepLinkJump/, 'Catalogue must mount the filtered deep-link resolver')
 assert.match(catalogueJump, /window\.location\.hash/, 'Catalogue deep links must honor the requested hash target')
@@ -57,4 +69,4 @@ assert.match(cataloguePage, /searchParams\.get\("q"\)/, 'Catalogue must derive t
 
 assert.doesNotMatch(iosShell, /ExploreItemDetails|@\/app\/search|src\/app\/search|CatalogueDeepLinkJump/, 'web discovery/deep-link changes must not leak into the locked iOS shell')
 
-console.log('Explore v2 + fair creator rotation + catalogue deep-link assertions passed.')
+console.log('Explore v2 + fair creator/marketplace rotation + catalogue deep-link assertions passed.')
