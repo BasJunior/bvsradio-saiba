@@ -61,10 +61,10 @@ export default async function RadioPage() {
             <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
               <span className="h-1.5 w-1.5 rounded-full bg-brand" /> On air
             </span>
-            <span className="text-xs text-text-secondary">CAT · Harare</span>
+            <span className="text-xs text-text-secondary">CAT · Zimbabwe roots</span>
           </div>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">BVS Radio</h1>
-          <p className="mt-2 max-w-2xl text-base text-text-secondary sm:text-lg">Zimbabwean sound. Stay awhile.</p>
+          <p className="mt-2 max-w-2xl text-base text-text-secondary sm:text-lg">African sound, rooted in Zimbabwe. Stay awhile.</p>
         </div>
         <nav className="flex flex-wrap gap-2 text-sm" aria-label="Radio pages">
           <Link href="/radio/schedule" className="rounded-full border border-white/15 px-4 py-2 hover:bg-white/5">Schedule</Link>

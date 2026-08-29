@@ -4,7 +4,7 @@ import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "About BVS Radio",
-  description: "Learn about BVS Radio — Zimbabwe's online radio and creative platform for listeners, artists, and producers.",
+  description: "Learn about BVS Radio — an international online radio and creative platform rooted in Zimbabwe for listeners, artists, and producers.",
 };
 
 export default function AboutPage() {
@@ -28,7 +28,7 @@ export default function AboutPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
         <div className="absolute bottom-0 left-0 p-10 max-w-lg">
-          <p className="text-brand text-sm tracking-[3px] mb-2">EST. 2022 • HARARE</p>
+          <p className="text-brand text-sm tracking-[3px] mb-2">EST. 2022 • ZIMBABWE ROOTS • GLOBAL REACH</p>
           <h2 className="text-4xl font-bold leading-tight">Built by artists, made for artists.</h2>
         </div>
       </div>
@@ -38,8 +38,8 @@ export default function AboutPage() {
           <h2 className="text-3xl font-semibold mb-4">Our Story</h2>
           <div className="space-y-4 text-text-secondary leading-relaxed">
             <p>
-              BVS Radio was born from a simple belief: Zimbabwe has some of the most powerful music 
-              and stories on the planet, and the world deserves to hear them.
+              BVS Radio was born from a simple belief: Zimbabwe has some of the most powerful music
+              and stories on the planet, and those roots can help carry African sound worldwide.
             </p>
             <p>
               What started as an independent online stream is growing into a home for radio, releases,
@@ -53,7 +53,7 @@ export default function AboutPage() {
           <h2 className="text-3xl font-semibold mb-4">Our Mission</h2>
           <div className="space-y-4 text-text-secondary leading-relaxed">
             <p>
-              We exist to amplify independent artists and Zimbabwean sound. BVS connects listeners,
+              We exist to amplify independent artists and African sound, with Zimbabwe at the roots. BVS connects listeners,
               producers and performers through radio, catalogue discovery, BeatStore access, interviews
               and practical audio services.
             </p>
@@ -72,7 +72,7 @@ export default function AboutPage() {
             { title: "Editorial rotation", desc: "A live continuous stream of approved releases and curated tracks — always ready to play." },
             { title: "Artist first", desc: "Clear submit, review, credits, BeatStore and service paths built from real creator workflows." },
             { title: "Catalogue & commerce", desc: "Discover music, lease beats, and book mix/master work without mixing up what is free to hear and what is for sale." },
-            { title: "Harare roots", desc: "Born in Zimbabwe, built for listeners and artists at home and in the diaspora." },
+            { title: "Zimbabwe roots", desc: "Born from Zimbabwean creator experience, built for listeners and artists across Africa and the diaspora." },
           ].map((item, index) => (
             <div key={index} className="bg-bg-card/50 border border-white/10 rounded-2xl p-6">
               <h3 className="font-semibold text-lg mb-3 text-brand">{item.title}</h3>

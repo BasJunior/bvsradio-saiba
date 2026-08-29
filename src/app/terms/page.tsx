@@ -4,14 +4,14 @@ import Link from "next/link";
 export const metadata: Metadata = {
   title: "Terms of Service | BVS Radio",
   description:
-    "Terms for using BVS Radio (Best Virtual Sound) — Zimbabwe-focused online radio, music submissions, and studio services.",
+    "Terms for using BVS Radio (Best Virtual Sound) — international online radio, music submissions, and studio services rooted in Zimbabwe.",
 };
 
 export default function TermsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
       <section className="rounded-2xl border border-white/10 bg-bg-card/50 p-8 backdrop-blur md:p-12">
-        <p className="mb-2 text-xs uppercase tracking-[3px] text-brand">Best Virtual Sound · Zimbabwe</p>
+        <p className="mb-2 text-xs uppercase tracking-[3px] text-brand">Best Virtual Sound · Zimbabwe roots · global reach</p>
         <h1 className="mb-2 text-3xl font-bold md:text-4xl">Terms of Service</h1>
         <p className="mb-8 text-text-secondary">Last updated: 3 August 2026 · Applies to bvsradio.com and related BVS apps</p>
 
@@ -19,7 +19,7 @@ export default function TermsPage() {
           <p>
             These Terms govern how you use <strong className="text-text-primary">BVS Radio (Best Virtual Sound)</strong> —
             the website, mobile/hybrid apps, catalogue, radio stream, music submissions, and studio services operated by
-            Best Virtual Studios. BVS is built for Zimbabwean sound and the wider African diaspora, while serving listeners
+            Best Virtual Studios. BVS is built from Zimbabwean roots for African sound and the wider diaspora, while serving listeners
             and artists internationally.
           </p>
 
@@ -76,7 +76,7 @@ export default function TermsPage() {
             <li>
               BVS may reject, delay, hold (unpublish), or remove material that is unlawful, defamatory, hate speech, outside
               programming standards, or subject to a rights complaint — including content that is not suitable for
-              Zimbabwean family-friendly dayparts when marked for rotation.{" "}
+              family-friendly dayparts when marked for rotation.{" "}
               <strong className="text-text-primary">Automated workflows do not delete your account or entire catalogue.</strong>
             </li>
           </ul>
@@ -133,7 +133,7 @@ export default function TermsPage() {
 
           <h2 className="mt-10 text-2xl font-semibold text-text-primary">10. Governing law &amp; disputes</h2>
           <p>
-            These Terms are interpreted with regard to BVS operating as a Zimbabwe-rooted digital music service with
+            These Terms are interpreted with regard to BVS operating as an international, Zimbabwe-rooted digital music service with
             international users. Disputes will first be addressed in good faith via our contact channels. Where a formal
             forum is required, proceedings may be brought in courts competent for Best Virtual Studios’ place of
             establishment, without preventing mandatory consumer protections that apply where you live (including in
@@ -146,11 +146,11 @@ export default function TermsPage() {
             use after changes means you accept the updated Terms.
           </p>
 
-          <h2 className="mt-10 text-2xl font-semibold text-text-primary">12. Contact (Zimbabwe &amp; international)</h2>
+          <h2 className="mt-10 text-2xl font-semibold text-text-primary">12. Contact (Zimbabwe local services &amp; international)</h2>
           <p>
             Best Virtual Studios / BVS Radio
             <br />
-            Focus: Zimbabwean music · CAT timezone for ops replies
+            Focus: African music rooted in Zimbabwe · CAT timezone for ops replies
             <br />
             Email:{" "}
             <a href="mailto:contact@bvsradio.com" className="text-brand hover:underline">

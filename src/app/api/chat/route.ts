@@ -11,7 +11,7 @@ const topics: Array<{ words: string[]; answer: Omit<Answer, "mode"> }> = [
   { words: ["catalogue", "catalog", "discover", "release", "album"], answer: { reply: "Explore tracks, releases, and artists from Zimbabwe and the wider African music community.", links: [{ label: "Explore catalogue", href: "/catalogue" }] } },
   { words: ["login", "account", "register", "password", "sign in", "sign up"], answer: { reply: "Sign in to your BVS account or create a new one.", links: [{ label: "Sign in", href: "/auth/login" }, { label: "Create account", href: "/auth/signup" }] } },
   { words: ["contact", "email", "support", "help", "advert", "partner", "press"], answer: { reply: "The BVS team can help with questions, partnerships, submissions, advertising, and press enquiries.", links: [{ label: "Contact BVS", href: "/contact" }] } },
-  { words: ["about", "who", "zimbabwe"], answer: { reply: "BVS means Best Virtual Sound — Zimbabwe’s online radio and music platform for sound, culture, artists, and community.", links: [{ label: "About BVS", href: "/about" }] } },
+  { words: ["about", "who", "zimbabwe"], answer: { reply: "BVS means Best Virtual Sound — an international online radio and music platform rooted in Zimbabwe for sound, culture, artists, and community.", links: [{ label: "About BVS", href: "/about" }] } },
   { words: ["blog", "news", "article", "culture"], answer: { reply: "Read stories about African music, production, radio, culture, and practical guidance for artists.", links: [{ label: "Read the blog", href: "/blog" }] } },
 ];
 
@@ -20,7 +20,7 @@ const defaultAnswer: Omit<Answer, "mode"> = {
   links: [{ label: "Listen live", href: "/radio" }, { label: "Upload music", href: "/upload" }, { label: "Contact BVS", href: "/contact" }],
 };
 
-const systemPrompt = `You are the BVS Radio visitor assistant for Best Virtual Sound, a Zimbabwean online radio and music platform.
+const systemPrompt = `You are the BVS Radio visitor assistant for Best Virtual Sound, an international online radio and music platform rooted in Zimbabwe.
 
 Answer only from these verified facts:
 - Listen to the BVS library at /radio.

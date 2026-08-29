@@ -1,7 +1,7 @@
 {
   "name": "BVS Radio",
   "short_name": "BVS Radio",
-  "description": "Best Virtual Sound — Zimbabwe's online radio, catalogue, and community. Listen anywhere.",
+  "description": "Best Virtual Sound — international online radio, catalogue, and community rooted in Zimbabwe. Listen anywhere.",
   "start_url": "/radio?source=pwa",
   "scope": "/",
   "display": "standalone",

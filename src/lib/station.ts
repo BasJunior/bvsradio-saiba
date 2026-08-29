@@ -28,7 +28,7 @@ export const shows: Show[] = [
     slug: "harare-after-dark",
     title: "Harare After Dark",
     tagline: "The city, after hours.",
-    description: "A home for late-night Zimbabwean music, DJ selections and conversations from the creative scene.",
+    description: "A home for late-night African music, DJ selections and conversations from the creative scene, rooted in Zimbabwe.",
     image: "/images/editorial/radio-studio-harare.webp",
     host: "BVS Radio",
     schedule: "Friday · 20:00 CAT",
@@ -46,9 +46,9 @@ export const shows: Show[] = [
   },
   {
     slug: "new-zimbabwean-sound",
-    title: "New Zimbabwean Sound",
+    title: "New African Sound",
     tagline: "Fresh music, properly introduced.",
-    description: "A discovery programme for new releases submitted by Zimbabwean artists at home and abroad.",
+    description: "A discovery programme for new releases submitted by Zimbabwean, African and diaspora artists.",
     image: "/images/editorial/music-discovery-show.webp",
     host: "BVS Radio selectors",
     schedule: "Sunday · 18:00 CAT",
@@ -59,7 +59,7 @@ export const shows: Show[] = [
 export const schedule = [
   { day: "Monday–Thursday", time: "All day", title: "BVS Continuous Rotation", note: "Automated library rotation" },
   { day: "Friday", time: "20:00 CAT", title: "Harare After Dark", note: "Programme preview — launch date to be announced" },
-  { day: "Sunday", time: "18:00 CAT", title: "New Zimbabwean Sound", note: "Programme preview — launch date to be announced" },
+  { day: "Sunday", time: "18:00 CAT", title: "New African Sound", note: "Programme preview — launch date to be announced" },
 ];
 
 export function getShow(slug: string) {

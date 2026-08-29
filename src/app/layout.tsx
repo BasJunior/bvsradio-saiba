@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: "%s | BVS Radio",
   },
   description:
-    "BVS Radio (Best Virtual Sound) — Zimbabwe's online radio. Stream music, explore the catalogue, and enjoy BVS on phone, tablet, or desktop.",
+    "BVS Radio (Best Virtual Sound) — international online radio rooted in Zimbabwe. Stream music, explore the catalogue, and enjoy BVS on phone, tablet, or desktop.",
   applicationName: "BVS Radio",
   appleWebApp: {
     capable: true,
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "BVS Radio",
-    description: "Zimbabwe's Best Virtual Sound — listen on mobile or web.",
+    description: "Best Virtual Sound — African music rooted in Zimbabwe, on mobile or web.",
     images: ["/logo.png"],
   },
   other: {
