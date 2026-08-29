@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8')
 
-const [search, layout, mobileCss, details, flags, order, artistApi, producerApi, artistsPage, producersPage, iosShell] = await Promise.all([
+const [search, layout, mobileCss, details, flags, order, artistApi, producerApi, artistsPage, producersPage, iosShell, catalogueLayout, catalogueJump, cataloguePage] = await Promise.all([
   read('src/app/search/page.tsx'),
   read('src/app/search/layout.tsx'),
   read('src/app/search/explore-mobile.css'),
@@ -15,6 +15,9 @@ const [search, layout, mobileCss, details, flags, order, artistApi, producerApi,
   read('src/app/music/artists/page.tsx'),
   read('src/app/music/producers/page.tsx'),
   read('src/app/app/[surface]/page.tsx'),
+  read('src/app/catalogue/layout.tsx'),
+  read('src/components/CatalogueDeepLinkJump.tsx'),
+  read('src/app/catalogue/page.tsx'),
 ])
 
 assert.match(search, /ExploreItemDetails/, 'Explore must ship contextual item details')
@@ -45,6 +48,13 @@ for (const source of [artistApi, producerApi, artistsPage, producersPage]) {
 assert.match(artistApi, /Cache-Control.*no-store/s, 'artist API must not freeze a prior daily order in cache')
 assert.match(producerApi, /Cache-Control.*no-store/s, 'producer API must not freeze a prior daily order in cache')
 
-assert.doesNotMatch(iosShell, /ExploreItemDetails|@\/app\/search|src\/app\/search/, 'web Explore v2 must not leak into the locked iOS shell')
+assert.match(catalogueLayout, /CatalogueDeepLinkJump/, 'Catalogue must mount the filtered deep-link resolver')
+assert.match(catalogueJump, /window\.location\.hash/, 'Catalogue deep links must honor the requested hash target')
+assert.match(catalogueJump, /MutationObserver/, 'Catalogue deep links must wait for filtered content to render when necessary')
+assert.match(catalogueJump, /scrollIntoView/, 'Catalogue deep links must jump to the rendered target')
+assert.match(cataloguePage, /id="beatstore"/, 'Catalogue must retain a BeatStore hash target')
+assert.match(cataloguePage, /searchParams\.get\("q"\)/, 'Catalogue must derive the visible filtered item from the q query parameter')
 
-console.log('Explore v2 + fair creator rotation assertions passed.')
+assert.doesNotMatch(iosShell, /ExploreItemDetails|@\/app\/search|src\/app\/search|CatalogueDeepLinkJump/, 'web discovery/deep-link changes must not leak into the locked iOS shell')
+
+console.log('Explore v2 + fair creator rotation + catalogue deep-link assertions passed.')
