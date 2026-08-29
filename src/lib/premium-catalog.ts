@@ -117,6 +117,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "Distribution entitlement for approved releases",
       "Major streaming, social & regional store targets",
       "Priority release-packaging support",
+      "Royalty and payout reporting support for eligible BVS sales and future partner statements",
       "15% BVS fee on eligible BVS music sales instead of the Free low-ticket rate",
       "Founding rate locked in if you join by 27 Aug 2026 (while seats remain) and stay subscribed",
     ],
@@ -135,6 +136,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
     includes: [
       "Same distribution path as Founding",
       "Release status in the artist desk",
+      "Royalty and payout reporting support for eligible BVS sales and future partner statements",
       "15% BVS fee on eligible BVS music sales",
       "Payment processing remains a transparent transaction cost",
       "Mix/master and beat purchases remain separate",
@@ -238,6 +240,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "Standard Artist Premium + Producer Pro tools for under US$20/month.",
     includes: [
       "Standard Artist Premium distribution",
+      "Royalty and payout reporting support across artist and producer activity",
       "Producer Pro BeatStore tools",
       "3% BeatStore fee + Artist Premium music-sale rate",
       "Shared dashboard and billing cycle",
@@ -318,7 +321,7 @@ export const PREMIUM_CATALOG: CatalogPlan[] = [
       "Five managed artist profiles",
       "Owner / manager / contributor roles",
       "Consolidated submit + distribution queue",
-      "Team reporting and statements",
+      "Team royalty, sales and payout reporting",
       "Priority operational support",
     ],
   },

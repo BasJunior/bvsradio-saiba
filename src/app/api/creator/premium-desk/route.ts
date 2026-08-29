@@ -67,6 +67,18 @@ function deskSectionsFor(
       href: "/upload",
       cta: "Submit / manage releases",
     });
+    sections.push({
+      id: "royalties",
+      title: "Royalties & payout support",
+      body: "Premium keeps release rights, sales notes and partner-statement readiness in the artist desk as the payout rails mature.",
+      bullets: [
+        "Eligible BVS music sales tracked with the Premium platform fee",
+        "Royalty notes and payout status prepared for future distribution partner statements",
+        "No guarantee of streams, chart placement or royalty earnings",
+      ],
+      href: "/artist/premium",
+      cta: "Open Artist Premium",
+    });
   }
 
   if (family === "producer" || family === "creator_bundle" || ents.beatstore_tier) {

@@ -95,7 +95,7 @@ export default function StudioPremiumDesk({ token }: { token: string }) {
         <p className="text-sm text-text-secondary">{data.message}</p>
         <p className="text-sm text-text-secondary">
           Free path keeps submit → editorial → BVS rotation and on-site sales. Premium unlocks plan-specific
-          tools (artist distribution, BeatStore tiers, supporter perks, …).
+          tools (artist distribution, royalty reporting support, BeatStore tiers, supporter perks, …).
         </p>
         <div className="flex flex-wrap gap-2">
           <Link

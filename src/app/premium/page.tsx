@@ -66,7 +66,7 @@ export default function PremiumEcosystemPage() {
         Pay for the outcome you need. <span className="text-brand">Keep the free foundation.</span>
       </h1>
       <p className="mt-4 max-w-3xl text-lg text-text-secondary">
-        BVS Radio listening, editorial submission and approved rotation remain separate from paid distribution. Premium adds wider commercial delivery without buying editorial influence.
+        BVS Radio listening, editorial submission and approved rotation remain separate from paid distribution. Premium adds wider commercial delivery plus royalty and payout reporting support without buying editorial influence.
       </p>
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -79,7 +79,7 @@ export default function PremiumEcosystemPage() {
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
           <p className="text-xs uppercase tracking-wider text-text-secondary">Artist Premium</p>
           <p className="mt-2 text-3xl font-semibold">US$12/month</p>
-          <p className="mt-2 text-sm text-text-secondary">Or US$120/year. Ongoing distribution access for artists releasing regularly.</p>
+          <p className="mt-2 text-sm text-text-secondary">Or US$120/year. Ongoing distribution access, royalty reporting support and payout readiness for artists releasing regularly.</p>
           <Link href="/artist/premium" className="mt-5 inline-flex min-h-11 items-center rounded-full border border-brand/50 px-5 py-2.5 text-sm font-semibold text-brand">Open Artist Premium</Link>
         </div>
       </div>
@@ -150,7 +150,7 @@ export default function PremiumEcosystemPage() {
       <section className="mt-16">
         <h2 className="text-2xl font-semibold">Where Artist distribution can take your music</h2>
         <p className="mt-2 max-w-3xl text-sm text-text-secondary">
-          Both Premium Instant and active Artist Premium use the same approved-release distribution path. Store availability varies by clearance, territory and delivery readiness.
+          Both Premium Instant and active Artist Premium use the same approved-release distribution path. Premium also prepares royalty and payout reporting for eligible BVS sales and future partner statements. Store availability varies by clearance, territory and delivery readiness.
         </p>
         <ul className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
           {PREMIUM_DISTRIBUTION_STORES.map((store) => <li key={store} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">{store}</li>)}

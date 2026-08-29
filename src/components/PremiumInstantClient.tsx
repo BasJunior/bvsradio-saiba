@@ -162,7 +162,7 @@ export default function PremiumInstantClient() {
       )}
 
       <p className="text-xs leading-5 text-text-secondary">
-        Premium Instant pays for distribution eligibility for the selected approved release only. It does not buy editorial approval, BVS rotation, chart placement, or guaranteed streams.
+        Premium Instant pays for distribution eligibility and royalty-reporting readiness for the selected approved release only. It does not buy editorial approval, BVS rotation, chart placement, guaranteed streams, or guaranteed royalty earnings.
       </p>
     </section>
   );
