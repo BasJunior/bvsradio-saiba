@@ -1,6 +1,7 @@
 import 'server-only'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 import { PRICE_SINGLE_DOWNLOAD } from '@/lib/catalogue-pricing'
+import { fairCreatorDailyOrder } from '@/lib/fair-discovery-order'
 
 export type CatalogueListing = {
   id: string
@@ -196,8 +197,14 @@ export async function listCatalogueMusicListings(limit = 200): Promise<{
     })
     .filter((row): row is CatalogueListing => Boolean(row))
 
+  const listings = fairCreatorDailyOrder(
+    [...packageListings, ...trackListings],
+    'catalogue-music',
+    (listing) => listing.artist,
+  )
+
   return {
-    listings: [...packageListings, ...trackListings],
+    listings,
     summary: {
       trackCount: trackListings.length,
       releasePackageCount: packageListings.length,
