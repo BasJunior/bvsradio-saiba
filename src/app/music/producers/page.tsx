@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getPublishedProducers } from "@/lib/artist-content";
+import { fairDailyOrder } from "@/lib/fair-discovery-order";
 
 export const metadata = {
   title: "Producers",
@@ -8,7 +9,7 @@ export const metadata = {
 };
 
 export default async function ProducersDirectoryPage() {
-  const producers = await getPublishedProducers();
+  const producers = fairDailyOrder(await getPublishedProducers(), "producers");
   return (
     <main className="mx-auto min-h-[70vh] max-w-6xl px-6 py-12">
       <p className="text-xs uppercase tracking-[.25em] text-brand">

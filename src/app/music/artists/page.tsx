@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { getPublishedArtists } from '@/lib/artist-content'
+import { fairDailyOrder } from '@/lib/fair-discovery-order'
 
 export const metadata = {
   title: 'Artists',
@@ -8,7 +9,7 @@ export const metadata = {
 }
 
 export default async function ArtistsDirectoryPage() {
-  const artists = await getPublishedArtists()
+  const artists = fairDailyOrder(await getPublishedArtists(), 'artists')
 
   return (
     <main className="mx-auto min-h-[70vh] max-w-6xl px-6 py-12">

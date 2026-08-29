@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import './explore-mobile.css'
 
 export const metadata: Metadata = {
   title: 'Explore Music, Artists & Producers',
@@ -6,4 +7,6 @@ export const metadata: Metadata = {
   openGraph: { title: 'Explore Music, Artists & Producers | BVS Radio', description: 'Move through the music, creators and BeatStore catalogue published on BVS Radio.' },
 }
 
-export default function SearchLayout({ children }: { children: React.ReactNode }) { return children }
+export default function SearchLayout({ children }: { children: React.ReactNode }) {
+  return <div className="explore-route">{children}</div>
+}

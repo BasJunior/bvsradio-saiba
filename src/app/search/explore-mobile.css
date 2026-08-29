@@ -1,0 +1,141 @@
+@media (max-width: 639px) {
+  .explore-route > main {
+    padding-top: 2rem !important;
+    padding-bottom: 2.5rem !important;
+  }
+
+  .explore-route > main > p:first-child {
+    margin-bottom: 0.55rem !important;
+  }
+
+  .explore-route > main > h1 {
+    max-width: 20rem;
+    font-size: clamp(1.9rem, 9vw, 2.35rem) !important;
+    line-height: 1.06 !important;
+    letter-spacing: -0.035em;
+  }
+
+  .explore-route > main > h1 + p {
+    margin-top: 0.7rem !important;
+    max-width: 31rem;
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .explore-route > main > label {
+    margin-top: 1.25rem !important;
+  }
+
+  .explore-route > main > label input {
+    min-height: 3rem;
+    border-radius: 1rem !important;
+    padding: 0.8rem 1rem !important;
+    font-size: 1rem !important;
+    line-height: 1.25rem;
+  }
+
+  .explore-route [aria-label="Explore modes"],
+  .explore-route [aria-label="Filter results"] {
+    margin-top: 0.8rem !important;
+    gap: 0.4rem !important;
+    padding-bottom: 0.35rem !important;
+    scrollbar-width: none;
+  }
+
+  .explore-route [aria-label="Explore modes"]::-webkit-scrollbar,
+  .explore-route [aria-label="Filter results"]::-webkit-scrollbar {
+    display: none;
+  }
+
+  .explore-route [aria-label="Explore modes"] button,
+  .explore-route [aria-label="Filter results"] button {
+    min-height: 2.5rem !important;
+    padding: 0.55rem 0.85rem !important;
+    font-size: 0.78rem !important;
+    line-height: 1rem;
+  }
+
+  .explore-route section[aria-label="Explore published BVS content"] {
+    margin-top: 1.8rem !important;
+  }
+
+  .explore-route section[aria-label="Explore published BVS content"] h2,
+  .explore-route section[aria-labelledby^="search-"] > div:first-child h2 {
+    font-size: 1.45rem !important;
+    line-height: 1.2;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] > div:first-child {
+    margin-bottom: 0.7rem !important;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article {
+    display: grid !important;
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+    align-items: center !important;
+    gap: 0.7rem !important;
+    padding: 0.75rem !important;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article > div:first-child {
+    width: 3.5rem !important;
+    height: 3.5rem !important;
+    border-radius: 0.8rem !important;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article > :nth-child(2) {
+    min-width: 0;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article h3 {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    font-size: 1rem !important;
+    line-height: 1.2rem;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article p {
+    font-size: 0.78rem !important;
+    line-height: 1.05rem;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article > div:last-child:not(:first-child),
+  .explore-route section[aria-labelledby^="search-"] article > a:last-child:not(:nth-child(2)),
+  .explore-route section[aria-labelledby^="search-"] article > button:last-child:not(:nth-child(2)) {
+    grid-column: 1 / -1;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article > div:last-child:not(:first-child) {
+    display: flex !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+    width: 100%;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article > div:last-child:not(:first-child) > * {
+    min-width: 0;
+    flex: 1 1 0%;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article > div:last-child:not(:first-child) > div > button,
+  .explore-route section[aria-labelledby^="search-"] article > div:last-child:not(:first-child) > a,
+  .explore-route section[aria-labelledby^="search-"] article > div:last-child:not(:first-child) > button,
+  .explore-route section[aria-labelledby^="search-"] article > a:last-child:not(:nth-child(2)),
+  .explore-route section[aria-labelledby^="search-"] article > button:last-child:not(:nth-child(2)) {
+    display: inline-flex !important;
+    min-height: 2.5rem !important;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    padding: 0.55rem 0.8rem !important;
+    font-size: 0.78rem !important;
+  }
+
+  .explore-route section[aria-labelledby^="search-"] article > div:last-child:not(:first-child) > div > button {
+    border-radius: 9999px;
+  }
+}
