@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "BVS Radio",
-    description: "Best Virtual Sound — African music rooted in Zimbabwe, on mobile or web.",
+    description: "Best Virtual Sound — independent music rooted in Zimbabwe, on mobile or web.",
     images: ["/logo.png"],
   },
   other: {

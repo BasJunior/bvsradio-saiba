@@ -14,7 +14,7 @@ export default async function HomePage() {
         <div className="mx-auto grid max-w-7xl gap-6 px-4 py-7 sm:px-6 sm:py-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:items-center lg:py-12">
           <div className="min-w-0 lg:pr-6">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-brand sm:text-xs sm:tracking-[0.2em]">
-              Best Virtual Sound · African music, built between Zimbabwe and the world
+              Best Virtual Sound · independent music, built between Zimbabwe and the world
             </p>
             <h1 className="mt-3 max-w-3xl text-balance text-3xl font-semibold tracking-[-0.03em] sm:text-5xl">
               Start with the sound.
