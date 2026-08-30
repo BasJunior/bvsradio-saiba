@@ -66,10 +66,25 @@ assert.match(stripeWebhook, /grantPremiumInstant/, 'Stripe webhook must grant re
 assert.match(paynowWebhook, /parsePremiumInstantOrderItem/, 'Paynow webhook must recognize Premium Instant orders')
 assert.match(paynowWebhook, /specialPremiumOrder/, 'Premium product payments must be separated from marketplace seller-credit flows')
 assert.match(paynowWebhook, /grantPremiumInstant/, 'Paynow webhook must grant release-scoped distribution after verification')
+assert.match(paynowWebhook, /recoverPremiumOrderFromPaynow/, 'Paynow webhook must recover missing BVS-PREM orders after trusted paid poll')
+assert.match(paynowWebhook, /Premium order not stored yet\. Retry\./, 'missing Premium refs must 503 for retry, not terminal 404')
+assert.match(paynowWebhook, /\^BVS-PREM-\/i/, 'Paynow recovery path must key off BVS-PREM references')
 
-assert.match(paynowSubscription, /const planId = "artist_standard" as const/, 'new Paynow subscriptions must use Standard, not Founding')
+// ZVSJQ hard-fix: durable order BEFORE Paynow payment create.
+assert.match(paynowSubscription, /saveOrderToSupabase\(order\)/, 'Paynow Premium subscribe must save durable order')
+assert.match(paynowSubscription, /premium_order_save_failed/, 'Paynow Premium subscribe must fail closed when order save fails')
+assert.match(paynowSubscription, /No payment was taken/, 'Paynow Premium subscribe must refuse payment start if order was not saved')
+assert.match(paynowSubscription, /resolveCheckoutPlan\(requested\)/, 'Paynow Premium subscribe must resolve founding vs standard server-side')
+assert.match(paynowSubscription, /normalizeArtistPlanId\(body\.planId\)/, 'Paynow Premium subscribe must accept planId and normalize it')
+// Source order: save path must appear before paynow.send
+{
+  const saveAt = paynowSubscription.indexOf('saveOrderToSupabase(order)')
+  const sendAt = paynowSubscription.indexOf('paynow.send(payment)')
+  assert.ok(saveAt >= 0 && sendAt > saveAt, 'durable order save must happen before Paynow payment create')
+}
 assert.match(stripeSubscription, /const planId = "artist_standard" as const/, 'new Stripe subscriptions must use Standard, not Founding')
-assert.doesNotMatch(paynowSubscription, /Founding Artist Premium/, 'new Paynow purchase copy must not advertise Founding')
 assert.doesNotMatch(stripeSubscription, /Founding Artist Premium/, 'new Stripe purchase copy must not advertise Founding')
+// Founding remains a server-resolved checkout option while seats/window allow; public marketing is closed.
+assert.match(paynowSubscription, /Founding Artist Premium/, 'Paynow title may still name Founding when resolveCheckoutPlan returns founding')
 
 console.log('web artwork + Premium Instant assertions passed')
