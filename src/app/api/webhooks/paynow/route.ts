@@ -275,11 +275,6 @@ export async function POST(req: Request) {
           planId: premiumLine.planId,
           interval: premiumLine.interval,
         });
-        await recordServerEvent("subscription_started", {
-          provider: "paynow",
-          planId: premiumLine.planId,
-          interval: premiumLine.interval,
-        });
       }
     } else if (premiumLine && !order.customerUserId) {
       // Recovered shell without user id — paid, but ops must link buyer + re-run activate.
