@@ -223,6 +223,43 @@ p, .text-base {
   scroll-snap-align: start;
 }
 
+/* Creator Studio inherits the shared premium surface language without changing its workflow logic. */
+main:has(#studio-overview-heading) > section:has(#studio-overview-heading),
+main:has(#studio-overview-heading) > div.scroll-mt-24 > section.rounded-2xl {
+  position: relative;
+  overflow: hidden;
+  border-color: rgb(255 255 255 / 0.1);
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.045), rgb(255 255 255 / 0.015)),
+    rgb(18 18 18 / 0.72);
+  box-shadow: 0 16px 46px rgb(0 0 0 / 0.2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+main:has(#studio-overview-heading) > section:has(#studio-overview-heading) {
+  margin-top: 2rem;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 1.75rem;
+  padding: 1.25rem;
+}
+
+main:has(#studio-overview-heading) section:has(#studio-overview-heading) a[class*="rounded-2xl"] {
+  border-color: rgb(255 255 255 / 0.09);
+  background: rgb(255 255 255 / 0.035);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.12);
+}
+
+main:has(#studio-overview-heading) section:has(#studio-overview-heading) a[class*="rounded-2xl"]:hover {
+  border-color: rgb(212 175 55 / 0.32);
+  background: rgb(212 175 55 / 0.055);
+  transform: translateY(-1px);
+}
+
+main:has(#studio-overview-heading) > div.scroll-mt-24 > section.rounded-2xl > button {
+  min-height: 3.75rem;
+}
+
 :root[data-theme="light"] .bvs-surface {
   border-color: rgb(23 23 23 / 0.1);
   background:
@@ -256,6 +293,64 @@ p, .text-base {
   border-color: rgb(23 23 23 / 0.1);
   background: rgb(23 23 23 / 0.04);
   color: rgb(23 23 23 / 0.72);
+}
+
+:root[data-theme="light"] main:has(#studio-overview-heading) > section:has(#studio-overview-heading),
+:root[data-theme="light"] main:has(#studio-overview-heading) > div.scroll-mt-24 > section.rounded-2xl {
+  border-color: rgb(23 23 23 / 0.1);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(246 244 239 / 0.86));
+  box-shadow: 0 14px 36px rgb(23 23 23 / 0.07);
+}
+
+:root[data-theme="light"] main:has(#studio-overview-heading) section:has(#studio-overview-heading) a[class*="rounded-2xl"] {
+  border-color: rgb(23 23 23 / 0.09);
+  background: rgb(255 255 255 / 0.72);
+}
+
+@media (max-width: 639px) {
+  .bvs-section-kicker {
+    font-size: 0.64rem;
+    letter-spacing: 0.18em;
+  }
+
+  .bvs-rail-scroll {
+    gap: 0.75rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .bvs-chip {
+    min-height: 1.55rem;
+    padding: 0.2rem 0.58rem;
+    font-size: 0.64rem;
+  }
+
+  main:has(#studio-overview-heading) {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 2rem;
+  }
+
+  main:has(#studio-overview-heading) > section:has(#studio-overview-heading) {
+    margin-top: 1.5rem;
+    border-radius: 1.5rem;
+    padding: 1rem;
+  }
+
+  main:has(#studio-overview-heading) > div.scroll-mt-24 > section.rounded-2xl {
+    margin-top: 1rem;
+    border-radius: 1.35rem;
+  }
+
+  main:has(#studio-overview-heading) > div.scroll-mt-24 > section.rounded-2xl > button {
+    min-height: 3.25rem;
+    padding: 0.85rem 1rem;
+  }
+
+  main:has(#studio-overview-heading) > div.scroll-mt-24 > section.rounded-2xl > div {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-bottom: 1rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
