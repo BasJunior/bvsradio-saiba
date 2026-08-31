@@ -22,10 +22,10 @@ export default function PublishedArtistsShelf({ limit = 6 }: { limit?: number })
   if (!artists.length) return null
 
   return (
-    <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+    <section className="bvs-surface mb-6 rounded-[1.75rem] p-4 sm:p-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <p className="text-xs uppercase tracking-[3px] text-brand">Artist directory</p>
+          <p className="bvs-section-kicker">Artist directory</p>
           <h2 className="mt-1 text-2xl font-semibold tracking-tight">Artists on BVS</h2>
           <p className="mt-1 text-sm text-text-secondary">Jump straight into a verified artist profile and their published music.</p>
         </div>
@@ -34,14 +34,14 @@ export default function PublishedArtistsShelf({ limit = 6 }: { limit?: number })
         </Link>
       </div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid gap-2.5 md:grid-cols-2 xl:grid-cols-3">
         {artists.slice(0, limit).map((artist) => (
           <Link
             key={artist.id}
             href={`/artist/${artist.username}`}
-            className="group flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-2.5 transition hover:border-brand/40 hover:bg-white/[0.035]"
+            className="bvs-surface-quiet bvs-surface-hover group flex min-w-0 items-center gap-3 rounded-2xl p-3 transition"
           >
-            <div className="relative h-12 w-12 flex-none overflow-hidden rounded-full border border-white/10 bg-black/40">
+            <div className="relative h-12 w-12 flex-none overflow-hidden rounded-full border border-white/10 bg-black/40 shadow-[0_8px_24px_rgba(0,0,0,.25)]">
               <Image
                 src={artist.image}
                 alt={artist.name}
@@ -52,7 +52,7 @@ export default function PublishedArtistsShelf({ limit = 6 }: { limit?: number })
               />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-semibold group-hover:text-brand">{artist.name}</h3>
+              <h3 className="truncate text-sm font-semibold tracking-tight group-hover:text-brand">{artist.name}</h3>
               <p className="truncate text-xs text-text-secondary">
                 {artist.trackCount} published {artist.trackCount === 1 ? 'track' : 'tracks'}
               </p>

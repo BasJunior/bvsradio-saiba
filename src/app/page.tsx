@@ -28,7 +28,7 @@ export default async function HomePage() {
         <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[.2em] text-brand sm:text-xs">
           <span className="font-serif text-base tracking-[.14em] sm:text-lg">BVS Radio</span>
           <span className="h-px w-10 bg-brand/55" aria-hidden="true" />
-          <span>Best Virtual Sound · Zimbabwe to the world</span>
+          <span className="bvs-chip bvs-chip-brand normal-case tracking-[.14em]">Best Virtual Sound · Zimbabwe to the world</span>
         </div>
         <h1 className="mt-6 max-w-5xl text-balance text-[2.25rem] font-semibold leading-[1.04] tracking-[-0.045em] sm:text-5xl md:text-6xl lg:text-7xl">
           Radio, music and tools for the people shaping Zimbabwean sound.
@@ -37,10 +37,10 @@ export default async function HomePage() {
           Start with the station, move through the people and projects around it, and keep the same BVS session with you as you explore.
         </p>
         <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-          <Link href="/radio" className="rounded-full bg-brand px-7 py-3.5 text-center font-semibold text-black hover:bg-brand-dark">
+          <Link href="/radio" className="rounded-full bg-brand px-7 py-3.5 text-center font-semibold text-black shadow-[0_14px_40px_rgba(212,175,55,.25)] hover:bg-brand-dark">
             Start listening
           </Link>
-          <Link href="/search" className="rounded-full border border-white/20 px-7 py-3.5 text-center font-semibold hover:border-brand/50 hover:bg-white/[.04]">
+          <Link href="/search" className="rounded-full border border-white/15 bg-white/[.03] px-7 py-3.5 text-center font-semibold backdrop-blur-sm hover:border-brand/50 hover:bg-white/[.06]">
             Discover BVS
           </Link>
           <Link href="/creator/studio" className="rounded-full px-7 py-3.5 text-center font-semibold text-text-secondary hover:text-brand">
@@ -57,8 +57,8 @@ export default async function HomePage() {
       <section className="relative mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16" aria-label="Discover BVS music">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Discover</p>
-            <h2 className="mt-2 text-balance text-3xl sm:text-4xl md:text-5xl">Start with the sound. Follow where it leads.</h2>
+            <p className="bvs-section-kicker">Discover</p>
+            <h2 className="mt-2 text-balance text-3xl tracking-tight sm:text-4xl md:text-5xl">Start with the sound. Follow where it leads.</h2>
             <p className="mt-3 text-text-secondary">Published artists, releases and beats stay connected to the same listening session and Library.</p>
           </div>
           <Link href="/search" className="text-sm font-semibold text-brand hover:underline">Explore everything →</Link>
@@ -75,8 +75,8 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-3xl">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-[.2em] text-brand">On BVS</p>
-              <h2 className="text-balance text-3xl font-semibold sm:text-4xl">Shows built around the scene.</h2>
+              <p className="bvs-section-kicker mb-2">On BVS</p>
+              <h2 className="text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Shows built around the scene.</h2>
               <p className="mt-3 text-text-secondary">Programme pages carry schedule, room, video/replay context and follow state without leaving BVS.</p>
             </div>
             <Link href="/shows" className="text-sm font-semibold text-brand hover:underline">View all programmes →</Link>
@@ -86,7 +86,7 @@ export default async function HomePage() {
               <Link
                 key={show.slug}
                 href={`/shows/${show.slug}`}
-                className="group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-black shadow-[0_25px_60px_rgba(0,0,0,.2)]"
+                className="bvs-surface bvs-surface-hover group relative overflow-hidden rounded-[1.75rem] bg-black"
               >
                 <div className="relative aspect-[4/3]">
                   <Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-[1.03]" />
@@ -107,16 +107,16 @@ export default async function HomePage() {
       <MarketplaceSpotlight />
 
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="relative overflow-hidden rounded-[2rem] border border-brand/20 bg-gradient-to-br from-brand/[.08] via-bg-card/45 to-bg-card/20 p-6 sm:p-9">
+        <div className="bvs-surface relative overflow-hidden rounded-[2rem] border-brand/20 p-6 sm:p-9">
           <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-brand/10 blur-3xl" aria-hidden="true" />
-          <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Creator work</p>
-          <h2 className="mt-2 max-w-3xl text-balance text-3xl font-semibold sm:text-4xl">Build the record without leaving the BVS ecosystem.</h2>
+          <p className="bvs-section-kicker">Creator work</p>
+          <h2 className="mt-2 max-w-3xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Build the record without leaving the BVS ecosystem.</h2>
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-text-secondary sm:text-base">
             Submit music, manage releases, publish Marketplace services, track distribution and see money from the same Creator Studio. Commerce stays connected to the creator who owns the work.
           </p>
           <div className="mt-6 flex flex-wrap gap-3">
-            <Link href="/creator/studio" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Open Creator Studio</Link>
-            <Link href="/marketplace" className="rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold hover:border-brand/50">Marketplace</Link>
+            <Link href="/creator/studio" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black shadow-[0_12px_30px_rgba(212,175,55,.22)]">Open Creator Studio</Link>
+            <Link href="/marketplace" className="rounded-full border border-white/15 bg-white/[.03] px-5 py-2.5 text-sm font-semibold hover:border-brand/50">Marketplace</Link>
             <Link href="/upload" className="rounded-full px-4 py-2.5 text-sm font-semibold text-brand">Submit music →</Link>
           </div>
         </div>

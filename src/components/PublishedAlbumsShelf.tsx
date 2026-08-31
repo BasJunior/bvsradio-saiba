@@ -18,12 +18,12 @@ export default function PublishedAlbumsShelf() {
   if (!releases.length) return null
 
   return (
-    <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-      <p className="text-xs uppercase tracking-[3px] text-brand">Release directory</p>
-      <h2 className="mt-1 text-2xl font-semibold tracking-tight">Albums &amp; EPs</h2>
+    <section className="bvs-surface mb-6 rounded-[1.75rem] p-4 sm:p-5">
+      <p className="bvs-section-kicker">Release directory</p>
+      <h2 className="mt-1 text-2xl font-semibold tracking-tight">Albums & EPs</h2>
       <p className="mt-1 text-sm text-text-secondary">Open a release directly instead of browsing another row of cover cards.</p>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-2">
+      <div className="mt-4 grid gap-2.5 md:grid-cols-2">
         {releases.map((release) => (
           <Link
             key={release.id}
@@ -35,9 +35,9 @@ export default function PublishedAlbumsShelf() {
             data-flow-detail-image={release.cover}
             data-flow-detail-collection={release.releaseType}
             data-flow-detail-href={`/album/${release.id}`}
-            className="group flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-2.5 transition hover:border-brand/40 hover:bg-white/[0.035]"
+            className="bvs-surface-quiet bvs-surface-hover group flex min-w-0 items-center gap-3 rounded-2xl p-3 transition"
           >
-            <div className="relative h-14 w-14 flex-none overflow-hidden rounded-lg border border-white/10 bg-black/40">
+            <div className="relative h-14 w-14 flex-none overflow-hidden rounded-xl border border-white/10 bg-black/40 shadow-[0_8px_24px_rgba(0,0,0,.25)]">
               <Image
                 src={release.cover}
                 alt={`${release.title} cover`}
@@ -48,7 +48,7 @@ export default function PublishedAlbumsShelf() {
               />
             </div>
             <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-semibold group-hover:text-brand">{release.title}</h3>
+              <h3 className="truncate text-sm font-semibold tracking-tight group-hover:text-brand">{release.title}</h3>
               <p className="truncate text-xs text-text-secondary">{release.artist}</p>
               <p className="mt-0.5 truncate text-[11px] text-white/45">{release.releaseType} · {release.tracks.length} tracks</p>
             </div>

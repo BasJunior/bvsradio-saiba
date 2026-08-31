@@ -38,27 +38,27 @@ const intents = [
 export default function BvsIntentRail() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14" aria-labelledby="bvs-intent-title">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">One BVS</p>
-          <h2 id="bvs-intent-title" className="mt-2 text-3xl font-semibold sm:text-4xl">Listen. Discover. Work. Keep.</h2>
+          <p className="bvs-section-kicker">One BVS</p>
+          <h2 id="bvs-intent-title" className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Listen. Discover. Work. Keep.</h2>
         </div>
         <p className="max-w-xl text-sm leading-relaxed text-text-secondary">
           The same music, people and projects should stay connected as you move through BVS.
         </p>
       </div>
-      <div className="grid gap-px overflow-hidden rounded-[2rem] border border-white/10 bg-white/10 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {intents.map((intent) => (
           <Link
             key={intent.label}
             href={intent.href}
-            className="group relative min-h-56 bg-bg-primary p-6 transition hover:bg-white/[.035] sm:p-7"
+            className="bvs-surface bvs-surface-hover group relative min-h-56 rounded-[1.75rem] p-6 sm:p-7"
           >
             <div className="flex items-center justify-between gap-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[.2em] text-brand">{intent.label}</p>
-              <span className="font-serif text-2xl text-brand/55" aria-hidden="true">{intent.mark}</span>
+              <p className="bvs-chip bvs-chip-brand">{intent.label}</p>
+              <span className="font-serif text-3xl leading-none text-brand/45 transition group-hover:text-brand/70" aria-hidden="true">{intent.mark}</span>
             </div>
-            <h3 className="mt-8 max-w-[16rem] text-2xl font-semibold leading-tight">{intent.title}</h3>
+            <h3 className="mt-8 max-w-[16rem] text-2xl font-semibold leading-tight tracking-tight">{intent.title}</h3>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-text-secondary">{intent.detail}</p>
             <p className="mt-7 text-sm font-semibold text-brand transition group-hover:translate-x-1">{intent.cta} →</p>
           </Link>

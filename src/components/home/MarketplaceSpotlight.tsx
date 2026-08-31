@@ -29,8 +29,8 @@ export default function MarketplaceSpotlight() {
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16" aria-labelledby="marketplace-spotlight-title">
       <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div className="max-w-3xl">
-          <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Studios &amp; services</p>
-          <h2 id="marketplace-spotlight-title" className="mt-2 text-3xl font-semibold sm:text-4xl md:text-5xl">
+          <p className="bvs-section-kicker">Studios & services</p>
+          <h2 id="marketplace-spotlight-title" className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
             Bring the project to the people who can finish it.
           </h2>
         </div>
@@ -42,24 +42,23 @@ export default function MarketplaceSpotlight() {
           <Link
             key={provider.slug}
             href={`/marketplace/${provider.slug}`}
-            className="group relative min-h-[22rem] overflow-hidden rounded-[2rem] border border-white/10 bg-black shadow-[0_30px_80px_rgba(0,0,0,.28)]"
+            className="bvs-surface bvs-surface-hover group relative min-h-[22rem] overflow-hidden rounded-[2rem] bg-black"
           >
             <Image
               src={provider.image}
               alt=""
               fill
               sizes="(max-width:1024px) 100vw, 50vw"
-              className={`object-cover transition duration-500 group-hover:scale-[1.025] ${provider.imagePosition}`}
+              className={`object-cover transition duration-500 group-hover:scale-[1.03] ${provider.imagePosition}`}
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-black/5" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
             <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[.18em] text-brand">
-                <span>{provider.eyebrow}</span>
-                <span className="text-white/35">·</span>
-                <span>{provider.price}</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="bvs-chip bvs-chip-brand">{provider.eyebrow}</span>
+                <span className="bvs-chip">{provider.price}</span>
               </div>
-              <h3 className="mt-2 font-serif text-3xl font-semibold text-white sm:text-4xl">{provider.name}</h3>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/70 sm:text-base">{provider.headline}</p>
+              <h3 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-white sm:text-4xl">{provider.name}</h3>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/72 sm:text-base">{provider.headline}</p>
               <p className="mt-5 text-sm font-semibold text-brand transition group-hover:translate-x-1">{provider.cta} →</p>
             </div>
           </Link>

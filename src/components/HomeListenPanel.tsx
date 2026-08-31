@@ -18,9 +18,9 @@ export default function HomeListenPanel() {
   const art = player.current?.artwork;
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-black/65 text-left text-white shadow-2xl backdrop-blur-xl">
+    <div className="bvs-surface min-w-0 overflow-hidden rounded-[1.85rem] text-left text-white">
       <div
-        className="h-1 w-full cursor-pointer bg-white/15"
+        className="h-1.5 w-full cursor-pointer bg-white/10"
         role="progressbar"
         aria-valuemin={0}
         aria-valuemax={Math.round(player.duration || 0)}
@@ -32,11 +32,11 @@ export default function HomeListenPanel() {
           player.seek((event.clientX - rect.left) / rect.width);
         }}
       >
-        <div className="h-full bg-white transition-[width] duration-100 ease-linear" style={{ width: `${pct}%` }} />
+        <div className="h-full bg-gradient-to-r from-brand via-brand-light to-brand transition-[width] duration-100 ease-linear" style={{ width: `${pct}%` }} />
       </div>
       <div className="p-4 sm:p-6">
         <div className="flex items-center gap-3 sm:gap-4">
-          <button type="button" onClick={player.openNowPlaying} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/[0.06] sm:h-20 sm:w-20 sm:rounded-2xl" aria-label="Open full player">
+          <button type="button" onClick={player.openNowPlaying} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.06] shadow-[0_12px_30px_rgba(0,0,0,.35)] sm:h-20 sm:w-20" aria-label="Open full player">
             {art ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={art} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover object-center" />
@@ -66,14 +66,14 @@ export default function HomeListenPanel() {
             type="button"
             onClick={player.toggle}
             disabled={!player.current}
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand text-lg font-bold text-black transition hover:bg-brand-dark disabled:opacity-40 sm:h-14 sm:w-14"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-brand text-lg font-bold text-black shadow-[0_12px_30px_rgba(212,175,55,.28)] transition hover:bg-brand-dark disabled:opacity-40 sm:h-14 sm:w-14"
             aria-label={player.isPlaying ? "Pause BVS rotation" : "Play BVS rotation"}
           >
             {player.isPlaying ? "Ⅱ" : "▶"}
           </button>
         </div>
         <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 text-sm sm:mt-5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-          <span className="w-fit rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 sm:text-sm">
+          <span className="bvs-chip w-fit normal-case tracking-normal text-white/75 sm:text-sm">
             {player.mode === "ondemand" ? "On demand queue" : "Editorial rotation"} · {player.upNext.length} up next
           </span>
           <button

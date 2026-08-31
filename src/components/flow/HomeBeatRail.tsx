@@ -56,10 +56,14 @@ export default function HomeBeatRail() {
     <section className="border-y border-white/10 bg-bg-secondary/45 py-12 sm:py-16" aria-labelledby="fresh-beats-title">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex items-end justify-between gap-4">
-          <div><p className="text-xs uppercase tracking-[.2em] text-brand">Connected discovery</p><h2 id="fresh-beats-title" className="mt-2 text-3xl sm:text-4xl">Fresh from BeatStore</h2><p className="mt-2 text-sm text-text-secondary">Preview a producer’s work without leaving the BVS listening flow.</p></div>
+          <div>
+            <p className="bvs-section-kicker">Connected discovery</p>
+            <h2 id="fresh-beats-title" className="mt-2 text-3xl tracking-tight sm:text-4xl">Fresh from BeatStore</h2>
+            <p className="mt-2 text-sm text-text-secondary">Preview a producer’s work without leaving the BVS listening flow.</p>
+          </div>
           <Link href="/catalogue?type=beat#beatstore" className="hidden text-sm text-brand hover:underline sm:block">View all beats →</Link>
         </div>
-        <div className="mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4" data-flow-rail="home-beatstore">
+        <div className="bvs-rail-scroll mt-7" data-flow-rail="home-beatstore">
           {objects.map((object) => <div key={object.id} className="snap-start"><BvsObjectCard object={object} variant="rail-card" /></div>)}
         </div>
       </div>
