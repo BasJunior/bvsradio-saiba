@@ -37,8 +37,8 @@ const intents = [
 
 export default function BvsIntentRail() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14" aria-labelledby="bvs-intent-title">
-      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
+    <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-14" aria-labelledby="bvs-intent-title">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3 sm:mb-7 sm:gap-4">
         <div className="max-w-2xl">
           <p className="bvs-section-kicker">One BVS</p>
           <h2 id="bvs-intent-title" className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Listen. Discover. Work. Keep.</h2>
@@ -52,15 +52,15 @@ export default function BvsIntentRail() {
           <Link
             key={intent.label}
             href={intent.href}
-            className="bvs-surface bvs-surface-hover group relative min-h-56 rounded-[1.75rem] p-6 sm:p-7"
+            className="bvs-surface bvs-surface-hover group relative min-h-0 rounded-[1.5rem] p-5 sm:min-h-56 sm:rounded-[1.75rem] sm:p-7"
           >
             <div className="flex items-center justify-between gap-4">
               <p className="bvs-chip bvs-chip-brand">{intent.label}</p>
-              <span className="font-serif text-3xl leading-none text-brand/45 transition group-hover:text-brand/70" aria-hidden="true">{intent.mark}</span>
+              <span className="font-serif text-2xl leading-none text-brand/45 transition group-hover:text-brand/70 sm:text-3xl" aria-hidden="true">{intent.mark}</span>
             </div>
-            <h3 className="mt-8 max-w-[16rem] text-2xl font-semibold leading-tight tracking-tight">{intent.title}</h3>
-            <p className="mt-3 max-w-sm text-sm leading-relaxed text-text-secondary">{intent.detail}</p>
-            <p className="mt-7 text-sm font-semibold text-brand transition group-hover:translate-x-1">{intent.cta} →</p>
+            <h3 className="mt-5 max-w-[16rem] text-xl font-semibold leading-tight tracking-tight sm:mt-8 sm:text-2xl">{intent.title}</h3>
+            <p className="mt-2.5 max-w-sm text-sm leading-relaxed text-text-secondary sm:mt-3">{intent.detail}</p>
+            <p className="mt-4 text-sm font-semibold text-brand transition group-hover:translate-x-1 sm:mt-7">{intent.cta} →</p>
           </Link>
         ))}
       </div>
