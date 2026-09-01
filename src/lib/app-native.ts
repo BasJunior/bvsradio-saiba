@@ -5,6 +5,7 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 export type NativePlatform = "ios" | "android";
 export type AppNetworkStatus = { connected: boolean; connectionType: string };
 export type PushPermissionState = "prompt" | "prompt-with-rationale" | "granted" | "denied" | "unavailable";
+export type AppPushAction = { notification?: { data?: Record<string, unknown> } };
 
 type ListenerHandle = { remove: () => Promise<void> };
 type PreferencesPlugin = {
@@ -23,8 +24,7 @@ type PushPlugin = {
   checkPermissions(): Promise<{ receive: Exclude<PushPermissionState, "unavailable"> }>;
   requestPermissions(): Promise<{ receive: Exclude<PushPermissionState, "unavailable"> }>;
   register(): Promise<void>;
-  addListener(eventName: "registration", listener: (token: { value: string }) => void): Promise<ListenerHandle>;
-  addListener(eventName: "registrationError", listener: (error: { error?: string }) => void): Promise<ListenerHandle>;
+  addListener(eventName: string, listener: (payload: any) => void): Promise<ListenerHandle>;
 };
 
 const Preferences = registerPlugin<PreferencesPlugin>("Preferences");
@@ -41,7 +41,7 @@ export async function getAppPreference(key: string): Promise<string | null> {
     try {
       return (await Preferences.get({ key })).value;
     } catch {
-      // The native plugin is bound during the specialist integration stage.
+      // The native plugin is optional in browser/preview shells.
     }
   }
   try {
@@ -117,6 +117,16 @@ export async function shareBvs(options: { title: string; text?: string; url: str
   }
 }
 
+export async function listenPushNotificationActions(listener: (action: AppPushAction) => void): Promise<() => Promise<void>> {
+  if (!isNativeRuntime()) return async () => undefined;
+  try {
+    const handle = await PushNotifications.addListener("pushNotificationActionPerformed", listener);
+    return () => handle.remove();
+  } catch {
+    return async () => undefined;
+  }
+}
+
 export async function getPushPermission(): Promise<PushPermissionState> {
   if (!isNativeRuntime()) return "unavailable";
   try {
@@ -141,8 +151,14 @@ export async function registerPushDevice(accessToken: string, platform: NativePl
       resolveToken = resolve;
       rejectToken = reject;
     });
-    const registrationHandle = await PushNotifications.addListener("registration", (token) => resolveToken?.(token.value));
-    const errorHandle = await PushNotifications.addListener("registrationError", (issue) => rejectToken?.(new Error(issue.error || "Push registration failed.")));
+    const registrationHandle = await PushNotifications.addListener("registration", (payload) => {
+      const token = payload as { value?: string };
+      if (token.value) resolveToken?.(token.value);
+    });
+    const errorHandle = await PushNotifications.addListener("registrationError", (payload) => {
+      const issue = payload as { error?: string };
+      rejectToken?.(new Error(issue.error || "Push registration failed."));
+    });
 
     let deviceToken = "";
     try {
