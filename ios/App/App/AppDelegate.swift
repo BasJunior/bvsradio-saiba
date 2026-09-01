@@ -7,11 +7,11 @@ public class BvsOfflineMediaPlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "BvsOfflineMediaPlugin"
     public let jsName = "BvsOfflineMedia"
     public let pluginMethods: [CAPPluginMethod] = [
-        CAPPluginMethod(name: "download", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "list", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "remove", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "status", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "renew", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "download", returnType: "promise"),
+        CAPPluginMethod(name: "list", returnType: "promise"),
+        CAPPluginMethod(name: "remove", returnType: "promise"),
+        CAPPluginMethod(name: "status", returnType: "promise"),
+        CAPPluginMethod(name: "renew", returnType: "promise"),
     ]
 
     private struct ManifestData {
