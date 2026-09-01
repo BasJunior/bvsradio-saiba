@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import EditorialSectionCarousel from '@/components/EditorialSectionCarousel'
 import {
   PRIVATE_DSP_PARTNER_CODE,
   editorialDistributionStatusLabel,
@@ -158,7 +159,10 @@ export default function ReleaseEditorialPanel({
         Approve &amp; publish creates catalogue tracks and can add them to continuous rotation. Distribution jobs are
         a queue for when a partner is configured (Premium artists).
       </p>
-      <div className="mt-5 space-y-4">
+      {releases.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-text-secondary">No album or EP submissions yet.</p>
+      ) : (
+        <EditorialSectionCarousel label="Releases" count={releases.length} itemClassName="min-w-[min(100%,28rem)] max-w-[36rem] shrink-0 snap-start sm:min-w-[30rem]">
         {releases.map((release) => {
           const members = releaseTracks.filter((t) => t.release_id === release.id)
           const contributors = releaseContributors.filter((item) => item.release_id === release.id)
@@ -521,7 +525,8 @@ export default function ReleaseEditorialPanel({
             </article>
           )
         })}
-      </div>
+        </EditorialSectionCarousel>
+      )}
     </section>
   )
 }

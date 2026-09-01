@@ -78,3 +78,34 @@ export function producerKeysMatch(filter?: string | null, ...candidates: Array<s
     return Boolean(resolved) && resolved === wanted
   })
 }
+
+/** Artist-facing public name (tracks, artist profile, search artist cards). */
+export function artistPublicName(input: {
+  publicName?: string | null
+  publicNameStatus?: string | null
+  username?: string | null
+}) {
+  return creatorPublicName(input)
+}
+
+/**
+ * Producer-facing public name (BeatStore, producer profile, beat cards).
+ * Falls back to the artist/creator public name when a separate producer name
+ * has not been approved yet, then to @username.
+ */
+export function producerPublicName(input: {
+  producerPublicName?: string | null
+  producerNameStatus?: string | null
+  publicName?: string | null
+  publicNameStatus?: string | null
+  username?: string | null
+}) {
+  const approvedProducer = String(input.producerPublicName || '').trim()
+  if (approvedProducer) return approvedProducer
+  return creatorPublicName({
+    publicName: input.publicName,
+    publicNameStatus: input.publicNameStatus,
+    username: input.username,
+  })
+}
+

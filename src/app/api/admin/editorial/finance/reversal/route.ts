@@ -37,7 +37,7 @@ export async function POST(request: Request) {
     providerAmount,
     providerCurrency,
   })
-  if (!result.reversed && !result.duplicate) {
+  if (!result.reversed && !Boolean((result as { duplicate?: boolean }).duplicate)) {
     return NextResponse.json({ error: result.reason || 'Could not reverse seller earnings.', result }, { status: 409 })
   }
 

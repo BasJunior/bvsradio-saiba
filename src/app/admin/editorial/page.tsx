@@ -9,6 +9,7 @@ import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 import { creatorPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 import EditorialAnalytics from '@/components/EditorialAnalytics'
+import EditorialSectionCarousel from '@/components/EditorialSectionCarousel'
 
 type MobileClearance = { id?: string; track_id: string; surface: 'ios' | 'android'; status: 'not_reviewed' | 'cleared' | 'blocked'; rights_basis?: string; evidence_reference?: string; review_notes?: string; reviewed_at?: string }
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string; mobile_clearances?: MobileClearance[] }
@@ -416,21 +417,24 @@ export default function EditorialDashboard() {
           Legacy single uploads. Prefer Album/EP for multi-track. Approval does not automatically publish or
           add a track to rotation.
         </p>
-        <div className="mt-5 space-y-4">
-          {data.tracks.map((track) => (
-            <TrackCard
-              key={track.id}
-              track={track}
-              credits={data.credits.filter((c) => c.track_id === track.id)}
-              messages={(data.trackReviewMessages || []).filter((message) => message.track_id === track.id)}
-              profile={data.profiles.find((profile) => profile.id === track.user_id)}
-              allowed={allowed}
-              act={act}
-              busy={busy}
-            />
-          ))}
-          {data.tracks.length === 0 && <Empty text="No submissions yet." />}
-        </div>
+        {data.tracks.length === 0 ? (
+          <Empty text="No submissions yet." />
+        ) : (
+          <EditorialSectionCarousel label="Tracks" count={data.tracks.length}>
+            {data.tracks.map((track) => (
+              <TrackCard
+                key={track.id}
+                track={track}
+                credits={data.credits.filter((c) => c.track_id === track.id)}
+                messages={(data.trackReviewMessages || []).filter((message) => message.track_id === track.id)}
+                profile={data.profiles.find((profile) => profile.id === track.user_id)}
+                allowed={allowed}
+                act={act}
+                busy={busy}
+              />
+            ))}
+          </EditorialSectionCarousel>
+        )}
       </EditorialDropDown>
 
       <EditorialDropDown id="ed-requests" label="Artist requests" count={requestQueue} defaultOpen={requestQueue > 0}>
@@ -468,7 +472,7 @@ export default function EditorialDashboard() {
         <div>
           <h2 className="text-2xl font-semibold">Creator publishing and BeatStore access</h2>
           <p className="mt-2 text-sm text-text-secondary">Publishing controls public discovery. Producer access separately controls beat uploads and catalogue ownership.</p>
-          <div className="mt-5 space-y-3">
+          <EditorialSectionCarousel label="Creators" count={data.profiles.filter((profile) => ['artist', 'admin'].includes(profile.role) || profile.is_producer).length} itemClassName="min-w-[min(100%,20rem)] max-w-[26rem] shrink-0 snap-start sm:min-w-[22rem]">
             {data.profiles
               .filter((profile) => ['artist', 'admin'].includes(profile.role) || profile.is_producer)
               .map((profile) => (
@@ -516,7 +520,7 @@ export default function EditorialDashboard() {
                   </div>
                 </div>
               ))}
-          </div>
+          </EditorialSectionCarousel>
         </div>
         <div id="ed-programmes" className="scroll-mt-36">
           <ProgrammePanel programmes={data.programmes} enabled={allowed('schedule_programmes')} act={act} />
@@ -640,18 +644,21 @@ function IdentityReviewPanel({
       <p className="mt-2 text-sm text-text-secondary">
         Legal names stay private. Public creator pages use only an approved artist/producer name, otherwise the permanent @username.
       </p>
-      <div className="mt-5 space-y-4">
-        {creators.map((profile) => (
-          <IdentityReviewCard
-            key={profile.id}
-            profile={profile}
-            enabled={enabled}
-            act={act}
-            busy={busy}
-          />
-        ))}
-        {!creators.length && <Empty text="No creator identities are available yet." />}
-      </div>
+      {creators.length === 0 ? (
+        <Empty text="No creator identities are available yet." />
+      ) : (
+        <EditorialSectionCarousel label="Creator names" count={creators.length}>
+          {creators.map((profile) => (
+            <IdentityReviewCard
+              key={profile.id}
+              profile={profile}
+              enabled={enabled}
+              act={act}
+              busy={busy}
+            />
+          ))}
+        </EditorialSectionCarousel>
+      )}
     </div>
   )
 }
@@ -733,19 +740,22 @@ function RoleApplicationPanel({
       <p className="mt-2 text-sm text-text-secondary">
         Members apply from Account Centre. Approval changes server-side access; editable signup metadata is never trusted.
       </p>
-      <div className="mt-5 space-y-4">
-        {applications.map((application) => (
-          <RoleApplicationCard
-            key={application.id}
-            application={application}
-            profile={profiles.find((profile) => profile.id === application.user_id)}
-            enabled={enabled}
-            act={act}
-            busy={busy}
-          />
-        ))}
-        {!applications.length && <Empty text="No account role applications yet." />}
-      </div>
+      {applications.length === 0 ? (
+        <Empty text="No account role applications yet." />
+      ) : (
+        <EditorialSectionCarousel label="Role applications" count={applications.length}>
+          {applications.map((application) => (
+            <RoleApplicationCard
+              key={application.id}
+              application={application}
+              profile={profiles.find((profile) => profile.id === application.user_id)}
+              enabled={enabled}
+              act={act}
+              busy={busy}
+            />
+          ))}
+        </EditorialSectionCarousel>
+      )}
     </div>
   )
 }
@@ -829,8 +839,11 @@ function BeatStoreEditorialPanel({
       <p className="mt-2 text-sm text-text-secondary">
         Approve and publish producer beat listings. Publishing makes them visible in Beats / BeatStore.
       </p>
-      <div className="mt-5 space-y-4">
-        {beats.map((beat) => {
+      {beats.length === 0 ? (
+        <Empty text="No producer beats in queue yet." />
+      ) : (
+        <EditorialSectionCarousel label="Beats" count={beats.length} itemClassName="min-w-[min(100%,26rem)] max-w-[32rem] shrink-0 snap-start sm:min-w-[28rem]">
+          {beats.map((beat) => {
           const price = beat.beat_licence_options?.[0]?.price_usd
           const audioSrc = publicUrl(beat.preview_path)
           const artSrc = publicUrl(beat.artwork_path)
@@ -911,8 +924,8 @@ function BeatStoreEditorialPanel({
             </article>
           )
         })}
-        {!beats.length && <Empty text="No producer beats in queue yet." />}
-      </div>
+        </EditorialSectionCarousel>
+      )}
     </section>
   )
 }
@@ -971,7 +984,7 @@ function TrackCard({ track, profile, credits, messages, allowed, act, busy }: { 
 function ArtistRequestPanel({ requests, tracks, profiles, enabled, act, busy }: { requests: TrackRequest[]; tracks: Track[]; profiles: Profile[]; enabled: boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
   const [notesById, setNotesById] = useState<Record<string, string>>({})
   const nameFor = (id: string) => profiles.find(profile => profile.id === id)?.display_name || profiles.find(profile => profile.id === id)?.username || id.slice(0, 8)
-  return <section className="mt-14"><h2 className="text-2xl font-semibold">Artist requests</h2><p className="mt-2 text-sm text-text-secondary">Takedown, metadata, artwork, rights and payout questions from uploaded artists.</p><div className="mt-5 space-y-3">{requests.map(request => { const track = tracks.find(item => item.id === request.track_id); return <article key={request.id} className="rounded-xl border border-white/10 p-4"><div className="flex flex-wrap justify-between gap-4"><div><p className="text-xs uppercase tracking-wider text-brand">{request.request_type.replaceAll('_', ' ')} · {request.status}</p><h3 className="mt-1 font-medium">{track?.title || 'Track request'}</h3><p className="text-xs text-text-secondary">{nameFor(request.artist_user_id)} · {new Date(request.created_at).toLocaleString()}</p></div></div><p className="mt-3 whitespace-pre-wrap text-sm text-text-secondary">{request.message}</p>{request.staff_notes&&<p className="mt-3 text-sm text-brand">Staff: {request.staff_notes}</p>}{enabled&&<div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]"><textarea value={notesById[request.id] || ''} onChange={e => setNotesById({...notesById, [request.id]: e.target.value})} placeholder="Staff notes" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><div className="flex flex-wrap gap-2"><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'reviewing', notes: notesById[request.id] || '' })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Reviewing</button><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'resolved', notes: notesById[request.id] || '' })} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black">Resolved</button><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'rejected', notes: notesById[request.id] || '' })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button></div></div>}</article> })}{!requests.length && <Empty text="No artist requests yet." />}</div></section>
+  return <section className="mt-14"><h2 className="text-2xl font-semibold">Artist requests</h2><p className="mt-2 text-sm text-text-secondary">Takedown, metadata, artwork, rights and payout questions from uploaded artists.</p>{requests.length === 0 ? <Empty text="No artist requests yet." /> : <EditorialSectionCarousel label="Artist requests" count={requests.length} itemClassName="min-w-[min(100%,22rem)] max-w-[28rem] shrink-0 snap-start sm:min-w-[24rem]">{requests.map(request => { const track = tracks.find(item => item.id === request.track_id); return <article key={request.id} className="rounded-xl border border-white/10 p-4"><div className="flex flex-wrap justify-between gap-4"><div><p className="text-xs uppercase tracking-wider text-brand">{request.request_type.replaceAll('_', ' ')} · {request.status}</p><h3 className="mt-1 font-medium">{track?.title || 'Track request'}</h3><p className="text-xs text-text-secondary">{nameFor(request.artist_user_id)} · {new Date(request.created_at).toLocaleString()}</p></div></div><p className="mt-3 whitespace-pre-wrap text-sm text-text-secondary">{request.message}</p>{request.staff_notes&&<p className="mt-3 text-sm text-brand">Staff: {request.staff_notes}</p>}{enabled&&<div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]"><textarea value={notesById[request.id] || ''} onChange={e => setNotesById({...notesById, [request.id]: e.target.value})} placeholder="Staff notes" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><div className="flex flex-wrap gap-2"><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'reviewing', notes: notesById[request.id] || '' })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Reviewing</button><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'resolved', notes: notesById[request.id] || '' })} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black">Resolved</button><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'rejected', notes: notesById[request.id] || '' })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button></div></div>}</article> })}</EditorialSectionCarousel>}</section>
 }
 
 function ProgrammePanel({ programmes, enabled, act }: { programmes: Programme[]; enabled: boolean; act: (action: string, body: Record<string, unknown>) => Promise<void> }) {
