@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import EditorialSectionCarousel from '@/components/EditorialSectionCarousel'
+import EditorialSectionCarousel, { matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
 import {
   PRIVATE_DSP_PARTNER_CODE,
   editorialDistributionStatusLabel,
@@ -119,6 +119,7 @@ export default function ReleaseEditorialPanel({
 }) {
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [rotationSelections, setRotationSelections] = useState<Record<string, string[]>>({})
+  const [sectionFilter, setSectionFilter] = useState('')
   const [isrcValues, setIsrcValues] = useState<Record<string, string>>(() => {
     const initial: Record<string, string> = {}
     for (const track of releaseTracks) {
@@ -162,8 +163,35 @@ export default function ReleaseEditorialPanel({
       {releases.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-text-secondary">No album or EP submissions yet.</p>
       ) : (
-        <EditorialSectionCarousel label="Releases" count={releases.length} itemClassName="min-w-[min(100%,28rem)] max-w-[36rem] shrink-0 snap-start sm:min-w-[30rem]">
-        {releases.map((release) => {
+        (() => {
+          const filteredReleases = releases.filter((release) =>
+            matchesEditorialFilter(
+              sectionFilter,
+              release.title,
+              release.artist_name,
+              release.genre,
+              release.editorial_status,
+              release.release_type,
+              release.preflight_status,
+              release.id,
+              release.master_owner_name,
+              ...(release.composition_owner_names || []),
+              ...(release.preflight_blockers || []),
+            ),
+          )
+          return (
+        <EditorialSectionCarousel
+          label="Releases"
+          count={filteredReleases.length}
+          itemClassName="min-w-[min(100%,28rem)] max-w-[36rem] shrink-0 snap-start sm:min-w-[30rem]"
+          filterValue={sectionFilter}
+          onFilterChange={setSectionFilter}
+          filterPlaceholder="Direktzugriff: artist, title, status, genre…"
+          filterHint="Filter this album/EP queue only — artist, title, status, genre or passport flags."
+        >
+        {filteredReleases.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-text-secondary">No releases match this Direktzugriff filter.</p>
+        ) : filteredReleases.map((release) => {
           const members = releaseTracks.filter((t) => t.release_id === release.id)
           const contributors = releaseContributors.filter((item) => item.release_id === release.id)
           const clearanceEvidence = releaseClearanceEvidence.filter((item) => item.release_id === release.id)
@@ -526,6 +554,8 @@ export default function ReleaseEditorialPanel({
           )
         })}
         </EditorialSectionCarousel>
+          )
+        })()
       )}
     </section>
   )

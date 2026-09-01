@@ -9,7 +9,7 @@ import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 import { creatorPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 import EditorialAnalytics from '@/components/EditorialAnalytics'
-import EditorialSectionCarousel from '@/components/EditorialSectionCarousel'
+import EditorialSectionCarousel, { matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
 
 type MobileClearance = { id?: string; track_id: string; surface: 'ios' | 'android'; status: 'not_reviewed' | 'cleared' | 'blocked'; rights_basis?: string; evidence_reference?: string; review_notes?: string; reviewed_at?: string }
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string; mobile_clearances?: MobileClearance[] }
@@ -420,20 +420,15 @@ export default function EditorialDashboard() {
         {data.tracks.length === 0 ? (
           <Empty text="No submissions yet." />
         ) : (
-          <EditorialSectionCarousel label="Tracks" count={data.tracks.length}>
-            {data.tracks.map((track) => (
-              <TrackCard
-                key={track.id}
-                track={track}
-                credits={data.credits.filter((c) => c.track_id === track.id)}
-                messages={(data.trackReviewMessages || []).filter((message) => message.track_id === track.id)}
-                profile={data.profiles.find((profile) => profile.id === track.user_id)}
-                allowed={allowed}
-                act={act}
-                busy={busy}
-              />
-            ))}
-          </EditorialSectionCarousel>
+          <TracksCarousel
+            tracks={data.tracks}
+            credits={data.credits}
+            messages={data.trackReviewMessages || []}
+            profiles={data.profiles}
+            allowed={allowed}
+            act={act}
+            busy={busy}
+          />
         )}
       </EditorialDropDown>
 
@@ -472,55 +467,12 @@ export default function EditorialDashboard() {
         <div>
           <h2 className="text-2xl font-semibold">Creator publishing and BeatStore access</h2>
           <p className="mt-2 text-sm text-text-secondary">Publishing controls public discovery. Producer access separately controls beat uploads and catalogue ownership.</p>
-          <EditorialSectionCarousel label="Creators" count={data.profiles.filter((profile) => ['artist', 'admin'].includes(profile.role) || profile.is_producer).length} itemClassName="min-w-[min(100%,20rem)] max-w-[26rem] shrink-0 snap-start sm:min-w-[22rem]">
-            {data.profiles
-              .filter((profile) => ['artist', 'admin'].includes(profile.role) || profile.is_producer)
-              .map((profile) => (
-                <div
-                  key={profile.id}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-white/10 p-4"
-                >
-                  <div>
-                    <ArtistReviewLink profile={profile} className="font-medium" />
-                    <p className="text-xs text-text-secondary">
-                      @{profile.username} · member name: {profile.display_name || 'not set'} · {profile.is_published ? 'Published and verified' : 'Not published'}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
-                    {profile.is_published && (
-                      <Link
-                        href={`/artist/${profile.username}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand"
-                      >
-                        Open profile ↗
-                      </Link>
-                    )}
-                    {allowed('publish_artists') && (
-                      <button
-                        disabled={Boolean(busy)}
-                        onClick={() => act('set_producer', { profileId: profile.id, enabled: !profile.is_producer })}
-                        className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand"
-                      >
-                        {profile.is_producer ? 'Disable BeatStore' : 'Enable producer'}
-                      </button>
-                    )}
-                    {allowed('publish_artists') && (
-                      <button
-                        disabled={Boolean(busy)}
-                        onClick={() =>
-                          act('publish_artist', { profileId: profile.id, publish: !profile.is_published })
-                        }
-                        className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand"
-                      >
-                        {profile.is_published ? 'Unpublish' : 'Publish'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-          </EditorialSectionCarousel>
+          <CreatorsCarousel
+            profiles={data.profiles}
+            allowed={allowed}
+            act={act}
+            busy={busy}
+          />
         </div>
         <div id="ed-programmes" className="scroll-mt-36">
           <ProgrammePanel programmes={data.programmes} enabled={allowed('schedule_programmes')} act={act} />
@@ -647,17 +599,7 @@ function IdentityReviewPanel({
       {creators.length === 0 ? (
         <Empty text="No creator identities are available yet." />
       ) : (
-        <EditorialSectionCarousel label="Creator names" count={creators.length}>
-          {creators.map((profile) => (
-            <IdentityReviewCard
-              key={profile.id}
-              profile={profile}
-              enabled={enabled}
-              act={act}
-              busy={busy}
-            />
-          ))}
-        </EditorialSectionCarousel>
+        <IdentityNamesCarousel creators={creators} enabled={enabled} act={act} busy={busy} />
       )}
     </div>
   )
@@ -743,18 +685,7 @@ function RoleApplicationPanel({
       {applications.length === 0 ? (
         <Empty text="No account role applications yet." />
       ) : (
-        <EditorialSectionCarousel label="Role applications" count={applications.length}>
-          {applications.map((application) => (
-            <RoleApplicationCard
-              key={application.id}
-              application={application}
-              profile={profiles.find((profile) => profile.id === application.user_id)}
-              enabled={enabled}
-              act={act}
-              busy={busy}
-            />
-          ))}
-        </EditorialSectionCarousel>
+        <RoleApplicationsCarousel applications={applications} profiles={profiles} enabled={enabled} act={act} busy={busy} />
       )}
     </div>
   )
@@ -842,89 +773,7 @@ function BeatStoreEditorialPanel({
       {beats.length === 0 ? (
         <Empty text="No producer beats in queue yet." />
       ) : (
-        <EditorialSectionCarousel label="Beats" count={beats.length} itemClassName="min-w-[min(100%,26rem)] max-w-[32rem] shrink-0 snap-start sm:min-w-[28rem]">
-          {beats.map((beat) => {
-          const price = beat.beat_licence_options?.[0]?.price_usd
-          const audioSrc = publicUrl(beat.preview_path)
-          const artSrc = publicUrl(beat.artwork_path)
-          return (
-            <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
-              <div className="flex flex-wrap justify-between gap-4">
-                <div className="flex min-w-0 flex-1 gap-4">
-                  {artSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={artSrc}
-                      alt=""
-                      className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
-                      onError={(e) => {
-                        ;(e.currentTarget as HTMLImageElement).style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[10px] text-text-secondary">
-                      No art
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                  <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[beat.status] || 'text-text-secondary'}`}>
-                    {beat.status.replaceAll('_', ' ')}
-                  </p>
-                  <h3 className="mt-1 text-xl font-semibold">{beat.title}</h3>
-                  <p className="text-sm text-text-secondary">
-                    {nameFor(beat.producer_user_id)} · {beat.genre || 'Beat'}
-                    {beat.bpm ? ` · ${beat.bpm} BPM` : ''}
-                    {price != null ? ` · $${Number(price).toFixed(2)} standard lease` : ''}
-                    {beat.is_public ? ' · public' : ' · not public'}
-                  </p>
-                  {beat.editorial_notes && (
-                    <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>
-                  )}
-                  </div>
-                </div>
-                {audioSrc ? <audio controls preload="none" src={audioSrc} className="h-10 max-w-full" /> : null}
-              </div>
-              {enabled && (
-                <div className="mt-4">
-                  <BeatReviewThread beat={beat} messages={messages.filter((message) => message.beat_id === beat.id)} profiles={profiles} act={act} busy={busy} />
-                  <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    disabled={Boolean(busy)}
-                    onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: '' })}
-                    className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    disabled={Boolean(busy)}
-                    onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: 'Please review the editorial conversation and revise before resubmitting.' })}
-                    className="rounded-full border border-white/20 px-4 py-2 text-xs"
-                  >
-                    Request changes
-                  </button>
-                  <button
-                    disabled={Boolean(busy)}
-                    onClick={() => act('review_beat', { beatId: beat.id, status: 'rejected', notes: beat.editorial_notes || '' })}
-                    className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black"
-                  >
-                    Reject
-                  </button>
-                  {['approved', 'published'].includes(beat.status) && (
-                    <button
-                      disabled={Boolean(busy)}
-                      onClick={() => act('publish_beat', { beatId: beat.id, publish: !beat.is_public })}
-                      className="rounded-full border border-brand px-4 py-2 text-xs text-brand"
-                    >
-                      {beat.is_public ? 'Unpublish' : 'Publish to BeatStore'}
-                    </button>
-                  )}
-                  </div>
-                </div>
-              )}
-            </article>
-          )
-        })}
-        </EditorialSectionCarousel>
+        <BeatsCarousel beats={beats} messages={messages} profiles={profiles} enabled={enabled} act={act} busy={busy} nameFor={nameFor} publicUrl={publicUrl} />
       )}
     </section>
   )
@@ -984,7 +833,7 @@ function TrackCard({ track, profile, credits, messages, allowed, act, busy }: { 
 function ArtistRequestPanel({ requests, tracks, profiles, enabled, act, busy }: { requests: TrackRequest[]; tracks: Track[]; profiles: Profile[]; enabled: boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
   const [notesById, setNotesById] = useState<Record<string, string>>({})
   const nameFor = (id: string) => profiles.find(profile => profile.id === id)?.display_name || profiles.find(profile => profile.id === id)?.username || id.slice(0, 8)
-  return <section className="mt-14"><h2 className="text-2xl font-semibold">Artist requests</h2><p className="mt-2 text-sm text-text-secondary">Takedown, metadata, artwork, rights and payout questions from uploaded artists.</p>{requests.length === 0 ? <Empty text="No artist requests yet." /> : <EditorialSectionCarousel label="Artist requests" count={requests.length} itemClassName="min-w-[min(100%,22rem)] max-w-[28rem] shrink-0 snap-start sm:min-w-[24rem]">{requests.map(request => { const track = tracks.find(item => item.id === request.track_id); return <article key={request.id} className="rounded-xl border border-white/10 p-4"><div className="flex flex-wrap justify-between gap-4"><div><p className="text-xs uppercase tracking-wider text-brand">{request.request_type.replaceAll('_', ' ')} · {request.status}</p><h3 className="mt-1 font-medium">{track?.title || 'Track request'}</h3><p className="text-xs text-text-secondary">{nameFor(request.artist_user_id)} · {new Date(request.created_at).toLocaleString()}</p></div></div><p className="mt-3 whitespace-pre-wrap text-sm text-text-secondary">{request.message}</p>{request.staff_notes&&<p className="mt-3 text-sm text-brand">Staff: {request.staff_notes}</p>}{enabled&&<div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]"><textarea value={notesById[request.id] || ''} onChange={e => setNotesById({...notesById, [request.id]: e.target.value})} placeholder="Staff notes" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><div className="flex flex-wrap gap-2"><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'reviewing', notes: notesById[request.id] || '' })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Reviewing</button><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'resolved', notes: notesById[request.id] || '' })} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black">Resolved</button><button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'rejected', notes: notesById[request.id] || '' })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button></div></div>}</article> })}</EditorialSectionCarousel>}</section>
+  return <section className="mt-14"><h2 className="text-2xl font-semibold">Artist requests</h2><p className="mt-2 text-sm text-text-secondary">Takedown, metadata, artwork, rights and payout questions from uploaded artists.</p>{requests.length === 0 ? <Empty text="No artist requests yet." /> : <ArtistRequestsCarousel requests={requests} tracks={tracks} nameFor={nameFor} notesById={notesById} setNotesById={setNotesById} enabled={enabled} act={act} busy={busy} />}</section>
 }
 
 function ProgrammePanel({ programmes, enabled, act }: { programmes: Programme[]; enabled: boolean; act: (action: string, body: Record<string, unknown>) => Promise<void> }) {
@@ -992,6 +841,421 @@ function ProgrammePanel({ programmes, enabled, act }: { programmes: Programme[];
   const submit = (event: FormEvent) => { event.preventDefault(); void act('save_programme', form) }
   return <div><h2 className="text-2xl font-semibold">Programme schedule</h2><div className="mt-5 space-y-2">{programmes.map(p => <div key={p.id} className="rounded-xl border border-white/10 p-4"><p className="font-medium">{p.title}</p><p className="text-xs text-text-secondary">{p.day_label} {p.start_time?.slice(0,5)} · {p.timezone} · {p.status}</p></div>)}</div>{enabled && <form onSubmit={submit} className="mt-4 grid gap-3 rounded-2xl border border-white/10 bg-white/[.025] p-5 sm:grid-cols-2"><input required value={form.title} onChange={e => setForm({...form,title:e.target.value})} placeholder="Programme title" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><input value={form.slug} onChange={e => setForm({...form,slug:e.target.value})} placeholder="Slug (automatic if blank)" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><input required value={form.dayLabel} onChange={e => setForm({...form,dayLabel:e.target.value})} placeholder="Friday / Daily" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><input type="time" value={form.startTime} onChange={e => setForm({...form,startTime:e.target.value})} className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><input value={form.host} onChange={e => setForm({...form,host:e.target.value})} placeholder="Host" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><select value={form.status} onChange={e => setForm({...form,status:e.target.value})} className="rounded-xl border border-white/10 bg-bg-primary p-3 text-sm"><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="active">Active</option><option value="archived">Archived</option></select><textarea value={form.description} onChange={e => setForm({...form,description:e.target.value})} placeholder="Programme description" className="sm:col-span-2 rounded-xl border border-white/10 bg-black/20 p-3 text-sm"/><button className="rounded-full bg-brand px-5 py-3 font-semibold text-black sm:col-span-2">Save programme</button></form>}</div>
 }
+
+
+function TracksCarousel({
+  tracks,
+  credits,
+  messages,
+  profiles,
+  allowed,
+  act,
+  busy,
+}: {
+  tracks: Track[]
+  credits: Credit[]
+  messages: TrackReviewMessage[]
+  profiles: Profile[]
+  allowed: (permission: EditorialPermission) => boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const [filter, setFilter] = useState('')
+  const filtered = tracks.filter((track) => {
+    const profile = profiles.find((p) => p.id === track.user_id)
+    return matchesEditorialFilter(
+      filter,
+      track.title,
+      track.artist_name,
+      track.genre,
+      track.editorial_status,
+      track.id,
+      profile?.username,
+      profile?.display_name,
+      profile?.creator_public_name,
+      profile?.creator_name_request,
+    )
+  })
+  return (
+    <EditorialSectionCarousel
+      label="Tracks"
+      count={filtered.length}
+      filterValue={filter}
+      onFilterChange={setFilter}
+      filterPlaceholder="Direktzugriff: artist, title, genre, status…"
+      filterHint="Filter this queue only — type an artist, title, genre or status."
+    >
+      {filtered.length === 0 ? (
+        <Empty text={filter.trim() ? 'No tracks match this Direktzugriff filter.' : 'No submissions yet.'} />
+      ) : (
+        filtered.map((track) => (
+          <TrackCard
+            key={track.id}
+            track={track}
+            credits={credits.filter((c) => c.track_id === track.id)}
+            messages={messages.filter((message) => message.track_id === track.id)}
+            profile={profiles.find((profile) => profile.id === track.user_id)}
+            allowed={allowed}
+            act={act}
+            busy={busy}
+          />
+        ))
+      )}
+    </EditorialSectionCarousel>
+  )
+}
+
+function CreatorsCarousel({
+  profiles,
+  allowed,
+  act,
+  busy,
+}: {
+  profiles: Profile[]
+  allowed: (permission: EditorialPermission) => boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const [filter, setFilter] = useState('')
+  const creators = profiles.filter((profile) => ['artist', 'admin'].includes(profile.role) || profile.is_producer)
+  const filtered = creators.filter((profile) =>
+    matchesEditorialFilter(
+      filter,
+      profile.username,
+      profile.display_name,
+      profile.creator_public_name,
+      profile.creator_name_request,
+      profile.role,
+      profile.is_producer ? 'producer' : '',
+      profile.is_published ? 'published' : 'unpublished',
+      profile.location,
+    ),
+  )
+  return (
+    <EditorialSectionCarousel
+      label="Creators"
+      count={filtered.length}
+      itemClassName="min-w-[min(100%,20rem)] max-w-[26rem] shrink-0 snap-start sm:min-w-[22rem]"
+      filterValue={filter}
+      onFilterChange={setFilter}
+      filterPlaceholder="Direktzugriff: creator, @username, producer…"
+      filterHint="Jump straight to a creator / producer in this section."
+    >
+      {filtered.length === 0 ? (
+        <Empty text={filter.trim() ? 'No creators match this filter.' : 'No creators yet.'} />
+      ) : (
+        filtered.map((profile) => (
+          <div key={profile.id} className="flex items-center justify-between gap-4 rounded-xl border border-white/10 p-4">
+            <div>
+              <ArtistReviewLink profile={profile} className="font-medium" />
+              <p className="text-xs text-text-secondary">
+                @{profile.username} · member name: {profile.display_name || 'not set'} · {profile.is_published ? 'Published and verified' : 'Not published'}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap justify-end gap-2">
+              {profile.is_published && (
+                <Link href={`/artist/${profile.username}`} target="_blank" rel="noreferrer" className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand">
+                  Open profile ↗
+                </Link>
+              )}
+              {allowed('publish_artists') && (
+                <button disabled={Boolean(busy)} onClick={() => act('set_producer', { profileId: profile.id, enabled: !profile.is_producer })} className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand">
+                  {profile.is_producer ? 'Disable BeatStore' : 'Enable producer'}
+                </button>
+              )}
+              {allowed('publish_artists') && (
+                <button disabled={Boolean(busy)} onClick={() => act('publish_artist', { profileId: profile.id, publish: !profile.is_published })} className="rounded-full border border-white/20 px-4 py-2 text-xs hover:border-brand">
+                  {profile.is_published ? 'Unpublish' : 'Publish'}
+                </button>
+              )}
+            </div>
+          </div>
+        ))
+      )}
+    </EditorialSectionCarousel>
+  )
+}
+
+function IdentityNamesCarousel({
+  creators,
+  enabled,
+  act,
+  busy,
+}: {
+  creators: Profile[]
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const [filter, setFilter] = useState('')
+  const filtered = creators.filter((profile) =>
+    matchesEditorialFilter(
+      filter,
+      profile.username,
+      profile.display_name,
+      profile.creator_public_name,
+      profile.creator_name_request,
+      profile.creator_name_status,
+    ),
+  )
+  return (
+    <EditorialSectionCarousel
+      label="Creator names"
+      count={filtered.length}
+      filterValue={filter}
+      onFilterChange={setFilter}
+      filterPlaceholder="Direktzugriff: name, @username, status…"
+      filterHint="Filter public-name reviews by creator or status."
+    >
+      {filtered.length === 0 ? (
+        <Empty text={filter.trim() ? 'No identity cards match this filter.' : 'No creator identities are available yet.'} />
+      ) : (
+        filtered.map((profile) => (
+          <IdentityReviewCard key={profile.id} profile={profile} enabled={enabled} act={act} busy={busy} />
+        ))
+      )}
+    </EditorialSectionCarousel>
+  )
+}
+
+function RoleApplicationsCarousel({
+  applications,
+  profiles,
+  enabled,
+  act,
+  busy,
+}: {
+  applications: RoleApplication[]
+  profiles: Profile[]
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const [filter, setFilter] = useState('')
+  const filtered = applications.filter((application) => {
+    const profile = profiles.find((p) => p.id === application.user_id)
+    return matchesEditorialFilter(
+      filter,
+      application.requested_role,
+      application.status,
+      application.message,
+      profile?.username,
+      profile?.display_name,
+      profile?.creator_public_name,
+    )
+  })
+  return (
+    <EditorialSectionCarousel
+      label="Role applications"
+      count={filtered.length}
+      filterValue={filter}
+      onFilterChange={setFilter}
+      filterPlaceholder="Direktzugriff: member, role, status…"
+      filterHint="Filter role applications by person, requested role or status."
+    >
+      {filtered.length === 0 ? (
+        <Empty text={filter.trim() ? 'No role applications match this filter.' : 'No account role applications yet.'} />
+      ) : (
+        filtered.map((application) => (
+          <RoleApplicationCard
+            key={application.id}
+            application={application}
+            profile={profiles.find((profile) => profile.id === application.user_id)}
+            enabled={enabled}
+            act={act}
+            busy={busy}
+          />
+        ))
+      )}
+    </EditorialSectionCarousel>
+  )
+}
+
+function BeatsCarousel({
+  beats,
+  messages,
+  profiles,
+  enabled,
+  act,
+  busy,
+  nameFor,
+  publicUrl,
+}: {
+  beats: Beat[]
+  messages: BeatReviewMessage[]
+  profiles: Profile[]
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+  nameFor: (id: string) => string
+  publicUrl: (path?: string | null) => string
+}) {
+  const [filter, setFilter] = useState('')
+  const filtered = beats.filter((beat) =>
+    matchesEditorialFilter(
+      filter,
+      beat.title,
+      beat.genre,
+      beat.mood,
+      beat.status,
+      beat.bpm,
+      nameFor(beat.producer_user_id),
+      beat.is_public ? 'public' : 'not public',
+      beat.editorial_notes,
+    ),
+  )
+  return (
+    <EditorialSectionCarousel
+      label="Beats"
+      count={filtered.length}
+      itemClassName="min-w-[min(100%,26rem)] max-w-[32rem] shrink-0 snap-start sm:min-w-[28rem]"
+      filterValue={filter}
+      onFilterChange={setFilter}
+      filterPlaceholder="Direktzugriff: producer, title, genre, status…"
+      filterHint="Filter BeatStore queue by producer, title, genre or status."
+    >
+      {filtered.length === 0 ? (
+        <Empty text={filter.trim() ? 'No beats match this filter.' : 'No producer beats in queue yet.'} />
+      ) : (
+        filtered.map((beat) => {
+          const price = beat.beat_licence_options?.[0]?.price_usd
+          const audioSrc = publicUrl(beat.preview_path)
+          const artSrc = publicUrl(beat.artwork_path)
+          return (
+            <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
+              <div className="flex flex-wrap justify-between gap-4">
+                <div className="flex min-w-0 flex-1 gap-4">
+                  {artSrc ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={artSrc}
+                      alt=""
+                      className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+                      onError={(e) => {
+                        ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[10px] text-text-secondary">
+                      No art
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[beat.status] || 'text-text-secondary'}`}>
+                      {beat.status.replaceAll('_', ' ')}
+                    </p>
+                    <h3 className="mt-1 text-xl font-semibold">{beat.title}</h3>
+                    <p className="text-sm text-text-secondary">
+                      {nameFor(beat.producer_user_id)} · {beat.genre || 'Beat'}
+                      {beat.bpm ? ` · ${beat.bpm} BPM` : ''}
+                      {price != null ? ` · $${Number(price).toFixed(2)} standard lease` : ''}
+                      {beat.is_public ? ' · public' : ' · not public'}
+                    </p>
+                    {beat.editorial_notes && <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>}
+                  </div>
+                </div>
+                {audioSrc ? <audio controls preload="none" src={audioSrc} className="h-10 max-w-full" /> : null}
+              </div>
+              {enabled && (
+                <div className="mt-4">
+                  <BeatReviewThread beat={beat} messages={messages.filter((message) => message.beat_id === beat.id)} profiles={profiles} act={act} busy={busy} />
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: '' })} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button>
+                    <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: 'Please review the editorial conversation and revise before resubmitting.' })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Request changes</button>
+                    <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'rejected', notes: beat.editorial_notes || '' })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button>
+                    {['approved', 'published'].includes(beat.status) && (
+                      <button disabled={Boolean(busy)} onClick={() => act('publish_beat', { beatId: beat.id, publish: !beat.is_public })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">
+                        {beat.is_public ? 'Unpublish' : 'Publish to BeatStore'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </article>
+          )
+        })
+      )}
+    </EditorialSectionCarousel>
+  )
+}
+
+function ArtistRequestsCarousel({
+  requests,
+  tracks,
+  nameFor,
+  notesById,
+  setNotesById,
+  enabled,
+  act,
+  busy,
+}: {
+  requests: TrackRequest[]
+  tracks: Track[]
+  nameFor: (id: string) => string
+  notesById: Record<string, string>
+  setNotesById: (value: Record<string, string>) => void
+  enabled: boolean
+  act: (action: string, body: Record<string, unknown>) => Promise<void>
+  busy: string
+}) {
+  const [filter, setFilter] = useState('')
+  const filtered = requests.filter((request) => {
+    const track = tracks.find((item) => item.id === request.track_id)
+    return matchesEditorialFilter(
+      filter,
+      request.request_type,
+      request.status,
+      request.message,
+      request.staff_notes,
+      track?.title,
+      track?.artist_name,
+      nameFor(request.artist_user_id),
+    )
+  })
+  return (
+    <EditorialSectionCarousel
+      label="Artist requests"
+      count={filtered.length}
+      itemClassName="min-w-[min(100%,22rem)] max-w-[28rem] shrink-0 snap-start sm:min-w-[24rem]"
+      filterValue={filter}
+      onFilterChange={setFilter}
+      filterPlaceholder="Direktzugriff: artist, track, type, status…"
+      filterHint="Filter requests by artist, track title, type or status."
+    >
+      {filtered.length === 0 ? (
+        <Empty text={filter.trim() ? 'No artist requests match this filter.' : 'No artist requests yet.'} />
+      ) : (
+        filtered.map((request) => {
+          const track = tracks.find((item) => item.id === request.track_id)
+          return (
+            <article key={request.id} className="rounded-xl border border-white/10 p-4">
+              <div className="flex flex-wrap justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-brand">{request.request_type.replaceAll('_', ' ')} · {request.status}</p>
+                  <h3 className="mt-1 font-medium">{track?.title || 'Track request'}</h3>
+                  <p className="text-xs text-text-secondary">{nameFor(request.artist_user_id)} · {new Date(request.created_at).toLocaleString()}</p>
+                </div>
+              </div>
+              <p className="mt-3 whitespace-pre-wrap text-sm text-text-secondary">{request.message}</p>
+              {request.staff_notes && <p className="mt-3 text-sm text-brand">Staff: {request.staff_notes}</p>}
+              {enabled && (
+                <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+                  <textarea value={notesById[request.id] || ''} onChange={(e) => setNotesById({ ...notesById, [request.id]: e.target.value })} placeholder="Staff notes" className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm" />
+                  <div className="flex flex-wrap gap-2">
+                    <button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'reviewing', notes: notesById[request.id] || '' })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Reviewing</button>
+                    <button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'resolved', notes: notesById[request.id] || '' })} className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black">Resolved</button>
+                    <button disabled={Boolean(busy)} onClick={() => act('review_track_request', { requestId: request.id, status: 'rejected', notes: notesById[request.id] || '' })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button>
+                  </div>
+                </div>
+              )}
+            </article>
+          )
+        })
+      )}
+    </EditorialSectionCarousel>
+  )
+}
+
 
 function StaffPanel({ profiles, staff, act }: { profiles: Profile[]; staff: Staff[]; act: (action: string, body: Record<string, unknown>) => Promise<void> }) {
   const [userId, setUserId] = useState('')
