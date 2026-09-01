@@ -14,7 +14,10 @@ export default async function AppBeatPage({ params }: { params: Promise<{ surfac
   const beat = beats.find((item) => item.id === id);
   if (!beat) notFound();
   const producer = await loadProducerProfile(beat.producer_user_id).catch(() => null);
-  const producerName = producerPublicName(producer || { display_name: "BVS producer" });
+  const producerName = producerPublicName({
+    publicName: producer?.display_name,
+    username: producer?.username,
+  });
   const producerHandle = String(producer?.username || "").trim();
   const artwork = publicStorageUrl(beat.artwork_path);
   const preview = publicStorageUrl(beat.preview_path);
