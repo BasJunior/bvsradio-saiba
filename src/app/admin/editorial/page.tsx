@@ -883,7 +883,7 @@ function TracksCarousel({
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Direktzugriff: artist, title, genre, status…"
-      filterHint="Filter this queue only — type an artist, title, genre or status."
+      filterHint="Type artist, title, genre or status — list updates instantly."
     >
       {filtered.length === 0 ? (
         <Empty text={filter.trim() ? 'No tracks match this Direktzugriff filter.' : 'No submissions yet.'} />
@@ -935,11 +935,11 @@ function CreatorsCarousel({
     <EditorialSectionCarousel
       label="Creators"
       count={filtered.length}
-      itemClassName="min-w-[min(100%,20rem)] max-w-[26rem] shrink-0 snap-start sm:min-w-[22rem]"
+      itemClassName="min-w-0 w-full"
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Direktzugriff: creator, @username, producer…"
-      filterHint="Jump straight to a creator / producer in this section."
+      filterHint="Type creator, @username or producer — list updates instantly."
     >
       {filtered.length === 0 ? (
         <Empty text={filter.trim() ? 'No creators match this filter.' : 'No creators yet.'} />
@@ -1005,7 +1005,7 @@ function IdentityNamesCarousel({
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Direktzugriff: name, @username, status…"
-      filterHint="Filter public-name reviews by creator or status."
+      filterHint="Type name, @username or status — list updates instantly."
     >
       {filtered.length === 0 ? (
         <Empty text={filter.trim() ? 'No identity cards match this filter.' : 'No creator identities are available yet.'} />
@@ -1051,7 +1051,7 @@ function RoleApplicationsCarousel({
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Direktzugriff: member, role, status…"
-      filterHint="Filter role applications by person, requested role or status."
+      filterHint="Type member, role or status — list updates instantly."
     >
       {filtered.length === 0 ? (
         <Empty text={filter.trim() ? 'No role applications match this filter.' : 'No account role applications yet.'} />
@@ -1108,11 +1108,11 @@ function BeatsCarousel({
     <EditorialSectionCarousel
       label="Beats"
       count={filtered.length}
-      itemClassName="min-w-[min(100%,26rem)] max-w-[32rem] shrink-0 snap-start sm:min-w-[28rem]"
+      itemClassName="min-w-0 w-full"
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Direktzugriff: producer, title, genre, status…"
-      filterHint="Filter BeatStore queue by producer, title, genre or status."
+      filterHint="Type producer, title, genre or status — list updates instantly."
     >
       {filtered.length === 0 ? (
         <Empty text={filter.trim() ? 'No beats match this filter.' : 'No producer beats in queue yet.'} />
@@ -1216,11 +1216,11 @@ function ArtistRequestsCarousel({
     <EditorialSectionCarousel
       label="Artist requests"
       count={filtered.length}
-      itemClassName="min-w-[min(100%,22rem)] max-w-[28rem] shrink-0 snap-start sm:min-w-[24rem]"
+      itemClassName="min-w-0 w-full"
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Direktzugriff: artist, track, type, status…"
-      filterHint="Filter requests by artist, track title, type or status."
+      filterHint="Type artist, track, type or status — list updates instantly."
     >
       {filtered.length === 0 ? (
         <Empty text={filter.trim() ? 'No artist requests match this filter.' : 'No artist requests yet.'} />

@@ -183,11 +183,11 @@ export default function ReleaseEditorialPanel({
         <EditorialSectionCarousel
           label="Releases"
           count={filteredReleases.length}
-          itemClassName="min-w-[min(100%,28rem)] max-w-[36rem] shrink-0 snap-start sm:min-w-[30rem]"
+      itemClassName="min-w-0 w-full"
           filterValue={sectionFilter}
           onFilterChange={setSectionFilter}
           filterPlaceholder="Direktzugriff: artist, title, status, genre…"
-          filterHint="Filter this album/EP queue only — artist, title, status, genre or passport flags."
+          filterHint="Type artist, title, status, genre or passport flags — list updates instantly."
         >
         {filteredReleases.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-text-secondary">No releases match this Direktzugriff filter.</p>
