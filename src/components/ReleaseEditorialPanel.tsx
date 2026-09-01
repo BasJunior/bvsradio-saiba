@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import EditorialSectionCarousel, { matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
+import EditorialSectionCarousel, { EditorialArtistGroupCard, groupEditorialByArtist, matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
 import {
   PRIVATE_DSP_PARTNER_CODE,
   editorialDistributionStatusLabel,
@@ -179,19 +179,37 @@ export default function ReleaseEditorialPanel({
               ...(release.preflight_blockers || []),
             ),
           )
+          const artistGroups = groupEditorialByArtist(filteredReleases, {
+            artistKey: (release) => release.artist_name || 'unknown',
+            artistLabel: (release) => release.artist_name || 'Unknown artist',
+            createdAt: (release) => release.created_at,
+            status: (release) => release.editorial_status,
+          })
+          const filtering = Boolean(sectionFilter.trim())
           return (
         <EditorialSectionCarousel
           label="Releases"
           count={filteredReleases.length}
-      itemClassName="min-w-0 w-full"
+          artistGrouped
+          itemClassName="min-w-0 w-full"
           filterValue={sectionFilter}
           onFilterChange={setSectionFilter}
           filterPlaceholder="Direktzugriff: artist, title, status, genre…"
-          filterHint="Type artist, title, status, genre or passport flags — list updates instantly."
+          filterHint="Grouped by artist · newest upload activity first · open an artist to review their albums/EPs."
         >
         {filteredReleases.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-white/15 p-10 text-center text-text-secondary">No releases match this Direktzugriff filter.</p>
-        ) : filteredReleases.map((release) => {
+        ) : artistGroups.map((group, groupIndex) => (
+          <EditorialArtistGroupCard
+            key={group.key}
+            label={group.label}
+            count={group.items.length}
+            pendingCount={group.pendingCount}
+            latestAt={group.latestAt}
+            defaultOpen={groupIndex === 0 || group.pendingCount > 0}
+            forceOpen={filtering}
+          >
+            {group.items.map((release) => {
           const members = releaseTracks.filter((t) => t.release_id === release.id)
           const contributors = releaseContributors.filter((item) => item.release_id === release.id)
           const clearanceEvidence = releaseClearanceEvidence.filter((item) => item.release_id === release.id)
@@ -552,7 +570,9 @@ export default function ReleaseEditorialPanel({
               )}
             </article>
           )
-        })}
+            })}
+          </EditorialArtistGroupCard>
+        ))}
         </EditorialSectionCarousel>
           )
         })()

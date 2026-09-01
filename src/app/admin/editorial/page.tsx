@@ -9,7 +9,7 @@ import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 import { creatorPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 import EditorialAnalytics from '@/components/EditorialAnalytics'
-import EditorialSectionCarousel, { matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
+import EditorialSectionCarousel, { EditorialArtistGroupCard, groupEditorialByArtist, matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
 
 type MobileClearance = { id?: string; track_id: string; surface: 'ios' | 'android'; status: 'not_reviewed' | 'cleared' | 'blocked'; rights_basis?: string; evidence_reference?: string; review_notes?: string; reviewed_at?: string }
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string; mobile_clearances?: MobileClearance[] }
@@ -325,7 +325,7 @@ export default function EditorialDashboard() {
 
       <nav
         aria-label="Editorial sections"
-        className="sticky top-16 z-30 -mx-2 mt-8 overflow-x-auto rounded-2xl border border-white/10 bg-bg-primary/90 px-2 py-2 backdrop-blur-md"
+        className="mt-8 -mx-2 overflow-x-auto rounded-2xl border border-white/10 bg-bg-primary/90 px-2 py-2 md:sticky md:top-16 md:z-30 md:backdrop-blur-md"
       >
         <div className="flex min-w-max gap-2">
           {jump.map((item) => (
@@ -541,37 +541,40 @@ function EditorialDropDown({
   const panelId = `${id}-panel`
 
   return (
-    <section id={id} className="mt-10 scroll-mt-36 rounded-2xl border border-white/10 bg-white/[.015]">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition hover:bg-white/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-      >
-        <span className="flex min-w-0 items-center gap-3">
-          <span className="font-semibold">{label}</span>
-          {typeof count === 'number' && (
-            <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-text-secondary">
-              {count}
-            </span>
-          )}
-        </span>
-        <span className="flex shrink-0 items-center gap-2 text-xs text-text-secondary">
-          {open ? 'Hide section' : 'Show section'}
-          <svg
-            viewBox="0 0 20 20"
-            aria-hidden="true"
-            className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-          >
-            <path d="m5 7.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-      </button>
-      {open && <div id={panelId} className="border-t border-white/10 px-5 pb-6 pt-1">{children}</div>}
+    <section id={id} className="mt-10 scroll-mt-28 rounded-2xl border border-white/10 bg-white/[.015]">
+      {/* Sticky section header so mobile can always leave / collapse this queue */}
+      <div className="sticky top-16 z-20 rounded-2xl bg-bg-primary/95 backdrop-blur-xl supports-[backdrop-filter]:bg-bg-primary/90">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={panelId}
+          onClick={() => setOpen((value) => !value)}
+          className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition hover:bg-white/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="font-semibold">{label}</span>
+            {typeof count === 'number' && (
+              <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-text-secondary">
+                {count}
+              </span>
+            )}
+          </span>
+          <span className="flex shrink-0 items-center gap-2 text-xs text-text-secondary">
+            {open ? 'Hide section' : 'Show section'}
+            <svg
+              viewBox="0 0 20 20"
+              aria-hidden="true"
+              className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            >
+              <path d="m5 7.5 5 5 5-5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        </button>
+      </div>
+      {open && <div id={panelId} className="border-t border-white/10 px-3 pb-6 pt-1 sm:px-5">{children}</div>}
     </section>
   )
 }
@@ -876,29 +879,61 @@ function TracksCarousel({
       profile?.creator_name_request,
     )
   })
+  const groups = groupEditorialByArtist(filtered, {
+    artistKey: (track) => {
+      const profile = profiles.find((p) => p.id === track.user_id)
+      return profile?.id || track.artist_name || track.user_id || 'unknown'
+    },
+    artistLabel: (track) => {
+      const profile = profiles.find((p) => p.id === track.user_id)
+      return (
+        track.artist_name ||
+        profile?.creator_public_name ||
+        profile?.display_name ||
+        (profile?.username ? `@${profile.username}` : '') ||
+        'Unknown artist'
+      )
+    },
+    createdAt: (track) => track.created_at,
+    status: (track) => track.editorial_status,
+  })
+  const filtering = Boolean(filter.trim())
   return (
     <EditorialSectionCarousel
       label="Tracks"
       count={filtered.length}
+      artistGrouped
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Direktzugriff: artist, title, genre, status…"
-      filterHint="Type artist, title, genre or status — list updates instantly."
+      filterHint="Grouped by artist · newest upload activity first · open an artist to review their singles."
     >
       {filtered.length === 0 ? (
         <Empty text={filter.trim() ? 'No tracks match this Direktzugriff filter.' : 'No submissions yet.'} />
       ) : (
-        filtered.map((track) => (
-          <TrackCard
-            key={track.id}
-            track={track}
-            credits={credits.filter((c) => c.track_id === track.id)}
-            messages={messages.filter((message) => message.track_id === track.id)}
-            profile={profiles.find((profile) => profile.id === track.user_id)}
-            allowed={allowed}
-            act={act}
-            busy={busy}
-          />
+        groups.map((group, index) => (
+          <EditorialArtistGroupCard
+            key={group.key}
+            label={group.label}
+            count={group.items.length}
+            pendingCount={group.pendingCount}
+            latestAt={group.latestAt}
+            defaultOpen={index === 0 || group.pendingCount > 0}
+            forceOpen={filtering}
+          >
+            {group.items.map((track) => (
+              <TrackCard
+                key={track.id}
+                track={track}
+                credits={credits.filter((c) => c.track_id === track.id)}
+                messages={messages.filter((message) => message.track_id === track.id)}
+                profile={profiles.find((profile) => profile.id === track.user_id)}
+                allowed={allowed}
+                act={act}
+                busy={busy}
+              />
+            ))}
+          </EditorialArtistGroupCard>
         ))
       )}
     </EditorialSectionCarousel>
@@ -1104,76 +1139,96 @@ function BeatsCarousel({
       beat.editorial_notes,
     ),
   )
+  const groups = groupEditorialByArtist(filtered, {
+    artistKey: (beat) => beat.producer_user_id || nameFor(beat.producer_user_id) || 'unknown',
+    artistLabel: (beat) => nameFor(beat.producer_user_id) || 'Unknown producer',
+    createdAt: (beat) => beat.created_at,
+    status: (beat) => beat.status,
+  })
+  const filtering = Boolean(filter.trim())
   return (
     <EditorialSectionCarousel
       label="Beats"
       count={filtered.length}
+      artistGrouped
       itemClassName="min-w-0 w-full"
       filterValue={filter}
       onFilterChange={setFilter}
       filterPlaceholder="Direktzugriff: producer, title, genre, status…"
-      filterHint="Type producer, title, genre or status — list updates instantly."
+      filterHint="Grouped by producer · newest first · open a producer to review their beats."
     >
       {filtered.length === 0 ? (
         <Empty text={filter.trim() ? 'No beats match this filter.' : 'No producer beats in queue yet.'} />
       ) : (
-        filtered.map((beat) => {
-          const price = beat.beat_licence_options?.[0]?.price_usd
-          const audioSrc = publicUrl(beat.preview_path)
-          const artSrc = publicUrl(beat.artwork_path)
-          return (
-            <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
-              <div className="flex flex-wrap justify-between gap-4">
-                <div className="flex min-w-0 flex-1 gap-4">
-                  {artSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={artSrc}
-                      alt=""
-                      className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
-                      onError={(e) => {
-                        ;(e.currentTarget as HTMLImageElement).style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[10px] text-text-secondary">
-                      No art
+        groups.map((group, index) => (
+          <EditorialArtistGroupCard
+            key={group.key}
+            label={group.label}
+            count={group.items.length}
+            pendingCount={group.pendingCount}
+            latestAt={group.latestAt}
+            defaultOpen={index === 0 || group.pendingCount > 0}
+            forceOpen={filtering}
+          >
+            {group.items.map((beat) => {
+              const price = beat.beat_licence_options?.[0]?.price_usd
+              const audioSrc = publicUrl(beat.preview_path)
+              const artSrc = publicUrl(beat.artwork_path)
+              return (
+                <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
+                  <div className="flex flex-wrap justify-between gap-4">
+                    <div className="flex min-w-0 flex-1 gap-4">
+                      {artSrc ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={artSrc}
+                          alt=""
+                          className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+                          onError={(e) => {
+                            ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[10px] text-text-secondary">
+                          No art
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[beat.status] || 'text-text-secondary'}`}>
+                          {beat.status.replaceAll('_', ' ')}
+                        </p>
+                        <h3 className="mt-1 text-xl font-semibold">{beat.title}</h3>
+                        <p className="text-sm text-text-secondary">
+                          {nameFor(beat.producer_user_id)} · {beat.genre || 'Beat'}
+                          {beat.bpm ? ` · ${beat.bpm} BPM` : ''}
+                          {price != null ? ` · $${Number(price).toFixed(2)} standard lease` : ''}
+                          {beat.is_public ? ' · public' : ' · not public'}
+                        </p>
+                        {beat.editorial_notes && <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>}
+                      </div>
+                    </div>
+                    {audioSrc ? <audio controls preload="none" src={audioSrc} className="h-10 max-w-full" /> : null}
+                  </div>
+                  {enabled && (
+                    <div className="mt-4">
+                      <BeatReviewThread beat={beat} messages={messages.filter((message) => message.beat_id === beat.id)} profiles={profiles} act={act} busy={busy} />
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: '' })} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button>
+                        <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: 'Please review the editorial conversation and revise before resubmitting.' })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Request changes</button>
+                        <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'rejected', notes: beat.editorial_notes || '' })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button>
+                        {['approved', 'published'].includes(beat.status) && (
+                          <button disabled={Boolean(busy)} onClick={() => act('publish_beat', { beatId: beat.id, publish: !beat.is_public })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">
+                            {beat.is_public ? 'Unpublish' : 'Publish to BeatStore'}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
-                  <div className="min-w-0">
-                    <p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[beat.status] || 'text-text-secondary'}`}>
-                      {beat.status.replaceAll('_', ' ')}
-                    </p>
-                    <h3 className="mt-1 text-xl font-semibold">{beat.title}</h3>
-                    <p className="text-sm text-text-secondary">
-                      {nameFor(beat.producer_user_id)} · {beat.genre || 'Beat'}
-                      {beat.bpm ? ` · ${beat.bpm} BPM` : ''}
-                      {price != null ? ` · $${Number(price).toFixed(2)} standard lease` : ''}
-                      {beat.is_public ? ' · public' : ' · not public'}
-                    </p>
-                    {beat.editorial_notes && <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>}
-                  </div>
-                </div>
-                {audioSrc ? <audio controls preload="none" src={audioSrc} className="h-10 max-w-full" /> : null}
-              </div>
-              {enabled && (
-                <div className="mt-4">
-                  <BeatReviewThread beat={beat} messages={messages.filter((message) => message.beat_id === beat.id)} profiles={profiles} act={act} busy={busy} />
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'approved', notes: '' })} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button>
-                    <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'changes_requested', notes: 'Please review the editorial conversation and revise before resubmitting.' })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Request changes</button>
-                    <button disabled={Boolean(busy)} onClick={() => act('review_beat', { beatId: beat.id, status: 'rejected', notes: beat.editorial_notes || '' })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button>
-                    {['approved', 'published'].includes(beat.status) && (
-                      <button disabled={Boolean(busy)} onClick={() => act('publish_beat', { beatId: beat.id, publish: !beat.is_public })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">
-                        {beat.is_public ? 'Unpublish' : 'Publish to BeatStore'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </article>
-          )
-        })
+                </article>
+              )
+            })}
+          </EditorialArtistGroupCard>
+        ))
       )}
     </EditorialSectionCarousel>
   )
