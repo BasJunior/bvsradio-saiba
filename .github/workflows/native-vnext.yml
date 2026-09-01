@@ -19,11 +19,18 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
       - run: npm ci
+      - name: Regenerate Capacitor Android metadata
+        env:
+          BVS_MOBILE_SURFACE: android
+        run: |
+          mkdir -p out
+          printf '<!doctype html><title>BVS native shell</title>' > out/index.html
+          npx cap sync android
       - name: Compile Android debug shell
         run: |
           chmod +x android/gradlew
@@ -40,9 +47,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: Install iOS pods
-        working-directory: ios/App
-        run: pod install
+      - name: Regenerate Capacitor iOS metadata
+        env:
+          BVS_MOBILE_SURFACE: ios
+        run: |
+          mkdir -p out
+          printf '<!doctype html><title>BVS native shell</title>' > out/index.html
+          npx cap sync ios
       - name: Compile iOS simulator shell
         working-directory: ios/App
         run: |
