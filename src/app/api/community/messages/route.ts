@@ -1,83 +1,10 @@
 import { NextResponse } from 'next/server'
 import { communityAccess, communityJson, communityUser } from '@/lib/community-server'
+import { publicRoomSafetyMessage } from '@/lib/community-safety'
 import { editorialUrl, serviceHeaders } from '@/lib/editorial-server'
 import { flowV2Flags } from '@/lib/feature-flags'
-
-type MessageRow = {
-  id: string
-  user_id: string
-  body: string
-  created_at: string
-}
-
-const WINDOW_MS = 60_000
-const MAX_PER_WINDOW = 6
-
-async function roomAvailable(roomId: string) {
-  if (roomId === 'bvs-live') return true
-  if (!flowV2Flags.showRooms) return false
-  const events = await communityJson<Array<{ id: string }>>(
-    `show_events?room_id=eq.${encodeURIComponent(roomId)}&is_public=eq.true&status=in.(live,archived)&select=id&limit=1`,
-    [],
-  )
-  return events.length === 1
-}
-
-export async function GET(request: Request) {
-  const user = await communityUser(request)
-  if (!user) return NextResponse.json({ error: 'Sign in to join the BVS community.' }, { status: 401 })
-  if (!serviceHeaders.apikey) return NextResponse.json({ error: 'Community chat is not configured.' }, { status: 503 })
-
-  const url = new URL(request.url)
-  const roomId = (url.searchParams.get('room') || url.searchParams.get('broadcast') || 'bvs-live').trim().slice(0, 80)
-  if (!await roomAvailable(roomId)) return NextResponse.json({ error: 'This BVS Room is not open.' }, { status: 404 })
-  const roomColumn = flowV2Flags.showRooms ? 'room_id' : 'broadcast_key'
-  const rows = await communityJson<MessageRow[]>(
-    `live_chat_messages?${roomColumn}=eq.${encodeURIComponent(roomId)}&status=eq.visible&select=id,user_id,body,created_at&order=created_at.desc&limit=60`,
-    [],
-  )
-  const userIds = [...new Set(rows.map((row) => row.user_id))]
-  const profiles = userIds.length
-    ? await communityJson<Array<{ id: string; username?: string; display_name?: string; avatar_url?: string }>>(
-      `profiles?id=in.(${userIds.join(',')})&select=id,username,display_name,avatar_url`, [],
-    ) : []
-  const names = new Map(profiles.map((profile) => [profile.id, profile]))
-  const access = await communityAccess(user.id)
-  return NextResponse.json({
-    messages: rows.reverse().map((row) => ({ ...row, profile: names.get(row.user_id) || null })),
-    access: { premium: access.premium, staff: access.staff, canPost: access.premium || access.staff },
-  })
-}
-
-export async function POST(request: Request) {
-  const user = await communityUser(request)
-  if (!user) return NextResponse.json({ error: 'Sign in to post.' }, { status: 401 })
-  if (!serviceHeaders.apikey) return NextResponse.json({ error: 'Community chat is not configured.' }, { status: 503 })
-  const access = await communityAccess(user.id)
-  if (!access.premium && !access.staff) return NextResponse.json({ error: 'Premium membership is required to post in live chat.' }, { status: 403 })
-
-  const body = await request.json().catch(() => ({})) as { message?: unknown; room?: unknown; broadcast?: unknown }
-  const message = typeof body.message === 'string' ? body.message.replace(/\s+/g, ' ').trim().slice(0, 500) : ''
-  const requestedRoom = typeof body.room === 'string' ? body.room : body.broadcast
-  const roomId = typeof requestedRoom === 'string' ? requestedRoom.trim().slice(0, 80) : 'bvs-live'
-  if (!message) return NextResponse.json({ error: 'Write a message first.' }, { status: 400 })
-  if (!await roomAvailable(roomId)) return NextResponse.json({ error: 'This BVS Room is not open.' }, { status: 404 })
-
-  const since = encodeURIComponent(new Date(Date.now() - WINDOW_MS).toISOString())
-  const recent = await communityJson<Array<{ id: string }>>(
-    `live_chat_messages?user_id=eq.${user.id}&created_at=gte.${since}&select=id&limit=${MAX_PER_WINDOW}`,
-    [],
-  )
-  if (recent.length >= MAX_PER_WINDOW) return NextResponse.json({ error: 'Chat is moving quickly. Wait a moment before posting again.' }, { status: 429 })
-
-  const response = await fetch(editorialUrl('live_chat_messages'), {
-    method: 'POST',
-    headers: { ...serviceHeaders, Prefer: 'return=representation' },
-    body: JSON.stringify(flowV2Flags.showRooms
-      ? { user_id: user.id, body: message, room_id: roomId || 'bvs-live', broadcast_key: roomId || 'bvs-live' }
-      : { user_id: user.id, body: message, broadcast_key: roomId || 'bvs-live' }),
-  })
-  if (!response.ok) return NextResponse.json({ error: 'Live chat is not ready. Ask an administrator to apply the community migration.' }, { status: 503 })
-  const [created] = await response.json()
-  return NextResponse.json({ message: { ...created, profile: access.profile } }, { status: 201 })
-}
+type MessageRow={id:string;user_id:string;body:string;created_at:string};type BlockRow={blocker_id:string;blocked_id:string};const WINDOW_MS=60_000,MAX_PER_WINDOW=6
+async function roomAvailable(roomId:string){if(roomId==='bvs-live')return true;if(!flowV2Flags.showRooms)return false;const events=await communityJson<Array<{id:string}>>(`show_events?room_id=eq.${encodeURIComponent(roomId)}&is_public=eq.true&status=in.(live,archived)&select=id&limit=1`,[]);return events.length===1}
+async function blockedPeers(userId:string){const rows=await communityJson<BlockRow[]>(`community_blocks?or=(blocker_id.eq.${userId},blocked_id.eq.${userId})&select=blocker_id,blocked_id`,[]);const hidden=new Set<string>();for(const row of rows)hidden.add(row.blocker_id===userId?row.blocked_id:row.blocker_id);return hidden}
+export async function GET(request:Request){const user=await communityUser(request);if(!user)return NextResponse.json({error:'Sign in to join the BVS community.'},{status:401});if(!serviceHeaders.apikey)return NextResponse.json({error:'Community chat is not configured.'},{status:503});const url=new URL(request.url),roomId=(url.searchParams.get('room')||url.searchParams.get('broadcast')||'bvs-live').trim().slice(0,80);if(!await roomAvailable(roomId))return NextResponse.json({error:'This BVS Room is not open.'},{status:404});const roomColumn=flowV2Flags.showRooms?'room_id':'broadcast_key';const [rows,hidden,access]=await Promise.all([communityJson<MessageRow[]>(`live_chat_messages?${roomColumn}=eq.${encodeURIComponent(roomId)}&status=eq.visible&select=id,user_id,body,created_at&order=created_at.desc&limit=60`,[]),blockedPeers(user.id),communityAccess(user.id)]);const visible=rows.filter(row=>!hidden.has(row.user_id)),ids=[...new Set(visible.map(row=>row.user_id))],profiles=ids.length?await communityJson<Array<{id:string;username?:string;display_name?:string;avatar_url?:string}>>(`profiles?id=in.(${ids.join(',')})&select=id,username,display_name,avatar_url`,[]):[],names=new Map(profiles.map(p=>[p.id,p]));return NextResponse.json({roomId,messages:visible.reverse().map(row=>({...row,profile:names.get(row.user_id)||null})),access:{premium:access.premium,staff:access.staff,canPost:access.premium||access.staff}})}
+export async function POST(request:Request){const user=await communityUser(request);if(!user)return NextResponse.json({error:'Sign in to post.'},{status:401});if(!serviceHeaders.apikey)return NextResponse.json({error:'Community chat is not configured.'},{status:503});const access=await communityAccess(user.id);if(!access.premium&&!access.staff)return NextResponse.json({error:'Premium membership is required to post in live chat.'},{status:403});const body=await request.json().catch(()=>({})) as {message?:unknown;room?:unknown;broadcast?:unknown},message=typeof body.message==='string'?body.message.replace(/\s+/g,' ').trim().slice(0,500):'',requestedRoom=typeof body.room==='string'?body.room:body.broadcast,roomId=typeof requestedRoom==='string'?requestedRoom.trim().slice(0,80):'bvs-live';if(!message)return NextResponse.json({error:'Write a message first.'},{status:400});const safety=publicRoomSafetyMessage(message);if(safety)return NextResponse.json({error:safety,code:'public_contact_details'},{status:400});if(!await roomAvailable(roomId))return NextResponse.json({error:'This BVS Room is not open.'},{status:404});const since=encodeURIComponent(new Date(Date.now()-WINDOW_MS).toISOString()),recent=await communityJson<Array<{id:string}>>(`live_chat_messages?user_id=eq.${user.id}&created_at=gte.${since}&select=id&limit=${MAX_PER_WINDOW}`,[]);if(recent.length>=MAX_PER_WINDOW)return NextResponse.json({error:'Chat is moving quickly. Wait a moment before posting again.'},{status:429});const response=await fetch(editorialUrl('live_chat_messages'),{method:'POST',headers:{...serviceHeaders,Prefer:'return=representation'},body:JSON.stringify(flowV2Flags.showRooms?{user_id:user.id,body:message,room_id:roomId||'bvs-live',broadcast_key:roomId||'bvs-live'}:{user_id:user.id,body:message,broadcast_key:roomId||'bvs-live'})});if(!response.ok)return NextResponse.json({error:'Live chat is not ready. Ask an administrator to apply the community migration.'},{status:503});const [created]=await response.json();return NextResponse.json({message:{...created,profile:access.profile}},{status:201})}
