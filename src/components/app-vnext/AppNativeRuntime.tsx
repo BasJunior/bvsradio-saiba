@@ -6,6 +6,7 @@ import { App } from "@capacitor/app";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { appRouteForNativeUrl } from "@/lib/app-link-routing";
 import { getNetworkStatus, isNativeRuntime, listenNetworkStatus, listenPushNotificationActions } from "@/lib/app-native";
+import { emitAppTelemetry } from "@/lib/app-telemetry";
 
 export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
   const router = useRouter();
@@ -19,15 +20,18 @@ export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
     const routeNativeUrl = (raw: string, source: "link" | "push") => {
       const target = appRouteForNativeUrl(raw, surface, window.location.hostname);
       if (!target) return;
+      emitAppTelemetry(source === "push" ? "push_open" : "deep_link_open", surface, { route: target.split(/[?#]/)[0] });
       window.dispatchEvent(new CustomEvent("bvs:app-entry", { detail: { source, target } }));
       router.push(target);
     };
 
     const applyNetwork = (status: { connected: boolean; connectionType: string }) => {
       document.documentElement.dataset.bvsNetwork = status.connected ? status.connectionType || "online" : "offline";
+      emitAppTelemetry("network_change", surface, { connected: status.connected, connectionType: status.connectionType });
       window.dispatchEvent(new CustomEvent("bvs:network-status", { detail: status }));
     };
 
+    emitAppTelemetry("app_open", surface);
     void getNetworkStatus().then((status) => alive && applyNetwork(status));
     void listenNetworkStatus(applyNetwork).then((stop) => { if (alive) stopNetwork = stop; else void stop(); });
 
