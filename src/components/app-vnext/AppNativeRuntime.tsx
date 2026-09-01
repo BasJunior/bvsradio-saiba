@@ -1,44 +1,57 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
-import { getNetworkStatus, isNativeRuntime, listenNetworkStatus } from "@/lib/app-native";
-
-function routeNativeUrl(raw: string) {
-  try {
-    const url = new URL(raw);
-    const currentHost = window.location.hostname;
-    const allowed = url.hostname === "bvsradio.com" || url.hostname === "www.bvsradio.com" || url.hostname === currentHost;
-    if (!allowed) return;
-    window.location.assign(`${url.pathname}${url.search}${url.hash}` || "/");
-  } catch {
-    // Ignore malformed external app URLs.
-  }
-}
+import { appRouteForNativeUrl } from "@/lib/app-link-routing";
+import { getNetworkStatus, isNativeRuntime, listenNetworkStatus, listenPushNotificationActions } from "@/lib/app-native";
 
 export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
+  const router = useRouter();
+
   useEffect(() => {
     let stopNetwork: (() => Promise<void>) | null = null;
     let stopAppUrl: (() => Promise<void>) | null = null;
+    let stopPushActions: (() => Promise<void>) | null = null;
+    let alive = true;
+
+    const routeNativeUrl = (raw: string, source: "link" | "push") => {
+      const target = appRouteForNativeUrl(raw, surface, window.location.hostname);
+      if (!target) return;
+      window.dispatchEvent(new CustomEvent("bvs:app-entry", { detail: { source, target } }));
+      router.push(target);
+    };
+
     const applyNetwork = (status: { connected: boolean; connectionType: string }) => {
       document.documentElement.dataset.bvsNetwork = status.connected ? status.connectionType || "online" : "offline";
       window.dispatchEvent(new CustomEvent("bvs:network-status", { detail: status }));
     };
-    void getNetworkStatus().then(applyNetwork);
-    void listenNetworkStatus(applyNetwork).then((stop) => { stopNetwork = stop; });
+
+    void getNetworkStatus().then((status) => alive && applyNetwork(status));
+    void listenNetworkStatus(applyNetwork).then((stop) => { if (alive) stopNetwork = stop; else void stop(); });
 
     if (isNativeRuntime()) {
-      void App.addListener("appUrlOpen", ({ url }) => routeNativeUrl(url)).then((handle) => {
-        stopAppUrl = () => handle.remove();
+      void App.addListener("appUrlOpen", ({ url }) => routeNativeUrl(url, "link")).then((handle) => {
+        if (alive) stopAppUrl = () => handle.remove(); else void handle.remove();
       });
+      void App.getLaunchUrl().then((launch) => {
+        if (alive && launch?.url) routeNativeUrl(launch.url, "link");
+      }).catch(() => undefined);
+      void listenPushNotificationActions((action) => {
+        const data = action.notification?.data || {};
+        const raw = typeof data.href === "string" ? data.href : typeof data.url === "string" ? data.url : "";
+        if (raw) routeNativeUrl(raw, "push");
+      }).then((stop) => { if (alive) stopPushActions = stop; else void stop(); });
       window.dispatchEvent(new CustomEvent("bvs:native-runtime", { detail: { surface, native: true } }));
     }
 
     return () => {
+      alive = false;
       void stopNetwork?.();
       void stopAppUrl?.();
+      void stopPushActions?.();
     };
-  }, [surface]);
+  }, [router, surface]);
   return null;
 }
