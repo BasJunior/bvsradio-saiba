@@ -24,7 +24,9 @@ type PushPlugin = {
   checkPermissions(): Promise<{ receive: Exclude<PushPermissionState, "unavailable"> }>;
   requestPermissions(): Promise<{ receive: Exclude<PushPermissionState, "unavailable"> }>;
   register(): Promise<void>;
-  addListener(eventName: string, listener: (payload: any) => void): Promise<ListenerHandle>;
+  addListener(eventName: "registration", listener: (token: { value: string }) => void): Promise<ListenerHandle>;
+  addListener(eventName: "registrationError", listener: (error: { error?: string }) => void): Promise<ListenerHandle>;
+  addListener(eventName: "pushNotificationActionPerformed", listener: (action: AppPushAction) => void): Promise<ListenerHandle>;
 };
 
 const Preferences = registerPlugin<PreferencesPlugin>("Preferences");
@@ -151,14 +153,8 @@ export async function registerPushDevice(accessToken: string, platform: NativePl
       resolveToken = resolve;
       rejectToken = reject;
     });
-    const registrationHandle = await PushNotifications.addListener("registration", (payload) => {
-      const token = payload as { value?: string };
-      if (token.value) resolveToken?.(token.value);
-    });
-    const errorHandle = await PushNotifications.addListener("registrationError", (payload) => {
-      const issue = payload as { error?: string };
-      rejectToken?.(new Error(issue.error || "Push registration failed."));
-    });
+    const registrationHandle = await PushNotifications.addListener("registration", (token) => resolveToken?.(token.value));
+    const errorHandle = await PushNotifications.addListener("registrationError", (issue) => rejectToken?.(new Error(issue.error || "Push registration failed.")));
 
     let deviceToken = "";
     try {
