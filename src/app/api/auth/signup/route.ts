@@ -13,10 +13,18 @@ type Body = {
   fullName?: string
   role?: string
   resendOnly?: boolean
+  next?: string
 }
 
 function bad(msg: string, status = 400) {
   return NextResponse.json({ error: msg }, { status })
+}
+
+function safeNextPath(raw?: string) {
+  const value = String(raw || '').trim()
+  if (!value.startsWith('/') || value.startsWith('//')) return ''
+  if (!/^\/app\/(ios|android)(?:\/|$)/.test(value)) return ''
+  return value.slice(0, 500)
 }
 
 async function ensureProfile(userId: string, username: string, role: SignupRole) {
@@ -28,8 +36,6 @@ async function ensureProfile(userId: string, username: string, role: SignupRole)
     body: JSON.stringify({
       id: userId,
       username,
-      // A legal/full name stays private in Auth metadata. Public/member identity
-      // starts from the chosen handle until the member edits it deliberately.
       display_name: username,
       role: profileRole,
       is_producer: producer,
@@ -37,11 +43,13 @@ async function ensureProfile(userId: string, username: string, role: SignupRole)
   })
 }
 
-async function sendSignupConfirm(email: string) {
+async function sendSignupConfirm(email: string, next?: string) {
+  const safeNext = safeNextPath(next)
+  const landingPath = safeNext ? `/auth/confirmed?next=${encodeURIComponent(safeNext)}` : '/auth/confirmed'
   const { link } = await generateAuthEmailLink({
     email,
     types: ['signup', 'magiclink'],
-    landingPath: '/auth/confirmed',
+    landingPath,
   })
   await sendConfirmAccountEmail(email, link)
 }
@@ -54,16 +62,18 @@ export async function POST(req: Request) {
     const username = (body.username || '').trim()
     const fullName = (body.fullName || '').trim()
     const resendOnly = Boolean(body.resendOnly)
+    const next = safeNextPath(body.next)
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return bad('Enter a valid email address (must include @ and a domain).')
     }
 
     if (resendOnly) {
-      await sendSignupConfirm(email)
+      await sendSignupConfirm(email, next)
       return NextResponse.json({
         ok: true,
         message: 'A new confirmation link was sent from BVS Radio. Check inbox and Spam.',
+        next: next || undefined,
       })
     }
 
@@ -101,12 +111,12 @@ export async function POST(req: Request) {
       const msg = String(create.data?.msg || create.data?.message || 'Signup failed')
       if (/already|registered|exists/i.test(msg)) {
         try {
-          await sendSignupConfirm(email)
+          await sendSignupConfirm(email, next)
           return NextResponse.json({
             ok: true,
             needsConfirmation: true,
-            message:
-              'This email already has an account awaiting confirmation. We sent a fresh BVS confirmation link.',
+            message: 'This email already has an account awaiting confirmation. We sent a fresh BVS confirmation link.',
+            next: next || undefined,
           })
         } catch {
           return bad('An account with this email already exists. Sign in, or use Forgot password.', 409)
@@ -116,17 +126,15 @@ export async function POST(req: Request) {
     }
 
     const userId = create.data?.id as string | undefined
-    if (userId) {
-      await ensureProfile(userId, username, role)
-    }
-
-    await sendSignupConfirm(email)
+    if (userId) await ensureProfile(userId, username, role)
+    await sendSignupConfirm(email, next)
 
     return NextResponse.json({
       ok: true,
       needsConfirmation: true,
       message: 'Check your email for a confirmation link from BVS Radio (contact@bvsradio.com).',
       user: userId ? { id: userId, email } : undefined,
+      next: next || undefined,
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal error'
