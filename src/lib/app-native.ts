@@ -135,19 +135,26 @@ export async function registerPushDevice(accessToken: string, platform: NativePl
     }
     if (permission !== "granted") return { ok: false, permission };
 
-    let registrationHandle: ListenerHandle | null = null;
-    let errorHandle: ListenerHandle | null = null;
+    let resolveToken: ((value: string) => void) | null = null;
+    let rejectToken: ((reason?: unknown) => void) | null = null;
     const tokenPromise = new Promise<string>((resolve, reject) => {
-      void PushNotifications.addListener("registration", (token) => resolve(token.value)).then((handle) => { registrationHandle = handle; });
-      void PushNotifications.addListener("registrationError", (issue) => reject(new Error(issue.error || "Push registration failed."))).then((handle) => { errorHandle = handle; });
+      resolveToken = resolve;
+      rejectToken = reject;
     });
-    await PushNotifications.register();
-    const deviceToken = await Promise.race([
-      tokenPromise,
-      new Promise<string>((_, reject) => window.setTimeout(() => reject(new Error("Push registration timed out.")), 12000)),
-    ]);
-    await registrationHandle?.remove().catch(() => undefined);
-    await errorHandle?.remove().catch(() => undefined);
+    const registrationHandle = await PushNotifications.addListener("registration", (token) => resolveToken?.(token.value));
+    const errorHandle = await PushNotifications.addListener("registrationError", (issue) => rejectToken?.(new Error(issue.error || "Push registration failed.")));
+
+    let deviceToken = "";
+    try {
+      await PushNotifications.register();
+      deviceToken = await Promise.race([
+        tokenPromise,
+        new Promise<string>((_, reject) => window.setTimeout(() => reject(new Error("Push registration timed out.")), 12000)),
+      ]);
+    } finally {
+      await registrationHandle.remove().catch(() => undefined);
+      await errorHandle.remove().catch(() => undefined);
+    }
 
     const response = await fetch("/api/app/push/register", {
       method: "POST",
