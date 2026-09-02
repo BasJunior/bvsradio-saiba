@@ -7,18 +7,53 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0E82AE63B80305BB033DBA52 /* Capacitor.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = 97AAB305D7BE33E0C395EE37 /* Capacitor.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		30EE269CD65C95A2288242DD /* CapacitorSplashScreen.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = 18E5F1E5E9BA6D6E233D370F /* CapacitorSplashScreen.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		4B17CDB168C34AD7BCAC200D /* CapacitorNetwork.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = FC95A50B381595CE8E8D5ADE /* CapacitorNetwork.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		570E49AA14400DBB89C00742 /* Cordova.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = 5219F4FBB2D8823BCBA95ACF /* Cordova.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		62A056B0A199359DE58A4493 /* CapacitorPreferences.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = 4FC644C5BD9916D88ED2C997 /* CapacitorPreferences.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		7D2EB513AF4D373266AC5F8C /* CapacitorShare.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = 02935E37B64F5A2B107B4A59 /* CapacitorShare.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
+		B05000000000000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B05000000000000000000002 /* PrivacyInfo.xcprivacy */; };
+		CDBDC114ED887DFACA11C969 /* CapacitorApp.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = 923248022F349FAC3642A658 /* CapacitorApp.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FB5140F0B13DDDB717B7A47C /* CapacitorPushNotifications.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = D43FD3280D0250F19CD7C0B8 /* CapacitorPushNotifications.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		FE3BEE387D1FD0AB5723F1AE /* CapacitorStatusBar.framework in Embed Capacitor Frameworks */ = {isa = PBXBuildFile; fileRef = D157FCB05C6ECEB33EF78E34 /* CapacitorStatusBar.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		2E1449A143DADBAB6F5E1F8B /* Embed Capacitor Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				0E82AE63B80305BB033DBA52 /* Capacitor.framework in Embed Capacitor Frameworks */,
+				CDBDC114ED887DFACA11C969 /* CapacitorApp.framework in Embed Capacitor Frameworks */,
+				570E49AA14400DBB89C00742 /* Cordova.framework in Embed Capacitor Frameworks */,
+				4B17CDB168C34AD7BCAC200D /* CapacitorNetwork.framework in Embed Capacitor Frameworks */,
+				62A056B0A199359DE58A4493 /* CapacitorPreferences.framework in Embed Capacitor Frameworks */,
+				FB5140F0B13DDDB717B7A47C /* CapacitorPushNotifications.framework in Embed Capacitor Frameworks */,
+				7D2EB513AF4D373266AC5F8C /* CapacitorShare.framework in Embed Capacitor Frameworks */,
+				30EE269CD65C95A2288242DD /* CapacitorSplashScreen.framework in Embed Capacitor Frameworks */,
+				FE3BEE387D1FD0AB5723F1AE /* CapacitorStatusBar.framework in Embed Capacitor Frameworks */,
+			);
+			name = "Embed Capacitor Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		02935E37B64F5A2B107B4A59 /* CapacitorShare.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = CapacitorShare.framework; path = CapacitorShare/CapacitorShare.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		18E5F1E5E9BA6D6E233D370F /* CapacitorSplashScreen.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = CapacitorSplashScreen.framework; path = CapacitorSplashScreen/CapacitorSplashScreen.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		4FC644C5BD9916D88ED2C997 /* CapacitorPreferences.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = CapacitorPreferences.framework; path = CapacitorPreferences/CapacitorPreferences.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -27,9 +62,17 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		5219F4FBB2D8823BCBA95ACF /* Cordova.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = Cordova.framework; path = CapacitorCordova/Cordova.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		923248022F349FAC3642A658 /* CapacitorApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = CapacitorApp.framework; path = CapacitorApp/CapacitorApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		97AAB305D7BE33E0C395EE37 /* Capacitor.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = Capacitor.framework; path = Capacitor/Capacitor.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
+		B05000000000000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		B05000000000000000000003 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
+		D157FCB05C6ECEB33EF78E34 /* CapacitorStatusBar.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = CapacitorStatusBar.framework; path = CapacitorStatusBar/CapacitorStatusBar.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D43FD3280D0250F19CD7C0B8 /* CapacitorPushNotifications.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = CapacitorPushNotifications.framework; path = CapacitorPushNotifications/CapacitorPushNotifications.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
+		FC95A50B381595CE8E8D5ADE /* CapacitorNetwork.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; lastKnownFileType = wrapper.framework; name = CapacitorNetwork.framework; path = CapacitorNetwork/CapacitorNetwork.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,6 +91,15 @@
 			isa = PBXGroup;
 			children = (
 				AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */,
+				97AAB305D7BE33E0C395EE37 /* Capacitor.framework */,
+				923248022F349FAC3642A658 /* CapacitorApp.framework */,
+				5219F4FBB2D8823BCBA95ACF /* Cordova.framework */,
+				FC95A50B381595CE8E8D5ADE /* CapacitorNetwork.framework */,
+				4FC644C5BD9916D88ED2C997 /* CapacitorPreferences.framework */,
+				D43FD3280D0250F19CD7C0B8 /* CapacitorPushNotifications.framework */,
+				02935E37B64F5A2B107B4A59 /* CapacitorShare.framework */,
+				18E5F1E5E9BA6D6E233D370F /* CapacitorSplashScreen.framework */,
+				D157FCB05C6ECEB33EF78E34 /* CapacitorStatusBar.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -73,6 +125,8 @@
 		504EC3061FED79650016851F /* App */ = {
 			isa = PBXGroup;
 			children = (
+				B05000000000000000000002 /* PrivacyInfo.xcprivacy */,
+				B05000000000000000000003 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
@@ -105,7 +159,7 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
-				9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */,
+				2E1449A143DADBAB6F5E1F8B /* Embed Capacitor Frameworks */,
 			);
 			buildRules = (
 			);
@@ -130,6 +184,14 @@
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
 						ProvisioningStyle = Automatic;
+						SystemCapabilities = {
+							com.apple.AssociatedDomains = {
+								enabled = 1;
+							};
+							com.apple.Push = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -142,8 +204,6 @@
 				Base,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
-			packageReferences = (
-			);
 			productRefGroup = 504EC3051FED79650016851F /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -158,6 +218,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B05000000000000000000001 /* PrivacyInfo.xcprivacy in Resources */,
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
@@ -186,21 +247,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-App/Pods-App-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -361,6 +407,8 @@
 			baseConfigurationReference = FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				BVS_APNS_ENVIRONMENT = development;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				INFOPLIST_FILE = App/Info.plist;
@@ -384,6 +432,8 @@
 			baseConfigurationReference = AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				BVS_APNS_ENVIRONMENT = production;
+				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = VGFK77VH73;

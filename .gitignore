@@ -53,3 +53,4 @@ ops/store-launch/assets/appstore-iphone-65/raw/
 ops/store-launch/assets/appstore-iphone-65/final/
 ops/store-launch/builds/
 artifacts/
+/output/

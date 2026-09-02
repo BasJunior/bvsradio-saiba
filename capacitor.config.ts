@@ -6,22 +6,41 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * For fully offline packages later: switch to local `webDir` after a static export strategy.
  */
 const mobileSurface = process.env.BVS_MOBILE_SURFACE === "android" ? "android" : "ios";
-const appVariant = process.env.BVS_APP_VARIANT === "beta" ? "beta" : "production";
+const appVariant = process.env.BVS_APP_VARIANT || "production";
+if (!["production", "beta", "vnext"].includes(appVariant)) {
+  throw new Error("Unknown BVS_APP_VARIANT.");
+}
 const isBeta = appVariant === "beta";
+const isVNext = appVariant === "vnext";
 const betaUrl = process.env.BVS_MOBILE_URL?.trim();
 
-if (isBeta && !betaUrl) {
+if ((isBeta || isVNext) && !betaUrl) {
   throw new Error(
-    "BVS_MOBILE_URL is required for beta builds. Point it at the isolated staging deployment.",
+    "BVS_MOBILE_URL is required for beta/vNext builds. Point it at the isolated staging deployment.",
   );
 }
 
 const serverUrl = new URL(
-  isBeta ? betaUrl! : `https://bvsradio.com/app/${mobileSurface}`,
+  isBeta || isVNext ? betaUrl! : `https://bvsradio.com/app/${mobileSurface}`,
 );
 
 if (serverUrl.protocol !== "https:") {
   throw new Error("BVS mobile builds require an HTTPS server URL.");
+}
+
+// vNext retains the App Store identity, but must never silently load the live
+// website or the existing beta. Its web/backend deployment is a separate gate.
+if (isVNext) {
+  const host = serverUrl.hostname.toLowerCase();
+  if (host === "bvsradio.com" || host.endsWith(".bvsradio.com") || host === "bvsradio-beta.vercel.app") {
+    throw new Error("vNext requires a separate deployment, not production or the current beta.");
+  }
+  if (serverUrl.username || serverUrl.password || serverUrl.search || serverUrl.hash) {
+    throw new Error("The vNext entry URL must not contain credentials, query parameters, or fragments.");
+  }
+  if (serverUrl.pathname.replace(/\/$/, "") !== `/app/${mobileSurface}`) {
+    throw new Error(`The vNext entry URL must use /app/${mobileSurface}.`);
+  }
 }
 
 const config: CapacitorConfig = {
@@ -33,7 +52,7 @@ const config: CapacitorConfig = {
     // Default build is iOS. Play builds use BVS_MOBILE_SURFACE=android.
     url: serverUrl.toString(),
     cleartext: false,
-    allowNavigation: isBeta
+    allowNavigation: isBeta || isVNext
       ? [serverUrl.hostname, `https://${serverUrl.hostname}/*`]
       : ["bvsradio.com", "*.bvsradio.com", "https://bvsradio.com/*"],
   },

@@ -27,6 +27,8 @@ jobs:
       - name: Regenerate Capacitor Android metadata
         env:
           BVS_MOBILE_SURFACE: android
+          BVS_APP_VARIANT: vnext
+          BVS_MOBILE_URL: https://vnext-native-ci.invalid/app/android
         run: |
           mkdir -p out
           printf '<!doctype html><title>BVS native shell</title>' > out/index.html
@@ -50,6 +52,8 @@ jobs:
       - name: Regenerate Capacitor iOS metadata
         env:
           BVS_MOBILE_SURFACE: ios
+          BVS_APP_VARIANT: vnext
+          BVS_MOBILE_URL: https://vnext-native-ci.invalid/app/ios
         run: |
           mkdir -p out
           printf '<!doctype html><title>BVS native shell</title>' > out/index.html
@@ -65,3 +69,20 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:app-links
+      - run: npm run test:native-config
+      - run: npm run test:native-contract
+      - run: npm run test:safe-floor
+      - run: npm run typecheck
+      - run: npm run build
