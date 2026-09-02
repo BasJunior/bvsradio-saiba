@@ -97,7 +97,13 @@ public class BvsOfflineMediaPlugin: CAPPlugin, CAPBridgedPlugin {
             guard let self else { return }
             do {
                 let record = try self.loadRecords()[trackId]
-                self.resolve(call, ["item": record.map { self.itemPayload($0) } ?? NSNull()])
+                let item: JSValue
+                if let record {
+                    item = self.itemPayload(record)
+                } else {
+                    item = NSNull()
+                }
+                self.resolve(call, ["item": item])
             } catch {
                 self.reject(call, error.localizedDescription)
             }
@@ -227,18 +233,18 @@ public class BvsOfflineMediaPlugin: CAPPlugin, CAPBridgedPlugin {
         }.resume()
     }
 
-    private func itemPayload(_ record: Record) -> [String: Any] {
+    private func itemPayload(_ record: Record) -> JSObject {
         let fileExists = FileManager.default.fileExists(atPath: mediaURL(record.trackId).path)
         let valid = parseISO(record.licenseValidUntil).map { $0 > Date() } ?? false
         let state = !fileExists ? "failed" : valid ? "ready" : "expired"
-        var item: [String: Any] = [
+        var item: JSObject = [
             "trackId": record.trackId,
             "surface": "ios",
             "title": record.title,
             "artist": record.artist,
             "licenseValidUntil": record.licenseValidUntil,
             "downloadedAt": record.downloadedAt,
-            "bytes": record.bytes,
+            "bytes": NSNumber(value: record.bytes),
             "state": state,
         ]
         if let artworkUrl = record.artworkUrl { item["artworkUrl"] = artworkUrl }
