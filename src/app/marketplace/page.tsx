@@ -6,6 +6,7 @@ import {
   marketplaceStorefronts,
   type MarketplaceStorefront,
 } from "@/lib/marketplace-storefronts";
+import MarketplaceProviderMap from "@/components/MarketplaceProviderMap";
 import { mediaUrlForStoredValue } from "@/lib/media-url";
 import { readCartLines, writeCartLines } from "@/lib/cart-client";
 
@@ -134,6 +135,7 @@ export default function MarketplacePage() {
         <div className="mt-5 grid gap-4 sm:mt-7 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
           {storefronts.map((provider) => <ProviderCard key={provider.slug} provider={provider} />)}
         </div>
+        <MarketplaceProviderMap providers={storefronts} />
       </section>
 
       <section id="services" className="mt-10 sm:mt-16" aria-labelledby="marketplace-services-title">
