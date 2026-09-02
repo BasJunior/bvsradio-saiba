@@ -16,8 +16,8 @@ create table if not exists public.app_push_devices (
 create index if not exists app_push_devices_user_idx on public.app_push_devices(user_id, enabled, updated_at desc);
 create index if not exists app_push_devices_platform_idx on public.app_push_devices(platform, enabled, updated_at desc);
 alter table public.app_push_devices enable row level security;
-revoke all on public.app_push_devices from anon, authenticated;
-grant all on public.app_push_devices to service_role;
+revoke all on public.app_push_devices from public, anon, authenticated;
+grant select, insert, update, delete on public.app_push_devices to service_role;
 comment on table public.app_push_devices is 'Server-mediated APNs/FCM registrations for BVS native app builds.';
 
 create table if not exists public.app_notification_preferences (
@@ -32,8 +32,8 @@ create table if not exists public.app_notification_preferences (
   updated_at timestamptz not null default now()
 );
 alter table public.app_notification_preferences enable row level security;
-revoke all on public.app_notification_preferences from anon, authenticated;
-grant all on public.app_notification_preferences to service_role;
+revoke all on public.app_notification_preferences from public, anon, authenticated;
+grant select, insert, update, delete on public.app_notification_preferences to service_role;
 comment on table public.app_notification_preferences is 'User-controlled push categories; marketing defaults off.';
 
 -- The original schema created playlist tables but did not define owner policies.
