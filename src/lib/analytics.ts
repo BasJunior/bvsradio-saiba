@@ -46,6 +46,9 @@ export const analyticsEvents = [
   "tv_companion_qr_shown",
   "creator_activity_open",
   "contextual_commerce_open",
+  "artist_activation_nudge_shown",
+  "artist_activation_nudge_action",
+  "artist_live_share",
 ] as const
 
 export type AnalyticsEvent = (typeof analyticsEvents)[number]
