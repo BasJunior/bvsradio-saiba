@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run test:ios-surface-gates && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:explore-discovery && next build",
-    "vercel-build": "npm run test:ios-surface-gates && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:explore-discovery && next build",
+    "build": "npm run test:ios-surface-gates && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:explore-discovery && npm run test:marketplace-storefront && next build",
+    "vercel-build": "npm run test:ios-surface-gates && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:explore-discovery && npm run test:marketplace-storefront && next build",
     "test:ios-surface-gates": "npm run test:ios-surface-lock && npm run test:apple-ios-surface",
     "start": "next start",
     "lint": "eslint",
@@ -18,6 +18,7 @@
     "test:song-workspace": "node scripts/song-workspace-tests.mjs",
     "test:web-offers": "node scripts/web-offers-tests.mjs",
     "test:explore-discovery": "node scripts/explore-discovery-tests.mjs",
+    "test:marketplace-storefront": "node scripts/marketplace-storefront-booking-tests.mjs",
     "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
     "typecheck": "tsc --noEmit",
     "cap:sync": "npx cap sync",
