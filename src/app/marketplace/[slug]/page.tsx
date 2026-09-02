@@ -9,6 +9,7 @@ import {
   type MarketplaceStorefront,
   type StorefrontService,
 } from "@/lib/marketplace-storefronts";
+import MarketplaceProviderMap from "@/components/MarketplaceProviderMap";
 import { readCartLines, writeCartLines } from "@/lib/cart-client";
 
 type MarketplacePayload = {
@@ -87,8 +88,6 @@ export default function MarketplaceStorefrontPage() {
       else next.push(line);
       writeCartLines(next);
     } else {
-      // Service checkout is deliberately one job at a time so its brief, payment and
-      // fulfilment stay attached to one provider/order.
       writeCartLines([line]);
     }
     router.push("/checkout");
@@ -187,18 +186,21 @@ export default function MarketplaceStorefrontPage() {
           ) : null}
         </div>
 
-        <aside className="h-fit rounded-2xl border border-white/10 bg-white/[.025] p-5 lg:sticky lg:top-24">
-          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Provider profile</p>
-          <p className="mt-3 text-sm leading-relaxed text-text-secondary">{provider.bio}</p>
-          <div className="mt-5 flex flex-wrap gap-2">
-            {provider.specialties.map((item) => <span key={item} className="rounded-full bg-white/5 px-3 py-1 text-xs">{item.replaceAll("_", " ")}</span>)}
+        <aside className="h-fit space-y-5 lg:sticky lg:top-24">
+          <div className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Provider profile</p>
+            <p className="mt-3 text-sm leading-relaxed text-text-secondary">{provider.bio}</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {provider.specialties.map((item) => <span key={item} className="rounded-full bg-white/5 px-3 py-1 text-xs">{item.replaceAll("_", " ")}</span>)}
+            </div>
+            {wolf ? (
+              <p className="mt-5 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
+                Pricing is based on the WolfBridges reference supplied to BVS. Booking times appear only after the studio publishes real availability.
+              </p>
+            ) : null}
+            <Link href="/marketplace" className="mt-5 inline-flex text-sm text-brand hover:underline">Compare other providers →</Link>
           </div>
-          {wolf ? (
-            <p className="mt-5 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-              Pricing is based on the WolfBridges reference supplied to BVS. Booking times appear only after the studio publishes real availability.
-            </p>
-          ) : null}
-          <Link href="/marketplace" className="mt-5 inline-flex text-sm text-brand hover:underline">Compare other providers →</Link>
+          <MarketplaceProviderMap providers={[provider]} compact />
         </aside>
       </div>
     </main>
