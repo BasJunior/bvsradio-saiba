@@ -55,3 +55,24 @@ Before commit, the migration ran transactionally with short lock/statement timeo
 - Beta database: only the documented authorized additive migration.
 - App Store Connect/archive/TestFlight: no action.
 - Native device/product acceptance: still outstanding; this backend checkpoint is not release approval.
+
+---
+
+## VPS completion addendum (2026-09-02 evening)
+
+User authorized beta backend. VPS finished the blocked service-key handoff using the authoritative local secret store (not Vercel decrypt of sensitive values).
+
+### Done
+- Local validated beta secrets → non-committed `.env.vnext-beta.local`
+- Confirmed beta schema packs already applied (`app_push_devices`, `app_notification_preferences`, `community_blocks`, playlist RLS, `room_id`)
+- Wrote **preview + gitBranch=`saiba/app-vnext-2026-09`** overrides on project `bvsradio-saiba` for the three Supabase keys
+- Redeployed tip `80d52c3` on that branch (`bvsradio-saiba-7n2v7m2ed-…`)
+- **Device URL problem:** `bvsradio-saiba` previews are SSO-protected (302 to Vercel login) and cannot be the iPhone `BVS_MOBILE_URL`
+- Isolated public project `bvsradio-app-vnext-2026-09` configured with the same beta trio + site URL, redeployed; `/app/ios` returns 200 without SSO; JS bundle references beta ref, not production
+- Public beta site and production site left intact
+
+### Handoff doc
+See `ops/VNEXT_VPS_BACKEND_HANDOFF_2026-09-02.md` for M1 build inputs.
+
+### Still not claimed
+Native compile, signing, physical device acceptance, archive, TestFlight.
