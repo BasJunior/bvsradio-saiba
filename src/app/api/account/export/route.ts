@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { publicDistributionStatusLabel } from '@/lib/distribution-path'
 import { authUserId, serviceHeaders } from '@/lib/storage-upload'
 
 export const runtime = 'nodejs'
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
     pushDevices,
     marketplaceBookings,
     streamQualifications,
-    distributionJobs,
+    rawDistributionJobs,
     deposits,
     incomeEntries,
     ledgerEntries,
@@ -68,7 +69,7 @@ export async function GET(request: Request) {
     rows(`app_push_devices?user_id=eq.${user.id}&select=id,user_id,platform,app_variant,enabled,last_seen_at,created_at,updated_at`),
     rows(`marketplace_booking_requests?buyer_user_id=eq.${user.id}&select=*`),
     rows(`stream_qualifications?user_id=eq.${user.id}&select=*`),
-    rows(`distribution_jobs?artist_user_id=eq.${user.id}&select=*`),
+    rows(`distribution_jobs?artist_user_id=eq.${user.id}&select=id,release_id,artist_user_id,status,created_at,updated_at`),
     rows(`artist_deposits?artist_user_id=eq.${user.id}&select=*`),
     rows(`artist_income_entries?artist_user_id=eq.${user.id}&select=*`),
     rows(`artist_ledger_entries?artist_user_id=eq.${user.id}&select=*`),
@@ -81,6 +82,10 @@ export async function GET(request: Request) {
   const playlistTracks = playlistIds.length
     ? await rows(`playlist_tracks?playlist_id=in.(${playlistIds.join(',')})&select=*`)
     : []
+  const distributionJobs = (rawDistributionJobs as Array<Record<string, unknown>>).map((job) => ({
+    ...job,
+    publicStatus: publicDistributionStatusLabel(String(job.status || '')),
+  }))
 
   const payload = {
     exportedAt: new Date().toISOString(),
