@@ -6,6 +6,22 @@ function withQueryAndHash(pathname: string, search: string, hash: string) {
   return `${pathname}${search}${hash}`;
 }
 
+function marketplaceRoute(pathname: string, root: string, search: string, hash: string) {
+  const params = new URLSearchParams(search);
+  if (pathname === "/shop") {
+    if (!params.has("provider")) params.set("provider", "bvs-studio-services");
+    const suffix = params.toString();
+    return `${root}/marketplace${suffix ? `?${suffix}` : ""}${hash}`;
+  }
+  if (pathname === "/marketplace") return withQueryAndHash(`${root}/marketplace`, search, hash);
+  const match = pathname.match(/^\/marketplace\/([^/]+)(?:\/(book))?$/);
+  if (!match?.[1]) return null;
+  params.set("provider", decodeURIComponent(match[1]));
+  if (match[2] === "book") params.set("book", "1");
+  const suffix = params.toString();
+  return `${root}/marketplace${suffix ? `?${suffix}` : ""}${hash}`;
+}
+
 function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, hash: string) {
   const root = `/app/${surface}`;
   if (pathname === "/" || pathname === "/radio" || pathname.startsWith("/radio/") || pathname === "/listen" || pathname.startsWith("/listen/")) {
@@ -23,9 +39,11 @@ function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, 
   if (pathname.startsWith("/creator/studio/marketplace") || pathname === "/creator/marketplace") return withQueryAndHash(`${root}/studio/marketplace`, search, hash);
   if (pathname.startsWith("/creator/studio/insights")) return withQueryAndHash(`${root}/studio/insights`, search, hash);
   if (pathname === "/artists" || pathname === "/artist/premium" || pathname === "/producer/premium") return withQueryAndHash(`${root}/studio/money`, search, hash);
-  if (pathname === "/shop" || pathname === "/marketplace") return withQueryAndHash(`${root}/studio/marketplace`, search, hash);
   if (pathname.startsWith("/marketplace/orders")) return withQueryAndHash(`${root}/studio/orders`, search, hash);
-  if (pathname.startsWith("/marketplace/")) return withQueryAndHash(`${root}/studio/marketplace`, search, hash);
+  if (pathname === "/shop" || pathname === "/marketplace" || pathname.startsWith("/marketplace/")) {
+    const destination = marketplaceRoute(pathname, root, search, hash);
+    if (destination) return destination;
+  }
 
   const roomMatch = pathname.match(/^\/rooms\/([^/]+)$/);
   if (roomMatch?.[1]) return withQueryAndHash(`${root}/rooms/${roomMatch[1]}`, search, hash);
