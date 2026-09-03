@@ -13,9 +13,9 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const items = [
     { href: base, label: "Home", icon: "⌂", active: pathname === base },
     { href: `${base}/explore`, label: "Explore", icon: "⌕", active: pathname.startsWith(`${base}/explore`) },
-    { href: `${base}/library`, label: "Library", icon: "♡", active: pathname.startsWith(`${base}/library`) },
+    { href: `${base}/library`, label: "Library", icon: "♡", active: pathname.startsWith(`${base}/library`) || pathname.startsWith(`${base}/playlist`) },
     { href: `${base}/studio`, label: isCreator ? "Studio" : "Create", icon: "＋", active: pathname.startsWith(`${base}/studio`) },
-    { href: `${base}/you`, label: "You", icon: "◉", active: pathname.startsWith(`${base}/you`) || pathname.startsWith(`${base}/join`) },
+    { href: `${base}/you`, label: "You", icon: "◉", active: pathname.startsWith(`${base}/you`) || pathname.startsWith(`${base}/join`) || pathname.startsWith(`${base}/account`) || pathname.startsWith(`${base}/notifications`) || pathname.startsWith(`${base}/support`) },
   ];
 
   return (
@@ -32,16 +32,9 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
             key={item.href}
             href={item.href}
             aria-current={item.active ? "page" : undefined}
-            className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors sm:text-[11px] ${
-              item.active ? "text-brand" : "text-text-secondary hover:text-white"
-            }`}
+            className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors sm:text-[11px] ${item.active ? "text-brand" : "text-text-secondary hover:text-white"}`}
           >
-            <span
-              className={`grid h-7 w-10 place-items-center rounded-full text-xl leading-none ${item.active ? "bg-brand/15" : ""}`}
-              aria-hidden="true"
-            >
-              {item.icon}
-            </span>
+            <span className={`grid h-7 w-10 place-items-center rounded-full text-xl leading-none ${item.active ? "bg-brand/15" : ""}`} aria-hidden="true">{item.icon}</span>
             <span className="truncate">{item.label}</span>
           </Link>
         ))}
