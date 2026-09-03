@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { readRecentFlowObjects } from "@/lib/flow-memory";
 import { readLibrary } from "@/lib/library";
@@ -25,6 +26,7 @@ type Answer = {
   reason?: string;
 };
 type Message = Answer & { role: "user" | "assistant" };
+type AppSurface = "ios" | "android";
 
 function needsDeviceContext(message: string) {
   const q = message.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -52,6 +54,57 @@ function clientContext(message: string) {
   };
 }
 
+function appSurfaceFromPath(pathname: string): AppSurface | null {
+  const match = pathname.match(/^\/app\/(ios|android)(?:\/|$)/);
+  return match ? (match[1] as AppSurface) : null;
+}
+
+function appExploreHref(surface: AppSurface, href: string, fallbackQuery = "") {
+  const url = new URL(href, "https://bvs.local");
+  const params = new URLSearchParams();
+  const query = url.searchParams.get("q") || fallbackQuery;
+  const mode = url.searchParams.get("mode") || "";
+  const type = url.searchParams.get("type") || "";
+  if (query) params.set("q", query);
+  if (mode === "creators") params.set("kind", "artists");
+  else if (mode === "producers") params.set("kind", "producers");
+  else if (mode === "beats" || type === "beat") params.set("kind", "beats");
+  else if (url.pathname === "/catalogue") params.set("kind", "music");
+  const suffix = params.toString();
+  return `/app/${surface}/explore${suffix ? `?${suffix}` : ""}`;
+}
+
+function appAwareHref(href: string, surface: AppSurface | null, object?: AskObject) {
+  if (!surface || !href.startsWith("/")) return href;
+  if (href.startsWith(`/app/${surface}`)) return href;
+
+  const url = new URL(href, "https://bvs.local");
+  const path = url.pathname;
+
+  if (object?.kind === "beat" && object.id) return `/app/${surface}/beat/${encodeURIComponent(object.id)}`;
+  if (object?.kind === "creator") {
+    const creatorMatch = path.match(/^\/(?:artist|producer|creator)\/([^/]+)/);
+    if (creatorMatch?.[1]) return `/app/${surface}/creator/${encodeURIComponent(decodeURIComponent(creatorMatch[1]))}${url.search}`;
+  }
+  if (object?.kind === "show") {
+    const showMatch = path.match(/^\/shows?\/([^/]+)/);
+    if (showMatch?.[1]) return `/app/${surface}/show/${encodeURIComponent(decodeURIComponent(showMatch[1]))}`;
+  }
+  if (object?.kind === "track" || object?.kind === "release") return appExploreHref(surface, href, object.title);
+  if (object?.kind === "service" || object?.kind === "product") return `/app/${surface}/studio`;
+  if (object?.kind === "story") return appExploreHref(surface, href, object.title);
+
+  if (path === "/contact") return `/app/${surface}/support${url.search}`;
+  if (path === "/search" || path === "/catalogue") return appExploreHref(surface, href);
+  if (path === "/radio" || path === "/") return `/app/${surface}`;
+  if (path === "/library") return `/app/${surface}/library`;
+  if (path === "/upload" || path.startsWith("/studio") || path === "/shop" || path.startsWith("/marketplace")) return `/app/${surface}/studio`;
+  if (path === "/auth/login" || path === "/auth/signup") return `/app/${surface}/join`;
+  if (path === "/account" || path === "/notifications") return `/app/${surface}/you`;
+
+  return appExploreHref(surface, href);
+}
+
 function objectLabel(kind: AskObject["kind"]) {
   if (kind === "creator") return "Creator";
   if (kind === "beat") return "Beat";
@@ -63,8 +116,9 @@ function objectLabel(kind: AskObject["kind"]) {
   return "Track";
 }
 
-function AskObjectCard({ object }: { object: AskObject }) {
+function AskObjectCard({ object, surface }: { object: AskObject; surface: AppSurface | null }) {
   const mediaObject = object.kind === "track" || object.kind === "beat" || object.kind === "release";
+  const route = appAwareHref(object.route, surface, object);
   const content = (
     <>
       <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-white/5">
@@ -94,7 +148,7 @@ function AskObjectCard({ object }: { object: AskObject }) {
         data-flow-detail-image={object.artwork || ""}
         data-flow-detail-collection={object.collection || ""}
         data-flow-detail-src={object.mediaSrc || ""}
-        data-flow-detail-href={object.route}
+        data-flow-detail-href={route}
         className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[.035] p-3 transition hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         {content}
@@ -103,13 +157,15 @@ function AskObjectCard({ object }: { object: AskObject }) {
   }
 
   return (
-    <Link href={object.route} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.035] p-3 transition hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+    <Link href={route} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.035] p-3 transition hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
       {content}
     </Link>
   );
 }
 
 export default function VisitorAssistant() {
+  const pathname = usePathname();
+  const appSurface = appSurfaceFromPath(pathname);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -163,16 +219,16 @@ export default function VisitorAssistant() {
       <div className="flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
         {messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-10" : "mr-4"}>
           <p className={message.role === "user" ? "rounded-2xl rounded-br-md bg-brand px-4 py-3 text-sm text-black" : "rounded-2xl rounded-bl-md bg-white/[0.07] px-4 py-3 text-sm leading-relaxed"}>{message.reply}</p>
-          {message.objects?.length ? <div className="mt-2 space-y-2">{message.objects.map((object) => <AskObjectCard key={`${object.kind}:${object.id}`} object={object} />)}</div> : null}
-          {message.links?.length ? <div className="mt-2 flex flex-wrap gap-2">{message.links.map((link) => <Link key={`${link.href}:${link.label}`} href={link.href} data-flow-detail-skip="true" className="rounded-full border border-brand/40 px-3 py-1.5 text-xs text-brand hover:bg-brand/10">{link.label} →</Link>)}</div> : null}
+          {message.objects?.length ? <div className="mt-2 space-y-2">{message.objects.map((object) => <AskObjectCard key={`${object.kind}:${object.id}`} object={object} surface={appSurface} />)}</div> : null}
+          {message.links?.length ? <div className="mt-2 flex flex-wrap gap-2">{message.links.map((link) => <Link key={`${link.href}:${link.label}`} href={appAwareHref(link.href, appSurface)} data-flow-detail-skip="true" className="rounded-full border border-brand/40 px-3 py-1.5 text-xs text-brand hover:bg-brand/10">{link.label} →</Link>)}</div> : null}
         </div>)}
         {busy && <p className="text-sm text-text-secondary">Searching BVS…</p>}
         <div ref={endRef} />
       </div>
       {messages.length === 1 && <div className="flex flex-wrap gap-2 px-4 pb-3">{[
-        "Who made Chiraq Drillaz?",
+        "Show me Afro-fusion artists",
         "What’s new on BVS?",
-        "Find beats by Wolf Bridges",
+        "Find beats by Zola Beats",
         "What have I been listening to?",
       ].map((text) => <button key={text} onClick={() => void send(undefined, text)} className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-text-secondary hover:border-brand/40 hover:text-white">{text}</button>)}</div>}
       <form onSubmit={(event) => void send(event)} className="flex gap-2 border-t border-white/10 p-3">
