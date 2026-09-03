@@ -15,6 +15,8 @@ export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
     let stopNetwork: (() => Promise<void>) | null = null;
     let stopAppUrl: (() => Promise<void>) | null = null;
     let stopPushActions: (() => Promise<void>) | null = null;
+    let stopBackButton: (() => Promise<void>) | null = null;
+    let stopAppState: (() => Promise<void>) | null = null;
     let alive = true;
 
     const routeNativeUrl = (raw: string, source: "link" | "push") => {
@@ -47,6 +49,25 @@ export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
         const raw = typeof data.href === "string" ? data.href : typeof data.url === "string" ? data.url : "";
         if (raw) routeNativeUrl(raw, "push");
       }).then((stop) => { if (alive) stopPushActions = stop; else void stop(); });
+
+      void App.addListener("appStateChange", ({ isActive }) => {
+        emitAppTelemetry(isActive ? "app_resume" : "app_background", surface);
+        window.dispatchEvent(new CustomEvent(isActive ? "bvs:app-resume" : "bvs:app-background"));
+        if (isActive) void getNetworkStatus().then((status) => alive && applyNetwork(status));
+      }).then((handle) => {
+        if (alive) stopAppState = () => handle.remove(); else void handle.remove();
+      });
+
+      if (surface === "android") {
+        void App.addListener("backButton", ({ canGoBack }) => {
+          const home = `/app/${surface}`;
+          if (window.location.pathname !== home && (canGoBack || window.history.length > 1)) router.back();
+          else void App.exitApp();
+        }).then((handle) => {
+          if (alive) stopBackButton = () => handle.remove(); else void handle.remove();
+        });
+      }
+
       window.dispatchEvent(new CustomEvent("bvs:native-runtime", { detail: { surface, native: true } }));
     }
 
@@ -55,6 +76,8 @@ export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
       void stopNetwork?.();
       void stopAppUrl?.();
       void stopPushActions?.();
+      void stopBackButton?.();
+      void stopAppState?.();
     };
   }, [router, surface]);
   return null;

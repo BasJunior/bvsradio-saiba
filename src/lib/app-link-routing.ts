@@ -6,6 +6,36 @@ function withQueryAndHash(pathname: string, search: string, hash: string) {
   return `${pathname}${search}${hash}`;
 }
 
+function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, hash: string) {
+  const root = `/app/${surface}`;
+  if (pathname === "/" || pathname === "/radio" || pathname.startsWith("/radio/") || pathname === "/listen" || pathname.startsWith("/listen/")) {
+    return withQueryAndHash(root, search, hash);
+  }
+  if (pathname === "/library") return withQueryAndHash(`${root}/library`, search, hash);
+  if (pathname === "/notifications") return withQueryAndHash(`${root}/notifications`, search, hash);
+  if (pathname === "/account") return withQueryAndHash(`${root}/account`, search, hash);
+  if (pathname.startsWith("/account/orders/")) return withQueryAndHash(`${root}/studio/orders`, search, hash);
+  if (pathname === "/contact" || pathname === "/support") return withQueryAndHash(`${root}/support`, search, hash);
+  if (pathname === "/search" || pathname === "/catalogue") return withQueryAndHash(`${root}/explore`, search, hash);
+  if (pathname === "/upload" || pathname === "/distribution") return withQueryAndHash(`${root}/studio/release`, search, hash);
+  if (pathname === "/creator/studio" || pathname === "/creator/studio/manage") return withQueryAndHash(`${root}/studio`, search, hash);
+  if (pathname.startsWith("/creator/studio/orders")) return withQueryAndHash(`${root}/studio/orders`, search, hash);
+  if (pathname.startsWith("/creator/studio/marketplace") || pathname === "/creator/marketplace") return withQueryAndHash(`${root}/studio/marketplace`, search, hash);
+  if (pathname.startsWith("/creator/studio/insights")) return withQueryAndHash(`${root}/studio/insights`, search, hash);
+  if (pathname === "/artists" || pathname === "/artist/premium" || pathname === "/producer/premium") return withQueryAndHash(`${root}/studio/money`, search, hash);
+  if (pathname === "/shop" || pathname === "/marketplace") return withQueryAndHash(`${root}/studio/marketplace`, search, hash);
+  if (pathname.startsWith("/marketplace/orders")) return withQueryAndHash(`${root}/studio/orders`, search, hash);
+  if (pathname.startsWith("/marketplace/")) return withQueryAndHash(`${root}/studio/marketplace`, search, hash);
+  if (pathname.startsWith("/community") || pathname.startsWith("/rooms")) return withQueryAndHash(`${root}/rooms`, search, hash);
+
+  const artistMatch = pathname.match(/^\/artist\/([^/]+)$/);
+  if (artistMatch?.[1]) return withQueryAndHash(`${root}/creator/${artistMatch[1]}`, search, hash);
+  const showMatch = pathname.match(/^\/shows\/([^/]+)$/);
+  if (showMatch?.[1]) return withQueryAndHash(`${root}/show/${showMatch[1]}`, search, hash);
+
+  return null;
+}
+
 export function appRouteForNativeUrl(raw: string, surface: AppLinkSurface, currentHost?: string): string | null {
   const value = String(raw || "").trim();
   if (!value) return null;
@@ -30,23 +60,19 @@ export function appRouteForNativeUrl(raw: string, surface: AppLinkSurface, curre
 
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] === "app" && (parts[1] === "ios" || parts[1] === "android")) {
-    const suffix = parts.slice(2).join("/");
-    return withQueryAndHash(`/app/${surface}${suffix ? `/${suffix}` : ""}`, url.search, url.hash);
+    const suffix = parts.slice(2);
+    const legacy = legacyRoute(`/${suffix.join("/")}`, surface, url.search, url.hash);
+    if (legacy) return legacy;
+    return withQueryAndHash(`/app/${surface}${suffix.length ? `/${suffix.join("/")}` : ""}`, url.search, url.hash);
   }
 
   if (pathname === "/app" || pathname.startsWith("/app/")) {
-    const suffix = parts[0] === "app" ? parts.slice(1).join("/") : "";
-    return withQueryAndHash(`/app/${surface}${suffix ? `/${suffix}` : ""}`, url.search, url.hash);
-  }
-  if (pathname.startsWith("/radio") || pathname.startsWith("/listen")) {
-    return withQueryAndHash(`/app/${surface}/radio`, url.search, url.hash);
-  }
-  if (pathname.startsWith("/community") || pathname.startsWith("/rooms")) {
-    return withQueryAndHash(`/app/${surface}/rooms`, url.search, url.hash);
-  }
-  if (pathname.startsWith("/marketplace")) {
-    return withQueryAndHash(`/app/${surface}/marketplace`, url.search, url.hash);
+    const suffix = parts[0] === "app" ? parts.slice(1) : [];
+    const legacy = legacyRoute(`/${suffix.join("/")}`, surface, url.search, url.hash);
+    if (legacy) return legacy;
+    return withQueryAndHash(`/app/${surface}${suffix.length ? `/${suffix.join("/")}` : ""}`, url.search, url.hash);
   }
 
-  return `/app/${surface}`;
+  const mapped = legacyRoute(pathname, surface, url.search, url.hash);
+  return mapped || `/app/${surface}`;
 }
