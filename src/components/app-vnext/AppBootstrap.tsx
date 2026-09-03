@@ -19,18 +19,23 @@ function exploreRoute(surface: AppSurface, url: URL) {
   return `/app/${surface}/explore${suffix ? `?${suffix}` : ""}`;
 }
 
-function appDestination(surface: AppSurface, url: URL) {
+export function appDestination(surface: AppSurface, url: URL) {
   const path = url.pathname;
   if (path.startsWith(`/app/${surface}`)) return null;
   if (path === "/contact") return `/app/${surface}/support${url.search}`;
   if (path === "/search" || path === "/catalogue") return exploreRoute(surface, url);
   if (path === "/radio" || path === "/") return `/app/${surface}`;
   if (path === "/library") return `/app/${surface}/library`;
+  if (path === "/notifications") return `/app/${surface}/notifications`;
+  if (path === "/account") return `/app/${surface}/account`;
+  if (path.startsWith("/account/orders/")) return `/app/${surface}/studio/orders`;
   if (path === "/upload" || path === "/distribution") return `/app/${surface}/studio/release`;
   if (path === "/shop" || path === "/marketplace" || path.startsWith("/marketplace/") || path === "/creator/marketplace") return `/app/${surface}/studio/marketplace`;
   if (path === "/creator/studio" || path === "/creator/studio/manage") return `/app/${surface}/studio`;
+  if (path.startsWith("/creator/studio/orders")) return `/app/${surface}/studio/orders`;
+  if (path.startsWith("/creator/studio/marketplace")) return `/app/${surface}/studio/marketplace`;
+  if (path.startsWith("/creator/studio/insights")) return `/app/${surface}/studio/insights`;
   if (path === "/artists" || path === "/artist/premium" || path === "/producer/premium") return `/app/${surface}/studio/money`;
-  if (path === "/account" || path === "/notifications") return `/app/${surface}/you`;
 
   const artistMatch = path.match(/^\/artist\/([^/]+)$/);
   if (artistMatch?.[1]) return `/app/${surface}/creator/${artistMatch[1]}${url.search}`;
