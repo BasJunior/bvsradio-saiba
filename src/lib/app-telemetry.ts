@@ -2,6 +2,8 @@ import type { AppLinkSurface } from "@/lib/app-link-routing";
 
 export type AppTelemetryEvent =
   | "app_open"
+  | "app_resume"
+  | "app_background"
   | "deep_link_open"
   | "push_open"
   | "network_change"
@@ -9,7 +11,9 @@ export type AppTelemetryEvent =
   | "offline_download_success"
   | "offline_download_failure"
   | "offline_download_remove"
-  | "offline_download_renew";
+  | "offline_download_renew"
+  | "offline_playback_start"
+  | "offline_playback_failure";
 
 export function emitAppTelemetry(
   event: AppTelemetryEvent,

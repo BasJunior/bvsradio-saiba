@@ -5,6 +5,8 @@ export const dynamic = "force-dynamic";
 
 const EVENTS = new Set([
   "app_open",
+  "app_resume",
+  "app_background",
   "deep_link_open",
   "push_open",
   "network_change",
@@ -13,6 +15,8 @@ const EVENTS = new Set([
   "offline_download_failure",
   "offline_download_remove",
   "offline_download_renew",
+  "offline_playback_start",
+  "offline_playback_failure",
 ]);
 const SURFACES = new Set(["ios", "android"]);
 const META_KEYS = new Set(["connected", "connectionType", "route", "reason", "state"]);
