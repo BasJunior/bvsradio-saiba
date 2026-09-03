@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import { appDestination, type AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { readRecentFlowObjects } from "@/lib/flow-memory";
 import { readLibrary } from "@/lib/library";
 
@@ -26,7 +27,6 @@ type Answer = {
   reason?: string;
 };
 type Message = Answer & { role: "user" | "assistant" };
-type AppSurface = "ios" | "android";
 
 function needsDeviceContext(message: string) {
   const q = message.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -91,17 +91,14 @@ function appAwareHref(href: string, surface: AppSurface | null, object?: AskObje
     if (showMatch?.[1]) return `/app/${surface}/show/${encodeURIComponent(decodeURIComponent(showMatch[1]))}`;
   }
   if (object?.kind === "track" || object?.kind === "release") return appExploreHref(surface, href, object.title);
-  if (object?.kind === "service" || object?.kind === "product") return `/app/${surface}/studio`;
+  if (object?.kind === "service" || object?.kind === "product") {
+    return appDestination(surface, url) || `/app/${surface}/marketplace`;
+  }
   if (object?.kind === "story") return appExploreHref(surface, href, object.title);
 
-  if (path === "/contact") return `/app/${surface}/support${url.search}`;
-  if (path === "/search" || path === "/catalogue") return appExploreHref(surface, href);
-  if (path === "/radio" || path === "/") return `/app/${surface}`;
-  if (path === "/library") return `/app/${surface}/library`;
-  if (path === "/upload" || path.startsWith("/studio") || path === "/shop" || path.startsWith("/marketplace")) return `/app/${surface}/studio`;
+  const destination = appDestination(surface, url);
+  if (destination) return destination;
   if (path === "/auth/login" || path === "/auth/signup") return `/app/${surface}/join`;
-  if (path === "/account" || path === "/notifications") return `/app/${surface}/you`;
-
   return appExploreHref(surface, href);
 }
 
