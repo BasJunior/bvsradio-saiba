@@ -36,6 +36,7 @@ type DistributionJob = {
   updated_at?: string;
 };
 type Workspace = { releases?: Release[]; tracks?: Track[]; distributionJobs?: DistributionJob[] };
+type StageState = "done" | "current" | "next" | "failed";
 
 const normalize = (value?: string) => String(value || "").toLowerCase();
 
@@ -50,7 +51,7 @@ function bvsStatus(release: Release) {
   return status ? status.replaceAll("_", " ") : "Preparing";
 }
 
-function stageTone(state: "done" | "current" | "next" | "failed") {
+function stageTone(state: StageState) {
   if (state === "done") return "border-brand/30 bg-brand/10 text-brand";
   if (state === "current") return "border-amber-300/30 bg-amber-300/[.06] text-amber-100";
   if (state === "failed") return "border-red-400/30 bg-red-500/[.06] text-red-200";
@@ -71,11 +72,11 @@ function ReleaseCard({ release, tracks, job, surface }: { release: Release; trac
   const likes = tracks.reduce((sum, track) => sum + Number(track.like_count || 0), 0);
   const storeLinks = tracks.filter((track) => Boolean(track.spotify_url)).length;
 
-  const stages = [
-    { label: "Submitted", state: submitted ? "done" : "current" as const },
-    { label: "Review", state: reviewFailed ? "failed" : approved ? "done" : submitted ? "current" : "next" as const },
-    { label: "BVS live", state: live ? "done" : approved ? "current" : "next" as const },
-    { label: "Stores", state: storeLive ? "done" : storeFailed ? "failed" : storeCurrent && live ? "current" : "next" as const },
+  const stages: Array<{ label: string; state: StageState }> = [
+    { label: "Submitted", state: submitted ? "done" : "current" },
+    { label: "Review", state: reviewFailed ? "failed" : approved ? "done" : submitted ? "current" : "next" },
+    { label: "BVS live", state: live ? "done" : approved ? "current" : "next" },
+    { label: "Stores", state: storeLive ? "done" : storeFailed ? "failed" : storeCurrent && live ? "current" : "next" },
   ];
 
   return (
