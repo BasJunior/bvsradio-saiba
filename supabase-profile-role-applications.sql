@@ -15,8 +15,13 @@ CREATE TABLE IF NOT EXISTS public.profile_role_applications (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS profile_role_applications_user_idx
-  ON public.profile_role_applications(user_id);
+-- Preserve approved/rejected history. Only one application can be open per member.
+DROP INDEX IF EXISTS public.profile_role_applications_user_idx;
+CREATE UNIQUE INDEX IF NOT EXISTS profile_role_applications_open_user_idx
+  ON public.profile_role_applications(user_id)
+  WHERE status IN ('submitted', 'information_requested');
+CREATE INDEX IF NOT EXISTS profile_role_applications_user_history_idx
+  ON public.profile_role_applications(user_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS profile_role_applications_status_idx
   ON public.profile_role_applications(status, updated_at DESC);
 
