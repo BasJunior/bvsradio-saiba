@@ -9,7 +9,6 @@ import type { AppPlaylist } from "@/components/app-vnext/AppPlaylists";
 import { useStationPlayer } from "@/components/StationPlayer";
 import { shareBvs } from "@/lib/app-native";
 import { mediaUrlForStoredValue } from "@/lib/media-url";
-import type { StationTrack } from "@/lib/station";
 
 type PlaylistTrack = {
   id: string;
@@ -19,22 +18,8 @@ type PlaylistTrack = {
   artist_name?: string;
   genre?: string;
   artwork_url?: string;
-  file_url?: string;
   duration_sec?: number;
 };
-
-function toStationTrack(track: PlaylistTrack): StationTrack | null {
-  const src = mediaUrlForStoredValue(track.file_url);
-  if (!src) return null;
-  return {
-    id: track.track_id,
-    title: track.title || "BVS track",
-    artist: track.artist_name || "BVS artist",
-    src,
-    artwork: mediaUrlForStoredValue(track.artwork_url) || undefined,
-    genre: track.genre || undefined,
-  };
-}
 
 export default function AppPlaylistDetailClient({ surface, playlistId }: { surface: AppSurface; playlistId: string }) {
   const router = useRouter();
@@ -63,8 +48,8 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
 
   useEffect(() => { void load(); }, [load]);
   const orderedIds = useMemo(() => tracks.map((item) => item.track_id), [tracks]);
-  const playableTracks = useMemo(() => tracks.map(toStationTrack).filter((track): track is StationTrack => Boolean(track)), [tracks]);
-  const playableById = useMemo(() => new Map(playableTracks.map((track) => [track.id, track])), [playableTracks]);
+  const clearedById = useMemo(() => new Map(player.tracks.filter((track) => track.id).map((track) => [track.id as string, track])), [player.tracks]);
+  const playableTracks = useMemo(() => tracks.map((item) => clearedById.get(item.track_id)).filter((track): track is NonNullable<typeof track> => Boolean(track)), [clearedById, tracks]);
 
   const playFrom = (trackId?: string) => {
     if (!playlist || !playableTracks.length) return;
@@ -136,11 +121,11 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
         {playlist.is_public !== false ? <button type="button" onClick={() => void shareBvs({ title: playlist.title, text: `Listen to ${playlist.title} on BVS`, url: `${window.location.origin}/app/${surface}/playlist/${playlist.id}` })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Share</button> : null}
         <button type="button" onClick={() => void destroy()} className="min-h-10 rounded-full border border-red-400/25 px-4 text-sm text-red-200">Delete</button>
       </div>
-      {tracks.length && playableTracks.length !== tracks.length ? <p className="mt-3 text-xs text-text-secondary">{tracks.length - playableTracks.length} saved track{tracks.length - playableTracks.length === 1 ? " is" : "s are"} currently unavailable for playback.</p> : null}
+      {tracks.length && playableTracks.length !== tracks.length ? <p className="mt-3 text-xs text-text-secondary">{tracks.length - playableTracks.length} saved track{tracks.length - playableTracks.length === 1 ? " is" : "s are"} not cleared for this app surface or currently unavailable.</p> : null}
     </div>
     {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
     <div className="mt-6 space-y-2">{tracks.map((track, index) => {
-      const playable = playableById.has(track.track_id);
+      const playable = clearedById.has(track.track_id);
       return <article key={track.track_id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-3">
         <button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl disabled:opacity-45" aria-label={`Play ${track.title || "track"}`}>
           {track.artwork_url ? <Image src={mediaUrlForStoredValue(track.artwork_url) || track.artwork_url} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center bg-white/5 text-xs text-brand">BVS</span>}
@@ -148,7 +133,7 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
         </button>
         <button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="min-w-0 flex-1 text-left disabled:cursor-default">
           <h2 className="truncate font-semibold">{track.title || "BVS track"}</h2><p className="truncate text-sm text-text-secondary">{track.artist_name || "BVS artist"}</p>
-          {!playable ? <p className="mt-1 text-xs text-amber-200/80">Unavailable to play right now</p> : null}
+          {!playable ? <p className="mt-1 text-xs text-amber-200/80">Unavailable on this app surface</p> : null}
         </button>
         <div className="flex shrink-0 items-center gap-1">
           {playable ? <button type="button" onClick={() => playFrom(track.track_id)} className="grid h-9 w-9 place-items-center rounded-full bg-brand text-xs font-bold text-black" aria-label={`Play ${track.title || "track"}`}>▶</button> : null}
