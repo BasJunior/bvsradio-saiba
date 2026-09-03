@@ -11,8 +11,22 @@ type WorkspaceData = {
     display_name?: string;
     is_producer?: boolean;
   };
-  tracks?: Array<{ id: string; editorial_status?: string }>;
-  releases?: Array<{ id: string; editorial_status?: string }>;
+  tracks?: Array<{
+    id: string;
+    title?: string;
+    editorial_status?: string;
+    is_public?: boolean;
+    in_rotation?: boolean;
+    play_count?: number;
+    like_count?: number;
+  }>;
+  releases?: Array<{
+    id: string;
+    title?: string;
+    editorial_status?: string;
+    is_public?: boolean;
+    in_rotation?: boolean;
+  }>;
   distributionJobs?: Array<{ id: string; status?: string }>;
 };
 
@@ -81,10 +95,14 @@ export default function CreatorStudioHome() {
     const pending = [...tracks, ...releases].filter((item) =>
       ["submitted", "in_review", "changes_requested"].includes(item.editorial_status || ""),
     ).length;
+    const published = [...tracks, ...releases].filter((item) => item.is_public).length;
+    const inRotation = [...tracks, ...releases].filter((item) => item.in_rotation).length;
+    const plays = tracks.reduce((sum, track) => sum + Number(track.play_count || 0), 0);
+    const likes = tracks.reduce((sum, track) => sum + Number(track.like_count || 0), 0);
     const distributing = jobs.filter((job) =>
       ["queued", "submitted", "processing", "delivering"].includes(job.status || ""),
     ).length;
-    return { catalogue: tracks.length + releases.length, pending, distributing };
+    return { catalogue: tracks.length + releases.length, pending, published, inRotation, plays, likes, distributing };
   }, [data]);
 
   if (error && !data) {
@@ -138,6 +156,8 @@ export default function CreatorStudioHome() {
         Start with the job. BVS will bring in rights, marketplace, distribution and money tools only when they are needed.
       </p>
 
+      {artist && <ArtistActivationPanel activity={activity} />}
+
       <section className="mt-8 grid gap-3 md:grid-cols-3" aria-label="Create in BVS">
         {createActions.map((action, index) => (
           <Link key={action.href} href={action.href} onClick={() => trackEvent("create_intent_selected", { intent: action.intent })} className="group flex min-h-52 flex-col justify-between rounded-3xl border border-white/10 bg-white/[.025] p-6 transition hover:border-brand/45 hover:bg-brand/[.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
@@ -181,6 +201,51 @@ export default function CreatorStudioHome() {
         </section>
       )}
     </main>
+  );
+}
+
+function ArtistActivationPanel({ activity }: { activity: { catalogue: number; pending: number; published: number; inRotation: number; plays: number; likes: number } }) {
+  const needsFirstSubmit = activity.catalogue === 0;
+  const needsFix = activity.pending > 0;
+  const hasProof = activity.published > 0 || activity.inRotation > 0;
+  const primary = needsFirstSubmit
+    ? { href: "/creator/studio/create/release", label: "Submit first track", detail: "Start the one-release path and give editorial something real to publish." }
+    : needsFix
+      ? { href: "/creator/studio/manage#releases", label: "Track review", detail: "Keep the release moving through editorial within the 48h control window." }
+      : hasProof
+        ? { href: "/artists", label: "View live proof", detail: "Check what listeners can see, play and share." }
+        : { href: "/creator/studio/manage#releases", label: "Open catalogue", detail: "Review status and prepare the next release." };
+
+  return (
+    <section className="mt-8 rounded-3xl border border-brand/20 bg-brand/[.045] p-5 sm:p-6" aria-label="Artist activation">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Artist path</p>
+          <h2 className="mt-2 text-2xl font-semibold">Next proof step</h2>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">{primary.detail}</p>
+        </div>
+        <Link href={primary.href} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">
+          {primary.label}
+        </Link>
+      </div>
+      <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <ProofMetric label="Catalogue" value={activity.catalogue} />
+        <ProofMetric label="Awaiting review" value={activity.pending} />
+        <ProofMetric label="Live on BVS" value={activity.published} />
+        <ProofMetric label="In rotation" value={activity.inRotation} />
+        <ProofMetric label="Total plays" value={activity.plays} />
+        <ProofMetric label="Saves/likes" value={activity.likes} />
+      </div>
+    </section>
+  );
+}
+
+function ProofMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+      <p className="text-[11px] uppercase tracking-[.14em] text-text-secondary">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-brand">{value.toLocaleString()}</p>
+    </div>
   );
 }
 

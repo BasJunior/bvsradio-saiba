@@ -5,6 +5,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { isSupabaseConfigured } from '@/lib/supabase'
 
+function destinationForRole(role: string) {
+  return role === 'listener' ? '/radio' : '/creator/studio'
+}
+
 export default function SignupPage() {
   const [form, setForm] = useState({ email: '', password: '', fullName: '', username: '', role: 'listener' })
   const [loading, setLoading] = useState(false)
@@ -89,7 +93,7 @@ export default function SignupPage() {
       }
 
       setInfo(data.message || 'Account created.')
-      window.location.href = '/auth/login'
+      window.location.href = `/auth/login?next=${encodeURIComponent(destinationForRole(form.role))}`
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Signup failed')
     } finally {
@@ -142,8 +146,8 @@ export default function SignupPage() {
               >
                 Use a different email
               </button>
-              <Link href="/auth/login" className="text-brand hover:underline">
-                Sign in
+              <Link href={`/auth/login?next=${encodeURIComponent(destinationForRole(form.role))}`} className="text-brand hover:underline">
+                Sign in after confirming
               </Link>
             </div>
             {resendMessage && <p className="mt-3 text-xs text-text-secondary">{resendMessage}</p>}

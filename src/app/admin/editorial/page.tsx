@@ -381,6 +381,31 @@ export default function EditorialDashboard() {
           <span className="rounded-full border border-white/20 px-4 py-2 text-sm text-brand">Open marketplace review →</span>
         </Link>
 
+      <section className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr]">
+        <div className="rounded-2xl border border-brand/25 bg-brand/[.055] p-5">
+          <p className="text-xs uppercase tracking-[.18em] text-brand">Quarter control</p>
+          <h2 className="mt-2 text-lg font-semibold">Proof loop for the next 14 days</h2>
+          <div className="mt-4 grid gap-2 text-sm text-text-secondary sm:grid-cols-3">
+            <Link href="#ed-analytics" className="rounded-xl border border-white/10 p-3 transition hover:border-brand hover:text-brand">Metrics baseline</Link>
+            <Link href="/creator/studio" className="rounded-xl border border-white/10 p-3 transition hover:border-brand hover:text-brand">Artist next action</Link>
+            <Link href="#ed-releases" className="rounded-xl border border-white/10 p-3 transition hover:border-brand hover:text-brand">48h release review</Link>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[.03] p-5">
+          <p className="text-xs uppercase tracking-[.18em] text-text-secondary">vNext readiness lane</p>
+          <div className="mt-3 grid gap-3 text-sm leading-6 text-text-secondary sm:grid-cols-2">
+            <div>
+              <p className="font-semibold text-text-primary">Web-safe now</p>
+              <p>Artist routing, Studio proof, editorial metrics, marketplace review and payment trust signals.</p>
+            </div>
+            <div>
+              <p className="font-semibold text-text-primary">Native update later</p>
+              <p>Offline licences, push/device routing, app lifecycle telemetry, Now Playing gestures and installed-app shell behavior.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <EditorialAnalytics token={token} />
 
       <EditorialDropDown id="ed-releases" label="Albums and EPs" count={releaseQueue} defaultOpen={releaseQueue > 0}>

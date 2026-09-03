@@ -4,6 +4,10 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
+function destinationForProfile(profile: { role?: string | null; is_producer?: boolean | null }) {
+  return (profile.role && profile.role !== 'listener') || profile.is_producer ? '/creator/studio' : '/radio'
+}
+
 export async function POST(req: Request) {
   const accessToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
   if (!accessToken) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
@@ -20,7 +24,7 @@ export async function POST(req: Request) {
   const role = allowedRoles.has(requestedRole) ? requestedRole : 'listener'
 
   const existingResponse = await fetch(
-    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=id&limit=1`,
+    `${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=id,role,is_producer&limit=1`,
     {
       headers: {
         apikey: SUPABASE_SERVICE_KEY,
@@ -32,8 +36,8 @@ export async function POST(req: Request) {
   if (!existingResponse.ok) {
     return NextResponse.json({ error: 'Profile setup failed' }, { status: 500 })
   }
-  const existing = await existingResponse.json() as Array<{ id: string }>
-  if (existing.length) return NextResponse.json({ ok: true })
+  const existing = await existingResponse.json() as Array<{ id: string; role?: string | null; is_producer?: boolean | null }>
+  if (existing.length) return NextResponse.json({ ok: true, role: existing[0].role || 'listener', destination: destinationForProfile(existing[0]) })
 
   const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
     method: 'POST',
@@ -53,5 +57,5 @@ export async function POST(req: Request) {
   })
 
   if (!profileResponse.ok) return NextResponse.json({ error: 'Profile setup failed' }, { status: 500 })
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, role, destination: destinationForProfile({ role }) })
 }

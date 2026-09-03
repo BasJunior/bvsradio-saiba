@@ -25,6 +25,7 @@ function friendlyAuthError(code: string | null, description: string | null): str
 export default function ConfirmedPage() {
   const [status, setStatus] = useState<Status>('loading')
   const [detail, setDetail] = useState<string | null>(null)
+  const [destination, setDestination] = useState('/')
 
   useEffect(() => {
     const finishConfirmation = async () => {
@@ -85,6 +86,11 @@ export default function ConfirmedPage() {
         })
         if (!profileRes.ok) {
           console.warn('profile setup failed', await profileRes.text())
+        } else {
+          const profile = await profileRes.json().catch(() => ({}))
+          if (typeof profile.destination === 'string' && profile.destination.startsWith('/')) {
+            setDestination(profile.destination)
+          }
         }
 
         if (window.location.hash || params.has('code') || params.has('token_hash')) {
@@ -116,8 +122,8 @@ export default function ConfirmedPage() {
             <p className="text-xs uppercase tracking-[.2em] text-brand">Email confirmed</p>
             <h1 className="mt-3 text-3xl font-semibold">Welcome to BVS Radio</h1>
             <p className="mt-3 text-text-secondary">Your account is ready and you are signed in.</p>
-            <Link href="/" className="mt-7 inline-block rounded-full bg-brand px-7 py-3 font-semibold text-black">
-              Continue to BVS
+            <Link href={destination} className="mt-7 inline-block rounded-full bg-brand px-7 py-3 font-semibold text-black">
+              {destination === '/creator/studio' ? 'Open Creator Studio' : 'Start listening'}
             </Link>
           </>
         )}

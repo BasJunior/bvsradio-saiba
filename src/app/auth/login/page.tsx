@@ -88,14 +88,19 @@ export default function LoginPage() {
       )
       if (sessionError) throw sessionError
 
-      // Ensure the profile row exists without holding a successful login on this best-effort step.
-      void fetch('/api/auth/profile', {
+      // Ensure the profile row exists and use its role-aware landing page when no explicit next path was supplied.
+      const profileRes = await fetch('/api/auth/profile', {
         method: 'POST',
         headers: { Authorization: `Bearer ${access_token}` },
       }).catch(() => null)
+      const profile = profileRes?.ok ? await profileRes.json().catch(() => ({})) : {}
+      const profileDestination =
+        typeof profile.destination === 'string' && profile.destination.startsWith('/')
+          ? profile.destination
+          : '/'
 
       // A full navigation rehydrates all auth-aware shell providers from the persisted session.
-      window.location.assign(nextPath || '/')
+      window.location.assign(nextPath === '/' ? profileDestination : nextPath)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
       setLoading(false)

@@ -51,6 +51,20 @@ function Metric({ label, value, note }: { label: string; value: string | number;
   )
 }
 
+function ControlSignal({ label, ok, note }: { label: string; ok: boolean; note: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[.025] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold">{label}</p>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${ok ? 'bg-emerald-400/15 text-emerald-200' : 'bg-amber-400/15 text-amber-100'}`}>
+          {ok ? 'On signal' : 'Needs proof'}
+        </span>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-text-secondary">{note}</p>
+    </div>
+  )
+}
+
 function RankedList({ title, rows }: { title: string; rows: Array<{ label: string; value: number }> }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
@@ -156,6 +170,40 @@ export default function EditorialAnalytics({ token }: { token: string }) {
 
       {data ? (
         <>
+          <div className="mt-5 rounded-2xl border border-brand/20 bg-brand/[.035] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[.2em] text-brand">Q3 control snapshot</p>
+                <h3 className="mt-2 text-xl font-semibold">Artist activation and money proof</h3>
+              </div>
+              <p className="max-w-md text-sm leading-6 text-text-secondary">
+                This is the quarter gate: submissions, editorial movement, live listener proof and server-confirmed revenue signals.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <ControlSignal
+                label="Artist activation"
+                ok={data.activity.uploads > 0 || data.pipeline.awaitingReview > 0}
+                note={`${data.activity.uploads} upload event${data.activity.uploads === 1 ? '' : 's'} and ${data.pipeline.awaitingReview} item${data.pipeline.awaitingReview === 1 ? '' : 's'} awaiting review.`}
+              />
+              <ControlSignal
+                label="48h editorial discipline"
+                ok={data.pipeline.awaitingReview === 0}
+                note={data.pipeline.awaitingReview === 0 ? 'No submitted items are waiting in the control snapshot.' : `${data.pipeline.awaitingReview} submitted item${data.pipeline.awaitingReview === 1 ? '' : 's'} need staff movement.`}
+              />
+              <ControlSignal
+                label="Live proof"
+                ok={data.pipeline.inRotation > 0 && data.activity.playerStarts > 0}
+                note={`${data.pipeline.inRotation} catalogue item${data.pipeline.inRotation === 1 ? '' : 's'} in rotation with ${data.activity.playerStarts} playback start${data.activity.playerStarts === 1 ? '' : 's'}.`}
+              />
+              <ControlSignal
+                label="Money path"
+                ok={Boolean(data.permissions.commerce && (data.reliability.checkoutCompletions || 0) > 0)}
+                note={data.permissions.commerce ? `${data.reliability.checkoutCompletions || 0} server-confirmed paid event${(data.reliability.checkoutCompletions || 0) === 1 ? '' : 's'} in range.` : 'Commerce figures are restricted to approved staff roles.'}
+              />
+            </div>
+          </div>
+
           <div className="mt-5 grid gap-4 lg:grid-cols-[1.7fr_1fr]">
             <div className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
