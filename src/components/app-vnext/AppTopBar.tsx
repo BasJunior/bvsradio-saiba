@@ -29,6 +29,13 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
         </Link>
         <div className="flex items-center gap-2">
           <Link
+            href={`/app/${surface}/marketplace`}
+            className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-lg text-text-secondary hover:border-brand/35 hover:text-brand"
+            aria-label="Open BVS Marketplace"
+          >
+            ◇
+          </Link>
+          <Link
             href={`/app/${surface}/explore`}
             className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-lg text-text-secondary hover:border-brand/35 hover:text-brand"
             aria-label="Search and explore"
