@@ -7,7 +7,7 @@ import {
   type ReleaseRow,
   type ReleaseTrackRow,
 } from "@/lib/releases-server";
-import { authUserId, serviceHeaders } from "@/lib/storage-upload";
+import { authUserId } from "@/lib/storage-upload";
 import { creatorPublicName } from "@/lib/public-name";
 import { r2Configured, r2ObjectExists } from "@/lib/r2-storage";
 
@@ -77,17 +77,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Media storage is unavailable." }, { status: 503 });
     }
 
-    // Ensure artist role
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}`, {
-      method: "PATCH",
-      headers: { ...serviceHeaders(SERVICE), Prefer: "return=minimal" },
-      body: JSON.stringify({ role: "artist" }),
-    }).catch(() => null);
-
-    const profiles = await restGet<Array<{ username?: string; creator_public_name?: string; creator_name_status?: string }>>(
-      `profiles?id=eq.${user.id}&select=username,creator_public_name,creator_name_status`,
+    const profiles = await restGet<Array<{ role?: string; username?: string; creator_public_name?: string; creator_name_status?: string }>>(
+      `profiles?id=eq.${user.id}&select=role,username,creator_public_name,creator_name_status`,
     );
     const profile = profiles?.[0];
+    if (!profile || !["artist", "admin"].includes(String(profile.role || ""))) {
+      return NextResponse.json({ error: "Approved Artist access is required to submit music." }, { status: 403 });
+    }
 
     const body = (await req.json()) as {
       title?: string;
@@ -160,9 +156,9 @@ export async function POST(req: Request) {
     }
 
     const artistName = creatorPublicName({
-      publicName: profile?.creator_public_name,
-      publicNameStatus: profile?.creator_name_status,
-      username: profile?.username,
+      publicName: profile.creator_public_name,
+      publicNameStatus: profile.creator_name_status,
+      username: profile.username,
     });
 
     const coverPath = body.coverPath ? String(body.coverPath).trim() : "";
