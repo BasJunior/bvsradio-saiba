@@ -14,7 +14,8 @@ type CachedStation = {
   headers: Array<[string, string]>;
 };
 
-const SAVER_CACHE_MS = 5 * 60_000;
+const SAVER_CACHE_MS = 2 * 60_000;
+const OFFLINE_CACHE_MS = 5 * 60_000;
 
 function requestUrl(input: RequestInfo | URL) {
   if (typeof input === "string") return input;
@@ -30,6 +31,13 @@ function stationUrl(input: RequestInfo | URL) {
   } catch {
     return null;
   }
+}
+
+function safeHeaders(headers: Headers) {
+  return Array.from(headers.entries()).filter(([name]) => {
+    const lower = name.toLowerCase();
+    return lower !== "content-length" && lower !== "content-encoding";
+  });
 }
 
 function responseFromCache(cached: CachedStation) {
@@ -81,7 +89,13 @@ export default function AppStationFetchBridge() {
       const offline = currentRef.current;
       const saver = saverRef.current;
       const cached = cache.get(key);
-      if (saver && cached && Date.now() - cached.at < SAVER_CACHE_MS) {
+      const age = cached ? Date.now() - cached.at : Number.POSITIVE_INFINITY;
+
+      if (offline && cached && age < OFFLINE_CACHE_MS) {
+        const payload = withOfflineTrack(cached.payload, offline, saver);
+        return responseFromCache({ ...cached, payload });
+      }
+      if (saver && cached && age < SAVER_CACHE_MS) {
         const payload = withOfflineTrack(cached.payload, offline, true);
         return responseFromCache({ ...cached, payload });
       }
@@ -97,6 +111,7 @@ export default function AppStationFetchBridge() {
             statusText: "OK",
             headers: [["content-type", "application/json"], ["cache-control", "no-store"]],
           };
+          cache.set(key, fallback);
           return responseFromCache(fallback);
         }
 
@@ -107,20 +122,22 @@ export default function AppStationFetchBridge() {
           payload: shaped,
           status: response.status,
           statusText: response.statusText,
-          headers: Array.from(response.headers.entries()),
+          headers: safeHeaders(response.headers),
         };
         cache.set(key, next);
         if (offline || saver) return responseFromCache(next);
         return response;
       } catch (error) {
         if (!offline) throw error;
-        return responseFromCache({
+        const fallback: CachedStation = {
           at: Date.now(),
           payload: withOfflineTrack({ tracks: [] }, offline, saver),
           status: 200,
           statusText: "OK",
           headers: [["content-type", "application/json"], ["cache-control", "no-store"]],
-        });
+        };
+        cache.set(key, fallback);
+        return responseFromCache(fallback);
       }
     };
 
