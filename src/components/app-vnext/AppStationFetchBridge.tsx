@@ -40,28 +40,45 @@ function safeHeaders(headers: Headers) {
   });
 }
 
-function responseFromCache(cached: CachedStation) {
-  return new Response(JSON.stringify(cached.payload), {
+function responseFromCache(cached: CachedStation, payload: StationPayload = cached.payload) {
+  return new Response(JSON.stringify(payload), {
     status: cached.status,
     statusText: cached.statusText,
     headers: cached.headers,
   });
 }
 
-function withOfflineTrack(payload: StationPayload, offline: OfflineTrack | null, saver: boolean) {
+function shapeStationPayload(payload: StationPayload, saver: boolean) {
   const tracks = Array.isArray(payload.tracks) ? payload.tracks : [];
-  const shaped = saver ? tracks.map((track) => ({ ...track, artwork: undefined })) : tracks;
-  if (!offline) return { ...payload, tracks: shaped };
-  const withoutDuplicate = shaped.filter((track) => (track.id || track.src) !== (offline.id || offline.src));
+  return {
+    ...payload,
+    tracks: saver ? tracks.map((track) => ({ ...track, artwork: undefined })) : tracks,
+  };
+}
+
+function withOfflineTrack(payload: StationPayload, offline: OfflineTrack | null) {
+  if (!offline) return payload;
+  const tracks = Array.isArray(payload.tracks) ? payload.tracks : [];
+  const withoutDuplicate = tracks.filter((track) => (track.id || track.src) !== (offline.id || offline.src));
   return { ...payload, tracks: [offline, ...withoutDuplicate] };
+}
+
+function offlineFallback(): CachedStation {
+  return {
+    at: Date.now(),
+    payload: { tracks: [] },
+    status: 200,
+    statusText: "OK",
+    headers: [["content-type", "application/json"], ["cache-control", "no-store"]],
+  };
 }
 
 /**
  * The global player refreshes the mobile station library every minute. In vNext,
  * that refresh must not evict a rights-checked private offline track and Data Saver
- * should not turn the one-minute poll into one-minute network traffic. This bridge
- * scopes a fetch wrapper to the station endpoint only; every other request passes
- * through untouched.
+ * should not turn the one-minute poll into one-minute network traffic. Cached station
+ * data never contains the private offline URI; it is injected only into the response
+ * while that exact offline track remains active.
  */
 export default function AppStationFetchBridge() {
   const player = useStationPlayer();
@@ -92,52 +109,44 @@ export default function AppStationFetchBridge() {
       const age = cached ? Date.now() - cached.at : Number.POSITIVE_INFINITY;
 
       if (offline && cached && age < OFFLINE_CACHE_MS) {
-        const payload = withOfflineTrack(cached.payload, offline, saver);
-        return responseFromCache({ ...cached, payload });
+        return responseFromCache(cached, withOfflineTrack(shapeStationPayload(cached.payload, saver), offline));
       }
       if (saver && cached && age < SAVER_CACHE_MS) {
-        const payload = withOfflineTrack(cached.payload, offline, true);
-        return responseFromCache({ ...cached, payload });
+        return responseFromCache(cached, withOfflineTrack(shapeStationPayload(cached.payload, true), offline));
       }
 
       try {
         const response = await originalFetch(input, init);
         if (!response.ok) {
           if (!offline) return response;
-          const fallback: CachedStation = {
-            at: Date.now(),
-            payload: withOfflineTrack({ tracks: [] }, offline, saver),
-            status: 200,
-            statusText: "OK",
-            headers: [["content-type", "application/json"], ["cache-control", "no-store"]],
-          };
+          const fallback = offlineFallback();
           cache.set(key, fallback);
-          return responseFromCache(fallback);
+          return responseFromCache(fallback, withOfflineTrack(fallback.payload, offline));
         }
 
         const payload = await response.clone().json().catch(() => ({})) as StationPayload;
-        const shaped = withOfflineTrack(payload, offline, saver);
+        // Only public/rights-cleared station data enters the cache. Never cache the
+        // private file URI from a downloaded track.
+        const basePayload = shapeStationPayload(payload, false);
         const next: CachedStation = {
           at: Date.now(),
-          payload: shaped,
+          payload: basePayload,
           status: response.status,
           statusText: response.statusText,
           headers: safeHeaders(response.headers),
         };
         cache.set(key, next);
-        if (offline || saver) return responseFromCache(next);
+
+        if (offline || saver) {
+          const outgoing = withOfflineTrack(shapeStationPayload(basePayload, saver), offline);
+          return responseFromCache(next, outgoing);
+        }
         return response;
       } catch (error) {
         if (!offline) throw error;
-        const fallback: CachedStation = {
-          at: Date.now(),
-          payload: withOfflineTrack({ tracks: [] }, offline, saver),
-          status: 200,
-          statusText: "OK",
-          headers: [["content-type", "application/json"], ["cache-control", "no-store"]],
-        };
+        const fallback = offlineFallback();
         cache.set(key, fallback);
-        return responseFromCache(fallback);
+        return responseFromCache(fallback, withOfflineTrack(fallback.payload, offline));
       }
     };
 
