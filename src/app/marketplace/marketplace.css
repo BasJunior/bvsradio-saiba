@@ -112,6 +112,16 @@
   }
 }
 
+@keyframes bvs-provider-map-grid {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 44px 44px, 44px 44px; }
+}
+
+.bvs-provider-map-grid {
+  animation: bvs-provider-map-grid 18s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bvs-surface-hover:hover { transform: none; }
+  .bvs-provider-map-grid { animation: none; }
 }

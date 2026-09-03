@@ -40,8 +40,12 @@ assert.match(marketplace, /Open Wolf Studio/, "Marketplace must expose the reque
 assert.match(shop, /redirect\("\/marketplace\/bvs-studio-services"\)/, "Legacy BVS services route must resolve inside Marketplace");
 assert.match(marketplace, /MarketplaceProviderMap providers=\{storefronts\}/, "Marketplace home must show the provider map");
 assert.match(store, /MarketplaceProviderMap providers=\{\[provider\]\} compact/, "Physical provider stores must retain the map");
-assert.match(providerMap, /google\.com\/maps\?q=/, "Provider map must use a real maps embed rather than a decorative placeholder");
+assert.match(providerMap, /tile\.openstreetmap\.org/, "Provider map must use the dark themed OSM tile map (beta style)");
+assert.match(providerMap, /grayscale invert saturate/, "Provider map must keep the dark inverted tile treatment");
+assert.match(providerMap, /Open in Maps/, "Provider map must still offer external maps deep-link");
+assert.match(providerMap, /google\.com\/maps\/search/, "Open in Maps must deep-link to a real maps search");
 assert.match(providerMap, /Remote\|online\|virtual\|worldwide\|global/i, "Remote providers must not receive a fake physical map pin");
+assert.match(providerMap, /approximate area/, "Public pins must remain area-level, not door addresses");
 
 assert.match(bookingApi, /marketplace_provider_slots\?provider_key=eq\./, "Public calendar must read provider-published slots");
 assert.match(bookingApi, /status=eq\.available/, "Public calendar must expose only available slots");
