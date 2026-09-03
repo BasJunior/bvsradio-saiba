@@ -9,6 +9,7 @@ const STORAGE_KEY = "bvs_premium_instant_banner_dismissed_v1";
 /** Paths where the promo would just compete with the real Premium UI. */
 function shouldHideOnPath(pathname: string | null): boolean {
   if (!pathname) return false;
+  if (/^\/app\/(ios|android)(?:\/|$)/.test(pathname)) return true;
   if (pathname === "/premium" || pathname.startsWith("/premium/")) return true;
   if (pathname.startsWith("/artist/premium")) return true;
   if (pathname.startsWith("/creator/studio")) return true;
@@ -55,6 +56,7 @@ export default function PremiumInstantPromoBanner() {
 
   return (
     <div
+      data-bvs-promo
       className="sticky top-16 z-40 border-b border-black/10 bg-[#F5D76E] text-black shadow-[0_1px_0_rgba(0,0,0,0.06)]"
       role="region"
       aria-label="Premium Instant available"

@@ -8,6 +8,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import HeaderSearch from '@/components/layout/HeaderSearch'
 import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
+import { measureHeader } from '@/lib/chrome-layout'
 type Access = {
   artist: boolean
   creator: boolean
@@ -177,10 +178,14 @@ export default function Navbar() {
     </Link>
   ) : null
 
+  // AppTopBar is the only header on app routes. Retain the listener-style
+  // header when an app session visits a shared Radio/detail page.
+  if (routeSurface) return null
+
   if (mobileSurface) {
     const appHome = `/app/${mobileSurface}`
     return (
-      <nav className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
+      <nav ref={measureHeader} data-bvs-header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
           <Link href={appHome} className="flex items-center gap-2" aria-label="BVS Radio app home">
             <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-10 w-auto rounded-md object-contain" priority />
@@ -198,7 +203,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
+    <nav ref={measureHeader} data-bvs-header className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center" onClick={() => setIsMenuOpen(false)} aria-label="BVS Radio home">
           <Image

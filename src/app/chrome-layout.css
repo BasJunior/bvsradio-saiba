@@ -1,0 +1,71 @@
+/* One geometry model for both the app shell and shared Radio/detail routes.
+   Measured border-box heights include safe-area padding exactly once. */
+:root {
+  --bvs-safe-top: env(safe-area-inset-top, 0px);
+  --bvs-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bvs-safe-left: env(safe-area-inset-left, 0px);
+  --bvs-safe-right: env(safe-area-inset-right, 0px);
+  --bvs-header-height: calc(4rem + var(--bvs-safe-top) + 1px);
+  --bvs-nav-height: calc(4rem + var(--bvs-safe-bottom) + 1px);
+  --bvs-player-height: 6rem;
+  --bvs-chrome-gap: 1rem;
+  --bvs-bottom-stack: calc(var(--bvs-nav-height) + var(--bvs-player-height));
+  scroll-padding-top: calc(var(--bvs-header-height) + var(--bvs-chrome-gap));
+  scroll-padding-bottom: calc(var(--bvs-bottom-stack) + var(--bvs-chrome-gap));
+}
+
+@media (min-width: 768px) {
+  :root { --bvs-nav-height: 0px; }
+  :root:has([data-bvs-app-nav]) {
+    --bvs-nav-height: calc(4rem + var(--bvs-safe-bottom) + 1px);
+  }
+}
+
+[data-bvs-header] {
+  padding-top: var(--bvs-safe-top);
+  padding-left: var(--bvs-safe-left);
+  padding-right: var(--bvs-safe-right);
+}
+
+[data-bvs-bottom-nav] {
+  padding-bottom: var(--bvs-safe-bottom);
+  padding-left: var(--bvs-safe-left);
+  padding-right: var(--bvs-safe-right);
+}
+
+[data-bvs-player] {
+  bottom: var(--bvs-nav-height);
+  padding-bottom: 0;
+  padding-left: var(--bvs-safe-left);
+  padding-right: var(--bvs-safe-right);
+}
+
+/* On desktop web there is no tab bar to own the bottom safe area. */
+@media (min-width: 768px) {
+  :root:not(:has([data-bvs-app-nav])) [data-bvs-player] {
+    padding-bottom: var(--bvs-safe-bottom);
+  }
+}
+
+[data-bvs-main] {
+  padding-top: var(--bvs-header-height);
+  padding-bottom: calc(var(--bvs-bottom-stack) + var(--bvs-chrome-gap));
+  min-height: 100dvh;
+}
+
+[data-bvs-promo], [data-bvs-stale-banner] { top: var(--bvs-header-height); }
+[data-bvs-queue] {
+  bottom: var(--bvs-bottom-stack);
+  max-height: max(0px, calc(100dvh - var(--bvs-header-height) - var(--bvs-bottom-stack) - var(--bvs-chrome-gap)));
+}
+[data-bvs-assistant] {
+  bottom: calc(var(--bvs-bottom-stack) + var(--bvs-chrome-gap));
+  right: max(.75rem, var(--bvs-safe-right));
+}
+[data-bvs-assistant] [aria-label="Ask BVS"] {
+  min-height: 0;
+  max-height: max(0px, calc(100dvh - var(--bvs-header-height) - var(--bvs-bottom-stack) - 6rem));
+}
+
+/* DOM-scoped suppression works before AppBootstrap hydration too. */
+:root:has([data-bvs-app-nav]) [data-bvs-promo] { display: none; }

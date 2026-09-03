@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { measureBottomNav } from "@/lib/chrome-layout";
 
 function MobileFlowNavContent() {
   const pathname = usePathname();
@@ -47,6 +48,8 @@ function MobileFlowNavContent() {
 
   return (
     <nav
+      ref={measureBottomNav}
+      data-bvs-bottom-nav
       className="fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl md:hidden"
       aria-label="Primary"
     >

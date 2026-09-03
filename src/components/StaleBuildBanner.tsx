@@ -27,7 +27,7 @@ export default function StaleBuildBanner() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-x-0 top-16 z-[60] flex justify-center px-3">
+    <div data-bvs-stale-banner className="fixed inset-x-0 top-16 z-[60] flex justify-center px-3">
       <div className="flex max-w-xl items-center gap-3 rounded-full border border-brand/40 bg-bg-primary/95 px-4 py-2 text-sm shadow-xl">
         <p className="text-text-primary">BVS updated. Refresh to leave a stale page.</p>
         <button

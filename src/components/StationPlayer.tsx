@@ -14,6 +14,7 @@ import {
   type StreamQualificationState,
 } from "@/lib/stream-qualification";
 import FlowRelationships from "@/components/flow/FlowRelationships";
+import { measurePlayer } from "@/lib/chrome-layout";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -1075,7 +1076,7 @@ function QueueSheet() {
     : player.upNext;
   if (!player.queueOpen) return null;
   return (
-    <div className="fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
+    <div data-bvs-queue className="fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
@@ -1270,7 +1271,7 @@ export function PersistentPlayer() {
           </div>
         </section>
       )}
-      {!nowPlayingOpen ? <section className="fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
+      {!nowPlayingOpen ? <section ref={measurePlayer} data-bvs-player className="fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
         <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
         {player.interruptedBy === "show-video" ? (
           <div className="flex items-center justify-center gap-3 border-b border-white/10 bg-brand/10 px-4 py-2 text-xs text-brand" role="status">

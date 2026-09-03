@@ -22,11 +22,7 @@ export default async function MobileVNextLayout({
       <AppNativeRuntime surface={surface} />
       <style>{`
         html[data-bvs-app-shell="true"] footer { display: none !important; }
-        html[data-bvs-app-shell="true"] section[aria-label="BVS rotation player"] {
-          bottom: calc(4rem + env(safe-area-inset-bottom)) !important;
-        }
         html[data-bvs-app-shell="true"] body { overscroll-behavior-y: none; }
-        html[data-bvs-app-shell="true"] main { padding-bottom: calc(11rem + env(safe-area-inset-bottom)); }
         html[data-bvs-app-shell="true"] [aria-label="Install BVS Radio"] { display: none !important; }
         html[data-bvs-network="offline"] [data-bvs-network-dependent="true"] { opacity: .58; }
       `}</style>

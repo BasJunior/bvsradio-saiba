@@ -15,6 +15,7 @@
     "test:app-links": "node --experimental-strip-types scripts/app-link-routing-tests.mjs",
     "test:native-config": "node --experimental-strip-types scripts/vnext-native-config-tests.mjs",
     "test:native-contract": "node scripts/vnext-native-contract-tests.mjs",
+    "test:chrome-layout": "node --experimental-strip-types scripts/chrome-layout-tests.mjs",
     "beta:preflight": "node scripts/beta-staging-preflight.mjs",
     "beta:seed": "node scripts/seed-beta-demo.mjs",
     "test:beta-flow:live": "node scripts/beta-flow-live-acceptance.mjs",

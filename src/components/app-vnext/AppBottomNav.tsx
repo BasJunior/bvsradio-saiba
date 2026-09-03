@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
+import { measureBottomNav } from "@/lib/chrome-layout";
 
 export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const pathname = usePathname();
@@ -19,6 +20,9 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
 
   return (
     <nav
+      ref={measureBottomNav}
+      data-bvs-bottom-nav
+      data-bvs-app-nav
       className="fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl"
       aria-label="BVS app primary navigation"
     >
