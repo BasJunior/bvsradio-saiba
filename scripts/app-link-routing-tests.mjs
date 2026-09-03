@@ -7,7 +7,11 @@ assert.equal(appRouteForNativeUrl("https://bvsradio.com/app/android/library#offl
 assert.equal(appRouteForNativeUrl("https://www.bvsradio.com/radio?track=1", "ios"), "/app/ios?track=1");
 assert.equal(appRouteForNativeUrl("/community/rooms/123", "android"), "/app/android/rooms/123");
 assert.equal(appRouteForNativeUrl("bvsradio://marketplace/orders", "ios"), "/app/ios/studio/orders");
-assert.equal(appRouteForNativeUrl("bvsradio://marketplace", "ios"), "/app/ios/studio/marketplace");
+assert.equal(appRouteForNativeUrl("bvsradio://marketplace", "ios"), "/app/ios/marketplace");
+assert.equal(appRouteForNativeUrl("/marketplace/wolfbridges-studio?service=record-mix-master-own-beat", "ios"), "/app/ios/marketplace?service=record-mix-master-own-beat&provider=wolfbridges-studio");
+assert.equal(appRouteForNativeUrl("/marketplace/wolfbridges-studio/book?service=record-mix-master-own-beat", "android"), "/app/android/marketplace?service=record-mix-master-own-beat&provider=wolfbridges-studio&book=1");
+assert.equal(appRouteForNativeUrl("/shop", "ios"), "/app/ios/marketplace?provider=bvs-studio-services");
+assert.equal(appRouteForNativeUrl("/creator/marketplace", "ios"), "/app/ios/studio/marketplace");
 assert.equal(appRouteForNativeUrl("bvsradio://radio", "android"), "/app/android");
 assert.equal(appRouteForNativeUrl("/account", "ios"), "/app/ios/account");
 assert.equal(appRouteForNativeUrl("/notifications", "ios"), "/app/ios/notifications");
