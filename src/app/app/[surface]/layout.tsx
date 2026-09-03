@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import AppBootstrap, { type AppSurface } from "@/components/app-vnext/AppBootstrap";
 import AppBottomNav from "@/components/app-vnext/AppBottomNav";
+import AppGestureBridge from "@/components/app-vnext/AppGestureBridge";
 import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
 import AppTopBar from "@/components/app-vnext/AppTopBar";
 import { AppSessionProvider } from "@/components/app-vnext/AppSessionProvider";
@@ -20,6 +21,7 @@ export default async function MobileVNextLayout({
     <AppSessionProvider>
       <AppBootstrap surface={surface} />
       <AppNativeRuntime surface={surface} />
+      <AppGestureBridge surface={surface} />
       <style>{`
         html[data-bvs-app-shell="true"] footer { display: none !important; }
         html[data-bvs-app-shell="true"] body { overscroll-behavior-y: none; }
