@@ -41,6 +41,30 @@ export async function POST(request: Request) {
   if (message.length < 20) {
     return NextResponse.json({ error: 'Tell editorial a little about your work (at least 20 characters).' }, { status: 400 })
   }
+
+  const [profileResponse, applicationResponse] = await Promise.all([
+    fetch(`${url}/rest/v1/profiles?id=eq.${user.id}&select=role,is_producer&limit=1`, { headers, cache: 'no-store' }),
+    fetch(`${url}/rest/v1/profile_role_applications?user_id=eq.${user.id}&select=requested_role,status&limit=1`, { headers, cache: 'no-store' }),
+  ])
+  const profileRows = profileResponse.ok ? await profileResponse.json() : []
+  const applicationRows = applicationResponse.ok ? await applicationResponse.json() : []
+  const profile = profileRows[0] as { role?: string; is_producer?: boolean } | undefined
+  const existingApplication = applicationRows[0] as { requested_role?: string; status?: string } | undefined
+  const profileRole = String(profile?.role || 'listener')
+  const alreadyGranted =
+    requestedRole === profileRole ||
+    (requestedRole === 'producer' && Boolean(profile?.is_producer)) ||
+    (profileRole === 'admin')
+  if (alreadyGranted) {
+    return NextResponse.json({ error: `This account already has ${requestedRole.replaceAll('_', ' ')} access.` }, { status: 409 })
+  }
+  if (existingApplication && ['submitted', 'information_requested'].includes(String(existingApplication.status || ''))) {
+    return NextResponse.json(
+      { error: `Finish the current ${String(existingApplication.requested_role || 'creator').replaceAll('_', ' ')} application before starting another one.` },
+      { status: 409 },
+    )
+  }
+
   const now = new Date().toISOString()
   const response = await fetch(`${url}/rest/v1/profile_role_applications?on_conflict=user_id`, {
     method: 'POST',
