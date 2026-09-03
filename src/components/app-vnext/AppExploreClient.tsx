@@ -14,9 +14,10 @@ type Beat = { id: string; title: string; producer?: string; producer_username?: 
 type ExploreKind = "all" | "music" | "artists" | "producers" | "beats";
 function safeImage(value?: string) { if (!value || value.includes("default-avatar")) return ""; if (/^(https?:\/\/|\/)/.test(value)) return value; return `/api/media/${value.split("/").map(encodeURIComponent).join("/")}`; }
 
-export default function AppExploreClient({ surface }: { surface: AppSurface }) {
-  const [query, setQuery] = useState(""); const [kind, setKind] = useState<ExploreKind>("all");
+export default function AppExploreClient({ surface, initialQuery = "", initialKind = "all" }: { surface: AppSurface; initialQuery?: string; initialKind?: ExploreKind }) {
+  const [query, setQuery] = useState(initialQuery); const [kind, setKind] = useState<ExploreKind>(initialKind);
   const [tracks, setTracks] = useState<CatalogueTrack[]>([]); const [artists, setArtists] = useState<Artist[]>([]); const [producers, setProducers] = useState<Producer[]>([]); const [beats, setBeats] = useState<Beat[]>([]); const [loading, setLoading] = useState(true);
+  useEffect(() => { setQuery(initialQuery); setKind(initialKind); }, [initialKind, initialQuery]);
   useEffect(() => { let alive = true; Promise.all([
     fetch(`/api/station/tracks?surface=${surface}`, { cache: "no-store" }).then((r) => r.ok ? r.json() : { tracks: [] }),
     fetch("/api/artists", { cache: "no-store" }).then((r) => r.ok ? r.json() : { artists: [] }),
