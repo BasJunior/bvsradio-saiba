@@ -8,14 +8,16 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 type NotificationEvent = { id: string; title: string; detail: string; created_at: string; href: string; kind: string };
 
 function nativeEventHref(surface: AppSurface, event: NotificationEvent) {
+  if (event.kind === "order") return `/app/${surface}/studio/orders`;
+  if (["premium", "payout"].includes(event.kind)) return `/app/${surface}/studio/money`;
+  if (event.kind === "profile") return `/app/${surface}/account`;
+  if (event.kind === "beat") return `/app/${surface}/studio/beats`;
+  if (["track", "release", "request", "message"].includes(event.kind)) return `/app/${surface}/studio/release`;
+  if (["writer", "article", "show", "episode"].includes(event.kind)) return `/app/${surface}/studio`;
   if (typeof window !== "undefined") {
     const translated = appDestination(surface, new URL(event.href || "/account", window.location.origin));
     if (translated) return translated;
   }
-  if (event.kind === "order") return `/app/${surface}/studio/orders`;
-  if (event.kind === "premium") return `/app/${surface}/studio/money`;
-  if (event.kind === "profile") return `/app/${surface}/account`;
-  if (["beat", "track", "release", "request", "message", "writer", "article", "show", "episode"].includes(event.kind)) return `/app/${surface}/studio`;
   return `/app/${surface}/you`;
 }
 
