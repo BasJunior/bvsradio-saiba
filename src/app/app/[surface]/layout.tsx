@@ -3,6 +3,7 @@ import AppBootstrap, { type AppSurface } from "@/components/app-vnext/AppBootstr
 import AppBottomNav from "@/components/app-vnext/AppBottomNav";
 import AppDataModeBridge from "@/components/app-vnext/AppDataModeBridge";
 import AppGestureBridge from "@/components/app-vnext/AppGestureBridge";
+import AppLibrarySyncBridge from "@/components/app-vnext/AppLibrarySyncBridge";
 import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
 import AppStationFetchBridge from "@/components/app-vnext/AppStationFetchBridge";
 import AppTopBar from "@/components/app-vnext/AppTopBar";
@@ -24,6 +25,7 @@ export default async function MobileVNextLayout({
       <AppBootstrap surface={surface} />
       <AppNativeRuntime surface={surface} />
       <AppDataModeBridge surface={surface} />
+      <AppLibrarySyncBridge />
       <AppStationFetchBridge />
       <AppGestureBridge surface={surface} />
       <style>{`
