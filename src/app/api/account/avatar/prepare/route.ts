@@ -4,6 +4,12 @@ import { r2Configured, r2MediaUrl, signedR2UploadUrl } from '@/lib/r2-storage'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+const MIME_BY_EXT: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+}
 
 export async function POST(request: Request) {
   const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
@@ -14,14 +20,18 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({})) as { name?: string; type?: string; size?: number }
   const name = String(body.name || '')
   const ext = name.toLowerCase().match(/\.([a-z0-9]+)$/)?.[1] || ''
-  if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
+  const contentType = MIME_BY_EXT[ext] || ''
+  if (!contentType) {
     return NextResponse.json({ error: 'Profile picture must be JPG, PNG, or WebP.' }, { status: 400 })
+  }
+  const suppliedType = String(body.type || '').toLowerCase().trim()
+  if (suppliedType && suppliedType !== contentType) {
+    return NextResponse.json({ error: 'Profile picture file type does not match its extension.' }, { status: 400 })
   }
   if (Number(body.size || 0) <= 0 || Number(body.size) > 8 * 1024 * 1024) {
     return NextResponse.json({ error: 'Profile picture must be smaller than 8 MB.' }, { status: 400 })
   }
   const path = `avatars/${user.id}/${Date.now()}.${ext}`
-  const contentType = String(body.type || '') || `image/${ext === 'jpg' ? 'jpeg' : ext}`
   const slot = { path, contentType, signedUrl: await signedR2UploadUrl(path, contentType) }
   return NextResponse.json({ provider: 'r2', slot, publicUrl: r2MediaUrl(path) })
 }
