@@ -6,12 +6,39 @@ import { useRouter } from "next/navigation";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { AppPlaylist } from "@/components/app-vnext/AppPlaylists";
+import { useStationPlayer } from "@/components/StationPlayer";
 import { shareBvs } from "@/lib/app-native";
+import { mediaUrlForStoredValue } from "@/lib/media-url";
+import type { StationTrack } from "@/lib/station";
 
-type PlaylistTrack = { id: string; track_id: string; position: number; title?: string; artist_name?: string; genre?: string; artwork_url?: string; duration_sec?: number };
+type PlaylistTrack = {
+  id: string;
+  track_id: string;
+  position: number;
+  title?: string;
+  artist_name?: string;
+  genre?: string;
+  artwork_url?: string;
+  file_url?: string;
+  duration_sec?: number;
+};
+
+function toStationTrack(track: PlaylistTrack): StationTrack | null {
+  const src = mediaUrlForStoredValue(track.file_url);
+  if (!src) return null;
+  return {
+    id: track.track_id,
+    title: track.title || "BVS track",
+    artist: track.artist_name || "BVS artist",
+    src,
+    artwork: mediaUrlForStoredValue(track.artwork_url) || undefined,
+    genre: track.genre || undefined,
+  };
+}
 
 export default function AppPlaylistDetailClient({ surface, playlistId }: { surface: AppSurface; playlistId: string }) {
   const router = useRouter();
+  const player = useStationPlayer();
   const { token, signedIn, loading } = useAppSession();
   const [playlist, setPlaylist] = useState<AppPlaylist | null>(null);
   const [tracks, setTracks] = useState<PlaylistTrack[]>([]);
@@ -36,6 +63,28 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
 
   useEffect(() => { void load(); }, [load]);
   const orderedIds = useMemo(() => tracks.map((item) => item.track_id), [tracks]);
+  const playableTracks = useMemo(() => tracks.map(toStationTrack).filter((track): track is StationTrack => Boolean(track)), [tracks]);
+  const playableById = useMemo(() => new Map(playableTracks.map((track) => [track.id, track])), [playableTracks]);
+
+  const playFrom = (trackId?: string) => {
+    if (!playlist || !playableTracks.length) return;
+    const startIndex = trackId ? Math.max(0, playableTracks.findIndex((track) => track.id === trackId)) : 0;
+    player.playAll(playableTracks, { from: playlist.title, startIndex });
+    player.setQueueOpen(false);
+    player.openNowPlaying();
+  };
+
+  const shufflePlay = () => {
+    if (!playlist || !playableTracks.length) return;
+    const shuffled = [...playableTracks];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swap = Math.floor(Math.random() * (index + 1));
+      [shuffled[index], shuffled[swap]] = [shuffled[swap], shuffled[index]];
+    }
+    player.playAll(shuffled, { from: `${playlist.title} · Shuffle` });
+    player.setQueueOpen(false);
+    player.openNowPlaying();
+  };
 
   const patchPlaylist = async (patch: { title?: string; isPublic?: boolean }) => {
     if (!token) return;
@@ -79,10 +128,36 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
       <p className="text-xs uppercase tracking-[.18em] text-brand">Your playlist</p>
       {editing ? <div className="mt-3 flex gap-2"><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} className="min-h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-4 text-xl font-semibold" /><button type="button" disabled={busy || !title.trim()} onClick={() => void patchPlaylist({ title: title.trim() })} className="rounded-xl bg-brand px-4 text-sm font-semibold text-black">Save</button></div> : <h1 className="mt-2 text-4xl font-semibold tracking-tight">{playlist.title}</h1>}
       <p className="mt-2 text-sm text-text-secondary">{tracks.length} track{tracks.length === 1 ? "" : "s"} · {playlist.is_public === false ? "Private" : "Public"}</p>
-      <div className="mt-5 flex flex-wrap gap-2"><button type="button" onClick={() => setEditing((value) => !value)} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Rename</button><button type="button" onClick={() => void patchPlaylist({ isPublic: playlist.is_public === false })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Make {playlist.is_public === false ? "public" : "private"}</button>{playlist.is_public !== false ? <button type="button" onClick={() => void shareBvs({ title: playlist.title, text: `Listen to ${playlist.title} on BVS`, url: `${window.location.origin}/app/${surface}/playlist/${playlist.id}` })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Share</button> : null}<button type="button" onClick={() => void destroy()} className="min-h-10 rounded-full border border-red-400/25 px-4 text-sm text-red-200">Delete</button></div>
+      <div className="mt-5 flex flex-wrap gap-2">
+        <button type="button" disabled={!playableTracks.length} onClick={() => playFrom()} className="min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black disabled:opacity-40">▶ Play</button>
+        <button type="button" disabled={playableTracks.length < 2} onClick={shufflePlay} className="min-h-11 rounded-full border border-brand/35 px-5 text-sm font-semibold text-brand disabled:opacity-40">Shuffle play</button>
+        <button type="button" onClick={() => setEditing((value) => !value)} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Rename</button>
+        <button type="button" onClick={() => void patchPlaylist({ isPublic: playlist.is_public === false })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Make {playlist.is_public === false ? "public" : "private"}</button>
+        {playlist.is_public !== false ? <button type="button" onClick={() => void shareBvs({ title: playlist.title, text: `Listen to ${playlist.title} on BVS`, url: `${window.location.origin}/app/${surface}/playlist/${playlist.id}` })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Share</button> : null}
+        <button type="button" onClick={() => void destroy()} className="min-h-10 rounded-full border border-red-400/25 px-4 text-sm text-red-200">Delete</button>
+      </div>
+      {tracks.length && playableTracks.length !== tracks.length ? <p className="mt-3 text-xs text-text-secondary">{tracks.length - playableTracks.length} saved track{tracks.length - playableTracks.length === 1 ? " is" : "s are"} currently unavailable for playback.</p> : null}
     </div>
     {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
-    <div className="mt-6 space-y-2">{tracks.map((track, index) => <article key={track.track_id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-3">{track.artwork_url ? <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl"><Image src={track.artwork_url} alt="" fill unoptimized className="object-cover" /></div> : <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-white/5 text-xs text-brand">BVS</div>}<div className="min-w-0 flex-1"><h2 className="truncate font-semibold">{track.title || "BVS track"}</h2><p className="truncate text-sm text-text-secondary">{track.artist_name || "BVS artist"}</p></div><div className="flex shrink-0 items-center gap-1"><button type="button" disabled={index === 0} onClick={() => void move(index, -1)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 disabled:opacity-25" aria-label="Move up">↑</button><button type="button" disabled={index === tracks.length - 1} onClick={() => void move(index, 1)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 disabled:opacity-25" aria-label="Move down">↓</button><button type="button" onClick={() => void remove(track.track_id)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-red-200" aria-label="Remove">×</button></div></article>)}</div>
+    <div className="mt-6 space-y-2">{tracks.map((track, index) => {
+      const playable = playableById.has(track.track_id);
+      return <article key={track.track_id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-3">
+        <button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl disabled:opacity-45" aria-label={`Play ${track.title || "track"}`}>
+          {track.artwork_url ? <Image src={mediaUrlForStoredValue(track.artwork_url) || track.artwork_url} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center bg-white/5 text-xs text-brand">BVS</span>}
+          {playable ? <span className="absolute inset-0 grid place-items-center bg-black/25 text-lg text-white opacity-0 transition-opacity hover:opacity-100 focus:opacity-100">▶</span> : null}
+        </button>
+        <button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="min-w-0 flex-1 text-left disabled:cursor-default">
+          <h2 className="truncate font-semibold">{track.title || "BVS track"}</h2><p className="truncate text-sm text-text-secondary">{track.artist_name || "BVS artist"}</p>
+          {!playable ? <p className="mt-1 text-xs text-amber-200/80">Unavailable to play right now</p> : null}
+        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {playable ? <button type="button" onClick={() => playFrom(track.track_id)} className="grid h-9 w-9 place-items-center rounded-full bg-brand text-xs font-bold text-black" aria-label={`Play ${track.title || "track"}`}>▶</button> : null}
+          <button type="button" disabled={index === 0} onClick={() => void move(index, -1)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 disabled:opacity-25" aria-label="Move up">↑</button>
+          <button type="button" disabled={index === tracks.length - 1} onClick={() => void move(index, 1)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 disabled:opacity-25" aria-label="Move down">↓</button>
+          <button type="button" onClick={() => void remove(track.track_id)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-red-200" aria-label="Remove">×</button>
+        </div>
+      </article>;
+    })}</div>
     {!tracks.length ? <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center"><h2 className="text-xl font-semibold">This playlist is ready for its first track.</h2><button type="button" onClick={() => router.push(`/app/${surface}/explore`)} className="mt-4 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black">Explore music</button></div> : null}
   </div>;
 }
