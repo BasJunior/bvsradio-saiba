@@ -8,6 +8,7 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { AppPlaylist } from "@/components/app-vnext/AppPlaylists";
 import { useStationPlayer } from "@/components/StationPlayer";
 import { shareBvs } from "@/lib/app-native";
+import { recordListening } from "@/lib/library";
 import { mediaUrlForStoredValue } from "@/lib/media-url";
 
 type PlaylistTrack = {
@@ -29,6 +30,7 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
   const [tracks, setTracks] = useState<PlaylistTrack[]>([]);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -43,7 +45,7 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
     const list = (await listResponse.json()) as { playlists?: AppPlaylist[] };
     const payload = (await tracksResponse.json()) as { tracks?: PlaylistTrack[] };
     const found = (list.playlists || []).find((item) => item.id === playlistId) || null;
-    setPlaylist(found); setTitle(found?.title || ""); setTracks(payload.tracks || []); setError(found ? "" : "Playlist not found.");
+    setPlaylist(found); setTitle(found?.title || ""); setDescription(found?.description || ""); setTracks(payload.tracks || []); setError(found ? "" : "Playlist not found.");
   }, [playlistId, token]);
 
   useEffect(() => { void load(); }, [load]);
@@ -51,9 +53,16 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
   const clearedById = useMemo(() => new Map(player.tracks.filter((track) => track.id).map((track) => [track.id as string, track])), [player.tracks]);
   const playableTracks = useMemo(() => tracks.map((item) => clearedById.get(item.track_id)).filter((track): track is NonNullable<typeof track> => Boolean(track)), [clearedById, tracks]);
 
+  const rememberPlay = (trackId?: string) => {
+    const track = trackId ? clearedById.get(trackId) : playableTracks[0];
+    if (!track) return;
+    recordListening({ id: track.id || track.src, kind: "track", title: track.title, subtitle: track.artist, href: "/radio", image: track.artwork });
+  };
+
   const playFrom = (trackId?: string) => {
     if (!playlist || !playableTracks.length) return;
     const startIndex = trackId ? Math.max(0, playableTracks.findIndex((track) => track.id === trackId)) : 0;
+    rememberPlay(playableTracks[startIndex]?.id);
     player.playAll(playableTracks, { from: playlist.title, startIndex });
     player.setQueueOpen(false);
     player.openNowPlaying();
@@ -66,12 +75,13 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
       const swap = Math.floor(Math.random() * (index + 1));
       [shuffled[index], shuffled[swap]] = [shuffled[swap], shuffled[index]];
     }
+    rememberPlay(shuffled[0]?.id);
     player.playAll(shuffled, { from: `${playlist.title} · Shuffle` });
     player.setQueueOpen(false);
     player.openNowPlaying();
   };
 
-  const patchPlaylist = async (patch: { title?: string; isPublic?: boolean }) => {
+  const patchPlaylist = async (patch: { title?: string; description?: string; isPublic?: boolean }) => {
     if (!token) return;
     setBusy(true); setError("");
     const response = await fetch(`/api/app/playlists/${playlistId}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(patch) }).catch(() => null);
@@ -111,12 +121,12 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
     <button type="button" onClick={() => router.back()} className="text-sm text-text-secondary">← Library</button>
     <div className="mt-5 rounded-[1.9rem] border border-brand/20 bg-gradient-to-br from-brand/[.10] to-white/[.02] p-6">
       <p className="text-xs uppercase tracking-[.18em] text-brand">Your playlist</p>
-      {editing ? <div className="mt-3 flex gap-2"><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} className="min-h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-4 text-xl font-semibold" /><button type="button" disabled={busy || !title.trim()} onClick={() => void patchPlaylist({ title: title.trim() })} className="rounded-xl bg-brand px-4 text-sm font-semibold text-black">Save</button></div> : <h1 className="mt-2 text-4xl font-semibold tracking-tight">{playlist.title}</h1>}
+      {editing ? <div className="mt-3 space-y-2"><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} className="min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-4 text-xl font-semibold" /><textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={500} rows={3} placeholder="Playlist description" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm" /><div className="flex gap-2"><button type="button" disabled={busy || !title.trim()} onClick={() => void patchPlaylist({ title: title.trim(), description: description.trim() })} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-black">Save</button><button type="button" onClick={() => { setEditing(false); setTitle(playlist.title); setDescription(playlist.description || ""); }} className="rounded-xl border border-white/15 px-4 py-2 text-sm">Cancel</button></div></div> : <><h1 className="mt-2 text-4xl font-semibold tracking-tight">{playlist.title}</h1>{playlist.description ? <p className="mt-2 max-w-2xl text-sm text-text-secondary">{playlist.description}</p> : null}</>}
       <p className="mt-2 text-sm text-text-secondary">{tracks.length} track{tracks.length === 1 ? "" : "s"} · {playlist.is_public === false ? "Private" : "Public"}</p>
       <div className="mt-5 flex flex-wrap gap-2">
         <button type="button" disabled={!playableTracks.length} onClick={() => playFrom()} className="min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black disabled:opacity-40">▶ Play</button>
         <button type="button" disabled={playableTracks.length < 2} onClick={shufflePlay} className="min-h-11 rounded-full border border-brand/35 px-5 text-sm font-semibold text-brand disabled:opacity-40">Shuffle play</button>
-        <button type="button" onClick={() => setEditing((value) => !value)} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Rename</button>
+        <button type="button" onClick={() => setEditing((value) => !value)} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Edit</button>
         <button type="button" onClick={() => void patchPlaylist({ isPublic: playlist.is_public === false })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Make {playlist.is_public === false ? "public" : "private"}</button>
         {playlist.is_public !== false ? <button type="button" onClick={() => void shareBvs({ title: playlist.title, text: `Listen to ${playlist.title} on BVS`, url: `${window.location.origin}/app/${surface}/playlist/${playlist.id}` })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Share</button> : null}
         <button type="button" onClick={() => void destroy()} className="min-h-10 rounded-full border border-red-400/25 px-4 text-sm text-red-200">Delete</button>
@@ -126,17 +136,14 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
     {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
     <div className="mt-6 space-y-2">{tracks.map((track, index) => {
       const playable = clearedById.has(track.track_id);
+      const stationTrack = clearedById.get(track.track_id);
       return <article key={track.track_id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-3">
         <button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl disabled:opacity-45" aria-label={`Play ${track.title || "track"}`}>
           {track.artwork_url ? <Image src={mediaUrlForStoredValue(track.artwork_url) || track.artwork_url} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center bg-white/5 text-xs text-brand">BVS</span>}
-          {playable ? <span className="absolute inset-0 grid place-items-center bg-black/25 text-lg text-white opacity-0 transition-opacity hover:opacity-100 focus:opacity-100">▶</span> : null}
+          {playable ? <span className="absolute inset-0 grid place-items-center bg-black/25 text-lg text-white">▶</span> : null}
         </button>
-        <button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="min-w-0 flex-1 text-left disabled:cursor-default">
-          <h2 className="truncate font-semibold">{track.title || "BVS track"}</h2><p className="truncate text-sm text-text-secondary">{track.artist_name || "BVS artist"}</p>
-          {!playable ? <p className="mt-1 text-xs text-amber-200/80">Unavailable on this app surface</p> : null}
-        </button>
+        <div className="min-w-0 flex-1"><button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="block w-full text-left disabled:cursor-default"><h2 className="truncate font-semibold">{track.title || "BVS track"}</h2><p className="truncate text-sm text-text-secondary">{track.artist_name || "BVS artist"}</p></button>{playable && stationTrack ? <div className="mt-2 flex flex-wrap gap-1"><button type="button" onClick={() => player.playNext(stationTrack)} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">Play next</button><button type="button" onClick={() => player.addToQueue(stationTrack)} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">Add to queue</button></div> : <p className="mt-1 text-xs text-amber-200/80">Unavailable on this app surface</p>}</div>
         <div className="flex shrink-0 items-center gap-1">
-          {playable ? <button type="button" onClick={() => playFrom(track.track_id)} className="grid h-9 w-9 place-items-center rounded-full bg-brand text-xs font-bold text-black" aria-label={`Play ${track.title || "track"}`}>▶</button> : null}
           <button type="button" disabled={index === 0} onClick={() => void move(index, -1)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 disabled:opacity-25" aria-label="Move up">↑</button>
           <button type="button" disabled={index === tracks.length - 1} onClick={() => void move(index, 1)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 disabled:opacity-25" aria-label="Move down">↓</button>
           <button type="button" onClick={() => void remove(track.track_id)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 text-red-200" aria-label="Remove">×</button>

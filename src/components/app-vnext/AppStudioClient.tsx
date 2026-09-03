@@ -28,8 +28,10 @@ type Workspace = {
 };
 
 type Task = { id: string; eyebrow: string; title: string; note: string; href: string; tone?: "urgent" | "normal" };
+type PathStep = { label: string; note: string; href: string; state: "done" | "current" | "next" };
 
 const needsCreatorAction = (status?: string) => ["changes_requested", "rejected", "failed", "action_required", "needs_action"].includes(String(status || "").toLowerCase());
+const normalize = (status?: string) => String(status || "").toLowerCase();
 
 export default function AppStudioClient({ surface }: { surface: AppSurface }) {
   const { loading, signedIn, isCreator, access, premiumActive, premiumPlanLabel, token } = useAppSession();
@@ -64,16 +66,57 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
       if (needsCreatorAction(track.editorial_status)) out.push({ id: `track-${track.id}`, eyebrow: "Track review", title: track.title, note: track.editorial_notes || "This track needs your attention.", href: `/app/${surface}/studio/release`, tone: "urgent" });
     }
     for (const job of workspace.distributionJobs || []) {
-      if (needsCreatorAction(job.status)) out.push({ id: `distribution-${job.id}`, eyebrow: "Distribution", title: "Distribution action required", note: job.notes || `Status: ${job.status || "needs action"}.`, href: "/distribution", tone: "urgent" });
+      if (needsCreatorAction(job.status)) out.push({ id: `distribution-${job.id}`, eyebrow: "Distribution", title: "Distribution action required", note: job.notes || `Status: ${job.status || "needs action"}.`, href: `/app/${surface}/studio/release`, tone: "urgent" });
     }
     for (const brief of workspace.briefs || []) {
-      if (["assigned", "changes_requested"].includes(String(brief.status || ""))) out.push({ id: `brief-${brief.id}`, eyebrow: "Editorial brief", title: brief.title || brief.topic || "Research brief", note: brief.editor_notes || brief.review_notes || "Open the brief and continue the assigned work.", href: "/creator/studio/manage#writer-work" });
+      if (["assigned", "changes_requested"].includes(String(brief.status || ""))) out.push({ id: `brief-${brief.id}`, eyebrow: "Editorial brief", title: brief.title || brief.topic || "Research brief", note: brief.editor_notes || brief.review_notes || "Open the brief and continue the assigned work.", href: `/app/${surface}/studio` });
     }
     for (const show of workspace.shows || []) {
-      if (needsCreatorAction(show.status)) out.push({ id: `show-${show.id}`, eyebrow: "Show review", title: show.title || "Show submission", note: show.review_notes || "Your show submission needs an update.", href: "/creator/studio/manage#show-work", tone: "urgent" });
+      if (needsCreatorAction(show.status)) out.push({ id: `show-${show.id}`, eyebrow: "Show review", title: show.title || "Show submission", note: show.review_notes || "Your show submission needs an update.", href: `/app/${surface}/studio`, tone: "urgent" });
     }
     return out.slice(0, 8);
   }, [surface, workspace]);
+
+  const artistPath = useMemo(() => {
+    if (!access?.artist) return null;
+    const releases = workspace?.releases || [];
+    const tracks = workspace?.tracks || [];
+    const jobs = workspace?.distributionJobs || [];
+    const statuses = [...releases.map((item) => normalize(item.editorial_status)), ...tracks.map((item) => normalize(item.editorial_status))];
+    const hasWork = releases.length > 0 || tracks.length > 0;
+    const hasAction = [...releases, ...tracks].some((item) => needsCreatorAction(item.editorial_status));
+    const submitted = statuses.some((status) => status && status !== "draft");
+    const reviewed = statuses.some((status) => ["in_review", "approved", "published", "live"].includes(status));
+    const approved = statuses.some((status) => ["approved", "published", "live"].includes(status));
+    const live = releases.some((item) => item.is_public || item.in_rotation) || tracks.some((item) => item.is_public || item.in_rotation) || statuses.some((status) => ["published", "live"].includes(status));
+    const distributionStarted = jobs.length > 0;
+    const distributionDone = jobs.some((job) => ["live", "delivered", "complete", "completed", "distributed"].includes(normalize(job.status)));
+
+    const raw = [
+      { label: "Create", note: "Upload music + rights", href: `/app/${surface}/studio/release`, done: hasWork },
+      { label: "Submit", note: "Send to editorial", href: `/app/${surface}/studio/release`, done: submitted },
+      { label: "Review", note: "Editorial checks", href: `/app/${surface}/studio/release`, done: reviewed },
+      { label: "Approved", note: "Cleared to publish", href: `/app/${surface}/studio/release`, done: approved },
+      { label: "Live", note: "Visible / playable", href: `/app/${surface}/studio/release`, done: live },
+      { label: "Distribution", note: distributionDone ? "Delivered" : distributionStarted ? "In progress" : "Store path", href: `/app/${surface}/studio/release`, done: distributionDone },
+      { label: "Performance", note: "Qualified attention", href: `/app/${surface}/studio/insights`, done: live },
+      { label: "Money", note: "Wallet + settlements", href: `/app/${surface}/studio/money`, done: live },
+    ];
+    let firstOpen = raw.findIndex((step) => !step.done);
+    if (firstOpen < 0) firstOpen = raw.length - 1;
+    const steps = raw.map<PathStep>((step, index) => ({ label: step.label, note: step.note, href: step.href, state: step.done ? "done" : index === firstOpen ? "current" : "next" }));
+
+    let next = { title: "Upload your first release", copy: "Start with one track or release and add the rights evidence BVS needs for review.", href: `/app/${surface}/studio/release`, cta: "Start release" };
+    if (hasAction) next = { title: "Editorial needs a change", copy: "Open the release workflow, read the review note and submit the requested correction.", href: `/app/${surface}/studio/release`, cta: "Resolve review" };
+    else if (hasWork && !submitted) next = { title: "Finish and submit your draft", copy: "Your music exists in Studio but has not entered editorial review yet.", href: `/app/${surface}/studio/release`, cta: "Continue release" };
+    else if (submitted && !approved) next = { title: "Editorial review is in progress", copy: "You can see the current status here. If editorial asks for a change, it will also appear in your action inbox.", href: `/app/${surface}/studio/release`, cta: "View status" };
+    else if (approved && !live) next = { title: "Approved — move it live", copy: "The release is cleared. Review its publish/distribution state and complete the next publishing step.", href: `/app/${surface}/studio/release`, cta: "Open release" };
+    else if (live && !distributionStarted) next = { title: "Your music is live on BVS", copy: "Now review the external distribution path and decide which approved release should move to store delivery.", href: `/app/${surface}/studio/release`, cta: "Distribution path" };
+    else if (distributionStarted && !distributionDone) next = { title: "Distribution is moving", copy: "Track the delivery job here while BVS keeps listener playback and store-delivery states separate.", href: `/app/${surface}/studio/release`, cta: "Track delivery" };
+    else if (live) next = { title: "Measure what the release is doing", copy: "Open Insights for qualified attention, then Money for balances and settlements.", href: `/app/${surface}/studio/insights`, cta: "Open Insights" };
+
+    return { steps, next };
+  }, [access?.artist, surface, workspace]);
 
   if (loading) return <div className="mx-auto max-w-5xl px-4 pt-8"><div className="h-48 animate-pulse rounded-[2rem] bg-white/[.04]" /></div>;
 
@@ -82,7 +125,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
   );
 
   if (!isCreator) return (
-    <div className="mx-auto max-w-4xl px-4 pb-10 pt-8 sm:px-6"><p className="text-xs uppercase tracking-[.2em] text-brand">Create on BVS</p><h1 className="mt-2 text-4xl font-semibold sm:text-5xl">Your account is ready for the next role.</h1><p className="mt-4 max-w-2xl text-text-secondary">Listening remains available to every BVS account. Creator roles add publishing and business tools after the appropriate BVS workflow.</p><div className="mt-7 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy]) => <div key={title} className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><h2 className="font-semibold">{title}</h2><p className="mt-2 text-sm text-text-secondary">{copy}</p></div>)}</div><Link href="/account" className="mt-7 inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black">Open role application</Link></div>
+    <div className="mx-auto max-w-4xl px-4 pb-10 pt-8 sm:px-6"><p className="text-xs uppercase tracking-[.2em] text-brand">Create on BVS</p><h1 className="mt-2 text-4xl font-semibold sm:text-5xl">Your account is ready for the next role.</h1><p className="mt-4 max-w-2xl text-text-secondary">Listening remains available to every BVS account. Creator roles add publishing and business tools after the appropriate BVS workflow.</p><div className="mt-7 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy]) => <div key={title} className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><h2 className="font-semibold">{title}</h2><p className="mt-2 text-sm text-text-secondary">{copy}</p></div>)}</div><Link href={`/app/${surface}/account#creator-role`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black">Open role application</Link></div>
   );
 
   const work = [
@@ -99,11 +142,12 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
       <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">BVS Studio</p>
       <div className="mt-2 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">What needs you today?</h1><p className="mt-3 max-w-2xl text-sm text-text-secondary">Release, respond, sell, deliver and understand your money from the same BVS identity.</p></div>{premiumActive ? <span className="shrink-0 rounded-full border border-brand/35 bg-brand/10 px-4 py-2 text-xs font-semibold text-brand">Premium · {premiumPlanLabel || "Active"}</span> : null}</div>
 
+      {artistPath ? <section className="mt-7 rounded-[1.75rem] border border-brand/20 bg-brand/[.04] p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs uppercase tracking-[.18em] text-brand">Artist path</p><h2 className="mt-1 text-2xl font-semibold">One release, from upload to money.</h2></div><Link href={artistPath.next.href} className="min-h-10 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">{artistPath.next.cta}</Link></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{artistPath.steps.map((step, index) => <Link key={step.label} href={step.href} className={`rounded-2xl border p-3 ${step.state === "done" ? "border-brand/30 bg-brand/10" : step.state === "current" ? "border-amber-300/35 bg-amber-300/[.06]" : "border-white/10 bg-black/10"}`}><div className="flex items-center justify-between gap-2"><span className="text-xs text-text-secondary">{index + 1}</span><span className="text-xs">{step.state === "done" ? "✓" : step.state === "current" ? "Now" : ""}</span></div><h3 className="mt-2 font-semibold">{step.label}</h3><p className="mt-1 text-xs text-text-secondary">{step.note}</p></Link>)}</div><div className="mt-4 rounded-2xl border border-white/10 bg-black/15 p-4"><p className="text-xs uppercase tracking-[.14em] text-brand">Next step</p><h3 className="mt-1 font-semibold">{artistPath.next.title}</h3><p className="mt-1 text-sm text-text-secondary">{artistPath.next.copy}</p></div></section> : null}
+
       <section className="mt-7 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-5"><div className="flex items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[.18em] text-brand">Action inbox</p><h2 className="mt-1 text-2xl font-semibold">{workspaceLoading ? "Checking your work…" : tasks.length ? `${tasks.length} item${tasks.length === 1 ? "" : "s"} need attention` : "You’re clear right now"}</h2></div>{workspace ? <span className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary">{(workspace.releases || []).length} releases · {(workspace.tracks || []).length} tracks</span> : null}</div>{workspaceError ? <p className="mt-3 text-sm text-red-300">{workspaceError}</p> : null}<div className="mt-4 space-y-2">{tasks.map((task) => <Link key={task.id} href={task.href} className={`block rounded-2xl border p-4 ${task.tone === "urgent" ? "border-amber-300/25 bg-amber-300/[.05]" : "border-white/10 bg-black/10"}`}><p className="text-xs uppercase tracking-[.14em] text-brand">{task.eyebrow}</p><div className="mt-1 flex items-center justify-between gap-3"><h3 className="font-semibold">{task.title}</h3><span className="text-brand">→</span></div><p className="mt-1 line-clamp-2 text-sm text-text-secondary">{task.note}</p></Link>)}</div>{!workspaceLoading && !workspaceError && !tasks.length ? <p className="mt-4 text-sm text-text-secondary">No editorial changes, failed distribution jobs or assigned work currently need a response. You can keep publishing or review insights below.</p> : null}</section>
 
       <div className="mt-7 grid gap-3 sm:grid-cols-2">{work.map((item) => <Link key={item.href} href={item.href} className="rounded-[1.5rem] border border-white/10 bg-white/[.025] p-5 transition hover:-translate-y-0.5 hover:border-brand/35"><p className="text-xs uppercase tracking-[.14em] text-brand">Studio workflow</p><h2 className="mt-2 text-xl font-semibold">{item.title}</h2><p className="mt-2 text-sm text-text-secondary">{item.copy}</p></Link>)}</div>
       <div className="mt-7 flex flex-wrap gap-2 text-xs text-text-secondary"><span className="rounded-full border border-white/10 px-3 py-1.5">Artist {access?.artist ? "✓" : ""}</span><span className="rounded-full border border-white/10 px-3 py-1.5">Producer {access?.producer ? "✓" : ""}</span><span className="rounded-full border border-white/10 px-3 py-1.5">Writer {access?.writer ? "✓" : ""}</span><span className="rounded-full border border-white/10 px-3 py-1.5">Shows {access?.showCreator ? "✓" : ""}</span></div>
-      {(access?.writer || access?.showCreator) ? <Link href="/creator/studio/manage" className="mt-6 inline-flex text-sm text-text-secondary hover:text-brand">Open advanced writer/show workspace →</Link> : null}
     </div>
   );
 }
