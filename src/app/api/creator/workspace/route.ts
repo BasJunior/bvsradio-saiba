@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { creatorHeaders, creatorIdentity, creatorJson, creatorUrl } from '@/lib/creator-server'
+import { publicDistributionStatusLabel } from '@/lib/distribution-path'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
 
 const clean = (value: unknown, max = 5000) => String(value || '').trim().slice(0, max)
@@ -16,8 +17,8 @@ export async function GET(request: Request) {
   const [tracksResponse, requestsResponse, releasesResponse, jobsResponse, profileFlagsResponse] = await Promise.all([
     fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,genre,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at,release_id,isrc,spotify_url&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`track_review_requests?artist_user_id=eq.${id}&select=*&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
-    fetch(creatorUrl(`releases?user_id=eq.${id}&select=id,title,artist_name,genre,cover_url,editorial_status,editorial_notes,is_public,in_rotation,release_type,track_count,created_at,published_at&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
-    fetch(creatorUrl(`distribution_jobs?artist_user_id=eq.${id}&select=id,release_id,status,notes,updated_at,created_at&order=updated_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`releases?user_id=eq.${id}&select=id,title,artist_name,genre,cover_url,editorial_status,editorial_notes,is_public,in_rotation,release_type,track_count,preflight_status,created_at,published_at,updated_at&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`distribution_jobs?artist_user_id=eq.${id}&select=id,release_id,status,updated_at,created_at&order=updated_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`profiles?id=eq.${id}&select=premium_active,premium_until,distribution_enabled,premium_plan_id&limit=1`), { headers: creatorHeaders, cache: 'no-store' }),
   ])
   let tracks = tracksResponse.ok ? await tracksResponse.json() : []
@@ -28,7 +29,16 @@ export async function GET(request: Request) {
   }
   const trackRequests = requestsResponse.ok ? await requestsResponse.json() : []
   const releases = releasesResponse.ok ? await releasesResponse.json() : []
-  const distributionJobs = jobsResponse.ok ? await jobsResponse.json() : []
+  const rawDistributionJobs = jobsResponse.ok ? await jobsResponse.json() as Array<Record<string, unknown>> : []
+  // Artist-facing responses must never expose private distributor ids or internal ops notes.
+  const distributionJobs = rawDistributionJobs.map((job) => ({
+    id: job.id,
+    release_id: job.release_id || null,
+    status: job.status || null,
+    public_note: publicDistributionStatusLabel(String(job.status || '')),
+    created_at: job.created_at || null,
+    updated_at: job.updated_at || null,
+  }))
   const profileFlagsRow = profileFlagsResponse.ok ? (await profileFlagsResponse.json())[0] : null
   const profileFlags = {
     premiumActive: Boolean(profileFlagsRow?.premium_active),
