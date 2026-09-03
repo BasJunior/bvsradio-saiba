@@ -10,6 +10,8 @@ export type StationTrack = {
   playCount?: number;
   /** Optional genre for similar / auto-fill */
   genre?: string;
+  /** Private, licence-checked media stored by the installed mobile app. */
+  offline?: boolean;
 };
 
 export type Show = {

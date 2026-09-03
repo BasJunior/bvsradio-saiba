@@ -12,6 +12,7 @@ public class BvsOfflineMediaPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "remove", returnType: "promise"),
         CAPPluginMethod(name: "status", returnType: "promise"),
         CAPPluginMethod(name: "renew", returnType: "promise"),
+        CAPPluginMethod(name: "playbackSource", returnType: "promise"),
     ]
 
     private struct ManifestData {
@@ -104,6 +105,34 @@ public class BvsOfflineMediaPlugin: CAPPlugin, CAPBridgedPlugin {
                     item = NSNull()
                 }
                 self.resolve(call, ["item": item])
+            } catch {
+                self.reject(call, error.localizedDescription)
+            }
+        }
+    }
+
+    @objc public func playbackSource(_ call: CAPPluginCall) {
+        guard let trackId = call.getString("trackId"), isUUID(trackId) else {
+            call.reject("A valid track is required.")
+            return
+        }
+        metadataQueue.async { [weak self] in
+            guard let self else { return }
+            do {
+                guard let record = try self.loadRecords()[trackId] else {
+                    self.reject(call, "This offline recording is no longer stored on this device.")
+                    return
+                }
+                let file = self.mediaURL(trackId)
+                guard FileManager.default.fileExists(atPath: file.path) else {
+                    self.reject(call, "This offline recording is no longer stored on this device.")
+                    return
+                }
+                guard let expiry = self.parseISO(record.licenseValidUntil), expiry > Date() else {
+                    self.reject(call, "Offline rights need revalidation before playback.")
+                    return
+                }
+                self.resolve(call, ["item": self.itemPayload(record), "uri": file.absoluteString])
             } catch {
                 self.reject(call, error.localizedDescription)
             }

@@ -10,7 +10,6 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -20,7 +19,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -137,6 +135,35 @@ public class BvsOfflineMediaPlugin extends Plugin {
                 resolve(call, response);
             } catch (Exception error) {
                 reject(call, safeMessage(error, "Offline status is unavailable."));
+            }
+        });
+    }
+
+    @PluginMethod
+    public void playbackSource(PluginCall call) {
+        String trackId = call.getString("trackId", "");
+        if (!validTrackId(trackId)) {
+            call.reject("A valid track is required.");
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                JSONObject record = loadRecords().optJSONObject(trackId);
+                File file = mediaFile(trackId);
+                if (record == null || !file.isFile()) {
+                    reject(call, "This offline recording is no longer stored on this device.");
+                    return;
+                }
+                if (parseIso(record.optString("licenseValidUntil", "")) <= System.currentTimeMillis()) {
+                    reject(call, "Offline rights need revalidation before playback.");
+                    return;
+                }
+                JSObject response = new JSObject();
+                response.put("item", item(record));
+                response.put("uri", file.toURI().toString());
+                resolve(call, response);
+            } catch (Exception error) {
+                reject(call, safeMessage(error, "Offline playback is unavailable."));
             }
         });
     }
