@@ -19,6 +19,22 @@ function exploreRoute(surface: AppSurface, url: URL) {
   return `/app/${surface}/explore${suffix ? `?${suffix}` : ""}`;
 }
 
+function marketplaceRoute(surface: AppSurface, url: URL) {
+  const base = `/app/${surface}/marketplace`;
+  if (url.pathname === "/shop") {
+    const params = new URLSearchParams(url.searchParams);
+    if (!params.has("provider")) params.set("provider", "bvs-studio-services");
+    return `${base}?${params.toString()}`;
+  }
+  if (url.pathname === "/marketplace") return `${base}${url.search}`;
+  const match = url.pathname.match(/^\/marketplace\/([^/]+)(?:\/(book))?$/);
+  if (!match?.[1]) return null;
+  const params = new URLSearchParams(url.searchParams);
+  params.set("provider", decodeURIComponent(match[1]));
+  if (match[2] === "book") params.set("book", "1");
+  return `${base}?${params.toString()}`;
+}
+
 export function appDestination(surface: AppSurface, url: URL) {
   const path = url.pathname;
   if (path.startsWith(`/app/${surface}`)) return null;
@@ -30,10 +46,14 @@ export function appDestination(surface: AppSurface, url: URL) {
   if (path === "/account") return `/app/${surface}/account`;
   if (path.startsWith("/account/orders/")) return `/app/${surface}/studio/orders`;
   if (path === "/upload" || path === "/distribution") return `/app/${surface}/studio/release`;
-  if (path === "/shop" || path === "/marketplace" || path.startsWith("/marketplace/") || path === "/creator/marketplace") return `/app/${surface}/studio/marketplace`;
+  if (path === "/creator/marketplace" || path.startsWith("/creator/studio/marketplace")) return `/app/${surface}/studio/marketplace`;
+  if (path === "/marketplace/orders" || path.startsWith("/marketplace/orders/")) return `/app/${surface}/studio/orders`;
+  if (path === "/shop" || path === "/marketplace" || path.startsWith("/marketplace/")) {
+    const destination = marketplaceRoute(surface, url);
+    if (destination) return destination;
+  }
   if (path === "/creator/studio" || path === "/creator/studio/manage") return `/app/${surface}/studio`;
   if (path.startsWith("/creator/studio/orders")) return `/app/${surface}/studio/orders`;
-  if (path.startsWith("/creator/studio/marketplace")) return `/app/${surface}/studio/marketplace`;
   if (path.startsWith("/creator/studio/insights")) return `/app/${surface}/studio/insights`;
   if (path === "/artists" || path === "/artist/premium" || path === "/producer/premium") return `/app/${surface}/studio/money`;
 
