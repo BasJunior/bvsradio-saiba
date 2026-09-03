@@ -4,6 +4,7 @@ import AppBottomNav from "@/components/app-vnext/AppBottomNav";
 import AppDataModeBridge from "@/components/app-vnext/AppDataModeBridge";
 import AppGestureBridge from "@/components/app-vnext/AppGestureBridge";
 import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
+import AppStationFetchBridge from "@/components/app-vnext/AppStationFetchBridge";
 import AppTopBar from "@/components/app-vnext/AppTopBar";
 import { AppSessionProvider } from "@/components/app-vnext/AppSessionProvider";
 
@@ -23,6 +24,7 @@ export default async function MobileVNextLayout({
       <AppBootstrap surface={surface} />
       <AppNativeRuntime surface={surface} />
       <AppDataModeBridge surface={surface} />
+      <AppStationFetchBridge />
       <AppGestureBridge surface={surface} />
       <style>{`
         html[data-bvs-app-shell="true"] footer { display: none !important; }
