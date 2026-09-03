@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import './marketplace.css'
 
 export const metadata: Metadata = {
   title: 'Creator Marketplace | BVS Radio',
