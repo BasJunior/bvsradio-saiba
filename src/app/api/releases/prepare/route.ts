@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAllowedAudioFile } from "@/lib/audio-formats";
-import { authUserId } from "@/lib/storage-upload";
+import { authUserId, serviceHeaders } from "@/lib/storage-upload";
 import { r2Configured, signedR2UploadUrl } from "@/lib/r2-storage";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -21,6 +21,14 @@ export async function POST(req: Request) {
     const user = await authUserId(SUPABASE_URL, SERVICE, token);
     if (!user?.id) {
       return NextResponse.json({ error: "Session expired. Sign in again." }, { status: 401 });
+    }
+    const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${user.id}&select=role&limit=1`, {
+      headers: serviceHeaders(SERVICE),
+      cache: "no-store",
+    });
+    const profiles = profileResponse.ok ? await profileResponse.json() as Array<{ role?: string }> : [];
+    if (!profiles[0] || !["artist", "admin"].includes(String(profiles[0].role || ""))) {
+      return NextResponse.json({ error: "Approved Artist access is required to submit music." }, { status: 403 });
     }
 
     const body = (await req.json()) as {
