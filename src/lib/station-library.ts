@@ -172,6 +172,34 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       licence_type?: string | null;
     }>;
 
+    // Optional music videos linked to rotation tracks (approved + public only).
+    // Never block audio rotation if this query fails.
+    const videoByTrack = new Map<string, { id: string; video_url: string; poster_url?: string | null }>();
+    try {
+      const ids = remote.map((t) => t.id).filter(Boolean).slice(0, 200);
+      if (ids.length) {
+        const videoRes = await fetch(
+          `${url}/rest/v1/music_videos?is_public=eq.true&editorial_status=eq.approved&content_hold=eq.false&related_track_id=in.(${ids.join(",")})&select=id,related_track_id,video_url,poster_url&limit=300`,
+          { headers, cache: "no-store" },
+        );
+        if (videoRes.ok) {
+          const videos = (await videoRes.json()) as Array<{
+            id: string;
+            related_track_id: string;
+            video_url: string;
+            poster_url?: string | null;
+          }>;
+          for (const v of videos) {
+            if (v.related_track_id && v.video_url && !videoByTrack.has(v.related_track_id)) {
+              videoByTrack.set(v.related_track_id, v);
+            }
+          }
+        }
+      }
+    } catch {
+      /* rotation must stay up without videos */
+    }
+
     const remoteTracks: StationTrack[] = remote
       .filter((t) => Boolean(t.file_url) && !String(t.file_url).includes("scdn.co"))
       .map((track) => {
@@ -180,6 +208,7 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
         const licence = String(track.licence_type || "");
         const downloadable =
           track.is_downloadable === true && licence !== "not_for_sale" && Number.isFinite(rawPrice) && rawPrice > 0;
+        const video = videoByTrack.get(track.id);
         return {
           id: track.id,
           title: track.title,
@@ -192,6 +221,11 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
           isDownloadable: downloadable,
           downloadPrice: downloadable ? rawPrice : null,
           licenceType: licence || undefined,
+          musicVideoId: video?.id,
+          musicVideoUrl: video?.video_url ? publicStorageUrl(video.video_url) : undefined,
+          musicVideoPoster: video?.poster_url
+            ? mediaUrlForStoredValue(video.poster_url) || undefined
+            : undefined,
         };
       })
       .filter((track) => Boolean(track.src) && (!surface || track.src.startsWith("/")));

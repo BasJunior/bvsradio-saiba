@@ -14,6 +14,10 @@ export type StationTrack = {
   isDownloadable?: boolean;
   downloadPrice?: number | null;
   licenceType?: string;
+  /** Optional editorial-approved music video (user must opt-in to Watch) */
+  musicVideoUrl?: string;
+  musicVideoPoster?: string;
+  musicVideoId?: string;
 };
 
 export type Show = {

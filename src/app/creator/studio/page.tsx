@@ -132,6 +132,13 @@ export default function CreatorStudioHome() {
       copy: "Send a single, EP or album to BVS for rights checks, review and distribution.",
       cta: "Start a release",
     },
+    artist && {
+      href: "/creator/studio/create/video",
+      intent: "music_video",
+      label: "Music video",
+      copy: "Upload an MP4. After approval, listeners can tap Watch on your track — radio rotation still advances to the next song when the audio ends.",
+      cta: "Upload a video",
+    },
     producer && {
       href: "/creator/studio/create/beat",
       intent: "beat",

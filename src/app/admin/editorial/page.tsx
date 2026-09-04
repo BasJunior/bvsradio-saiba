@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { roleLabels, type EditorialPermission, type EditorialRole } from '@/lib/editorial'
 import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
+import MusicVideoEditorialPanel from '@/components/MusicVideoEditorialPanel'
 import { creatorPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 import EditorialAnalytics from '@/components/EditorialAnalytics'
@@ -322,6 +323,10 @@ export default function EditorialDashboard() {
         </div>
         <span className="text-sm font-semibold text-brand">Open queue →</span>
       </Link>
+
+      <div id="ed-music-videos" className="mt-6 scroll-mt-28">
+        <MusicVideoEditorialPanel />
+      </div>
 
       <nav
         aria-label="Editorial sections"

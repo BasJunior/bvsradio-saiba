@@ -68,6 +68,7 @@ PACKS: list[dict[str, str | int]] = [
     {"id": "marketplace-services", "step": 27, "file": "supabase-marketplace-services.sql"},
     {"id": "mobile-distribution", "step": 28, "file": "supabase-mobile-distribution.sql"},
     {"id": "apple-rights-compliance", "step": 29, "file": "supabase-apple-rights-compliance.sql"},
+    {"id": "music-videos", "step": 30, "file": "supabase-music-videos.sql", "skip_if_table": "music_videos"},
 ]
 
 BOOKKEEPING_SQL = """

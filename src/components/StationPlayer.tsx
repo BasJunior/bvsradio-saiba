@@ -17,6 +17,7 @@ import {
   openTransientLayer,
 } from "@/lib/transient-navigation";
 import BuyTrackButton from "@/components/BuyTrackButton";
+import MusicVideoWatch from "@/components/MusicVideoWatch";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -1027,6 +1028,37 @@ function ProgressLine({
 }
 
 /** Fixed square cover slot so art never stretches or shifts layout on mobile. */
+/** Cover art by default; optional Watch stage when an approved music video exists. */
+function NowPlayingVisual({
+  track,
+  art,
+}: {
+  track?: StationTrack;
+  art?: string | null;
+}) {
+  if (track?.musicVideoUrl) {
+    return <MusicVideoWatch track={track} variant="stage" className="w-full" coverArt={art} />;
+  }
+
+  return (
+    <div className="relative mx-auto aspect-square w-full max-h-[min(42vh,18rem)] overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/5 shadow-[0_35px_100px_rgba(0,0,0,.55)] sm:max-h-none sm:rounded-[2rem]">
+      {art ? (
+        // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
+        <img
+          src={art}
+          alt={`Artwork for ${track?.title || "BVS Radio"}`}
+          className="h-full w-full object-cover"
+          draggable={false}
+        />
+      ) : (
+        <div className="grid h-full place-items-center bg-gradient-to-br from-brand/25 via-white/5 to-black text-4xl font-semibold tracking-[.2em] text-brand">
+          BVS
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CoverArt({
   src,
   sizeClass = "h-12 w-12",
@@ -1255,14 +1287,7 @@ export function PersistentPlayer() {
 
             <div className="grid flex-1 content-center gap-5 py-4 sm:gap-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:items-center lg:gap-16">
               <div data-np-swipe-track="true" className="mx-auto w-full max-w-[18rem] sm:max-w-[28rem] lg:max-w-[34rem]">
-                <div className="relative mx-auto aspect-square w-full max-h-[min(42vh,18rem)] overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/5 shadow-[0_35px_100px_rgba(0,0,0,.55)] sm:max-h-none sm:rounded-[2rem]">
-                  {art ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
-                    <img src={art} alt={`Artwork for ${player.current?.title || "BVS Radio"}`} className="h-full w-full object-cover" draggable={false} />
-                  ) : (
-                    <div className="grid h-full place-items-center bg-gradient-to-br from-brand/25 via-white/5 to-black text-4xl font-semibold tracking-[.2em] text-brand">BVS</div>
-                  )}
-                </div>
+                <NowPlayingVisual track={player.current} art={art} />
                 <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} className="mt-5 overflow-hidden rounded-full sm:mt-7" />
                 <div className="mt-2 flex justify-between text-xs tabular-nums text-white/50"><span>{formatTime(player.elapsed)}</span><span>{formatTime(player.duration)}</span></div>
               </div>
@@ -1330,6 +1355,19 @@ export function PersistentPlayer() {
               </span>
             </span>
           </button>
+          {player.current?.musicVideoUrl ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                player.openNowPlaying();
+              }}
+              className="shrink-0 rounded-full border border-brand/40 bg-brand/15 px-3 py-1.5 text-[11px] font-semibold text-brand hover:bg-brand/25 sm:text-xs"
+              aria-label={`Watch music video for ${player.current.title}`}
+            >
+              Watch
+            </button>
+          ) : null}
           <BuyTrackButton track={player.current} variant="compact" />
           <button
             type="button"
