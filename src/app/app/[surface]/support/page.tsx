@@ -12,7 +12,7 @@ export default async function AppSupportPage({ params }: { params: Promise<{ sur
       <p className="mt-6 text-xs font-semibold uppercase tracking-[.2em] text-brand">Support</p>
       <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Contact BVS without leaving the app.</h1>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">
-        Ask about your account, music submissions, creator services, partnerships or a technical issue. This page stays inside the vNext app shell.
+        Ask about your account, music submissions, creator services, partnerships or a technical issue. This page stays inside the BVS app.
       </p>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-[.8fr,1.2fr]">

@@ -46,7 +46,7 @@ export default function MobileFlowNav() {
   const search = searchParams.toString();
 
   return (
-    <nav ref={navRef} className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 backdrop-blur-2xl md:hidden" aria-label="Primary">
+    <nav ref={navRef} data-bvs-web-app-nav className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 backdrop-blur-2xl md:hidden" aria-label="Primary">
       <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-4">
         {destinations.map((item) => {
           const active = matchPrimaryDestination(item.id, pathname, search);

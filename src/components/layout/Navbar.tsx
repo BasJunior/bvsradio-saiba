@@ -193,7 +193,7 @@ export default function Navbar() {
       }
     }
     return (
-      <nav ref={appHeaderRef} className="bvs-app-header fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
+      <nav ref={appHeaderRef} data-bvs-web-app-header className="bvs-app-header fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
         <div className="bvs-app-header-inner mx-auto flex h-16 max-w-5xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-1">
             {showBack ? (

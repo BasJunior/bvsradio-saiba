@@ -37,9 +37,23 @@ assert(!capacitor.includes("allowNavigation:"), "do not broaden native navigatio
 assert(capacitor.includes('appId: "com.bvsradio.app"'), "keep the live App Store bundle id");
 
 const shell = read("src/components/app-vnext/AppEditionShell.tsx");
-assert(shell.includes("isAppStoreVnextVersion"), "vNext chrome must be version-gated");
-assert(shell.includes('appShell") === "vnext"'), "preview query must be able to mount 1.1 chrome");
+assert(shell.includes("useVnextEdition"), "vNext chrome must be version-gated");
 assert(shell.includes("AppBottomNav"), "1.1 chrome includes the five-tab nav");
+assert(shell.includes("data-bvs-web-app-header"), "1.1 chrome must hide the website app header");
+assert(shell.includes("data-bvs-offline-banner"), "offline listening needs a visible status");
+
+const top = read("src/components/app-vnext/AppTopBar.tsx");
+assert(top.includes("bvs-app-header"), "1.1 header must use the live safe-area chrome model");
+assert(!top.includes(">vNext<") && !top.includes("vNext"), "App Store chrome must not show a preview label");
+assert(top.includes("Back to previous screen"), "detail screens need a back control");
+
+const nav = read("src/components/app-vnext/AppBottomNav.tsx");
+assert(nav.includes("bvs-app-bottom-nav"), "1.1 tab bar must use the live bottom-chrome model");
+assert(nav.includes("AppNavIcon"), "tab icons must be vector, not unicode ornaments");
+
+const library = read("src/app/app/[surface]/library/page.tsx");
+assert(library.includes("AppLibraryEditionBoundary"), "1.1 Library must use the native library edition");
+assert(library.includes("LibraryView"), "1.0 Library fallback stays the approved listener library");
 
 const home = read("src/app/app/[surface]/page.tsx");
 assert(home.includes("IosListenHero"), "approved listen home stays on the 1.1 candidate");

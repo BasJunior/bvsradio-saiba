@@ -32,6 +32,7 @@ function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, 
   if (pathname === "/account") return withQueryAndHash(`${root}/account`, search, hash);
   if (pathname.startsWith("/account/orders/")) return withQueryAndHash(`${root}/studio/orders`, search, hash);
   if (pathname === "/contact" || pathname === "/support") return withQueryAndHash(`${root}/support`, search, hash);
+  if (pathname === "/shows" || pathname === "/blog" || pathname === "/articles") return withQueryAndHash(root, search, hash);
   if (pathname === "/search" || pathname === "/catalogue") return withQueryAndHash(`${root}/explore`, search, hash);
   if (pathname === "/upload" || pathname === "/distribution") return withQueryAndHash(`${root}/studio/release`, search, hash);
   if (pathname === "/creator/studio" || pathname === "/creator/studio/manage") return withQueryAndHash(`${root}/studio`, search, hash);

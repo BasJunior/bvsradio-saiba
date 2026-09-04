@@ -45,7 +45,7 @@ export default function AppNotificationSettings({ surface }: { surface: AppSurfa
     const before = preferences;
     setPreferences((current) => ({ ...current, [key]: value }));
     const response = await fetch("/api/app/notification-preferences", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ [key]: value }) }).catch(() => null);
-    if (!response?.ok) { setPreferences(before); setMessage("Notification preferences will activate when the isolated vNext database pack is applied."); }
+    if (!response?.ok) { setPreferences(before); setMessage("Notification preferences could not be saved right now. Try again in a moment."); }
     else setMessage("Saved.");
   };
 

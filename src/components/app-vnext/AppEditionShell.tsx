@@ -1,7 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import AppBootstrap, { type AppSurface } from "@/components/app-vnext/AppBootstrap";
 import AppBottomNav from "@/components/app-vnext/AppBottomNav";
 import AppDataModeBridge from "@/components/app-vnext/AppDataModeBridge";
@@ -11,29 +9,7 @@ import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
 import AppStationFetchBridge from "@/components/app-vnext/AppStationFetchBridge";
 import AppTopBar from "@/components/app-vnext/AppTopBar";
 import { AppSessionProvider } from "@/components/app-vnext/AppSessionProvider";
-import { getNativeAppInfo, isAppStoreVnextVersion, isNativeRuntime } from "@/lib/app-native";
-
-function useVnextEdition() {
-  const searchParams = useSearchParams();
-  const [enabled, setEnabled] = useState(false);
-
-  useEffect(() => {
-    const preview = searchParams.get("appShell") === "vnext" || searchParams.get("appShell") === "1.1";
-    if (preview) {
-      setEnabled(true);
-      return;
-    }
-    if (!isNativeRuntime()) {
-      setEnabled(false);
-      return;
-    }
-    void getNativeAppInfo().then((info) => {
-      setEnabled(isAppStoreVnextVersion(info?.version));
-    });
-  }, [searchParams]);
-
-  return enabled;
-}
+import { useVnextEdition } from "@/components/app-vnext/useVnextEdition";
 
 export default function AppEditionShell({
   surface,
@@ -54,14 +30,28 @@ export default function AppEditionShell({
       <AppStationFetchBridge />
       <AppGestureBridge surface={surface} />
       <style>{`
-        html[data-bvs-app-shell="true"] footer { display: none !important; }
+        html[data-bvs-app-shell="true"] footer,
+        html[data-bvs-app-shell="true"] [data-bvs-web-app-header],
+        html[data-bvs-app-shell="true"] [data-bvs-web-app-nav],
+        html[data-bvs-app-shell="true"] [aria-label="Install BVS Radio"],
+        html[data-bvs-app-shell="true"] [data-bvs-web-extra] {
+          display: none !important;
+        }
         html[data-bvs-app-shell="true"] body { overscroll-behavior-y: none; }
-        html[data-bvs-app-shell="true"] [aria-label="Install BVS Radio"] { display: none !important; }
         html[data-bvs-network="offline"] [data-bvs-network-dependent="true"] { opacity: .58; }
         html[data-bvs-data-effective="saver"] [data-bvs-data-heavy="true"] { display: none !important; }
+        html[data-bvs-network="offline"] [data-bvs-offline-banner] { display: block !important; }
       `}</style>
+      <p
+        data-bvs-offline-banner
+        className="fixed inset-x-0 z-[61] hidden bg-amber-300 px-4 py-1.5 text-center text-xs font-semibold text-black"
+        style={{ top: "var(--bvs-app-header-height)" }}
+        role="status"
+      >
+        You’re offline. Cleared downloads stay available in Library.
+      </p>
       <AppTopBar surface={surface} />
-      <div className="min-h-[calc(100dvh-4rem)] pb-4">{children}</div>
+      <div className="pb-4">{children}</div>
       <AppBottomNav surface={surface} />
     </AppSessionProvider>
   );

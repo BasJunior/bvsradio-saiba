@@ -39,6 +39,8 @@ export function appDestination(surface: AppSurface, url: URL) {
   const path = url.pathname;
   if (path.startsWith(`/app/${surface}`)) return null;
   if (path === "/contact") return `/app/${surface}/support${url.search}`;
+  if (path === "/shows") return `/app/${surface}`;
+  if (path === "/blog" || path === "/articles") return `/app/${surface}`;
   if (path === "/search" || path === "/catalogue") return exploreRoute(surface, url);
   if (path === "/radio" || path === "/") return `/app/${surface}`;
   if (path === "/library") return `/app/${surface}/library`;

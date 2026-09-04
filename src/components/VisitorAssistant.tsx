@@ -41,7 +41,7 @@ export default function VisitorAssistant() {
     }
   }
 
-  return <div className="fixed bottom-[calc(9.25rem+env(safe-area-inset-bottom))] right-3 z-[60] sm:right-6 md:bottom-[calc(6.25rem+env(safe-area-inset-bottom))]">
+  return <div data-bvs-web-extra className="fixed bottom-[calc(9.25rem+env(safe-area-inset-bottom))] right-3 z-[60] sm:right-6 md:bottom-[calc(6.25rem+env(safe-area-inset-bottom))]">
     {open && <section aria-label="BVS visitor assistant" className="mb-3 flex h-[min(34rem,calc(100dvh-12rem-env(safe-area-inset-bottom)))] min-h-72 w-[calc(100vw-1.5rem)] max-w-[380px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#181818] shadow-2xl md:h-[min(600px,70vh)] md:w-[calc(100vw-3rem)]">
       <header className="flex items-center justify-between border-b border-white/10 bg-bg-secondary px-5 py-4">
         <div><h2 className="font-semibold text-brand">BVS Guide</h2><p className="text-xs text-text-secondary">Visitor support</p></div>

@@ -240,7 +240,7 @@ export default function AppMarketplaceClient({
             {bookingMessage ? <p role="status" className="mt-4 rounded-xl border border-brand/25 bg-brand/[.05] p-4 text-sm text-brand">{bookingMessage}</p> : null}
           </div> : <div className="mt-6 rounded-2xl border border-white/10 bg-black/10 p-4">
             <p className="font-semibold">Storefront-policy aware purchase</p>
-            <p className="mt-2 text-sm text-text-secondary">This vNext app shows the verified offer and price but does not silently send digital or checkout purchases through a web payment screen. Share the BVS web-store link when you want to continue outside this app build.</p>
+            <p className="mt-2 text-sm text-text-secondary">BVS shows the verified offer and price here. Digital purchases continue on the BVS website, outside the App Store app.</p>
             <button type="button" onClick={() => void shareWebStore(provider, service)} className="mt-4 min-h-10 rounded-full border border-brand/40 px-4 text-sm font-semibold text-brand">Share web-store link</button>
           </div>}
         </section> : null}
