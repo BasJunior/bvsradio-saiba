@@ -13,17 +13,23 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const pbx = read("ios/App/App.xcodeproj/project.pbxproj");
-assert(pbx.includes("MARKETING_VERSION = 1.1;"), "native marketing version must be 1.1");
-assert(pbx.includes("CURRENT_PROJECT_VERSION = 4;"), "native build must be 4");
-assert(pbx.includes("IPHONEOS_DEPLOYMENT_TARGET = 15.0;"), "minimum iOS must be 15");
-assert(pbx.includes("CODE_SIGN_ENTITLEMENTS = App/App.entitlements;"), "push/app-link entitlements must be signed");
-assert(pbx.includes("BvsOfflineMediaPlugin.swift"), "offline plugin must be in the Xcode target");
+const pbxPath = path.join(root, "ios/App/App.xcodeproj/project.pbxproj");
+const plistPath = path.join(root, "ios/App/App/Info.plist");
+if (fs.existsSync(pbxPath) && fs.existsSync(plistPath)) {
+  const pbx = read("ios/App/App.xcodeproj/project.pbxproj");
+  assert(pbx.includes("MARKETING_VERSION = 1.1;"), "native marketing version must be 1.1");
+  assert(pbx.includes("CURRENT_PROJECT_VERSION = 4;"), "native build must be 4");
+  assert(pbx.includes("IPHONEOS_DEPLOYMENT_TARGET = 15.0;"), "minimum iOS must be 15");
+  assert(pbx.includes("CODE_SIGN_ENTITLEMENTS = App/App.entitlements;"), "push/app-link entitlements must be signed");
+  assert(pbx.includes("BvsOfflineMediaPlugin.swift"), "offline plugin must be in the Xcode target");
 
-const plist = read("ios/App/App/Info.plist");
-assert(plist.includes("<string>bvsradio</string>"), "custom URL scheme required");
-assert(plist.includes("<string>remote-notification</string>"), "push background mode required");
-assert(plist.includes("<string>audio</string>"), "audio background mode must remain");
+  const plist = read("ios/App/App/Info.plist");
+  assert(plist.includes("<string>bvsradio</string>"), "custom URL scheme required");
+  assert(plist.includes("<string>remote-notification</string>"), "push background mode required");
+  assert(plist.includes("<string>audio</string>"), "audio background mode must remain");
+} else {
+  console.log("Skipping native Xcode file checks on this host (ios/ is not in the Vercel payload).");
+}
 
 const capacitor = read("capacitor.config.ts");
 assert(capacitor.includes("https://bvsradio.com/app/${mobileSurface}"), "App Store binary must load production /app/ios");
