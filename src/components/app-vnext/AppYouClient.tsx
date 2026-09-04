@@ -54,6 +54,10 @@ export default function AppYouClient({ surface }: { surface: AppSurface }) {
       <AppNotificationSettings surface={surface} />
 
       <section className="mt-7 grid gap-2 sm:grid-cols-2"><Link href={`/app/${surface}/notifications`} className="rounded-2xl border border-white/10 p-4"><h2 className="font-semibold">BVS inbox</h2><p className="mt-1 text-sm text-text-secondary">Editorial, creator, order and account updates without leaving the app.</p></Link><Link href={`/app/${surface}/account`} className="rounded-2xl border border-white/10 p-4"><h2 className="font-semibold">Account Centre</h2><p className="mt-1 text-sm text-text-secondary">Profile, creator roles, data export and account deletion.</p></Link>{isCreator ? <Link href={`/app/${surface}/studio`} className="rounded-2xl border border-brand/25 bg-brand/[.05] p-4"><h2 className="font-semibold">BVS Studio</h2><p className="mt-1 text-sm text-text-secondary">Open your creator workspace.</p></Link> : <Link href={`/app/${surface}/account#creator-role`} className="rounded-2xl border border-brand/25 bg-brand/[.05] p-4"><h2 className="font-semibold">Become a creator</h2><p className="mt-1 text-sm text-text-secondary">Add a creator role to this account.</p></Link>}</section>
+      <div className="mt-6 flex flex-wrap gap-2 text-sm">
+        <a href="https://bvsradio.com/contact" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/15 px-4 py-2 text-text-secondary hover:border-brand/40">Support ↗</a>
+        <a href="https://bvsradio.com/privacy" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/15 px-4 py-2 text-text-secondary hover:border-brand/40">Privacy ↗</a>
+      </div>
       <button type="button" onClick={() => void signOut()} className="mt-8 min-h-11 rounded-full border border-white/15 px-5 text-sm text-text-secondary hover:border-red-400/40 hover:text-red-200">Sign out</button>
     </div>
   );

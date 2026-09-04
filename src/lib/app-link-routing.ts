@@ -31,7 +31,9 @@ function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, 
   if (pathname === "/notifications") return withQueryAndHash(`${root}/notifications`, search, hash);
   if (pathname === "/account") return withQueryAndHash(`${root}/account`, search, hash);
   if (pathname.startsWith("/account/orders/")) return withQueryAndHash(`${root}/studio/orders`, search, hash);
-  if (pathname === "/contact" || pathname === "/support") return withQueryAndHash(`${root}/support`, search, hash);
+  if (pathname === "/privacy" || pathname === "/terms" || pathname === "/contact" || pathname === "/support") {
+    return null;
+  }
   if (pathname === "/search" || pathname === "/catalogue") return withQueryAndHash(`${root}/explore`, search, hash);
   if (pathname === "/upload" || pathname === "/distribution") return withQueryAndHash(`${root}/studio/release`, search, hash);
   if (pathname === "/creator/studio" || pathname === "/creator/studio/manage") return withQueryAndHash(`${root}/studio`, search, hash);
@@ -97,5 +99,6 @@ export function appRouteForNativeUrl(raw: string, surface: AppLinkSurface, curre
   }
 
   const mapped = legacyRoute(pathname, surface, url.search, url.hash);
+  if (pathname === "/privacy" || pathname === "/terms" || pathname === "/contact" || pathname === "/support") return null;
   return mapped || `/app/${surface}`;
 }

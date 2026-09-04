@@ -15,7 +15,9 @@ assert.equal(appRouteForNativeUrl("/creator/marketplace", "ios"), "/app/ios/stud
 assert.equal(appRouteForNativeUrl("bvsradio://radio", "android"), "/app/android");
 assert.equal(appRouteForNativeUrl("/account", "ios"), "/app/ios/account");
 assert.equal(appRouteForNativeUrl("/notifications", "ios"), "/app/ios/notifications");
-assert.equal(appRouteForNativeUrl("/contact?topic=privacy", "ios"), "/app/ios/support?topic=privacy");
+assert.equal(appRouteForNativeUrl("/contact?topic=privacy", "ios"), null);
+assert.equal(appRouteForNativeUrl("/privacy", "ios"), null);
+assert.equal(appRouteForNativeUrl("/terms", "android"), null);
 assert.equal(appRouteForNativeUrl("/search?q=zim&type=beat", "android"), "/app/android/explore?q=zim&type=beat");
 assert.equal(appRouteForNativeUrl("/upload", "ios"), "/app/ios/studio/release");
 assert.equal(appRouteForNativeUrl("/distribution", "ios"), "/app/ios/studio/release");

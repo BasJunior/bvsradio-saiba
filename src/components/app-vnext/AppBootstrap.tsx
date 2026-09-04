@@ -2,8 +2,10 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { externalBvsUrl, isExternalLegalOrLicenceUrl } from "@/lib/app-external-boundary";
 
 export type AppSurface = "ios" | "android";
+export { externalBvsUrl, isExternalLegalOrLicenceUrl };
 
 function exploreRoute(surface: AppSurface, url: URL) {
   const params = new URLSearchParams();
@@ -38,7 +40,7 @@ function marketplaceRoute(surface: AppSurface, url: URL) {
 export function appDestination(surface: AppSurface, url: URL) {
   const path = url.pathname;
   if (path.startsWith(`/app/${surface}`)) return null;
-  if (path === "/contact") return `/app/${surface}/support${url.search}`;
+  if (isExternalLegalOrLicenceUrl(url)) return null;
   if (path === "/search" || path === "/catalogue") return exploreRoute(surface, url);
   if (path === "/radio" || path === "/") return `/app/${surface}`;
   if (path === "/library") return `/app/${surface}/library`;
@@ -85,6 +87,13 @@ export default function AppBootstrap({ surface }: { surface: AppSurface }) {
       const href = target.getAttribute("href");
       if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
       const url = new URL(href, window.location.href);
+      if (url.origin !== window.location.origin && url.origin !== "https://bvsradio.com" && url.origin !== "https://www.bvsradio.com") return;
+      if (isExternalLegalOrLicenceUrl(url)) {
+        event.preventDefault();
+        const opened = window.open(externalBvsUrl(url), "_blank", "noopener,noreferrer");
+        if (opened) opened.opener = null;
+        return;
+      }
       if (url.origin !== window.location.origin) return;
       const destination = appDestination(surface, url);
       if (!destination) return;
