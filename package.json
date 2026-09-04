@@ -17,6 +17,7 @@
     "test:native-contract": "node scripts/vnext-native-contract-tests.mjs",
     "test:chrome-layout": "node --experimental-strip-types scripts/chrome-layout-tests.mjs",
     "test:vnext-discovery": "node scripts/vnext-discovery-assistant-tests.mjs",
+    "test:vnext-song-workspace": "node scripts/vnext-song-workspace-tests.mjs",
     "beta:preflight": "node scripts/beta-staging-preflight.mjs",
     "beta:seed": "node scripts/seed-beta-demo.mjs",
     "test:beta-flow:live": "node scripts/beta-flow-live-acceptance.mjs",
