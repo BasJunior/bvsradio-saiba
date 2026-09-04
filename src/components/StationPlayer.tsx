@@ -16,6 +16,7 @@ import {
   dismissTransientLayer,
   openTransientLayer,
 } from "@/lib/transient-navigation";
+import BuyTrackButton from "@/components/BuyTrackButton";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -580,10 +581,20 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const handleMediaError = useCallback(() => {
     flushListening();
     failStreak.current += 1;
+    const media = audio.current;
     trackEvent("playback_error", {
       track_id: current ? trackLibraryId(current) : "unknown",
       stage: "media",
       fail_streak: failStreak.current,
+      media_error_code: media?.error?.code ?? null,
+      media_src_host: (() => {
+        try {
+          return current?.src ? new URL(current.src, window.location.origin).host : null;
+        } catch {
+          return null;
+        }
+      })(),
+      network_state: media?.networkState ?? null,
     });
     if (failStreak.current >= Math.min(8, Math.max(3, tracks.length || 3))) {
       setPlaying(false);
@@ -1270,6 +1281,12 @@ export function PersistentPlayer() {
                 </div>
 
                 <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2">
+                  <BuyTrackButton
+                    track={player.current}
+                    variant="full"
+                    className="sm:col-span-2"
+                    onAfterAdd={player.closeNowPlaying}
+                  />
                   <ArtistSearchLink artist={player.current?.artist || ""} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Go deeper</span><span className="mt-1 block font-medium">Explore artist and credits</span>
                   </ArtistSearchLink>
@@ -1313,6 +1330,7 @@ export function PersistentPlayer() {
               </span>
             </span>
           </button>
+          <BuyTrackButton track={player.current} variant="compact" />
           <button
             type="button"
             onClick={player.toggleLike}

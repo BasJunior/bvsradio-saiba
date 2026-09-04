@@ -10,6 +10,10 @@ export type StationTrack = {
   playCount?: number;
   /** Optional genre for similar / auto-fill */
   genre?: string;
+  /** Commerce — personal download / support purchase from player */
+  isDownloadable?: boolean;
+  downloadPrice?: number | null;
+  licenceType?: string;
 };
 
 export type Show = {

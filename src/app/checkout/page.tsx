@@ -56,14 +56,16 @@ const paymentMethodsBase = [
   {
     id: "paynow",
     label: "Paynow (EcoCash, OneMoney & local)",
-    detail: "Pay on Paynow’s secure page — EcoCash, OneMoney, and local cards.",
+    detail: "Primary for Zimbabwe — EcoCash, OneMoney, and local cards on Paynow’s secure page.",
     needsPaynow: true,
+    primary: true,
   },
   {
     id: "card",
     label: "International card (Stripe)",
-    detail: "Visa / Mastercard on Stripe’s secure checkout.",
+    detail: "Secondary rail — Visa / Mastercard when you are outside local Paynow methods.",
     needsStripe: true,
+    primary: false,
   },
 ];
 
@@ -574,7 +576,7 @@ export default function CheckoutPage() {
             <h2 className="mb-2 text-xl font-semibold">Payment</h2>
             <p className="mb-4 text-sm text-text-secondary">
               {paynowReady && stripeReady
-                ? "Choose Paynow (EcoCash & local) or international card. Both finish online — no WhatsApp proof step."
+                ? "Primary: Paynow for Zimbabwe (EcoCash & local). International card stays available as backup. Both finish online — no WhatsApp proof step."
                 : paynowReady
                   ? "Pay securely on Paynow (EcoCash, OneMoney, local methods)."
                   : stripeReady
@@ -582,11 +584,11 @@ export default function CheckoutPage() {
                     : "Online checkout is temporarily unavailable. Contact BVS to complete your order."}
             </p>
             {methods.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 {methods.map((method) => (
                   <label
                     key={method.id}
-                    className={`cursor-pointer rounded-xl border p-4 ${paymentMethod === method.id ? "border-brand bg-brand/10" : "border-white/10 bg-black/20"}`}
+                    className={`cursor-pointer rounded-xl border p-4 ${paymentMethod === method.id ? "border-brand bg-brand/10" : "border-white/10 bg-black/20"} ${method.primary ? "order-first" : ""}`}
                   >
                     <input
                       type="radio"
@@ -595,7 +597,14 @@ export default function CheckoutPage() {
                       checked={paymentMethod === method.id}
                       onChange={() => setPaymentMethod(method.id)}
                     />
-                    <span className="block font-semibold">{method.label}</span>
+                    <span className="flex items-center gap-2 font-semibold">
+                      {method.label}
+                      {method.primary ? (
+                        <span className="rounded-full bg-brand/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand">
+                          Recommended
+                        </span>
+                      ) : null}
+                    </span>
                     <span className="mt-1 block text-xs text-text-secondary">
                       {method.detail}
                     </span>

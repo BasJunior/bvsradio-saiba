@@ -50,3 +50,32 @@ export function notifyCartUpdated(count?: number): void {
     }),
   )
 }
+
+/** Add or refresh a single track download line, then optionally go to checkout. */
+export function upsertTrackCartLine(input: {
+  id: string
+  title: string
+  artist?: string
+  price: number
+  artwork?: string
+  src?: string
+  quantity?: number
+}): BvsCartLine[] {
+  const price = Number(input.price)
+  if (!input.id || !Number.isFinite(price) || price <= 0) return readCartLines()
+  const lines = readCartLines().filter((line) => String(line.id) !== String(input.id))
+  const next: BvsCartLine = {
+    id: input.id,
+    title: input.title,
+    artist: input.artist || "",
+    type: "single",
+    price,
+    quantity: input.quantity && input.quantity > 0 ? Math.floor(input.quantity) : 1,
+    artwork: input.artwork || "",
+    src: input.src || "",
+    delivery: "Personal download released after payment is confirmed.",
+  }
+  const merged = [...lines, next]
+  writeCartLines(merged)
+  return merged
+}

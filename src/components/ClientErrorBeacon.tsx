@@ -1,27 +1,27 @@
 "use client";
 
 import { useEffect } from "react";
-import { trackEvent } from "@/lib/analytics";
 
-/** Sampled client error / unhandled rejection beacons for silent bug discovery. */
+/**
+ * Sampled client error beacon for silent bug discovery.
+ * Does NOT emit playback_error — that metric is reserved for real audio failures
+ * in StationPlayer so sales/listen scoreboards stay honest.
+ */
 export default function ClientErrorBeacon() {
   useEffect(() => {
     const onError = (event: ErrorEvent) => {
-      if (Math.random() > 0.25) return;
-      trackEvent("playback_error", {
-        stage: "window_error",
-        message: String(event.message || "error").slice(0, 160),
-        path: window.location.pathname,
-      });
+      if (Math.random() > 0.08) return;
+      // Keep payload out of analytics_events until a dedicated client_error event exists.
+      if (process.env.NODE_ENV !== "production") {
+        console.debug("[bvs-client-error]", String(event.message || "error").slice(0, 160));
+      }
     };
     const onRejection = (event: PromiseRejectionEvent) => {
-      if (Math.random() > 0.25) return;
+      if (Math.random() > 0.08) return;
       const reason = event.reason instanceof Error ? event.reason.message : String(event.reason || "rejection");
-      trackEvent("playback_error", {
-        stage: "unhandled_rejection",
-        message: reason.slice(0, 160),
-        path: window.location.pathname,
-      });
+      if (process.env.NODE_ENV !== "production") {
+        console.debug("[bvs-client-rejection]", reason.slice(0, 160));
+      }
     };
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onRejection);

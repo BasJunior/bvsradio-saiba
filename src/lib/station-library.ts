@@ -149,7 +149,7 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       ? `,mobile_distribution_clearances!inner(surface,status)&mobile_distribution_clearances.surface=eq.${surface}&mobile_distribution_clearances.status=eq.cleared`
       : "";
     const rotationRes = await fetch(
-      `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre${mobileJoin}&order=rotation_added_at.desc&limit=500`,
+      `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre,is_downloadable,download_price,licence_type${mobileJoin}&order=rotation_added_at.desc&limit=500`,
       { headers, cache: "no-store" },
     );
 
@@ -167,12 +167,19 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       play_count?: number;
       release_id?: string | null;
       genre?: string | null;
+      is_downloadable?: boolean | null;
+      download_price?: number | string | null;
+      licence_type?: string | null;
     }>;
 
     const remoteTracks: StationTrack[] = remote
       .filter((t) => Boolean(t.file_url) && !String(t.file_url).includes("scdn.co"))
       .map((track) => {
         const src = publicStorageUrl(track.file_url);
+        const rawPrice = Number(track.download_price);
+        const licence = String(track.licence_type || "");
+        const downloadable =
+          track.is_downloadable === true && licence !== "not_for_sale" && Number.isFinite(rawPrice) && rawPrice > 0;
         return {
           id: track.id,
           title: track.title,
@@ -182,6 +189,9 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
           project: track.release_id ? "Artist release" : "BVS Station",
           playCount: Number(track.play_count || 0),
           genre: track.genre || undefined,
+          isDownloadable: downloadable,
+          downloadPrice: downloadable ? rawPrice : null,
+          licenceType: licence || undefined,
         };
       })
       .filter((track) => Boolean(track.src) && (!surface || track.src.startsWith("/")));
