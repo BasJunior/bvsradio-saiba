@@ -68,12 +68,16 @@ assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:apple-ios-su
 assert(fs.existsSync(path.join(root, "src/lib/ios-surface-lock.ts")), "C03 iOS lock contract present");
 assert(fs.existsSync(path.join(root, "src/components/app/IosHomeListenPanel.tsx")), "C03 iOS listen panel present");
 
-const iosFiles = walk(path.join(root, "src/app/app")).map((file) => read(path.relative(root, file)));
-const iosJoined = iosFiles.join("\n");
-assert(!iosJoined.includes("creator/studio/create"), "iOS shell does not mount Studio create routes");
-assert(!iosJoined.includes("QuickBeatCreate"), "iOS shell does not import beat create");
-assert(!iosJoined.includes("BeatPackUploadForm"), "iOS shell does not import beat-pack create");
+const iosV1Skip = /(\/studio\/|\/join\/|\/you\/|\/rooms\/|\/playlist\/|\/creator\/|\/show\/|\/marketplace\/|\/notifications\/|\/support\/)/;
+const iosListenerFiles = walk(path.join(root, "src/app/app"))
+  .filter((file) => !iosV1Skip.test(file.replaceAll("\\", "/")))
+  .map((file) => read(path.relative(root, file)));
+const iosJoined = iosListenerFiles.join("\n");
+assert(!iosJoined.includes("creator/studio/create"), "1.0 iOS listener shell does not mount Studio create routes");
+assert(!iosJoined.includes("QuickBeatCreate"), "1.0 iOS listener shell does not import beat create");
+assert(!iosJoined.includes("BeatPackUploadForm"), "1.0 iOS listener shell does not import beat-pack create");
 assert(!iosJoined.includes("SongWorkspace"), "iOS shell does not import Lyrics Pad");
 assert(!/from ["']@\/app\/creator\//.test(iosJoined), "iOS shell does not import creator app routes");
+assert(fs.existsSync(path.join(root, "src/app/app/[surface]/studio/page.tsx")), "1.1 App Store update adds contained Studio");
 
 console.log("Studio intent assertions passed.");

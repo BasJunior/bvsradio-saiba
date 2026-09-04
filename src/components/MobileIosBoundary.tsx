@@ -3,16 +3,21 @@
 import { Capacitor } from "@capacitor/core";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { getNativeAppInfo, isAppStoreVnextVersion } from "@/lib/app-native";
+import { isAllowedIosPathname, type IosAppEdition } from "@/lib/ios-surface-lock";
 
 const IOS_ROOT = "/app/ios";
 
-function isAllowedIosPath(pathname: string) {
-  return pathname === IOS_ROOT || pathname.startsWith(`${IOS_ROOT}/`);
-}
-
-function containedLegacyPath(url: URL) {
+function containedLegacyPath(url: URL, edition: IosAppEdition) {
   if (url.pathname === "/account") return `${IOS_ROOT}/account${url.search}${url.hash}`;
   if (url.pathname === "/artists" || url.pathname === "/music/artists") return `${IOS_ROOT}/artists${url.search}${url.hash}`;
+  if (edition === "1.1") {
+    if (url.pathname === "/auth/login" || url.pathname === "/auth/signup") {
+      return `${IOS_ROOT}/join${url.search}${url.hash}`;
+    }
+    if (url.pathname === "/notifications") return `${IOS_ROOT}/notifications${url.search}${url.hash}`;
+    if (url.pathname === "/contact") return `${IOS_ROOT}/support${url.search}${url.hash}`;
+  }
   return null;
 }
 
@@ -22,12 +27,10 @@ function openOutsideNativeShell(url: URL) {
 }
 
 /**
- * App Store boundary for the native iOS listener edition.
+ * App Store boundary for the native iOS edition.
  *
- * Native iOS is allowed to navigate only within /app/ios/*. A small set of
- * legacy listener links are remapped into contained app routes. Other BVS
- * website destinations are opened outside the native listener surface. Any
- * non-approved route reached by another mechanism fails closed to /app/ios.
+ * 1.0 binaries stay on the approved listener paths. 1.1 binaries may use the
+ * deliberate vNext routes. Other website destinations open outside the shell.
  */
 export default function MobileIosBoundary() {
   const pathname = usePathname();
@@ -35,11 +38,15 @@ export default function MobileIosBoundary() {
   useEffect(() => {
     const nativeIos = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
     if (!nativeIos) return;
+    let cancelled = false;
+    let edition: IosAppEdition = "1.0";
 
-    if (!isAllowedIosPath(pathname)) {
-      window.location.replace(IOS_ROOT);
-      return;
-    }
+    const apply = () => {
+      if (cancelled) return;
+      if (!isAllowedIosPathname(pathname, edition)) {
+        window.location.replace(IOS_ROOT);
+      }
+    };
 
     const onClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
@@ -60,10 +67,10 @@ export default function MobileIosBoundary() {
       if (!/^https?:$/.test(url.protocol)) return;
 
       const sameOrigin = url.origin === window.location.origin;
-      const allowed = sameOrigin && isAllowedIosPath(url.pathname);
+      const allowed = sameOrigin && isAllowedIosPathname(url.pathname, edition);
       if (allowed) return;
 
-      const contained = sameOrigin ? containedLegacyPath(url) : null;
+      const contained = sameOrigin ? containedLegacyPath(url, edition) : null;
       event.preventDefault();
       event.stopPropagation();
       if (contained) {
@@ -74,7 +81,17 @@ export default function MobileIosBoundary() {
     };
 
     document.addEventListener("click", onClick, true);
-    return () => document.removeEventListener("click", onClick, true);
+    void getNativeAppInfo().then((info) => {
+      if (cancelled) return;
+      edition = isAppStoreVnextVersion(info?.version) ? "1.1" : "1.0";
+      apply();
+    });
+    apply();
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("click", onClick, true);
+    };
   }, [pathname]);
 
   return null;

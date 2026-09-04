@@ -1,15 +1,14 @@
 /**
- * iOS surface lock contract (Candidate 03 — 2026-08-28).
+ * iOS surface lock contract.
  *
- * Goal: keep https://bvsradio.com/app/ios a deliberately controlled listener
- * surface so ordinary web product deploys cannot silently change the installed
- * App Store experience.
- *
- * This module is documentation + machine-checkable allow/deny lists.
- * It must not invent routes, buttons, or product functionality by itself.
+ * 1.0 (3) remains the approved listener shell. App Store 1.1 is the deliberate
+ * native release that may mount the vNext chrome (Create / You / contained
+ * studio). Ordinary web deploys must not silently enable that chrome inside
+ * already-installed 1.0 binaries.
  */
 
 export const IOS_SURFACE_ROOT = "/app/ios";
+export const IOS_APPSTORE_VNEXT_VERSION = "1.1";
 
 /** Primary destinations already approved in the live listener shell. */
 export const IOS_ALLOWED_PRIMARY_PATHS = [
@@ -26,6 +25,27 @@ export const IOS_ALLOWED_DETAIL_PREFIXES = [
   "/app/ios/track/",
   "/app/ios/beat/",
   "/app/ios/artist/",
+] as const;
+
+/** Extra primary destinations for the 1.1 App Store update only. */
+export const IOS_VNEXT_PRIMARY_PATHS = [
+  "/app/ios/you",
+  "/app/ios/join",
+  "/app/ios/studio",
+  "/app/ios/marketplace",
+  "/app/ios/notifications",
+  "/app/ios/support",
+  "/app/ios/rooms",
+] as const;
+
+/** Extra contained prefixes for the 1.1 App Store update only. */
+export const IOS_VNEXT_DETAIL_PREFIXES = [
+  "/app/ios/studio/",
+  "/app/ios/join/",
+  "/app/ios/playlist/",
+  "/app/ios/rooms/",
+  "/app/ios/creator/",
+  "/app/ios/show/",
 ] as const;
 
 /**
@@ -75,15 +95,22 @@ export type IosCopyKey =
   | "libraryEmptyFollows"
   | "libraryEmptyHistory";
 
-export function isAllowedIosPathname(pathname: string): boolean {
+export type IosAppEdition = "1.0" | "1.1";
+
+function matchesPrefix(pathname: string, prefix: string) {
+  return pathname === prefix.slice(0, -1) || pathname.startsWith(prefix);
+}
+
+export function isAllowedIosPathname(pathname: string, edition: IosAppEdition = "1.0"): boolean {
   if (!pathname.startsWith(IOS_SURFACE_ROOT)) return false;
   if (pathname === IOS_SURFACE_ROOT || pathname === `${IOS_SURFACE_ROOT}/`) return true;
   if (IOS_ALLOWED_PRIMARY_PATHS.includes(pathname as (typeof IOS_ALLOWED_PRIMARY_PATHS)[number])) {
     return true;
   }
-  return IOS_ALLOWED_DETAIL_PREFIXES.some(
-    (prefix) => pathname === prefix.slice(0, -1) || pathname.startsWith(prefix),
-  );
+  if (IOS_ALLOWED_DETAIL_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix))) return true;
+  if (edition !== "1.1") return false;
+  if (IOS_VNEXT_PRIMARY_PATHS.includes(pathname as (typeof IOS_VNEXT_PRIMARY_PATHS)[number])) return true;
+  return IOS_VNEXT_DETAIL_PREFIXES.some((prefix) => matchesPrefix(pathname, prefix));
 }
 
 /** Reject copy that could inject navigation or new product UI. */

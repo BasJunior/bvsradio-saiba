@@ -38,6 +38,9 @@ console.log(JSON.stringify({
     studioDenied: !lock.isAllowedIosPathname("/creator/studio"),
     nestedDenied: !lock.isAllowedIosPathname("/app/ios/creator/studio"),
     webLibDenied: !lock.isAllowedIosPathname("/library"),
+    v1StudioDenied: !lock.isAllowedIosPathname("/app/ios/studio"),
+    v11StudioOk: lock.isAllowedIosPathname("/app/ios/studio", "1.1"),
+    v11YouOk: lock.isAllowedIosPathname("/app/ios/you", "1.1"),
   }
 }));
 try { lock.assertPlainIosCopy("Open /creator/studio now", "bad"); console.log(JSON.stringify({ badCopyRejected: false })); }
@@ -75,6 +78,9 @@ assert(payload.checks.trackOk, "track detail allowed");
 assert(payload.checks.studioDenied, "studio path denied");
 assert(payload.checks.nestedDenied, "nested studio denied");
 assert(payload.checks.webLibDenied, "web library not ios path");
+assert(payload.checks.v1StudioDenied, "1.0 binaries must not open in-app studio");
+assert(payload.checks.v11StudioOk, "1.1 binaries may open in-app studio");
+assert(payload.checks.v11YouOk, "1.1 binaries may open You");
 assert(badCopy.badCopyRejected, "copy lane must reject route injection");
 assert(badHtml.badHtmlRejected, "copy lane must reject markup");
 

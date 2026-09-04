@@ -1,24 +1,61 @@
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '14.0'
+platform :ios, '15.0'
 use_frameworks!
 
-# workaround to avoid Xcode caching of Pods that requires
-# Product -> Clean Build Folder after new Cordova plugins installed
-# Requires CocoaPods 1.6 or newer
-install! 'cocoapods', :disable_input_output_paths => true
+# Declare framework inputs/outputs so embedding works with Xcode's script sandbox.
+install! 'cocoapods', :disable_input_output_paths => false
 
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
+  pod 'CapacitorNetwork', :path => '../../node_modules/@capacitor/network'
+  pod 'CapacitorPreferences', :path => '../../node_modules/@capacitor/preferences'
+  pod 'CapacitorPushNotifications', :path => '../../node_modules/@capacitor/push-notifications'
+  pod 'CapacitorShare', :path => '../../node_modules/@capacitor/share'
   pod 'CapacitorSplashScreen', :path => '../../node_modules/@capacitor/splash-screen'
   pod 'CapacitorStatusBar', :path => '../../node_modules/@capacitor/status-bar'
 end
 
+post_integrate do |installer|
+  # These pods are source-built dynamic frameworks. Use Xcode's native signed
+  # copy phase instead of CocoaPods' rsync script: Xcode 26's script sandbox
+  # grants literal outputs, which cannot cover rsync's random temporary files.
+  installer.aggregate_targets.map(&:user_project).uniq.each do |project|
+    project.native_targets.each do |target|
+      next unless target.name == 'App'
+      script = target.shell_script_build_phases.find { |phase| phase.name == '[CP] Embed Pods Frameworks' }
+      next unless script
+      inputs = script.input_paths.reject { |path| path.end_with?('-frameworks.sh') }
+      prefix = '${BUILT_PRODUCTS_DIR}/'
+      unless !inputs.empty? && inputs.all? { |path| path.start_with?(prefix) && path.end_with?('.framework') }
+        raise 'Review native framework embedding before adding non-source-built dependencies.'
+      end
+      phase = target.copy_files_build_phases.find { |item| item.name == 'Embed Capacitor Frameworks' }
+      phase ||= target.new_copy_files_build_phase('Embed Capacitor Frameworks')
+      phase.dst_subfolder_spec = '10' # Frameworks
+      phase.dst_path = ''
+      expected_paths = inputs.uniq.map { |input| input.delete_prefix(prefix) }
+      phase.files.to_a.each do |file|
+        file.remove_from_project unless expected_paths.include?(file.file_ref&.path)
+      end
+      inputs.uniq.each do |input|
+        path = input.delete_prefix(prefix)
+        reference = project.files.find { |file| file.path == path && file.source_tree == 'BUILT_PRODUCTS_DIR' }
+        reference ||= project.frameworks_group.new_file(path, 'BUILT_PRODUCTS_DIR')
+        reference.explicit_file_type = 'wrapper.framework'
+        file = phase.files.find { |item| item.file_ref == reference } || phase.add_file_reference(reference, true)
+        file.settings = { 'ATTRIBUTES' => ['CodeSignOnCopy', 'RemoveHeadersOnCopy'] }
+      end
+      script.remove_from_project
+    end
+    project.save
+  end
+end
+
 target 'App' do
   capacitor_pods
-  # Add your Pods here
 end
 
 post_install do |installer|
