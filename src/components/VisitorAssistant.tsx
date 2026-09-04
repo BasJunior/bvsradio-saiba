@@ -164,9 +164,11 @@ export default function VisitorAssistant() {
   const pathname = usePathname();
   const appSurface = appSurfaceFromPath(pathname);
   const [open, setOpen] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -176,9 +178,35 @@ export default function VisitorAssistant() {
   ]);
 
   useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        setShowHint(window.localStorage.getItem("bvs_ask_hint_dismissed_v1") !== "1");
+      } catch {
+        setShowHint(false);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     if (!open) return;
     endRef.current?.scrollIntoView({ block: "end" });
   }, [busy, messages, open]);
+
+  const dismissHint = () => {
+    setShowHint(false);
+    try { window.localStorage.setItem("bvs_ask_hint_dismissed_v1", "1"); } catch {}
+  };
+
+  const closeAssistant = () => {
+    setOpen(false);
+    window.requestAnimationFrame(() => launcherRef.current?.focus());
+  };
+
+  const toggleAssistant = () => {
+    if (!open) dismissHint();
+    setOpen((value) => !value);
+  };
 
   async function send(event?: FormEvent, prompt = input) {
     event?.preventDefault();
@@ -211,7 +239,7 @@ export default function VisitorAssistant() {
     {open && <section aria-label="Ask BVS" className="mb-3 flex h-[min(38rem,calc(100dvh-12rem-env(safe-area-inset-bottom)))] min-h-72 w-[calc(100vw-1.5rem)] max-w-[400px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#181818] shadow-2xl md:h-[min(640px,74vh)] md:w-[calc(100vw-3rem)]">
       <header className="flex items-center justify-between border-b border-white/10 bg-bg-secondary px-5 py-4">
         <div><h2 className="font-semibold text-brand">Ask BVS</h2><p className="text-xs text-text-secondary">Flow discovery · published BVS data</p></div>
-        <button onClick={() => setOpen(false)} aria-label="Close Ask BVS" className="grid h-11 w-11 place-items-center rounded-full text-2xl text-text-secondary hover:bg-white/5">×</button>
+        <button onClick={closeAssistant} aria-label="Close Ask BVS" className="grid h-11 w-11 place-items-center rounded-full text-2xl text-text-secondary hover:bg-white/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">×</button>
       </header>
       <div className="flex-1 space-y-4 overflow-y-auto p-4" aria-live="polite">
         {messages.map((message, index) => <div key={index} className={message.role === "user" ? "ml-10" : "mr-4"}>
@@ -233,6 +261,10 @@ export default function VisitorAssistant() {
         <button disabled={!input.trim() || busy} aria-label="Send to Ask BVS" className="h-11 w-11 rounded-full bg-brand text-black disabled:opacity-40">↑</button>
       </form>
     </section>}
-    <button onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-label={open ? "Close Ask BVS" : "Open Ask BVS"} className="ml-auto min-h-11 rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-black shadow-xl sm:px-5 sm:py-3">{open ? "Close" : "✦ Ask BVS"}</button>
+    {!open && showHint ? <div data-bvs-assistant-hint className="mb-2 ml-auto flex w-fit items-center gap-1 rounded-full border border-white/10 bg-[#181818]/95 py-1.5 pl-3 pr-1.5 text-sm font-semibold text-white shadow-xl backdrop-blur-xl">
+      <button type="button" onClick={toggleAssistant} className="min-h-9 px-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">Ask BVS</button>
+      <button type="button" onClick={dismissHint} aria-label="Dismiss Ask BVS hint" className="grid h-9 w-9 place-items-center rounded-full text-lg text-text-secondary hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">×</button>
+    </div> : null}
+    <button ref={launcherRef} type="button" onClick={toggleAssistant} aria-expanded={open} aria-label={open ? "Close Ask BVS" : "Open Ask BVS"} title={open ? "Close Ask BVS" : "Ask BVS"} className="ml-auto grid h-12 w-12 place-items-center rounded-full bg-white text-xl font-semibold text-black shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none motion-reduce:hover:scale-100">{open ? "×" : "✦"}</button>
   </div>;
 }

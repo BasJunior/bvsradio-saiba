@@ -14,12 +14,20 @@ type Artist = { id: string; username: string; name: string; role?: string; image
 type Producer = { id: string; username: string; name: string; image?: string; genres?: string[]; beatCount?: number };
 type Beat = { id: string; title: string; producer?: string; producer_username?: string; genre?: string; mood?: string; artworkUrl?: string; previewUrl?: string; bpm?: number; startingPrice?: number };
 type ExploreKind = "all" | "music" | "artists" | "producers" | "beats";
+type ExploreMode = "fresh" | "rotation" | "creators" | "beats";
+const exploreModes: Array<{ value: ExploreMode; label: string; description: string }> = [
+  { value: "fresh", label: "Fresh", description: "Cleared music and newly published BVS people, all in one place." },
+  { value: "rotation", label: "On BVS", description: "Recordings cleared for this app and ready to play now." },
+  { value: "creators", label: "Creators", description: "Artists and producers with published BVS profiles." },
+  { value: "beats", label: "BeatStore", description: "Discover beats here, then open licensing on the BVS website." },
+];
 function safeImage(value?: string) { if (!value || value.includes("default-avatar")) return ""; if (/^(https?:\/\/|\/)/.test(value)) return value; return `/api/media/${value.split("/").map(encodeURIComponent).join("/")}`; }
 
 export default function AppExploreClient({ surface, initialQuery = "", initialKind = "all" }: { surface: AppSurface; initialQuery?: string; initialKind?: ExploreKind }) {
   const player = useStationPlayer();
   const [query, setQuery] = useState(initialQuery);
   const [kind, setKind] = useState<ExploreKind>(initialKind);
+  const [mode, setMode] = useState<ExploreMode>("fresh");
   const [tracks, setTracks] = useState<CatalogueTrack[]>([]);
   const [artists, setArtists] = useState<Artist[]>([]);
   const [producers, setProducers] = useState<Producer[]>([]);
@@ -27,7 +35,16 @@ export default function AppExploreClient({ surface, initialQuery = "", initialKi
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState<Set<string>>(new Set());
 
-  useEffect(() => { setQuery(initialQuery); setKind(initialKind); }, [initialKind, initialQuery]);
+  useEffect(() => {
+    const sync = () => {
+      const params = new URLSearchParams(window.location.search);
+      const nextMode = params.get("mode") as ExploreMode | null;
+      if (nextMode && exploreModes.some((item) => item.value === nextMode)) setMode(nextMode);
+    };
+    sync();
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, []);
   useEffect(() => {
     let alive = true;
     Promise.all([
@@ -54,14 +71,34 @@ export default function AppExploreClient({ surface, initialQuery = "", initialKi
   }, [tracks]);
 
   const needle = query.trim().toLowerCase();
-  const matches = (parts: Array<string | undefined | string[]>) => !needle || parts.flat().filter(Boolean).join(" ").toLowerCase().includes(needle);
-  const filtered = useMemo(() => ({
-    tracks: tracks.filter((i) => matches([i.title, i.artist, i.genre, i.project])).slice(0, needle ? 30 : 10),
-    artists: artists.filter((i) => matches([i.name, i.role, i.genres])).slice(0, needle ? 24 : 8),
-    producers: producers.filter((i) => matches([i.name, i.genres])).slice(0, needle ? 24 : 8),
-    beats: beats.filter((i) => matches([i.title, i.producer, i.genre, i.mood])).slice(0, needle ? 24 : 8),
-  }), [artists, beats, needle, producers, tracks]);
-  const show = (value: ExploreKind) => kind === "all" || kind === value;
+  const filtered = useMemo(() => {
+    const matches = (parts: Array<string | undefined | string[]>) => !needle || parts.flat().filter(Boolean).join(" ").toLowerCase().includes(needle);
+    return {
+      tracks: tracks.filter((i) => matches([i.title, i.artist, i.genre, i.project])).slice(0, needle ? 30 : 10),
+      artists: artists.filter((i) => matches([i.name, i.role, i.genres])).slice(0, needle ? 24 : 8),
+      producers: producers.filter((i) => matches([i.name, i.genres])).slice(0, needle ? 24 : 8),
+      beats: beats.filter((i) => matches([i.title, i.producer, i.genre, i.mood])).slice(0, needle ? 24 : 8),
+    };
+  }, [artists, beats, needle, producers, tracks]);
+  const show = (value: ExploreKind) => {
+    if (kind !== "all") return kind === value;
+    if (needle || mode === "fresh") return true;
+    if (mode === "rotation") return value === "music";
+    if (mode === "creators") return value === "artists" || value === "producers";
+    return value === "beats";
+  };
+  const activeMode = exploreModes.find((item) => item.value === mode) || exploreModes[0];
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("q", query.trim());
+      if (kind !== "all") params.set("kind", kind);
+      if (!query.trim() && kind === "all" && mode !== "fresh") params.set("mode", mode);
+      window.history.replaceState(window.history.state, "", `/app/${surface}/explore${params.size ? `?${params}` : ""}`);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [kind, mode, query, surface]);
 
   const play = (item: CatalogueTrack) => {
     player.playNow(item, { from: "Explore", related: filtered.tracks.filter((track) => track.id !== item.id) });
@@ -86,7 +123,9 @@ export default function AppExploreClient({ surface, initialQuery = "", initialKi
     <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Explore BVS</p>
     <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Find the sound, then find the people behind it.</h1>
     <label className="mt-6 block"><span className="sr-only">Search BVS</span><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tracks, artists, producers, beats…" className="min-h-12 w-full rounded-2xl border border-white/10 bg-white/[.04] px-5 text-base outline-none focus:border-brand/50" /></label>
-    <div className="mt-4 flex gap-2 overflow-x-auto pb-2">{(["all","music","artists","producers","beats"] as ExploreKind[]).map((value) => <button key={value} type="button" onClick={() => setKind(value)} className={`min-h-10 shrink-0 rounded-full px-4 text-sm capitalize ${kind === value ? "bg-brand font-semibold text-black" : "border border-white/10 text-text-secondary"}`}>{value}</button>)}</div>
+    {!query.trim() && kind === "all" ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map((item) => <button key={item.value} type="button" onClick={() => setMode(item.value)} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 text-sm ${mode === item.value ? "bg-brand font-semibold text-black" : "border border-white/10 bg-white/[.03] text-text-secondary"}`}>{item.label}</button>)}</div> : null}
+    <div className="mt-3 flex gap-2 overflow-x-auto pb-2" aria-label="Filter Explore results">{(["all","music","artists","producers","beats"] as ExploreKind[]).map((value) => <button key={value} type="button" onClick={() => setKind(value)} aria-pressed={kind === value} className={`min-h-11 shrink-0 rounded-full px-4 text-sm capitalize ${kind === value ? "bg-white font-semibold text-black" : "border border-white/10 text-text-secondary"}`}>{value}</button>)}</div>
+    {!query.trim() && kind === "all" ? <section className="mt-7 rounded-2xl border border-white/10 bg-gradient-to-br from-brand/[.10] to-white/[.02] p-5" aria-live="polite"><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">{activeMode.label}</p><h2 className="mt-2 text-2xl font-semibold">{activeMode.description}</h2></section> : null}
     {loading ? <div className="mt-8 grid gap-3 sm:grid-cols-2"><div className="h-28 animate-pulse rounded-2xl bg-white/[.04]" /><div className="h-28 animate-pulse rounded-2xl bg-white/[.04]" /></div> : null}
 
     {show("music") && filtered.tracks.length ? <section className="mt-9">
