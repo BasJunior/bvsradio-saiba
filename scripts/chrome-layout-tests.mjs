@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { observeChromeHeight } from "../src/lib/chrome-layout.ts";
+
+const appBottomNav = await readFile(new URL("../src/components/app-vnext/AppBottomNav.tsx", import.meta.url), "utf8");
+const appHome = await readFile(new URL("../src/app/app/[surface]/page.tsx", import.meta.url), "utf8");
+
+assert.match(appBottomNav, /data-bvs-bottom-nav[\s\S]*bg-\[#08080a\]\/95/, "the app tab bar must paint its complete safe-area footprint");
+assert.doesNotMatch(appHome, /RadioPlayer/, "the vNext home must not duplicate the global persistent player");
+assert.match(appHome, /AppHomeStationCard/, "the vNext home must retain a compact entry into the persistent player");
 
 const values = new Map();
 let height = 99; // 64px tabs + 34px home indicator + border.

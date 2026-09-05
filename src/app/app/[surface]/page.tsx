@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import RadioPlayer from "@/components/RadioPlayer";
 import AppJoinCard from "@/components/app-vnext/AppJoinCard";
+import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
 import { getPublishedArtists } from "@/lib/artist-content";
 import { getPublicProgrammes } from "@/lib/station-content";
 import { getStationTracks, type MobileSurface } from "@/lib/station-library";
@@ -61,9 +61,9 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
         </div>
       </section>
 
-      <section id="listen" className="mt-5 scroll-mt-24">
-        <RadioPlayer />
-      </section>
+      <div className="mt-5">
+        <AppHomeStationCard />
+      </div>
 
       <div className="mt-5">
         <AppJoinCard surface={surface} />

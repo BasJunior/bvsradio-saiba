@@ -23,7 +23,7 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
       ref={measureBottomNav}
       data-bvs-bottom-nav
       data-bvs-app-nav
-      className="fixed inset-x-0 bottom-0 z-[49] px-2 pb-[max(env(safe-area-inset-bottom),.35rem)] sm:px-3"
+      className="fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.05] bg-[#08080a]/95 px-2 pb-[max(env(safe-area-inset-bottom),.35rem)] shadow-[0_-18px_50px_rgba(0,0,0,.32)] backdrop-blur-2xl sm:px-3"
       aria-label="Primary navigation"
     >
       <div className="mx-auto grid h-[4.25rem] max-w-xl grid-cols-5 rounded-[1.35rem] border border-white/[.08] bg-[#101013]/88 px-1 shadow-[0_18px_60px_rgba(0,0,0,.45)] backdrop-blur-2xl sm:px-3">
