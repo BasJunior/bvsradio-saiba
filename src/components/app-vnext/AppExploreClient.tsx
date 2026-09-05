@@ -110,7 +110,7 @@ export default function AppExploreClient({
       const params = new URLSearchParams();
       if (query.trim()) params.set("q", query.trim());
       if (kind !== "all") params.set("kind", kind);
-      if (!query.trim() && kind === "all" && mode !== "fresh") params.set("mode", mode);
+      if (!query.trim() && mode !== "fresh") params.set("mode", mode);
       window.history.replaceState(window.history.state, "", `/app/${surface}/explore${params.size ? `?${params}` : ""}`);
     }, 180);
     return () => window.clearTimeout(timer);
@@ -158,7 +158,7 @@ export default function AppExploreClient({
         />
       </label>
 
-      {!query.trim() && kind === "all" ? (
+      {!query.trim() ? (
         <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Discovery modes">
           {exploreModes.map((item) => (
             <button

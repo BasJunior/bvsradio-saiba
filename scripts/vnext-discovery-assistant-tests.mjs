@@ -10,6 +10,8 @@ for (const label of ["New & notable", "Playing now", "Creators", "BeatStore"]) {
 assert.match(explore, /\/api\/station\/tracks\?surface=/, "Explore music must continue using the mobile rights-cleared station endpoint");
 assert.doesNotMatch(explore, /\/api\/catalogue\/listings/, "vNext Explore must not broaden music to the public catalogue");
 assert.match(explore, /window\.history\.replaceState/, "Explore query, category and mode must remain URL-addressable");
+assert.match(explore, /\{!query\.trim\(\) \? \([\s\S]*aria-label="Discovery modes"/, "discovery modes must stay mounted when a category filter is selected");
+assert.doesNotMatch(explore, /!query\.trim\(\) && kind === "all" \? \([\s\S]{0,160}aria-label="Discovery modes"/, "category filters must not remove the discovery-mode row");
 
 assert.match(assistant, /bvs_ask_hint_dismissed_v1/, "Ask BVS hint dismissal must persist on the device");
 assert.match(assistant, /data-bvs-assistant-hint/, "Ask BVS must provide a dismissible discovery hint");
