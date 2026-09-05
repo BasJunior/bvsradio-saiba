@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import AppBootstrap, { type AppSurface } from "@/components/app-vnext/AppBootstrap";
 import AppBottomNav from "@/components/app-vnext/AppBottomNav";
 import AppDataModeBridge from "@/components/app-vnext/AppDataModeBridge";
+import AppExperienceStyle from "@/components/app-vnext/AppExperienceStyle";
 import AppGestureBridge from "@/components/app-vnext/AppGestureBridge";
 import AppLibrarySyncBridge from "@/components/app-vnext/AppLibrarySyncBridge";
 import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
@@ -28,6 +29,7 @@ export default async function MobileVNextLayout({
       <AppLibrarySyncBridge />
       <AppStationFetchBridge />
       <AppGestureBridge surface={surface} />
+      <AppExperienceStyle />
       <style>{`
         html[data-bvs-app-shell="true"] footer { display: none !important; }
         html[data-bvs-app-shell="true"] body { overscroll-behavior-y: none; }
@@ -36,7 +38,7 @@ export default async function MobileVNextLayout({
         html[data-bvs-data-effective="saver"] [data-bvs-data-heavy="true"] { display: none !important; }
       `}</style>
       <AppTopBar surface={surface} />
-      <div className="min-h-[calc(100dvh-4rem)] pb-4">{children}</div>
+      <div className="bvs-app-stage min-h-[calc(100dvh-4rem)] pb-4">{children}</div>
       <AppBottomNav surface={surface} />
     </AppSessionProvider>
   );
