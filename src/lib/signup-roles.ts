@@ -2,27 +2,27 @@ export const SIGNUP_ROLES = [
   {
     value: 'artist',
     title: 'Artist',
-    copy: 'Submit music and start with artist tools.',
+    copy: 'Release music, follow review and build your artist presence.',
   },
   {
     value: 'producer',
     title: 'Producer',
-    copy: 'Upload beats and start with producer tools.',
+    copy: 'Publish beats, build packs and grow your producer catalogue.',
   },
   {
     value: 'writer',
     title: 'Writer',
-    copy: 'Pitch stories and start with writing tools.',
+    copy: 'Create stories, research and editorial work.',
   },
   {
     value: 'show_creator',
     title: 'Show or podcast creator',
-    copy: 'Start a show and manage episode workflows.',
+    copy: 'Build shows, episodes and live experiences.',
   },
   {
     value: 'listener',
     title: 'Listener',
-    copy: 'Discover, save and support BVS creators.',
+    copy: 'Discover music, build your Library and follow creators.',
   },
 ] as const
 
