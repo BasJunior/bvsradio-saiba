@@ -73,6 +73,7 @@ export default function AppMarketplaceClient({
   const [bookingBusy, setBookingBusy] = useState(false);
   const [bookingMessage, setBookingMessage] = useState("");
   const [shareMessage, setShareMessage] = useState("");
+  const iosCommerceRestricted = surface === "ios";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -203,7 +204,7 @@ export default function AppMarketplaceClient({
             <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">{provider.name}</h1>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-white/46 sm:text-base">{provider.headline}</p>
             {provider.location ? <p className="mt-3 text-sm text-brand">{provider.location}</p> : null}
-            <button type="button" onClick={() => void shareWebStore(provider)} className="mt-6 min-h-10 rounded-full border border-white/[.08] px-4 text-sm text-white/46 transition hover:border-white/18 hover:text-white">Share</button>
+            {!iosCommerceRestricted ? <button type="button" onClick={() => void shareWebStore(provider)} className="mt-6 min-h-10 rounded-full border border-white/[.08] px-4 text-sm text-white/46 transition hover:border-white/18 hover:text-white">Share</button> : null}
           </div>
         </section>
 
@@ -217,7 +218,7 @@ export default function AppMarketplaceClient({
                 <article key={item.id} className={`rounded-[1.4rem] border p-5 transition ${active ? "border-brand/28 bg-brand/[.055]" : "border-white/[.07] bg-white/[.02] hover:border-white/15 hover:bg-white/[.035]"}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div><p className="text-[10px] font-semibold uppercase tracking-[.15em] text-brand">{item.category}</p><h3 className="mt-2 text-xl font-semibold">{item.title}</h3></div>
-                    <strong className="shrink-0 text-brand">{servicePrice(item)}</strong>
+                    {!iosCommerceRestricted ? <strong className="shrink-0 text-brand">{servicePrice(item)}</strong> : null}
                   </div>
                   <p className="mt-3 text-sm leading-6 text-white/40">{item.description}</p>
                   {item.turnaroundDays ? <p className="mt-2 text-xs text-white/30">Typical turnaround: {item.turnaroundDays} days</p> : null}
@@ -227,7 +228,7 @@ export default function AppMarketplaceClient({
                     ) : (
                       <button type="button" onClick={() => openService(provider.slug, item.id)} className="min-h-10 rounded-full border border-brand/28 px-4 text-sm font-semibold text-brand transition hover:bg-brand/[.08]">View details</button>
                     )}
-                    <button type="button" onClick={() => void shareWebStore(provider, item)} className="min-h-10 rounded-full border border-white/[.08] px-4 text-sm text-white/42 transition hover:border-white/18 hover:text-white">Share</button>
+                    {!iosCommerceRestricted ? <button type="button" onClick={() => void shareWebStore(provider, item)} className="min-h-10 rounded-full border border-white/[.08] px-4 text-sm text-white/42 transition hover:border-white/18 hover:text-white">Share</button> : null}
                   </div>
                 </article>
               );
@@ -240,10 +241,10 @@ export default function AppMarketplaceClient({
             <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Selected service</p>
             <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
               <div><h2 className="text-3xl font-semibold">{service.title}</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-white/42">{service.description}</p></div>
-              <strong className="text-xl text-brand">{servicePrice(service)}</strong>
+              {!iosCommerceRestricted ? <strong className="text-xl text-brand">{servicePrice(service)}</strong> : null}
             </div>
 
-            {service.packages?.length ? (
+            {!iosCommerceRestricted && service.packages?.length ? (
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
                 {service.packages.map((pkg) => (
                   <div key={pkg.name} className="rounded-[1.1rem] border border-white/[.07] bg-black/10 p-4">
@@ -281,13 +282,13 @@ export default function AppMarketplaceClient({
                 ) : null}
                 {bookingMessage ? <p role="status" className="mt-4 rounded-[1.1rem] border border-brand/18 bg-brand/[.045] p-4 text-sm text-brand">{bookingMessage}</p> : null}
               </div>
-            ) : (
+            ) : !iosCommerceRestricted ? (
               <div className="mt-6 rounded-[1.2rem] border border-white/[.07] bg-black/10 p-4">
                 <p className="font-semibold">Continue on the BVS web store</p>
                 <p className="mt-2 text-sm leading-6 text-white/38">This offer is available here for discovery. When you’re ready to purchase, open or share the secure BVS web-store link.</p>
                 <button type="button" onClick={() => void shareWebStore(provider, service)} className="mt-4 min-h-10 rounded-full border border-brand/28 px-4 text-sm font-semibold text-brand transition hover:bg-brand/[.08]">Share store link</button>
               </div>
-            )}
+            ) : <div className="mt-6 rounded-[1.2rem] border border-white/[.07] bg-black/10 p-4"><p className="font-semibold">Available for discovery</p><p className="mt-2 text-sm leading-6 text-white/38">Purchasing and checkout for this offer are not available in the iOS app.</p></div>}
           </section>
         ) : null}
 
