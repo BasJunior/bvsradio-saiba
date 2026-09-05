@@ -198,7 +198,7 @@ export default function AppAccountClient({ surface }: { surface: AppSurface }) {
       <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Account</p>
       <h1 className="mx-auto mt-3 max-w-2xl text-4xl font-semibold sm:text-6xl">Your identity lives here.</h1>
       <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-white/42">Sign in to manage your profile, creator access and privacy controls.</p>
-      <Link href={`/auth/login?next=${encodeURIComponent(`/app/${surface}/account`)}`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-white px-6 font-semibold text-black transition hover:bg-brand">Sign in</Link>
+      <Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/account`)}`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-white px-6 font-semibold text-black transition hover:bg-brand">Sign in</Link>
     </div>
   );
 

@@ -97,7 +97,7 @@ export default function AppSignupClient({ surface }: { surface: AppSurface }) {
         <button disabled={loading || !form.role} className="min-h-12 w-full rounded-full bg-white font-semibold text-black transition hover:bg-brand disabled:opacity-50">{loading ? "Creating your account…" : "Create free account"}</button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-white/38">Already have an account? <Link href={`/auth/login?next=${encodeURIComponent(next)}`} className="font-semibold text-brand">Sign in</Link></p>
+      <p className="mt-6 text-center text-sm text-white/38">Already have an account? <Link href={`/app/${surface}/login?next=${encodeURIComponent(next)}`} className="font-semibold text-brand">Sign in</Link></p>
     </div>
   );
 }

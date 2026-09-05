@@ -49,7 +49,7 @@ export default function AppJoinCard({ surface }: { surface: AppSurface }) {
             Create account
           </Link>
           <Link
-            href={`/auth/login?next=${encodeURIComponent(`/app/${surface}`)}`}
+            href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}`)}`}
             className="inline-flex min-h-11 items-center rounded-full border border-white/12 px-5 text-sm font-semibold text-white/72 transition hover:border-white/25 hover:text-white"
           >
             Sign in

@@ -53,7 +53,7 @@ export default function AppYouClient({ surface }: { surface: AppSurface }) {
         <h1 className="mx-auto mt-3 max-w-2xl text-4xl font-semibold sm:text-6xl">Make the experience yours.</h1>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-white/44 sm:text-base">Keep your Library in sync, follow creators, join rooms and unlock Studio access when you’re ready to create.</p>
         <Link href={`/app/${surface}/join`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-white px-6 font-semibold text-black transition hover:bg-brand">Create account</Link>
-        <div className="mt-3"><Link href={`/auth/login?next=${encodeURIComponent(`/app/${surface}/you`)}`} className="text-sm text-white/54 transition hover:text-brand">Already have an account? Sign in</Link></div>
+        <div className="mt-3"><Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/you`)}`} className="text-sm text-white/54 transition hover:text-brand">Already have an account? Sign in</Link></div>
         <div className="mt-8 flex flex-wrap justify-center gap-2 text-sm">
           <a href="https://bvsradio.com/contact" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/[.08] px-4 py-2 text-white/40 transition hover:border-white/18 hover:text-white">Support ↗</a>
           <a href="https://bvsradio.com/privacy" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/[.08] px-4 py-2 text-white/40 transition hover:border-white/18 hover:text-white">Privacy ↗</a>

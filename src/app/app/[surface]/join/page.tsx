@@ -37,7 +37,7 @@ export default async function AppJoinPage({ params }: { params: Promise<{ surfac
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/40">Choose what you want to do first. You can grow the same account into more creator access later.</p>
           <div className="mt-6 flex flex-wrap gap-2.5">
             <Link href={`/app/${surface}/join/email`} className="inline-flex min-h-11 items-center rounded-full bg-white px-5 font-semibold text-black transition hover:bg-brand">Create account</Link>
-            <Link href={`/auth/login?next=${encodeURIComponent(next)}`} className="inline-flex min-h-11 items-center rounded-full border border-white/[.1] px-5 text-white/64 transition hover:border-white/20 hover:text-white">Sign in</Link>
+            <Link href={`/app/${surface}/login?next=${encodeURIComponent(next)}`} className="inline-flex min-h-11 items-center rounded-full border border-white/[.1] px-5 text-white/64 transition hover:border-white/20 hover:text-white">Sign in</Link>
           </div>
         </div>
       </section>

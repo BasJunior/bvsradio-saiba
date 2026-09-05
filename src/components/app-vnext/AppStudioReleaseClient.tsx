@@ -136,7 +136,7 @@ export default function AppStudioReleaseClient({ surface }: { surface: AppSurfac
   }, [workspace?.distributionJobs]);
 
   if (sessionLoading || loading) return <div className="h-44 animate-pulse rounded-[1.75rem] bg-white/[.04]" />;
-  if (!signedIn || !token) return <div className="rounded-[1.75rem] border border-white/10 p-6 text-center"><h2 className="text-xl font-semibold">Sign in to release music.</h2><Link href={`/auth/login?next=${encodeURIComponent(`/app/${surface}/studio/release`)}`} className="mt-4 inline-flex rounded-full bg-brand px-5 py-2.5 font-semibold text-black">Sign in</Link></div>;
+  if (!signedIn || !token) return <div className="rounded-[1.75rem] border border-white/10 p-6 text-center"><h2 className="text-xl font-semibold">Sign in to release music.</h2><Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/studio/release`)}`} className="mt-4 inline-flex rounded-full bg-brand px-5 py-2.5 font-semibold text-black">Sign in</Link></div>;
   if (!access?.artist) return <div className="rounded-[1.75rem] border border-white/10 p-6"><h2 className="text-xl font-semibold">Artist access required.</h2><p className="mt-2 text-sm text-text-secondary">Release submission opens after BVS approves Artist access for this account.</p><Link href={`/app/${surface}/account#creator-role`} className="mt-4 inline-flex text-sm text-brand">Open Account Centre →</Link></div>;
 
   const releases = workspace?.releases || [];

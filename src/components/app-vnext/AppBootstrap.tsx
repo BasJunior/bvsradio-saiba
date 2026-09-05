@@ -41,6 +41,13 @@ export function appDestination(surface: AppSurface, url: URL) {
   const path = url.pathname;
   if (path.startsWith(`/app/${surface}`)) return null;
   if (isExternalLegalOrLicenceUrl(url)) return null;
+  if (path === "/auth/login") {
+    const requestedNext = url.searchParams.get("next") || "";
+    const next = requestedNext.startsWith(`/app/${surface}`) ? requestedNext : `/app/${surface}/you`;
+    return `/app/${surface}/login?next=${encodeURIComponent(next)}`;
+  }
+  if (path === "/auth/signup") return `/app/${surface}/join/email`;
+  if (path === "/auth/forgot-password") return `/app/${surface}/forgot-password`;
   if (path === "/search" || path === "/catalogue") return exploreRoute(surface, url);
   if (path === "/radio" || path === "/") return `/app/${surface}`;
   if (path === "/library") return `/app/${surface}/library`;

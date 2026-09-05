@@ -39,7 +39,7 @@ assert.match(entitlements, /applinks:bvsradio.com/);
 assert.match(entitlements, /\$\(BVS_APNS_ENVIRONMENT\)/);
 assert.match(read("ios/App/App/PrivacyInfo.xcprivacy"), /CA92.1/);
 const project = read("ios/App/App.xcodeproj/project.pbxproj");
-assert.equal((project.match(/CURRENT_PROJECT_VERSION = 4;/g) || []).length, 2);
+assert.equal((project.match(/CURRENT_PROJECT_VERSION = 5;/g) || []).length, 2);
 assert.equal((project.match(/MARKETING_VERSION = 1\.1;/g) || []).length, 2);
 assert.match(project, /BVS_APNS_ENVIRONMENT = development/);
 assert.match(project, /BVS_APNS_ENVIRONMENT = production/);

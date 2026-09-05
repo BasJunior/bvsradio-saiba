@@ -152,7 +152,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
       <h1 className="mt-3 max-w-3xl text-4xl font-semibold sm:text-6xl">Make something. Build from there.</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-white/44 sm:text-base">One BVS identity can grow into the creator workspace you need — artist, producer, writer or show creator.</p>
       <div className="mt-8 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy]) => <div key={title} className="rounded-[1.4rem] border border-white/[.07] bg-white/[.025] p-5"><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-white/38">{copy}</p></div>)}</div>
-      <div className="mt-7 flex flex-wrap gap-2.5"><Link href={`/app/${surface}/join`} className="inline-flex min-h-11 items-center rounded-full bg-white px-5 font-semibold text-black transition hover:bg-brand">Create account</Link><Link href={`/auth/login?next=${encodeURIComponent(`/app/${surface}/studio`)}`} className="inline-flex min-h-11 items-center rounded-full border border-white/12 px-5 text-white/64">Sign in</Link></div>
+      <div className="mt-7 flex flex-wrap gap-2.5"><Link href={`/app/${surface}/join`} className="inline-flex min-h-11 items-center rounded-full bg-white px-5 font-semibold text-black transition hover:bg-brand">Create account</Link><Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/studio`)}`} className="inline-flex min-h-11 items-center rounded-full border border-white/12 px-5 text-white/64">Sign in</Link></div>
     </div>
   );
 

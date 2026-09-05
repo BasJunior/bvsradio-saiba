@@ -19,6 +19,7 @@
     "test:vnext-discovery": "node scripts/vnext-discovery-assistant-tests.mjs",
     "test:vnext-song-workspace": "node scripts/vnext-song-workspace-tests.mjs",
     "test:vnext-ios-commerce": "node scripts/vnext-ios-commerce-policy-tests.mjs",
+    "test:vnext-native-auth": "node scripts/vnext-native-auth-tests.mjs",
     "beta:preflight": "node scripts/beta-staging-preflight.mjs",
     "beta:seed": "node scripts/seed-beta-demo.mjs",
     "test:beta-flow:live": "node scripts/beta-flow-live-acceptance.mjs",
