@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 const explore = await readFile(new URL("../src/components/app-vnext/AppExploreClient.tsx", import.meta.url), "utf8");
 const assistant = await readFile(new URL("../src/components/VisitorAssistant.tsx", import.meta.url), "utf8");
 
-for (const label of ["Fresh", "On BVS", "Creators", "BeatStore"]) {
+for (const label of ["New & notable", "Playing now", "Creators", "BeatStore"]) {
   assert.match(explore, new RegExp(`label: \\"${label}\\"`), `Explore mode ${label} must remain available`);
 }
 assert.match(explore, /\/api\/station\/tracks\?surface=/, "Explore music must continue using the mobile rights-cleared station endpoint");

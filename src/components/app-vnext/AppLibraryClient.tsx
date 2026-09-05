@@ -13,6 +13,14 @@ import { readLibrary, type LibrarySection } from "@/lib/library";
 import type { DiscoveryItem } from "@/lib/discovery";
 
 type ActiveSection = LibrarySection | "owned";
+type SongWorkspace = {
+  id: string;
+  songTitle: string;
+  workspaceKind: "blank" | "licensed";
+  hasAttachedBeat: boolean;
+  beatTitle?: string | null;
+  updatedAt?: string | null;
+};
 type OwnedBeat = {
   beatId: string;
   orderReference: string;
@@ -28,7 +36,7 @@ const tabs: Array<{ id: ActiveSection; label: string }> = [
   { id: "favourites", label: "Liked" },
   { id: "follows", label: "Following" },
   { id: "history", label: "Recent" },
-  { id: "owned", label: "Licensed Beats" },
+  { id: "owned", label: "Lyrics" },
 ];
 
 function nativeHref(surface: AppSurface, item: DiscoveryItem) {
@@ -47,6 +55,7 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
   const [active, setActive] = useState<ActiveSection>("favourites");
   const [items, setItems] = useState<DiscoveryItem[]>([]);
   const [ownedBeats, setOwnedBeats] = useState<OwnedBeat[]>([]);
+  const [songWorkspaces, setSongWorkspaces] = useState<SongWorkspace[]>([]);
   const [ownedLoading, setOwnedLoading] = useState(false);
   const [ownedError, setOwnedError] = useState("");
   const [openingBeat, setOpeningBeat] = useState("");
@@ -69,24 +78,32 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
   useEffect(() => {
     if (selectedSection !== "owned" || !signedIn || !token) return;
     let cancelled = false;
-    const loadOwnedBeats = async () => {
+    const loadLyrics = async () => {
       setOwnedLoading(true);
       setOwnedError("");
       try {
-        const response = await fetch("/api/library/owned", {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.error || "Could not load licensed beats.");
-        if (!cancelled) setOwnedBeats(Array.isArray(payload.beats) ? payload.beats : []);
+        const headers = { Authorization: `Bearer ${token}` };
+        const [workspaceResponse, beatsResponse] = await Promise.all([
+          fetch("/api/creator/song-workspaces", { headers, cache: "no-store" }),
+          fetch("/api/library/owned", { headers, cache: "no-store" }),
+        ]);
+        const [workspacePayload, beatsPayload] = await Promise.all([
+          workspaceResponse.json().catch(() => ({})),
+          beatsResponse.json().catch(() => ({})),
+        ]);
+        if (!workspaceResponse.ok) throw new Error(workspacePayload.error || "Could not load Lyrics Pad.");
+        if (!beatsResponse.ok) throw new Error(beatsPayload.error || "Could not load licensed beats.");
+        if (!cancelled) {
+          setSongWorkspaces(Array.isArray(workspacePayload.workspaces) ? workspacePayload.workspaces : []);
+          setOwnedBeats(Array.isArray(beatsPayload.beats) ? beatsPayload.beats : []);
+        }
       } catch (caught) {
-        if (!cancelled) setOwnedError(caught instanceof Error ? caught.message : "Could not load licensed beats.");
+        if (!cancelled) setOwnedError(caught instanceof Error ? caught.message : "Could not load Lyrics Pad.");
       } finally {
         if (!cancelled) setOwnedLoading(false);
       }
     };
-    void loadOwnedBeats();
+    void loadLyrics();
     return () => { cancelled = true; };
   }, [selectedSection, signedIn, token]);
 
@@ -131,6 +148,26 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
     router.push(`/app/${surface}/studio/songs/${payload.workspace.id}`);
   };
 
+  const newLyricsPad = async () => {
+    if (!token) return;
+    setOpeningBeat("new");
+    setOwnedError("");
+    const response = await fetch("/api/creator/song-workspaces", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({}),
+    }).catch(() => null);
+    const payload = await response?.json().catch(() => ({}));
+    if (!response?.ok || !payload?.workspace?.id) {
+      setOwnedError(payload?.error || "Could not create Lyrics Pad.");
+      setOpeningBeat("");
+      return;
+    }
+    router.push(`/app/${surface}/studio/songs/${payload.workspace.id}`);
+  };
+
+  const blankPads = songWorkspaces.filter((workspace) => workspace.workspaceKind === "blank");
+
   return (
     <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
       <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Library</p>
@@ -166,7 +203,7 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
         ))}
       </div>
 
-      <div className="mt-5 space-y-2">
+      {selectedSection !== "owned" ? <div className="mt-5 space-y-2">
         {items.map((item) => {
           const canPlay = item.kind === "track" && clearedById.has(item.id);
           return (
@@ -188,37 +225,18 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
             </article>
           );
         })}
-      </div>
+      </div> : null}
 
-      {selectedSection === "owned" ? (
-        <section className="mt-7" aria-labelledby="licensed-beats-heading">
-          <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Writing spaces</p>
-          <h2 id="licensed-beats-heading" className="mt-2 text-3xl font-semibold">Licensed beats.</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/42">Open a beat you already licensed and keep lyrics and song notes connected to your account. Purchases stay outside the app.</p>
-          {ownedError ? <p className="mt-4 rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm text-red-100" role="alert">{ownedError}</p> : null}
-          {ownedLoading ? <p className="mt-5 text-sm text-white/40" aria-live="polite">Loading licensed beats…</p> : null}
-          <div className="mt-5 space-y-3">
-            {ownedBeats.map((beat) => (
-              <article key={`${beat.orderReference}-${beat.beatId}`} className="rounded-[1.3rem] border border-white/[.07] bg-white/[.02] p-4">
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="truncate font-semibold">{beat.title}</h3>
-                    <p className="truncate text-sm text-white/42">{beat.producerName} · {beat.licenceCode.replaceAll("_", " ")}</p>
-                    {beat.songTitle ? <p className="mt-1 truncate text-xs text-brand">Writing: {beat.songTitle}</p> : null}
-                  </div>
-                  <button type="button" onClick={() => void openLyricsPad(beat)} disabled={openingBeat === beat.beatId} className="min-h-11 rounded-full bg-brand px-4 text-sm font-semibold text-black disabled:opacity-50">{beat.workspaceId ? "Open Lyrics Pad" : openingBeat === beat.beatId ? "Opening…" : "Start writing"}</button>
-                </div>
-              </article>
-            ))}
-          </div>
-          {!ownedLoading && !ownedError && !ownedBeats.length ? (
-            <div className="mt-7 rounded-[1.5rem] border border-dashed border-white/12 p-9 text-center">
-              <h3 className="text-xl font-semibold">No licensed beats here yet.</h3>
-              <p className="mt-2 text-sm text-white/40">When an eligible beat licence is connected to your account, its writing space will appear here.</p>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
+      {selectedSection === "owned" ? <section className="mt-6" aria-labelledby="lyrics-pad-heading">
+        <div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Private writing</p><h2 id="lyrics-pad-heading" className="mt-1 text-2xl font-semibold">Lyrics Pad</h2><p className="mt-2 max-w-2xl text-sm text-text-secondary">Start a private writing pad for free. If your account has a licensed BVS beat, you can also write with its preview attached.</p></div><button type="button" onClick={() => void newLyricsPad()} disabled={openingBeat === "new"} className="min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black disabled:opacity-50">{openingBeat === "new" ? "Creating…" : "+ New Lyrics Pad"}</button></div>
+        {ownedError ? <p className="mt-4 rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm text-red-100" role="alert">{ownedError}</p> : null}
+        {ownedLoading ? <p className="mt-5 text-sm text-text-secondary" aria-live="polite">Loading your writing…</p> : null}
+        {blankPads.length ? <div className="mt-6 space-y-3"><h3 className="text-sm font-semibold uppercase tracking-[.14em] text-text-secondary">Your pads</h3>{blankPads.map((pad) => <article key={pad.id} className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/10 bg-white/[.02] p-4"><div className="min-w-0 flex-1"><h4 className="truncate font-semibold">{pad.songTitle || "Untitled song"}</h4><p className="mt-1 text-sm text-text-secondary">Private Lyrics Pad · no beat attached</p></div><button type="button" onClick={() => router.push(`/app/${surface}/studio/songs/${pad.id}`)} className="min-h-11 rounded-full border border-brand/30 px-4 text-sm font-semibold text-brand">Open pad</button></article>)}</div> : null}
+        {ownedBeats.length ? <div className="mt-7 space-y-3"><div><h3 className="text-sm font-semibold uppercase tracking-[.14em] text-text-secondary">Licensed beats</h3><p className="mt-2 text-sm text-text-secondary">Optional beat previews already licensed to this account. No purchasing takes place in this app.</p></div>{ownedBeats.map((beat) => <article key={`${beat.orderReference}-${beat.beatId}`} className="rounded-2xl border border-white/10 bg-white/[.02] p-4">
+          <div className="flex flex-wrap items-center gap-4"><div className="min-w-0 flex-1"><h3 className="truncate font-semibold">{beat.title}</h3><p className="truncate text-sm text-text-secondary">{beat.producerName} · {beat.licenceCode.replaceAll("_", " ")}</p>{beat.songTitle ? <p className="mt-1 truncate text-xs text-brand">Writing: {beat.songTitle}</p> : null}</div><button type="button" onClick={() => void openLyricsPad(beat)} disabled={openingBeat === beat.beatId} className="min-h-11 rounded-full bg-brand px-4 text-sm font-semibold text-black disabled:opacity-50">{beat.workspaceId ? "Open Lyrics Pad" : openingBeat === beat.beatId ? "Opening…" : "Write lyrics"}</button></div>
+        </article>)}</div> : null}
+        {!ownedLoading && !ownedError && !blankPads.length && !ownedBeats.length ? <div className="mt-7 rounded-[1.75rem] border border-dashed border-white/15 p-9 text-center"><h3 className="text-xl font-semibold">Start with a blank page.</h3><p className="mt-2 text-sm text-text-secondary">Lyrics Pad is included for every signed-in BVS member. A beat purchase is not required.</p></div> : null}
+      </section> : null}
 
       {selectedSection !== "owned" && !items.length ? (
         <div className="mt-7 rounded-[1.5rem] border border-dashed border-white/12 p-9 text-center">

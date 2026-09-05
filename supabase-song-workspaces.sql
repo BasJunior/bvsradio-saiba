@@ -1,5 +1,6 @@
--- BVS beta: purchased-beat Song Workspace / Lyrics Pad
--- Entitlement creation and mutation are service-role only after a paid/fulfilled beat order is verified.
+-- BVS beta: private Song Workspace / Lyrics Pad
+-- Creation and mutation are service-role only. Licensed-beat pads require a paid/fulfilled
+-- beat order; free blank pads use an internal non-payment workspace record.
 
 create table if not exists public.song_workspaces (
   id uuid primary key default gen_random_uuid(),
@@ -33,7 +34,7 @@ drop policy if exists "song workspaces select own" on public.song_workspaces;
 create policy "song workspaces select own" on public.song_workspaces for select using (auth.uid() = user_id);
 
 -- Do not permit direct browser inserts/updates/deletes. The BVS API uses the service role
--- after checking the signed-in account and paid beat entitlement. This keeps release_id,
+-- after checking the signed-in account and workspace entitlement. This keeps release_id,
 -- status and licence snapshots server-controlled while lyrics still autosave through the API.
 drop policy if exists "song workspaces update own" on public.song_workspaces;
 
@@ -56,6 +57,8 @@ begin
     return new;
   end;
 
+  -- Free blank pads deliberately use order status free_workspace, so they cannot satisfy
+  -- this paid-licence release-clearance bridge.
   if exists (
     select 1
     from public.song_workspaces sw
@@ -92,4 +95,3 @@ drop trigger if exists verify_bvs_song_workspace_clearance on public.release_cle
 create trigger verify_bvs_song_workspace_clearance
 before insert on public.release_clearance_evidence
 for each row execute function public.verify_bvs_song_workspace_clearance();
-

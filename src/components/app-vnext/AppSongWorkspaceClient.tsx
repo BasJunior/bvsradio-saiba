@@ -11,6 +11,8 @@ type Workspace = {
   lyrics: string;
   notes: string;
   status: "draft" | "ready_to_release" | "released";
+  workspaceKind: "blank" | "licensed";
+  hasAttachedBeat: boolean;
   beatTitle: string;
   producerName: string;
   licenceCode: string;
@@ -118,7 +120,7 @@ export default function AppSongWorkspaceClient({ id, surface }: { id: string; su
   const saveLabel = saveState === "saving" ? "Saving…" : saveState === "error" ? "Save needs attention" : dirty ? "Unsaved changes" : "Saved privately";
   return <div className="mx-auto max-w-5xl px-4 pb-12 pt-5 sm:px-6">
     <div className="flex items-center justify-between gap-3">
-      <button type="button" onClick={goBack} aria-label="Back to licensed beats" className="min-h-11 rounded-full border border-white/10 px-4 text-sm text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">← Library</button>
+      <button type="button" onClick={goBack} aria-label="Back to Library" className="min-h-11 rounded-full border border-white/10 px-4 text-sm text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">← Library</button>
       <div className="flex items-center gap-2 text-xs text-text-secondary"><span aria-live="polite">{saveLabel}</span><span className="rounded-full border border-white/10 px-3 py-1">Private</span></div>
     </div>
 
@@ -126,7 +128,7 @@ export default function AppSongWorkspaceClient({ id, surface }: { id: string; su
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Song Workspace · Lyrics Pad</p>
         <label className="mt-3 block"><span className="sr-only">Song title</span><input value={songTitle} onChange={(event) => { setSongTitle(event.target.value); markDirty(); }} placeholder="Name your song" className="min-h-12 w-full border-0 bg-transparent p-0 text-3xl font-semibold outline-none placeholder:text-white/25" /></label>
-        <p className="mt-2 text-sm text-text-secondary">Writing to <strong className="text-white">{workspace.beatTitle}</strong> by {workspace.producerName}</p>
+        <p className="mt-2 text-sm text-text-secondary">{workspace.hasAttachedBeat ? <>Writing to <strong className="text-white">{workspace.beatTitle}</strong> by {workspace.producerName}</> : "Your private blank page — no beat or purchase required."}</p>
 
         {workspace.audioUrl ? <section className="mt-5 rounded-3xl border border-brand/20 bg-brand/[.05] p-4" aria-label="Licensed beat player">
           <div className="flex flex-wrap items-center justify-between gap-2"><div><p className="font-semibold">Attached beat</p><p className="mt-1 text-xs text-text-secondary">{[workspace.genre, workspace.bpm ? `${workspace.bpm} BPM` : null, workspace.musicalKey].filter(Boolean).join(" · ") || workspace.beatTitle}</p></div><span className="rounded-full border border-brand/25 px-3 py-1 text-xs text-brand">{workspace.licenceCode.replaceAll("_", " ")}</span></div>
@@ -134,7 +136,7 @@ export default function AppSongWorkspaceClient({ id, surface }: { id: string; su
         </section> : null}
 
         <section className="mt-5 rounded-3xl border border-white/10 bg-white/[.02] p-4 sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Lyrics</p><h2 className="mt-1 text-xl font-semibold">Write while the beat plays</h2></div><div className="flex flex-wrap gap-1.5" aria-label="Insert song section">{lyricSections.map((section) => <button key={section} type="button" onClick={() => appendSection(section)} className="min-h-10 rounded-full border border-white/10 px-3 text-xs hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">+ {section}</button>)}</div></div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Lyrics</p><h2 className="mt-1 text-xl font-semibold">{workspace.hasAttachedBeat ? "Write while the beat plays" : "Shape your song"}</h2></div><div className="flex flex-wrap gap-1.5" aria-label="Insert song section">{lyricSections.map((section) => <button key={section} type="button" onClick={() => appendSection(section)} className="min-h-10 rounded-full border border-white/10 px-3 text-xs hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">+ {section}</button>)}</div></div>
           <label className="mt-5 block"><span className="sr-only">Lyrics</span><textarea value={lyrics} onChange={(event) => { setLyrics(event.target.value); markDirty(); }} placeholder={"[Verse]\nStart writing here…"} spellCheck className="min-h-[46vh] w-full resize-y rounded-2xl border border-white/10 bg-black/20 p-5 text-base leading-8 outline-none focus:border-brand" /></label>
           <div className="mt-3 flex items-center justify-between gap-3 text-xs text-text-secondary"><span>{lyrics.trim() ? lyrics.trim().split(/\s+/).length : 0} words</span><button type="button" onClick={() => void save()} className="min-h-10 px-2 text-brand">Save now</button></div>
         </section>
@@ -144,7 +146,7 @@ export default function AppSongWorkspaceClient({ id, surface }: { id: string; su
       </div>
 
       <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-        <section className="rounded-3xl border border-white/10 bg-white/[.02] p-5"><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Licence attached</p><h2 className="mt-2 font-semibold">{workspace.beatTitle}</h2><p className="mt-1 text-sm text-text-secondary">{workspace.producerName}</p><p className="mt-4 text-sm leading-6 text-text-secondary">{workspace.licenceSummary}</p>{workspace.licenceTermsVersion ? <p className="mt-3 text-xs text-text-secondary">Terms {workspace.licenceTermsVersion}</p> : null}</section>
+        {workspace.hasAttachedBeat ? <section className="rounded-3xl border border-white/10 bg-white/[.02] p-5"><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Licence attached</p><h2 className="mt-2 font-semibold">{workspace.beatTitle}</h2><p className="mt-1 text-sm text-text-secondary">{workspace.producerName}</p><p className="mt-4 text-sm leading-6 text-text-secondary">{workspace.licenceSummary}</p>{workspace.licenceTermsVersion ? <p className="mt-3 text-xs text-text-secondary">Terms {workspace.licenceTermsVersion}</p> : null}</section> : <section className="rounded-3xl border border-white/10 bg-white/[.02] p-5"><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Included with BVS</p><h2 className="mt-2 font-semibold">Free private Lyrics Pad</h2><p className="mt-2 text-sm leading-6 text-text-secondary">Write and autosave from any signed-in account. No purchase or beat licence is required.</p></section>}
         <section className="rounded-3xl border border-brand/20 bg-brand/[.05] p-5"><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Writing status</p><h2 className="mt-2 text-xl font-semibold">{workspace.status === "ready_to_release" ? "Ready for your next step" : "Keep shaping the song"}</h2><p className="mt-2 text-sm leading-6 text-text-secondary">Lyrics and notes autosave privately to your BVS account.</p>{workspace.status !== "ready_to_release" ? <button type="button" onClick={() => void save("ready_to_release")} className="mt-5 min-h-11 w-full rounded-full bg-brand px-5 text-sm font-semibold text-black">Mark writing ready</button> : null}</section>
       </aside>
     </section>

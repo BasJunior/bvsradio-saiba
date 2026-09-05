@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import {
   createSongWorkspace,
+  createFreeSongWorkspace,
   findBeatEntitlement,
   listOwnSongWorkspaces,
   presentSongWorkspace,
@@ -33,6 +34,11 @@ export async function POST(request: Request) {
     const body = await request.json().catch(() => ({})) as { orderReference?: string; beatId?: string }
     const orderReference = String(body.orderReference || '').trim().slice(0, 100)
     const beatId = String(body.beatId || '').trim()
+    if (!orderReference && !beatId) {
+      const created = await createFreeSongWorkspace(user)
+      if (!created.row) return NextResponse.json({ error: 'Could not open Lyrics Pad.' }, { status: 500 })
+      return NextResponse.json({ workspace: await presentSongWorkspace(created.row, created.entitlement, false) })
+    }
     if (!orderReference || !/^[0-9a-f-]{36}$/i.test(beatId)) {
       return NextResponse.json({ error: 'Choose a purchased beat licence.' }, { status: 400 })
     }
@@ -50,4 +56,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Could not open Song Workspace.' }, { status: 500 })
   }
 }
-

@@ -15,6 +15,7 @@ type OrderItem = {
   artist?: string
   licenceCode?: string
   licenceSummary?: string
+  workspaceKind?: string
 }
 
 type OrderRow = {
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
   const beats = orders.flatMap((order) => {
     const items = Array.isArray(order.items) ? order.items : []
     return items
-      .filter((item) => item.type === 'beat' || item.productType === 'beat')
+      .filter((item) => (item.type === 'beat' || item.productType === 'beat') && item.workspaceKind !== 'blank' && item.licenceCode !== 'writing_pad_free')
       .map((item) => {
         const beatId = String(item.sourceId || item.id || '')
         if (!/^[0-9a-f-]{36}$/i.test(beatId)) return null
@@ -76,4 +77,3 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ beats })
 }
-

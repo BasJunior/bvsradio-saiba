@@ -18,7 +18,7 @@ async function loadActive(request: Request, id: string) {
   if (!row) return { error: 'Song Workspace not found.', status: 404 as const }
   const entitlement = await findBeatEntitlement(user.id, row.order_reference, row.beat_id)
   if (!entitlement) {
-    return { error: 'This workspace no longer has an active paid beat licence. Your writing is preserved; contact BVS if this is unexpected.', status: 403 as const }
+    return { error: 'This workspace is not available to this account. Your writing is preserved; contact BVS if this is unexpected.', status: 403 as const }
   }
   return { user, row, entitlement }
 }
@@ -68,4 +68,3 @@ export async function PATCH(
   if (!updated) return NextResponse.json({ error: 'Could not save Song Workspace.' }, { status: 500 })
   return NextResponse.json({ workspace: await presentSongWorkspace(updated, loaded.entitlement, false) })
 }
-
