@@ -88,8 +88,38 @@ type FinanceData = {
     existingLedgerCredit: Record<string, unknown> | null
     legacyWarning: string | null
   }
-  guidance: { moneyFlow: string[]; tax: string[] }
+  guidance: { moneyFlow: string[]; tax: string[]; streams?: string[] }
   availability: Record<string, boolean>
+  streamFinance?: {
+    measurementLive: boolean
+    qualifiedStreamSeconds: number
+    settlementCadence: string
+    maximumUsdPerEligiblePlay: number
+    payoutMinimumUsd: number
+    listenAdPot: {
+      enabled: boolean
+      netListenAdPotUsd: number
+      currency: string
+      notes?: string
+      updatedAt?: string
+    }
+    month: {
+      qualifiedStreams: number | null
+      theoreticalLiabilityUsd: number
+      fundedLiabilityUsd: number
+      postedRoyaltyCreditsUsd: number | null
+      byArtist: Array<{ artistUserId: string; artistName: string; count: number; theoreticalUsd: number; fundedUsd: number }>
+    }
+    allTime: {
+      qualifiedStreams: number | null
+      cataloguePlayCount: number | null
+      approvedPublicTracks: number | null
+      theoreticalCatalogueCapUsd: number | null
+      postedRoyaltyCreditsUsd: number | null
+      foundingBonusPostedUsd: number | null
+    }
+    rules: string[]
+  }
 }
 
 const targets = [
@@ -239,6 +269,16 @@ export default function EditorialFinancePage() {
 
     {data ? <>
       <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Paid artist subscribers" value={data.current.paidArtists ?? 'Not connected'} note={`${data.current.activeArtistMemberships ?? 0} active/trial artist memberships`} /><Metric label="Marketplace GMV this month" value={usd(data.current.monthMarketplaceGmv)} note={`${data.current.monthMarketplaceOrders} paid marketplace orders`} /><Metric label="Subscription MRR" value={usd(data.current.subscriptionMrr)} note="Monthly equivalent of provider-backed artist subscriptions" /><Metric label="Newsletter subscribers" value={data.current.newsletterSubscribers ?? 'Not connected'} note={data.availability.newsletter ? 'Active opt-ins' : 'Newsletter source not available'} warning={!data.availability.newsletter} /></section>
+
+      {data.streamFinance ? <section className="mt-10 rounded-3xl border border-white/10 bg-white/[.03] p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[.18em] text-brand">BVS Radio streams</p><h2 className="mt-2 text-3xl font-semibold">Monthly stream measurement & liability</h2><p className="mt-3 max-w-4xl text-sm text-text-secondary">≥{data.streamFinance.qualifiedStreamSeconds}s truthful listens are measured now. Wallet royalties settle {data.streamFinance.settlementCadence} only from a funded listen-ad pot, capped at ${data.streamFinance.maximumUsdPerEligiblePlay.toFixed(5)} / eligible play. Theoretical liability is a ceiling, not booked debt.</p></div><span className={`rounded-full border px-3 py-1 text-xs ${data.streamFinance.measurementLive ? 'border-emerald-400/40 text-emerald-200' : 'border-amber-400/40 text-amber-100'}`}>{data.streamFinance.measurementLive ? '30s measurement live' : 'Measurement pending flag/schema'}</span></div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Qualified streams MTD" value={data.streamFinance.month.qualifiedStreams ?? 'Not connected'} note="Pending/eligible/settled rows this month" warning={data.streamFinance.month.qualifiedStreams == null} /><Metric label="Theoretical stream liability MTD" value={usd(data.streamFinance.month.theoreticalLiabilityUsd)} note="Cap if pot fully funds $0.00025/play" /><Metric label="Funded stream liability MTD" value={usd(data.streamFinance.month.fundedLiabilityUsd)} note={data.streamFinance.listenAdPot.enabled ? `Pot ${usd(data.streamFinance.listenAdPot.netListenAdPotUsd)}` : 'Ad pot disabled · $0 funded'} warning={!data.streamFinance.listenAdPot.enabled} /><Metric label="Posted stream royalties MTD" value={usd(data.streamFinance.month.postedRoyaltyCreditsUsd)} note="royalty_credit ledger only" /></div>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Metric label="Catalogue play_count total" value={data.streamFinance.allTime.cataloguePlayCount ?? 'Not connected'} note={`${data.streamFinance.allTime.approvedPublicTracks ?? 0} approved public tracks`} /><Metric label="Catalogue theory cap" value={usd(data.streamFinance.allTime.theoreticalCatalogueCapUsd)} note="All-time play_count × $0.00025" /><Metric label="All-time posted royalties" value={usd(data.streamFinance.allTime.postedRoyaltyCreditsUsd)} note="Should stay $0 until ad pot settlement" /><Metric label="Founding bonus posted" value={usd(data.streamFinance.allTime.foundingBonusPostedUsd)} note="Promotional, not stream royalty" /></div>
+        <div className="mt-6 rounded-2xl border border-white/10 bg-black/15 p-5"><div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-xl font-semibold">Listen-ad pot scaffold</h3><p className="mt-2 text-sm text-text-secondary">{data.streamFinance.listenAdPot.notes || 'Fund only with real listen-ad net cash.'}</p></div><span className="rounded-full border border-white/15 px-3 py-1 text-xs capitalize">{data.streamFinance.listenAdPot.enabled ? 'enabled' : 'disabled · awaiting ads'}</span></div><div className="mt-4 grid gap-3 sm:grid-cols-3"><Metric label="Pot status" value={data.streamFinance.listenAdPot.enabled ? 'On' : 'Off'} /><Metric label="Net pot USD" value={usd(data.streamFinance.listenAdPot.netListenAdPotUsd)} /><Metric label="Payout threshold" value={usd(data.streamFinance.payoutMinimumUsd)} note="All funded sources combine" /></div><p className="mt-4 text-xs text-text-secondary">When ads go live: set artist_wallet_settings.listen_ad_pot to enabled:true + net cash, then run monthly royalty settlement. Do not raid Premium / BeatStore / studio.</p></div>
+        {data.streamFinance.month.byArtist.length ? <div className="mt-6 overflow-x-auto rounded-2xl border border-white/10"><table className="min-w-[720px] w-full text-sm"><thead className="bg-white/[.04] text-left text-xs uppercase tracking-[.08em] text-text-secondary"><tr><th className="p-4">Artist</th><th className="p-4">Qualified MTD</th><th className="p-4">Theory $</th><th className="p-4">Funded $</th></tr></thead><tbody className="divide-y divide-white/10">{data.streamFinance.month.byArtist.map((row) => <tr key={row.artistUserId}><td className="p-4 font-medium">{row.artistName}</td><td className="p-4">{row.count}</td><td className="p-4">{usd(row.theoreticalUsd)}</td><td className="p-4 text-brand">{usd(row.fundedUsd)}</td></tr>)}</tbody></table></div> : <p className="mt-6 rounded-xl border border-dashed border-white/15 p-5 text-sm text-text-secondary">No qualified streams recorded this month yet. After the flag is on, ≥30s station/ondemand listens appear here.</p>}
+        <ul className="mt-6 space-y-2 text-sm text-text-secondary">{data.streamFinance.rules.map((line) => <li key={line}>• {line}</li>)}</ul>
+        {data.guidance.streams?.length ? <ul className="mt-4 space-y-2 text-xs text-text-secondary">{data.guidance.streams.map((line) => <li key={line}>• {line}</li>)}</ul> : null}
+      </section> : null}
 
       <section className="mt-10 rounded-3xl border border-brand/25 bg-brand/[.045] p-6">
         <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[.18em] text-brand">Marketplace Economics</p><h2 className="mt-2 text-3xl font-semibold">Protect BVS commission. Keep creator deductions transparent.</h2><p className="mt-3 max-w-4xl text-sm text-text-secondary">Policy {data.policy.version} · effective {new Date(data.policy.effectiveAt).toLocaleDateString()}. Marketplace processing is allocated to seller proceeds by default. BVS may subsidize it only through a deliberate, measured benefit.</p></div><span className="rounded-full border border-white/15 px-3 py-1 text-xs text-text-secondary">{data.canMutatePolicy ? 'Restricted finance controls enabled' : 'Read-only finance view'}</span></div>

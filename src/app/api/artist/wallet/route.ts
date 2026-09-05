@@ -1,5 +1,27 @@
 import { NextResponse } from 'next/server'
 import { editorialUrl, serviceHeaders } from '@/lib/editorial-server'
+import {
+  RADIO_EARNINGS_POLICY,
+  parseListenAdPotSettings,
+  theoreticalStreamLiabilityUsd,
+} from '@/lib/radio-earnings'
+
+const RADIO_EARNINGS_ENTRY_TYPES = new Set(['royalty_credit'])
+const FOUNDING_BONUS_ENTRY_TYPES = new Set(['founding_artist_bonus', 'promotional_credit'])
+
+function isFoundingBonus(entry: { entry_type?: string; metadata?: Record<string, unknown> }) {
+  return FOUNDING_BONUS_ENTRY_TYPES.has(String(entry.entry_type || ''))
+    || (entry.entry_type === 'manual_credit' && entry.metadata?.program === 'founding_artist_bonus')
+}
+
+function postedCreditTotal(
+  entries: Array<{ direction: string; amount: number | string; status: string; entry_type?: string; metadata?: Record<string, unknown> }>,
+  matches: (entry: { entry_type?: string; metadata?: Record<string, unknown> }) => boolean,
+) {
+  return entries
+    .filter((entry) => entry.direction === 'credit' && entry.status === 'posted' && matches(entry))
+    .reduce((total, entry) => total + (Number(entry.amount) || 0), 0)
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -62,7 +84,7 @@ export async function GET(request: Request) {
 
   const email = encodeURIComponent(user.email || '')
   const userId = encodeURIComponent(user.id)
-  const [profile, waitlist, deposits, ledger, payoutMethods, payoutRequests, settings, rawSettlements] = await Promise.all([
+  const [profile, waitlist, deposits, ledger, payoutMethods, payoutRequests, settings, potSettings, rawSettlements, tracks, qualifications] = await Promise.all([
     getJson<Array<Record<string, unknown>>>(`profiles?id=eq.${userId}&select=id,username,display_name,role,is_verified,is_published`, []),
     user.email ? getJson<Array<Record<string, unknown>>>(`artist_waitlist?email=eq.${email}&select=*&order=created_at.desc&limit=1`, []) : Promise.resolve([]),
     getJson<Array<{ amount: number | string; status: string } & Record<string, unknown>>>(`artist_deposits?artist_user_id=eq.${userId}&select=*&order=created_at.desc&limit=20`, []),
@@ -70,7 +92,10 @@ export async function GET(request: Request) {
     getJson<Array<Record<string, unknown>>>(`artist_payout_methods?artist_user_id=eq.${userId}&select=*&order=created_at.desc&limit=10`, []),
     getJson<Array<Record<string, unknown>>>(`artist_payout_requests?artist_user_id=eq.${userId}&select=*&order=requested_at.desc&limit=20`, []),
     getJson<Array<{ value?: { amount?: number | string; currency?: string } }>>(`artist_wallet_settings?key=eq.payout_minimum_usd&select=value&limit=1`, []),
+    getJson<Array<{ key?: string; value?: unknown }>>(`artist_wallet_settings?key=eq.listen_ad_pot&select=key,value&limit=1`, []),
     getJson<SettlementRow[]>(`commerce_seller_settlements?seller_user_id=eq.${userId}&select=id,order_reference,provider,policy_version,seller_plan_id,gross_product_revenue,platform_fee_bps,platform_fee_amount,processor_fee_allocated,processor_fee_status,processor_fee_native_amount,processor_fee_native_currency,seller_net,settlement_status,breakdown,created_at&order=created_at.desc&limit=60`, []),
+    getJson<Array<{ id?: string; play_count?: number | string }>>(`tracks?user_id=eq.${userId}&select=id,play_count&is_public=eq.true&editorial_status=eq.approved&limit=2000`, []),
+    getJson<Array<{ id?: string; track_id?: string; status?: string }>>(`stream_qualifications?select=id,track_id,status&limit=5000`, []),
   ])
 
   const refundByReference = new Map<string, number>()
@@ -98,6 +123,15 @@ export async function GET(request: Request) {
     .reduce((total, entry) => total + (Number(entry.amount) || 0), 0)
   const postedSettlements = sellerSettlements.filter((row) => row.settlement_status === 'posted')
   const refundDebits = [...refundByReference.values()].reduce((total, amount) => total + amount, 0)
+  const foundingBonus = postedCreditTotal(ledger, isFoundingBonus)
+  const radioEarnings = postedCreditTotal(ledger, (entry) => RADIO_EARNINGS_ENTRY_TYPES.has(String(entry.entry_type || '')))
+  const marketplaceEarnings = postedCreditTotal(ledger, (entry) => entry.entry_type === 'sale_credit')
+  const trackIds = new Set(tracks.map((track) => String(track.id || '')).filter(Boolean))
+  const eligiblePlays = tracks.reduce((total, track) => total + (Number(track.play_count) || 0), 0)
+  const qualifiedStreams = qualifications.filter((row) => trackIds.has(String(row.track_id || ''))).length
+  const pot = parseListenAdPotSettings(potSettings[0]?.value)
+  const availableBalance = balance(ledger)
+  const otherCreditsAndAdjustments = availableBalance - marketplaceEarnings - radioEarnings - foundingBonus
 
   return NextResponse.json({
     profile: profile[0] || null,
@@ -125,6 +159,25 @@ export async function GET(request: Request) {
       netAfterRefunds: Math.max(0, sum(postedSettlements, 'seller_net') - refundDebits),
       pendingNetEarnings: sum(sellerSettlements.filter((row) => row.settlement_status === 'pending_processor'), 'seller_net'),
       settlementCount: sellerSettlements.length,
+    },
+    sources: {
+      marketplaceEarnings,
+      radioEarnings,
+      foundingBonus,
+      otherCreditsAndAdjustments,
+    },
+    radio: {
+      eligiblePlays,
+      qualifiedStreams,
+      theoreticalCapUsd: theoreticalStreamLiabilityUsd(Math.max(eligiblePlays, qualifiedStreams)),
+      fundedEarnings: radioEarnings,
+      settlementStatus: radioEarnings > 0 ? 'credited' : pot.enabled && pot.netListenAdPotUsd > 0 ? 'awaiting_monthly_settlement' : 'awaiting_funded_programme',
+      policy: {
+        qualifiedStreamSeconds: RADIO_EARNINGS_POLICY.qualifiedStreamSeconds,
+        settlementCadence: RADIO_EARNINGS_POLICY.settlementCadence,
+        maximumUsdPerEligiblePlay: RADIO_EARNINGS_POLICY.maximumUsdPerEligiblePlay,
+        listenAdPotEnabled: pot.enabled,
+      },
     },
   })
 }

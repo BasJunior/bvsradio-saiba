@@ -11,6 +11,11 @@ import {
   marketplaceCommissionBps,
   producerUpgradeBreakEvenUsd,
 } from "@/lib/marketplace-economics";
+import {
+  RADIO_EARNINGS_POLICY,
+  parseListenAdPotSettings,
+  theoreticalStreamLiabilityUsd,
+} from "@/lib/radio-earnings";
 
 type Row = Record<string, unknown>;
 
@@ -125,6 +130,12 @@ export async function GET(request: Request) {
       refundEvents,
       policyAudit,
       caseOrder,
+      walletSettings,
+      monthQualifications,
+      allTimeQualifications,
+      approvedTracks,
+      radioLedgerMonth,
+      radioLedgerAll,
     ] = await Promise.all([
       requiredRows(
         `orders?status=in.(paid,fulfilled)&created_at=gte.${encodeURIComponent(quarterStart)}&select=id,reference,subtotal,total,tax_amount,currency,status,payment_method,items,created_at,paid_at&order=created_at.asc&limit=5000`,
@@ -155,6 +166,24 @@ export async function GET(request: Request) {
       ),
       optionalRows(
         "orders?reference=eq.BVS-20260807-9MLIC&select=id,reference,subtotal,total,tax_amount,currency,status,payment_method,created_at&limit=1",
+      ),
+      optionalRows(
+        "artist_wallet_settings?key=in.(listen_ad_pot,payout_minimum_usd)&select=key,value,updated_at&limit=10",
+      ),
+      optionalRows(
+        `stream_qualifications?qualified_at=gte.${encodeURIComponent(monthStart)}&select=id,track_id,source,status,listened_seconds,qualified_at&limit=20000`,
+      ),
+      optionalRows(
+        "stream_qualifications?select=id,track_id,source,status&limit=20000",
+      ),
+      optionalRows(
+        "tracks?is_public=eq.true&editorial_status=eq.approved&select=id,user_id,artist_name,play_count,title&limit=5000",
+      ),
+      optionalRows(
+        `artist_ledger_entries?effective_at=gte.${encodeURIComponent(monthStart)}&status=eq.posted&direction=eq.credit&or=(entry_type.eq.royalty_credit,and(entry_type.eq.manual_credit,metadata->>program.eq.founding_artist_bonus))&select=artist_user_id,entry_type,amount,metadata,effective_at&limit=5000`,
+      ),
+      optionalRows(
+        "artist_ledger_entries?status=eq.posted&direction=eq.credit&or=(entry_type.eq.royalty_credit,and(entry_type.eq.manual_credit,metadata->>program.eq.founding_artist_bonus))&select=artist_user_id,entry_type,amount,metadata&limit=5000",
       ),
     ]);
 
@@ -514,6 +543,143 @@ export async function GET(request: Request) {
         })
       : [];
 
+    const potRow = walletSettings.rows.find((row) => row.key === "listen_ad_pot");
+    const listenAdPot = parseListenAdPotSettings(potRow?.value);
+    if (potRow?.updated_at) listenAdPot.updatedAt = String(potRow.updated_at);
+
+    const trackById = new Map(
+      approvedTracks.rows.map((row) => [String(row.id), row]),
+    );
+    const playCountTotal = approvedTracks.rows.reduce(
+      (sum, row) => sum + money(row.play_count),
+      0,
+    );
+
+    const countByArtist = (rows: Row[]) => {
+      const map = new Map<
+        string,
+        { artistUserId: string; artistName: string; count: number }
+      >();
+      for (const row of rows) {
+        const track = trackById.get(String(row.track_id));
+        const artistUserId = String(track?.user_id || "unknown");
+        const artistName = String(
+          track?.artist_name || artistUserId.slice(0, 8),
+        );
+        const current = map.get(artistUserId) || {
+          artistUserId,
+          artistName,
+          count: 0,
+        };
+        current.count += 1;
+        if (track?.artist_name) current.artistName = String(track.artist_name);
+        map.set(artistUserId, current);
+      }
+      return [...map.values()].sort((a, b) => b.count - a.count);
+    };
+
+    const monthQualifiedRows = monthQualifications.available
+      ? monthQualifications.rows
+      : [];
+    const allQualifiedRows = allTimeQualifications.available
+      ? allTimeQualifications.rows
+      : [];
+    const monthQualifiedCount = monthQualifiedRows.length;
+    const allQualifiedCount = allQualifiedRows.length;
+    const monthByArtist = countByArtist(monthQualifiedRows).slice(0, 25);
+    const eligiblePlaysForLiability = monthQualifiedCount > 0
+      ? monthQualifiedCount
+      : playCountTotal;
+    const theoreticalMonthLiability = theoreticalStreamLiabilityUsd(
+      eligiblePlaysForLiability,
+    );
+    const fundedMonthLiability =
+      listenAdPot.enabled && listenAdPot.netListenAdPotUsd > 0
+        ? Math.min(listenAdPot.netListenAdPotUsd, theoreticalMonthLiability)
+        : 0;
+
+    const sumCredits = (rows: Row[], entryType: string) =>
+      rows
+        .filter((row) => String(row.entry_type) === entryType)
+        .reduce((sum, row) => sum + money(row.amount), 0);
+    const monthRoyaltyCredits = radioLedgerMonth.available
+      ? sumCredits(radioLedgerMonth.rows, "royalty_credit")
+      : null;
+    const allRoyaltyCredits = radioLedgerAll.available
+      ? sumCredits(radioLedgerAll.rows, "royalty_credit")
+      : null;
+    const monthFoundingBonus = radioLedgerMonth.available
+      ? radioLedgerMonth.rows
+          .filter(
+            (row) =>
+              String(row.entry_type) === "manual_credit" ||
+              String(row.entry_type) === "founding_artist_bonus",
+          )
+          .reduce((sum, row) => sum + money(row.amount), 0)
+      : null;
+    const allFoundingBonus = radioLedgerAll.available
+      ? radioLedgerAll.rows
+          .filter(
+            (row) =>
+              String(row.entry_type) === "manual_credit" ||
+              String(row.entry_type) === "founding_artist_bonus",
+          )
+          .reduce((sum, row) => sum + money(row.amount), 0)
+      : null;
+
+    const streamFinance = {
+      measurementLive:
+        process.env.NEXT_PUBLIC_BVS_QUALIFIED_STREAMS === "1" &&
+        monthQualifications.available,
+      qualifiedStreamSeconds: RADIO_EARNINGS_POLICY.qualifiedStreamSeconds,
+      settlementCadence: RADIO_EARNINGS_POLICY.settlementCadence,
+      maximumUsdPerEligiblePlay: RADIO_EARNINGS_POLICY.maximumUsdPerEligiblePlay,
+      payoutMinimumUsd: RADIO_EARNINGS_POLICY.payoutMinimumUsd,
+      listenAdPot,
+      month: {
+        qualifiedStreams: monthQualifications.available
+          ? monthQualifiedCount
+          : null,
+        theoreticalLiabilityUsd: theoreticalMonthLiability,
+        fundedLiabilityUsd: fundedMonthLiability,
+        postedRoyaltyCreditsUsd: monthRoyaltyCredits,
+        byArtist: monthByArtist.map((row) => ({
+          ...row,
+          theoreticalUsd: theoreticalStreamLiabilityUsd(row.count),
+          fundedUsd:
+            listenAdPot.enabled && listenAdPot.netListenAdPotUsd > 0 && eligiblePlaysForLiability > 0
+              ? Math.min(
+                  theoreticalStreamLiabilityUsd(row.count),
+                  listenAdPot.netListenAdPotUsd *
+                    (row.count / Math.max(1, eligiblePlaysForLiability)),
+                )
+              : 0,
+        })),
+      },
+      allTime: {
+        qualifiedStreams: allTimeQualifications.available
+          ? allQualifiedCount
+          : null,
+        cataloguePlayCount: approvedTracks.available ? playCountTotal : null,
+        approvedPublicTracks: approvedTracks.available
+          ? approvedTracks.rows.length
+          : null,
+        theoreticalCatalogueCapUsd: approvedTracks.available
+          ? theoreticalStreamLiabilityUsd(playCountTotal)
+          : null,
+        postedRoyaltyCreditsUsd: allRoyaltyCredits,
+        foundingBonusPostedUsd: allFoundingBonus,
+      },
+      rules: [
+        "≥30s truthful listen = qualified stream measurement only; not an instant wallet credit.",
+        "Monthly settlement credits royalty_credit only from a funded net listen-ad pot.",
+        "Artist credit = min(share of pot, eligible plays × $0.00025).",
+        "If listen-ad pot is disabled or $0, funded stream liability stays $0.",
+        "Do not raid Premium, BeatStore, studio, or other department cash for stream royalties.",
+        "When ads go live: set artist_wallet_settings.listen_ad_pot enabled=true and netListenAdPotUsd to net cash, then run monthly settlement.",
+      ],
+    };
+
     return NextResponse.json({
       generatedAt: now.toISOString(),
       role: identity.role,
@@ -608,6 +774,7 @@ export async function GET(request: Request) {
       recentRefundEvents: refundEvents.available
         ? refundEvents.rows.slice(0, 50)
         : [],
+      streamFinance,
       caseStudy: {
         reference: "BVS-20260807-9MLIC",
         found: Boolean(caseOrderRow),
@@ -647,6 +814,11 @@ export async function GET(request: Request) {
           "Creator personal income tax is normally the creator’s responsibility after earning or payout.",
           "Do not deduct a guessed withholding percentage until qualified Zimbabwe / Germany advice confirms an obligation.",
         ],
+        streams: [
+          "Qualified streams (≥30s) feed measurement and future monthly settlement inputs.",
+          "Funded stream expenses appear only after a listen-ad pot is enabled with real net cash.",
+          "Theoretical liability uses the $0.00025 per eligible play ceiling and is not booked debt.",
+        ],
       },
       availability: {
         memberships: memberships.available,
@@ -656,6 +828,8 @@ export async function GET(request: Request) {
         sellerSettlements: settlements.available,
         refundEvents: refundEvents.available,
         policyAudit: policyAudit.available,
+        streamQualifications: monthQualifications.available,
+        listenAdPot: walletSettings.available,
         processorFees:
           settlements.available &&
           settlements.rows.some(

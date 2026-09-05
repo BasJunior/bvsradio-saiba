@@ -37,6 +37,7 @@ export const analyticsEvents = [
   "flow_relationship_open",
   "flow_back_restore",
   "flow_action_sheet_open",
+  "stream_qualified_30s",
 ] as const
 
 export type AnalyticsEvent = (typeof analyticsEvents)[number]

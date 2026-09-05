@@ -47,6 +47,20 @@ type WalletData = {
     pendingNetEarnings: number
     settlementCount: number
   }
+  sources: { marketplaceEarnings: number; radioEarnings: number; foundingBonus: number; otherCreditsAndAdjustments: number }
+  radio: {
+    eligiblePlays: number
+    qualifiedStreams: number
+    theoreticalCapUsd: number
+    fundedEarnings: number
+    settlementStatus: string
+    policy?: {
+      qualifiedStreamSeconds: number
+      settlementCadence: string
+      maximumUsdPerEligiblePlay: number
+      listenAdPotEnabled: boolean
+    }
+  }
 }
 
 const emptyData: WalletData = {
@@ -59,6 +73,8 @@ const emptyData: WalletData = {
   settings: { payoutMinimumUsd: 25, currency: 'USD' },
   balances: { available: 0, pendingDeposits: 0, pendingEarnings: 0 },
   earnings: { lifetimeGrossSales: 0, bvsPlatformFees: 0, processorFees: 0, refundDebits: 0, postedNetEarnings: 0, netAfterRefunds: 0, pendingNetEarnings: 0, settlementCount: 0 },
+  sources: { marketplaceEarnings: 0, radioEarnings: 0, foundingBonus: 0, otherCreditsAndAdjustments: 0 },
+  radio: { eligiblePlays: 0, qualifiedStreams: 0, theoreticalCapUsd: 0, fundedEarnings: 0, settlementStatus: 'awaiting_funded_programme' },
 }
 
 function money(amount: number | string, currency = 'USD') {
@@ -84,7 +100,7 @@ export default function ArtistsPage() {
     const response = await fetch('/api/artist/wallet', { headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store' })
     const payload = await response.json()
     if (!response.ok) throw new Error(payload.error || 'Could not load artist wallet.')
-    setData({ ...emptyData, ...payload, balances: { ...emptyData.balances, ...(payload.balances || {}) }, earnings: { ...emptyData.earnings, ...(payload.earnings || {}) }, sellerSettlements: payload.sellerSettlements || [] })
+    setData({ ...emptyData, ...payload, balances: { ...emptyData.balances, ...(payload.balances || {}) }, earnings: { ...emptyData.earnings, ...(payload.earnings || {}) }, sources: { ...emptyData.sources, ...(payload.sources || {}) }, radio: { ...emptyData.radio, ...(payload.radio || {}) }, sellerSettlements: payload.sellerSettlements || [] })
     setForm((current) => ({ ...current, artistName: current.artistName || payload.waitlist?.artist_name || payload.profile?.display_name || payload.profile?.username || '' }))
   }
 
@@ -133,6 +149,10 @@ export default function ArtistsPage() {
     {message && <p className="mt-6 rounded-xl border border-brand/30 bg-brand/10 p-4 text-brand">{message}</p>}
 
     <section className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-6"><Metric label="Available balance" value={money(data.balances.available)} note="Posted credits minus posted debits" /><Metric label="Pending earnings" value={money(data.balances.pendingEarnings)} note="Waiting for processor reconciliation" warning={data.balances.pendingEarnings > 0} /><Metric label="Lifetime product sales" value={money(data.earnings.lifetimeGrossSales)} note="Pre-tax GMV attributed to you" /><Metric label="BVS platform fees" value={money(data.earnings.bvsPlatformFees)} note="Commission on pre-tax price" /><Metric label="Processing deducted" value={money(data.earnings.processorFees)} note="Actual/schedule allocation" /><Metric label="Refunds / reversals" value={money(data.earnings.refundDebits)} note={`Net earned after reversals: ${money(data.earnings.netAfterRefunds)}`} warning={data.earnings.refundDebits > 0} /></section>
+
+    <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.025] p-6"><div><p className="text-xs uppercase tracking-[.16em] text-brand">Balance by source</p><h2 className="mt-1 text-2xl font-semibold">Where your posted balance came from</h2></div><div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Marketplace earnings" value={money(data.sources.marketplaceEarnings)} note="Posted sales and licences" /><Metric label="BVS Radio earnings" value={money(data.sources.radioEarnings)} note="Funded radio programme credits" /><Metric label="Founding Artist Bonus" value={money(data.sources.foundingBonus)} note="One-time early catalogue reward" /><Metric label="Other adjustments" value={money(data.sources.otherCreditsAndAdjustments)} note="Deposits, manual credits and debits" warning={data.sources.otherCreditsAndAdjustments < 0} /></div></section>
+
+    <section className="mt-8 rounded-2xl border border-brand/25 bg-brand/[.05] p-6"><div className="flex flex-wrap items-start justify-between gap-5"><div><p className="text-xs uppercase tracking-[.16em] text-brand">BVS Radio activity</p><h2 className="mt-1 text-2xl font-semibold">Your radio performance</h2><p className="mt-2 max-w-2xl text-sm text-text-secondary">Eligible plays and ≥30s qualified streams show audience activity. Radio cash appears only after a funded monthly programme settlement is posted.</p></div><span className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-xs capitalize text-text-secondary">{String(data.radio.settlementStatus || '').replaceAll('_', ' ')}</span></div><div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Eligible plays" value={new Intl.NumberFormat('en-US').format(data.radio.eligiblePlays || 0)} note="Approved public catalogue tracks" /><Metric label="Qualified streams (≥30s)" value={new Intl.NumberFormat('en-US').format(data.radio.qualifiedStreams || 0)} note="Truthful listens counted for settlement" /><Metric label="Theory stream cap" value={money(data.radio.theoreticalCapUsd || 0)} note="Ceiling at $0.00025 / play if pot funds it" /><Metric label="Funded radio earnings" value={money(data.radio.fundedEarnings || 0)} note="Posted programme settlements only" /></div><p className="mt-4 text-xs text-text-secondary">Future BVS Radio earnings depend on eligible/qualified plays and a funded listen-ad pot. No pot means $0 stream royalties — marketplace and founding bonus stay separate.</p></section>
 
     {hasCommerce ? <section className="mt-8 rounded-2xl border border-brand/25 bg-brand/[.05] p-5"><h2 className="text-xl font-semibold">How a marketplace sale reaches your wallet</h2><div className="mt-4 flex flex-wrap items-center gap-2 text-sm"><FlowStep text="Pre-tax product sale" /><Arrow /><FlowStep text="BVS platform fee" /><Arrow /><FlowStep text="Payment processing" /><Arrow /><FlowStep text="Your earnings" /><Arrow /><FlowStep text="Refund/reversal adjustments" /><Arrow /><FlowStep text="Available for payout" /></div><p className="mt-4 text-sm text-text-secondary">VAT/sales tax is outside the split. BVS commission is never calculated on customer tax. Unknown processing keeps a sale pending instead of pretending an estimated fee is final.</p></section> : null}
 

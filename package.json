@@ -25,7 +25,8 @@
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios",
     "cap:add:android": "npx cap add android",
-    "cap:add:ios": "npx cap add ios"
+    "cap:add:ios": "npx cap add ios",
+    "test:stream-qualification": "node --experimental-strip-types scripts/stream-qualification-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",
