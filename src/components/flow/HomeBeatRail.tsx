@@ -37,7 +37,7 @@ export default function HomeBeatRail() {
   const objects: BvsObject[] = beats.map((beat) => ({
     id: beat.id,
     kind: "beat",
-    route: `/catalogue?type=beat&beat=${encodeURIComponent(beat.slug || beat.id)}#beatstore`,
+    route: `/beat/${beat.id}`,
     title: beat.title,
     subtitle: beat.producer || "BVS producer",
     artwork: beat.artworkUrl,
@@ -45,10 +45,10 @@ export default function HomeBeatRail() {
     metadata: [beat.genre, beat.mood, beat.bpm ? `${beat.bpm} BPM` : undefined, beat.musical_key].filter(Boolean) as string[],
     availabilityLabel: beat.startingPrice ? `Licences from $${beat.startingPrice}` : "Licence options available",
     media: beat.previewUrl ? { src: beat.previewUrl, artist: beat.producer, artwork: beat.artworkUrl, genre: beat.genre, project: "BVS BeatStore" } : undefined,
-    primaryAction: beat.previewUrl ? { id: "preview", label: "Preview", intent: "play" } : { id: "view", label: "View beat", intent: "navigate", href: `/catalogue?type=beat&beat=${encodeURIComponent(beat.slug || beat.id)}#beatstore` },
+    primaryAction: beat.previewUrl ? { id: "preview", label: "Preview", intent: "play" } : { id: "view", label: "View beat", intent: "navigate", href: `/beat/${beat.id}` },
     overflowActions: [
+      { id: "details", label: "View beat", intent: "navigate", href: `/beat/${beat.id}` },
       { id: "producer", label: "Find producer", intent: "navigate", href: `/search?q=${encodeURIComponent(beat.producer || "")}` },
-      { id: "licence", label: "View licence", intent: "navigate", href: `/catalogue?type=beat&beat=${encodeURIComponent(beat.slug || beat.id)}#beatstore` },
     ],
     rightsState: "published",
   }));
@@ -63,7 +63,7 @@ export default function HomeBeatRail() {
         <div className="mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4" data-flow-scroll-key="home-beatstore">
           {objects.map((object, index) => {
             const beat = beats[index];
-            const href = `/catalogue?type=beat&beat=${encodeURIComponent(beat.slug || beat.id)}#beatstore`;
+            const href = `/beat/${beat.id}`;
             return <div key={object.id} className="snap-start">
               <BvsObjectCard object={object} variant="rail-card" />
               <div className="mt-2 flex justify-end">
