@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { trackMilestone } from '@/lib/analytics'
 import type { EmailOtpType } from '@supabase/supabase-js'
 
 type Status = 'loading' | 'ready' | 'error'
@@ -37,8 +38,7 @@ export default function ConfirmedPage() {
 
         const error = params.get('error') || hashParams.get('error')
         const errorCode = params.get('error_code') || hashParams.get('error_code')
-        const errorDescription =
-          params.get('error_description') || hashParams.get('error_description')
+        const errorDescription = params.get('error_description') || hashParams.get('error_description')
 
         if (error || errorCode) {
           setDetail(friendlyAuthError(errorCode, errorDescription))
@@ -60,22 +60,16 @@ export default function ConfirmedPage() {
           const { error: otpError } = await supabase.auth.verifyOtp({ token_hash, type })
           if (otpError) throw otpError
         } else if (access_token && refresh_token) {
-          const { error: sessionSetError } = await supabase.auth.setSession({
-            access_token,
-            refresh_token,
-          })
+          const { error: sessionSetError } = await supabase.auth.setSession({ access_token, refresh_token })
           if (sessionSetError) throw sessionSetError
         } else {
-          // detectSessionInUrl may already have established a session from the hash
           await new Promise((r) => setTimeout(r, 150))
         }
 
         const { data, error: sessionError } = await supabase.auth.getSession()
         if (sessionError) throw sessionError
         if (!data.session) {
-          setDetail(
-            'No active session after opening the link. Try signing in, or request a new confirmation email from signup.',
-          )
+          setDetail('No active session after opening the link. Try signing in, or request a new confirmation email from signup.')
           setStatus('error')
           return
         }
@@ -92,6 +86,8 @@ export default function ConfirmedPage() {
             setDestination(profile.destination)
           }
         }
+
+        trackMilestone('account_confirmed')
 
         if (window.location.hash || params.has('code') || params.has('token_hash')) {
           window.history.replaceState({}, '', '/auth/confirmed')
@@ -111,41 +107,9 @@ export default function ConfirmedPage() {
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-xl items-center px-6 py-16 text-center">
       <div className="w-full rounded-3xl border border-white/10 bg-bg-card/50 p-8">
-        {status === 'loading' && (
-          <>
-            <h1 className="text-3xl font-semibold">Confirming your account…</h1>
-            <p className="mt-3 text-text-secondary">This should only take a moment.</p>
-          </>
-        )}
-        {status === 'ready' && (
-          <>
-            <p className="text-xs uppercase tracking-[.2em] text-brand">Email confirmed</p>
-            <h1 className="mt-3 text-3xl font-semibold">Welcome to BVS Radio</h1>
-            <p className="mt-3 text-text-secondary">Your account is ready and you are signed in.</p>
-            <Link href={destination} className="mt-7 inline-block rounded-full bg-brand px-7 py-3 font-semibold text-black">
-              {destination === '/creator/studio' ? 'Open Creator Studio' : 'Start listening'}
-            </Link>
-          </>
-        )}
-        {status === 'error' && (
-          <>
-            <h1 className="text-3xl font-semibold">We could not confirm this link</h1>
-            <p className="mt-3 text-left text-text-secondary">{detail}</p>
-            <ol className="mt-4 list-decimal space-y-2 px-4 text-left text-sm text-text-secondary">
-              <li>Open signup again and use Resend confirmation (or sign up with the same email).</li>
-              <li>Use the newest email only — older links stay expired.</li>
-              <li>Open the link in a real browser tab (not the mail app preview).</li>
-            </ol>
-            <div className="mt-7 flex flex-wrap justify-center gap-3">
-              <Link href="/auth/signup" className="rounded-full bg-brand px-6 py-3 font-semibold text-black">
-                Resend confirmation
-              </Link>
-              <Link href="/auth/login" className="rounded-full border border-white/20 px-6 py-3">
-                Sign in
-              </Link>
-            </div>
-          </>
-        )}
+        {status === 'loading' && <><h1 className="text-3xl font-semibold">Confirming your account…</h1><p className="mt-3 text-text-secondary">This should only take a moment.</p></>}
+        {status === 'ready' && <><p className="text-xs uppercase tracking-[.2em] text-brand">Email confirmed</p><h1 className="mt-3 text-3xl font-semibold">Welcome to BVS Radio</h1><p className="mt-3 text-text-secondary">Your account is ready and you are signed in.</p><Link href={destination} className="mt-7 inline-block rounded-full bg-brand px-7 py-3 font-semibold text-black">{destination === '/creator/studio' ? 'Open Creator Studio' : 'Start listening'}</Link></>}
+        {status === 'error' && <><h1 className="text-3xl font-semibold">We could not confirm this link</h1><p className="mt-3 text-left text-text-secondary">{detail}</p><ol className="mt-4 list-decimal space-y-2 px-4 text-left text-sm text-text-secondary"><li>Open signup again and use Resend confirmation (or sign up with the same email).</li><li>Use the newest email only — older links stay expired.</li><li>Open the link in a real browser tab (not the mail app preview).</li></ol><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/auth/signup" className="rounded-full bg-brand px-6 py-3 font-semibold text-black">Resend confirmation</Link><Link href="/auth/login" className="rounded-full border border-white/20 px-6 py-3">Sign in</Link></div></>}
       </div>
     </main>
   )
