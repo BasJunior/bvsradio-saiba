@@ -1,172 +1,161 @@
+import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import AppListenHero from "@/components/app/AppListenHero";
-import AppRail from "@/components/app/AppRail";
-import AppSceneTrail from "@/components/app/AppSceneTrail";
-import IosListenHero from "@/components/app/IosListenHero";
-import { getAppEditionBeats } from "@/lib/app-edition-data";
-import { blogPosts } from "@/lib/blog";
-import {
-  beatToObject,
-  creatorToObject,
-  showToObject,
-  stationTrackToObject,
-  storyToObject,
-  type BuildableCreator,
-} from "@/lib/bvs-object-builders";
-import { IOS_SURFACE_COPY } from "@/lib/ios-surface-copy";
+import AppJoinCard from "@/components/app-vnext/AppJoinCard";
+import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
+import { getPublishedArtists } from "@/lib/artist-content";
 import { getPublicProgrammes } from "@/lib/station-content";
 import { getStationTracks, type MobileSurface } from "@/lib/station-library";
-import { appBeats, appExplore } from "@/lib/app-surface";
-import { mobileCreatorSlug } from "@/lib/mobile-app";
 
 export const dynamic = "force-dynamic";
+export const metadata: Metadata = {
+  title: "BVS — Best Virtual Sound",
+  description: "Listen, discover and create across BVS.",
+};
 
-export default async function MobileAppHomePage({ params }: { params: Promise<{ surface: string }> }) {
-  const { surface: rawSurface } = await params;
-  if (rawSurface !== "ios" && rawSurface !== "android") notFound();
-  const surface = rawSurface as MobileSurface;
-  const isIos = surface === "ios";
-  const [tracks, beats, programmes] = await Promise.all([
+export default async function MobileAppPage({ params }: { params: Promise<{ surface: string }> }) {
+  const raw = (await params).surface;
+  if (raw !== "ios" && raw !== "android") notFound();
+  const surface = raw as MobileSurface;
+  const [tracks, artists, shows] = await Promise.all([
     getStationTracks(surface),
-    getAppEditionBeats(10),
+    getPublishedArtists(),
     getPublicProgrammes(),
   ]);
-
-  const trackObjects = tracks.map((track) => stationTrackToObject(track, {
-    surface,
-    availabilityLabel: "Available in the BVS app",
-  }));
-  const beatObjects = beats.map((beat) => beatToObject(beat, { surface }));
-
-  const creatorMap = new Map<string, BuildableCreator>();
-  for (const track of tracks) {
-    const username = mobileCreatorSlug(track.artist);
-    const current = creatorMap.get(username) || {
-      id: `mobile-track-creator:${username}`,
-      username,
-      name: track.artist,
-      role: "Artist",
-      image: track.artwork,
-      trackCount: 0,
-      beatCount: 0,
-    };
-    current.trackCount = (current.trackCount || 0) + 1;
-    if (!current.image && track.artwork) current.image = track.artwork;
-    creatorMap.set(username, current);
-  }
-  for (const beat of beats) {
-    const username = beat.producer_username || mobileCreatorSlug(beat.producer || "BVS producer");
-    const current = creatorMap.get(username) || {
-      id: `mobile-beat-creator:${username}`,
-      username,
-      name: beat.producer || "BVS producer",
-      role: "Producer",
-      image: beat.artworkUrl,
-      trackCount: 0,
-      beatCount: 0,
-    };
-    current.beatCount = (current.beatCount || 0) + 1;
-    if (!current.image && beat.artworkUrl) current.image = beat.artworkUrl;
-    creatorMap.set(username, current);
-  }
-  const artistObjects = [...creatorMap.values()].slice(0, 8).map((creator) => creatorToObject(creator, { surface }));
-  const storyObjects = blogPosts.slice(0, 4).map(storyToObject);
-  const showObjects = programmes.slice(0, 3).map(showToObject);
-  const surfaceLabel = surface === "ios" ? "iPhone and iPad" : "Android";
-
-  const featuredEyebrow = isIos ? IOS_SURFACE_COPY.homeFeaturedEyebrow : "Featured music";
-  const featuredTitle = isIos ? IOS_SURFACE_COPY.homeFeaturedTitle : "Cleared for this edition";
-  const featuredDescription = isIos
-    ? IOS_SURFACE_COPY.homeFeaturedDescription
-    : "Play from the card. Playback stays with you while you move.";
-  const beatsEyebrow = isIos ? IOS_SURFACE_COPY.homeBeatsEyebrow : "BeatStore";
-  const beatsTitle = isIos ? IOS_SURFACE_COPY.homeBeatsTitle : "Beats from BVS producers";
-  const beatsDescription = isIos
-    ? IOS_SURFACE_COPY.homeBeatsDescription
-    : "Preview here. Licence on the full BVS website listing.";
-  const peopleTitle = isIos ? IOS_SURFACE_COPY.homePeopleTitle : "Artists to know";
-  const showsTitle = isIos ? IOS_SURFACE_COPY.homeShowsTitle : "Shows around the scene";
-  const storiesTitle = isIos ? IOS_SURFACE_COPY.homeStoriesTitle : "Stories";
-  const aboutEyebrow = isIos ? IOS_SURFACE_COPY.homeAboutEyebrow : "BVS Radio";
-  const aboutBody = isIos
-    ? IOS_SURFACE_COPY.homeAboutBody
-    : "A focused listening edition of BVS. Accounts and library stay connected with the full site while the native listening catalogue remains rights-gated.";
-  const emptyTitle = isIos ? IOS_SURFACE_COPY.homeEmptyTitle : "More music is on the way";
-  const emptyBody = isIos
-    ? IOS_SURFACE_COPY.homeEmptyBody
-    : "The BVS team is preparing the next rights-cleared selection for this edition.";
+  const base = `/app/${surface}`;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10 px-4 pb-8 pt-5 sm:px-6">
-      <AppSceneTrail />
-      {isIos ? (
-        <IosListenHero trackCount={tracks.length} />
-      ) : (
-        <AppListenHero surfaceLabel={surfaceLabel} trackCount={tracks.length} />
-      )}
+    <div className="mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
+      <section className="relative overflow-hidden rounded-[2.2rem] border border-white/[.08] bg-[#111113]/72 px-5 py-7 shadow-[0_28px_90px_rgba(0,0,0,.35)] backdrop-blur-2xl sm:px-9 sm:py-10">
+        <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-brand/[.13] blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 left-[18%] h-56 w-56 rounded-full bg-indigo-500/[.07] blur-3xl" />
+        <div className="relative">
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[.22em]">
+            <span className="text-brand">Best Virtual Sound</span>
+            <span className="text-white/22">•</span>
+            <span className="text-white/45">Built in Zimbabwe · Open to the world</span>
+          </div>
 
-      {trackObjects.length ? (
-        <AppRail
-          eyebrow={featuredEyebrow}
-          title={featuredTitle}
-          description={featuredDescription}
-          href={appExplore(surface, undefined)}
-          hrefLabel="Explore music →"
-          objects={trackObjects}
-          scrollKey="app-home-tracks"
-        />
+          <h1 className="mt-5 max-w-4xl text-[2.8rem] font-semibold leading-[.98] tracking-[-.05em] sm:text-7xl">
+            Music moves differently here.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-white/58 sm:text-lg">
+            Listen to what’s next, follow the people behind it, and build your own path. BVS brings music, creators, live experiences and creative tools into one modern ecosystem.
+          </p>
+
+          <div className="mt-7 flex flex-wrap gap-2.5">
+            <a href="#listen" className="inline-flex min-h-11 items-center rounded-full bg-white px-5 text-sm font-semibold text-black transition hover:bg-brand">
+              Listen now
+            </a>
+            <Link href={`${base}/explore`} className="inline-flex min-h-11 items-center rounded-full border border-white/12 bg-white/[.035] px-5 text-sm font-semibold text-white/82 transition hover:border-brand/35 hover:text-white">
+              Discover music
+            </Link>
+          </div>
+
+          <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/42">
+            <span><strong className="font-semibold text-white/76">{tracks.length}</strong> available recording{tracks.length === 1 ? "" : "s"}</span>
+            <span>One identity from listener to creator</span>
+            <span>Offline-ready where rights allow</span>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-5">
+        <AppHomeStationCard />
+      </div>
+
+      <div className="mt-5">
+        <AppJoinCard surface={surface} />
+      </div>
+
+      <section className="mt-11">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">On our radar</p>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Artists worth knowing.</h2>
+          </div>
+          <Link href={`${base}/explore`} className="shrink-0 text-sm font-semibold text-white/58 transition hover:text-brand">See all →</Link>
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+          {artists.slice(0, 6).map((artist) => (
+            <Link
+              key={artist.id}
+              href={`${base}/creator/${encodeURIComponent(artist.id)}`}
+              className="group min-w-0 rounded-[1.4rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.045]"
+            >
+              <div className="relative aspect-square overflow-hidden rounded-[1.05rem] bg-white/[.04]">
+                {artist.image ? (
+                  <Image src={artist.image} alt="" fill unoptimized className="object-cover transition duration-500 group-hover:scale-[1.025]" />
+                ) : (
+                  <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Artist</span>
+                )}
+              </div>
+              <h3 className="mt-3 truncate px-1 font-semibold">{artist.name}</h3>
+              <p className="truncate px-1 pb-1 text-xs text-white/38">{artist.role}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {shows.length ? (
+        <section className="mt-12">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Live energy</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Shows, rooms, conversations.</h2>
+            </div>
+            <Link href={`${base}/rooms`} className="shrink-0 text-sm font-semibold text-white/58 transition hover:text-brand">Open rooms →</Link>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {shows.slice(0, 3).map((show) => (
+              <Link
+                key={show.slug}
+                href={`${base}/show/${show.slug}`}
+                className="group overflow-hidden rounded-[1.65rem] border border-white/[.07] bg-white/[.025] transition hover:border-white/15 hover:bg-white/[.04]"
+              >
+                <div className="relative aspect-[16/9] bg-white/[.04]">
+                  <Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-[1.015]" />
+                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 to-transparent" />
+                </div>
+                <div className="p-4.5 p-4">
+                  <p className="text-xs font-medium text-brand">{show.schedule}</p>
+                  <h3 className="mt-1 text-xl font-semibold">{show.title}</h3>
+                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/45">{show.description}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       ) : (
-        <section className="rounded-3xl border border-dashed border-white/15 px-6 py-10 text-center">
-          <h2 className="text-2xl font-semibold">{emptyTitle}</h2>
-          <p className="mt-2 text-sm text-text-secondary">{emptyBody}</p>
+        <section className="mt-12">
+          <Link href={`${base}/rooms`} className="block rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 transition hover:border-brand/25">
+            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Live rooms</p>
+            <h2 className="mt-2 text-2xl font-semibold">Listen together when something is happening.</h2>
+          </Link>
         </section>
       )}
 
-      <AppRail
-        eyebrow={beatsEyebrow}
-        title={beatsTitle}
-        description={beatsDescription}
-        href={appBeats(surface)}
-        hrefLabel="All beats →"
-        objects={beatObjects}
-        scrollKey="app-home-beats"
-      />
-
-      <AppRail
-        eyebrow="People"
-        title={peopleTitle}
-        href={`/app/${surface}/artists`}
-        objects={artistObjects}
-        scrollKey="app-home-artists"
-      />
-
-      <AppRail
-        eyebrow="Programmes"
-        title={showsTitle}
-        href="/shows"
-        objects={showObjects}
-        variant="feature-card"
-        scrollKey="app-home-shows"
-      />
-
-      <AppRail
-        eyebrow="Behind the sound"
-        title={storiesTitle}
-        href="/blog"
-        objects={storyObjects}
-        variant="compact-row"
-        scrollKey="app-home-stories"
-      />
-
-      <section className="rounded-3xl border border-white/10 bg-white/[.03] px-5 py-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">{aboutEyebrow}</p>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{aboutBody}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Link href={`/app/${surface}/account`} className="rounded-full border border-white/15 px-4 py-2 text-sm">Account</Link>
-          <Link href="/contact" className="rounded-full border border-white/15 px-4 py-2 text-sm">Support ↗</Link>
-          <Link href="/privacy" className="rounded-full border border-white/15 px-4 py-2 text-sm">Privacy ↗</Link>
-        </div>
+      <section className="mt-12 grid gap-3 sm:grid-cols-3">
+        <Link href={`${base}/library`} className="group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 transition hover:border-white/15 hover:bg-white/[.04]">
+          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Library</p>
+          <h2 className="mt-3 text-2xl font-semibold">Everything you want to come back to.</h2>
+          <p className="mt-3 text-sm leading-6 text-white/42">Likes, playlists, follows, history and offline music in one place.</p>
+          <span className="mt-5 inline-block text-sm font-semibold text-white/64 group-hover:text-brand">Open Library →</span>
+        </Link>
+        <Link href={`${base}/studio`} className="group rounded-[1.65rem] border border-brand/18 bg-brand/[.045] p-5 transition hover:border-brand/30 hover:bg-brand/[.07]">
+          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Studio</p>
+          <h2 className="mt-3 text-2xl font-semibold">From listening to releasing.</h2>
+          <p className="mt-3 text-sm leading-6 text-white/42">Create, submit, follow review, publish and understand what happens next.</p>
+          <span className="mt-5 inline-block text-sm font-semibold text-brand">Enter Studio →</span>
+        </Link>
+        <Link href={`${base}/marketplace`} className="group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 transition hover:border-white/15 hover:bg-white/[.04]">
+          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Marketplace</p>
+          <h2 className="mt-3 text-2xl font-semibold">Find the people who move your work forward.</h2>
+          <p className="mt-3 text-sm leading-6 text-white/42">Studios, production and creative services, connected to the same ecosystem.</p>
+          <span className="mt-5 inline-block text-sm font-semibold text-white/64 group-hover:text-brand">Browse Marketplace →</span>
+        </Link>
       </section>
     </div>
   );

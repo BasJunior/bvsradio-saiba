@@ -1,0 +1,131 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { externalBvsUrl, isExternalLegalOrLicenceUrl } from "@/lib/app-external-boundary";
+
+export type AppSurface = "ios" | "android";
+export { externalBvsUrl, isExternalLegalOrLicenceUrl };
+
+function exploreRoute(surface: AppSurface, url: URL) {
+  const params = new URLSearchParams();
+  const q = url.searchParams.get("q");
+  const mode = url.searchParams.get("mode");
+  const type = url.searchParams.get("type");
+  if (q) params.set("q", q);
+  if (mode === "creators") params.set("kind", "artists");
+  else if (mode === "producers") params.set("kind", "producers");
+  else if (mode === "beats" || type === "beat") params.set("kind", "beats");
+  else if (url.pathname === "/catalogue") params.set("kind", "music");
+  const suffix = params.toString();
+  return `/app/${surface}/explore${suffix ? `?${suffix}` : ""}`;
+}
+
+function marketplaceRoute(surface: AppSurface, url: URL) {
+  const base = `/app/${surface}/marketplace`;
+  if (url.pathname === "/shop") {
+    const params = new URLSearchParams(url.searchParams);
+    if (!params.has("provider")) params.set("provider", "bvs-studio-services");
+    return `${base}?${params.toString()}`;
+  }
+  if (url.pathname === "/marketplace") return `${base}${url.search}`;
+  const match = url.pathname.match(/^\/marketplace\/([^/]+)(?:\/(book))?$/);
+  if (!match?.[1]) return null;
+  const params = new URLSearchParams(url.searchParams);
+  params.set("provider", decodeURIComponent(match[1]));
+  if (match[2] === "book") params.set("book", "1");
+  return `${base}?${params.toString()}`;
+}
+
+export function appDestination(surface: AppSurface, url: URL) {
+  const path = url.pathname;
+  if (path.startsWith(`/app/${surface}`)) return null;
+  if (isExternalLegalOrLicenceUrl(url)) return null;
+  if (path === "/auth/login") {
+    const requestedNext = url.searchParams.get("next") || "";
+    const next = requestedNext.startsWith(`/app/${surface}`) ? requestedNext : `/app/${surface}/you`;
+    return `/app/${surface}/login?next=${encodeURIComponent(next)}`;
+  }
+  if (path === "/auth/signup") return `/app/${surface}/join/email`;
+  if (path === "/auth/forgot-password") return `/app/${surface}/forgot-password`;
+  if (path === "/auth/qr/approve") return `/app/${surface}/qr/approve${url.search}${url.hash}`;
+  if (path === "/search" || path === "/catalogue") return exploreRoute(surface, url);
+  if (path === "/radio" || path === "/") return `/app/${surface}`;
+  if (path === "/library") return `/app/${surface}/library`;
+  if (path === "/notifications") return `/app/${surface}/notifications`;
+  if (path === "/account") return `/app/${surface}/account`;
+  if (path.startsWith("/account/orders/")) return `/app/${surface}/studio/orders`;
+  if (path === "/upload" || path === "/distribution") return `/app/${surface}/studio/release`;
+  if (path === "/creator/marketplace" || path.startsWith("/creator/studio/marketplace")) return `/app/${surface}/studio/marketplace`;
+  if (path === "/marketplace/orders" || path.startsWith("/marketplace/orders/")) return `/app/${surface}/studio/orders`;
+  if (path === "/shop" || path === "/marketplace" || path.startsWith("/marketplace/")) {
+    const destination = marketplaceRoute(surface, url);
+    if (destination) return destination;
+  }
+  if (path === "/creator/studio" || path === "/creator/studio/manage") return `/app/${surface}/studio`;
+  if (path.startsWith("/creator/studio/orders")) return `/app/${surface}/studio/orders`;
+  if (path.startsWith("/creator/studio/insights")) return `/app/${surface}/studio/insights`;
+  if (path === "/artists" || path === "/artist/premium" || path === "/producer/premium") return `/app/${surface}/studio/money`;
+
+  const artistMatch = path.match(/^\/artist\/([^/]+)$/);
+  if (artistMatch?.[1]) return `/app/${surface}/creator/${artistMatch[1]}${url.search}`;
+  const showMatch = path.match(/^\/shows\/([^/]+)$/);
+  if (showMatch?.[1]) return `/app/${surface}/show/${showMatch[1]}`;
+  return null;
+}
+
+export default function AppBootstrap({ surface }: { surface: AppSurface }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.bvsAppShell = "true";
+    root.dataset.bvsAppSurface = surface;
+    try {
+      window.localStorage.setItem("bvs_app_surface", surface);
+      window.localStorage.setItem("bvs_app_version", "vnext");
+    } catch {
+      // Storage is an enhancement; never block the app shell.
+    }
+
+    const guardNavigation = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const target = event.target instanceof Element ? event.target.closest("a[href]") : null;
+      if (!(target instanceof HTMLAnchorElement) || target.target === "_blank" || target.hasAttribute("download")) return;
+      const href = target.getAttribute("href");
+      if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) return;
+      const url = new URL(href, window.location.href);
+      if (url.origin !== window.location.origin && url.origin !== "https://bvsradio.com" && url.origin !== "https://www.bvsradio.com") return;
+      if (isExternalLegalOrLicenceUrl(url)) {
+        event.preventDefault();
+        const opened = window.open(externalBvsUrl(url), "_blank", "noopener,noreferrer");
+        if (opened) opened.opener = null;
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+
+      // Never let an in-app route become a full WebView document navigation.
+      // Keeping it inside Next's router preserves the vNext shell and prevents a
+      // malformed/missing child route from dropping the user into the web surface.
+      if (url.pathname === `/app/${surface}` || url.pathname.startsWith(`/app/${surface}/`)) {
+        event.preventDefault();
+        router.push(`${url.pathname}${url.search}${url.hash}`);
+        return;
+      }
+
+      const destination = appDestination(surface, url);
+      if (!destination) return;
+      event.preventDefault();
+      router.push(destination);
+    };
+
+    document.addEventListener("click", guardNavigation, true);
+    window.dispatchEvent(new CustomEvent("bvs:app-shell-ready", { detail: { surface, version: "vnext" } }));
+    return () => {
+      document.removeEventListener("click", guardNavigation, true);
+      delete root.dataset.bvsAppShell;
+      delete root.dataset.bvsAppSurface;
+    };
+  }, [router, surface]);
+  return null;
+}

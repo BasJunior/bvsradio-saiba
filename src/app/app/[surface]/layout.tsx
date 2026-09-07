@@ -1,20 +1,45 @@
-import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import AppBootstrap, { type AppSurface } from "@/components/app-vnext/AppBootstrap";
+import AppBottomNav from "@/components/app-vnext/AppBottomNav";
+import AppDataModeBridge from "@/components/app-vnext/AppDataModeBridge";
+import AppExperienceStyle from "@/components/app-vnext/AppExperienceStyle";
+import AppGestureBridge from "@/components/app-vnext/AppGestureBridge";
+import AppLibrarySyncBridge from "@/components/app-vnext/AppLibrarySyncBridge";
+import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
+import AppStationFetchBridge from "@/components/app-vnext/AppStationFetchBridge";
+import AppTopBar from "@/components/app-vnext/AppTopBar";
+import { AppSessionProvider } from "@/components/app-vnext/AppSessionProvider";
 
-export const metadata: Metadata = {
-  title: "BVS Radio App",
-  description: "The curated BVS Radio mobile edition.",
-  robots: { index: false, follow: true },
-};
-
-export default async function AppSurfaceLayout({
+export default async function MobileVNextLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
   params: Promise<{ surface: string }>;
 }) {
-  const { surface } = await params;
-  if (surface !== "ios" && surface !== "android") notFound();
-  return children;
+  const raw = (await params).surface;
+  if (raw !== "ios" && raw !== "android") notFound();
+  const surface = raw as AppSurface;
+
+  return (
+    <AppSessionProvider>
+      <AppBootstrap surface={surface} />
+      <AppNativeRuntime surface={surface} />
+      <AppDataModeBridge surface={surface} />
+      <AppLibrarySyncBridge />
+      <AppStationFetchBridge />
+      <AppGestureBridge surface={surface} />
+      <AppExperienceStyle />
+      <style>{`
+        html[data-bvs-app-shell="true"] footer { display: none !important; }
+        html[data-bvs-app-shell="true"] body { overscroll-behavior-y: none; }
+        html[data-bvs-app-shell="true"] [aria-label="Install BVS Radio"] { display: none !important; }
+        html[data-bvs-network="offline"] [data-bvs-network-dependent="true"] { opacity: .58; }
+        html[data-bvs-data-effective="saver"] [data-bvs-data-heavy="true"] { display: none !important; }
+      `}</style>
+      <AppTopBar surface={surface} />
+      <div className="bvs-app-stage min-h-[calc(100dvh-4rem)] pb-4">{children}</div>
+      <AppBottomNav surface={surface} />
+    </AppSessionProvider>
+  );
 }
