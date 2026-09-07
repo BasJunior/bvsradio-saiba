@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getArtistPremiumStatus } from '@/lib/premium-billing'
+import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
   const user = (await userResponse.json()) as { id: string; email?: string }
   const adminHeaders = { apikey: service, Authorization: `Bearer ${service}` }
   const [profileResponse, staffResponse, anyStaffResponse] = await Promise.all([
-    fetch(`${url}/rest/v1/profiles?id=eq.${user.id}&select=role,is_producer`, {
+    fetch(`${url}/rest/v1/profiles?id=eq.${user.id}&select=role,is_producer,avatar_url`, {
       headers: adminHeaders,
       cache: 'no-store',
     }),
@@ -57,6 +58,10 @@ export async function GET(request: Request) {
   const anyStaff = anyStaffResponse.ok ? await anyStaffResponse.json() : []
   const profileRole = String(profiles[0]?.role || 'listener')
   const isProducerFlag = Boolean(profiles[0]?.is_producer)
+  const storedAvatarUrl = String(profiles[0]?.avatar_url || '').trim()
+  const profileAvatarUrl = storedAvatarUrl && !storedAvatarUrl.includes('default-avatar')
+    ? mediaUrlForStoredValue(storedAvatarUrl) || storedAvatarUrl
+    : null
   const staffRole = staff[0]?.role ? String(staff[0].role) : null
   const email = (user.email || '').toLowerCase().trim()
   // Source of truth: active editorial_staff owner/administrator. Bootstrap only if table empty.
@@ -91,6 +96,7 @@ export async function GET(request: Request) {
     authenticated: true,
     email: user.email,
     profileRole,
+    profileAvatarUrl,
     staffRole,
     premiumActive,
     premiumUntil,
