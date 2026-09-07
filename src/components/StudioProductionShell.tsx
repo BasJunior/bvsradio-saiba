@@ -20,7 +20,14 @@ const sectionLinks = [
   { id: "show-work", label: "Shows" },
 ] as const;
 
-const workspaceLinks = [
+type WorkspaceLink = {
+  href: string;
+  label: string;
+  match?: string;
+  startsWith?: string;
+};
+
+const workspaceLinks: WorkspaceLink[] = [
   { href: "/creator/studio", label: "Home", match: "/creator/studio" },
   { href: "/creator/studio/create/release", label: "Release", startsWith: "/creator/studio/create/release" },
   { href: "/creator/studio/create/beat", label: "Beat", startsWith: "/creator/studio/create/beat" },
@@ -29,7 +36,7 @@ const workspaceLinks = [
   { href: "/creator/studio/artwork", label: "Artwork", startsWith: "/creator/studio/artwork" },
   { href: "/creator/marketplace", label: "Storefront" },
   { href: "/artists", label: "Money" },
-] as const;
+];
 
 export default function StudioProductionShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
