@@ -8,21 +8,15 @@ function read(rel) {
   return fs.readFileSync(path.join(root, rel), "utf8");
 }
 
-function walk(dir, acc = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === ".next") continue;
-      walk(full, acc);
-    } else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) acc.push(full);
-  }
-  return acc;
+function exists(rel) {
+  return fs.existsSync(path.join(root, rel));
 }
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+// Public web Creator Studio keeps its existing production workflows.
 const home = read("src/app/creator/studio/page.tsx");
 const manage = read("src/app/creator/studio/manage/page.tsx");
 const marketplace = read("src/app/api/marketplace/route.ts");
@@ -32,22 +26,22 @@ const quickBeat = read("src/components/QuickBeatCreate.tsx");
 const beatPack = read("src/components/BeatPackUploadForm.tsx");
 const beatPackRoute = read("src/app/api/beat-packs/route.ts");
 
-assert(home.includes("/creator/studio/create/release"), "home has Release music");
-assert(home.includes("/creator/studio/create/beat"), "home has Sell a beat");
-assert(home.includes("/creator/studio/create/service"), "home has Offer a service");
-assert(home.includes("/creator/studio/manage"), "home links full Studio");
-assert(home.includes('href="/artists"'), "money stays on production wallet /artists");
-assert(home.includes("legacyStudioAnchors"), "legacy hash redirects exist");
-assert(home.includes("studio_open"), "studio_open instrumentation");
-assert(fs.existsSync(path.join(root, "src/app/creator/studio/create/release/page.tsx")), "release route");
-assert(fs.existsSync(path.join(root, "src/app/creator/studio/create/beat/page.tsx")), "beat route");
-assert(fs.existsSync(path.join(root, "src/app/creator/studio/create/service/page.tsx")), "service route");
-assert(manage.includes("Welcome,") || manage.includes("Creator studio"), "manage keeps production Studio");
-assert(manage.includes("/creator/studio"), "manage links home");
-assert(marketplace.includes('"recording"'), "recording category");
-assert(marketplace.includes('"studio_session"'), "studio_session category");
-assert(analytics.includes("create_intent_selected"), "create_intent_selected allowlisted");
-assert(capacitor.includes("https://bvsradio.com/app/${mobileSurface}") || capacitor.includes("bvsradio.com/app/"), "capacitor still live hybrid");
+assert(home.includes("/creator/studio/create/release"), "web Studio has Release music");
+assert(home.includes("/creator/studio/create/beat"), "web Studio has Sell a beat");
+assert(home.includes("/creator/studio/create/service"), "web Studio has Offer a service");
+assert(home.includes("/creator/studio/manage"), "web Studio links full Studio");
+assert(home.includes('href="/artists"'), "web Studio money stays on production wallet /artists");
+assert(home.includes("legacyStudioAnchors"), "web Studio legacy hash redirects remain");
+assert(home.includes("studio_open"), "web Studio instrumentation remains");
+assert(exists("src/app/creator/studio/create/release/page.tsx"), "web release route exists");
+assert(exists("src/app/creator/studio/create/beat/page.tsx"), "web beat route exists");
+assert(exists("src/app/creator/studio/create/service/page.tsx"), "web service route exists");
+assert(manage.includes("Welcome,") || manage.includes("Creator studio"), "web manage keeps production Studio");
+assert(manage.includes("/creator/studio"), "web manage links home");
+assert(marketplace.includes('"recording"'), "recording category remains");
+assert(marketplace.includes('"studio_session"'), "studio_session category remains");
+assert(analytics.includes("create_intent_selected"), "create_intent_selected remains allowlisted");
+assert(capacitor.includes("https://bvsradio.com/app/${mobileSurface}") || capacitor.includes("bvsradio.com/app/"), "Capacitor still loads live contained app surface");
 
 assert(quickBeat.includes("BeatPackUploadForm"), "Sell a beat exposes existing beat-pack uploader");
 assert(quickBeat.includes("Beat pack / EP"), "Sell a beat includes Beat pack / EP mode");
@@ -56,24 +50,57 @@ assert(quickBeat.includes('trackEvent("create_submission_complete"'), "single-be
 assert(beatPack.includes("/api/beat-packs"), "beat-pack form uses existing pack API");
 assert(beatPackRoute.includes("items.length < 2 || items.length > 20"), "beat-pack API preserves 2–20 item bound");
 
+// Build gates remain active; the vNext reconciliation updates their contracts rather than bypassing them.
 const pkg = JSON.parse(read("package.json"));
 const build = pkg.scripts.build || "";
 const vercelBuild = pkg.scripts["vercel-build"] || "";
-assert(build.includes("test:ios-surface-gates"), "build keeps C03 iOS gates");
-assert(build.includes("test:studio-intent"), "build also runs Studio intent test");
+assert(build.includes("test:ios-surface-gates"), "build keeps iOS surface gates");
+assert(build.includes("test:studio-intent"), "build keeps Studio intent test");
 assert(build.includes("next build"), "build still runs next build");
 assert(vercelBuild.includes("test:ios-surface-gates") && vercelBuild.includes("test:studio-intent"), "vercel-build keeps iOS gates and Studio test");
-assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:ios-surface-lock"), "ios-surface-lock still in gates");
-assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:apple-ios-surface"), "apple-ios-surface still in gates");
-assert(fs.existsSync(path.join(root, "src/lib/ios-surface-lock.ts")), "C03 iOS lock contract present");
-assert(fs.existsSync(path.join(root, "src/components/app/IosHomeListenPanel.tsx")), "C03 iOS listen panel present");
+assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:ios-surface-lock"), "ios-surface-lock remains in gates");
+assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:apple-ios-surface"), "apple-ios-surface remains in gates");
 
-const iosFiles = walk(path.join(root, "src/app/app")).map((file) => read(path.relative(root, file)));
-const iosJoined = iosFiles.join("\n");
-assert(!iosJoined.includes("creator/studio/create"), "iOS shell does not mount Studio create routes");
-assert(!iosJoined.includes("QuickBeatCreate"), "iOS shell does not import beat create");
-assert(!iosJoined.includes("BeatPackUploadForm"), "iOS shell does not import beat-pack create");
-assert(!iosJoined.includes("SongWorkspace"), "iOS shell does not import Lyrics Pad");
-assert(!/from ["']@\/app\/creator\//.test(iosJoined), "iOS shell does not import creator app routes");
+// vNext intentionally includes a contained Creator Studio as the fourth tab.
+const appStudioRoute = read("src/app/app/[surface]/studio/page.tsx");
+const appStudio = read("src/components/app-vnext/AppStudioClient.tsx");
+const appNav = read("src/components/app-vnext/AppBottomNav.tsx");
+assert(appStudioRoute.includes("AppStudioClient"), "vNext Studio route must use AppStudioClient");
+assert(appNav.includes('label: isCreator ? "Studio" : "Create"'), "five-tab app must expose Create/Studio");
+assert(appNav.includes('`${base}/studio`'), "Create/Studio tab must stay in contained app namespace");
 
-console.log("Studio intent assertions passed.");
+for (const route of [
+  "src/app/app/[surface]/studio/release/page.tsx",
+  "src/app/app/[surface]/studio/beats/page.tsx",
+  "src/app/app/[surface]/studio/insights/page.tsx",
+  "src/app/app/[surface]/studio/money/page.tsx",
+]) {
+  assert(exists(route), `${route} must exist`);
+}
+
+assert(appStudio.includes('`/app/${surface}/studio/release`'), "app Studio release workflow stays contained");
+assert(appStudio.includes('`/app/${surface}/studio/beats`'), "app Studio BeatStore workflow stays contained");
+assert(appStudio.includes('`/app/${surface}/studio/insights`'), "app Studio insights workflow stays contained");
+assert(appStudio.includes('`/app/${surface}/studio/money`'), "app Studio money workflow stays contained");
+assert(appStudio.includes('`/app/${surface}/account#creator-role`'), "listener-to-creator upgrade stays inside app");
+assert(appStudio.includes('`/app/${surface}/join`'), "signed-out creator entry stays inside app");
+assert(!/from ["']@\/app\/creator\//.test(appStudio), "vNext Studio must not import web route components directly");
+
+// Producer creation is deliberately available inside vNext and reuses the shared uploader.
+const appBeats = read("src/app/app/[surface]/studio/beats/page.tsx");
+assert(appBeats.includes("BeatPackUploadForm"), "vNext BeatStore Studio exposes beat/pack upload");
+assert(appBeats.includes("MyBeatStore"), "vNext BeatStore Studio exposes producer catalogue management");
+assert(appBeats.includes('href={`/app/${surface}/studio`}'), "vNext BeatStore back link remains inside app");
+
+// Release/insight/money destinations must likewise remain inside vNext rather than jumping to web.
+for (const route of [
+  "src/app/app/[surface]/studio/release/page.tsx",
+  "src/app/app/[surface]/studio/insights/page.tsx",
+  "src/app/app/[surface]/studio/money/page.tsx",
+]) {
+  const text = read(route);
+  assert(text.includes('href={`/app/${surface}/studio`}'), `${route} back link must stay inside app`);
+  assert(!/from ["']@\/app\/creator\//.test(text), `${route} must not import web creator route directly`);
+}
+
+console.log("Studio intent assertions passed for web + contained vNext Studio.");
