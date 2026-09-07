@@ -2,14 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { measureHeader } from "@/lib/chrome-layout";
 
 export default function AppTopBar({ surface }: { surface: AppSurface }) {
-  const { user, loading } = useAppSession();
+  const { user, avatarUrl, loading } = useAppSession();
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const home = `/app/${surface}`;
   const initial = (user?.user_metadata?.full_name || user?.email || "B").trim().charAt(0).toUpperCase();
+
+  useEffect(() => { setAvatarFailed(false); }, [avatarUrl]);
 
   return (
     <header
@@ -53,10 +57,22 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           ) : user ? (
             <Link
               href={`/app/${surface}/you`}
-              className="ml-1 grid h-9 w-9 place-items-center rounded-full bg-brand text-sm font-bold text-black shadow-[0_0_28px_rgba(227,189,88,.18)] transition hover:scale-[1.03]"
+              className="relative ml-1 grid h-9 w-9 overflow-hidden rounded-full border border-brand/35 bg-brand text-sm font-bold text-black shadow-[0_0_28px_rgba(227,189,88,.18)] transition hover:scale-[1.03]"
               aria-label="Your profile"
             >
-              {initial || "B"}
+              {avatarUrl && !avatarFailed ? (
+                <Image
+                  src={avatarUrl}
+                  alt=""
+                  fill
+                  sizes="36px"
+                  unoptimized
+                  className="object-cover"
+                  onError={() => setAvatarFailed(true)}
+                />
+              ) : (
+                <span className="grid h-full w-full place-items-center" aria-hidden="true">{initial || "B"}</span>
+              )}
             </Link>
           ) : (
             <Link
