@@ -102,6 +102,16 @@ export default function AppBootstrap({ surface }: { surface: AppSurface }) {
         return;
       }
       if (url.origin !== window.location.origin) return;
+
+      // Never let an in-app route become a full WebView document navigation.
+      // Keeping it inside Next's router preserves the vNext shell and prevents a
+      // malformed/missing child route from dropping the user into the web surface.
+      if (url.pathname === `/app/${surface}` || url.pathname.startsWith(`/app/${surface}/`)) {
+        event.preventDefault();
+        router.push(`${url.pathname}${url.search}${url.hash}`);
+        return;
+      }
+
       const destination = appDestination(surface, url);
       if (!destination) return;
       event.preventDefault();
