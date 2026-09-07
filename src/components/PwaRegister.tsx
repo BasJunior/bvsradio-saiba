@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { captureFirstTouchAttribution, trackReturnSessionIfNeeded } from "@/lib/analytics";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -18,7 +19,9 @@ export default function PwaRegister() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Register service worker
+    captureFirstTouchAttribution();
+    trackReturnSessionIfNeeded();
+
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {
         /* ignore SW failures in dev */
@@ -29,7 +32,6 @@ export default function PwaRegister() {
     const wasDismissed = localStorage.getItem(dismissedKey) === "1";
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
-      // iOS Safari
       Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
 
     if (isStandalone) return;
@@ -47,7 +49,6 @@ export default function PwaRegister() {
     };
     window.addEventListener("beforeinstallprompt", onBip);
 
-    // iOS: no beforeinstallprompt — show Share → Add to Home Screen tip once
     const ua = navigator.userAgent;
     const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
