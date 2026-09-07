@@ -251,7 +251,7 @@ export default function AppExploreClient({
             {filtered.artists.map((item) => {
               const image = safeImage(item.image);
               return (
-                <Link key={item.id} href={`/app/${surface}/creator/${item.username}`} className="group rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
+                <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}`} className="group rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
                   {image ? <div className="relative aspect-square overflow-hidden rounded-[1rem]"><Image src={image} alt="" fill unoptimized className="object-cover transition duration-500 group-hover:scale-[1.02]" /></div> : <div className="grid aspect-square place-items-center rounded-[1rem] bg-white/[.035] text-[10px] font-semibold uppercase tracking-[.15em] text-brand">Artist</div>}
                   <h3 className="mt-3 truncate px-1 font-semibold">{item.name}</h3>
                   <p className="truncate px-1 pb-1 text-xs text-white/36">{item.role || "BVS artist"}</p>
@@ -268,7 +268,7 @@ export default function AppExploreClient({
           <h2 className="mt-2 text-3xl font-semibold">Meet the people behind the sound.</h2>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {filtered.producers.map((item) => (
-              <Link key={item.id} href={`/app/${surface}/creator/${item.username}?as=producer`} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-4 transition hover:border-white/15 hover:bg-white/[.04]">
+              <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}?as=producer`} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-4 transition hover:border-white/15 hover:bg-white/[.04]">
                 <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Producer</p>
                 <h3 className="mt-3 truncate text-lg font-semibold">{item.name}</h3>
                 <p className="mt-1 text-xs text-white/36">{item.beatCount || 0} published beat{item.beatCount === 1 ? "" : "s"}</p>
@@ -298,8 +298,8 @@ export default function AppExploreClient({
 
       {!loading && !filtered.tracks.length && !filtered.artists.length && !filtered.producers.length && !filtered.beats.length ? (
         <div className="mt-10 rounded-[1.5rem] border border-dashed border-white/12 p-10 text-center">
-          <h2 className="text-xl font-semibold">Nothing here yet.</h2>
-          <p className="mt-2 text-sm text-white/40">Try another artist, track, genre, producer or beat.</p>
+          <h2 className="text-xl font-semibold">Nothing matched that yet.</h2>
+          <p className="mt-2 text-sm text-white/38">Try another title, artist, producer, genre or mood.</p>
         </div>
       ) : null}
     </div>
