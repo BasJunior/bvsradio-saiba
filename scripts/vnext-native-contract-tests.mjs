@@ -44,4 +44,15 @@ assert.equal((project.match(/MARKETING_VERSION = 1\.1;/g) || []).length, 2);
 assert.match(project, /BVS_APNS_ENVIRONMENT = development/);
 assert.match(project, /BVS_APNS_ENVIRONMENT = production/);
 assert.match(project, /CODE_SIGN_ENTITLEMENTS = App\/App.entitlements/);
+
+const appHome = read("src/app/app/[surface]/page.tsx");
+assert.match(appHome, /creator\/\$\{encodeURIComponent\(artist\.id\)\}/, "On our radar must route by stable creator id");
+const creatorPage = read("src/app/app/[surface]/creator/[slug]/page.tsx");
+assert.match(creatorPage, /creator\.id === routeValue/, "Creator route must resolve stable ids");
+assert.match(creatorPage, /creatorKey\(creator\.username\) === routeKey/, "Creator route must recover legacy username forms");
+const bootstrap = read("src/components/app-vnext/AppBootstrap.tsx");
+assert.match(bootstrap, /url\.pathname\.startsWith\(`\/app\/\$\{surface\}\/`\)/, "Same-surface links must stay in the app router");
+const appNotFound = read("src/app/app/[surface]/not-found.tsx");
+assert.match(appNotFound, /The app is still intact/, "App routes need an in-shell recovery screen");
+
 console.log("vNext native integration contract checks passed (source checks, not device acceptance)");
