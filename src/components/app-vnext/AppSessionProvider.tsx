@@ -18,6 +18,7 @@ type AppSessionValue = {
   user: User | null;
   access: AppAccess | null;
   token: string;
+  avatarUrl: string | null;
   loading: boolean;
   signedIn: boolean;
   isCreator: boolean;
@@ -32,12 +33,14 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   const [user, setUser] = useState<User | null>(null);
   const [access, setAccess] = useState<AppAccess | null>(null);
   const [token, setToken] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [premiumActive, setPremiumActive] = useState(false);
   const [premiumPlanLabel, setPremiumPlanLabel] = useState<string | null>(null);
 
   const hydrate = useCallback(async () => {
     if (!isSupabaseConfigured()) {
+      setAvatarUrl(null);
       setLoading(false);
       return;
     }
@@ -48,6 +51,7 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
     setToken(session?.access_token || "");
     if (!session?.access_token) {
       setAccess(null);
+      setAvatarUrl(null);
       setPremiumActive(false);
       setPremiumPlanLabel(null);
       setLoading(false);
@@ -60,14 +64,17 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
     if (response?.ok) {
       const payload = (await response.json()) as {
         access?: AppAccess;
+        profileAvatarUrl?: string | null;
         premiumActive?: boolean;
         premiumPlanLabel?: string | null;
       };
       setAccess(payload.access || {});
+      setAvatarUrl(payload.profileAvatarUrl || null);
       setPremiumActive(Boolean(payload.premiumActive));
       setPremiumPlanLabel(payload.premiumPlanLabel ?? null);
     } else {
       setAccess(null);
+      setAvatarUrl(null);
       setPremiumActive(false);
       setPremiumPlanLabel(null);
     }
@@ -94,6 +101,7 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
       user,
       access,
       token,
+      avatarUrl,
       loading,
       signedIn: Boolean(user),
       isCreator,
@@ -101,7 +109,7 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
       premiumPlanLabel,
       refresh: hydrate,
     }),
-    [access, hydrate, isCreator, loading, premiumActive, premiumPlanLabel, token, user],
+    [access, avatarUrl, hydrate, isCreator, loading, premiumActive, premiumPlanLabel, token, user],
   );
 
   return <AppSessionContext.Provider value={value}>{children}</AppSessionContext.Provider>;
