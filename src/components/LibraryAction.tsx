@@ -25,7 +25,12 @@ export default function LibraryAction({ item, section = 'favourites', compact = 
       onClick={() => {
         const next = toggleLibraryItem(section, item)
         setSaved(next)
-        if (next && section === 'favourites' && item.kind === 'track') trackEvent('track_save', { track_id: item.id })
+        if (section === 'favourites' && item.kind === 'track' && next) {
+          trackEvent('track_save', { track_id: item.id })
+        }
+        if (section === 'follows') {
+          trackEvent(next ? 'creator_follow' : 'creator_unfollow', { creator_id: item.id, kind: item.kind })
+        }
       }}
       className={`rounded-full border transition ${saved ? 'border-brand bg-brand/15 text-brand' : 'border-white/20 text-text-secondary hover:border-brand hover:text-white'} ${compact ? 'px-3 py-1 text-xs' : 'px-5 py-2 text-sm'}`}
     >
