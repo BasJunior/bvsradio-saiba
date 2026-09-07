@@ -7,7 +7,8 @@ import { trackEvent } from '@/lib/analytics'
 
 type Playlist = { id: string; title: string; trackCount?: number }
 
-export default function PlaylistQuickAdd({ trackId }: { trackId: string }) {
+export default function PlaylistQuickAdd({ trackId, compact = false }: { trackId: string; compact?: boolean }) {
+  const canonicalTrackId = trackId.replace(/^track-/, '')
   const [token, setToken] = useState('')
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [open, setOpen] = useState(false)
@@ -37,11 +38,11 @@ export default function PlaylistQuickAdd({ trackId }: { trackId: string }) {
     const response = await fetch(`/api/playlists/${playlist.id}/tracks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ trackId }),
+      body: JSON.stringify({ trackId: canonicalTrackId }),
     }).catch(() => null)
     if (response?.ok) {
       setMessage(`Added to ${playlist.title}`)
-      trackEvent('playlist_track_added', { playlist_id: playlist.id, track_id: trackId })
+      trackEvent('playlist_track_added', { playlist_id: playlist.id, track_id: canonicalTrackId })
       window.dispatchEvent(new CustomEvent('bvs:playlists-change'))
       setOpen(false)
     } else {
@@ -54,8 +55,8 @@ export default function PlaylistQuickAdd({ trackId }: { trackId: string }) {
   if (!token) return null
 
   return <div className="relative">
-    <button type="button" onClick={() => { setOpen(value => !value); setMessage('') }} className="rounded-full border border-white/20 px-5 py-3 text-sm font-semibold hover:border-brand hover:text-brand">+ Playlist</button>
-    {open ? <div className="absolute bottom-[calc(100%+8px)] left-0 z-20 w-64 rounded-2xl border border-white/15 bg-bg-primary p-3 shadow-2xl">
+    <button type="button" onClick={() => { setOpen(value => !value); setMessage('') }} className={compact ? 'rounded-full border border-white/20 px-3 py-1 text-xs text-text-secondary hover:border-brand hover:text-white' : 'rounded-full border border-white/20 px-5 py-3 text-sm font-semibold hover:border-brand hover:text-brand'}>+ Playlist</button>
+    {open ? <div className="absolute bottom-[calc(100%+8px)] right-0 z-30 w-64 rounded-2xl border border-white/15 bg-bg-primary p-3 shadow-2xl">
       <p className="px-1 text-xs font-semibold uppercase tracking-[.16em] text-brand">Add to playlist</p>
       <div className="mt-2 max-h-52 space-y-1 overflow-y-auto">
         {playlists.map(playlist => <button key={playlist.id} type="button" disabled={busy === playlist.id} onClick={() => void add(playlist)} className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm hover:bg-white/5 disabled:opacity-50"><span className="truncate">{playlist.title}</span><span className="text-xs text-text-secondary">{playlist.trackCount || 0}</span></button>)}
