@@ -65,6 +65,7 @@ const ATTRIBUTION_KEY = "bvs.analytics.first_touch.v1"
 const VISITOR_KEY = "bvs.analytics.visitor.v1"
 const FIRST_SESSION_AT_KEY = "bvs.analytics.first_session_at.v1"
 const RETURN_MARK_KEY = "bvs.analytics.return_mark.v1"
+const PLAY_ATTEMPT_KEY = "bvs.analytics.play_attempt.v1"
 
 function safeValue(value: string | null) {
   if (!value) return undefined
@@ -120,6 +121,55 @@ function visitorId() {
   return value
 }
 
+function playAttemptId(event: AnalyticsEvent, properties: AnalyticsProperties) {
+  if (typeof window === "undefined") return undefined
+  try {
+    if (event === "player_start" || event === "queue_play_now") {
+      const id = crypto.randomUUID()
+      window.sessionStorage.setItem(PLAY_ATTEMPT_KEY, JSON.stringify({ id, track: properties.track_id || null, at: Date.now() }))
+      return id
+    }
+    const raw = window.sessionStorage.getItem(PLAY_ATTEMPT_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw) as { id?: string; track?: string | null; at?: number }
+      const sameTrack = !properties.track_id || !parsed.track || String(properties.track_id) === String(parsed.track)
+      if (parsed.id && sameTrack && Date.now() - Number(parsed.at || 0) < 120000) return parsed.id
+    }
+    if (event === "playback_error") {
+      const id = crypto.randomUUID()
+      window.sessionStorage.setItem(PLAY_ATTEMPT_KEY, JSON.stringify({ id, track: properties.track_id || null, at: Date.now() }))
+      return id
+    }
+  } catch {
+    // grouping is best effort only
+  }
+  return undefined
+}
+
+function enrichPlaybackError(properties: AnalyticsProperties) {
+  if (typeof document === "undefined") return properties
+  try {
+    const media = document.querySelector("audio") as HTMLAudioElement | null
+    if (!media) return properties
+    let host: string | null = null
+    try {
+      const src = media.currentSrc || media.src
+      host = src ? new URL(src, window.location.origin).host : null
+    } catch {
+      host = null
+    }
+    return {
+      ...properties,
+      media_error_code: properties.media_error_code ?? media.error?.code ?? null,
+      network_state: properties.network_state ?? media.networkState,
+      ready_state: properties.ready_state ?? media.readyState,
+      media_src_host: properties.media_src_host ?? host,
+    }
+  } catch {
+    return properties
+  }
+}
+
 export function analyticsSurface(): "web" | "ios" | "android" {
   if (typeof window === "undefined") return "web"
   const match = window.location.pathname.match(/^\/app\/(ios|android)(?:\/|$)/)
@@ -136,9 +186,12 @@ function milestoneKey(event: AnalyticsEvent) {
 }
 
 function sendEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
+  const attempt = playAttemptId(event, properties)
+  const enriched = event === "playback_error" ? enrichPlaybackError(properties) : properties
+  const finalProperties = attempt ? { ...enriched, play_attempt_id: attempt } : enriched
   const body = JSON.stringify({
     event,
-    properties,
+    properties: finalProperties,
     sessionId: sessionId(),
     visitorId: visitorId(),
     surface: analyticsSurface(),
