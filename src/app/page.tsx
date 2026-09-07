@@ -113,9 +113,9 @@ export default async function HomePage() {
         <div className="mt-8 sm:mt-10"><PublishedAlbumsShelf /></div>
       </section>
 
-      <HomePublicPlaylistRail />
-
       <HomeBeatRail />
+
+      <HomePublicPlaylistRail />
 
       <section className="border-y border-white/10 bg-bg-secondary/65 py-10 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
