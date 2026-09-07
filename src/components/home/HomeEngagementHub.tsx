@@ -31,18 +31,18 @@ function dailyTracks(tracks: StationTrack[]) {
 function movesFor(category: CreatorCategory, likedBeats: number, hasHistory: boolean): Move[] {
   if (category === 'artist') return [
     { kicker: 'Create', title: 'Move your next release forward', copy: 'Open Studio and pick up the next action on your music.', href: '/creator/studio' },
-    { kicker: 'Beats', title: likedBeats ? `${likedBeats} liked beat${likedBeats === 1 ? '' : 's'} waiting for you` : 'Find a beat worth writing to', copy: likedBeats ? 'Come back to the beats you saved while discovering.' : 'Preview producers and save ideas for your next record.', href: likedBeats ? '/library' : '/catalogue?type=beat#beatstore' },
+    { kicker: 'Beats', title: likedBeats ? `${likedBeats} liked beat${likedBeats === 1 ? '' : 's'} waiting for you` : 'Find a beat worth writing to', copy: likedBeats ? 'Come back to the beats you saved while discovering.' : 'Preview producers and save ideas for your next record.', href: likedBeats ? '/library?section=saved-beats' : '/catalogue?type=beat#beatstore' },
     { kicker: 'Proof', title: 'Check what your music is doing', copy: 'See live release progress, plays and the next useful creator action.', href: '/creator/studio' },
   ]
   if (category === 'producer') return [
     { kicker: 'BeatStore', title: 'Keep your producer catalogue moving', copy: 'Manage beats and creator work from Studio.', href: '/creator/studio' },
-    { kicker: 'Inspiration', title: likedBeats ? `Revisit ${likedBeats} beat${likedBeats === 1 ? '' : 's'} you liked` : 'See what other producers are making', copy: 'Use your Library as an idea bank, not just a listening list.', href: likedBeats ? '/library' : '/search?mode=beats' },
-    { kicker: 'Listen', title: hasHistory ? 'Continue your BVS rotation' : 'Hear what artists are making now', copy: 'Stay connected to the music your production could live beside.', href: hasHistory ? '/library' : '/radio' },
+    { kicker: 'Inspiration', title: likedBeats ? `Revisit ${likedBeats} beat${likedBeats === 1 ? '' : 's'} you liked` : 'See what other producers are making', copy: 'Use your Library as an idea bank, not just a listening list.', href: likedBeats ? '/library?section=saved-beats' : '/search?mode=beats' },
+    { kicker: 'Listen', title: hasHistory ? 'Continue your BVS rotation' : 'Hear what artists are making now', copy: 'Stay connected to the music your production could live beside.', href: hasHistory ? '/library?section=recent' : '/radio' },
   ]
   if (category === 'writer') return [
     { kicker: 'Write', title: 'Open your next Lyrics Pad', copy: 'Start from a blank page or return to a licensed beat idea.', href: '/creator/studio' },
     { kicker: 'Research', title: 'Follow the people behind the sound', copy: 'Discover artists, producers, shows and stories across BVS.', href: '/search?mode=creators' },
-    { kicker: 'Listen', title: hasHistory ? 'Continue where you left off' : 'Listen for a story worth following', copy: 'Use the catalogue as research and inspiration.', href: hasHistory ? '/library' : '/radio' },
+    { kicker: 'Listen', title: hasHistory ? 'Continue where you left off' : 'Listen for a story worth following', copy: 'Use the catalogue as research and inspiration.', href: hasHistory ? '/library?section=recent' : '/radio' },
   ]
   if (category === 'show_creator') return [
     { kicker: 'Show', title: 'Build the next programme', copy: 'Open Studio for your show and creator actions.', href: '/creator/studio' },
@@ -50,8 +50,8 @@ function movesFor(category: CreatorCategory, likedBeats: number, hasHistory: boo
     { kicker: 'Programme', title: 'See what is happening on BVS shows', copy: 'Follow the programme experience and current show pages.', href: '/shows' },
   ]
   return [
-    { kicker: 'Listen', title: hasHistory ? 'Continue listening' : 'Start with the sound', copy: hasHistory ? 'Your recent BVS music is ready in Library.' : 'Drop into the live rotation and see what catches you.', href: hasHistory ? '/library' : '/radio' },
-    { kicker: 'Collect', title: 'Build a playlist', copy: 'Turn discoveries into a listening session that is yours.', href: '/library#playlists' },
+    { kicker: 'Listen', title: hasHistory ? 'Continue listening' : 'Start with the sound', copy: hasHistory ? 'Your recent BVS music is ready in Library.' : 'Drop into the live rotation and see what catches you.', href: hasHistory ? '/library?section=recent' : '/radio' },
+    { kicker: 'Collect', title: 'Build a playlist', copy: 'Turn discoveries into a listening session that is yours.', href: '/library?section=playlists' },
     { kicker: 'Follow', title: 'Find someone worth following', copy: 'Keep artists and producers close as their BVS work grows.', href: '/search?mode=creators' },
   ]
 }
