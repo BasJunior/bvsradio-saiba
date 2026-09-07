@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { serviceHeaders } from "@/lib/storage-upload";
+import { mediaUrlForStoredValue } from "@/lib/media-url";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
@@ -66,10 +67,10 @@ export async function GET() {
       id: playlist.id,
       title: playlist.title,
       description: playlist.description || null,
-      coverUrl: playlist.cover_url || firstArtwork,
+      coverUrl: mediaUrlForStoredValue(playlist.cover_url || firstArtwork),
       creator: profile?.display_name || profile?.username || "BVS listener",
       creatorUsername: profile?.username || null,
-      creatorAvatar: profile?.avatar_url || null,
+      creatorAvatar: mediaUrlForStoredValue(profile?.avatar_url),
       trackCount: publicMemberships.length,
       createdAt: playlist.created_at || null,
       updatedAt: playlist.updated_at || null,
