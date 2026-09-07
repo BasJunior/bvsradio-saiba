@@ -105,7 +105,22 @@ export default function QrLoginPanel({ nextPath }: { nextPath: string }) {
         <div id="bvs-qr-login" className="mt-4" aria-live="polite">
           {pairing ? (
             <div className="mx-auto w-fit rounded-2xl bg-white p-4">
-              <QRCodeSVG value={pairing.qrUrl} size={190} level="M" marginSize={1} title="BVS Radio secure computer login QR code" />
+              <QRCodeSVG
+                value={pairing.qrUrl}
+                size={190}
+                level="H"
+                marginSize={1}
+                bgColor="#ffffff"
+                fgColor="#0a0a0a"
+                title="BVS Radio secure computer login QR code"
+                imageSettings={{
+                  // Square app mark reads cleanly in the quiet zone; wide wordmark would crush.
+                  src: '/bvs-icon-v2-192.png',
+                  height: 40,
+                  width: 40,
+                  excavate: true,
+                }}
+              />
             </div>
           ) : null}
           <p className="mx-auto mt-3 max-w-xs text-xs text-text-secondary">{status}</p>
