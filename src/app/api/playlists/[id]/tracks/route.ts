@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!memberships.length) return NextResponse.json({ tracks: [] });
 
   const ids = memberships.map((item) => item.track_id).join(",");
-  const tracksResponse = await fetch(`${url}/rest/v1/tracks?id=in.(${ids})&select=id,title,artist_name,genre,artwork_url,file_url,duration_sec,is_downloadable`, {
+  const tracksResponse = await fetch(`${url}/rest/v1/tracks?id=in.(${ids})&is_public=eq.true&select=id,title,artist_name,genre,artwork_url,file_url,duration_sec,is_downloadable`, {
     headers: serviceHeaders(service), cache: "no-store",
   });
   const tracks = tracksResponse.ok ? ((await tracksResponse.json()) as Array<Record<string, unknown> & { id: string }>) : [];
@@ -113,8 +113,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     return NextResponse.json({ error: "Reorder must contain every current playlist track exactly once." }, { status: 400 });
   }
   const responses = await Promise.all(trackIds.map((trackId, position) => fetch(`${url}/rest/v1/playlist_tracks?playlist_id=eq.${encodeURIComponent(id)}&track_id=eq.${encodeURIComponent(trackId)}`, {
-    method: "PATCH", headers: serviceHeaders(service), body: JSON.stringify({ position }),
-  })));
+    method: "PATCH", headers: serviceHeaders(service), body: JSON.stringify({ position }) },
+  )));
   if (responses.some((response) => !response.ok)) return NextResponse.json({ error: "Could not reorder playlist." }, { status: 503 });
   return NextResponse.json({ ok: true });
 }
