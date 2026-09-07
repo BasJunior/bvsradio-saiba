@@ -4,6 +4,7 @@ import HomeListenPanel from "@/components/HomeListenPanel";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import HomeBeatRail from "@/components/flow/HomeBeatRail";
+import HomeEngagementHub from "@/components/home/HomeEngagementHub";
 import { getPublicProgrammes } from "@/lib/station-content";
 
 const paths = [
@@ -93,6 +94,8 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      <HomeEngagementHub />
 
       <section className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16" aria-label="Discover BVS music">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
