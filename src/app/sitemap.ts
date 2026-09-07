@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: "https://bvsradio.com/music/artists", lastModified: new Date(), priority: 0.8 },
     { url: "https://bvsradio.com/music/producers", lastModified: new Date(), priority: 0.8 },
     { url: "https://bvsradio.com/library", lastModified: new Date(), priority: 0.6 },
+    { url: "https://bvsradio.com/lyrics", lastModified: new Date(), priority: 0.65 },
     { url: "https://bvsradio.com/upload", lastModified: new Date(), priority: 0.7 },
     { url: "https://bvsradio.com/blog", lastModified: new Date(), priority: 0.8 },
     { url: "https://bvsradio.com/shop", lastModified: new Date(), priority: 0.6 },
