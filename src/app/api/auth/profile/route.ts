@@ -8,6 +8,11 @@ function destinationForProfile(profile: { role?: string | null; is_producer?: bo
   return (profile.role && profile.role !== 'listener') || profile.is_producer ? '/creator/studio' : '/radio'
 }
 
+function creatorCategory(profile: { role?: string | null; is_producer?: boolean | null }) {
+  if (profile.is_producer) return 'producer'
+  return profile.role || 'listener'
+}
+
 export async function POST(req: Request) {
   const accessToken = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
   if (!accessToken) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
@@ -37,7 +42,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Profile setup failed' }, { status: 500 })
   }
   const existing = await existingResponse.json() as Array<{ id: string; role?: string | null; is_producer?: boolean | null }>
-  if (existing.length) return NextResponse.json({ ok: true, role: existing[0].role || 'listener', destination: destinationForProfile(existing[0]) })
+  if (existing.length) {
+    const profile = existing[0]
+    return NextResponse.json({
+      ok: true,
+      role: profile.role || 'listener',
+      isProducer: Boolean(profile.is_producer),
+      creatorCategory: creatorCategory(profile),
+      destination: destinationForProfile(profile),
+    })
+  }
 
   const profileResponse = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
     method: 'POST',
@@ -57,5 +71,5 @@ export async function POST(req: Request) {
   })
 
   if (!profileResponse.ok) return NextResponse.json({ error: 'Profile setup failed' }, { status: 500 })
-  return NextResponse.json({ ok: true, role, destination: destinationForProfile({ role }) })
+  return NextResponse.json({ ok: true, role, isProducer: false, creatorCategory: role, destination: destinationForProfile({ role }) })
 }
