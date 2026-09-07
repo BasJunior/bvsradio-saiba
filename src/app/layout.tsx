@@ -6,6 +6,7 @@ import VisitorAssistant from "@/components/VisitorAssistant";
 import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import ClientErrorBeacon from "@/components/ClientErrorBeacon";
+import AnalyticsBootstrap from "@/components/AnalyticsBootstrap";
 import MobileIosBoundary from "@/components/MobileIosBoundary";
 import PremiumInstantPromoBanner from "@/components/PremiumInstantPromoBanner";
 import EditorialCommandCenter from "@/components/EditorialCommandCenter";
@@ -112,6 +113,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <VisitorAssistant />
                 <PwaRegister />
                 <ClientErrorBeacon />
+                <AnalyticsBootstrap />
                 <Suspense fallback={null}>
                   <MobileFlowNav />
                 </Suspense>
