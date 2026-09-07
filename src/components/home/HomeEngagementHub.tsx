@@ -40,7 +40,7 @@ function movesFor(category: CreatorCategory, likedBeats: number, hasHistory: boo
     { kicker: 'Listen', title: hasHistory ? 'Continue your BVS rotation' : 'Hear what artists are making now', copy: 'Stay connected to the music your production could live beside.', href: hasHistory ? '/library?section=recent' : '/radio' },
   ]
   if (category === 'writer') return [
-    { kicker: 'Write', title: 'Open your next Lyrics Pad', copy: 'Start from a blank page or return to a licensed beat idea.', href: '/creator/studio' },
+    { kicker: 'Write', title: 'Open your next Lyrics Pad', copy: 'Start from a blank page or return to a licensed beat idea.', href: '/lyrics' },
     { kicker: 'Research', title: 'Follow the people behind the sound', copy: 'Discover artists, producers, shows and stories across BVS.', href: '/search?mode=creators' },
     { kicker: 'Listen', title: hasHistory ? 'Continue where you left off' : 'Listen for a story worth following', copy: 'Use the catalogue as research and inspiration.', href: hasHistory ? '/library?section=recent' : '/radio' },
   ]
