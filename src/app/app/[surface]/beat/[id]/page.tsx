@@ -15,7 +15,10 @@ export default async function AppBeatPage({ params }: { params: Promise<{ surfac
   if (!beat) notFound();
   const producer = await loadProducerProfile(beat.producer_user_id).catch(() => null);
   const producerName = producerPublicName({
-    publicName: producer?.display_name,
+    producerPublicName: producer?.producer_public_name,
+    producerNameStatus: producer?.producer_name_status,
+    publicName: producer?.creator_public_name || producer?.display_name,
+    publicNameStatus: producer?.creator_name_status,
     username: producer?.username,
   });
   const producerHandle = String(producer?.username || "").trim();
