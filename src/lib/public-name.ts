@@ -82,7 +82,8 @@ export function artistPublicName(input: {
 /**
  * Producer-facing public name (BeatStore, producer profile, beat cards).
  * Falls back to the artist/creator public name when a separate producer name
- * has not been approved yet, then to @username.
+ * has not been approved yet, then to @username. A producer surface should not
+ * collapse to the generic "BVS creator" label.
  */
 export function producerPublicName(input: {
   producerPublicName?: string | null
@@ -93,11 +94,10 @@ export function producerPublicName(input: {
 }) {
   const approvedProducer = String(input.producerPublicName || '').trim()
   if (approvedProducer) return approvedProducer
-  return creatorPublicName({
-    publicName: input.publicName,
-    publicNameStatus: input.publicNameStatus,
-    username: input.username,
-  })
+  const approvedCreator = String(input.publicName || '').trim()
+  if (approvedCreator) return approvedCreator
+  const username = resolvePublicHandle(input.username) || String(input.username || '').trim().replace(/^@+/, '')
+  return username ? publicHandle(username) : 'BVS producer'
 }
 
 export function producerKeysMatch(filter?: string | null, ...candidates: Array<string | null | undefined>) {
