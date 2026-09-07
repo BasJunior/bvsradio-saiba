@@ -10,7 +10,6 @@ const workspaceLinks = [
   { href: "/editorial#ed-releases", label: "Releases" },
   { href: "/editorial#ed-beats", label: "BeatStore" },
   { href: "/editorial#ed-tracks", label: "Singles" },
-  { href: "/editorial/artwork", label: "Artwork", match: "/editorial/artwork" },
   { href: "/editorial/marketplace", label: "Marketplace", match: "/editorial/marketplace" },
   { href: "/editorial/finance", label: "Finance", match: "/editorial/finance" },
   { href: "/admin/creator-workflows", label: "Writing & research", match: "/admin/creator-workflows" },
@@ -41,6 +40,8 @@ export default function EditorialArtworkShortcut() {
     };
   }, []);
 
+  const artworkActive = pathname === "/editorial/artwork";
+
   return (
     <nav aria-label="Editorial workspace" className="py-3">
       <div className="mb-2 flex items-center justify-between gap-3 px-1">
@@ -48,25 +49,33 @@ export default function EditorialArtworkShortcut() {
         <Link href="/editorial#ed-overview" className="text-xs font-semibold text-brand">Needs attention →</Link>
       </div>
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {workspaceLinks.map((item) => {
+        {workspaceLinks.slice(0, 4).map((item) => {
           const active = item.match ? pathname === item.match : false;
-          const artwork = item.href === "/editorial/artwork";
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${active ? "border-brand bg-brand text-black" : "border-white/15 text-text-secondary hover:border-brand/45 hover:text-text-primary"}`}
-            >
-              {item.label}
-              {artwork && pending !== null && pending > 0 ? (
-                <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${active ? "bg-black/15 text-black" : "bg-brand text-black"}`} aria-label={`${pending} pending cover art requests`}>
-                  {pending}
-                </span>
-              ) : null}
-            </Link>
-          );
+          return <WorkspaceLink key={item.href} href={item.href} label={item.label} active={active} />;
+        })}
+
+        <Link href="/editorial/artwork" className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-sm transition ${artworkActive ? "border-brand bg-brand text-black" : "border-white/15 text-text-secondary hover:border-brand/45 hover:text-text-primary"}`}>
+          Artwork
+          {pending !== null && pending > 0 ? (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${artworkActive ? "bg-black/15 text-black" : "bg-brand text-black"}`} aria-label={`${pending} pending cover art requests`}>
+              {pending}
+            </span>
+          ) : null}
+        </Link>
+
+        {workspaceLinks.slice(4).map((item) => {
+          const active = item.match ? pathname === item.match : false;
+          return <WorkspaceLink key={item.href} href={item.href} label={item.label} active={active} />;
         })}
       </div>
     </nav>
+  );
+}
+
+function WorkspaceLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <Link href={href} className={`inline-flex shrink-0 items-center rounded-full border px-4 py-2 text-sm transition ${active ? "border-brand bg-brand text-black" : "border-white/15 text-text-secondary hover:border-brand/45 hover:text-text-primary"}`}>
+      {label}
+    </Link>
   );
 }
