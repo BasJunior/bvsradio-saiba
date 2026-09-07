@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/account", label: "Overview", match: "account" },
@@ -13,15 +13,10 @@ const links = [
 
 export default function AccountWorkspaceNav() {
   const pathname = usePathname();
-  const params = useSearchParams();
-  const section = params.get("section");
 
   const activeFor = (match: string) => {
     if (match === "account") return pathname === "/account";
-    if (match === "library") return pathname === "/library" && section !== "downloads";
-    if (match === "downloads") return pathname === "/library" && section === "downloads";
     if (match === "orders") return pathname.startsWith("/account/orders");
-    if (match === "notifications") return pathname.startsWith("/notifications");
     return false;
   };
 
