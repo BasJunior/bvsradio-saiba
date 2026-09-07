@@ -10,8 +10,10 @@ type Workspace = {
   songTitle: string
   lyrics: string
   notes: string
-  status: string
+  status: 'draft' | 'ready_to_release' | 'released'
   releaseId?: string | null
+  workspaceKind: 'blank' | 'licensed'
+  hasAttachedBeat: boolean
   orderReference: string
   beatId: string
   beatTitle: string
@@ -41,7 +43,7 @@ export default function SongWorkspace({ id }: { id: string }) {
     if (!isSupabaseConfigured()) return setError('Account service is unavailable.')
     createClient().auth.getSession().then(async ({ data }) => {
       const accessToken = data.session?.access_token
-      if (!accessToken) return setError('Sign in to open your Song Workspace.')
+      if (!accessToken) return setError('Sign in to open your private Lyrics Pad.')
       setToken(accessToken)
       const response = await fetch(`/api/creator/song-workspaces/${encodeURIComponent(id)}`, {
         headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store',
@@ -54,13 +56,14 @@ export default function SongWorkspace({ id }: { id: string }) {
       setLyrics(next.lyrics || '')
       setNotes(next.notes || '')
       setSaveState('saved')
-      trackEvent('lyrics_pad_open', { workspace: true })
+      trackEvent('lyrics_pad_open', { workspace: true, kind: next.workspaceKind || 'licensed' })
     }).catch(() => setError('Could not open Song Workspace.'))
   }, [id])
 
   const save = useCallback(async (status?: 'draft' | 'ready_to_release') => {
     if (!token || !workspace) return false
     setSaveState('saving')
+    setError('')
     const response = await fetch(`/api/creator/song-workspaces/${encodeURIComponent(workspace.id)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -72,9 +75,13 @@ export default function SongWorkspace({ id }: { id: string }) {
       setSaveState('error')
       return false
     }
+    const payload = await response.json().catch(() => ({}))
+    if (payload.workspace) {
+      setWorkspace((current) => current ? { ...current, ...payload.workspace, audioUrl: current.audioUrl } : payload.workspace)
+    }
     setDirty(false)
     setSaveState('saved')
-    if (lyrics.trim()) trackEvent(workspace.lyrics ? 'lyrics_return_session' : 'lyrics_first_save', { workspace: true })
+    if (lyrics.trim()) trackEvent(workspace.lyrics ? 'lyrics_return_session' : 'lyrics_first_save', { workspace: true, kind: workspace.workspaceKind })
     return true
   }, [lyrics, notes, songTitle, token, workspace])
 
@@ -91,28 +98,37 @@ export default function SongWorkspace({ id }: { id: string }) {
   }
 
   async function prepareRelease() {
+    if (!workspace?.hasAttachedBeat) return
     if (await save('ready_to_release')) {
       trackEvent('prepare_release', { workspace: true })
       window.location.href = `/upload?mode=release&songWorkspace=${encodeURIComponent(id)}`
     }
   }
 
+  async function markWritingReady() {
+    if (await save('ready_to_release')) {
+      trackEvent('engagement_action_open', { activity: 'lyrics_ready', workspace: true })
+    }
+  }
+
   if (error && !workspace) return (
     <main className="mx-auto min-h-[65vh] max-w-xl px-6 py-20 text-center">
-      <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Song Workspace</p>
+      <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Lyrics Pad</p>
       <h1 className="mt-3 text-3xl font-semibold">Workspace unavailable</h1>
       <p className="mt-4 text-text-secondary">{error}</p>
-      <Link href="/creator/studio" className="mt-6 inline-flex rounded-full border border-white/15 px-5 py-2.5 text-sm">Back to Studio</Link>
+      <Link href="/lyrics" className="mt-6 inline-flex rounded-full border border-white/15 px-5 py-2.5 text-sm">Back to Lyrics Pad</Link>
     </main>
   )
-  if (!workspace) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Opening your song…</main>
+  if (!workspace) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Opening your lyrics…</main>
+
+  const saveLabel = saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Save needs attention' : dirty ? 'Unsaved changes' : 'Saved privately'
 
   return (
     <main className="mx-auto max-w-6xl px-5 pb-24 pt-8 sm:px-6 sm:pt-10">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/creator/studio" className="text-sm text-brand">← Studio</Link>
+        <Link href="/lyrics" className="text-sm text-brand">← Lyrics Pad</Link>
         <div className="flex items-center gap-3 text-xs text-text-secondary">
-          <span>{saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Save needs attention' : dirty ? 'Unsaved changes' : 'Saved to BVS'}</span>
+          <span aria-live="polite">{saveLabel}</span>
           <span className="rounded-full border border-white/10 px-3 py-1">Private</span>
         </div>
       </div>
@@ -121,7 +137,7 @@ export default function SongWorkspace({ id }: { id: string }) {
         <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Song Workspace · Lyrics Pad</p>
           <input value={songTitle} onChange={(e) => { setSongTitle(e.target.value); markDirty() }} placeholder="Name your song" className="mt-3 w-full border-0 bg-transparent p-0 text-3xl font-semibold outline-none placeholder:text-white/25 sm:text-4xl" />
-          <p className="mt-3 text-sm text-text-secondary">Writing to <strong className="text-text-primary">{workspace.beatTitle}</strong> by {workspace.producerName}</p>
+          <p className="mt-3 text-sm text-text-secondary">{workspace.hasAttachedBeat ? <>Writing to <strong className="text-text-primary">{workspace.beatTitle}</strong> by {workspace.producerName}</> : 'Your private blank page — no beat or purchase required.'}</p>
 
           {workspace.audioUrl ? (
             <div className="mt-6 rounded-3xl border border-brand/20 bg-brand/[.05] p-4 sm:p-5">
@@ -135,32 +151,42 @@ export default function SongWorkspace({ id }: { id: string }) {
 
           <section className="mt-6 rounded-3xl border border-white/10 bg-white/[.02] p-4 sm:p-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Lyrics</p><h2 className="mt-1 text-xl font-semibold">Write while the beat plays</h2></div>
-              <div className="flex flex-wrap gap-1.5">{sections.map((s) => <button key={s} type="button" onClick={() => appendSection(s)} className="rounded-full border border-white/10 px-3 py-1.5 text-xs hover:border-brand/40 hover:text-brand">+ {s}</button>)}</div>
+              <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Lyrics</p><h2 className="mt-1 text-xl font-semibold">{workspace.hasAttachedBeat ? 'Write while the beat plays' : 'Shape your song'}</h2></div>
+              <div className="flex flex-wrap gap-1.5">{sections.map((s) => <button key={s} type="button" onClick={() => appendSection(s)} className="min-h-10 rounded-full border border-white/10 px-3 text-xs hover:border-brand/40 hover:text-brand">+ {s}</button>)}</div>
             </div>
             <textarea value={lyrics} onChange={(e) => { setLyrics(e.target.value); markDirty() }} placeholder={'[Verse]\nStart writing here…'} spellCheck className="mt-5 min-h-[52vh] w-full resize-y rounded-2xl border border-white/10 bg-black/20 p-5 text-base leading-8 outline-none focus:border-brand sm:text-lg" />
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary"><span>{lyrics.trim() ? lyrics.trim().split(/\s+/).length : 0} words</span><button type="button" onClick={() => void save()} className="text-brand hover:underline">Save now</button></div>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-text-secondary"><span>{lyrics.trim() ? lyrics.trim().split(/\s+/).length : 0} words</span><button type="button" onClick={() => void save()} className="min-h-10 px-2 text-brand hover:underline">Save now</button></div>
           </section>
 
           <details className="mt-5 rounded-3xl border border-white/10 bg-white/[.015] p-5">
-            <summary className="cursor-pointer font-semibold">Song notes <span className="font-normal text-text-secondary">(private)</span></summary>
+            <summary className="min-h-10 cursor-pointer font-semibold">Song notes <span className="font-normal text-text-secondary">(private)</span></summary>
             <textarea value={notes} onChange={(e) => { setNotes(e.target.value); markDirty() }} placeholder="Melody ideas, recording notes, ad-libs, reference tracks…" className="mt-4 min-h-36 w-full rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-6 outline-none focus:border-brand" />
           </details>
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
-          <section className="rounded-3xl border border-white/10 bg-white/[.02] p-5">
+          {workspace.hasAttachedBeat ? <section className="rounded-3xl border border-white/10 bg-white/[.02] p-5">
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Licence attached</p>
             <h2 className="mt-2 font-semibold">{workspace.beatTitle}</h2><p className="mt-1 text-sm text-text-secondary">{workspace.producerName}</p>
             <p className="mt-4 text-sm leading-6 text-text-secondary">{workspace.licenceSummary}</p>
             {workspace.licenceTermsVersion ? <p className="mt-3 text-xs text-text-secondary">Terms {workspace.licenceTermsVersion}</p> : null}
             <Link href={`/account/orders/${encodeURIComponent(workspace.orderReference)}`} className="mt-4 inline-flex text-sm text-brand">View purchase & licence →</Link>
-          </section>
-          <section className="rounded-3xl border border-brand/25 bg-brand/[.055] p-5">
+          </section> : <section className="rounded-3xl border border-white/10 bg-white/[.02] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Included with BVS</p>
+            <h2 className="mt-2 font-semibold">Free private Lyrics Pad</h2>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">Write and autosave from any signed-in BVS account. No purchase or beat licence is required.</p>
+          </section>}
+
+          {workspace.hasAttachedBeat ? <section className="rounded-3xl border border-brand/25 bg-brand/[.055] p-5">
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">When the song is ready</p><h2 className="mt-2 text-xl font-semibold">Turn this into a release</h2>
             <p className="mt-2 text-sm leading-6 text-text-secondary">BVS carries this purchased beat licence into Rights Passport as leased-beat clearance.</p>
             {workspace.releaseId ? <Link href="/creator/studio/manage#releases" className="mt-5 inline-flex rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">View release</Link> : <button type="button" onClick={() => void prepareRelease()} className="mt-5 w-full rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black">Prepare release →</button>}
-          </section>
+          </section> : <section className="rounded-3xl border border-brand/20 bg-brand/[.05] p-5">
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Writing status</p>
+            <h2 className="mt-2 text-xl font-semibold">{workspace.status === 'ready_to_release' ? 'Ready for your next step' : 'Keep shaping the song'}</h2>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">Lyrics and notes autosave privately to your BVS account. Add rights and release details only when you move into a release flow.</p>
+            {workspace.status !== 'ready_to_release' ? <button type="button" onClick={() => void markWritingReady()} className="mt-5 w-full rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black">Mark writing ready</button> : <Link href="/creator/studio" className="mt-5 inline-flex text-sm font-semibold text-brand">Open Creator Studio →</Link>}
+          </section>}
         </aside>
       </section>
       {error ? <p className="mt-5 rounded-2xl border border-red-400/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</p> : null}
