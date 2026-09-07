@@ -135,16 +135,32 @@ function milestoneKey(event: AnalyticsEvent) {
   return `bvs.analytics.milestone.${event}.v1`
 }
 
+function sendEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
+  const body = JSON.stringify({
+    event,
+    properties,
+    sessionId: sessionId(),
+    visitorId: visitorId(),
+    surface: analyticsSurface(),
+    path: window.location.pathname,
+  })
+  if (navigator.sendBeacon) {
+    navigator.sendBeacon("/api/analytics", new Blob([body], { type: "application/json" }))
+    return
+  }
+  void fetch("/api/analytics", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true })
+}
+
 export function trackMilestone(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
   if (!analyticsAllowed() || typeof window === "undefined") return false
   try {
     const key = milestoneKey(event)
     if (window.localStorage.getItem(key) === "1") return false
     window.localStorage.setItem(key, "1")
-    trackEvent(event, properties)
+    sendEvent(event, properties)
     return true
   } catch {
-    trackEvent(event, properties)
+    sendEvent(event, properties)
     return true
   }
 }
@@ -163,7 +179,7 @@ export function trackReturnSessionIfNeeded() {
     const today = new Date().toISOString().slice(0, 10)
     if (window.localStorage.getItem(RETURN_MARK_KEY) === today) return
     window.localStorage.setItem(RETURN_MARK_KEY, today)
-    trackEvent("return_session", { days_since_first: Math.max(1, Math.floor((now - first) / 86400000)) })
+    sendEvent("return_session", { days_since_first: Math.max(1, Math.floor((now - first) / 86400000)) })
   } catch {
     // analytics must never block product use
   }
@@ -172,19 +188,12 @@ export function trackReturnSessionIfNeeded() {
 export function trackEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
   if (!analyticsAllowed()) return
   captureFirstTouchAttribution()
-  const body = JSON.stringify({
-    event,
-    properties,
-    sessionId: sessionId(),
-    visitorId: visitorId(),
-    surface: analyticsSurface(),
-    path: window.location.pathname,
-  })
-  if (navigator.sendBeacon) {
-    navigator.sendBeacon("/api/analytics", new Blob([body], { type: "application/json" }))
-    return
-  }
-  void fetch("/api/analytics", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true })
+  sendEvent(event, properties)
+
+  if (event === "player_start") trackMilestone("first_listen", properties)
+  else if (event === "stream_qualified_30s") trackMilestone("first_qualified_listen", properties)
+  else if (event === "track_save") trackMilestone("first_save", properties)
+  else if (event === "creator_follow") trackMilestone("first_follow", properties)
 }
 
 export function listeningBucket(seconds: number) {
