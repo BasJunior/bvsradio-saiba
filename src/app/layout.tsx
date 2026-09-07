@@ -18,6 +18,7 @@ import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
 import MobileFlowNav from "@/components/layout/MobileFlowNav";
 import "./globals.css";
+import "./light-premium.css";
 
 const defaultSiteUrl = "https://bvsradio.com";
 const siteUrl = (() => {
@@ -79,7 +80,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
-    { media: "(prefers-color-scheme: light)", color: "#F6F4EF" },
+    { media: "(prefers-color-scheme: light)", color: "#F4EFE6" },
   ],
   width: "device-width",
   initialScale: 1,
