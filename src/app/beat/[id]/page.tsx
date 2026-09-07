@@ -13,10 +13,7 @@ export default async function BeatPage({ params }: { params: Promise<{ id: strin
 
   const producer = await loadProducerProfile(beat.producer_user_id).catch(() => null)
   const producerName = producerPublicName({
-    producerPublicName: producer?.producer_public_name,
-    producerNameStatus: producer?.producer_name_status,
-    publicName: producer?.creator_public_name,
-    publicNameStatus: producer?.creator_name_status,
+    publicName: producer?.display_name,
     username: producer?.username,
   }) || 'BVS producer'
 
