@@ -2,25 +2,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AppShareButton from "@/components/app-vnext/AppShareButton";
-import { listPublishedBeats, loadProducerProfile, publicStorageUrl } from "@/lib/beatstore-server";
-import { producerPublicName } from "@/lib/public-name";
+import { listPublishedBeats, publicStorageUrl } from "@/lib/beatstore-server";
+import { getPublishedProducers } from "@/lib/artist-content";
 
 export const dynamic = "force-dynamic";
 
 export default async function AppBeatPage({ params }: { params: Promise<{ surface: string; id: string }> }) {
   const { surface, id } = await params;
   if (surface !== "ios" && surface !== "android") notFound();
-  const beats = await listPublishedBeats(160);
+  const [beats, producers] = await Promise.all([listPublishedBeats(160), getPublishedProducers()]);
   const beat = beats.find((item) => item.id === id);
   if (!beat) notFound();
-  const producer = await loadProducerProfile(beat.producer_user_id).catch(() => null);
-  const producerName = producerPublicName({
-    producerPublicName: producer?.producer_public_name,
-    producerNameStatus: producer?.producer_name_status,
-    publicName: producer?.creator_public_name || producer?.display_name,
-    publicNameStatus: producer?.creator_name_status,
-    username: producer?.username,
-  });
+  const producer = producers.find((item) => item.id === beat.producer_user_id);
+  const producerName = producer?.name || "BVS producer";
   const producerHandle = String(producer?.username || "").trim();
   const artwork = publicStorageUrl(beat.artwork_path);
   const preview = publicStorageUrl(beat.preview_path);
