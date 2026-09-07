@@ -13,14 +13,22 @@ function safeParse(value: string | null): DiscoveryItem[] {
   try { return JSON.parse(value) as DiscoveryItem[] } catch { return [] }
 }
 
+function normalizeLibraryItem(item: DiscoveryItem): DiscoveryItem {
+  if (item.kind !== 'beat') return item
+  const beatId = String(item.id || '').replace(/^beat-/, '')
+  if (!/^[0-9a-f-]{36}$/i.test(beatId)) return item
+  const href = `/beat/${beatId}`
+  return item.href === href ? item : { ...item, href }
+}
+
 export function readLibrary(section: LibrarySection): DiscoveryItem[] {
   if (typeof window === 'undefined') return []
-  return safeParse(window.localStorage.getItem(keys[section]))
+  return safeParse(window.localStorage.getItem(keys[section])).map(normalizeLibraryItem)
 }
 
 export function writeLibrary(section: LibrarySection, items: DiscoveryItem[], source: 'local' | 'remote' = 'local') {
   if (typeof window === 'undefined') return
-  window.localStorage.setItem(keys[section], JSON.stringify(items))
+  window.localStorage.setItem(keys[section], JSON.stringify(items.map(normalizeLibraryItem)))
   window.dispatchEvent(new CustomEvent('bvs:library-change', { detail: { section, source } }))
 }
 
@@ -30,16 +38,18 @@ export function hasLibraryItem(section: LibrarySection, id: string) {
 
 export function toggleLibraryItem(section: LibrarySection, item: DiscoveryItem) {
   const current = readLibrary(section)
-  const exists = current.some((saved) => saved.id === item.id)
-  const next = exists ? current.filter((saved) => saved.id !== item.id) : [item, ...current]
+  const normalizedItem = normalizeLibraryItem(item)
+  const exists = current.some((saved) => saved.id === normalizedItem.id)
+  const next = exists ? current.filter((saved) => saved.id !== normalizedItem.id) : [normalizedItem, ...current]
   writeLibrary(section, next)
-  window.dispatchEvent(new CustomEvent('bvs:library-mutation', { detail: { section, item, saved: !exists } }))
+  window.dispatchEvent(new CustomEvent('bvs:library-mutation', { detail: { section, item: normalizedItem, saved: !exists } }))
   return !exists
 }
 
 export function recordListening(item: DiscoveryItem) {
   if (typeof window === 'undefined') return
-  const next = [item, ...readLibrary('history').filter((saved) => saved.id !== item.id)].slice(0, 30)
+  const normalizedItem = normalizeLibraryItem(item)
+  const next = [normalizedItem, ...readLibrary('history').filter((saved) => saved.id !== normalizedItem.id)].slice(0, 30)
   writeLibrary('history', next)
-  window.dispatchEvent(new CustomEvent('bvs:library-mutation', { detail: { section: 'history', item, saved: true } }))
+  window.dispatchEvent(new CustomEvent('bvs:library-mutation', { detail: { section: 'history', item: normalizedItem, saved: true } }))
 }
