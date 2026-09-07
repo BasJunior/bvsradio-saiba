@@ -6,6 +6,7 @@ import {
 } from '@/lib/auth-email'
 import { isSignupRole, profileRoleForSignup, type SignupRole } from '@/lib/signup-roles'
 
+type Attribution = Partial<Record<'utm_source' | 'utm_medium' | 'utm_campaign' | 'utm_content' | 'ref', string>>
 type Body = {
   email?: string
   password?: string
@@ -14,6 +15,7 @@ type Body = {
   role?: string
   resendOnly?: boolean
   next?: string
+  attribution?: Attribution
 }
 
 function bad(msg: string, status = 400) {
@@ -25,6 +27,18 @@ function safeNextPath(raw?: string) {
   if (!value.startsWith('/') || value.startsWith('//')) return ''
   if (!/^\/app\/(ios|android)(?:\/|$)/.test(value)) return ''
   return value.slice(0, 500)
+}
+
+function cleanAttribution(value: unknown): Attribution {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const out: Attribution = {}
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'ref'] as const) {
+    const raw = (value as Record<string, unknown>)[key]
+    if (typeof raw !== 'string') continue
+    const clean = raw.trim().slice(0, 80).replace(/[^a-zA-Z0-9._~:@/+-]/g, '-')
+    if (clean) out[key] = clean
+  }
+  return out
 }
 
 async function ensureProfile(userId: string, username: string, role: SignupRole) {
@@ -63,6 +77,7 @@ export async function POST(req: Request) {
     const fullName = (body.fullName || '').trim()
     const resendOnly = Boolean(body.resendOnly)
     const next = safeNextPath(body.next)
+    const attribution = cleanAttribution(body.attribution)
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return bad('Enter a valid email address (must include @ and a domain).')
@@ -70,26 +85,16 @@ export async function POST(req: Request) {
 
     if (resendOnly) {
       await sendSignupConfirm(email, next)
-      return NextResponse.json({
-        ok: true,
-        message: 'A new confirmation link was sent from BVS Radio. Check inbox and Spam.',
-        next: next || undefined,
-      })
+      return NextResponse.json({ ok: true, message: 'A new confirmation link was sent from BVS Radio. Check inbox and Spam.', next: next || undefined })
     }
 
     const requestedRole = (body.role || '').trim()
-    if (!isSignupRole(requestedRole)) {
-      return bad('Choose what you want to do first on BVS.')
-    }
+    if (!isSignupRole(requestedRole)) return bad('Choose what you want to do first on BVS.')
     const role = requestedRole
     const profileRole = profileRoleForSignup(role)
 
-    if (!password || password.length < 8) {
-      return bad('Password must be at least 8 characters.')
-    }
-    if (!/^[a-zA-Z0-9._-]{2,32}$/.test(username)) {
-      return bad('Username: 2–32 characters, letters/numbers/._- only (no spaces).')
-    }
+    if (!password || password.length < 8) return bad('Password must be at least 8 characters.')
+    if (!/^[a-zA-Z0-9._-]{2,32}$/.test(username)) return bad('Username: 2–32 characters, letters/numbers/._- only (no spaces).')
 
     const create = await supabaseAdmin('/auth/v1/admin/users', {
       method: 'POST',
@@ -103,6 +108,7 @@ export async function POST(req: Request) {
           role: profileRole,
           account_type: role,
           is_producer: role === 'producer',
+          signup_attribution: attribution,
         },
       }),
     })
@@ -112,12 +118,7 @@ export async function POST(req: Request) {
       if (/already|registered|exists/i.test(msg)) {
         try {
           await sendSignupConfirm(email, next)
-          return NextResponse.json({
-            ok: true,
-            needsConfirmation: true,
-            message: 'This email already has an account awaiting confirmation. We sent a fresh BVS confirmation link.',
-            next: next || undefined,
-          })
+          return NextResponse.json({ ok: true, needsConfirmation: true, message: 'This email already has an account awaiting confirmation. We sent a fresh BVS confirmation link.', next: next || undefined })
         } catch {
           return bad('An account with this email already exists. Sign in, or use Forgot password.', 409)
         }
