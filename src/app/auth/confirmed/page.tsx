@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase'
+import { trackEvent } from '@/lib/analytics'
 import type { EmailOtpType } from '@supabase/supabase-js'
 
 type Status = 'loading' | 'ready' | 'error'
@@ -81,6 +82,8 @@ export default function ConfirmedPage() {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
         })
         if (!profileRes.ok) console.warn('profile setup failed', await profileRes.text())
+
+        trackEvent('account_confirmed', { next_surface: next.startsWith('/app/') ? 'app' : 'web' })
 
         if (window.location.hash || params.has('code') || params.has('token_hash')) {
           window.history.replaceState({}, '', next !== '/' ? `/auth/confirmed?next=${encodeURIComponent(next)}` : '/auth/confirmed')
