@@ -41,6 +41,7 @@ export function appDestination(surface: AppSurface, url: URL) {
   const path = url.pathname;
   if (path.startsWith(`/app/${surface}`)) return null;
   if (isExternalLegalOrLicenceUrl(url)) return null;
+  if (path === "/auth/qr/approve") return `/app/${surface}/qr/approve${url.search}`;
   if (path === "/auth/login") {
     const requestedNext = url.searchParams.get("next") || "";
     const next = requestedNext.startsWith(`/app/${surface}`) ? requestedNext : `/app/${surface}/you`;
