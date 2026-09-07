@@ -83,13 +83,30 @@ export default function HomeEngagementHub() {
   useEffect(() => {
     if (!isSupabaseConfigured()) return
     let active = true
-    createClient().auth.getSession().then(({ data }) => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!active) return
       const session = data.session
       setSignedIn(Boolean(session))
-      const metadata = session?.user.user_metadata || {}
-      const raw = String(metadata.account_type || metadata.role || 'listener')
-      setCategory(['artist', 'producer', 'writer', 'show_creator'].includes(raw) ? raw as CreatorCategory : 'listener')
+      if (!session) {
+        setCategory('listener')
+        return
+      }
+
+      const metadata = session.user.user_metadata || {}
+      const fallback = String(metadata.account_type || metadata.role || 'listener')
+      const fallbackCategory = ['artist', 'producer', 'writer', 'show_creator'].includes(fallback) ? fallback as CreatorCategory : 'listener'
+      setCategory(fallbackCategory)
+
+      const profileResponse = await fetch('/api/auth/profile', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      }).catch(() => null)
+      if (!active || !profileResponse?.ok) return
+      const profile = await profileResponse.json().catch(() => ({})) as { creatorCategory?: string }
+      if (profile.creatorCategory && ['artist', 'producer', 'writer', 'show_creator', 'listener'].includes(profile.creatorCategory)) {
+        setCategory(profile.creatorCategory as CreatorCategory)
+      }
     })
     return () => { active = false }
   }, [])
