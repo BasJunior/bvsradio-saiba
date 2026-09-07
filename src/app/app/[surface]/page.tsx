@@ -82,7 +82,7 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
           {artists.slice(0, 6).map((artist) => (
             <Link
               key={artist.id}
-              href={`${base}/creator/${artist.username}`}
+              href={`${base}/creator/${encodeURIComponent(artist.id)}`}
               className="group min-w-0 rounded-[1.4rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.045]"
             >
               <div className="relative aspect-square overflow-hidden rounded-[1.05rem] bg-white/[.04]">
