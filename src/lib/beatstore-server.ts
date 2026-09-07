@@ -104,7 +104,7 @@ export async function loadProducerProfile(userId: string) {
   if (!url || !service) return null
   const res = await fetch(
     creatorUrl(
-      `profiles?id=eq.${userId}&select=id,username,display_name,role,is_producer,is_published,is_verified`,
+      `profiles?id=eq.${userId}&select=id,username,display_name,role,is_producer,is_published,is_verified,creator_public_name,creator_name_status,producer_public_name,producer_name_status`,
     ),
     { headers: creatorHeaders, cache: 'no-store' },
   )
@@ -118,6 +118,10 @@ export async function loadProducerProfile(userId: string) {
     is_producer?: boolean
     is_published?: boolean
     is_verified?: boolean
+    creator_public_name?: string
+    creator_name_status?: string
+    producer_public_name?: string
+    producer_name_status?: string
   }) || null
 }
 
