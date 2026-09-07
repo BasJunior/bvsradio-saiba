@@ -12,7 +12,7 @@ import { blogPosts } from '@/lib/blog'
 import { officialBvsServices } from '@/lib/official-services'
 import { flowV2Flags } from '@/lib/feature-flags'
 
-type SearchKind = 'track' | 'release' | 'artist' | 'producer' | 'beat' | 'show' | 'story' | 'service'
+type SearchKind = 'track' | 'release' | 'playlist' | 'artist' | 'producer' | 'beat' | 'show' | 'story' | 'service'
 type SearchItem = {
   id: string
   kind: SearchKind
@@ -43,6 +43,7 @@ type PublicBeat = {
   created_at?: string
 }
 type PublicRelease = { id: string; title: string; artist?: string; cover?: string; publishedAt?: string }
+type PublicPlaylist = { id: string; title: string; description?: string | null; creator: string; creatorUsername?: string | null; coverUrl?: string | null; trackCount: number; updatedAt?: string | null }
 type MarketplaceListing = { id: string; listing_type: string; title: string; slug: string; category?: string; description?: string; artwork_path?: string; price_usd?: number; profiles?: { username?: string; display_name?: string } }
 type CatalogueTrack = {
   id: string
@@ -64,17 +65,18 @@ type CatalogueTrack = {
   inRotation?: boolean
   featured?: boolean
 }
-type ExploreMode = 'fresh' | 'rotation' | 'creators' | 'beats' | 'culture'
+type ExploreMode = 'fresh' | 'rotation' | 'playlists' | 'creators' | 'beats' | 'culture'
 
 const filters: Array<{ label: string; value: 'all' | SearchKind }> = [
-  { label: 'All', value: 'all' }, { label: 'Tracks', value: 'track' }, { label: 'Releases', value: 'release' },
+  { label: 'All', value: 'all' }, { label: 'Tracks', value: 'track' }, { label: 'Releases', value: 'release' }, { label: 'Playlists', value: 'playlist' },
   { label: 'Artists', value: 'artist' }, { label: 'Producers', value: 'producer' }, { label: 'Beats', value: 'beat' },
   { label: 'Shows', value: 'show' }, { label: 'Stories', value: 'story' }, { label: 'Services', value: 'service' },
 ]
-const headings: Record<SearchKind, string> = { track: 'Tracks', release: 'Releases', artist: 'Artists', producer: 'Producers', beat: 'Beats', show: 'Shows', story: 'Stories', service: 'Services' }
+const headings: Record<SearchKind, string> = { track: 'Tracks', release: 'Releases', playlist: 'Playlists', artist: 'Artists', producer: 'Producers', beat: 'Beats', show: 'Shows', story: 'Stories', service: 'Services' }
 const exploreModes: Array<{ value: ExploreMode; label: string; kinds: SearchKind[]; description: string }> = [
-  { value: 'fresh', label: 'Fresh', kinds: ['track', 'release', 'beat', 'story'], description: 'Newest publicly published BVS music, beats and stories first.' },
+  { value: 'fresh', label: 'Fresh', kinds: ['track', 'release', 'playlist', 'beat', 'story'], description: 'Newest publicly published BVS music, playlists, beats and stories first.' },
   { value: 'rotation', label: 'On BVS', kinds: ['track'], description: 'Tracks currently cleared into the live BVS radio rotation.' },
+  { value: 'playlists', label: 'Playlists', kinds: ['playlist'], description: 'Public playlists made by BVS listeners and creators.' },
   { value: 'creators', label: 'Creators', kinds: ['artist', 'producer'], description: 'Published artists and producers with real BVS profiles.' },
   { value: 'beats', label: 'Beats & Tools', kinds: ['beat', 'service', 'producer'], description: 'Published beats, creator services and the people offering them.' },
   { value: 'culture', label: 'Shows & Stories', kinds: ['show', 'story'], description: 'BVS programmes and editorial stories around the scene.' },
@@ -93,7 +95,7 @@ function timeValue(value?: string) {
 }
 
 function orderForExploreMode(items: SearchItem[], mode: ExploreMode) {
-  if (mode === 'fresh') {
+  if (mode === 'fresh' || mode === 'playlists') {
     return [...items].sort((a, b) => timeValue(b.publishedAt) - timeValue(a.publishedAt) || a.title.localeCompare(b.title))
   }
   if (mode === 'rotation') {
@@ -136,6 +138,7 @@ export default function SearchPage() {
   const [producers, setProducers] = useState<PublishedProducerSummary[]>([])
   const [beats, setBeats] = useState<PublicBeat[]>([])
   const [releases, setReleases] = useState<PublicRelease[]>([])
+  const [publicPlaylists, setPublicPlaylists] = useState<PublicPlaylist[]>([])
   const [services, setServices] = useState<MarketplaceListing[]>([])
   const [catalogueTracks, setCatalogueTracks] = useState<CatalogueTrack[]>([])
   const [selectedDetail, setSelectedDetail] = useState<ExploreDetail | null>(null)
@@ -162,14 +165,16 @@ export default function SearchPage() {
       fetch('/api/producers').then(r => r.ok ? r.json() : { producers: [] }),
       fetch('/api/beats').then(r => r.ok ? r.json() : { beats: [] }),
       fetch('/api/releases/public').then(r => r.ok ? r.json() : { releases: [] }),
+      fetch('/api/playlists/public').then(r => r.ok ? r.json() : { playlists: [] }),
       fetch('/api/marketplace').then(r => r.ok ? r.json() : { listings: [] }),
       fetch('/api/catalogue/listings').then(r => r.ok ? r.json() : { listings: [] }),
-    ]).then(([a, p, b, r, m, c]) => {
+    ]).then(([a, p, b, r, pl, m, c]) => {
       if (!active) return
       setArtists(a.artists || [])
       setProducers(p.producers || [])
       setBeats(b.beats || [])
       setReleases(r.releases || [])
+      setPublicPlaylists((pl.playlists || []).filter((item: PublicPlaylist) => item.trackCount > 0))
       setServices((m.listings || []).filter((item: MarketplaceListing) => item.listing_type === 'service'))
       const liveTracks = (c.listings || []).filter((item: CatalogueTrack) => item.source === 'track' && item.type !== 'beat')
       setCatalogueTracks(liveTracks)
@@ -220,6 +225,17 @@ export default function SearchPage() {
           },
         }
       }),
+      ...publicPlaylists.map(item => ({
+        id: `playlist-${item.id}`,
+        kind: 'playlist' as const,
+        title: item.title,
+        subtitle: `${item.creator} · ${item.trackCount} track${item.trackCount === 1 ? '' : 's'}`,
+        href: `/playlist/${item.id}`,
+        image: item.coverUrl || undefined,
+        tags: [item.creator, item.description || '', 'public playlist', 'made on bvs'],
+        badge: 'Made on BVS',
+        publishedAt: item.updatedAt || undefined,
+      })),
       ...artists.filter(item => !producerIds.has(item.id)).map(item => ({ id: `artist-${item.id}`, kind: 'artist' as const, title: item.name, subtitle: `${item.role} · ${item.trackCount} published ${item.trackCount === 1 ? 'track' : 'tracks'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
       ...producers.map(item => ({ id: `producer-${item.id}`, kind: 'producer' as const, title: item.name, subtitle: `Producer · ${item.beatCount} published ${item.beatCount === 1 ? 'beat' : 'beats'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
       ...beats.map(item => {
@@ -280,7 +296,7 @@ export default function SearchPage() {
       ...officialBvsServices.map(item => ({ id: `official-service-${item.id}`, kind: 'service' as const, title: item.title, subtitle: `${item.category} · ${item.price}`, href: `/shop#services`, image: '/images/hero-studio.jpg', tags: [item.category, item.desc, item.engineer, 'official bvs'], badge: 'Official BVS' })),
       ...blogPosts.map(item => ({ id: `story-${item.slug}`, kind: 'story' as const, title: item.title, subtitle: `${item.readTime} · BVS story`, href: `/blog/${item.slug}`, tags: [item.description], publishedAt: item.date })),
     ]
-  }, [artists, beats, catalogueTracks, producers, releases, services])
+  }, [artists, beats, catalogueTracks, producers, publicPlaylists, releases, services])
 
   const results = useMemo(() => {
     const needle = query.trim().toLowerCase()
@@ -329,9 +345,9 @@ export default function SearchPage() {
 
   return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 py-12 sm:px-6">
     <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Explore BVS</p>
-    <h1 className="text-4xl md:text-5xl">Music, creators and the scene around them</h1>
-    <p className="mt-3 max-w-2xl text-text-secondary">Search published BVS content or move through recent music, verified creators, BeatStore and programmes.</p>
-    <label className="mt-8 block max-w-3xl"><span className="sr-only">Search BVS</span><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Try “Wolf Bridges”, “gospel” or “June Pack”" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
+    <h1 className="text-4xl md:text-5xl">Music, playlists, creators and the scene around them</h1>
+    <p className="mt-3 max-w-2xl text-text-secondary">Search published BVS content or move through recent music, public playlists, verified creators, BeatStore and programmes.</p>
+    <label className="mt-8 block max-w-3xl"><span className="sr-only">Search BVS</span><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Try “Vibes”, “Wolf Bridges” or “gospel”" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
     {flowV2Flags.exploreModes && !query.trim() ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${mode === item.value ? 'bg-brand text-black' : 'border border-white/10 bg-white/[.03] text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
     <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter results">{filters.map(item => <button key={item.value} onClick={() => setFilter(item.value)} aria-pressed={filter === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${filter === item.value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div>
 
@@ -368,7 +384,7 @@ export default function SearchPage() {
             ) : supportsContextDetails(item.kind) ? (
               <Link {...flowDetailProps(item)} href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">Details</Link>
             ) : (
-              <Link href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">{item.kind === 'story' ? 'Read' : 'Open'}</Link>
+              <Link href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">{item.kind === 'story' ? 'Read' : item.kind === 'playlist' ? 'Open playlist' : 'Open'}</Link>
             )}
           </article>)}
         </div>
