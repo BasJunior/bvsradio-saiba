@@ -59,8 +59,12 @@ export default function LibraryView() {
   const { surface } = useAppSurface();
   const discoverHref = surface ? appExplore(surface) : "/search";
   const webOnly = !surface;
+  const visiblePersonalSections = useMemo(() => webOnly ? personalSections : personalSections.filter(section => section.id !== "playlists"), [webOnly]);
 
   useEffect(() => { setActive(initialSection()); }, []);
+  useEffect(() => {
+    if (!webOnly && (active === "playlists" || active === "saved-beats" || active === "licensed-beats")) setActive("liked");
+  }, [active, webOnly]);
 
   useEffect(() => {
     const sync = () => {
@@ -203,7 +207,7 @@ export default function LibraryView() {
         <aside className="rounded-[1.45rem] border border-white/10 bg-white/[.02] p-3 lg:sticky lg:top-24">
           <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[.18em] text-text-secondary">Your music</p>
           <div className="space-y-1">
-            {personalSections.map(section => <button key={section.id} type="button" onClick={() => changeSection(section.id)} className={`w-full rounded-xl px-3 py-2.5 text-left text-sm transition ${active === section.id ? "bg-brand text-black" : "text-text-secondary hover:bg-white/5 hover:text-white"}`}><span className="flex items-center justify-between gap-3"><span>{section.label}</span>{section.id === "liked" ? <span className="text-xs opacity-70">{likedMusic.length}</span> : section.id === "following" ? <span className="text-xs opacity-70">{following.length}</span> : section.id === "recent" ? <span className="text-xs opacity-70">{history.length}</span> : null}</span></button>)}
+            {visiblePersonalSections.map(section => <button key={section.id} type="button" onClick={() => changeSection(section.id)} className={`w-full rounded-xl px-3 py-2.5 text-left text-sm transition ${active === section.id ? "bg-brand text-black" : "text-text-secondary hover:bg-white/5 hover:text-white"}`}><span className="flex items-center justify-between gap-3"><span>{section.label}</span>{section.id === "liked" ? <span className="text-xs opacity-70">{likedMusic.length}</span> : section.id === "following" ? <span className="text-xs opacity-70">{following.length}</span> : section.id === "recent" ? <span className="text-xs opacity-70">{history.length}</span> : null}</span></button>)}
           </div>
           {webOnly ? <>
             <div className="my-3 border-t border-white/10" />
@@ -215,14 +219,14 @@ export default function LibraryView() {
         </aside>
 
         <section className="min-w-0 rounded-[1.65rem] border border-white/10 bg-white/[.02] p-5 sm:p-6" aria-labelledby="library-section-title">
-          {active === "playlists" ? <WebPlaylists embedded /> : <>
+          {active === "playlists" && webOnly ? <WebPlaylists embedded /> : <>
             <div className="mb-5">
               <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{active.startsWith("saved") || active.startsWith("licensed") ? "Creator library" : "Your library"}</p>
               <h2 id="library-section-title" className="mt-2 text-2xl font-semibold sm:text-3xl">{activeMeta.label}</h2>
               <p className="mt-2 text-sm text-text-secondary">{activeMeta.copy}</p>
             </div>
 
-            {active === "licensed-beats" ? <div className="space-y-3">
+            {active === "licensed-beats" && webOnly ? <div className="space-y-3">
               {ownedError ? <p className="rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm text-red-100">{ownedError}</p> : null}
               {ownedLoading ? <p className="text-sm text-text-secondary">Loading licences…</p> : null}
               {ownedBeats.map(beat => <div key={`${beat.orderReference}-${beat.beatId}`} className="flex flex-wrap items-center gap-4 rounded-2xl border border-white/10 bg-black/10 p-4">
@@ -237,7 +241,7 @@ export default function LibraryView() {
             </div> : renderItems(activeItems, active === "liked" ? "liked" : active === "following" ? "following" : active === "recent" ? "recent" : "saved-beats")}
 
             {active !== "licensed-beats" && activeItems.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 p-9 text-center"><h3 className="text-lg">Nothing here yet</h3><p className="mt-2 text-sm text-text-secondary">{activeMeta.copy}</p><Link href={active === "saved-beats" ? "/catalogue?type=beat#beatstore" : discoverHref} className="mt-5 inline-block rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">{active === "saved-beats" ? "Find beats" : "Discover BVS"}</Link></div> : null}
-            {active === "licensed-beats" && !ownedLoading && !ownedError && ownedBeats.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 p-9 text-center"><h3 className="text-lg">No licensed beats yet</h3><p className="mt-2 text-sm text-text-secondary">When you purchase a BVS beat licence, it will appear here with your writing workspace.</p><Link href="/catalogue?type=beat#beatstore" className="mt-5 inline-block rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Explore BeatStore</Link></div> : null}
+            {active === "licensed-beats" && webOnly && !ownedLoading && !ownedError && ownedBeats.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 p-9 text-center"><h3 className="text-lg">No licensed beats yet</h3><p className="mt-2 text-sm text-text-secondary">When you purchase a BVS beat licence, it will appear here with your writing workspace.</p><Link href="/catalogue?type=beat#beatstore" className="mt-5 inline-block rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Explore BeatStore</Link></div> : null}
           </>}
         </section>
       </div>
