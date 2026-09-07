@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { isSupabaseConfigured } from '@/lib/supabase'
 import { SIGNUP_ROLES, type SignupRole } from '@/lib/signup-roles'
+import { captureFirstTouchAttribution, getFirstTouchAttribution, trackEvent } from '@/lib/analytics'
 
 type SignupForm = {
   email: string
@@ -21,6 +22,10 @@ export default function SignupPage() {
   const [verificationEmail, setVerificationEmail] = useState<string | null>(null)
   const [resendMessage, setResendMessage] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
+
+  useEffect(() => {
+    captureFirstTouchAttribution()
+  }, [])
 
   const resendConfirmation = async () => {
     if (!verificationEmail) return
@@ -80,6 +85,9 @@ export default function SignupPage() {
       return
     }
 
+    const attribution = getFirstTouchAttribution()
+    trackEvent('signup_started', { role: form.role, ...attribution })
+
     try {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
@@ -90,12 +98,13 @@ export default function SignupPage() {
           username,
           fullName: form.fullName.trim(),
           role: form.role,
+          attribution,
         }),
       })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(data.error || 'Signup failed')
-      }
+      if (!res.ok) throw new Error(data.error || 'Signup failed')
+
+      trackEvent('signup_completed', { role: form.role, needs_confirmation: data.needsConfirmation !== false, ...attribution })
 
       if (data.needsConfirmation !== false) {
         setVerificationEmail(email)
@@ -117,51 +126,21 @@ export default function SignupPage() {
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center justify-center mb-6" aria-label="BVS Radio home">
-            <Image
-              src="/branding/bvs-logo.png"
-              alt="BVS Radio"
-              width={1032}
-              height={552}
-              className="h-14 w-auto rounded-md object-contain"
-              priority
-            />
+            <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-14 w-auto rounded-md object-contain" priority />
           </Link>
           <h1 className="text-3xl font-bold">Join the movement</h1>
-          <p className="text-text-secondary mt-2">
-            Create your free account and choose what you want to do first. You can add more roles later.
-          </p>
+          <p className="text-text-secondary mt-2">Create your free account and choose what you want to do first. You can add more roles later.</p>
         </div>
 
         {verificationEmail ? (
           <div className="rounded-2xl border border-brand/30 bg-brand/10 p-6 text-center" role="status">
             <h2 className="text-xl font-semibold">Check your email</h2>
-            <p className="mt-3 text-sm text-text-secondary">
-              We sent a confirmation link from <strong className="text-text-primary">BVS Radio (contact@bvsradio.com)</strong> to{' '}
-              <strong className="text-text-primary">{verificationEmail}</strong>.
-              Open it to finish creating your account.
-            </p>
-            <p className="mt-4 text-xs text-text-secondary">
-              Also check Spam or Promotions. The link should open on <strong>bvsradio.com</strong>, not localhost.
-              Open the newest email in a full browser tab (mail previews can burn the one-time link).
-              If you see "otp_expired" or invalid link, use Resend below and ignore older emails.
-            </p>
+            <p className="mt-3 text-sm text-text-secondary">We sent a confirmation link from <strong className="text-text-primary">BVS Radio (contact@bvsradio.com)</strong> to <strong className="text-text-primary">{verificationEmail}</strong>. Open it to finish creating your account.</p>
+            <p className="mt-4 text-xs text-text-secondary">Also check Spam or Promotions. The link should open on <strong>bvsradio.com</strong>, not localhost. Open the newest email in a full browser tab (mail previews can burn the one-time link). If you see "otp_expired" or invalid link, use Resend below and ignore older emails.</p>
             <div className="mt-5 flex flex-wrap justify-center gap-4 text-sm">
-              <button type="button" onClick={resendConfirmation} className="text-brand hover:underline">
-                Resend confirmation
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setVerificationEmail(null)
-                  setResendMessage(null)
-                }}
-                className="text-brand hover:underline"
-              >
-                Use a different email
-              </button>
-              <Link href="/auth/login" className="text-brand hover:underline">
-                Sign in
-              </Link>
+              <button type="button" onClick={resendConfirmation} className="text-brand hover:underline">Resend confirmation</button>
+              <button type="button" onClick={() => { setVerificationEmail(null); setResendMessage(null) }} className="text-brand hover:underline">Use a different email</button>
+              <Link href="/auth/login" className="text-brand hover:underline">Sign in</Link>
             </div>
             {resendMessage && <p className="mt-3 text-xs text-text-secondary">{resendMessage}</p>}
           </div>
@@ -169,119 +148,31 @@ export default function SignupPage() {
           <form onSubmit={handleSubmit} noValidate className="space-y-5">
             <fieldset>
               <legend className="text-base font-semibold">What do you want to do first?</legend>
-              <p className="mt-1 text-sm text-text-secondary">
-                Choose your starting workspace. Nothing is selected for you, and every account can still listen and discover.
-              </p>
+              <p className="mt-1 text-sm text-text-secondary">Choose your starting workspace. Nothing is selected for you, and every account can still listen and discover.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {SIGNUP_ROLES.map((option) => {
                   const selected = form.role === option.value
                   return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      aria-pressed={selected}
-                      onClick={() => {
-                        setForm({ ...form, role: option.value })
-                        setError(null)
-                      }}
-                      className={`rounded-2xl border p-4 text-left transition ${
-                        selected
-                          ? 'border-brand bg-brand/10 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]'
-                          : 'border-white/10 bg-bg-card hover:border-brand/50 hover:bg-white/[.03]'
-                      } ${option.value === 'listener' ? 'sm:col-span-2' : ''}`}
-                    >
-                      <span className="flex items-start justify-between gap-4">
-                        <span>
-                          <span className="block font-semibold text-text-primary">{option.title}</span>
-                          <span className="mt-1 block text-sm text-text-secondary">{option.copy}</span>
-                        </span>
-                        <span
-                          aria-hidden="true"
-                          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs ${
-                            selected ? 'border-brand bg-brand text-black' : 'border-white/20 text-transparent'
-                          }`}
-                        >
-                          ✓
-                        </span>
-                      </span>
+                    <button key={option.value} type="button" aria-pressed={selected} onClick={() => { setForm({ ...form, role: option.value }); setError(null) }} className={`rounded-2xl border p-4 text-left transition ${selected ? 'border-brand bg-brand/10 shadow-[0_0_0_1px_rgba(255,255,255,0.04)]' : 'border-white/10 bg-bg-card hover:border-brand/50 hover:bg-white/[.03]'} ${option.value === 'listener' ? 'sm:col-span-2' : ''}`}>
+                      <span className="flex items-start justify-between gap-4"><span><span className="block font-semibold text-text-primary">{option.title}</span><span className="mt-1 block text-sm text-text-secondary">{option.copy}</span></span><span aria-hidden="true" className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-xs ${selected ? 'border-brand bg-brand text-black' : 'border-white/20 text-transparent'}`}>✓</span></span>
                     </button>
                   )
                 })}
               </div>
-              <p className="mt-3 text-xs text-text-secondary">
-                Your first choice is not permanent. Add or apply for other creator roles later from Account Centre.
-              </p>
+              <p className="mt-3 text-xs text-text-secondary">Your first choice is not permanent. Add or apply for other creator roles later from Account Centre.</p>
             </fieldset>
-
             <div className="grid gap-4 sm:grid-cols-2">
-              <input
-                type="text"
-                placeholder="Full name"
-                value={form.fullName}
-                onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-                required
-                autoComplete="name"
-                className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
-              />
-              <input
-                type="text"
-                placeholder="Username (no spaces)"
-                value={form.username}
-                onChange={(e) => setForm({ ...form, username: e.target.value })}
-                required
-                autoComplete="username"
-                className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
-              />
+              <input type="text" placeholder="Full name" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required autoComplete="name" className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none" />
+              <input type="text" placeholder="Username (no spaces)" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required autoComplete="username" className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none" />
             </div>
-            <input
-              type="email"
-              placeholder="you@email.com"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              required
-              autoComplete="email"
-              inputMode="email"
-              title="Use a full email like you@gmail.com"
-              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
-            />
-            <input
-              type="password"
-              placeholder="Create a password (min 8 characters)"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              required
-              minLength={8}
-              autoComplete="new-password"
-              className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none"
-            />
-
-            {error && (
-              <p className="text-sm text-red-400" role="alert">
-                {error}
-              </p>
-            )}
-            {info && (
-              <p className="text-sm text-brand" role="status">
-                {info}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 mt-2 bg-brand hover:bg-brand-dark disabled:opacity-70 text-black font-semibold rounded-full transition-all"
-            >
-              {loading ? 'Creating account…' : 'Create Free Account'}
-            </button>
+            <input type="email" placeholder="you@email.com" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required autoComplete="email" inputMode="email" title="Use a full email like you@gmail.com" className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none" />
+            <input type="password" placeholder="Create a password (min 8 characters)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} autoComplete="new-password" className="w-full bg-bg-card border border-white/10 focus:border-brand px-4 py-3 rounded-xl outline-none" />
+            {error && <p className="text-sm text-red-400" role="alert">{error}</p>}
+            {info && <p className="text-sm text-brand" role="status">{info}</p>}
+            <button type="submit" disabled={loading} className="w-full py-3.5 mt-2 bg-brand hover:bg-brand-dark disabled:opacity-70 text-black font-semibold rounded-full transition-all">{loading ? 'Creating account…' : 'Create Free Account'}</button>
           </form>
         )}
-
-        <p className="text-center mt-6 text-sm text-text-secondary">
-          Already have an account?{' '}
-          <Link href="/auth/login" className="text-brand hover:underline">
-            Sign in
-          </Link>
-        </p>
+        <p className="text-center mt-6 text-sm text-text-secondary">Already have an account? <Link href="/auth/login" className="text-brand hover:underline">Sign in</Link></p>
       </div>
     </div>
   )
