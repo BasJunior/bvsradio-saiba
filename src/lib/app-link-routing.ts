@@ -24,6 +24,7 @@ function marketplaceRoute(pathname: string, root: string, search: string, hash: 
 
 function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, hash: string) {
   const root = `/app/${surface}`;
+  if (pathname === "/auth/qr/approve") return withQueryAndHash(`${root}/qr/approve`, search, hash);
   if (pathname === "/" || pathname === "/radio" || pathname.startsWith("/radio/") || pathname === "/listen" || pathname.startsWith("/listen/")) {
     return withQueryAndHash(root, search, hash);
   }
