@@ -12,6 +12,7 @@ type Body = {
   fullName?: string
   role?: string
   resendOnly?: boolean
+  attribution?: unknown
 }
 
 function bad(msg: string, status = 400) {
@@ -20,6 +21,19 @@ function bad(msg: string, status = 400) {
 
 function profileRoleFor(requestedRole: string) {
   return requestedRole === 'producer' ? 'listener' : requestedRole
+}
+
+function cleanAttribution(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const input = value as Record<string, unknown>
+  const output: Record<string, string> = {}
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'ref']) {
+    const raw = input[key]
+    if (typeof raw !== 'string') continue
+    const clean = raw.trim().slice(0, 80).replace(/[^a-zA-Z0-9._~:@/+-]/g, '-')
+    if (clean) output[key] = clean
+  }
+  return output
 }
 
 async function ensureProfile(userId: string, username: string, role: string) {
@@ -31,8 +45,6 @@ async function ensureProfile(userId: string, username: string, role: string) {
     body: JSON.stringify({
       id: userId,
       username,
-      // A legal/full name stays private in Auth metadata. Public/member identity
-      // starts from the chosen handle until the member edits it deliberately.
       display_name: username,
       role: profileRole || 'listener',
       is_producer: producer,
@@ -62,6 +74,7 @@ export async function POST(req: Request) {
     const role = requestedRole
     const profileRole = profileRoleFor(role)
     const resendOnly = Boolean(body.resendOnly)
+    const firstTouch = cleanAttribution(body.attribution)
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return bad('Enter a valid email address (must include @ and a domain).')
@@ -94,6 +107,7 @@ export async function POST(req: Request) {
           role: profileRole,
           account_type: role,
           is_producer: role === 'producer',
+          first_touch: firstTouch,
         },
       }),
     })
