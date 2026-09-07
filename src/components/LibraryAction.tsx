@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import type { DiscoveryItem } from '@/lib/discovery'
 import { hasLibraryItem, toggleLibraryItem, type LibrarySection } from '@/lib/library'
-import { trackEvent } from '@/lib/analytics'
+import { trackEvent, trackMilestone } from '@/lib/analytics'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -42,7 +42,15 @@ export default function LibraryAction({ item, section = 'favourites', compact = 
         }
         const next = toggleLibraryItem(section, item)
         setSaved(next)
-        if (next && section === 'favourites' && item.kind === 'track') trackEvent('track_save', { track_id: item.id })
+        if (next && section === 'favourites') {
+          if (item.kind === 'track') trackEvent('track_save', { track_id: item.id })
+          trackMilestone('first_save', { item_kind: item.kind, item_id: item.id })
+        }
+        if (next && section === 'follows') {
+          trackEvent('creator_follow', { creator_id: item.id })
+          trackMilestone('first_follow', { creator_id: item.id })
+        }
+        if (!next && section === 'follows') trackEvent('creator_unfollow', { creator_id: item.id })
       }}
       className={`rounded-full border transition ${saved ? 'border-brand bg-brand/15 text-brand' : 'border-white/20 text-text-secondary hover:border-brand hover:text-white'} ${compact ? 'px-3 py-1 text-xs' : 'px-5 py-2 text-sm'}`}
     >
