@@ -5,6 +5,7 @@ import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import HomeBeatRail from "@/components/flow/HomeBeatRail";
 import HomeEngagementHub from "@/components/home/HomeEngagementHub";
+import HomePublicPlaylistRail from "@/components/home/HomePublicPlaylistRail";
 import { getPublicProgrammes } from "@/lib/station-content";
 
 const paths = [
@@ -18,7 +19,7 @@ const paths = [
   {
     eyebrow: "Discover",
     title: "Find what is moving next",
-    copy: "Explore artists, releases, beats and the people connected to the music.",
+    copy: "Explore artists, releases, playlists, beats and the people connected to the music.",
     href: "/search",
     cta: "Discover BVS",
   },
@@ -111,6 +112,8 @@ export default async function HomePage() {
         <PublishedArtistsShelf limit={6} />
         <div className="mt-8 sm:mt-10"><PublishedAlbumsShelf /></div>
       </section>
+
+      <HomePublicPlaylistRail />
 
       <HomeBeatRail />
 
