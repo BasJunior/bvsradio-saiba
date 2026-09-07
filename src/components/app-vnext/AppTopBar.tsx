@@ -2,18 +2,26 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { measureHeader } from "@/lib/chrome-layout";
 
 export default function AppTopBar({ surface }: { surface: AppSurface }) {
-  const { user, avatarUrl, loading } = useAppSession();
+  const { user, avatarUrl, loading, refresh } = useAppSession();
+  const pathname = usePathname();
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const mountedPath = useRef(pathname);
   const home = `/app/${surface}`;
   const initial = (user?.user_metadata?.full_name || user?.email || "B").trim().charAt(0).toUpperCase();
 
   useEffect(() => { setAvatarFailed(false); }, [avatarUrl]);
+  useEffect(() => {
+    if (mountedPath.current === pathname) return;
+    mountedPath.current = pathname;
+    if (user) void refresh();
+  }, [pathname, refresh, user]);
 
   return (
     <header
