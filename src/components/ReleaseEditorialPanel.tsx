@@ -45,6 +45,7 @@ type ReleaseTrack = {
   position: number
   title: string
   file_url?: string
+  review_audio_url?: string
   in_rotation?: boolean
   isrc?: string | null
   track_id?: string | null
@@ -276,8 +277,8 @@ export default function ReleaseEditorialPanel({
                           )}
                           <span className="shrink-0">{m.position}.</span><EditorialReleaseTrackTitleEditor releaseId={release.id} releaseTrackId={m.id} releaseTitle={release.title} releaseArtist={release.artist_name} currentProfileId={release.user_id} title={m.title} editable={canApprove} />
                         </div>
-                        {m.file_url && (
-                          <div className="mt-2"><EditorialConnectedPreview previewId={`release-track:${m.id}`} title={m.title} artist={release.artist_name} src={m.file_url} artwork={release.cover_url} project={`Editorial · ${release.title}`} genre={release.genre} compact /></div>
+                        {(m.review_audio_url || m.file_url) && (
+                          <div className="mt-2"><EditorialConnectedPreview previewId={`release-track:${m.id}`} title={m.title} artist={release.artist_name} src={m.review_audio_url || m.file_url} artwork={release.cover_url} project={`Editorial · ${release.title} · full submission`} genre={release.genre} compact /></div>
                         )}
                         <div className="relative mt-2">
                           <label className="mb-1 block text-[11px] uppercase tracking-wide text-text-secondary">
@@ -453,7 +454,7 @@ export default function ReleaseEditorialPanel({
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={media.waveform_path} alt={`Waveform for ${member.title}`} className="mt-2 h-16 w-full rounded object-cover" />
                             )}
-                            {media?.preview_path && <audio controls preload="none" src={media.preview_path} className="mt-2 h-8 max-w-full" />}
+                            {media?.preview_path && <p className="mt-2 text-[11px] text-text-secondary">Processing preview generated for QC. Use the full submission player above for editorial listening.</p>}
                           </div>
                         })}
                       </div>

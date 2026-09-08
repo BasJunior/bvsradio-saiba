@@ -26,14 +26,14 @@ type ArtistWaitlist = { id: string; email: string; artist_name: string; country?
 type ArtistDeposit = { id: string; artist_user_id: string; amount: number | string; currency: string; status: string; source: string; created_at: string }
 type ArtistPayoutRequest = { id: string; artist_user_id: string; requested_amount: number | string; currency: string; status: string; requested_at: string }
 type Release = { id: string; user_id: string; title: string; artist_name: string; genre?: string; cover_url?: string; release_type?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; track_count: number; created_at: string; passport_version?: number; preflight_status?: string; preflight_blockers?: string[]; copyright_year?: number; master_owner_name?: string; composition_owner_names?: string[]; territories?: string[]; material_types?: string[] }
-type ReleaseTrack = { id: string; release_id: string; position: number; title: string; file_url?: string; in_rotation?: boolean; isrc?: string | null; track_id?: string | null }
+type ReleaseTrack = { id: string; release_id: string; position: number; title: string; file_url?: string; review_audio_url?: string; in_rotation?: boolean; isrc?: string | null; track_id?: string | null }
 type KnownIsrcMapEntry = { isrc: string; title?: string | null; artist_name?: string | null; upc?: string | null; spotify_album_url?: string | null; source?: string | null }
 type ReleaseContributor = { id: string; release_id: string; person_name: string; contribution_role: string; rights_confirmed: boolean }
 type ReleaseClearanceEvidence = { id: string; release_id: string; material_type: string; evidence_version: number; original_file_name: string; file_url?: string; artist_notes?: string; review_status: string; review_notes?: string }
 type MediaProcessingJob = { id: string; release_id: string; release_track_id: string; status: string; codec_name?: string; duration_seconds?: number; sample_rate?: number; channels?: number; loudness_lufs?: number; true_peak_db?: number; malware_status: string; blockers?: string[]; waveform_path?: string; preview_path?: string; error_code?: string }
 type DistJob = { id: string; release_id: string; status: string; distributor?: string | null; notes?: string | null }
 type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
-type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
+type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; master_path?: string | null; review_audio_url?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
 type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' | 'editor'; message: string; created_at: string }
 type TrackReviewMessage = { id: string; track_id: string; author_kind: 'artist' | 'editor'; message: string; created_at: string }
 type RoleApplication = { id: string; user_id: string; requested_role: string; status: string; message?: string; review_notes?: string; updated_at: string }
@@ -1206,7 +1206,7 @@ function BeatsCarousel({
           >
             {group.items.map((beat) => {
               const price = beat.beat_licence_options?.[0]?.price_usd
-              const audioSrc = publicUrl(beat.preview_path)
+              const audioSrc = beat.review_audio_url || beat.master_path || publicUrl(beat.preview_path)
               const artSrc = publicUrl(beat.artwork_path)
               return (
                 <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">

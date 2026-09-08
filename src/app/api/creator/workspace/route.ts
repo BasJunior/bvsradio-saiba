@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
 import { creatorHeaders, creatorIdentity, creatorJson, creatorUrl } from '@/lib/creator-server'
-import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
+import { r2Configured, r2KeyFromMediaUrl, r2ObjectExists, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 
 const clean = (value: unknown, max = 5000) => String(value || '').trim().slice(0, max)
 const slugify = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80)
 const hasCreatorAccess = (profile: { role: string; is_producer?: boolean }) =>
   profile.role !== 'listener' || profile.is_producer === true
+
+async function privateMediaUrl(value?: string | null) {
+  if (!value) return value
+  const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
+  return key ? signedR2DownloadUrl(key, 900) : value
+}
 
 export async function GET(request: Request) {
   const identity = await creatorIdentity(request)
@@ -14,7 +20,7 @@ export async function GET(request: Request) {
   const id = identity.user.id
   const empty = { application: null, articles: [], briefs: [], shows: [], episodes: [] }
   const [tracksResponse, requestsResponse, releasesResponse, jobsResponse, profileFlagsResponse] = await Promise.all([
-    fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,genre,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at,release_id,isrc,spotify_url&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,artist_name,genre,file_url,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at,release_id,isrc,spotify_url&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`track_review_requests?artist_user_id=eq.${id}&select=*&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`releases?user_id=eq.${id}&select=id,title,artist_name,genre,editorial_status,editorial_notes,is_public,in_rotation,release_type,track_count,created_at,published_at&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`distribution_jobs?artist_user_id=eq.${id}&select=id,release_id,status,notes,updated_at,created_at&order=updated_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
@@ -23,11 +29,26 @@ export async function GET(request: Request) {
   let tracks = tracksResponse.ok ? await tracksResponse.json() : []
   // Older DBs may lack isrc/spotify_url columns — fall back so studio still loads.
   if (!tracksResponse.ok) {
-    const fallbackTracks = await fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,genre,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' })
+    const fallbackTracks = await fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,artist_name,genre,file_url,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' })
     tracks = fallbackTracks.ok ? await fallbackTracks.json() : []
   }
+  const rawTracks = Array.isArray(tracks) ? tracks as Array<Record<string, unknown>> : []
+  tracks = await Promise.all(rawTracks.map(async (track) => ({
+    ...track,
+    file_url: await privateMediaUrl(String(track.file_url || '')),
+    artwork_url: await privateMediaUrl(String(track.artwork_url || '')),
+  })))
   const trackRequests = requestsResponse.ok ? await requestsResponse.json() : []
   const releases = releasesResponse.ok ? await releasesResponse.json() : []
+  const releaseIds = (Array.isArray(releases) ? releases : []).map((release: Record<string, unknown>) => String(release.id || '')).filter(Boolean)
+  const releaseTracksResponse = releaseIds.length
+    ? await fetch(creatorUrl(`release_tracks?release_id=in.(${releaseIds.join(',')})&select=id,release_id,position,title,file_url,audio_path&order=position.asc&limit=1000`), { headers: creatorHeaders, cache: 'no-store' })
+    : null
+  const rawReleaseTracks = releaseTracksResponse?.ok ? await releaseTracksResponse.json() as Array<Record<string, unknown>> : []
+  const releaseTracks = await Promise.all(rawReleaseTracks.map(async (track) => ({
+    ...track,
+    file_url: await privateMediaUrl(String(track.file_url || track.audio_path || '')),
+  })))
   const distributionJobs = jobsResponse.ok ? await jobsResponse.json() : []
   const profileFlagsRow = profileFlagsResponse.ok ? (await profileFlagsResponse.json())[0] : null
   const profileFlags = {
@@ -36,7 +57,7 @@ export async function GET(request: Request) {
     distributionEnabled: Boolean(profileFlagsRow?.distribution_enabled),
     premiumPlanId: profileFlagsRow?.premium_plan_id || null,
   }
-  const pathBundle = { releases, distributionJobs, profileFlags }
+  const pathBundle = { releases, releaseTracks, distributionJobs, profileFlags }
   if (!['writer', 'show_creator', 'admin'].includes(identity.profile.role)) {
     return NextResponse.json({ profile: identity.profile, ...empty, tracks, trackRequests, ...pathBundle })
   }
@@ -49,7 +70,11 @@ export async function GET(request: Request) {
   ]
   const responses = await Promise.all(workflowRequests)
   if (responses.some(response => !response.ok)) return NextResponse.json({ error: 'Creator tables are not ready. Run supabase-creator-workflows.sql.' }, { status: 503 })
-  const [applications, articles, briefs, shows, episodes] = await Promise.all(responses.map(response => response.json()))
+  const [applications, articles, briefs, shows, rawEpisodes] = await Promise.all(responses.map(response => response.json()))
+  const episodes = await Promise.all((Array.isArray(rawEpisodes) ? rawEpisodes : []).map(async (episode: Record<string, unknown>) => ({
+    ...episode,
+    audio_url: await privateMediaUrl(String(episode.audio_path || '')),
+  })))
   return NextResponse.json({
     profile: identity.profile,
     application: applications[0] || null,

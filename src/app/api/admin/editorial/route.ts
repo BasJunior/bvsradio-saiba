@@ -107,6 +107,8 @@ async function loadBeatsSection() {
     (rawBeats as Array<Record<string, unknown>>).map(async (beat) => ({
       ...beat,
       preview_path: await signStoredMedia(String(beat.preview_path || '')),
+      master_path: await signStoredMedia(String(beat.master_path || '')),
+      review_audio_url: await signStoredMedia(String(beat.master_path || beat.preview_path || '')),
       artwork_path: await signStoredMedia(String(beat.artwork_path || '')),
     })),
   )
@@ -134,11 +136,13 @@ async function loadReleasesSection(identity: NonNullable<Awaited<ReturnType<type
       .filter((track) => track.isrc)
       .map((track) => [String(track.id), String(track.isrc)]),
   )
-  const releaseTracks = (rawReleaseTracks as Array<Record<string, unknown>>).map((track) => ({
+  const releaseTracks = await Promise.all((rawReleaseTracks as Array<Record<string, unknown>>).map(async (track) => ({
     ...track,
+    file_url: await signStoredMedia(String(track.file_url || track.audio_path || '')),
+    review_audio_url: await signStoredMedia(String(track.file_url || track.audio_path || '')),
     in_rotation: track.track_id ? rotationByTrackId.get(String(track.track_id)) === true : false,
     isrc: track.track_id ? isrcByTrackId.get(String(track.track_id)) || null : null,
-  }))
+  })))
   const releaseClearanceEvidence = await Promise.all(
     (rawReleaseClearanceEvidence as Array<Record<string, unknown>>).map(async (evidence) => ({
       ...evidence,

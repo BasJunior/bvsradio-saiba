@@ -13,6 +13,7 @@ import MyBeatStore from "@/components/MyBeatStore";
 import CreatorInsights from "@/components/CreatorInsights";
 import StudioPremiumDesk from "@/components/StudioPremiumDesk";
 import DistributionPathTimeline from "@/components/DistributionPathTimeline";
+import FullAccessAudioPlayer from "@/components/FullAccessAudioPlayer";
 import { CreatorMarketplaceDesk } from "@/components/CreatorMarketplaceDesk";
 import CreatorServiceOrders from "@/components/CreatorServiceOrders";
 import {
@@ -28,12 +29,16 @@ type WorkflowItem = {
   editor_notes?: string;
   review_notes?: string;
   scheduled_for?: string;
+  audio_url?: string;
 };
 type ShowItem = WorkflowItem & { status: string };
 type Release = {
   id: string;
   title: string;
+  artist_name?: string;
   genre?: string;
+  file_url?: string;
+  artwork_url?: string;
   editorial_status: string;
   editorial_notes?: string;
   is_public: boolean;
@@ -61,6 +66,13 @@ type AlbumRelease = {
   track_count?: number;
   created_at: string;
   published_at?: string | null;
+};
+type ReleaseMember = {
+  id: string;
+  release_id: string;
+  position: number;
+  title: string;
+  file_url?: string;
 };
 type DistJob = {
   id: string;
@@ -94,6 +106,7 @@ type Data = {
   tracks: Release[];
   trackRequests: TrackRequest[];
   releases?: AlbumRelease[];
+  releaseTracks?: ReleaseMember[];
   distributionJobs?: DistJob[];
   profileFlags?: ProfileFlags;
 };
@@ -228,7 +241,7 @@ export default function CreatorStudio() {
       {artist && (
         <div id="releases" className="scroll-mt-24">
           <CreatorDropDown label="Releases and artist requests" count={(data.tracks || []).length} defaultOpen>
-            <ArtistReleases tracks={data.tracks || []} requests={data.trackRequests || []} jobs={data.distributionJobs || []} releases={data.releases || []} flags={data.profileFlags} act={act} />
+            <ArtistReleases tracks={data.tracks || []} requests={data.trackRequests || []} jobs={data.distributionJobs || []} releases={data.releases || []} releaseTracks={data.releaseTracks || []} flags={data.profileFlags} act={act} />
           </CreatorDropDown>
         </div>
       )}
@@ -835,6 +848,7 @@ function ArtistReleases({
   requests,
   jobs,
   releases,
+  releaseTracks,
   flags,
   act,
 }: {
@@ -842,6 +856,7 @@ function ArtistReleases({
   requests: TrackRequest[];
   jobs: DistJob[];
   releases: AlbumRelease[];
+  releaseTracks: ReleaseMember[];
   flags?: ProfileFlags;
   act: (b: Record<string, unknown>) => Promise<void>;
 }) {
@@ -907,6 +922,12 @@ function ArtistReleases({
                       Editor: {release.editorial_notes}
                     </p>
                   )}
+                  {releaseTracks.filter((member) => member.release_id === release.id).map((member) => (
+                    <div key={member.id} className="mt-3 rounded-xl border border-white/10 p-3">
+                      <p className="mb-2 text-xs text-text-secondary">{member.position}. {member.title}</p>
+                      <FullAccessAudioPlayer accessId={`studio-release:${member.id}`} title={member.title} artist={release.artist_name || 'Your submission'} src={member.file_url} sourceLabel={`Studio · ${release.title} · full submission`} compact />
+                    </div>
+                  ))}
                   {!(flags?.premiumActive && flags?.distributionEnabled) &&
                     release.is_public && (
                       <p className="mt-3 text-xs text-amber-100">
@@ -957,6 +978,9 @@ function ArtistReleases({
                     Editor: {track.editorial_notes}
                   </p>
                 )}
+                <div className="mt-3">
+                  <FullAccessAudioPlayer accessId={`studio-track:${track.id}`} title={track.title} artist={track.artist_name || 'Your submission'} src={track.file_url} artwork={track.artwork_url} sourceLabel="Studio · your full submission" genre={track.genre} compact />
+                </div>
                 <p className="mt-3 text-xs text-text-secondary">
                   {track.is_downloadable
                     ? `${track.licence_type.replaceAll("_", " ")} · $${Number(track.download_price || 0).toFixed(2)}`
@@ -1072,6 +1096,9 @@ function Queue({
               <p className="mt-2 text-xs text-text-secondary">
                 Scheduled {new Date(item.scheduled_for).toLocaleString()}
               </p>
+            )}
+            {item.audio_url && (
+              <div className="mt-3"><FullAccessAudioPlayer accessId={`studio-work:${item.id}`} title={item.title || item.topic || 'Submission'} artist="Your submission" src={item.audio_url} sourceLabel="Studio · your full submission" compact /></div>
             )}
           </article>
         ))}
