@@ -1,11 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { canonicalBvsShareUrl } from '@/lib/share-url'
 
 export default function ShareCreatorButton({ name }: { name: string }) {
   const [copied, setCopied] = useState(false)
   const share = async () => {
-    const url = window.location.href
+    const url = canonicalBvsShareUrl(window.location.href)
     try {
       if (navigator.share) await navigator.share({ title: `${name} on BVS Radio`, url })
       else {
