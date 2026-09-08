@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
+import AppBeatPreviewPlayer from "@/components/app-vnext/AppBeatPreviewPlayer";
 import AppDownloadButton from "@/components/app-vnext/AppDownloadButton";
 import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
 import { useStationPlayer } from "@/components/StationPlayer";
@@ -288,7 +289,15 @@ export default function AppExploreClient({
                 <h3 className="text-lg font-semibold">{item.title}</h3>
                 <p className="text-sm text-white/46">{item.producer || "BVS producer"}</p>
                 <p className="mt-1 text-xs text-white/32">{[item.genre, item.mood, item.bpm ? `${item.bpm} BPM` : ""].filter(Boolean).join(" · ")}</p>
-                {item.previewUrl ? <audio controls preload="none" src={item.previewUrl} className="mt-3 h-10 w-full" /> : null}
+                {item.previewUrl ? (
+                  <AppBeatPreviewPlayer
+                    title={item.title}
+                    artist={item.producer || "BVS producer"}
+                    preview={item.previewUrl}
+                    artwork={item.artworkUrl}
+                    genre={item.genre}
+                  />
+                ) : null}
                 <Link href={`/app/${surface}/beat/${item.id}`} className="mt-3 inline-flex min-h-10 items-center rounded-full border border-brand/30 px-4 text-sm font-semibold text-brand transition hover:bg-brand/10">Open beat</Link>
               </article>
             ))}
