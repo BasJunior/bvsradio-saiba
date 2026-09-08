@@ -11,6 +11,7 @@ import MobileIosBoundary from "@/components/MobileIosBoundary";
 import PremiumInstantPromoBanner from "@/components/PremiumInstantPromoBanner";
 import EditorialCommandCenter from "@/components/EditorialCommandCenter";
 import EditorialWorkBridge from "@/components/EditorialWorkBridge";
+import EditorialWorkspaceNav from "@/components/EditorialWorkspaceNav";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import NowPlayingSwipeGestures from "@/components/NowPlayingSwipeGestures";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
@@ -106,6 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <PremiumInstantPromoBanner />
                   <EditorialCommandCenter />
                   <EditorialWorkBridge />
+                  <EditorialWorkspaceNav />
                   {children}
                 </main>
                 <Footer />
