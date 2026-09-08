@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getArtistPremiumStatus } from '@/lib/premium-billing'
+import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
@@ -39,7 +40,7 @@ export async function GET(request: Request) {
   const user = (await userResponse.json()) as { id: string; email?: string }
   const adminHeaders = { apikey: service, Authorization: `Bearer ${service}` }
   const [profileResponse, staffResponse, anyStaffResponse] = await Promise.all([
-    fetch(`${url}/rest/v1/profiles?id=eq.${user.id}&select=role,is_producer`, {
+    fetch(`${url}/rest/v1/profiles?id=eq.${user.id}&select=role,is_producer,username,display_name,avatar_url`, {
       headers: adminHeaders,
       cache: 'no-store',
     }),
@@ -55,10 +56,18 @@ export async function GET(request: Request) {
   const profiles = profileResponse.ok ? await profileResponse.json() : []
   const staff = staffResponse.ok ? await staffResponse.json() : []
   const anyStaff = anyStaffResponse.ok ? await anyStaffResponse.json() : []
-  const profileRole = String(profiles[0]?.role || 'listener')
-  const isProducerFlag = Boolean(profiles[0]?.is_producer)
+  const profile = profiles[0] || {}
+  const profileRole = String(profile.role || 'listener')
+  const isProducerFlag = Boolean(profile.is_producer)
   const staffRole = staff[0]?.role ? String(staff[0].role) : null
   const email = (user.email || '').toLowerCase().trim()
+  const rawAvatarUrl = String(profile.avatar_url || '').trim()
+  const normalizedAvatarUrl = mediaUrlForStoredValue(rawAvatarUrl) || rawAvatarUrl
+  const profileAvatarUrl = normalizedAvatarUrl && !normalizedAvatarUrl.includes('default-avatar')
+    ? normalizedAvatarUrl
+    : null
+  const profileDisplayName = String(profile.display_name || '').trim() || null
+  const profileUsername = String(profile.username || '').trim() || null
   // Source of truth: active editorial_staff owner/administrator. Bootstrap only if table empty.
   const staffTableEmpty = !Array.isArray(anyStaff) || anyStaff.length === 0
   const isOwner =
@@ -91,6 +100,9 @@ export async function GET(request: Request) {
     authenticated: true,
     email: user.email,
     profileRole,
+    profileAvatarUrl,
+    profileDisplayName,
+    profileUsername,
     staffRole,
     premiumActive,
     premiumUntil,
