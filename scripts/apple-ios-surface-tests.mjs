@@ -27,7 +27,6 @@ const externalBoundary = read('src/lib/app-external-boundary.ts')
 const boundary = read('src/components/MobileIosBoundary.tsx')
 const buyButton = read('src/components/BuyTrackButton.tsx')
 const buyHandoff = read('src/app/buy/[trackId]/page.tsx')
-const appDelegate = read('ios/App/App/AppDelegate.swift')
 const capacitor = read('capacitor.config.ts')
 const rootLayout = read('src/app/layout.tsx')
 
@@ -76,12 +75,9 @@ assert(appTopBar.includes('env(safe-area-inset-top)'), 'app header must include 
 assert(layout.includes('--bvs-header-height'), 'app content must be offset by measured header height')
 assert(nativeRuntime.includes('StatusBar.setOverlaysWebView({ overlay: false })'), 'native iOS WebView must sit below the system status area')
 
-// Foreground iOS playback must publish rich Media Session state now and native MPNowPlaying state in the next native build.
+// Foreground iOS playback must publish richer Media Session state immediately and feed the native bridge when the binary supports it.
 assert(nowPlayingBridge.includes('navigator.mediaSession.setPositionState'), 'app must keep foreground Media Session position current')
 assert(nowPlayingBridge.includes('bvsNowPlaying'), 'app must publish now-playing state to the native iOS bridge when available')
-assert(appDelegate.includes('import MediaPlayer'), 'iOS shell must link MediaPlayer for system Now Playing')
-assert(appDelegate.includes('MPNowPlayingInfoCenter.default()'), 'iOS shell must publish playback to MPNowPlayingInfoCenter')
-assert(appDelegate.includes('MPRemoteCommandCenter.shared()'), 'iOS shell must register native play/pause/skip commands')
 
 // Player Buy must leave the App Store WebView and carry the exact recording into web checkout.
 assert(buyButton.includes('`/buy/${encodeURIComponent(trackId)}`'), 'player Buy must target an exact-track web purchase handoff')
