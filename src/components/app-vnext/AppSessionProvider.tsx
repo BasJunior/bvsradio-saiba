@@ -19,6 +19,8 @@ type AppSessionValue = {
   access: AppAccess | null;
   token: string;
   avatarUrl: string | null;
+  profileDisplayName: string | null;
+  profileUsername: string | null;
   loading: boolean;
   signedIn: boolean;
   isCreator: boolean;
@@ -34,6 +36,8 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   const [access, setAccess] = useState<AppAccess | null>(null);
   const [token, setToken] = useState("");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [profileDisplayName, setProfileDisplayName] = useState<string | null>(null);
+  const [profileUsername, setProfileUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [premiumActive, setPremiumActive] = useState(false);
   const [premiumPlanLabel, setPremiumPlanLabel] = useState<string | null>(null);
@@ -41,6 +45,8 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   const hydrate = useCallback(async () => {
     if (!isSupabaseConfigured()) {
       setAvatarUrl(null);
+      setProfileDisplayName(null);
+      setProfileUsername(null);
       setLoading(false);
       return;
     }
@@ -52,6 +58,8 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
     if (!session?.access_token) {
       setAccess(null);
       setAvatarUrl(null);
+      setProfileDisplayName(null);
+      setProfileUsername(null);
       setPremiumActive(false);
       setPremiumPlanLabel(null);
       setLoading(false);
@@ -65,16 +73,22 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
       const payload = (await response.json()) as {
         access?: AppAccess;
         profileAvatarUrl?: string | null;
+        profileDisplayName?: string | null;
+        profileUsername?: string | null;
         premiumActive?: boolean;
         premiumPlanLabel?: string | null;
       };
       setAccess(payload.access || {});
       setAvatarUrl(payload.profileAvatarUrl || null);
+      setProfileDisplayName(payload.profileDisplayName || null);
+      setProfileUsername(payload.profileUsername || null);
       setPremiumActive(Boolean(payload.premiumActive));
       setPremiumPlanLabel(payload.premiumPlanLabel ?? null);
     } else {
       setAccess(null);
       setAvatarUrl(null);
+      setProfileDisplayName(null);
+      setProfileUsername(null);
       setPremiumActive(false);
       setPremiumPlanLabel(null);
     }
@@ -102,6 +116,8 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
       access,
       token,
       avatarUrl,
+      profileDisplayName,
+      profileUsername,
       loading,
       signedIn: Boolean(user),
       isCreator,
@@ -109,7 +125,7 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
       premiumPlanLabel,
       refresh: hydrate,
     }),
-    [access, avatarUrl, hydrate, isCreator, loading, premiumActive, premiumPlanLabel, token, user],
+    [access, avatarUrl, hydrate, isCreator, loading, premiumActive, premiumPlanLabel, profileDisplayName, profileUsername, token, user],
   );
 
   return <AppSessionContext.Provider value={value}>{children}</AppSessionContext.Provider>;
