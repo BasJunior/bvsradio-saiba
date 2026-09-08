@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import AppBeatPreviewPlayer from "@/components/app-vnext/AppBeatPreviewPlayer";
 import AppShareButton from "@/components/app-vnext/AppShareButton";
 import { listPublishedBeats, publicStorageUrl } from "@/lib/beatstore-server";
 import { getPublishedProducers } from "@/lib/artist-content";
@@ -44,7 +45,13 @@ export default async function AppBeatPage({ params }: { params: Promise<{ surfac
 
     {preview ? <section className="mt-8 rounded-[1.75rem] border border-brand/20 bg-brand/[.05] p-5">
       <p className="text-xs uppercase tracking-[.18em] text-brand">Preview</p>
-      <audio controls preload="metadata" src={preview} className="mt-3 w-full" />
+      <AppBeatPreviewPlayer
+        title={beat.title}
+        artist={producerName}
+        preview={preview}
+        artwork={artwork || undefined}
+        genre={beat.genre || undefined}
+      />
       {primaryLicence?.id ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/15 p-4">
         <div>
           <p className="text-sm font-semibold">Ready to use this beat?</p>
