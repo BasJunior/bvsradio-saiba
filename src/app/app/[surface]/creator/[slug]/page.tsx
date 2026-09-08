@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import LibraryAction from "@/components/LibraryAction";
 import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
 import AppShareButton from "@/components/app-vnext/AppShareButton";
-import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import type { DiscoveryItem } from "@/lib/discovery";
 import { getPublicArtist, getPublishedArtists, getPublishedProducers } from "@/lib/artist-content";
 
@@ -45,8 +44,6 @@ export default async function AppCreatorPage({
   const as = String(Array.isArray(asRaw) ? asRaw[0] : asRaw || "").toLowerCase();
   const hasProducerCatalogue = Boolean(profile.beats?.length);
   const producerContext = as === "producer" && hasProducerCatalogue;
-  // Current production PublicArtist already resolves the approved creator name.
-  // Keep the app on that contract rather than depending on vNext-only identity fields.
   const displayName = profile.name;
   const creatorPath = `/app/${surface}/creator/${encodeURIComponent(profile.id)}`;
   const item: DiscoveryItem = {
@@ -66,7 +63,6 @@ export default async function AppCreatorPage({
     }
   }
 
-  const appSurface = surface as AppSurface;
   return (
     <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
       <Link href={`/app/${surface}/explore`} className="text-sm text-text-secondary">← Explore</Link>
@@ -82,7 +78,13 @@ export default async function AppCreatorPage({
           <p className="mt-4 max-w-2xl text-sm leading-6 text-text-secondary">{profile.bio}</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <LibraryAction item={item} section="follows" />
-            <AppShareButton title={displayName} text={`Follow ${displayName} on BVS`} path={`${creatorPath}${producerContext ? "?as=producer" : ""}`} />
+            <AppShareButton
+              title={displayName}
+              text={`Follow ${displayName} on BVS`}
+              path={`/artist/${encodeURIComponent(profile.username)}`}
+              image={profile.image}
+              kicker={`Verified ${producerContext ? "producer" : profile.role}`}
+            />
             {hasProducerCatalogue && !producerContext ? (
               <Link href={`${creatorPath}?as=producer`} className="min-h-10 rounded-full border border-brand/35 px-4 py-2 text-sm text-brand">Producer view</Link>
             ) : null}
@@ -146,10 +148,6 @@ export default async function AppCreatorPage({
           </div>
         </section>
       ) : null}
-
-      <div className="mt-9 rounded-2xl border border-white/10 p-4 text-sm text-text-secondary">
-        App surface: {appSurface === "ios" ? "iOS" : "Android"}. Creator follow, playlists, sharing and scene connections stay inside the vNext navigation shell.
-      </div>
     </div>
   );
 }
