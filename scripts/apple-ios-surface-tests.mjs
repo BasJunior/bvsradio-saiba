@@ -20,9 +20,14 @@ const nav = read('src/components/app-vnext/AppBottomNav.tsx')
 const bootstrap = read('src/components/app-vnext/AppBootstrap.tsx')
 const appSession = read('src/components/app-vnext/AppSessionProvider.tsx')
 const appTopBar = read('src/components/app-vnext/AppTopBar.tsx')
+const nativeRuntime = read('src/components/app-vnext/AppNativeRuntime.tsx')
+const nowPlayingBridge = read('src/components/app-vnext/AppNowPlayingBridge.tsx')
 const accessRoute = read('src/app/api/auth/access/route.ts')
 const externalBoundary = read('src/lib/app-external-boundary.ts')
 const boundary = read('src/components/MobileIosBoundary.tsx')
+const buyButton = read('src/components/BuyTrackButton.tsx')
+const buyHandoff = read('src/app/buy/[trackId]/page.tsx')
+const appDelegate = read('ios/App/App/AppDelegate.swift')
 const capacitor = read('capacitor.config.ts')
 const rootLayout = read('src/app/layout.tsx')
 
@@ -39,6 +44,7 @@ assert(rightsFilters.length >= 2, 'published BeatStore primary and fallback quer
 assert(layout.includes('@/components/app-vnext/AppBootstrap'), 'app layout must mount vNext bootstrap')
 assert(layout.includes('@/components/app-vnext/AppBottomNav'), 'app layout must mount vNext bottom nav')
 assert(layout.includes('<AppNativeRuntime'), 'app layout must mount native runtime')
+assert(layout.includes('<AppNowPlayingBridge'), 'app layout must mount foreground now-playing bridge')
 assert(nav.includes('grid-cols-5'), 'vNext must keep five bottom tabs')
 for (const label of ['Home', 'Discover', 'Library', 'You']) {
   assert(nav.includes(`label: "${label}"`), `vNext bottom nav must contain ${label}`)
@@ -64,6 +70,23 @@ assert(appSession.includes('setProfileDisplayName(payload.profileDisplayName || 
 assert(appSession.includes('setProfileUsername(payload.profileUsername || null)'), 'app session must hydrate the profile username')
 assert(appTopBar.includes('profileDisplayName ||'), 'app header initial must prefer the profile display name')
 assert(appTopBar.includes('profileUsername ||'), 'app header initial must fall back to the profile username')
+
+// iPhone system chrome must not cover the BVS header.
+assert(appTopBar.includes('env(safe-area-inset-top)'), 'app header must include the iPhone top safe area')
+assert(layout.includes('--bvs-header-height'), 'app content must be offset by measured header height')
+assert(nativeRuntime.includes('StatusBar.setOverlaysWebView({ overlay: false })'), 'native iOS WebView must sit below the system status area')
+
+// Foreground iOS playback must publish rich Media Session state now and native MPNowPlaying state in the next native build.
+assert(nowPlayingBridge.includes('navigator.mediaSession.setPositionState'), 'app must keep foreground Media Session position current')
+assert(nowPlayingBridge.includes('bvsNowPlaying'), 'app must publish now-playing state to the native iOS bridge when available')
+assert(appDelegate.includes('import MediaPlayer'), 'iOS shell must link MediaPlayer for system Now Playing')
+assert(appDelegate.includes('MPNowPlayingInfoCenter.default()'), 'iOS shell must publish playback to MPNowPlayingInfoCenter')
+assert(appDelegate.includes('MPRemoteCommandCenter.shared()'), 'iOS shell must register native play/pause/skip commands')
+
+// Player Buy must leave the App Store WebView and carry the exact recording into web checkout.
+assert(buyButton.includes('`/buy/${encodeURIComponent(track.id)}`'), 'player Buy must target an exact-track web purchase handoff')
+assert(buyHandoff.includes('upsertTrackCartLine'), 'web purchase handoff must place the selected recording in checkout')
+assert(buyHandoff.includes('window.location.replace("/checkout")'), 'exact-track handoff must continue to canonical checkout')
 
 // Navigation guard must preserve the app shell for contained routes and externalise legal/licence destinations.
 assert(bootstrap.includes('window.localStorage.setItem("bvs_app_version", "vnext")'), 'bootstrap must identify vNext shell')
