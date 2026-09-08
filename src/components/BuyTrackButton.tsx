@@ -40,15 +40,16 @@ export default function BuyTrackButton({
 
   if (!track || price === null) return null;
 
+  const trackId = String(track.id || "");
   const label =
     variant === "compact" ? `Buy · $${price.toFixed(price % 1 ? 2 : 0)}` : `Buy / Support · $${price.toFixed(2)}`;
-  const purchaseHref = `/buy/${encodeURIComponent(track.id)}`;
+  const purchaseHref = `/buy/${encodeURIComponent(trackId)}`;
 
   const prepareWebCart = () => {
-    if (!track.id || busy) return;
+    if (!trackId || busy) return;
     setBusy(true);
     upsertTrackCartLine({
-      id: track.id,
+      id: trackId,
       title: track.title,
       artist: track.artist,
       price,
@@ -57,7 +58,7 @@ export default function BuyTrackButton({
     });
     trackEvent("checkout_started", {
       source: "player_buy_cta",
-      track_id: track.id,
+      track_id: trackId,
       price,
       variant,
     });
