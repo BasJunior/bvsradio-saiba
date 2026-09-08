@@ -36,6 +36,9 @@ export default async function MobileVNextLayout({
         html[data-bvs-app-shell="true"] [aria-label="Install BVS Radio"] { display: none !important; }
         html[data-bvs-network="offline"] [data-bvs-network-dependent="true"] { opacity: .58; }
         html[data-bvs-data-effective="saver"] [data-bvs-data-heavy="true"] { display: none !important; }
+        html[data-bvs-app-shell="true"] .bvs-page-main {
+          padding-top: var(--bvs-header-height, calc(4rem + env(safe-area-inset-top))) !important;
+        }
       `}</style>
       <AppTopBar surface={surface} />
       <div className="bvs-app-stage min-h-[calc(100dvh-4rem)] pb-4">{children}</div>
