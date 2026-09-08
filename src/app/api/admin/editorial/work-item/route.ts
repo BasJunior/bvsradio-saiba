@@ -253,7 +253,7 @@ async function workBeat(identity: Awaited<ReturnType<typeof editorialIdentity>>,
   const licences = Array.isArray(beat.beat_licence_options) ? beat.beat_licence_options as Array<Record<string, unknown>> : []
   return {
     kind: 'beat', id, title: text(beat.title) || 'Untitled beat', subtitle: [producer, text(beat.genre)].filter(Boolean).join(' · '), status: text(beat.status), section: 'ed-beats', createdAt: text(beat.created_at) || undefined,
-    artwork: await signStoredMedia(text(beat.artwork_path)), audio: await signStoredMedia(text(beat.preview_path)), description: text(beat.description) || undefined,
+    artwork: await signStoredMedia(text(beat.artwork_path)), audio: await signStoredMedia(text(beat.master_path) || text(beat.preview_path)), description: text(beat.description) || undefined,
     fields: [
       { label: 'Producer', value: producer || '—' }, { label: 'Genre', value: text(beat.genre) || '—' }, { label: 'Mood', value: text(beat.mood) || '—' }, { label: 'BPM', value: text(beat.bpm) || '—' }, { label: 'Key', value: text(beat.musical_key) || '—' }, { label: 'Public', value: yesNo(beat.is_public) }, { label: 'Submitted', value: dateValue(beat.created_at) },
     ],

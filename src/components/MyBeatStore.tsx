@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
+import FullAccessAudioPlayer from '@/components/FullAccessAudioPlayer'
 
 type Licence = {
   id?: string
@@ -22,6 +23,8 @@ type Beat = {
   status: string
   is_public?: boolean
   preview_path?: string | null
+  master_path?: string | null
+  artwork_path?: string | null
   editorial_notes?: string | null
   created_at?: string
   beat_licence_options?: Licence[]
@@ -457,6 +460,9 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
                   {beat.editorial_notes && (
                     <p className="mt-2 text-sm text-text-secondary">Editor: {beat.editorial_notes}</p>
                   )}
+                  <div className="mt-3">
+                    <FullAccessAudioPlayer accessId={`studio-beat:${beat.id}`} title={beat.title} artist="Your BeatStore submission" src={beat.master_path || beat.preview_path} artwork={beat.artwork_path} sourceLabel="Studio · your full beat" genre={beat.genre} compact />
+                  </div>
                   <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
                     <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
                     <div className="mt-2 space-y-2">
