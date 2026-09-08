@@ -12,7 +12,7 @@
     "test:safe-floor": "node --experimental-strip-types scripts/safe-floor-tests.mjs",
     "test:rights-compliance": "node --experimental-strip-types scripts/rights-compliance-tests.mjs",
     "test:app-flow": "node --experimental-strip-types scripts/app-flow-tests.mjs",
-    "test:apple-ios-surface": "node scripts/apple-ios-surface-tests.mjs",
+    "test:apple-ios-surface": "node scripts/apple-ios-surface-tests.mjs && node scripts/share-overlay-tests.mjs",
     "test:ios-surface-lock": "node --experimental-strip-types scripts/ios-surface-lock-tests.mjs",
     "test:studio-intent": "node scripts/studio-intent-tests.mjs",
     "test:song-workspace": "node scripts/song-workspace-tests.mjs",
@@ -60,7 +60,7 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   },
-  "description": "This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
+  "description": "This is a [Next.js](https://nextjs.org/docs/app/api-reference/cli/create-next-app).",
   "main": "index.js",
   "keywords": [],
   "author": "",
