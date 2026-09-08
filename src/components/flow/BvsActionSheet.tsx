@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import type { BvsAction, BvsObject } from "@/lib/bvs-object";
 import { recordFlowOpen } from "@/lib/flow-session";
 import { trackEvent } from "@/lib/analytics";
+import { shareBvs } from "@/lib/app-native";
+import { canonicalBvsShareUrl } from "@/lib/share-url";
 import { clearCurrentTransientLayer, currentTransientLayer, dismissTransientLayer, openTransientLayer } from "@/lib/transient-navigation";
 
 const IOS_ROOT = "/app/ios";
@@ -41,12 +43,11 @@ function queueAction(action: BvsAction, object: BvsObject) {
 }
 
 async function shareObject(object: BvsObject) {
-  const url = new URL(object.route, window.location.origin).href;
-  if (navigator.share) {
-    await navigator.share({ title: object.title, text: object.subtitle || object.contextLabel || "BVS Radio", url });
-    return;
-  }
-  await navigator.clipboard.writeText(url);
+  await shareBvs({
+    title: object.title,
+    text: object.subtitle || object.contextLabel || "BVS Radio",
+    url: canonicalBvsShareUrl(object.route),
+  });
 }
 
 export default function BvsActionSheet({

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { useStationPlayer } from '@/components/StationPlayer'
 import { trackEvent } from '@/lib/analytics'
+import { canonicalBvsShareUrl } from '@/lib/share-url'
 import type { StationTrack } from '@/lib/station'
 
 type Playlist = {
@@ -140,7 +141,7 @@ export default function PlaylistDetailView({ id }: { id: string }) {
   }
 
   const share = async () => {
-    const shareUrl = window.location.href
+    const shareUrl = canonicalBvsShareUrl(`/playlist/${id}`)
     try {
       if (navigator.share) await navigator.share({ title: playlist?.title || 'BVS Playlist', url: shareUrl })
       else await navigator.clipboard.writeText(shareUrl)

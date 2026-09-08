@@ -37,7 +37,7 @@ export default async function AppBeatPage({ params }: { params: Promise<{ surfac
         <p className="mt-3 text-sm text-text-secondary">{[beat.genre, beat.mood, beat.bpm ? `${beat.bpm} BPM` : "", beat.musical_key].filter(Boolean).join(" · ")}</p>
         {beat.description ? <p className="mt-4 text-sm leading-6 text-text-secondary">{beat.description}</p> : null}
         <div className="mt-5 flex flex-wrap gap-2">
-          <AppShareButton title={beat.title} text={`${beat.title} by ${producerName} on BVS BeatStore`} path={`/app/${surface}/beat/${beat.id}`} />
+          <AppShareButton title={beat.title} text={`${beat.title} by ${producerName} on BVS BeatStore`} path={`/beat/${encodeURIComponent(beat.id)}`} image={artwork || undefined} kicker="BVS BeatStore" />
           <a href={`https://bvsradio.com/beat/${encodeURIComponent(beat.id)}`} target="_blank" rel="noopener noreferrer" className="min-h-10 rounded-full border border-brand/35 px-4 py-2 text-sm font-semibold text-brand">Open on BVS web</a>
         </div>
       </div>

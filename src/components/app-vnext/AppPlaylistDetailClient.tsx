@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { AppPlaylist } from "@/components/app-vnext/AppPlaylists";
+import AppShareButton from "@/components/app-vnext/AppShareButton";
 import { useStationPlayer } from "@/components/StationPlayer";
-import { shareBvs } from "@/lib/app-native";
 import { recordListening } from "@/lib/library";
 import { mediaUrlForStoredValue } from "@/lib/media-url";
 
@@ -128,10 +128,10 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
         <button type="button" disabled={playableTracks.length < 2} onClick={shufflePlay} className="min-h-11 rounded-full border border-brand/35 px-5 text-sm font-semibold text-brand disabled:opacity-40">Shuffle play</button>
         <button type="button" onClick={() => setEditing((value) => !value)} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Edit</button>
         <button type="button" onClick={() => void patchPlaylist({ isPublic: playlist.is_public === false })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Make {playlist.is_public === false ? "public" : "private"}</button>
-        {playlist.is_public !== false ? <button type="button" onClick={() => void shareBvs({ title: playlist.title, text: `Listen to ${playlist.title} on BVS`, url: `${window.location.origin}/app/${surface}/playlist/${playlist.id}` })} className="min-h-10 rounded-full border border-white/15 px-4 text-sm">Share</button> : null}
+        {playlist.is_public !== false ? <AppShareButton title={playlist.title} text={`Listen to ${playlist.title} on BVS`} path={`/playlist/${encodeURIComponent(playlist.id)}`} kicker="BVS Playlist" /> : null}
         <button type="button" onClick={() => void destroy()} className="min-h-10 rounded-full border border-red-400/25 px-4 text-sm text-red-200">Delete</button>
       </div>
-      {tracks.length && playableTracks.length !== tracks.length ? <p className="mt-3 text-xs text-text-secondary">{tracks.length - playableTracks.length} saved track{tracks.length - playableTracks.length === 1 ? " is" : "s are"} not cleared for this app surface or currently unavailable.</p> : null}
+      {tracks.length && playableTracks.length !== tracks.length ? <p className="mt-3 text-xs text-text-secondary">{tracks.length - playableTracks.length} saved track{tracks.length - playableTracks.length === 1 ? " is" : "s are"} not currently available on this device.</p> : null}
     </div>
     {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
     <div className="mt-6 space-y-2">{tracks.map((track, index) => {
@@ -142,7 +142,7 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
           {track.artwork_url ? <Image src={mediaUrlForStoredValue(track.artwork_url) || track.artwork_url} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center bg-white/5 text-xs text-brand">BVS</span>}
           {playable ? <span className="absolute inset-0 grid place-items-center bg-black/25 text-lg text-white">▶</span> : null}
         </button>
-        <div className="min-w-0 flex-1"><button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="block w-full text-left disabled:cursor-default"><h2 className="truncate font-semibold">{track.title || "BVS track"}</h2><p className="truncate text-sm text-text-secondary">{track.artist_name || "BVS artist"}</p></button>{playable && stationTrack ? <div className="mt-2 flex flex-wrap gap-1"><button type="button" onClick={() => player.playNext(stationTrack)} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">Play next</button><button type="button" onClick={() => player.addToQueue(stationTrack)} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">Add to queue</button></div> : <p className="mt-1 text-xs text-amber-200/80">Unavailable on this app surface</p>}</div>
+        <div className="min-w-0 flex-1"><button type="button" disabled={!playable} onClick={() => playFrom(track.track_id)} className="block w-full text-left disabled:cursor-default"><h2 className="truncate font-semibold">{track.title || "BVS track"}</h2><p className="truncate text-sm text-text-secondary">{track.artist_name || "BVS artist"}</p></button>{playable && stationTrack ? <div className="mt-2 flex flex-wrap gap-1"><button type="button" onClick={() => player.playNext(stationTrack)} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">Play next</button><button type="button" onClick={() => player.addToQueue(stationTrack)} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">Add to queue</button></div> : <p className="mt-1 text-xs text-amber-200/80">Unavailable here</p>}</div>
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" disabled={index === 0} onClick={() => void move(index, -1)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 disabled:opacity-25" aria-label="Move up">↑</button>
           <button type="button" disabled={index === tracks.length - 1} onClick={() => void move(index, 1)} className="grid h-9 w-9 place-items-center rounded-full border border-white/10 disabled:opacity-25" aria-label="Move down">↓</button>
