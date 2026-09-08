@@ -25,9 +25,8 @@ type Props = {
  * Primary sales CTA from the listening surface.
  * Free stream stays free; Buy adds a personal download and opens checkout.
  *
- * The href intentionally points outside /app/* so MobileIosBoundary opens the
- * exact-track purchase handoff in the normal BVS website/Safari instead of
- * trapping checkout inside the App Store WebView.
+ * The href is pinned to the canonical production website so an App Store build
+ * served from a beta/preview origin can never hand the buyer into beta checkout.
  */
 export default function BuyTrackButton({
   track,
@@ -43,7 +42,8 @@ export default function BuyTrackButton({
   const trackId = String(track.id || "");
   const label =
     variant === "compact" ? `Buy · $${price.toFixed(price % 1 ? 2 : 0)}` : `Buy / Support · $${price.toFixed(2)}`;
-  const purchaseHref = `/buy/${encodeURIComponent(trackId)}`;
+  const purchasePath = `/buy/${encodeURIComponent(trackId)}`;
+  const purchaseHref = `https://bvsradio.com${purchasePath}`;
 
   const prepareWebCart = () => {
     if (!trackId || busy) return;
