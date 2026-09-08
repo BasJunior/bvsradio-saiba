@@ -6,6 +6,7 @@ import AppExperienceStyle from "@/components/app-vnext/AppExperienceStyle";
 import AppGestureBridge from "@/components/app-vnext/AppGestureBridge";
 import AppLibrarySyncBridge from "@/components/app-vnext/AppLibrarySyncBridge";
 import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
+import AppNowPlayingBridge from "@/components/app-vnext/AppNowPlayingBridge";
 import AppStationFetchBridge from "@/components/app-vnext/AppStationFetchBridge";
 import AppTopBar from "@/components/app-vnext/AppTopBar";
 import { AppSessionProvider } from "@/components/app-vnext/AppSessionProvider";
@@ -25,6 +26,7 @@ export default async function MobileVNextLayout({
     <AppSessionProvider>
       <AppBootstrap surface={surface} />
       <AppNativeRuntime surface={surface} />
+      <AppNowPlayingBridge />
       <AppDataModeBridge surface={surface} />
       <AppLibrarySyncBridge />
       <AppStationFetchBridge />
