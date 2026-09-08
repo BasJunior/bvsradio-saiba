@@ -40,6 +40,17 @@ assert(layout.includes("<AppNativeRuntime"), "mobile route must mount native run
 assert(layout.includes("<AppSessionProvider>"), "mobile route must keep app session provider");
 assert(layout.includes("<AppBottomNav surface={surface}"), "mobile route must render vNext bottom navigation");
 
+// Root web chrome must never compete with vNext. This specifically blocks the
+// old four-tab MobileFlowNav and old app header from being streamed into /app/*.
+const rootLayout = read("src/app/layout.tsx");
+const rootChrome = read("src/components/layout/RootChrome.tsx");
+assert(rootLayout.includes("<RootNavbar />"), "root layout must use route-aware navbar wrapper");
+assert(rootLayout.includes("<RootMobileFlowNav />"), "root layout must use route-aware mobile nav wrapper");
+assert(!rootLayout.includes("<Navbar />"), "root layout must not mount legacy Navbar directly");
+assert(!rootLayout.includes("<MobileFlowNav />"), "root layout must not mount legacy MobileFlowNav directly");
+assert(rootChrome.includes('/^\\/app\\/(ios|android)(?:\\/|$)/'), "root chrome guard must recognize vNext iOS/Android routes");
+assert(rootChrome.includes("if (isVNextAppPath(pathname)) return null"), "legacy root chrome must return null on vNext routes");
+
 // Five-tab invariant: Home / Discover / Library / Create-or-Studio / You.
 const nav = read("src/components/app-vnext/AppBottomNav.tsx");
 assert(nav.includes("grid-cols-5"), "bottom navigation must render five columns");
@@ -104,4 +115,4 @@ assert(exists("src/app/beat/[id]/page.tsx"), "web beat workspace must remain pre
 assert(exists("src/components/beatstore/BeatWorkflow.tsx"), "web beat/Lyrics workflow must remain present");
 
 console.log("vNext iOS surface assertions passed.");
-console.log(JSON.stringify({ tabs: 5, libraryDefault: "all", beatWorkspacePreserved: true }, null, 2));
+console.log(JSON.stringify({ tabs: 5, libraryDefault: "all", legacyAppChrome: false, beatWorkspacePreserved: true }, null, 2));
