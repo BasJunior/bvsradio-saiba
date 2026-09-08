@@ -79,3 +79,35 @@ export function upsertTrackCartLine(input: {
   writeCartLines(merged)
   return merged
 }
+
+/** Add the authoritative selected licence for one beat. A new tier replaces the previous tier for that beat. */
+export function upsertBeatLicenceCartLine(input: {
+  beatId: string
+  licenceOptionId: string
+  title: string
+  producer?: string
+  licenceName?: string
+  price: number
+  artwork?: string
+  src?: string
+}): BvsCartLine[] {
+  const price = Number(input.price)
+  if (!input.beatId || !input.licenceOptionId || !Number.isFinite(price) || price <= 0) return readCartLines()
+  const lines = readCartLines().filter((line) => !(String(line.id) === String(input.beatId) && String(line.type || "") === "beat"))
+  const next: BvsCartLine = {
+    id: input.beatId,
+    title: input.title,
+    artist: input.producer || "BVS producer",
+    type: "beat",
+    price,
+    quantity: 1,
+    artwork: input.artwork || "",
+    src: input.src || "",
+    licence_option_id: input.licenceOptionId,
+    licence_name: input.licenceName || "Beat licence",
+    delivery: `${input.licenceName || "Beat licence"} — licensed files and terms released after payment is confirmed.`,
+  }
+  const merged = [...lines, next]
+  writeCartLines(merged)
+  return merged
+}
