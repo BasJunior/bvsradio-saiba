@@ -93,6 +93,63 @@ export default function AppExperienceStyle() {
         background: rgba(227,189,88,.28);
       }
 
+      /* Spotify-like compact player card on the contained mobile surface. */
+      @media (max-width: 767px) {
+        html[data-bvs-app-shell="true"] .bvs-persistent-player {
+          left: max(.45rem, env(safe-area-inset-left));
+          right: max(.45rem, env(safe-area-inset-right));
+          width: auto;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,.1);
+          border-radius: 1.15rem;
+          background: rgba(24,24,26,.96);
+          box-shadow: 0 16px 44px rgba(0,0,0,.48);
+        }
+
+        html[data-bvs-app-shell="true"] .bvs-persistent-player-inner {
+          padding-left: .65rem;
+          padding-right: .55rem;
+        }
+      }
+
+      /* Library layout preference: keep the same content but let listeners switch between rows and album-style cards. */
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .75rem;
+      }
+
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) > article {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: .65rem !important;
+        margin-top: 0 !important;
+        padding: .65rem !important;
+      }
+
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) > article > button:first-child {
+        grid-column: 1 / -1;
+        width: 100% !important;
+        height: auto !important;
+        aspect-ratio: 1 / 1;
+        border-radius: 1rem;
+      }
+
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) > article > a:nth-child(2) {
+        min-width: 0;
+      }
+
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) > article > :last-child {
+        align-self: center;
+      }
+
+      @media (min-width: 640px) {
+        html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
       @media (max-width: 639px) {
         .bvs-app-stage h1 { letter-spacing: -.04em; }
         .bvs-app-stage::before { top: 0; height: 18rem; }
