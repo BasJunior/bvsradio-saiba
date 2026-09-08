@@ -146,7 +146,7 @@ export default function AppShareButton({
     const shareText = text || `${title} on BVS Radio`;
     try {
       const storyCard = await makeStoryCard({ title, text: shareText, kicker });
-      const canShareStory = Boolean(storyCard && navigator.share && navigator.canShare?.({ files: [storyCard] }));
+      const canShareStory = Boolean(storyCard && navigator.canShare?.({ files: [storyCard] }));
 
       // Dismiss BVS chrome before asking iOS/Android to present its own share sheet.
       // This avoids a WKWebView stacking/focus deadlock where only our blurred backdrop remains visible.
