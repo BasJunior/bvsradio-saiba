@@ -13,6 +13,99 @@ type AppShareButtonProps = {
   compact?: boolean;
 };
 
+function drawWrappedText(
+  context: CanvasRenderingContext2D,
+  value: string,
+  x: number,
+  y: number,
+  maxWidth: number,
+  lineHeight: number,
+  maxLines: number,
+) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (context.measureText(candidate).width <= maxWidth || !current) {
+      current = candidate;
+      continue;
+    }
+    lines.push(current);
+    current = word;
+    if (lines.length >= maxLines - 1) break;
+  }
+  if (current && lines.length < maxLines) lines.push(current);
+  const consumed = lines.join(" ").split(/\s+/).length;
+  if (consumed < words.length && lines.length) {
+    let last = lines[lines.length - 1];
+    while (last.length > 1 && context.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
+    lines[lines.length - 1] = `${last}…`;
+  }
+  lines.forEach((line, index) => context.fillText(line, x, y + (index * lineHeight)));
+  return y + (lines.length * lineHeight);
+}
+
+async function makeStoryCard({ title, text, kicker }: { title: string; text?: string; kicker: string }) {
+  if (typeof document === "undefined") return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const context = canvas.getContext("2d");
+  if (!context) return null;
+
+  const background = context.createLinearGradient(0, 0, 1080, 1920);
+  background.addColorStop(0, "#18130a");
+  background.addColorStop(0.48, "#08090c");
+  background.addColorStop(1, "#020204");
+  context.fillStyle = background;
+  context.fillRect(0, 0, 1080, 1920);
+
+  const glow = context.createRadialGradient(850, 250, 20, 850, 250, 700);
+  glow.addColorStop(0, "rgba(231,187,53,.32)");
+  glow.addColorStop(1, "rgba(231,187,53,0)");
+  context.fillStyle = glow;
+  context.fillRect(0, 0, 1080, 1100);
+
+  context.fillStyle = "#f2ce65";
+  context.fillRect(72, 72, 250, 154);
+  context.fillStyle = "#050505";
+  context.font = "900 56px Arial, sans-serif";
+  context.fillText("BVS", 96, 140);
+  context.font = "900 48px Arial, sans-serif";
+  context.fillText("radio", 96, 197);
+
+  context.fillStyle = "#e8bd38";
+  context.font = "700 30px Arial, sans-serif";
+  context.letterSpacing = "5px";
+  context.fillText(kicker.toUpperCase().slice(0, 46), 78, 1020);
+  context.letterSpacing = "0px";
+
+  context.fillStyle = "#ffffff";
+  context.font = "700 92px Arial, sans-serif";
+  const afterTitle = drawWrappedText(context, title, 78, 1125, 920, 106, 4);
+
+  if (text) {
+    context.fillStyle = "rgba(255,255,255,.70)";
+    context.font = "400 40px Arial, sans-serif";
+    drawWrappedText(context, text, 82, Math.min(afterTitle + 46, 1580), 900, 56, 3);
+  }
+
+  context.fillStyle = "rgba(232,189,56,.98)";
+  context.font = "700 31px Arial, sans-serif";
+  context.letterSpacing = "4px";
+  context.fillText("B V S R A D I O . C O M", 78, 1780);
+  context.letterSpacing = "0px";
+  context.fillStyle = "rgba(255,255,255,.38)";
+  context.font = "400 27px Arial, sans-serif";
+  context.fillText("Listen · discover · create", 78, 1832);
+
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", 0.96));
+  if (!blob) return null;
+  const filename = `bvs-${title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "share"}.png`;
+  return new File([blob], filename, { type: "image/png" });
+}
+
 export default function AppShareButton({
   title,
   text,
@@ -23,6 +116,7 @@ export default function AppShareButton({
 }: AppShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const url = canonicalBvsShareUrl(path);
 
   useEffect(() => {
@@ -40,12 +134,30 @@ export default function AppShareButton({
   }, [open]);
 
   const share = async () => {
-    const ok = await shareBvs({
-      title: `${title} · BVS`,
-      text: text || `${title} on BVS Radio`,
-      url,
-    });
-    if (ok) setOpen(false);
+    if (sharing) return;
+    setSharing(true);
+    const shareText = text || `${title} on BVS Radio`;
+    try {
+      const storyCard = await makeStoryCard({ title, text: shareText, kicker });
+      if (storyCard && navigator.share && navigator.canShare?.({ files: [storyCard] })) {
+        try {
+          await navigator.share({
+            title: `${title} · BVS`,
+            text: `${shareText}\n${url}`,
+            files: [storyCard],
+          });
+          setOpen(false);
+          return;
+        } catch (error) {
+          if (error instanceof DOMException && error.name === "AbortError") return;
+        }
+      }
+
+      const ok = await shareBvs({ title: `${title} · BVS`, text: shareText, url });
+      if (ok) setOpen(false);
+    } finally {
+      setSharing(false);
+    }
   };
 
   const copy = async () => {
@@ -97,16 +209,16 @@ export default function AppShareButton({
               </div>
             </div>
 
-            <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+            <div className="mt-5 grid grid-cols-3 gap-2 text-center" aria-label="Story-ready destinations">
               <div className="rounded-2xl border border-white/10 bg-white/[.03] px-2 py-3"><span className="mx-auto grid h-9 w-9 place-items-center rounded-full bg-white text-xs font-black text-black">IG</span><p className="mt-2 text-xs">Instagram</p></div>
               <div className="rounded-2xl border border-white/10 bg-white/[.03] px-2 py-3"><span className="mx-auto grid h-9 w-9 place-items-center rounded-full bg-white text-xs font-black text-black">TT</span><p className="mt-2 text-xs">TikTok</p></div>
               <div className="rounded-2xl border border-white/10 bg-white/[.03] px-2 py-3"><span className="mx-auto grid h-9 w-9 place-items-center rounded-full bg-white text-base font-black text-black">↗</span><p className="mt-2 text-xs">Stories + more</p></div>
             </div>
 
-            <button type="button" onClick={() => void share()} className="mt-3 min-h-12 w-full rounded-2xl bg-brand px-5 text-sm font-semibold text-black">
-              Open social share sheet
+            <button type="button" disabled={sharing} onClick={() => void share()} className="mt-3 min-h-12 w-full rounded-2xl bg-brand px-5 text-sm font-semibold text-black disabled:opacity-60">
+              {sharing ? "Preparing story card…" : "Share story card"}
             </button>
-            <p className="mt-2 text-center text-[11px] leading-5 text-white/35">Choose Instagram Story, TikTok, Messages or any installed app from your phone’s share sheet.</p>
+            <p className="mt-2 text-center text-[11px] leading-5 text-white/35">BVS prepares a 9:16 card, then your phone lets you choose Instagram, TikTok, Messages or another installed app.</p>
             <button type="button" onClick={() => void copy()} className="mt-3 min-h-11 w-full rounded-2xl border border-white/12 px-5 text-sm font-semibold text-white/70">
               {copied ? "Link copied ✓" : "Copy bvsradio.com link"}
             </button>
