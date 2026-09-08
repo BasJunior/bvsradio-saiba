@@ -93,18 +93,21 @@ export default function AppExperienceStyle() {
         background: rgba(227,189,88,.28);
       }
 
-      /* Native compact player docks to both phone edges; the content keeps safe-area padding inside. */
+      /* Native player is a docked shell layer, never a floating inset card. */
       @media (max-width: 767px) {
         html[data-bvs-app-shell="true"] .bvs-persistent-player {
-          left: 0;
-          right: 0;
-          width: 100%;
+          inset-inline: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          width: auto !important;
+          max-width: none !important;
+          margin-inline: 0 !important;
           overflow: hidden;
           border: 1px solid rgba(255,255,255,.1);
-          border-left: 0;
-          border-right: 0;
-          border-bottom: 0;
-          border-radius: 1.15rem 1.15rem 0 0;
+          border-left: 0 !important;
+          border-right: 0 !important;
+          border-bottom: 0 !important;
+          border-radius: 1.15rem 1.15rem 0 0 !important;
           background: rgba(24,24,26,.96);
           box-shadow: 0 16px 44px rgba(0,0,0,.48);
         }
@@ -115,14 +118,14 @@ export default function AppExperienceStyle() {
         }
       }
 
-      /* Library layout preference: keep the same content but let listeners switch between rows and album-style cards. */
-      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) {
+      /* Grid mode only targets saved-media rows. Action-heavy Downloads stay readable as lists. */
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article > button:first-child + a) {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: .75rem;
       }
 
-      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) > article {
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article > button:first-child + a) > article {
         display: grid !important;
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
@@ -131,7 +134,7 @@ export default function AppExperienceStyle() {
         padding: .65rem !important;
       }
 
-      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) > article > button:first-child {
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article > button:first-child + a) > article > button:first-child {
         grid-column: 1 / -1;
         width: 100% !important;
         height: auto !important;
@@ -139,16 +142,16 @@ export default function AppExperienceStyle() {
         border-radius: 1rem;
       }
 
-      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) > article > a:nth-child(2) {
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article > button:first-child + a) > article > a:nth-child(2) {
         min-width: 0;
       }
 
-      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) > article > :last-child {
+      html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article > button:first-child + a) > article > :last-child {
         align-self: center;
       }
 
       @media (min-width: 640px) {
-        html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article) {
+        html[data-bvs-library-view="grid"] .bvs-app-stage .space-y-2:has(> article > button:first-child + a) {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
       }
