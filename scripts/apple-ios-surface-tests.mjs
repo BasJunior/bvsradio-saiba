@@ -84,7 +84,7 @@ assert(appDelegate.includes('MPNowPlayingInfoCenter.default()'), 'iOS shell must
 assert(appDelegate.includes('MPRemoteCommandCenter.shared()'), 'iOS shell must register native play/pause/skip commands')
 
 // Player Buy must leave the App Store WebView and carry the exact recording into web checkout.
-assert(buyButton.includes('`/buy/${encodeURIComponent(track.id)}`'), 'player Buy must target an exact-track web purchase handoff')
+assert(buyButton.includes('`/buy/${encodeURIComponent(trackId)}`'), 'player Buy must target an exact-track web purchase handoff')
 assert(buyHandoff.includes('upsertTrackCartLine'), 'web purchase handoff must place the selected recording in checkout')
 assert(buyHandoff.includes('window.location.replace("/checkout")'), 'exact-track handoff must continue to canonical checkout')
 
