@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run test:ios-surface-gates && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:explore-discovery && npm run test:marketplace-storefront && next build",
-    "vercel-build": "npm run test:ios-surface-gates && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:explore-discovery && npm run test:marketplace-storefront && next build",
+    "build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:explore-discovery && npm run test:marketplace-storefront && next build",
+    "vercel-build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:explore-discovery && npm run test:marketplace-storefront && next build",
     "test:ios-surface-gates": "npm run test:ios-surface-lock && npm run test:apple-ios-surface",
     "start": "next start",
     "lint": "eslint",
@@ -13,6 +13,7 @@
     "test:rights-compliance": "node --experimental-strip-types scripts/rights-compliance-tests.mjs",
     "test:app-flow": "node --experimental-strip-types scripts/app-flow-tests.mjs",
     "test:apple-ios-surface": "node scripts/apple-ios-surface-tests.mjs && node scripts/share-overlay-tests.mjs",
+    "test:editorial-normalization": "node scripts/editorial-catalogue-normalization-tests.mjs",
     "test:ios-surface-lock": "node --experimental-strip-types scripts/ios-surface-lock-tests.mjs",
     "test:studio-intent": "node scripts/studio-intent-tests.mjs",
     "test:song-workspace": "node scripts/song-workspace-tests.mjs",
