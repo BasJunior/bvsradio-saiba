@@ -33,7 +33,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
     <header
       ref={measureHeader}
       data-bvs-header
-      className="fixed inset-x-0 top-0 z-[60] border-b border-white/[.07] bg-[#09090b]/80 backdrop-blur-2xl"
+      className="fixed inset-x-0 top-0 z-[60] border-b border-white/[.07] bg-[#09090b]/80 pt-[env(safe-area-inset-top)] backdrop-blur-2xl"
     >
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href={home} className="flex min-w-0 items-center gap-3" aria-label="BVS home">
