@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { trackEvent } from "@/lib/analytics";
 import { upsertTrackCartLine } from "@/lib/cart-client";
@@ -25,6 +24,10 @@ type Props = {
 /**
  * Primary sales CTA from the listening surface.
  * Free stream stays free; Buy adds a personal download and opens checkout.
+ *
+ * The href intentionally points outside /app/* so MobileIosBoundary opens the
+ * exact-track purchase handoff in the normal BVS website/Safari instead of
+ * trapping checkout inside the App Store WebView.
  */
 export default function BuyTrackButton({
   track,
@@ -32,7 +35,6 @@ export default function BuyTrackButton({
   className = "",
   onAfterAdd,
 }: Props) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const price = sellablePrice(track);
 
@@ -40,67 +42,61 @@ export default function BuyTrackButton({
 
   const label =
     variant === "compact" ? `Buy · $${price.toFixed(price % 1 ? 2 : 0)}` : `Buy / Support · $${price.toFixed(2)}`;
+  const purchaseHref = `/buy/${encodeURIComponent(track.id)}`;
 
-  const onBuy = () => {
+  const prepareWebCart = () => {
     if (!track.id || busy) return;
     setBusy(true);
-    try {
-      upsertTrackCartLine({
-        id: track.id,
-        title: track.title,
-        artist: track.artist,
-        price,
-        artwork: track.artwork,
-        src: track.src,
-      });
-      trackEvent("checkout_started", {
-        source: "player_buy_cta",
-        track_id: track.id,
-        price,
-        variant,
-      });
-      onAfterAdd?.();
-      router.push("/checkout");
-    } finally {
-      setBusy(false);
-    }
+    upsertTrackCartLine({
+      id: track.id,
+      title: track.title,
+      artist: track.artist,
+      price,
+      artwork: track.artwork,
+      src: track.src,
+    });
+    trackEvent("checkout_started", {
+      source: "player_buy_cta",
+      track_id: track.id,
+      price,
+      variant,
+    });
+    onAfterAdd?.();
   };
 
   if (variant === "compact") {
     return (
-      <button
-        type="button"
+      <a
+        href={purchaseHref}
         onClick={(event) => {
           event.stopPropagation();
-          onBuy();
+          prepareWebCart();
         }}
-        disabled={busy}
-        className={`shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 disabled:opacity-50 sm:text-xs ${className}`}
-        aria-label={`Buy ${track.title} for $${price.toFixed(2)}`}
+        className={`shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`}
+        aria-label={`Buy ${track.title} for $${price.toFixed(2)} on BVS web checkout`}
       >
-        {busy ? "…" : label}
-      </button>
+        {busy ? "Opening…" : label}
+      </a>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={onBuy}
-      disabled={busy}
-      className={`rounded-2xl border border-brand/50 bg-brand px-4 py-4 text-left text-black shadow-[0_0_0_1px_rgba(0,0,0,.2)] transition hover:brightness-110 disabled:opacity-50 ${className}`}
-      aria-label={`Buy or support ${track.title} for $${price.toFixed(2)}`}
+    <a
+      href={purchaseHref}
+      onClick={prepareWebCart}
+      className={`block rounded-2xl border border-brand/50 bg-brand px-4 py-4 text-left text-black shadow-[0_0_0_1px_rgba(0,0,0,.2)] transition hover:brightness-110 ${className}`}
+      aria-label={`Buy or support ${track.title} for $${price.toFixed(2)} on BVS web checkout`}
     >
       <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-black/70">
         Support the artist
       </span>
       <span className="mt-1 block text-base font-semibold">
-        {busy ? "Opening checkout…" : label}
+        {busy ? "Opening web checkout…" : label}
       </span>
       <span className="mt-1 block text-xs text-black/65">
         Keep streaming free — buy a personal download when you want to own it.
       </span>
-    </button>
+    </a>
   );
 }
 
