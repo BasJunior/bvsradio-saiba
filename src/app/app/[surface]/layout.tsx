@@ -7,6 +7,7 @@ import AppGestureBridge from "@/components/app-vnext/AppGestureBridge";
 import AppLibrarySyncBridge from "@/components/app-vnext/AppLibrarySyncBridge";
 import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
 import AppNowPlayingBridge from "@/components/app-vnext/AppNowPlayingBridge";
+import AppScrollAssist from "@/components/app-vnext/AppScrollAssist";
 import AppStationFetchBridge from "@/components/app-vnext/AppStationFetchBridge";
 import AppTopBar from "@/components/app-vnext/AppTopBar";
 import { AppSessionProvider } from "@/components/app-vnext/AppSessionProvider";
@@ -43,7 +44,8 @@ export default async function MobileVNextLayout({
         }
       `}</style>
       <AppTopBar surface={surface} />
-      <div className="bvs-app-stage min-h-[calc(100dvh-4rem)] pb-4">{children}</div>
+      <div id="bvs-app-scroll-page" className="bvs-app-stage min-h-[calc(100dvh-4rem)] pb-4">{children}</div>
+      <AppScrollAssist />
       <AppBottomNav surface={surface} />
     </AppSessionProvider>
   );

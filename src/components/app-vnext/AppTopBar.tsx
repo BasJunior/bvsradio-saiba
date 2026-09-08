@@ -8,6 +8,26 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { measureHeader } from "@/lib/chrome-layout";
 
+function MarketplaceIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden="true">
+      <path d="M4.5 9.5v10h15v-10" />
+      <path d="M3.5 9.5 5.4 4h13.2l1.9 5.5" />
+      <path d="M3.5 9.5c0 1.25 1 2.25 2.25 2.25S8 10.75 8 9.5c0 1.25 1 2.25 2.25 2.25s2.25-1 2.25-2.25c0 1.25 1 2.25 2.25 2.25S17 10.75 17 9.5c0 1.25 1 2.25 2.25 2.25s2.25-1 2.25-2.25" />
+      <path d="M9.25 19.5v-4.75h5.5v4.75" />
+    </svg>
+  );
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden="true">
+      <circle cx="10.75" cy="10.75" r="6.25" />
+      <path d="m15.5 15.5 4.25 4.25" />
+    </svg>
+  );
+}
+
 export default function AppTopBar({ surface }: { surface: AppSurface }) {
   const { user, avatarUrl, profileDisplayName, profileUsername, loading, refresh } = useAppSession();
   const pathname = usePathname();
@@ -51,20 +71,22 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           </span>
         </Link>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <Link
             href={`/app/${surface}/marketplace`}
-            className="grid h-10 w-10 place-items-center rounded-full text-base text-white/58 transition hover:bg-white/[.055] hover:text-white"
+            className="grid h-11 w-11 place-items-center rounded-full text-white/62 transition hover:bg-white/[.055] hover:text-brand active:scale-95"
             aria-label="Marketplace"
+            title="Marketplace"
           >
-            ◇
+            <MarketplaceIcon />
           </Link>
           <Link
             href={`/app/${surface}/explore`}
-            className="grid h-10 w-10 place-items-center rounded-full text-lg text-white/58 transition hover:bg-white/[.055] hover:text-white"
+            className="grid h-11 w-11 place-items-center rounded-full text-white/62 transition hover:bg-white/[.055] hover:text-white active:scale-95"
             aria-label="Search"
+            title="Search"
           >
-            ⌕
+            <SearchIcon />
           </Link>
           {loading ? (
             <span className="ml-1 h-9 w-9 animate-pulse rounded-full bg-white/[.06]" aria-hidden="true" />

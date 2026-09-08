@@ -20,6 +20,8 @@ const nav = read('src/components/app-vnext/AppBottomNav.tsx')
 const bootstrap = read('src/components/app-vnext/AppBootstrap.tsx')
 const appSession = read('src/components/app-vnext/AppSessionProvider.tsx')
 const appTopBar = read('src/components/app-vnext/AppTopBar.tsx')
+const appScrollAssist = read('src/components/app-vnext/AppScrollAssist.tsx')
+const appExperienceStyle = read('src/components/app-vnext/AppExperienceStyle.tsx')
 const nativeRuntime = read('src/components/app-vnext/AppNativeRuntime.tsx')
 const nowPlayingBridge = read('src/components/app-vnext/AppNowPlayingBridge.tsx')
 const accessRoute = read('src/app/api/auth/access/route.ts')
@@ -44,11 +46,24 @@ assert(layout.includes('@/components/app-vnext/AppBootstrap'), 'app layout must 
 assert(layout.includes('@/components/app-vnext/AppBottomNav'), 'app layout must mount vNext bottom nav')
 assert(layout.includes('<AppNativeRuntime'), 'app layout must mount native runtime')
 assert(layout.includes('<AppNowPlayingBridge'), 'app layout must mount foreground now-playing bridge')
+assert(layout.includes('<AppScrollAssist'), 'app layout must mount fast-scroll utility')
 assert(nav.includes('grid-cols-5'), 'vNext must keep five bottom tabs')
 for (const label of ['Home', 'Discover', 'Library', 'You']) {
   assert(nav.includes(`label: "${label}"`), `vNext bottom nav must contain ${label}`)
 }
 assert(nav.includes('isCreator ? "Studio" : "Create"'), 'vNext bottom nav must contain Create/Studio')
+assert(nav.includes('bvs-app-bottom-nav'), 'bottom nav must use the base-anchored safe-area shell')
+assert(nav.includes('bvs-app-bottom-nav-inner'), 'bottom nav controls must stay inside the safe-area inner rail')
+
+// Mobile chrome refinements should stay consistent and useful across the app.
+assert(appTopBar.includes('function MarketplaceIcon()'), 'marketplace must use a recognisable storefront icon')
+assert(appTopBar.includes('function SearchIcon()'), 'search must use the shared-size magnifying glass icon')
+assert(appTopBar.includes('className="h-6 w-6"'), 'top action icons must use one consistent visible size')
+assert(appScrollAssist.includes('role="scrollbar"'), 'fast-scroll utility must expose a draggable scrollbar control')
+assert(appScrollAssist.includes('setPointerCapture'), 'fast-scroll utility must support direct touch dragging')
+assert(appScrollAssist.includes('bvs.library.view.v1'), 'Library list/grid preference must persist locally')
+assert(appExperienceStyle.includes('border-radius: 1.15rem'), 'mobile persistent player must keep curved card edges')
+assert(appExperienceStyle.includes('data-bvs-library-view="grid"'), 'Library grid preference must change saved-item presentation')
 
 // Home should remain the newer vNext experience and keep all contained links in the app namespace.
 assert(home.includes('Music moves differently here.'), 'vNext home hero must remain current')
