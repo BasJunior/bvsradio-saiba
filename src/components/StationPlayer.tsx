@@ -821,10 +821,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         .map((t) => makeQueueItem(t, "user"));
       setUpNext(fillUpNext(track, relatedItems));
       setPlaying(true);
-      setQueueOpen(true);
       trackEvent("queue_play_now", { track_id: trackLibraryId(track) });
     },
-    [fillUpNext, flushListening, pushHistory, setQueueOpen],
+    [fillUpNext, flushListening, pushHistory],
   );
 
   const playNext = useCallback((track: StationTrack) => {

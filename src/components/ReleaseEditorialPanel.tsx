@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import EditorialSectionCarousel, { EditorialArtistGroupCard, groupEditorialByArtist, matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
+import EditorialConnectedPreview from '@/components/editorial/EditorialConnectedPreview'
+import EditorialEditableIdentity, { EditorialReleaseTrackTitleEditor, type EditorialIdentityProfile } from '@/components/editorial/EditorialEditableIdentity'
 import {
   PRIVATE_DSP_PARTNER_CODE,
   editorialDistributionStatusLabel,
@@ -15,6 +17,7 @@ import {
 
 type Release = {
   id: string
+  user_id: string
   title: string
   artist_name: string
   genre?: string
@@ -98,6 +101,7 @@ export default function ReleaseEditorialPanel({
   mediaProcessingJobs,
   distributionJobs,
   knownIsrcMap = [],
+  profiles,
   canApprove,
   canRotate,
   canDistro,
@@ -111,6 +115,7 @@ export default function ReleaseEditorialPanel({
   mediaProcessingJobs: MediaProcessingJob[]
   distributionJobs: DistJob[]
   knownIsrcMap?: KnownIsrcEntry[]
+  profiles: EditorialIdentityProfile[]
   canApprove: boolean
   canRotate: boolean
   canDistro: boolean
@@ -242,11 +247,7 @@ export default function ReleaseEditorialPanel({
                     {release.is_public ? ' · public' : ''}
                     {release.in_rotation ? ' · in rotation' : ''}
                   </p>
-                  <h3 className="mt-1 text-xl font-semibold">{release.title}</h3>
-                  <p className="text-sm text-text-secondary">
-                    {release.artist_name} · {release.genre || '—'} · {release.track_count || members.length} tracks ·{' '}
-                    {new Date(release.created_at).toLocaleString()}
-                  </p>
+                  <div className="mt-1"><EditorialEditableIdentity kind="release" id={release.id} title={release.title} artist={release.artist_name} currentProfileId={release.user_id} profiles={profiles} editable={canApprove} secondary={`${release.genre || '—'} · ${release.track_count || members.length} tracks · ${new Date(release.created_at).toLocaleString()}`} /></div>
                   <ol className="mt-3 space-y-2 text-sm text-text-secondary">
                     {members.map((m) => {
                       const currentIsrc = isrcValues[m.id] ?? m.isrc ?? ''
@@ -273,10 +274,10 @@ export default function ReleaseEditorialPanel({
                               className="h-4 w-4 accent-emerald-400"
                             />
                           )}
-                          <span className="min-w-0 flex-1">{m.position}. {m.title}</span>
+                          <span className="shrink-0">{m.position}.</span><EditorialReleaseTrackTitleEditor releaseId={release.id} releaseTrackId={m.id} releaseTitle={release.title} releaseArtist={release.artist_name} currentProfileId={release.user_id} title={m.title} editable={canApprove} />
                         </div>
                         {m.file_url && (
-                          <audio controls preload="none" src={m.file_url} className="mt-1 h-8 max-w-full" />
+                          <div className="mt-2"><EditorialConnectedPreview previewId={`release-track:${m.id}`} title={m.title} artist={release.artist_name} src={m.file_url} artwork={release.cover_url} project={`Editorial · ${release.title}`} genre={release.genre} compact /></div>
                         )}
                         <div className="relative mt-2">
                           <label className="mb-1 block text-[11px] uppercase tracking-wide text-text-secondary">

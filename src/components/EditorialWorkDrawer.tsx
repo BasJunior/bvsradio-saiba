@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import EditorialAmuseQueue, { PRIVATE_DSP_PARTNER_AMUSE, partnerHandoffNotes } from '@/components/EditorialAmuseQueue'
+import EditorialConnectedPreview from '@/components/editorial/EditorialConnectedPreview'
 
 export type EditorialCommandItem = {
   id: string
@@ -248,7 +249,7 @@ export default function EditorialWorkDrawer({
                   {work.artwork ? <div className="relative aspect-square overflow-hidden rounded-xl bg-white/5"><Image src={work.artwork} alt="" fill unoptimized={/^https?:\/\//i.test(work.artwork)} className="object-cover" /></div> : <div className="grid aspect-square place-items-center rounded-xl bg-white/5 text-xs text-text-secondary">No artwork</div>}
                   <div className="min-w-0 self-center">
                     {work.description ? <p className="text-sm leading-relaxed text-text-secondary">{work.description}</p> : null}
-                    {work.audio ? <audio controls preload="none" src={work.audio} className="mt-4 h-10 w-full max-w-full" /> : null}
+                    {work.audio ? <div className="mt-4"><EditorialConnectedPreview previewId={`work:${work.kind}:${work.id}`} title={work.title} artist={work.subtitle || 'BVS submission'} src={work.audio} artwork={work.artwork} project="Editorial work review" /></div> : null}
                   </div>
                 </section>
               ) : work.description ? <p className="rounded-2xl border border-white/10 bg-white/[.02] p-4 text-sm leading-relaxed text-text-secondary">{work.description}</p> : null}

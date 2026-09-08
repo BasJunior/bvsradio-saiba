@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { audit, can, editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial-server'
-import { creatorPublicName } from '@/lib/public-name'
+import { creatorPublicName, producerPublicName } from '@/lib/public-name'
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 
 type JsonRow = Record<string, unknown>
@@ -14,6 +14,8 @@ type CreatorProfile = {
   role?: string | null
   is_producer?: boolean | null
   is_published?: boolean | null
+  producer_public_name?: string | null
+  producer_name_status?: string | null
 }
 
 async function rows(path: string): Promise<JsonRow[]> {
@@ -65,7 +67,7 @@ function publicNameForProfile(profile: CreatorProfile) {
 async function resolveCreator(profileId: string): Promise<{ profile: CreatorProfile; publicName: string } | null> {
   if (!profileId) return null
   const profile = (await rows(
-    `profiles?id=eq.${encodeURIComponent(profileId)}&select=id,username,display_name,creator_public_name,creator_name_status,role,is_producer,is_published&limit=1`,
+    `profiles?id=eq.${encodeURIComponent(profileId)}&select=id,username,display_name,creator_public_name,creator_name_status,producer_public_name,producer_name_status,role,is_producer,is_published&limit=1`,
   ))[0] as CreatorProfile | undefined
   if (!profile || !isCreator(profile)) return null
   return { profile, publicName: publicNameForProfile(profile) }
@@ -120,7 +122,7 @@ export async function GET(request: Request) {
 }
 
 type PatchBody = {
-  kind?: 'track' | 'release'
+  kind?: 'track' | 'release' | 'beat'
   id?: string
   title?: string
   selectedProfileId?: string
@@ -142,7 +144,7 @@ export async function PATCH(request: Request) {
   const selectedProfileId = String(body.selectedProfileId || '').trim()
   const customArtistName = cleanArtistName(body.customArtistName)
 
-  if (!id || !title || !['track', 'release'].includes(String(kind))) {
+  if (!id || !title || !['track', 'release', 'beat'].includes(String(kind))) {
     return NextResponse.json({ error: 'A valid item and public title are required.' }, { status: 400 })
   }
 
@@ -150,6 +152,41 @@ export async function PATCH(request: Request) {
     const linked = selectedProfileId ? await resolveCreator(selectedProfileId) : null
     if (selectedProfileId && !linked) {
       return NextResponse.json({ error: 'The selected BVS creator profile could not be linked.' }, { status: 400 })
+    }
+
+    if (kind === 'beat') {
+      const existing = (await rows(
+        `beats?id=eq.${encodeURIComponent(id)}&select=id,producer_user_id,title,status,is_public&limit=1`,
+      ))[0] as JsonRow | undefined
+      if (!existing) return NextResponse.json({ error: 'Beat not found.' }, { status: 404 })
+      if (!linked) return NextResponse.json({ error: 'Choose an existing BVS producer profile for this beat.' }, { status: 400 })
+      if (!linked.profile.is_producer && String(linked.profile.role || '').toLowerCase() !== 'admin') {
+        return NextResponse.json({ error: 'The selected BVS profile is not enabled as a producer.' }, { status: 400 })
+      }
+      const previousProducerUserId = String(existing.producer_user_id || '')
+      const producerName = producerPublicName({
+        producerPublicName: linked.profile.producer_public_name,
+        producerNameStatus: linked.profile.producer_name_status,
+        publicName: linked.profile.creator_public_name,
+        publicNameStatus: linked.profile.creator_name_status,
+        username: linked.profile.username,
+      })
+      const result = await patchRows('beats', `id=eq.${encodeURIComponent(id)}`, {
+        title,
+        producer_user_id: linked.profile.id,
+      })
+      await audit(identity.user.id, 'beat_metadata_normalized', 'beat', id, {
+        previousTitle: existing.title,
+        title,
+        previousProducerUserId,
+        producerUserId: linked.profile.id,
+        producerName,
+        relationshipChanged: previousProducerUserId !== linked.profile.id,
+        preservedBeatIdentity: true,
+        status: existing.status,
+        isPublic: Boolean(existing.is_public),
+      })
+      return NextResponse.json({ result, producerName, relationshipChanged: previousProducerUserId !== linked.profile.id })
     }
 
     if (kind === 'track') {
