@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import AppJoinCard from "@/components/app-vnext/AppJoinCard";
 import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
 import { getPublishedArtists } from "@/lib/artist-content";
+import { fairDailyOrder } from "@/lib/fair-discovery-order";
 import { getPublicProgrammes } from "@/lib/station-content";
 import { getStationTracks, type MobileSurface } from "@/lib/station-library";
 
@@ -18,11 +19,12 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
   const raw = (await params).surface;
   if (raw !== "ios" && raw !== "android") notFound();
   const surface = raw as MobileSurface;
-  const [tracks, artists, shows] = await Promise.all([
+  const [tracks, artistRows, shows] = await Promise.all([
     getStationTracks(surface),
     getPublishedArtists(),
     getPublicProgrammes(),
   ]);
+  const artists = fairDailyOrder(artistRows, "artists");
   const base = `/app/${surface}`;
 
   return (
