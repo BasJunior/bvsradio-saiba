@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
+import { StatusBar } from "@capacitor/status-bar";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { appRouteForNativeUrl } from "@/lib/app-link-routing";
 import { getNetworkStatus, isNativeRuntime, listenNetworkStatus, listenPushNotificationActions } from "@/lib/app-native";
@@ -38,6 +39,14 @@ export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
     void listenNetworkStatus(applyNetwork).then((stop) => { if (alive) stopNetwork = stop; else void stop(); });
 
     if (isNativeRuntime()) {
+      document.documentElement.dataset.bvsNative = "true";
+      // The App Store shell must not draw the web header underneath the iOS
+      // status/Dynamic-Island area. The StatusBar plugin already ships in the
+      // installed binary, so this correction can be delivered with the web app.
+      if (surface === "ios") {
+        void StatusBar.setOverlaysWebView({ overlay: false }).catch(() => undefined);
+      }
+
       void App.addListener("appUrlOpen", ({ url }) => routeNativeUrl(url, "link")).then((handle) => {
         if (alive) stopAppUrl = () => handle.remove(); else void handle.remove();
       });
@@ -73,6 +82,7 @@ export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
 
     return () => {
       alive = false;
+      delete document.documentElement.dataset.bvsNative;
       void stopNetwork?.();
       void stopAppUrl?.();
       void stopPushActions?.();
