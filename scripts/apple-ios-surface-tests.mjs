@@ -20,6 +20,8 @@ const nav = read('src/components/app-vnext/AppBottomNav.tsx')
 const bootstrap = read('src/components/app-vnext/AppBootstrap.tsx')
 const appSession = read('src/components/app-vnext/AppSessionProvider.tsx')
 const appTopBar = read('src/components/app-vnext/AppTopBar.tsx')
+const appExplore = read('src/components/app-vnext/AppExploreClient.tsx')
+const appBeatPreview = read('src/components/app-vnext/AppBeatPreviewPlayer.tsx')
 const appLibraryViewToggle = read('src/components/app-vnext/AppLibraryViewToggle.tsx')
 const appExperienceStyle = read('src/components/app-vnext/AppExperienceStyle.tsx')
 const nativeRuntime = read('src/components/app-vnext/AppNativeRuntime.tsx')
@@ -70,6 +72,13 @@ assert(appExperienceStyle.includes('border-radius: 1.15rem 1.15rem 0 0 !importan
 assert(appExperienceStyle.includes('button:first-child + a'), 'Library grid mode must target saved-media rows only')
 assert(!appExperienceStyle.includes('.space-y-2:has(> article) {'), 'Library grid mode must not reshape action-heavy download rows')
 assert(appExperienceStyle.includes('data-bvs-library-view="grid"'), 'Library grid preference must change saved-item presentation')
+
+// Discover BeatStore previews must share the persistent audio path instead of creating a second native audio stream.
+assert(appExplore.includes('AppBeatPreviewPlayer'), 'Discover beat cards must use the shared BeatStore preview player')
+assert(!appExplore.includes('<audio controls preload="none" src={item.previewUrl}'), 'Discover beat cards must not render a standalone audio element')
+assert(appBeatPreview.includes('useStationPlayer'), 'BeatStore preview control must use the persistent StationPlayer')
+assert(appBeatPreview.includes('player.playNow(previewTrack'), 'BeatStore preview control must replace the current persistent recording')
+assert(appBeatPreview.includes('player.toggle()'), 'BeatStore preview control must share persistent play/pause state')
 
 // Home should remain the newer vNext experience and keep all contained links in the app namespace.
 assert(home.includes('Music moves differently here.'), 'vNext home hero must remain current')
