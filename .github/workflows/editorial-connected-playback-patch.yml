@@ -22,7 +22,10 @@ jobs:
           node-version: 22
           cache: npm
       - name: Apply patch
-        run: python scripts/one-shot-editorial-connected-patch.py
+        run: |
+          python scripts/fix-one-shot-editorial-patch.py
+          python scripts/one-shot-editorial-connected-patch.py
+          rm -f scripts/fix-one-shot-editorial-patch.py
       - name: Install dependencies
         run: npm ci
       - name: Verify targeted regression
