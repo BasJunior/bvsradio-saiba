@@ -93,22 +93,25 @@ export default function AppExperienceStyle() {
         background: rgba(227,189,88,.28);
       }
 
-      /* Spotify-like compact player card on the contained mobile surface. */
+      /* Native compact player docks to both phone edges; the content keeps safe-area padding inside. */
       @media (max-width: 767px) {
         html[data-bvs-app-shell="true"] .bvs-persistent-player {
-          left: max(.45rem, env(safe-area-inset-left));
-          right: max(.45rem, env(safe-area-inset-right));
-          width: auto;
+          left: 0;
+          right: 0;
+          width: 100%;
           overflow: hidden;
           border: 1px solid rgba(255,255,255,.1);
-          border-radius: 1.15rem;
+          border-left: 0;
+          border-right: 0;
+          border-bottom: 0;
+          border-radius: 1.15rem 1.15rem 0 0;
           background: rgba(24,24,26,.96);
           box-shadow: 0 16px 44px rgba(0,0,0,.48);
         }
 
         html[data-bvs-app-shell="true"] .bvs-persistent-player-inner {
-          padding-left: .65rem;
-          padding-right: .55rem;
+          padding-left: max(.65rem, env(safe-area-inset-left));
+          padding-right: max(.55rem, env(safe-area-inset-right));
         }
       }
 
