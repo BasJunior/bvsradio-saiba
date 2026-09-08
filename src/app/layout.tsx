@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import Navbar from "@/components/layout/Navbar";
+import { RootNavbar, RootMobileFlowNav } from "@/components/layout/RootChrome";
 import Footer from "@/components/layout/Footer";
 import VisitorAssistant from "@/components/VisitorAssistant";
 import PwaRegister from "@/components/PwaRegister";
@@ -16,7 +16,6 @@ import NowPlayingSwipeGestures from "@/components/NowPlayingSwipeGestures";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
-import MobileFlowNav from "@/components/layout/MobileFlowNav";
 import "./globals.css";
 import "./light-premium.css";
 
@@ -101,7 +100,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <AppSurfaceProvider>
               <MobileIosBoundary />
               <FlowNavigationProvider>
-                <Navbar />
+                <RootNavbar />
                 <AuthLinkRescue />
                 <main className="bvs-page-main pt-16 pb-44 md:pb-28">
                   <PremiumInstantPromoBanner />
@@ -116,7 +115,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <ClientErrorBeacon />
                 <AnalyticsBootstrap />
                 <Suspense fallback={null}>
-                  <MobileFlowNav />
+                  <RootMobileFlowNav />
                 </Suspense>
                 <PersistentPlayer />
                 <NowPlayingSwipeGestures />
