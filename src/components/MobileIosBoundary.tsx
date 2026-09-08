@@ -3,6 +3,7 @@
 import { Capacitor } from "@capacitor/core";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { externalBvsUrl } from "@/lib/app-external-boundary";
 
 const IOS_ROOT = "/app/ios";
 
@@ -70,7 +71,9 @@ export default function MobileIosBoundary() {
         window.location.assign(contained);
         return;
       }
-      openOutsideNativeShell(url);
+
+      const outsideUrl = sameOrigin ? new URL(externalBvsUrl(url)) : url;
+      openOutsideNativeShell(outsideUrl);
     };
 
     document.addEventListener("click", onClick, true);
