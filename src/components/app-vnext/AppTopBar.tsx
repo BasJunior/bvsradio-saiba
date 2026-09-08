@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
+import AppLibraryViewToggle from "@/components/app-vnext/AppLibraryViewToggle";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { measureHeader } from "@/lib/chrome-layout";
 
@@ -34,6 +35,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
   const [avatarFailed, setAvatarFailed] = useState(false);
   const mountedPath = useRef(pathname);
   const home = `/app/${surface}`;
+  const isLibrary = /^\/app\/(ios|android)\/library(?:\/|$)/.test(pathname);
   const initial = (
     profileDisplayName ||
     profileUsername ||
@@ -88,6 +90,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           >
             <SearchIcon />
           </Link>
+          {isLibrary ? <AppLibraryViewToggle /> : null}
           {loading ? (
             <span className="ml-1 h-9 w-9 animate-pulse rounded-full bg-white/[.06]" aria-hidden="true" />
           ) : user ? (
