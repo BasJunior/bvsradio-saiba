@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 const THUMB_HEIGHT = 28;
-const TRACK_HEIGHT = 112;
+const TRACK_HEIGHT = 176;
 const TRACK_PADDING = 3;
 const SCROLL_THRESHOLD = 560;
 const VIEW_STORAGE_KEY = "bvs.library.view.v1";
@@ -127,7 +127,7 @@ export default function AppScrollAssist() {
 
   return (
     <div
-      className="fixed right-[max(.12rem,env(safe-area-inset-right))] top-[41%] z-[48] flex items-start gap-1"
+      className="fixed right-[max(.12rem,env(safe-area-inset-right))] top-[36%] z-[48] flex items-start gap-1"
       data-bvs-scroll-assist
       aria-label="Page view and fast scroll controls"
     >
@@ -147,7 +147,7 @@ export default function AppScrollAssist() {
       {scrollable ? (
         <div
           ref={trackRef}
-          className="relative h-28 w-6 touch-none select-none"
+          className="relative h-44 w-6 touch-none select-none"
           onPointerDown={(event) => {
             const target = event.target instanceof Element ? event.target : null;
             const thumb = target?.closest("[data-bvs-scroll-thumb]") as HTMLElement | null;
@@ -174,10 +174,10 @@ export default function AppScrollAssist() {
           aria-label="Fast scroll"
           title="Drag to move through the page"
         >
-          <span className="pointer-events-none absolute bottom-1 left-1/2 top-1 w-[3px] -translate-x-1/2 rounded-full bg-white/[.11]" aria-hidden="true" />
+          <span className="pointer-events-none absolute bottom-1 left-1/2 top-1 w-[2px] -translate-x-1/2 rounded-full bg-white/[.09]" aria-hidden="true" />
           <span
             data-bvs-scroll-thumb
-            className={`absolute left-1/2 h-7 w-2.5 -translate-x-1/2 rounded-full border border-brand/25 bg-brand/75 shadow-[0_4px_12px_rgba(0,0,0,.35)] transition-[width,opacity,background-color] duration-150 ${dragging ? "w-3 bg-brand opacity-100" : "opacity-75"}`}
+            className={`absolute left-1/2 h-7 w-2.5 -translate-x-1/2 rounded-full border border-brand/25 bg-brand/75 shadow-[0_4px_12px_rgba(0,0,0,.35)] transition-[width,opacity,background-color] duration-150 ${dragging ? "w-3 bg-brand opacity-100" : "opacity-70"}`}
             style={{ top: `${thumbTop}px` }}
             aria-hidden="true"
           />
