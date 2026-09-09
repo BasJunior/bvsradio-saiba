@@ -15,6 +15,7 @@ function assert(condition, message) {
 const station = read('src/lib/station-library.ts')
 const beats = read('src/lib/beatstore-server.ts')
 const home = read('src/app/app/[surface]/page.tsx')
+const homeDiscovery = read('src/components/app-vnext/AppHomeDiscoverySections.tsx')
 const layout = read('src/app/app/[surface]/layout.tsx')
 const nav = read('src/components/app-vnext/AppBottomNav.tsx')
 const bootstrap = read('src/components/app-vnext/AppBootstrap.tsx')
@@ -118,7 +119,12 @@ assert(home.includes('Music moves differently here.'), 'vNext home hero must rem
 assert(home.includes('AppHomeStationCard'), 'vNext home must keep persistent station entry')
 assert(home.includes('AppJoinCard'), 'vNext home must keep identity/join entry')
 assert(home.includes('const base = `/app/${surface}`'), 'vNext home links must use the contained app namespace')
-assert(home.includes('fairDailyOrder(artistRows, "artists")'), 'app home artists must use fair daily rotation instead of alphabetical order')
+assert(home.includes('Suspense'), 'app home must stream non-critical discovery instead of blocking cold start')
+assert(home.includes('AppHomeDiscoverySections'), 'app home must defer artist/show discovery behind the shell')
+assert(!home.includes('getStationTracks(surface)'), 'app home shell must not block on the station catalogue during cold start')
+assert(homeDiscovery.includes('withTimeout'), 'deferred home discovery must fail open after a bounded wait')
+assert(homeDiscovery.includes('fairDailyOrder(artistRows, "artists")'), 'app home artists must use fair daily rotation instead of alphabetical order')
+assert(exists('src/app/app/[surface]/loading.tsx'), 'app surface must ship a lightweight route loading state')
 assert(!home.includes('BVS Radio, made for listening on the go.'), 'do not regress to the old mobile home')
 
 // Signed-in app identity must show the saved profile image, or the profile name/username initial when no image exists.
