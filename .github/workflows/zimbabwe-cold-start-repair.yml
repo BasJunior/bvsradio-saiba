@@ -1,0 +1,79 @@
+name: Zimbabwe cold start repair
+
+on:
+  push:
+    branches:
+      - chatgpt/zimbabwe-cold-start
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chatgpt/zimbabwe-cold-start
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Apply shell-first cold start repair
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          page_path = Path('src/app/app/[surface]/page.tsx')
+          page = page_path.read_text()
+          page = page.replace('import type { Metadata } from "next";\n', 'import type { Metadata } from "next";\nimport { Suspense } from "react";\n')
+          page = page.replace('import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";\n', 'import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";\nimport AppHomeDiscoverySections from "@/components/app-vnext/AppHomeDiscoverySections";\n')
+          page = page.replace('import { getPublishedArtists } from "@/lib/artist-content";\nimport { fairDailyOrder } from "@/lib/fair-discovery-order";\nimport { getPublicProgrammes } from "@/lib/station-content";\nimport { getStationTracks, type MobileSurface } from "@/lib/station-library";\n', 'import type { MobileSurface } from "@/lib/station-library";\n')
+          page = page.replace('  const [tracks, artistRows, shows] = await Promise.all([\n    getStationTracks(surface),\n    getPublishedArtists(),\n    getPublicProgrammes(),\n  ]);\n  const artists = fairDailyOrder(artistRows, "artists");\n', '')
+          page = page.replace('<span><strong className="font-semibold text-white/76">{tracks.length}</strong> available recording{tracks.length === 1 ? "" : "s"}</span>', '<span><strong className="font-semibold text-white/76">Live</strong> BVS rotation ready</span>')
+
+          pattern = re.compile(r'\n      <section className="mt-11">.*?\n      <section className="mt-12 grid gap-3 sm:grid-cols-3">', re.S)
+          replacement = '''\n      <Suspense fallback={<HomeDiscoveryFallback />}>\n        <AppHomeDiscoverySections surface={surface} />\n      </Suspense>\n\n      <section className="mt-12 grid gap-3 sm:grid-cols-3">'''
+          page, count = pattern.subn(replacement, page, count=1)
+          if count != 1:
+              raise SystemExit(f'expected one home discovery block, replaced {count}')
+
+          helper = '''\nfunction HomeDiscoveryFallback() {\n  return (\n    <div className="mt-11 space-y-10" aria-label="Loading BVS discovery">\n      <section>\n        <div className="h-7 w-48 animate-pulse rounded-full bg-white/[.05]" />\n        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">\n          {Array.from({ length: 6 }).map((_, index) => (\n            <div key={index} className="aspect-[.82] animate-pulse rounded-[1.4rem] bg-white/[.035]" />\n          ))}\n        </div>\n      </section>\n    </div>\n  );\n}\n\n'''
+          marker = 'export default async function MobileAppPage'
+          if marker not in page:
+              raise SystemExit('home page export marker missing')
+          page = page.replace(marker, helper + marker, 1)
+          page_path.write_text(page)
+
+          discovery = '''import Image from "next/image";\nimport Link from "next/link";\nimport { getPublishedArtists } from "@/lib/artist-content";\nimport { fairDailyOrder } from "@/lib/fair-discovery-order";\nimport { getPublicProgrammes } from "@/lib/station-content";\nimport type { MobileSurface } from "@/lib/station-library";\n\nconst DISCOVERY_TIMEOUT_MS = 2200;\n\nasync function withTimeout<T>(work: Promise<T>, fallback: T): Promise<T> {\n  return Promise.race([\n    work.catch(() => fallback),\n    new Promise<T>((resolve) => {\n      setTimeout(() => resolve(fallback), DISCOVERY_TIMEOUT_MS);\n    }),\n  ]);\n}\n\nexport default async function AppHomeDiscoverySections({ surface }: { surface: MobileSurface }) {\n  const [artistRows, shows] = await Promise.all([\n    withTimeout(getPublishedArtists(), []),\n    withTimeout(getPublicProgrammes(), []),\n  ]);\n  const artists = fairDailyOrder(artistRows, "artists");\n  const base = `/app/${surface}`;\n\n  return (\n    <>\n      {artists.length ? (\n        <section className="mt-11">\n          <div className="flex items-end justify-between gap-4">\n            <div>\n              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">On our radar</p>\n              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Artists worth knowing.</h2>\n            </div>\n            <Link href={`${base}/explore`} className="shrink-0 text-sm font-semibold text-white/58 transition hover:text-brand">See all →</Link>\n          </div>\n\n          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">\n            {artists.slice(0, 6).map((artist) => (\n              <Link\n                key={artist.id}\n                href={`${base}/creator/${encodeURIComponent(artist.id)}`}\n                className="group min-w-0 rounded-[1.4rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.045]"\n              >\n                <div className="relative aspect-square overflow-hidden rounded-[1.05rem] bg-white/[.04]">\n                  {artist.image ? (\n                    <Image src={artist.image} alt="" fill unoptimized className="object-cover transition duration-500 group-hover:scale-[1.025]" />\n                  ) : (\n                    <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Artist</span>\n                  )}\n                </div>\n                <h3 className="mt-3 truncate px-1 font-semibold">{artist.name}</h3>\n                <p className="truncate px-1 pb-1 text-xs text-white/38">{artist.role}</p>\n              </Link>\n            ))}\n          </div>\n        </section>\n      ) : null}\n\n      {shows.length ? (\n        <section className="mt-12">\n          <div className="flex items-end justify-between gap-4">\n            <div>\n              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Live energy</p>\n              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Shows, rooms, conversations.</h2>\n            </div>\n            <Link href={`${base}/rooms`} className="shrink-0 text-sm font-semibold text-white/58 transition hover:text-brand">Open rooms →</Link>\n          </div>\n          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">\n            {shows.slice(0, 3).map((show) => (\n              <Link\n                key={show.slug}\n                href={`${base}/show/${show.slug}`}\n                className="group overflow-hidden rounded-[1.65rem] border border-white/[.07] bg-white/[.025] transition hover:border-white/15 hover:bg-white/[.04]"\n              >\n                <div className="relative aspect-[16/9] bg-white/[.04]">\n                  <Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-[1.015]" />\n                  <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 to-transparent" />\n                </div>\n                <div className="p-4">\n                  <p className="text-xs font-medium text-brand">{show.schedule}</p>\n                  <h3 className="mt-1 text-xl font-semibold">{show.title}</h3>\n                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/45">{show.description}</p>\n                </div>\n              </Link>\n            ))}\n          </div>\n        </section>\n      ) : (\n        <section className="mt-12">\n          <Link href={`${base}/rooms`} className="block rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 transition hover:border-brand/25">\n            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Live rooms</p>\n            <h2 className="mt-2 text-2xl font-semibold">Listen together when something is happening.</h2>\n          </Link>\n        </section>\n      )}\n    </>\n  );\n}\n'''
+          Path('src/components/app-vnext/AppHomeDiscoverySections.tsx').write_text(discovery)
+
+          loading = '''export default function AppSurfaceLoading() {\n  return (\n    <div className="mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8" aria-label="Opening BVS">\n      <section className="rounded-[2.2rem] border border-white/[.08] bg-[#111113]/72 px-5 py-7 sm:px-9 sm:py-10">\n        <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Best Virtual Sound</p>\n        <div className="mt-5 h-12 w-4/5 animate-pulse rounded-2xl bg-white/[.05]" />\n        <div className="mt-4 h-5 w-3/5 animate-pulse rounded-full bg-white/[.035]" />\n      </section>\n      <div className="mt-5 h-32 animate-pulse rounded-[1.8rem] bg-white/[.03]" />\n    </div>\n  );\n}\n'''
+          Path('src/app/app/[surface]/loading.tsx').write_text(loading)
+
+          test_path = Path('scripts/apple-ios-surface-tests.mjs')
+          test = test_path.read_text()
+          test = test.replace("const home = read('src/app/app/[surface]/page.tsx')\n", "const home = read('src/app/app/[surface]/page.tsx')\nconst homeDiscovery = read('src/components/app-vnext/AppHomeDiscoverySections.tsx')\n")
+          test = test.replace("assert(home.includes('fairDailyOrder(artistRows, \"artists\")'), 'app home artists must use fair daily rotation instead of alphabetical order')", "assert(home.includes('Suspense'), 'app home must stream non-critical discovery instead of blocking cold start')\nassert(home.includes('AppHomeDiscoverySections'), 'app home must defer artist/show discovery behind the shell')\nassert(!home.includes('getStationTracks(surface)'), 'app home shell must not block on the station catalogue during cold start')\nassert(homeDiscovery.includes('withTimeout'), 'deferred home discovery must fail open after a bounded wait')\nassert(homeDiscovery.includes('fairDailyOrder(artistRows, \"artists\")'), 'app home artists must use fair daily rotation instead of alphabetical order')\nassert(exists('src/app/app/[surface]/loading.tsx'), 'app surface must ship a lightweight route loading state')")
+          test_path.write_text(test)
+          PY
+      - name: Install dependencies
+        run: npm ci
+      - name: Verify iOS cold start regression
+        run: npm run test:apple-ios-surface
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Production build
+        run: npm run build
+      - name: Commit repair
+        shell: bash
+        run: |
+          rm .github/workflows/zimbabwe-cold-start-repair.yml
+          git config user.name "BasJunior"
+          git config user.email "83550884+BasJunior@users.noreply.github.com"
+          git add -A
+          git commit -m "Improve native app cold start resilience"
+          git push origin HEAD:chatgpt/zimbabwe-cold-start
