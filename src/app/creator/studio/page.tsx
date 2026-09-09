@@ -27,7 +27,8 @@ type WorkspaceData = {
     is_public?: boolean;
     in_rotation?: boolean;
   }>;
-  distributionJobs?: Array<{ id: string; status?: string }>;
+  distributionJobs?: Array<{ id: string; status?: string; pack_complete?: boolean; release_id?: string }>;
+  profileFlags?: { premiumActive?: boolean; distributionEnabled?: boolean };
 };
 
 const legacyStudioAnchors = new Set([
@@ -49,6 +50,7 @@ const legacyStudioAnchors = new Set([
   "show-work",
   "broadcast",
   "studio-wallet",
+  "store-delivery",
 ]);
 
 export default function CreatorStudioHome() {
@@ -102,7 +104,13 @@ export default function CreatorStudioHome() {
     const distributing = jobs.filter((job) =>
       ["queued", "submitted", "processing", "delivering"].includes(job.status || ""),
     ).length;
-    return { catalogue: tracks.length + releases.length, pending, published, inRotation, plays, likes, distributing };
+    const needsStoreDetails = Boolean(
+      data?.profileFlags?.premiumActive &&
+        data?.profileFlags?.distributionEnabled &&
+        published > 0 &&
+        jobs.some((job) => job.status === "eligible" && job.pack_complete !== true),
+    );
+    return { catalogue: tracks.length + releases.length, pending, published, inRotation, plays, likes, distributing, needsStoreDetails };
   }, [data]);
 
   if (error && !data) {
@@ -188,6 +196,7 @@ export default function CreatorStudioHome() {
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <ManageLink href="/creator/studio/manage#releases" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
+          {artist && <ManageLink href="/creator/studio/manage#store-delivery" label="Send to stores" detail="Premium store details" />}
           {artist && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" />}
           <ManageLink href="/artists" label="Money" detail="Wallet & earnings" />
           <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" />
@@ -211,7 +220,7 @@ export default function CreatorStudioHome() {
   );
 }
 
-function ArtistActivationPanel({ activity }: { activity: { catalogue: number; pending: number; published: number; inRotation: number; plays: number; likes: number } }) {
+function ArtistActivationPanel({ activity }: { activity: { catalogue: number; pending: number; published: number; inRotation: number; plays: number; likes: number; needsStoreDetails?: boolean } }) {
   const needsFirstSubmit = activity.catalogue === 0;
   const needsFix = activity.pending > 0;
   const hasProof = activity.published > 0 || activity.inRotation > 0;
@@ -219,7 +228,9 @@ function ArtistActivationPanel({ activity }: { activity: { catalogue: number; pe
     ? { href: "/creator/studio/create/release", label: "Submit first track", detail: "Start the one-release path and give editorial something real to publish." }
     : needsFix
       ? { href: "/creator/studio/manage#releases", label: "Track review", detail: "Keep the release moving through editorial within the 48h control window." }
-      : hasProof
+      : activity.needsStoreDetails
+        ? { href: "/creator/studio/manage#store-delivery", label: "Finish store details", detail: "Your Premium release needs store titles, credits and a store date before BVS can send it to Spotify and other stores." }
+        : hasProof
         ? { href: "/artists", label: "View live proof", detail: "Check what listeners can see, play and share." }
         : { href: "/creator/studio/manage#releases", label: "Open catalogue", detail: "Review status and prepare the next release." };
 

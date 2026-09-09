@@ -183,6 +183,14 @@ PACKS: dict[str, dict[str, Any]] = {
             "refresh_profile_copyright_strikes",
         ],
     },
+    "store-delivery-packs": {
+        "step": 31,
+        "file": "supabase-store-delivery-packs.sql",
+        "tables": ["distribution_jobs"],
+        "columns": {
+            "distribution_jobs": ["track_id", "store_pack", "pack_complete"],
+        },
+    },
 }
 
 ORDER = sorted(PACKS.keys(), key=lambda k: PACKS[k]["step"])

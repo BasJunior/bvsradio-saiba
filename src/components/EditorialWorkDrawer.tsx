@@ -305,7 +305,7 @@ export default function EditorialWorkDrawer({
                   onEnsure={async () => {
                     await runAction({
                       id: 'ensure-amuse',
-                      label: 'Create Amuse queue',
+                      label: 'Create store-delivery job',
                       action: 'ensure_distribution_job',
                       body: { trackId: work.distro?.trackId, releaseId: work.distro?.releaseId },
                     })

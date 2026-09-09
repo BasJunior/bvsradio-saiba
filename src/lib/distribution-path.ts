@@ -105,38 +105,62 @@ export type PathStep = {
 export function publicDistributionStatusLabel(status?: string | null): string {
   switch (status) {
     case "not_eligible":
-      return "BVS only — Premium required for multi-platform";
+      return "On BVS only — Premium is needed to send this to stores";
     case "eligible":
-      return "Ready for multi-platform queue";
+      return "Ready for stores — finish the store details so BVS can send it";
     case "queued":
-      return "Queued for multi-platform delivery";
+      return "BVS is preparing to send this to stores";
     case "submitted":
-      return "With distribution partner (under review)";
+      return "Sent for store review — not live until the stores approve it";
     case "live_on_dsp":
-      return "Live on major platforms";
+      return "Marked live on stores — confirm the Spotify / Apple links";
     case "failed":
-      return "Distribution needs attention";
+      return "Store delivery needs a fix — editorial will follow up";
     case "cancelled":
-      return "Distribution cancelled";
+      return "Store delivery cancelled — still on BVS if published";
     default:
-      return "Distribution status pending";
+      return "Store delivery not started";
+  }
+}
+
+/** Artist-visible job notes. Never name the private aggregator or internal codes. */
+export function publicDistributionNotes(status?: string | null, packComplete = false): string {
+  switch (status) {
+    case "eligible":
+      return packComplete
+        ? "Store details look complete. Ask BVS to send this to Spotify, Apple Music and other stores."
+        : "This is live on BVS. Fill in how it should appear on stores, then ask BVS to send it.";
+    case "queued":
+      return "BVS has your store details and is preparing the send. It is not on Spotify or Apple Music yet.";
+    case "submitted":
+      return "BVS sent this for store review. Stores decide when it goes live — usually about 7–14 days.";
+    case "live_on_dsp":
+      return "BVS marked this live on stores. Add the Spotify / Apple links on this page when you have them.";
+    case "failed":
+      return "Stores or BVS need a metadata or rights fix before this can go out again.";
+    case "cancelled":
+      return "Store delivery was cancelled. The release can stay on BVS Radio.";
+    case "not_eligible":
+      return "This is on BVS Radio. Artist Premium is required to send it to other stores.";
+    default:
+      return "Store delivery has not started yet.";
   }
 }
 
 export function editorialDistributionStatusLabel(status?: string | null): string {
   switch (status) {
     case "not_eligible":
-      return "Not eligible (no Premium / distribution flag)";
+      return "Not eligible — Premium off";
     case "eligible":
-      return "Eligible — queue private partner hand-off";
+      return "Eligible — finish store details, then send";
     case "queued":
-      return "Queued — ops to deliver to private partner";
+      return "Ready to send — BVS preparing the store pack";
     case "submitted":
-      return "Submitted to private partner — awaiting store approval";
+      return "Sent for store review";
     case "live_on_dsp":
-      return "Live on DSPs (link ISRC / Spotify URLs)";
+      return "Live on stores — link Spotify / Apple URLs";
     case "failed":
-      return "Failed — fix metadata / rights / partner reject";
+      return "Needs a metadata or rights fix";
     case "cancelled":
       return "Cancelled";
     default:
@@ -147,22 +171,16 @@ export function editorialDistributionStatusLabel(status?: string | null): string
 export function distributionJobNotes(input: {
   distroOk: boolean;
   publish: boolean;
+  status?: string | null;
+  packComplete?: boolean;
 }): string {
   if (!input.publish) {
     return "Not published on BVS yet.";
   }
   if (!input.distroOk) {
-    return [
-      "BVS publish path complete (catalogue / optional rotation).",
-      "Multi-platform distribution locked: artist needs active Premium + distribution_enabled.",
-    ].join(" ");
+    return publicDistributionNotes("not_eligible");
   }
-  return [
-    "BVS publish complete.",
-    "Premium distribution eligible.",
-    "Next: queue private DSP partner hand-off (internal code: private_dsp_partner).",
-    "Artist-facing copy must not name the aggregator brand.",
-  ].join(" ");
+  return publicDistributionNotes(input.status || "eligible", Boolean(input.packComplete));
 }
 
 export function buildArtistPathSteps(input: {

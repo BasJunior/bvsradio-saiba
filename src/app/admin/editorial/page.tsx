@@ -10,6 +10,7 @@ import MusicVideoEditorialPanel from '@/components/MusicVideoEditorialPanel'
 import { creatorPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 import EditorialAnalytics from '@/components/EditorialAnalytics'
+import EditorialStoreDeliveryQueue from '@/components/EditorialStoreDeliveryQueue'
 import EditorialSectionCarousel, { EditorialArtistGroupCard, groupEditorialByArtist, matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
 
 type MobileClearance = { id?: string; track_id: string; surface: 'ios' | 'android'; status: 'not_reviewed' | 'cleared' | 'blocked'; rights_basis?: string; evidence_reference?: string; review_notes?: string; reviewed_at?: string }
@@ -29,7 +30,7 @@ type KnownIsrcMapEntry = { isrc: string; title?: string | null; artist_name?: st
 type ReleaseContributor = { id: string; release_id: string; person_name: string; contribution_role: string; rights_confirmed: boolean }
 type ReleaseClearanceEvidence = { id: string; release_id: string; material_type: string; evidence_version: number; original_file_name: string; file_url?: string; artist_notes?: string; review_status: string; review_notes?: string }
 type MediaProcessingJob = { id: string; release_id: string; release_track_id: string; status: string; codec_name?: string; duration_seconds?: number; sample_rate?: number; channels?: number; loudness_lufs?: number; true_peak_db?: number; malware_status: string; blockers?: string[]; waveform_path?: string; preview_path?: string; error_code?: string }
-type DistJob = { id: string; release_id: string; status: string; distributor?: string | null; notes?: string | null }
+type DistJob = { id: string; release_id?: string | null; track_id?: string | null; status: string; distributor?: string | null; notes?: string | null; pack_complete?: boolean }
 type BeatLicence = { id?: string; licence_name?: string; price_usd?: number; is_active?: boolean }
 type Beat = { id: string; producer_user_id: string; title: string; genre?: string; mood?: string; bpm?: number | null; status: string; is_public: boolean; preview_path?: string | null; artwork_path?: string | null; editorial_notes?: string | null; created_at: string; beat_licence_options?: BeatLicence[] }
 type BeatReviewMessage = { id: string; beat_id: string; author_kind: 'producer' | 'editor'; message: string; created_at: string }
@@ -279,8 +280,14 @@ export default function EditorialDashboard() {
   ).length
   const releaseQueue = releaseNeedsReview  // only badge items needing action
 
+  const storeDeliveryCount = (data.distributionJobs || []).filter((job) =>
+    ['eligible', 'queued', 'submitted', 'failed'].includes(String(job.status || '')),
+  ).length
+  const canDistro = allowed('manage_artist_wallet') || allowed('approve_submissions')
+
   const jump = [
     { id: 'ed-overview', label: 'Overview' },
+    { id: 'ed-store-delivery', label: `Store delivery${storeDeliveryCount ? ` (${storeDeliveryCount})` : ''}` },
     { id: 'ed-analytics', label: 'Analytics' },
     { id: 'ed-releases', label: `Albums/EPs${releaseQueue ? ` (${releaseQueue})` : ''}` },
     { id: 'ed-beats', label: `BeatStore${beatQueue ? ` (${beatQueue})` : ''}` },
@@ -411,9 +418,18 @@ export default function EditorialDashboard() {
         </div>
       </section>
 
+      <EditorialStoreDeliveryQueue
+        token={token}
+        jobs={data.distributionJobs || []}
+        releases={data.releases || []}
+        canDistro={canDistro}
+        busy={busy}
+        act={act}
+      />
+
       <EditorialAnalytics token={token} />
 
-      <EditorialDropDown id="ed-releases" label="Albums and EPs" count={releaseQueue} defaultOpen={releaseQueue > 0}>
+      <EditorialDropDown id="ed-releases" label="Albums and EPs" count={releaseQueue} defaultOpen={releaseQueue > 0 || storeDeliveryCount > 0}>
         <ReleaseEditorialPanel
           releases={data.releases || []}
           releaseTracks={data.releaseTracks || []}
@@ -424,7 +440,7 @@ export default function EditorialDashboard() {
           knownIsrcMap={data.knownIsrcMap || []}
           canApprove={allowed('approve_submissions')}
           canRotate={allowed('manage_rotation')}
-          canDistro={allowed('manage_artist_wallet')}
+          canDistro={canDistro}
           act={act}
           busy={busy}
         />

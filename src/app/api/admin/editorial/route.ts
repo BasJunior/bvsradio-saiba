@@ -17,6 +17,21 @@ async function patchTable(table: string, query: string, body: Record<string, unk
   }))
 }
 
+async function insertRow(table: string, body: Record<string, unknown>) {
+  return jsonOrError(await fetch(editorialUrl(table), {
+    method: 'POST',
+    headers: { ...serviceHeaders, Prefer: 'return=representation' },
+    body: JSON.stringify(body),
+  }))
+}
+
+function artistPremiumOn(profile?: Record<string, unknown> | null) {
+  if (!profile || profile.premium_active !== true) return false
+  const until = String(profile.premium_until || '')
+  if (until && Number.isFinite(Date.parse(until)) && Date.parse(until) < Date.now()) return false
+  return true
+}
+
 async function optionalJson(path: string) {
   const response = await fetch(editorialUrl(path), { headers: serviceHeaders, cache: 'no-store' })
   if (!response.ok) return []
@@ -793,18 +808,82 @@ export async function PATCH(request: Request) {
         await audit(identity.user.id, enabled ? 'release_rotation_on' : 'release_rotation_off', 'release', releaseId)
         return NextResponse.json({ result })
       }
+      case 'ensure_distribution_job': {
+        if (!can(identity, 'manage_artist_wallet') && !can(identity, 'approve_submissions')) {
+          return NextResponse.json({ error: 'Editorial permission required.' }, { status: 403 })
+        }
+        const { PRIVATE_DSP_PARTNER_AMUSE, publicDistributionNotes } = await import('@/lib/distribution-path')
+        const trackId = String(body.trackId || '')
+        const releaseIdIn = String(body.releaseId || '')
+        if (!trackId && !releaseIdIn) {
+          return NextResponse.json({ error: 'trackId or releaseId required.' }, { status: 400 })
+        }
+        let artistUserId = ''
+        let releaseId = releaseIdIn
+        if (trackId) {
+          const track = (await optionalJson(
+            `tracks?id=eq.${encodeURIComponent(trackId)}&select=id,user_id,release_id,title&limit=1`,
+          ))[0] as { user_id?: string; release_id?: string | null } | undefined
+          if (!track?.user_id) return NextResponse.json({ error: 'Track not found.' }, { status: 404 })
+          artistUserId = String(track.user_id)
+          if (!releaseId && track.release_id) releaseId = String(track.release_id)
+        }
+        if (releaseId && !artistUserId) {
+          const release = (await optionalJson(
+            `releases?id=eq.${encodeURIComponent(releaseId)}&select=id,user_id&limit=1`,
+          ))[0] as { user_id?: string } | undefined
+          if (!release?.user_id) return NextResponse.json({ error: 'Release not found.' }, { status: 404 })
+          artistUserId = String(release.user_id)
+        }
+        const profile = (await optionalJson(
+          `profiles?id=eq.${encodeURIComponent(artistUserId)}&select=id,premium_active,distribution_enabled,premium_until&limit=1`,
+        ))[0] as Record<string, unknown> | undefined
+        if (!artistPremiumOn(profile) || profile?.distribution_enabled !== true) {
+          return NextResponse.json(
+            { error: 'Store delivery is only available when this artist has active Premium.' },
+            { status: 409 },
+          )
+        }
+        const existingQuery = releaseId
+          ? `distribution_jobs?release_id=eq.${encodeURIComponent(releaseId)}&select=*&limit=1`
+          : `distribution_jobs?track_id=eq.${encodeURIComponent(trackId)}&select=*&limit=1`
+        const existing = (await optionalJson(existingQuery))[0] as Record<string, unknown> | undefined
+        if (existing?.id) return NextResponse.json({ result: [existing], created: false })
+        const payload: Record<string, unknown> = {
+          artist_user_id: artistUserId,
+          status: 'eligible',
+          distributor: PRIVATE_DSP_PARTNER_AMUSE,
+          notes: publicDistributionNotes('eligible', false),
+        }
+        if (releaseId) payload.release_id = releaseId
+        if (trackId) payload.track_id = trackId
+        const result = await insertRow('distribution_jobs', payload)
+        await audit(identity.user.id, 'distribution_job_created', 'distribution_job', String((result as Array<{ id?: string }>)?.[0]?.id || artistUserId), {
+          releaseId: releaseId || null,
+          trackId: trackId || null,
+        })
+        return NextResponse.json({ result, created: true })
+      }
       case 'update_distribution_job': {
-        requirePermission('manage_artist_wallet')
+        if (!can(identity, 'manage_artist_wallet') && !can(identity, 'approve_submissions')) {
+          return NextResponse.json({ error: 'Editorial permission required.' }, { status: 403 })
+        }
         const jobId = String(body.jobId || '')
         const status = String(body.status || '')
         const allowed = ['not_eligible', 'eligible', 'queued', 'submitted', 'live_on_dsp', 'failed', 'cancelled']
         if (!jobId || !allowed.includes(status)) {
           return NextResponse.json({ error: 'jobId and valid status required.' }, { status: 400 })
         }
+        const { PRIVATE_DSP_PARTNER_AMUSE, publicDistributionNotes } = await import('@/lib/distribution-path')
+        const current = (await optionalJson(
+          `distribution_jobs?id=eq.${encodeURIComponent(jobId)}&select=id,pack_complete&limit=1`,
+        ))[0] as { pack_complete?: boolean } | undefined
+        const distributor =
+          status === 'not_eligible' || status === 'cancelled' ? null : PRIVATE_DSP_PARTNER_AMUSE
         const result = await patchTable('distribution_jobs', `id=eq.${encodeURIComponent(jobId)}`, {
           status,
-          distributor: body.distributor ? String(body.distributor).slice(0, 120) : null,
-          notes: body.notes != null ? String(body.notes).slice(0, 2000) : undefined,
+          distributor,
+          notes: publicDistributionNotes(status, Boolean(current?.pack_complete)),
           updated_at: new Date().toISOString(),
         })
         await audit(identity.user.id, 'distribution_job_updated', 'distribution_job', jobId, { status })

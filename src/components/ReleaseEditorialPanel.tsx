@@ -84,10 +84,11 @@ type ReleaseClearanceEvidence = {
 
 type DistJob = {
   id: string
-  release_id: string
+  release_id?: string | null
   status: string
   distributor?: string | null
   notes?: string | null
+  pack_complete?: boolean
 }
 
 export default function ReleaseEditorialPanel({
@@ -518,25 +519,23 @@ export default function ReleaseEditorialPanel({
               )}
               {job && (
                 <div className="mt-4 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                  <p className="text-[11px] uppercase tracking-wide text-brand">Multi-platform path</p>
+                  <p className="text-[11px] uppercase tracking-wide text-brand">Store delivery</p>
                   <p className="mt-1">
-                    Distribution job:{' '}
+                    Status:{' '}
                     <strong className="text-text-primary">{editorialDistributionStatusLabel(job.status)}</strong>
-                    {job.distributor ? ` · internal: ${job.distributor}` : ' · internal partner unset'}
                   </p>
                   {job.notes && <p className="mt-2 opacity-90">{job.notes}</p>}
                   <p className="mt-2 text-[11px] opacity-80">
-                    Flow: eligible → queued (ops) → submitted (private partner) → live_on_dsp (stores live).
-                    Do not name aggregator brands in artist-facing copy.
+                    Flow: store details → BVS send → store review → live on stores.
                   </p>
                   {canDistro && (
                     <div className="mt-2 flex flex-wrap gap-2">
                       {[
-                        ['eligible', 'Eligible'],
-                        ['queued', 'Queue partner hand-off'],
-                        ['submitted', 'Submitted to partner'],
-                        ['live_on_dsp', 'Live on DSPs'],
-                        ['failed', 'Failed'],
+                        ['eligible', 'Details needed'],
+                        ['queued', 'Ready to send'],
+                        ['submitted', 'Sent for store review'],
+                        ['live_on_dsp', 'Live on stores'],
+                        ['failed', 'Needs a fix'],
                         ['not_eligible', 'Not eligible'],
                       ].map(([status, label]) => (
                         <button

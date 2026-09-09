@@ -19,6 +19,7 @@ import {
   buildArtistPathSteps,
   publicDistributionStatusLabel,
 } from "@/lib/distribution-path";
+import StoreDeliveryPackForm from "@/components/StoreDeliveryPackForm";
 
 type WorkflowItem = {
   id: string;
@@ -67,6 +68,7 @@ type DistJob = {
   release_id: string;
   status: string;
   notes?: string | null;
+  pack_complete?: boolean;
   updated_at?: string;
   created_at?: string;
 };
@@ -229,6 +231,33 @@ export default function CreatorStudio() {
         <div id="releases" className="scroll-mt-24">
           <CreatorDropDown label="Releases and artist requests" count={(data.tracks || []).length} defaultOpen>
             <ArtistReleases tracks={data.tracks || []} requests={data.trackRequests || []} jobs={data.distributionJobs || []} releases={data.releases || []} flags={data.profileFlags} act={act} />
+          </CreatorDropDown>
+        </div>
+      )}
+      {artist && (
+        <div id="store-delivery" className="scroll-mt-24">
+          <CreatorDropDown
+            label="Send to stores"
+            defaultOpen={Boolean(
+              data.profileFlags?.premiumActive &&
+                (data.releases || []).some((release) => release.is_public),
+            )}
+          >
+            <p className="mb-4 text-sm text-text-secondary">
+              After BVS publishes a Premium release, fill in how it should appear on Spotify, Apple Music and other stores. BVS then sends it. Stores decide when it goes live.
+            </p>
+            {(data.releases || [])
+              .filter((release) => release.is_public)
+              .map((release) => (
+                <div key={release.id} className="mb-4 rounded-2xl border border-white/10 p-4">
+                  <StoreDeliveryPackForm token={token} releaseId={release.id} />
+                </div>
+              ))}
+            {!(data.releases || []).some((release) => release.is_public) && (
+              <p className="text-sm text-text-secondary">
+                Publish a release on BVS first. Once editorial approves it, the store form opens here.
+              </p>
+            )}
           </CreatorDropDown>
         </div>
       )}
@@ -786,12 +815,11 @@ function ArtistPathBoard({ data }: { data: Data }) {
             optional).
           </li>
           <li>
-            If Premium: release enters multi-platform queue automatically.
+            If you have Artist Premium, fill in how the release should appear on stores.
           </li>
-          <li>BVS ops hand off to the private distribution partner.</li>
+          <li>Ask BVS to send it. Stores review it for about 7–14 days.</li>
           <li>
-            After partner/store approval → live on Spotify and other major
-            platforms.
+            After stores approve it, the same song can go live on Spotify, Apple Music and other platforms.
           </li>
         </ol>
         <div className="mt-5 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
@@ -910,9 +938,14 @@ function ArtistReleases({
                   {!(flags?.premiumActive && flags?.distributionEnabled) &&
                     release.is_public && (
                       <p className="mt-3 text-xs text-amber-100">
-                        Live on BVS. Multi-platform needs active Artist Premium.
+                        Live on BVS. Artist Premium is needed to send this to other stores.
                       </p>
                     )}
+                  {flags?.premiumActive && flags?.distributionEnabled && release.is_public && (
+                    <a href="#store-delivery" className="mt-3 inline-flex text-xs text-brand">
+                      Open store details →
+                    </a>
+                  )}
                 </article>
               );
             })}
