@@ -1,6 +1,7 @@
 /**
  * Client helpers for direct-to-storage uploads (R2 signed PUTs).
  * Maps browser "Failed to fetch" into actionable copy and retries transient network failures.
+ * Uses XHR so multi-MB artist audio can report progress and surface mobile timeouts cleanly.
  */
 
 export type SignedUploadSlot = {
@@ -47,6 +48,49 @@ async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function putOnceWithXhr(
+  slot: SignedUploadSlot,
+  file: File,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", slot.signedUrl);
+    xhr.setRequestHeader(
+      "Content-Type",
+      slot.contentType || file.type || "application/octet-stream",
+    );
+    // Large WAVs on mobile often need more than a few minutes.
+    xhr.timeout = 15 * 60 * 1000;
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable || !onProgress) return;
+      onProgress(Math.min(99, Math.round((event.loaded / event.total) * 100)));
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100);
+        resolve();
+        return;
+      }
+      const body = String(xhr.responseText || "").slice(0, 120);
+      reject(
+        new Error(
+          `Storage rejected the file (${xhr.status || "network"}). ${
+            body || "Try again or contact BVS."
+          }`,
+        ),
+      );
+    };
+
+    xhr.onerror = () => reject(new TypeError("Failed to fetch"));
+    xhr.ontimeout = () => reject(new Error("Upload timed out"));
+    xhr.onabort = () => reject(new Error("Upload was aborted"));
+    xhr.send(file);
+  });
+}
+
 /**
  * PUT a file to a signed storage URL with limited retries on network failures.
  * Does not retry clear HTTP 4xx (except 408/429).
@@ -54,36 +98,28 @@ async function sleep(ms: number) {
 export async function putToSignedSlot(
   slot: SignedUploadSlot,
   file: File,
-  options?: { attempts?: number; label?: string },
+  options?: {
+    attempts?: number;
+    label?: string;
+    onProgress?: (percent: number) => void;
+  },
 ): Promise<void> {
   const attempts = Math.max(1, options?.attempts ?? 3);
   const label = options?.label;
+  const onProgress = options?.onProgress;
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= attempts; attempt++) {
     try {
-      const res = await fetch(slot.signedUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": slot.contentType || file.type || "application/octet-stream",
-        },
-        body: file,
-      });
-      if (res.ok) return;
-
-      const text = await res.text().catch(() => "");
-      // Retry transient server / rate-limit responses
-      if ((res.status === 408 || res.status === 429 || res.status >= 500) && attempt < attempts) {
-        await sleep(400 * attempt);
-        continue;
-      }
-      throw new Error(
-        `Storage rejected the file (${res.status}). ${text.slice(0, 120) || "Try again or contact BVS."}`,
-      );
+      await putOnceWithXhr(slot, file, onProgress);
+      return;
     } catch (err) {
       lastError = err;
       const msg = err instanceof Error ? err.message : String(err);
-      const isHttpReject = /storage rejected the file/i.test(msg);
+      const statusMatch = msg.match(/storage rejected the file \((\d+)/i);
+      const status = statusMatch ? Number(statusMatch[1]) : 0;
+      const isHttpReject = Boolean(statusMatch);
+      const retryableHttp = status === 408 || status === 429 || status >= 500;
       const isNetwork =
         !isHttpReject &&
         (err instanceof TypeError ||
@@ -91,7 +127,7 @@ export async function putToSignedSlot(
             msg,
           ));
 
-      if (isNetwork && attempt < attempts) {
+      if ((isNetwork || retryableHttp) && attempt < attempts) {
         await sleep(500 * attempt);
         continue;
       }

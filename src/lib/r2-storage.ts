@@ -61,7 +61,8 @@ export async function signedR2DownloadUrl(
 export async function signedR2UploadUrl(
   key: string,
   contentType: string,
-  seconds = 900,
+  // Large artist WAVs on mobile need more than 15m on weak links.
+  seconds = 3600,
 ) {
   return getSignedUrl(
     r2Client(),

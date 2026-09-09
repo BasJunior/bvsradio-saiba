@@ -200,18 +200,27 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       }
 
       for (let i = 0; i < files.length; i++) {
-        setProgress(`Uploading track ${i + 1} of ${files.length}…`)
+        const label = `Uploading track ${i + 1} of ${files.length}`
+        setProgress(`${label}…`)
         const slot = preparedTracks[i] as Slot
-        await putToSignedSlot(slot, files[i], { label: `track ${i + 1} of ${files.length}` })
+        await putToSignedSlot(slot, files[i], {
+          label: `track ${i + 1} of ${files.length}`,
+          onProgress: (percent) => setProgress(`${label}: ${percent}%`),
+        })
       }
       if (cover && prep.cover) {
         setProgress('Uploading cover…')
-        await putToSignedSlot(prep.cover as Slot, cover, { label: 'cover art' })
+        await putToSignedSlot(prep.cover as Slot, cover, {
+          label: 'cover art',
+          onProgress: (percent) => setProgress(`Uploading cover: ${percent}%`),
+        })
       }
       for (let i = 0; i < evidenceEntries.length; i++) {
-        setProgress(`Uploading clearance evidence ${i + 1} of ${evidenceEntries.length}…`)
+        const label = `Uploading clearance evidence ${i + 1} of ${evidenceEntries.length}`
+        setProgress(`${label}…`)
         await putToSignedSlot(preparedEvidence[i] as Slot, evidenceEntries[i].file, {
           label: `clearance evidence ${i + 1}`,
+          onProgress: (percent) => setProgress(`${label}: ${percent}%`),
         })
       }
 

@@ -154,6 +154,19 @@ html {
   overflow-x: clip;
 }
 
+/*
+ * iOS Safari/WebView auto-zooms focused inputs under 16px and often fails to
+ * restore the previous scale in the Capacitor shell. Keep interactive fields
+ * at least 16px on touch devices so typing does not leave the app zoomed-in.
+ */
+@media (hover: none) and (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Premium typography scale (Apple-inspired) */
 h1, .text-5xl, .text-4xl, .text-3xl {
   font-weight: 600;
