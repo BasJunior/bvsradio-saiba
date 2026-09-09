@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
@@ -118,7 +119,7 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
   if (!playlist) return <div className="mx-auto max-w-4xl px-4 py-10"><h1 className="text-3xl font-semibold">{error || "Loading playlist…"}</h1></div>;
 
   return <div className="mx-auto max-w-4xl px-4 pb-12 pt-6 sm:px-6">
-    <button type="button" onClick={() => router.back()} className="text-sm text-text-secondary">← Library</button>
+    <Link href={`/app/${surface}/library`} className="inline-flex min-h-10 items-center text-sm text-text-secondary">← Library</Link>
     <div className="mt-5 rounded-[1.9rem] border border-brand/20 bg-gradient-to-br from-brand/[.10] to-white/[.02] p-6">
       <p className="text-xs uppercase tracking-[.18em] text-brand">Your playlist</p>
       {editing ? <div className="mt-3 space-y-2"><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={100} className="min-h-11 w-full rounded-xl border border-white/10 bg-black/20 px-4 text-xl font-semibold" /><textarea value={description} onChange={(event) => setDescription(event.target.value)} maxLength={500} rows={3} placeholder="Playlist description" className="w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm" /><div className="flex gap-2"><button type="button" disabled={busy || !title.trim()} onClick={() => void patchPlaylist({ title: title.trim(), description: description.trim() })} className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-black">Save</button><button type="button" onClick={() => { setEditing(false); setTitle(playlist.title); setDescription(playlist.description || ""); }} className="rounded-xl border border-white/15 px-4 py-2 text-sm">Cancel</button></div></div> : <><h1 className="mt-2 text-4xl font-semibold tracking-tight">{playlist.title}</h1>{playlist.description ? <p className="mt-2 max-w-2xl text-sm text-text-secondary">{playlist.description}</p> : null}</>}
@@ -150,6 +151,6 @@ export default function AppPlaylistDetailClient({ surface, playlistId }: { surfa
         </div>
       </article>;
     })}</div>
-    {!tracks.length ? <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center"><h2 className="text-xl font-semibold">This playlist is ready for its first track.</h2><button type="button" onClick={() => router.push(`/app/${surface}/explore`)} className="mt-4 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black">Explore music</button></div> : null}
+    {!tracks.length ? <div className="mt-6 rounded-2xl border border-dashed border-white/10 p-8 text-center"><h2 className="text-xl font-semibold">This playlist is ready for its first track.</h2><Link href={`/app/${surface}/explore`} className="mt-4 inline-flex min-h-11 items-center rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black">Explore music</Link></div> : null}
   </div>;
 }

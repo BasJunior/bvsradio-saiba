@@ -147,12 +147,20 @@ assert(buyButton.includes('`/buy/${encodeURIComponent(trackId)}`'), 'player Buy 
 assert(buyHandoff.includes('upsertTrackCartLine'), 'web purchase handoff must place the selected recording in checkout')
 assert(buyHandoff.includes('window.location.replace("/checkout")'), 'exact-track handoff must continue to canonical checkout')
 
-// Navigation guard must preserve the app shell for contained routes and externalise legal/licence destinations.
+// Navigation must progressively enhance rather than capture-cancel contained links.
 assert(bootstrap.includes('window.localStorage.setItem("bvs_app_version", "vnext")'), 'bootstrap must identify vNext shell')
-assert(bootstrap.includes('router.push(`${url.pathname}${url.search}${url.hash}`)'), 'contained app routes must use Next router')
+assert(bootstrap.includes('url.pathname === `/app/${surface}` || url.pathname.startsWith(`/app/${surface}/`)'), 'bootstrap must recognize contained app routes')
+assert(!bootstrap.includes('router.push(`${url.pathname}${url.search}${url.hash}`)'), 'contained app links must retain their native href fallback')
+assert(bootstrap.includes('window.location.assign(destination)'), 'mapped legacy destinations must have a hard-navigation fallback')
 assert(bootstrap.includes('isExternalLegalOrLicenceUrl(url)'), 'legal/licence destinations need external boundary')
 assert(bootstrap.includes('window.open(externalBvsUrl(url), "_blank", "noopener,noreferrer")'), 'external legal/licence links must leave the WebView')
 assert(externalBoundary.includes('bvsradio.com'), 'external boundary must target canonical BVS host')
+assert(appMarketplace.includes('providerHref'), 'Marketplace providers must resolve to real href destinations')
+assert(appMarketplace.includes('<Link href={serviceHref(provider.slug, item.id)}'), 'Marketplace service details must be real links')
+assert(appMarketplace.includes('<Link href={serviceHref(provider.slug, item.id, true)}'), 'Marketplace availability must be a real link')
+assert(!appMarketplace.includes('onClick={() => openService'), 'Marketplace navigation must not depend on JS-only buttons')
+assert(appPlaylistDetail.includes('href={`/app/${surface}/library`}'), 'Playlist back navigation must keep an href fallback')
+assert(appPlaylistDetail.includes('href={`/app/${surface}/explore`}'), 'Empty-playlist explore navigation must keep an href fallback')
 
 // Native iOS wrapper remains constrained to the dedicated app surface.
 assert(boundary.includes('Capacitor.getPlatform() === "ios"'), 'native route boundary must be iOS-specific')
