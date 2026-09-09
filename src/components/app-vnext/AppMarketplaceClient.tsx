@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { marketplaceStorefronts, type MarketplaceStorefront, type StorefrontService } from "@/lib/marketplace-storefronts";
 import { shareBvs } from "@/lib/app-native";
@@ -62,7 +61,6 @@ export default function AppMarketplaceClient({
   initialService?: string;
   initialBook?: boolean;
 }) {
-  const router = useRouter();
   const [payload, setPayload] = useState<MarketplacePayload>({});
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [showBooking, setShowBooking] = useState(initialBook);
@@ -136,11 +134,11 @@ export default function AppMarketplaceClient({
   }, [slots]);
 
   const base = `/app/${surface}/marketplace`;
-  const openProvider = (slug: string) => router.push(`${base}?provider=${encodeURIComponent(slug)}`);
-  const openService = (providerSlug: string, serviceId: string, book = false) => {
+  const providerHref = (slug: string) => `${base}?provider=${encodeURIComponent(slug)}`;
+  const serviceHref = (providerSlug: string, serviceId: string, book = false) => {
     const params = new URLSearchParams({ provider: providerSlug, service: serviceId });
     if (book) params.set("book", "1");
-    router.push(`${base}?${params.toString()}`);
+    return `${base}?${params.toString()}`;
   };
 
   async function shareWebStore(selectedProvider: MarketplaceStorefront, selectedService?: StorefrontService) {
@@ -191,7 +189,7 @@ export default function AppMarketplaceClient({
   if (provider) {
     return (
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
-        <button type="button" onClick={() => router.push(base)} className="text-sm text-white/42 transition hover:text-white">← Marketplace</button>
+        <Link href={base} className="inline-flex min-h-10 items-center text-sm text-white/42 transition hover:text-white">← Marketplace</Link>
 
         <section className="mt-5 overflow-hidden rounded-[2rem] border border-white/[.07] bg-white/[.025] shadow-[0_24px_70px_rgba(0,0,0,.25)]">
           {provider.heroImage ? <img src={provider.heroImage} alt="" data-bvs-data-heavy="true" className="aspect-[16/7] w-full object-cover" /> : null}
@@ -224,9 +222,9 @@ export default function AppMarketplaceClient({
                   {item.turnaroundDays ? <p className="mt-2 text-xs text-white/30">Typical turnaround: {item.turnaroundDays} days</p> : null}
                   <div className="mt-5 flex flex-wrap gap-2">
                     {item.bookingMode === "calendar" ? (
-                      <button type="button" onClick={() => openService(provider.slug, item.id, true)} className="min-h-10 rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-brand">Check availability</button>
+                      <Link href={serviceHref(provider.slug, item.id, true)} className="inline-flex min-h-10 items-center rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-brand">Check availability</Link>
                     ) : (
-                      <button type="button" onClick={() => openService(provider.slug, item.id)} className="min-h-10 rounded-full border border-brand/28 px-4 text-sm font-semibold text-brand transition hover:bg-brand/[.08]">View details</button>
+                      <Link href={serviceHref(provider.slug, item.id)} className="inline-flex min-h-10 items-center rounded-full border border-brand/28 px-4 text-sm font-semibold text-brand transition hover:bg-brand/[.08]">View details</Link>
                     )}
                     {!iosCommerceRestricted ? <button type="button" onClick={() => void shareWebStore(provider, item)} className="min-h-10 rounded-full border border-white/[.08] px-4 text-sm text-white/42 transition hover:border-white/18 hover:text-white">Share</button> : null}
                   </div>
@@ -325,7 +323,7 @@ export default function AppMarketplaceClient({
               <h2 className="mt-3 text-xl font-semibold">{item.name}</h2>
               <p className="mt-2 text-sm leading-6 text-white/40">{item.headline}</p>
               {item.location ? <p className="mt-2 text-xs text-brand">{item.location}</p> : null}
-              <div className="mt-5 flex items-center justify-between gap-3"><span className="text-xs text-white/30">{item.services.length} offer{item.services.length === 1 ? "" : "s"}</span><button type="button" onClick={() => openProvider(item.slug)} className="min-h-10 rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-brand">View provider</button></div>
+              <div className="mt-5 flex items-center justify-between gap-3"><span className="text-xs text-white/30">{item.services.length} offer{item.services.length === 1 ? "" : "s"}</span><Link href={providerHref(item.slug)} className="inline-flex min-h-10 items-center rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-brand">View provider</Link></div>
             </div>
           </article>
         ))}

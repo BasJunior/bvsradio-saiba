@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { externalBvsUrl, isExternalLegalOrLicenceUrl } from "@/lib/app-external-boundary";
 
 export type AppSurface = "ios" | "android";
@@ -75,8 +74,6 @@ export function appDestination(surface: AppSurface, url: URL) {
 }
 
 export default function AppBootstrap({ surface }: { surface: AppSurface }) {
-  const router = useRouter();
-
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.bvsAppShell = "true";
@@ -104,19 +101,17 @@ export default function AppBootstrap({ surface }: { surface: AppSurface }) {
       }
       if (url.origin !== window.location.origin) return;
 
-      // Never let an in-app route become a full WebView document navigation.
-      // Keeping it inside Next's router preserves the vNext shell and prevents a
-      // malformed/missing child route from dropping the user into the web surface.
+      // Contained app destinations must remain real links. When Next is hydrated
+      // its Link handler provides the SPA transition; if the WebView/router ever
+      // misses hydration, the browser still has a working href instead of a dead tap.
       if (url.pathname === `/app/${surface}` || url.pathname.startsWith(`/app/${surface}/`)) {
-        event.preventDefault();
-        router.push(`${url.pathname}${url.search}${url.hash}`);
         return;
       }
 
       const destination = appDestination(surface, url);
       if (!destination) return;
       event.preventDefault();
-      router.push(destination);
+      window.location.assign(destination);
     };
 
     document.addEventListener("click", guardNavigation, true);
@@ -126,6 +121,6 @@ export default function AppBootstrap({ surface }: { surface: AppSurface }) {
       delete root.dataset.bvsAppShell;
       delete root.dataset.bvsAppSurface;
     };
-  }, [router, surface]);
+  }, [surface]);
   return null;
 }
