@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import AppJoinCard from "@/components/app-vnext/AppJoinCard";
@@ -76,6 +75,21 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
       <div className="mt-5">
         <AppHomeStationCard />
       </div>
+
+      <Link
+        href={`${base}/feed`}
+        className="group mt-5 flex items-center justify-between gap-5 overflow-hidden rounded-[1.55rem] border border-brand/15 bg-gradient-to-r from-brand/[.075] via-white/[.025] to-white/[.015] px-5 py-4 transition hover:border-brand/30 hover:bg-brand/[.085]"
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-brand">
+            <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_16px_rgba(212,175,55,.7)]" aria-hidden="true" />
+            BVS Feed
+          </div>
+          <p className="mt-2 text-base font-semibold text-white">Feel what’s moving across BVS.</p>
+          <p className="mt-1 text-xs leading-5 text-white/42">New music, creators, BeatStore drops, live moments and Marketplace activity.</p>
+        </div>
+        <span className="shrink-0 text-2xl text-brand transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
+      </Link>
 
       <div className="mt-5">
         <AppJoinCard surface={surface} />
