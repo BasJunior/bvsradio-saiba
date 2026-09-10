@@ -42,12 +42,14 @@ export default function BuyTrackButton({
   const trackId = String(track.id || "");
   const label =
     variant === "compact" ? `Buy · $${price.toFixed(price % 1 ? 2 : 0)}` : `Buy / Support · $${price.toFixed(2)}`;
-  const purchasePath = `/buy/${encodeURIComponent(trackId)}`;
+  const purchasePath = `/buy?track=${encodeURIComponent(trackId)}`;
   const purchaseHref = `https://bvsradio.com${purchasePath}`;
 
   const prepareWebCart = () => {
     if (!trackId || busy) return;
     setBusy(true);
+    // Keep the current browser context in sync too. The canonical web handoff
+    // resolves the authoritative item again before adding it to the web cart.
     upsertTrackCartLine({
       id: trackId,
       title: track.title,
