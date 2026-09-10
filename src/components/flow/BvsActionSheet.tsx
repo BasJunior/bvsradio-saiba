@@ -2,6 +2,7 @@
 
 import { Capacitor } from "@capacitor/core";
 import { useCallback, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import type { BvsAction, BvsObject } from "@/lib/bvs-object";
 import { recordFlowOpen } from "@/lib/flow-session";
@@ -105,7 +106,7 @@ export default function BvsActionSheet({
     };
   }, [dismiss, object.id, object.kind, onClose, open, returnFocus]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
   const actions = object.overflowActions || [];
 
   async function run(action: BvsAction) {
@@ -133,9 +134,20 @@ export default function BvsActionSheet({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && dismiss()}>
-      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={`bvs-actions-${object.id}`} className="w-full max-w-lg rounded-t-[2rem] border border-white/10 bg-bg-primary p-5 shadow-2xl sm:rounded-[2rem] sm:p-6">
+  const sheet = (
+    <div
+      data-bvs-transient-overlay="action-sheet"
+      className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+      role="presentation"
+      onMouseDown={(event) => event.target === event.currentTarget && dismiss()}
+    >
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`bvs-actions-${object.id}`}
+        className="max-h-[calc(100dvh-0.75rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-[2rem] border border-white/10 bg-bg-primary px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-h-[85dvh] sm:rounded-[2rem] sm:p-6"
+      >
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -158,4 +170,8 @@ export default function BvsActionSheet({
       </div>
     </div>
   );
+
+  // Portalling to <body> keeps sticky Feed filters and fixed app chrome from
+  // creating competing stacking contexts above this transient interaction.
+  return createPortal(sheet, document.body);
 }
