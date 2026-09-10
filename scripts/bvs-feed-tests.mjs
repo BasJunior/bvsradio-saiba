@@ -45,9 +45,11 @@ assert(appNav.includes('href: `${base}/feed`'), "listener Feed tab must stay in 
 assert(appNav.includes('label: "Studio"'), "creator app navigation must replace the listener Feed tab with Studio");
 assert(appNav.includes('data-bvs-role-tab={isCreator ? "studio" : "feed"}'), "role-aware fourth tab must stay tied to existing creator access");
 assert(appNav.includes('pathname === base || (isCreator && pathname.startsWith(`${base}/feed`))'), "Feed must only map back to Home active state for creator navigation");
+assert(appNav.includes('M4 16.5h2.5l2-5 3 8 2.5-12 2.5 9H20'), "app Feed tab must use the same pulse glyph as mobile web");
+assert(mobileWebNav.includes('M4 16.5h2.5l2-5 3 8 2.5-12 2.5 9H20'), "mobile web Feed must retain the shared pulse glyph");
 assert(appYou.includes('Turn on creator access.'), "listener You surface must keep Create as an upgrade option");
 assert(mobileWebNav.includes('grid-cols-5'), "mobile web navigation must make Feed first-class");
 assert(mobileWebNav.includes('href={feedHref}'), "mobile web navigation must link BVS Feed");
 assert(footer.includes('href="/feed"'), "desktop web must expose BVS Feed in discovery navigation");
 
-console.log("BVS Feed public-data, social-action and role-aware navigation assertions passed.");
+console.log("BVS Feed public-data, social-action, icon and role-aware navigation assertions passed.");
