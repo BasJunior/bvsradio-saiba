@@ -73,6 +73,7 @@ export type BvsObject = {
 
 export type BvsCardVariant =
   | "compact-row"
+  | "feed-beat"
   | "rail-card"
   | "feature-card"
   | "grid-card"

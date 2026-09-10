@@ -86,7 +86,7 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{categoryLabel[item.category]}</span>
                   <span className="text-white/20" aria-hidden="true">•</span>
-                  <span className="text-xs font-medium text-white/72">{item.verb}</span>
+                  <span className="text-xs font-medium text-white/72">{item.category === "beat" ? "New drop" : item.verb}</span>
                 </div>
               </div>
               <time suppressHydrationWarning dateTime={item.occurredAt} className="shrink-0 text-xs tabular-nums text-white/35" title={item.occurredAt}>
@@ -94,7 +94,7 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
               </time>
             </div>
 
-            <BvsObjectCard object={item.object} variant="compact-row" />
+            <BvsObjectCard object={item.object} variant={item.category === "beat" ? "feed-beat" : "compact-row"} />
 
             <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 border-t border-white/[.055] px-1 pt-3">
               {item.social ? (
