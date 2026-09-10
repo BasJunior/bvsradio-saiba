@@ -36,6 +36,12 @@ function relativeTime(iso: string) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric" }).format(new Date(iso));
 }
 
+function exactFeedRoute(item: BvsFeedItem) {
+  if (item.object.kind !== "beat") return item.object.route;
+  if (/^\/app\/(ios|android)\/beat\//.test(item.object.route)) return item.object.route;
+  return `/beat/${encodeURIComponent(item.object.id)}`;
+}
+
 export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
   const [filter, setFilter] = useState<BvsFeedFilter>("all");
   const visible = useMemo(
@@ -47,7 +53,7 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
     await shareBvs({
       title: item.object.title,
       text: `${item.verb} · ${item.object.subtitle || "BVS"}`,
-      url: canonicalBvsShareUrl(item.object.route),
+      url: canonicalBvsShareUrl(exactFeedRoute(item)),
     });
   }
 
@@ -92,7 +98,7 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
 
             <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 border-t border-white/[.055] px-1 pt-3">
               {item.social ? (
-                <LibraryAction item={item.social.item} section={item.social.section} compact />
+                <LibraryAction item={{ ...item.social.item, href: exactFeedRoute(item) }} section={item.social.section} compact />
               ) : null}
               <button
                 type="button"
