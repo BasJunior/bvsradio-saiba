@@ -46,11 +46,15 @@ export function setLibraryCacheOwner(userId?: string | null) {
   else window.localStorage.removeItem(cacheOwnerKey)
 }
 
-export function clearAccountLibraryCache() {
-  if (typeof window === 'undefined') return false
-  if (!getLibraryCacheOwner()) return false
+export function clearLibraryCache() {
+  if (typeof window === 'undefined') return
   ;(Object.keys(keys) as LibrarySection[]).forEach((section) => writeLibrary(section, [], 'remote'))
   setLibraryCacheOwner(null)
+}
+
+export function clearAccountLibraryCache() {
+  if (!getLibraryCacheOwner()) return false
+  clearLibraryCache()
   return true
 }
 
