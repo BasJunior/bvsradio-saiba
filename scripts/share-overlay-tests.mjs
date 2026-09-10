@@ -32,6 +32,8 @@ assert(appExperience.includes('html[data-bvs-app-shell="true"] {'), 'app experie
 assert(appExperience.includes('overscroll-behavior-y: none'), 'app shell must suppress elastic top/bottom overscroll')
 assert(appExperience.includes(':is(.bvs-app-header, .bvs-persistent-player, .bvs-app-bottom-nav)'), 'header, player and bottom nav must share stable fixed-layer treatment')
 assert(appExperience.includes('translate3d(0, 0, 0)'), 'fixed app chrome must remain on independent compositor layers')
+assert(appExperience.includes('[data-now-playing-shell="true"] > .relative'), 'native Now Playing must have a dedicated top-edge rule')
+assert(appExperience.includes('padding-top: env(safe-area-inset-top, 0px) !important'), 'Now Playing must use only the real safe-area inset without an artificial top gap')
 assert(buyButton.includes('`/buy?track=${encodeURIComponent(trackId)}`'), 'player Buy must use the stable exact-track web handoff')
 assert(appBeat.includes('https://bvsradio.com/buy?beat='), 'BeatStore Buy must use canonical web checkout')
 assert(appBeat.includes('&licence=${encodeURIComponent(licenceId)}'), 'BeatStore Buy must preserve the selected licence id')
@@ -45,4 +47,4 @@ assert(purchaseServer.includes('is_public=eq.true&status=eq.published&rights_con
 assert(purchaseServer.includes('licence.is_sold_out === true'), 'beat Buy must reject sold-out licences')
 assert(legacyBeatBuy.includes('/buy?beat='), 'old BeatStore deep links must recover through the stable handoff')
 
-console.log('Share overlay, hero clipping, fixed chrome and purchase handoff assertions passed.')
+console.log('Share overlay, hero clipping, fixed chrome, Now Playing top edge and purchase handoff assertions passed.')
