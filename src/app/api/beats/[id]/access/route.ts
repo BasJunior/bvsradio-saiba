@@ -69,13 +69,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const beat = beatRows[0]
   if (!beat) return NextResponse.json({ member: true, owned: false, fullAudioUrl: null, fullAvailable: false })
 
-  // Membership verifies that the listener may hear the complete tagged BeatStore preview.
-  // The clean private master stays locked until a paid/fulfilled licence is found below.
+  // Membership unlocks the complete tagged/watermarked BeatStore preview only.
+  // The clean private master remains locked until a paid/fulfilled licence is found below.
+  const memberPreviewUrl = await signedAudio(beat.preview_path)
   const memberAccess = {
     member: true,
     owned: false,
-    fullAudioUrl: null,
-    fullAvailable: false,
+    fullAudioUrl: memberPreviewUrl,
+    fullAvailable: Boolean(memberPreviewUrl),
   }
 
   const ordersResponse = await fetch(
