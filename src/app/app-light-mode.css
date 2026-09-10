@@ -79,6 +79,17 @@
   box-shadow: none;
 }
 
+/* The Feed entry uses a dark-first gradient and solid white title. */
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-feed-entry {
+  border-color: rgb(138 101 0 / 0.16) !important;
+  background: linear-gradient(110deg, rgb(212 175 55 / 0.12), rgb(255 253 248 / 0.94) 48%, rgb(255 255 255 / 0.82)) !important;
+  box-shadow: 0 10px 30px rgb(64 49 25 / 0.065);
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-feed-entry [class~="text-white"] {
+  color: #211c15 !important;
+}
+
 /* A few app components use higher-opacity white utilities which were not part
  * of the original light-theme remap. They are all text on light surfaces. */
 :root[data-theme="light"][data-bvs-app-shell="true"] .bvs-page-main :is(
