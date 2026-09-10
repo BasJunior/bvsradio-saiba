@@ -12,7 +12,7 @@
     "test:safe-floor": "node --experimental-strip-types scripts/safe-floor-tests.mjs",
     "test:rights-compliance": "node --experimental-strip-types scripts/rights-compliance-tests.mjs",
     "test:app-flow": "node --experimental-strip-types scripts/app-flow-tests.mjs",
-    "test:apple-ios-surface": "node scripts/apple-ios-surface-tests.mjs && node scripts/share-overlay-tests.mjs",
+    "test:apple-ios-surface": "node scripts/apple-ios-surface-tests.mjs && node scripts/share-overlay-tests.mjs && node scripts/app-light-mode-tests.mjs",
     "test:editorial-normalization": "node scripts/editorial-catalogue-normalization-tests.mjs",
     "test:ios-surface-lock": "node --experimental-strip-types scripts/ios-surface-lock-tests.mjs",
     "test:studio-intent": "node scripts/studio-intent-tests.mjs",
