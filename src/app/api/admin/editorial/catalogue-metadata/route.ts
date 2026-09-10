@@ -26,7 +26,7 @@ async function rows(path: string): Promise<JsonRow[]> {
 }
 
 async function patchRows(table: string, query: string, body: Record<string, unknown>) {
-  const response = await fetch(editorialUrl(`${table}?${query}`), {
+  const response = await fetch(editorialUrl(`${table}?${query}`,), {
     method: 'PATCH',
     headers: { ...serviceHeaders, Prefer: 'return=representation' },
     body: JSON.stringify(body),
@@ -85,19 +85,27 @@ export async function GET(request: Request) {
       rows('profiles?select=id,username,display_name,creator_public_name,creator_name_status,role,is_producer,is_published&order=username.asc&limit=1500'),
     ])
 
-    const tracks = await Promise.all(rawTracks.map(async (track) => ({
-      ...track,
-      file_url: await signStoredMedia(track.file_url),
-      artwork_url: await signStoredMedia(track.artwork_url),
-    })))
+    const tracks = await Promise.all(rawTracks.map(async (track) => {
+      const reviewAudioUrl = await signStoredMedia(track.file_url)
+      return {
+        ...track,
+        file_url: reviewAudioUrl,
+        review_audio_url: reviewAudioUrl,
+        artwork_url: await signStoredMedia(track.artwork_url),
+      }
+    }))
     const releases = await Promise.all(rawReleases.map(async (release) => ({
       ...release,
       cover_url: await signStoredMedia(release.cover_url),
     })))
-    const releaseTracks = await Promise.all(rawMembers.map(async (member) => ({
-      ...member,
-      file_url: await signStoredMedia(member.file_url || member.audio_path),
-    })))
+    const releaseTracks = await Promise.all(rawMembers.map(async (member) => {
+      const reviewAudioUrl = await signStoredMedia(member.file_url || member.audio_path)
+      return {
+        ...member,
+        file_url: reviewAudioUrl,
+        review_audio_url: reviewAudioUrl,
+      }
+    }))
     const profiles = (rawProfiles as CreatorProfile[])
       .filter(isCreator)
       .map((profile) => ({
