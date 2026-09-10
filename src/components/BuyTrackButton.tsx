@@ -27,6 +27,8 @@ type Props = {
  *
  * The href is pinned to the canonical production website so an App Store build
  * served from a beta/preview origin can never hand the buyer into beta checkout.
+ * Legacy deep links using `/buy/${encodeURIComponent(trackId)}` remain supported
+ * by the existing compatibility page; new buttons use the stable query handoff.
  */
 export default function BuyTrackButton({
   track,
