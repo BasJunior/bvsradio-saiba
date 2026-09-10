@@ -33,7 +33,44 @@ const surfaceByVariant: Record<BvsCardVariant, string> = {
   "relationship-card": "flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-3",
 };
 
-export default function BvsObjectCard({
+/**
+ * BeatStore search URLs are useful for discovery but are not stable detail
+ * destinations: slugs are not guaranteed to match the catalogue query index.
+ * Every card already carries the immutable beat id, so resolve detail/share
+ * navigation through the exact beat route. Contained app detail routes stay
+ * contained; web/licence actions get the canonical exact web detail route.
+ */
+function resolveObjectNavigation(object: BvsObject): BvsObject {
+  if (object.kind !== "beat" || !object.id) return object;
+
+  const exactWebRoute = `/beat/${encodeURIComponent(object.id)}`;
+  const containedRoute = /^\/app\/(ios|android)\/beat\//.test(object.route);
+  const route = containedRoute ? object.route : exactWebRoute;
+
+  const resolveAction = (action?: BvsAction): BvsAction | undefined => {
+    if (!action?.href || action.intent !== "navigate") return action;
+    const legacyBeatSearch = action.href.startsWith("/catalogue?type=beat");
+    const followsLegacyObjectRoute = !containedRoute && action.href === object.route;
+    return legacyBeatSearch || followsLegacyObjectRoute ? { ...action, href: exactWebRoute } : action;
+  };
+
+  return {
+    ...object,
+    route,
+    primaryAction: resolveAction(object.primaryAction),
+    overflowActions: object.overflowActions?.map((action) => resolveAction(action) || action),
+  };
+}
+
+export default function BvsObjectCard(props: {
+  object: BvsObject;
+  variant?: BvsCardVariant;
+  relationship?: string;
+}) {
+  return <ResolvedBvsObjectCard {...props} object={resolveObjectNavigation(props.object)} />;
+}
+
+function ResolvedBvsObjectCard({
   object,
   variant = "grid-card",
   relationship,

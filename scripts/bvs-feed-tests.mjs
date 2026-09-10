@@ -9,6 +9,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 
 const feed = read("src/lib/bvs-feed.ts");
 const feedList = read("src/components/feed/BvsFeedList.tsx");
+const objectCard = read("src/components/flow/BvsObjectCard.tsx");
 const appHome = read("src/app/app/[surface]/page.tsx");
 const appNav = read("src/components/app-vnext/AppBottomNav.tsx");
 const mobileWebNav = read("src/components/layout/MobileFlowNav.tsx");
@@ -27,6 +28,9 @@ assert(!feed.includes("beat_review_messages"), "public feed must never expose pr
 assert(feedList.includes("LibraryAction"), "feed must expose existing save/follow social actions");
 assert(feedList.includes("shareBvs"), "feed must expose sharing");
 assert(feedList.includes("canonicalBvsShareUrl"), "feed sharing must use canonical BVS public URLs");
+assert(feedList.includes('`/beat/${encodeURIComponent(item.object.id)}`'), "web feed beat shares and saved items must use the exact beat id route");
+assert(objectCard.includes('`/beat/${encodeURIComponent(object.id)}`'), "BVS beat cards must resolve web detail navigation by immutable beat id");
+assert(objectCard.includes('action.href.startsWith("/catalogue?type=beat")'), "legacy BeatStore search actions must be upgraded to exact detail routes");
 assert(!feedList.toLowerCase().includes("comment"), "feed must not ship a dead comment control before public moderation exists");
 assert(appHome.includes('href={`${base}/feed`}'), "app Home must surface BVS Feed without loading feed data on cold start");
 assert(appNav.includes('pathname.startsWith(`${base}/feed`)'), "contained Feed must keep the Home tab active rather than add a sixth native tab");
