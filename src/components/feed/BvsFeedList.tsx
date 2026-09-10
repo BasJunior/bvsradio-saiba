@@ -74,7 +74,7 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
 
       <div className="mt-5 space-y-4 sm:mt-7">
         {visible.map((item) => (
-          <article key={item.id} className="rounded-[1.65rem] border border-white/[.075] bg-white/[.018] p-3 sm:p-4">
+          <div key={item.id} className="rounded-[1.65rem] border border-white/[.075] bg-white/[.018] p-3 sm:p-4">
             <div className="mb-3 flex items-center justify-between gap-3 px-1">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -83,7 +83,7 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
                   <span className="text-xs font-medium text-white/72">{item.verb}</span>
                 </div>
               </div>
-              <time dateTime={item.occurredAt} className="shrink-0 text-xs tabular-nums text-white/35" title={item.occurredAt}>
+              <time suppressHydrationWarning dateTime={item.occurredAt} className="shrink-0 text-xs tabular-nums text-white/35" title={item.occurredAt}>
                 {relativeTime(item.occurredAt)}
               </time>
             </div>
@@ -104,7 +104,7 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
               </button>
               <span className="ml-auto hidden text-[10px] uppercase tracking-[.14em] text-white/25 sm:inline">BVS pulse</span>
             </div>
-          </article>
+          </div>
         ))}
 
         {!visible.length ? (
