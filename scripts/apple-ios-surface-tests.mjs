@@ -65,7 +65,9 @@ assert(nav.includes('grid-cols-5'), 'vNext must keep five bottom tabs')
 for (const label of ['Home', 'Discover', 'Library', 'You']) {
   assert(nav.includes(`label: "${label}"`), `vNext bottom nav must contain ${label}`)
 }
-assert(nav.includes('isCreator ? "Studio" : "Create"'), 'vNext bottom nav must contain Create/Studio')
+assert(nav.includes('label: "Feed"'), 'listener vNext bottom nav must use Feed as the fourth tab')
+assert(nav.includes('label: "Studio"'), 'creator vNext bottom nav must use Studio as the fourth tab')
+assert(nav.includes('data-bvs-role-tab={isCreator ? "studio" : "feed"}'), 'fourth tab must switch using existing creator access')
 assert(nav.includes('bvs-app-bottom-nav'), 'bottom nav must use the base-anchored safe-area shell')
 assert(nav.includes('bvs-app-bottom-nav-inner'), 'bottom nav controls must stay inside the safe-area inner rail')
 
@@ -179,6 +181,7 @@ assert(capacitor.includes('https://bvsradio.com/app/${mobileSurface}'), 'native 
 // Critical five-tab destinations must exist so the shell cannot render dead navigation.
 for (const path of [
   'src/app/app/[surface]/explore/page.tsx',
+  'src/app/app/[surface]/feed/page.tsx',
   'src/app/app/[surface]/library/page.tsx',
   'src/app/app/[surface]/studio/page.tsx',
   'src/app/app/[surface]/you/page.tsx',
