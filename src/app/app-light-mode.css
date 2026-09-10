@@ -1,0 +1,128 @@
+/* Contained iOS/Android light-theme corrections.
+ * The app shell is dark-first, so light mode needs explicit treatment for
+ * native chrome and the few arbitrary dark surfaces that cannot inherit the
+ * global light palette safely.
+ */
+
+:root[data-theme="light"][data-bvs-app-shell="true"] {
+  --bvs-app-gold: #8a6500;
+  --bvs-app-gold-soft: rgb(138 101 0 / 0.12);
+  --bvs-app-line: rgb(53 46 34 / 0.12);
+  --bvs-app-panel: rgb(255 253 248 / 0.88);
+  --bvs-app-panel-strong: rgb(255 253 248 / 0.97);
+  color-scheme: light;
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] body {
+  background:
+    radial-gradient(circle at 82% -8%, rgb(212 175 55 / 0.12), transparent 30rem),
+    radial-gradient(circle at -10% 28%, rgb(87 86 255 / 0.045), transparent 26rem),
+    linear-gradient(180deg, #f8f4ed 0%, #f4efe6 48%, #f0ebe2 100%) !important;
+  color: #191610;
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] body::before {
+  opacity: 0.14;
+  background-image:
+    linear-gradient(rgb(55 47 35 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(55 47 35 / 0.04) 1px, transparent 1px);
+}
+
+/* Native top bar: do not leave a dark web header sitting inside a light app. */
+:root[data-theme="light"][data-bvs-app-shell="true"] [data-bvs-header] {
+  border-color: rgb(53 46 34 / 0.12) !important;
+  background: rgb(255 253 248 / 0.94) !important;
+  color: #191610;
+  box-shadow: 0 8px 30px rgb(72 55 28 / 0.07);
+  backdrop-filter: blur(22px) saturate(1.15);
+  -webkit-backdrop-filter: blur(22px) saturate(1.15);
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] [data-bvs-header] :is(
+  [class~="text-white/45"],
+  [class~="text-white/62"]
+) {
+  color: rgb(52 46 38 / 0.68) !important;
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] [data-bvs-header] [class~="bg-white"] {
+  border: 1px solid rgb(31 27 20 / 0.08);
+  background: #1f1a12 !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 6px 18px rgb(64 49 25 / 0.1);
+}
+
+/* Home hero is an arbitrary dark utility surface. Give it an intentional
+ * light counterpart instead of allowing dark text to land on charcoal. */
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-home-hero {
+  border-color: rgb(138 101 0 / 0.16) !important;
+  background:
+    radial-gradient(circle at 86% 12%, rgb(212 175 55 / 0.14), transparent 22rem),
+    radial-gradient(circle at 16% 100%, rgb(108 92 181 / 0.055), transparent 24rem),
+    rgb(255 253 248 / 0.96) !important;
+  box-shadow: 0 28px 80px rgb(74 55 22 / 0.11) !important;
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-home-hero :is(h1, h2, h3) {
+  color: #18140e !important;
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-home-hero [class~="bg-white"] {
+  background: #1f1a12 !important;
+  color: #fffdf8 !important;
+  box-shadow: 0 8px 22px rgb(64 49 25 / 0.14);
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-home-hero [class~="bg-white/[.035]"] {
+  background: rgb(255 255 255 / 0.74) !important;
+  color: #332c22 !important;
+  box-shadow: none;
+}
+
+/* A few app components use higher-opacity white utilities which were not part
+ * of the original light-theme remap. They are all text on light surfaces. */
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-page-main :is(
+  [class~="text-white/72"],
+  [class~="text-white/75"],
+  [class~="text-white/76"],
+  [class~="text-white/80"],
+  [class~="text-white/82"],
+  [class~="text-white/85"],
+  [class~="text-white/90"]
+) {
+  color: rgb(43 38 30 / 0.82) !important;
+}
+
+/* Keep the persistent player light and make its desktop-only metadata readable. */
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-persistent-player :is(
+  [class~="text-white/40"],
+  [class~="text-white/50"]
+) {
+  color: rgb(52 46 38 / 0.58) !important;
+}
+
+/* Bottom navigation lives outside .bvs-page-main, so it needs its own palette. */
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-bottom-nav {
+  border-color: rgb(53 46 34 / 0.12) !important;
+  background: rgb(255 253 248 / 0.96) !important;
+  box-shadow: 0 -10px 32px rgb(64 49 25 / 0.08) !important;
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-bottom-nav a {
+  color: rgb(52 46 38 / 0.5) !important;
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-bottom-nav a[aria-current="page"] {
+  color: #211c15 !important;
+}
+
+:root[data-theme="light"][data-bvs-app-shell="true"] .bvs-app-bottom-nav a[aria-current="page"] > span:first-child {
+  background: rgb(138 101 0 / 0.11) !important;
+  color: #8a6500 !important;
+  box-shadow: 0 0 22px rgb(138 101 0 / 0.08) !important;
+}
+
+/* Now Playing World is intentionally immersive/dark in either theme. */
+:root[data-theme="light"][data-bvs-app-shell="true"] [data-now-playing-shell="true"] {
+  color-scheme: dark;
+}
