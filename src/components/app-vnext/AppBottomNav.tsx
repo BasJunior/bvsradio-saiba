@@ -29,7 +29,7 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const { isCreator } = useAppSession();
   const base = `/app/${surface}`;
   const items: Array<{ href: string; label: string; icon: NavIconName; active: boolean }> = [
-    { href: base, label: "Home", icon: "home", active: pathname === base },
+    { href: base, label: "Home", icon: "home", active: pathname === base || pathname.startsWith(`${base}/feed`) },
     { href: `${base}/explore`, label: "Discover", icon: "discover", active: pathname.startsWith(`${base}/explore`) },
     { href: `${base}/library`, label: "Library", icon: "library", active: pathname.startsWith(`${base}/library`) || pathname.startsWith(`${base}/playlist`) },
     { href: `${base}/studio`, label: isCreator ? "Studio" : "Create", icon: "create", active: pathname.startsWith(`${base}/studio`) },
