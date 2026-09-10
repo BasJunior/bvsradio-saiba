@@ -10,6 +10,7 @@ function assert(condition, message) {
 
 const api = read('src/app/api/admin/editorial/catalogue-metadata/route.ts')
 const client = read('src/components/editorial/EditorialCatalogueNormalizer.tsx')
+const player = read('src/components/editorial/EditorialConnectedPreview.tsx')
 const nav = read('src/components/EditorialWorkspaceNav.tsx')
 const layout = read('src/app/layout.tsx')
 const page = read('src/app/editorial/catalogue/page.tsx')
@@ -22,9 +23,14 @@ assert(api.includes("release_tracks"), 'release track titles must be synchronize
 assert(api.includes("release_id=eq."), 'materialized release tracks must keep their public artist relationship synchronized')
 assert(api.includes("preservedTrackIdentity: true"), 'single edits must preserve recording identity')
 assert(api.includes("preservedReleaseIdentity: true"), 'release edits must preserve release identity')
+assert(api.includes('review_audio_url: reviewAudioUrl'), 'catalogue normalization must expose the signed full submission as explicit review audio')
 
-assert(client.includes("useStationPlayer"), 'Editorial previews must route through the persistent BVS player')
+assert(client.includes("EditorialConnectedPreview"), 'Catalogue normalization must reuse the canonical Editorial review player')
+assert(!client.includes("useStationPlayer"), 'Catalogue normalization must not maintain a competing local player implementation')
 assert(!client.includes('<audio'), 'Editorial normalization workspace must not create a second audio element')
+assert(client.includes('track.review_audio_url || track.file_url'), 'Singles normalization must prefer explicit full review audio')
+assert(client.includes('member.review_audio_url || member.file_url'), 'Release normalization must prefer full member audio')
+assert(player.includes('useStationPlayer'), 'Canonical Editorial review audio must route through the persistent BVS player')
 assert(client.includes("Existing BVS profile"), 'Editors must be able to select an existing BVS creator profile')
 assert(client.includes("Custom display name · keep current account relationship"), 'Free typing must remain an explicit fallback without silently breaking ownership')
 assert(client.includes("Public track title"), 'Singles must expose editable public titles')
