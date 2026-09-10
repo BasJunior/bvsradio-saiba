@@ -296,6 +296,8 @@ export default function AppExploreClient({
                     preview={item.previewUrl}
                     artwork={item.artworkUrl}
                     genre={item.genre}
+                    beatId={item.id}
+                    surface={surface}
                   />
                 ) : null}
                 <Link href={`/app/${surface}/beat/${item.id}`} className="mt-3 inline-flex min-h-10 items-center rounded-full border border-brand/30 px-4 text-sm font-semibold text-brand transition hover:bg-brand/10">Open beat</Link>
