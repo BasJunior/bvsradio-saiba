@@ -9,8 +9,10 @@ type FormState = { email: string; password: string; fullName: string; username: 
 
 const fieldClass = "min-h-12 w-full rounded-[1rem] border border-white/[.08] bg-white/[.025] px-4 outline-none transition focus:border-brand/35 focus:bg-white/[.04]";
 
-export default function AppSignupClient({ surface }: { surface: AppSurface }) {
-  const next = `/app/${surface}/you`;
+export default function AppSignupClient({ surface, nextPath }: { surface: AppSurface; nextPath?: string }) {
+  const next = nextPath?.startsWith(`/app/${surface}/`) && !nextPath.startsWith(`/app/${surface}//`)
+    ? nextPath
+    : `/app/${surface}/you`;
   const [form, setForm] = useState<FormState>({ email: "", password: "", fullName: "", username: "", role: "listener" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

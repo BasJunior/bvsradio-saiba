@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import AppBootstrap, { type AppSurface } from "@/components/app-vnext/AppBootstrap";
+import AppBeatPreviewGuard from "@/components/app-vnext/AppBeatPreviewGuard";
 import AppBottomNav from "@/components/app-vnext/AppBottomNav";
 import AppDataModeBridge from "@/components/app-vnext/AppDataModeBridge";
 import AppExperienceStyle from "@/components/app-vnext/AppExperienceStyle";
@@ -29,6 +30,7 @@ export default async function MobileVNextLayout({
       <AppNowPlayingBridge />
       <AppDataModeBridge surface={surface} />
       <AppLibrarySyncBridge />
+      <AppBeatPreviewGuard />
       <AppStationFetchBridge />
       <AppGestureBridge surface={surface} />
       <AppExperienceStyle />

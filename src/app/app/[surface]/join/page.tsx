@@ -2,11 +2,24 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 
-export default async function AppJoinPage({ params }: { params: Promise<{ surface: string }> }) {
+function containedNext(surface: AppSurface, raw?: string | string[]) {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (value && value.startsWith(`/app/${surface}/`) && !value.startsWith(`/app/${surface}//`)) return value;
+  return `/app/${surface}/you`;
+}
+
+export default async function AppJoinPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ surface: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const raw = (await params).surface;
   if (raw !== "ios" && raw !== "android") notFound();
   const surface = raw as AppSurface;
-  const next = `/app/${surface}/you`;
+  const query = await searchParams;
+  const next = containedNext(surface, query.next);
   const roles = [
     ["Listener", "Save music, follow creators, build playlists and keep your Library in sync."],
     ["Artist", "Release music, follow review and understand what happens after you submit."],
@@ -38,7 +51,7 @@ export default async function AppJoinPage({ params }: { params: Promise<{ surfac
           <h2 className="mt-2 text-3xl font-semibold">Create your BVS identity.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/40">Choose what you want to do first. You can grow the same account into more creator access later.</p>
           <div className="mt-6 flex flex-wrap gap-2.5">
-            <Link href={`/app/${surface}/join/email`} className="inline-flex min-h-11 items-center rounded-full bg-white px-5 font-semibold text-black transition hover:bg-brand">Create account</Link>
+            <Link href={`/app/${surface}/join/email?next=${encodeURIComponent(next)}`} className="inline-flex min-h-11 items-center rounded-full bg-white px-5 font-semibold text-black transition hover:bg-brand">Create account</Link>
             <Link href={`/app/${surface}/login?next=${encodeURIComponent(next)}`} className="inline-flex min-h-11 items-center rounded-full border border-white/[.1] px-5 text-white/64 transition hover:border-white/20 hover:text-white">Sign in</Link>
           </div>
         </div>

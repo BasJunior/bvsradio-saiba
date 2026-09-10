@@ -44,18 +44,20 @@ export default async function AppBeatPage({ params }: { params: Promise<{ surfac
     </section>
 
     {preview ? <section className="mt-8 rounded-[1.75rem] border border-brand/20 bg-brand/[.05] p-5">
-      <p className="text-xs uppercase tracking-[.18em] text-brand">Preview</p>
+      <p className="text-xs uppercase tracking-[.18em] text-brand">Listen before you license</p>
       <AppBeatPreviewPlayer
         title={beat.title}
         artist={producerName}
         preview={preview}
         artwork={artwork || undefined}
         genre={beat.genre || undefined}
+        beatId={beat.id}
+        surface={surface}
       />
       {primaryLicence?.id ? <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/15 p-4">
         <div>
           <p className="text-sm font-semibold">Ready to use this beat?</p>
-          <p className="mt-1 text-xs text-text-secondary">Choose a licence on BVS web. Checkout opens outside the app.</p>
+          <p className="mt-1 text-xs text-text-secondary">Listening as a BVS member does not grant use rights. Choose a licence on BVS web when you are ready to build with it.</p>
         </div>
         <a href={licenceCheckoutHref(String(primaryLicence.id))} target="_blank" rel="noopener noreferrer" className="min-h-10 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">Buy {primaryLicence.licence_name || "licence"} · ${Number(primaryLicence.price_usd).toFixed(2)}</a>
       </div> : null}
