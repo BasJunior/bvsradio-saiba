@@ -13,6 +13,7 @@ const objectCard = read("src/components/flow/BvsObjectCard.tsx");
 const actionSheet = read("src/components/flow/BvsActionSheet.tsx");
 const appHome = read("src/app/app/[surface]/page.tsx");
 const appNav = read("src/components/app-vnext/AppBottomNav.tsx");
+const appYou = read("src/components/app-vnext/AppYouClient.tsx");
 const mobileWebNav = read("src/components/layout/MobileFlowNav.tsx");
 const footer = read("src/components/layout/Footer.tsx");
 
@@ -38,10 +39,15 @@ assert(actionSheet.includes('data-bvs-transient-overlay="action-sheet"'), "actio
 assert(actionSheet.includes("z-[110]"), "action sheet must remain above player, nav, queue and Now Playing chrome");
 assert(actionSheet.includes("max-h-[calc(100dvh-0.75rem)]"), "mobile action sheet must stay within the visible viewport");
 assert(!feedList.toLowerCase().includes("comment"), "feed must not ship a dead comment control before public moderation exists");
-assert(appHome.includes('href={`${base}/feed`}'), "app Home must surface BVS Feed without loading feed data on cold start");
-assert(appNav.includes('pathname.startsWith(`${base}/feed`)'), "contained Feed must keep the Home tab active rather than add a sixth native tab");
+assert(appHome.includes('href={`${base}/feed`}'), "app Home must keep a BVS Feed entry for every identity");
+assert(appNav.includes('label: "Feed"'), "listener app navigation must promote Feed to the fourth tab");
+assert(appNav.includes('href: `${base}/feed`'), "listener Feed tab must stay in the contained app namespace");
+assert(appNav.includes('label: "Studio"'), "creator app navigation must replace the listener Feed tab with Studio");
+assert(appNav.includes('data-bvs-role-tab={isCreator ? "studio" : "feed"}'), "role-aware fourth tab must stay tied to existing creator access");
+assert(appNav.includes('pathname === base || (isCreator && pathname.startsWith(`${base}/feed`))'), "Feed must only map back to Home active state for creator navigation");
+assert(appYou.includes('Turn on creator access.'), "listener You surface must keep Create as an upgrade option");
 assert(mobileWebNav.includes('grid-cols-5'), "mobile web navigation must make Feed first-class");
 assert(mobileWebNav.includes('href={feedHref}'), "mobile web navigation must link BVS Feed");
 assert(footer.includes('href="/feed"'), "desktop web must expose BVS Feed in discovery navigation");
 
-console.log("BVS Feed public-data, social-action and navigation assertions passed.");
+console.log("BVS Feed public-data, social-action and role-aware navigation assertions passed.");
