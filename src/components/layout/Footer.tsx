@@ -33,6 +33,7 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-text-primary mb-3">Listen &amp; discover</h4>
             <div className="flex flex-col gap-2">
+              <Link href="/feed" className="text-sm text-text-secondary hover:text-brand transition-colors">BVS Feed</Link>
               <Link href="/radio" className="text-sm text-text-secondary hover:text-brand transition-colors">Live Radio</Link>
               <Link href="/catalogue" className="text-sm text-text-secondary hover:text-brand transition-colors">Music</Link>
               <Link href="/shows" className="text-sm text-text-secondary hover:text-brand transition-colors">Shows</Link>
