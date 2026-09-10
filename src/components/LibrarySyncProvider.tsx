@@ -2,7 +2,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from 'react'
 import type { DiscoveryItem } from '@/lib/discovery'
-import { readLibrary, writeLibrary, type LibrarySection } from '@/lib/library'
+import {
+  clearLibraryCache,
+  getLibraryCacheOwner,
+  readLibrary,
+  setLibraryCacheOwner,
+  writeLibrary,
+  type LibrarySection,
+} from '@/lib/library'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
 type SyncState = 'device' | 'syncing' | 'synced' | 'error'
@@ -28,22 +35,31 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
     })
     const payload = await response.json() as LibraryResponse
     if (!response.ok || !payload.libraries) throw new Error(payload.error || 'Library sync failed')
-    return payload.libraries
+    return { libraries: payload.libraries, userId: data.session.user.id }
   }, [])
 
-  const applyRemote = useCallback((libraries: Record<LibrarySection, DiscoveryItem[]>) => {
+  const applyRemote = useCallback((libraries: Record<LibrarySection, DiscoveryItem[]>, userId?: string) => {
     (Object.keys(libraries) as LibrarySection[]).forEach((section) => writeLibrary(section, libraries[section], 'remote'))
+    if (userId) setLibraryCacheOwner(userId)
   }, [])
 
   const syncNow = useCallback(async () => {
     setState('syncing')
     try {
-      const libraries = await request({ operation: 'merge', libraries: {
+      if (!isSupabaseConfigured()) throw new Error('Account sync is unavailable in this environment')
+      const { data } = await createClient().auth.getSession()
+      const userId = data.session?.user.id || ''
+      if (!userId) throw new Error('Not signed in')
+
+      const owner = getLibraryCacheOwner()
+      if (owner && owner !== userId) clearLibraryCache()
+
+      const result = await request({ operation: 'merge', libraries: {
         favourites: readLibrary('favourites'),
         follows: readLibrary('follows'),
         history: readLibrary('history'),
       } })
-      applyRemote(libraries)
+      applyRemote(result.libraries, result.userId)
       setSignedIn(true)
       setState('synced')
     } catch {
@@ -53,8 +69,10 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
         return
       }
       const { data } = await createClient().auth.getSession()
-      setSignedIn(Boolean(data.session))
-      setState(data.session ? 'error' : 'device')
+      const hasSession = Boolean(data.session)
+      setSignedIn(hasSession)
+      if (!hasSession && getLibraryCacheOwner()) clearLibraryCache()
+      setState(hasSession ? 'error' : 'device')
     }
   }, [applyRemote, request])
 
@@ -64,8 +82,15 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
     const initialSync = window.setTimeout(syncNow, 0)
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       setSignedIn(Boolean(session))
-      if (session) window.setTimeout(syncNow, 0)
-      else setState('device')
+      if (session) {
+        const owner = getLibraryCacheOwner()
+        if (owner && owner !== session.user.id) clearLibraryCache()
+        window.setTimeout(syncNow, 0)
+      } else {
+        if (getLibraryCacheOwner()) clearLibraryCache()
+        setLibraryCacheOwner(null)
+        setState('device')
+      }
     })
     return () => {
       window.clearTimeout(initialSync)
@@ -80,7 +105,8 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
       if (!detail) return
       setState('syncing')
       try {
-        applyRemote(await request({ operation: 'set', ...detail }))
+        const result = await request({ operation: 'set', ...detail })
+        applyRemote(result.libraries, result.userId)
         setState('synced')
       } catch {
         setState('error')
