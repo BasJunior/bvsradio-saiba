@@ -19,6 +19,7 @@ import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
 import "./globals.css";
 import "./light-premium.css";
+import "./app-light-mode.css";
 
 const defaultSiteUrl = "https://bvsradio.com";
 const siteUrl = (() => {
