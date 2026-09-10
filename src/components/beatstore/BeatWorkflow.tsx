@@ -32,6 +32,7 @@ type Beat = {
 }
 
 type Access = {
+  member?: boolean
   owned: boolean
   fullAudioUrl?: string | null
   fullAvailable?: boolean
@@ -154,7 +155,7 @@ function InlineLyrics({ workspaceId, token }: { workspaceId: string; token: stri
 export default function BeatWorkflow({ beat }: { beat: Beat }) {
   const [token, setToken] = useState('')
   const [sessionReady, setSessionReady] = useState(false)
-  const [access, setAccess] = useState<Access>({ owned: false })
+  const [access, setAccess] = useState<Access>({ member: false, owned: false })
   const [checkingAccess, setCheckingAccess] = useState(false)
   const [workspaceId, setWorkspaceId] = useState<string | null>(null)
   const [lyricsOpen, setLyricsOpen] = useState(false)
@@ -179,7 +180,7 @@ export default function BeatWorkflow({ beat }: { beat: Beat }) {
   useEffect(() => {
     if (!sessionReady || !token) {
       if (sessionReady) {
-        setAccess({ owned: false })
+        setAccess({ member: false, owned: false })
         setWorkspaceId(null)
       }
       return
@@ -190,7 +191,7 @@ export default function BeatWorkflow({ beat }: { beat: Beat }) {
       headers: { Authorization: `Bearer ${token}` },
       cache: 'no-store',
     }).then(async (response) => {
-      const payload = await response.json().catch(() => ({ owned: false })) as Access
+      const payload = await response.json().catch(() => ({ member: false, owned: false })) as Access
       if (!cancelled && response.ok) {
         setAccess(payload)
         setWorkspaceId(payload.workspaceId || null)
@@ -199,10 +200,15 @@ export default function BeatWorkflow({ beat }: { beat: Beat }) {
     return () => { cancelled = true }
   }, [beat.id, sessionReady, token])
 
-  const audioUrl = access.owned && access.fullAudioUrl ? access.fullAudioUrl : beat.previewUrl
+  const hasMemberFullAudio = Boolean(access.member && access.fullAudioUrl)
+  const audioUrl = hasMemberFullAudio ? access.fullAudioUrl : beat.previewUrl
   const audioLabel = access.owned
-    ? access.fullAvailable ? 'Full beat · your licensed copy' : 'Licensed access · preview master unavailable'
-    : 'Preview'
+    ? access.fullAvailable ? 'Full beat · licensed to you' : 'Licensed access · full master unavailable'
+    : hasMemberFullAudio
+      ? 'Full beat · BVS member'
+      : access.member
+        ? 'BVS member · preview only right now'
+        : 'Preview'
 
   const meta = useMemo(() => [beat.genre, beat.mood, beat.bpm ? `${beat.bpm} BPM` : null, beat.musicalKey].filter(Boolean).join(' · '), [beat])
   const licenceHref = `/catalogue?type=beat&beat=${encodeURIComponent(beat.slug || beat.id)}#beatstore`
@@ -248,19 +254,20 @@ export default function BeatWorkflow({ beat }: { beat: Beat }) {
     <section className="mt-5 grid gap-6 lg:grid-cols-[minmax(260px,360px)_minmax(0,1fr)] lg:gap-9">
       <div className="relative aspect-square overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/[.035]">{beat.artworkUrl ? <Image src={beat.artworkUrl} alt="" fill unoptimized priority className="object-cover" /> : <div className="absolute inset-0 grid place-items-center text-sm font-semibold tracking-[.18em] text-brand">BVS BEAT</div>}</div>
       <div className="min-w-0 self-center">
-        <div className="flex flex-wrap items-center gap-2"><span className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.16em] text-brand">BeatStore</span>{access.owned ? <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.14em] text-brand">Licensed to you</span> : null}</div>
+        <div className="flex flex-wrap items-center gap-2"><span className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.16em] text-brand">BeatStore</span>{access.owned ? <span className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.14em] text-brand">Licensed to you</span> : access.member ? <span className="rounded-full border border-white/10 bg-white/[.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[.14em] text-text-secondary">Member listening</span> : null}</div>
         <h1 className="mt-4 text-4xl font-semibold tracking-tight sm:text-6xl">{beat.title}</h1>
         <p className="mt-3 text-lg text-text-secondary">{beat.producerName}</p>
         {meta ? <p className="mt-3 text-sm text-text-secondary">{meta}</p> : null}
         {beat.description ? <p className="mt-5 max-w-2xl text-sm leading-7 text-text-secondary">{beat.description}</p> : null}
 
         <div className="mt-6 rounded-[1.5rem] border border-brand/20 bg-brand/[.045] p-4 sm:p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">{audioLabel}</p><p className="mt-1 text-sm text-text-secondary">{access.owned ? 'Stay here, play it and write against it.' : 'Hear the beat before choosing a licence.'}</p></div>{checkingAccess ? <span className="text-xs text-text-secondary">Checking your library…</span> : null}</div>
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">{audioLabel}</p><p className="mt-1 text-sm text-text-secondary">{access.owned ? 'Stay here, play it and write against it.' : hasMemberFullAudio ? 'Your BVS membership unlocks the full listen. A licence is still required before you use or release the beat.' : 'Hear the public preview, or sign in to BVS for member listening.'}</p></div>{checkingAccess ? <span className="text-xs text-text-secondary">Checking member access…</span> : null}</div>
           {audioUrl ? <audio key={audioUrl} controls preload="metadata" src={audioUrl} className="mt-4 w-full" /> : <p className="mt-4 text-sm text-text-secondary">Audio is temporarily unavailable.</p>}
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
           {access.owned ? <button type="button" onClick={() => void openLyrics()} disabled={openingLyrics} className="min-h-11 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black disabled:opacity-50">{openingLyrics ? 'Opening writing…' : workspaceId ? 'Write lyrics here' : 'Start writing to this beat'}</button> : <Link href={licenceHref} className="min-h-11 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black">View licence options</Link>}
+          {!access.member && sessionReady ? <Link href={`/auth/login?next=${encodeURIComponent(`/beat/${beat.id}`)}`} className="min-h-11 rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-text-secondary hover:text-white">Sign in for full beat</Link> : null}
           {access.owned && access.orderReference ? <Link href={`/account/orders/${encodeURIComponent(access.orderReference)}`} className="min-h-11 rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-text-secondary hover:text-white">Purchase & licence</Link> : null}
         </div>
         {error ? <p className="mt-4 rounded-xl border border-red-400/25 bg-red-500/10 p-3 text-sm text-red-100">{error}</p> : null}
