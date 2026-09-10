@@ -71,13 +71,19 @@ assert(vercelBuild.includes("test:ios-surface-gates") && vercelBuild.includes("t
 assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:ios-surface-lock"), "ios-surface-lock remains in gates");
 assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:apple-ios-surface"), "apple-ios-surface remains in gates");
 
-// vNext intentionally includes a contained Creator Studio as the fourth tab.
+// vNext keeps the fourth tab contextual: listeners see Feed; creators see contained Studio.
 const appStudioRoute = read("src/app/app/[surface]/studio/page.tsx");
 const appStudio = read("src/components/app-vnext/AppStudioClient.tsx");
 const appNav = read("src/components/app-vnext/AppBottomNav.tsx");
+const appYou = read("src/components/app-vnext/AppYouClient.tsx");
 assert(appStudioRoute.includes("AppStudioClient"), "vNext Studio route must use AppStudioClient");
-assert(appNav.includes('label: isCreator ? "Studio" : "Create"'), "five-tab app must expose Create/Studio");
-assert(appNav.includes('`${base}/studio`'), "Create/Studio tab must stay in contained app namespace");
+assert(appNav.includes('label: "Feed"'), "listener fourth tab must be Feed");
+assert(appNav.includes('label: "Studio"'), "creator fourth tab must be Studio");
+assert(appNav.includes('data-bvs-role-tab={isCreator ? "studio" : "feed"}'), "Feed/Studio switch must use the existing creator access state");
+assert(appNav.includes('href: `${base}/studio`'), "creator Studio tab must stay in contained app namespace");
+assert(appNav.includes('href: `${base}/feed`'), "listener Feed tab must stay in contained app namespace");
+assert(appYou.includes('Turn on creator access.'), "listener Create option must live under You");
+assert(appYou.includes('href={`/app/${surface}/account#creator-role`}'), "listener Create option must lead to contained creator-role setup");
 
 for (const route of [
   "src/app/app/[surface]/studio/release/page.tsx",
@@ -113,4 +119,4 @@ for (const route of [
   assert(!/from ["']@\/app\/creator\//.test(text), `${route} must not import web creator route directly`);
 }
 
-console.log("Studio intent assertions passed for web + contained vNext Studio.");
+console.log("Studio intent assertions passed for web + role-aware contained vNext Studio.");
