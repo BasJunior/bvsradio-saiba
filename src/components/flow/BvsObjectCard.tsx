@@ -27,6 +27,7 @@ function runQueueAction(action: BvsAction, object: BvsObject) {
 
 const surfaceByVariant: Record<BvsCardVariant, string> = {
   "compact-row": "flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.025] p-3",
+  "feed-beat": "rounded-2xl border border-white/10 bg-white/[.025] p-3",
   "rail-card": "w-[min(78vw,19rem)] shrink-0 overflow-hidden rounded-3xl border border-white/10 bg-white/[.025]",
   "feature-card": "overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-white/[.06] to-white/[.015]",
   "grid-card": "overflow-hidden rounded-3xl border border-white/10 bg-white/[.025]",
@@ -83,6 +84,7 @@ function ResolvedBvsObjectCard({
   const [failedArtwork, setFailedArtwork] = useState<string | null>(null);
   const overflowRef = useRef<HTMLButtonElement>(null);
   const artworkFailed = Boolean(object.artwork && failedArtwork === object.artwork);
+  const feedBeat = variant === "feed-beat" && object.kind === "beat";
   const compact = variant === "compact-row" || variant === "relationship-card";
   const feature = variant === "feature-card";
 
@@ -119,7 +121,7 @@ function ResolvedBvsObjectCard({
       alt=""
       fill
       unoptimized={/^https?:\/\//i.test(object.artwork!)}
-      sizes={compact ? "72px" : feature ? "(max-width:768px) 100vw, 50vw" : "(max-width:768px) 78vw, 320px"}
+      sizes={feedBeat ? "80px" : compact ? "72px" : feature ? "(max-width:768px) 100vw, 50vw" : "(max-width:768px) 78vw, 320px"}
       className="object-cover transition duration-300 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none"
       onError={() => setFailedArtwork(object.artwork || "")}
     />
@@ -136,6 +138,57 @@ function ResolvedBvsObjectCard({
       {object.availabilityLabel ? <p className="mt-2 text-xs text-emerald-200">{object.availabilityLabel}</p> : null}
     </>
   );
+
+  if (feedBeat) {
+    const beatContent = (
+      <>
+        <h3 className="text-xl font-semibold leading-tight tracking-[-.01em] text-white sm:text-[1.35rem]">
+          {object.title.replace(/-/g, "‑")}
+        </h3>
+        {object.subtitle ? <p className="mt-1 truncate text-sm text-text-secondary">{object.subtitle}</p> : null}
+        {object.metadata?.length ? <p className="mt-2 truncate text-xs text-text-secondary">{object.metadata.join(" · ")}</p> : null}
+        {object.availabilityLabel ? <p className="mt-2 text-sm font-medium text-emerald-200">{object.availabilityLabel}</p> : null}
+      </>
+    );
+    const playsInline = Boolean(object.primaryAction && ["play", "play-next", "queue"].includes(object.primaryAction.intent));
+
+    return (
+      <article className={`group ${surfaceByVariant[variant]}`} data-flow-focus-id={`${object.kind}:${object.id}`} tabIndex={-1}>
+        <div className="flex min-w-0 items-center gap-3">
+          {playsInline ? (
+            <>
+              <button type="button" onClick={activateCard} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{image}</button>
+              <button type="button" onClick={activateCard} className="min-w-0 flex-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{beatContent}</button>
+            </>
+          ) : (
+            <>
+              <Link href={object.route} onClick={openObject} className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{image}</Link>
+              <Link href={object.route} onClick={openObject} className="min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{beatContent}</Link>
+            </>
+          )}
+        </div>
+
+        <div className="mt-3 flex items-center gap-2 border-t border-white/[.055] pt-3">
+          {object.primaryAction ? (
+            object.primaryAction.intent === "navigate" && object.primaryAction.href ? (
+              <Link href={object.primaryAction.href} onClick={openObject} className="min-h-11 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                {object.primaryAction.label}
+              </Link>
+            ) : (
+              <button type="button" onClick={() => primary(object.primaryAction!)} className="min-h-11 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                {object.primaryAction.label}
+              </button>
+            )
+          ) : null}
+          <button ref={overflowRef} type="button" onClick={() => setActionsOpen(true)} aria-haspopup="dialog" aria-label={`More actions for ${object.title}`} className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-lg text-text-secondary transition hover:border-brand/40 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+            •••
+          </button>
+        </div>
+
+        <BvsActionSheet object={object} open={actionsOpen} onClose={() => setActionsOpen(false)} returnFocus={overflowRef} />
+      </article>
+    );
+  }
 
   return (
     <article className={`group ${surfaceByVariant[variant]}`} data-flow-focus-id={`${object.kind}:${object.id}`} tabIndex={-1}>
