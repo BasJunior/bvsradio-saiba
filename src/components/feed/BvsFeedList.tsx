@@ -94,7 +94,7 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
               </time>
             </div>
 
-            <BvsObjectCard object={item.object} variant={item.category === "beat" ? "feed-beat" : "compact-row"} />
+            <BvsObjectCard object={item.object} variant={item.category === "beat" ? "feed-beat" : "feed-row"} />
 
             <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 border-t border-white/[.055] px-1 pt-3">
               {item.social ? (

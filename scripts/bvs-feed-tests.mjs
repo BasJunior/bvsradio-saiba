@@ -31,12 +31,15 @@ assert(feedList.includes("LibraryAction"), "feed must expose existing save/follo
 assert(feedList.includes("shareBvs"), "feed must expose sharing");
 assert(feedList.includes("canonicalBvsShareUrl"), "feed sharing must use canonical BVS public URLs");
 assert(feedList.includes('`/beat/${encodeURIComponent(item.object.id)}`'), "web feed beat shares and saved items must use the exact beat id route");
-assert(feedList.includes('item.category === "beat" ? "feed-beat" : "compact-row"'), "BeatStore feed events must use their dedicated uncluttered card hierarchy");
+assert(feedList.includes('item.category === "beat" ? "feed-beat" : "feed-row"'), "every Feed event must use a content-first row with actions below copy");
 assert(feedList.includes('item.category === "beat" ? "New drop" : item.verb'), "BeatStore feed header must not repeat BeatStore inside the object card");
+assert(objectCard.includes('"feed-row": "rounded-2xl'), "shared object card must keep the general Feed row surface");
 assert(objectCard.includes('"feed-beat": "rounded-2xl'), "shared object card must keep the dedicated Feed BeatStore surface");
+assert(objectCard.includes("const feedFocused = feedBeat || feedRow"), "Feed rows must share the uncluttered content-first hierarchy");
 assert(objectCard.includes('object.title.replace(/-/g, "‑")'), "Feed BeatStore titles must keep hyphenated names together on narrow screens");
-assert(objectCard.includes('className="mt-1 truncate text-sm text-text-secondary"'), "Feed BeatStore producer names must get the full text column before truncating");
-assert(objectCard.includes('className="mt-3 flex items-center gap-2 border-t'), "Feed BeatStore Preview and overflow controls must sit below metadata instead of squeezing it");
+assert(objectCard.includes("repeatedMetadata"), "Feed rows must suppress metadata that simply repeats the subtitle");
+assert(objectCard.includes('feedBeat ? "truncate" : "line-clamp-2"'), "Beat metadata must stay compact while other Feed metadata can wrap cleanly");
+assert(objectCard.includes('className="mt-3 flex items-center gap-2 border-t'), "Feed primary and overflow controls must sit below metadata instead of squeezing it");
 assert(objectCard.includes('`/beat/${encodeURIComponent(object.id)}`'), "BVS beat cards must resolve web detail navigation by immutable beat id");
 assert(objectCard.includes('action.href.startsWith("/catalogue?type=beat")'), "legacy BeatStore search actions must be upgraded to exact detail routes");
 assert(actionSheet.includes('import { createPortal } from "react-dom"'), "BVS action sheets must portal outside card/feed stacking contexts");
@@ -58,4 +61,4 @@ assert(mobileWebNav.includes('grid-cols-5'), "mobile web navigation must make Fe
 assert(mobileWebNav.includes('href={feedHref}'), "mobile web navigation must link BVS Feed");
 assert(footer.includes('href="/feed"'), "desktop web must expose BVS Feed in discovery navigation");
 
-console.log("BVS Feed public-data, BeatStore hierarchy, social-action, icon and role-aware navigation assertions passed.");
+console.log("BVS Feed public-data, all-content hierarchy, social-action, icon and role-aware navigation assertions passed.");
