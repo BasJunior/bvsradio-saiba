@@ -9,13 +9,20 @@ function formatTime(seconds: number) {
   return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`
 }
 
+/**
+ * Canonical Editorial review-audio surface.
+ *
+ * The caller must pass the staff-authorized full submission/master URL. This
+ * component never clips playback and never creates a second browser <audio>
+ * element; it routes through the persistent BVS player instead.
+ */
 export default function EditorialConnectedPreview({
   previewId,
   title,
   artist,
   src,
   artwork,
-  project = 'Editorial review',
+  project = 'Editorial · full submission',
   genre,
   compact = false,
 }: {
@@ -35,7 +42,7 @@ export default function EditorialConnectedPreview({
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0
 
   if (!src) {
-    return <div className="rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-text-secondary">No preview audio attached.</div>
+    return <div className="rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-text-secondary">Full submission audio is not available.</div>
   }
 
   const toggle = () => {
@@ -57,12 +64,16 @@ export default function EditorialConnectedPreview({
   }
 
   return (
-    <div data-editorial-connected-preview={previewId} className={`flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/[.055] ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}>
+    <div
+      data-editorial-connected-preview={previewId}
+      data-editorial-review-audio={previewId}
+      className={`flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/[.055] ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
+    >
       <button
         type="button"
         onClick={toggle}
         className={`${compact ? 'h-9 w-9' : 'h-10 w-10'} grid shrink-0 place-items-center rounded-full bg-white text-sm font-black text-black`}
-        aria-label={`${active && player.isPlaying ? 'Pause' : 'Preview'} ${title}`}
+        aria-label={`${active && player.isPlaying ? 'Pause' : 'Play full audio'} ${title}`}
       >
         {active && player.isPlaying ? 'Ⅱ' : '▶'}
       </button>
@@ -75,7 +86,7 @@ export default function EditorialConnectedPreview({
         disabled={!active || duration <= 0}
         onChange={(event) => player.seek(Number(event.target.value) / 1000)}
         className="min-w-20 flex-1 accent-brand disabled:opacity-45"
-        aria-label={`Seek ${title}`}
+        aria-label={`Seek full audio for ${title}`}
       />
       <span className="w-10 shrink-0 text-[11px] tabular-nums text-text-secondary">{duration > 0 ? `-${formatTime(Math.max(0, duration - elapsed))}` : '0:00'}</span>
     </div>
