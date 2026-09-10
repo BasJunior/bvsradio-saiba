@@ -69,14 +69,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const beat = beatRows[0]
   if (!beat) return NextResponse.json({ member: true, owned: false, fullAudioUrl: null, fullAvailable: false })
 
-  // Membership unlocks listening only. The public BeatStore API still exposes preview audio only,
-  // and purchase/licence entitlements remain a separate server-side check below.
-  const fullAudioUrl = await signedAudio(beat.master_path)
+  // Membership verifies that the listener may hear the complete tagged BeatStore preview.
+  // The clean private master stays locked until a paid/fulfilled licence is found below.
   const memberAccess = {
     member: true,
     owned: false,
-    fullAudioUrl,
-    fullAvailable: Boolean(beat.master_path),
+    fullAudioUrl: null,
+    fullAvailable: false,
   }
 
   const ordersResponse = await fetch(
@@ -100,15 +99,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   }
   if (!order || !item) return NextResponse.json(memberAccess)
 
-  const workspaceResponse = await fetch(
-    `${url}/rest/v1/song_workspaces?user_id=eq.${encodeURIComponent(user.id)}&order_id=eq.${encodeURIComponent(order.id)}&beat_id=eq.${encodeURIComponent(beatId)}&select=id&limit=1`,
-    { headers, cache: 'no-store' },
-  )
+  const [fullAudioUrl, workspaceResponse] = await Promise.all([
+    signedAudio(beat.master_path || beat.preview_path),
+    fetch(
+      `${url}/rest/v1/song_workspaces?user_id=eq.${encodeURIComponent(user.id)}&order_id=eq.${encodeURIComponent(order.id)}&beat_id=eq.${encodeURIComponent(beatId)}&select=id&limit=1`,
+      { headers, cache: 'no-store' },
+    ),
+  ])
   const workspaceRows = workspaceResponse.ok ? await workspaceResponse.json() as Array<{ id: string }> : []
 
   return NextResponse.json({
-    ...memberAccess,
+    member: true,
     owned: true,
+    fullAudioUrl,
+    fullAvailable: Boolean(beat.master_path),
     orderReference: order.reference,
     workspaceId: workspaceRows[0]?.id || null,
     licenceCode: item.licenceCode || 'standard_lease',
