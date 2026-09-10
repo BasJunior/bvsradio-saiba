@@ -17,6 +17,11 @@ const appBeatGuard = read('src/components/app-vnext/AppBeatPreviewGuard.tsx')
 const appLayout = read('src/app/app/[surface]/layout.tsx')
 const appBeatDetail = read('src/app/app/[surface]/beat/[id]/page.tsx')
 const appExplore = read('src/components/app-vnext/AppExploreClient.tsx')
+const appJoin = read('src/app/app/[surface]/join/page.tsx')
+const appJoinEmail = read('src/app/app/[surface]/join/email/page.tsx')
+const appSignup = read('src/components/app-vnext/AppSignupClient.tsx')
+const signupRoute = read('src/app/api/auth/signup/route.ts')
+const confirmedPage = read('src/app/auth/confirmed/page.tsx')
 const beatWorkflow = read('src/components/beatstore/BeatWorkflow.tsx')
 const myBeats = read('src/components/MyBeatStore.tsx')
 const creatorApi = read('src/app/api/creator/workspace/route.ts')
@@ -74,6 +79,16 @@ assert(appBeatDetail.includes('beatId={beat.id}'), 'app beat detail must give th
 assert(appBeatDetail.includes('surface={surface}'), 'app beat detail must preserve contained sign-in return routing')
 assert(appExplore.includes('beatId={item.id}'), 'Discover BeatStore cards must use exact beat identity for member access')
 assert(appExplore.includes('surface={surface}'), 'Discover member unlocks must retain the current app surface')
+
+// Sign-in and new-account confirmation must preserve the exact contained beat context without allowing external redirects.
+assert(appBeatPreview.includes('/join?next=${encodeURIComponent(detailPath)}'), 'guest Join must carry the exact beat return path')
+assert(appJoin.includes('containedNext(surface, query.next)'), 'Join must validate and preserve the contained return path')
+assert(appJoinEmail.includes('nextPath={containedNext(surface, query.next)}'), 'email signup must inherit the validated return path')
+assert(appSignup.includes('body: JSON.stringify({ ...form, next })'), 'app signup must send the intended contained return path to confirmation')
+assert(signupRoute.includes('function safeAppNext(value: unknown)'), 'signup API must reject arbitrary confirmation redirects')
+assert(signupRoute.includes('/auth/confirmed?next=${encodeURIComponent(safeNext)}'), 'confirmation email must retain the safe app return context')
+assert(confirmedPage.includes('safeRequestedDestination(params.get(\'next\')'), 'confirmation landing must recover a validated app return destination')
+assert(confirmedPage.includes("requestedDestination || profileDestination || '/'"), 'requested BeatStore context must take precedence over the generic role landing after confirmation')
 
 // Web beat detail keeps licence/creation rights separate from member listening.
 assert(beatWorkflow.includes('const hasMemberFullAudio = Boolean(access.member && access.fullAudioUrl)'), 'web BeatStore must accept the server-authorized complete tagged preview for members')
