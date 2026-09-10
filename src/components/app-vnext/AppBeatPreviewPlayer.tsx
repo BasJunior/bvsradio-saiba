@@ -67,13 +67,12 @@ export default function AppBeatPreviewPlayer({
     return () => { alive = false; };
   }, [beatId, signedIn, token]);
 
-  const verifiedMember = Boolean(signedIn && access?.member);
+  const memberListening = Boolean(signedIn);
   const isCurrent = player.current?.src === preview;
   const isPlaying = isCurrent && player.isPlaying;
   const duration = isCurrent ? player.duration : 0;
   const elapsed = isCurrent ? player.elapsed : 0;
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0;
-  const memberGateLoading = Boolean(beatId && signedIn && token && accessLoading);
 
   const playableTrack = useMemo(
     () => ({
@@ -81,16 +80,15 @@ export default function AppBeatPreviewPlayer({
       artist,
       src: preview,
       artwork,
-      project: verifiedMember ? "BeatStore member preview" : "BeatStore preview",
+      project: memberListening ? "BeatStore member preview" : "BeatStore preview",
       genre,
     }),
-    [artist, artwork, genre, preview, title, verifiedMember],
+    [artist, artwork, genre, memberListening, preview, title],
   );
 
   const togglePlayback = () => {
-    if (memberGateLoading) return;
     if (isCurrent) {
-      if (!verifiedMember && elapsed >= GUEST_BEAT_PREVIEW_SECONDS - 0.25) {
+      if (!memberListening && elapsed >= GUEST_BEAT_PREVIEW_SECONDS - 0.25) {
         player.seek(0);
         if (!player.isPlaying) player.toggle();
         return;
@@ -100,7 +98,7 @@ export default function AppBeatPreviewPlayer({
     }
 
     player.playNow(playableTrack, {
-      from: verifiedMember ? "BeatStore · member full preview" : "BeatStore preview",
+      from: memberListening ? "BeatStore · member full preview" : "BeatStore preview",
       related: [],
     });
     player.setQueueOpen(false);
@@ -109,22 +107,21 @@ export default function AppBeatPreviewPlayer({
   const detailPath = beatId && surface ? `/app/${surface}/beat/${encodeURIComponent(beatId)}` : "";
 
   return (
-    <div className="mt-3 rounded-2xl border border-white/[.08] bg-black/20 px-4 py-3" data-bvs-beat-preview-player data-bvs-member-full-preview={verifiedMember ? "true" : "false"}>
+    <div className="mt-3 rounded-2xl border border-white/[.08] bg-black/20 px-4 py-3" data-bvs-beat-preview-player data-bvs-member-full-preview={memberListening ? "true" : "false"}>
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={togglePlayback}
-          disabled={memberGateLoading}
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-base font-semibold text-black transition hover:bg-brand active:scale-95 disabled:cursor-wait disabled:opacity-60"
-          aria-label={memberGateLoading ? `Unlocking ${title} member preview` : isPlaying ? `Pause ${title}` : `Play ${title} ${verifiedMember ? "full preview" : "preview"} in BVS player`}
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-base font-semibold text-black transition hover:bg-brand active:scale-95"
+          aria-label={isPlaying ? `Pause ${title}` : `Play ${title} ${memberListening ? "full preview" : "preview"} in BVS player`}
         >
-          {memberGateLoading ? "…" : isPlaying ? "Ⅱ" : "▶"}
+          {isPlaying ? "Ⅱ" : "▶"}
         </button>
 
         <div className="min-w-0 flex-1">
           <div className="mb-1 flex items-center justify-between gap-3 text-[11px] text-white/45">
-            <span>{isCurrent ? formatTime(elapsed) : verifiedMember ? "Full preview" : `Preview · ${GUEST_BEAT_PREVIEW_SECONDS}s`}</span>
-            <span>{duration > 0 ? `-${formatTime(Math.max(0, duration - elapsed))}` : memberGateLoading ? "Unlocking…" : "BVS player"}</span>
+            <span>{isCurrent ? formatTime(elapsed) : memberListening ? "Full preview" : `Preview · ${GUEST_BEAT_PREVIEW_SECONDS}s`}</span>
+            <span>{duration > 0 ? `-${formatTime(Math.max(0, duration - elapsed))}` : "BVS player"}</span>
           </div>
           <input
             type="range"
@@ -133,7 +130,7 @@ export default function AppBeatPreviewPlayer({
             value={Math.round(progress * 1000)}
             disabled={!isCurrent || duration <= 0}
             onChange={(event) => player.seek(Number(event.currentTarget.value) / 1000)}
-            aria-label={`Seek ${title} ${verifiedMember ? "full preview" : "preview"}`}
+            aria-label={`Seek ${title} ${memberListening ? "full preview" : "preview"}`}
             className="h-1.5 w-full cursor-pointer accent-brand disabled:cursor-default disabled:opacity-35"
           />
         </div>
@@ -151,13 +148,11 @@ export default function AppBeatPreviewPlayer({
 
       {!sessionLoading && signedIn && beatId ? (
         <div className="mt-3 text-xs leading-5 text-white/45">
-          {verifiedMember
-            ? access?.owned
+          {accessLoading
+            ? "Full tagged preview unlocked with your BVS account. Checking your licence…"
+            : access?.owned
               ? "Full tagged preview unlocked. Your purchased licence also unlocks the Lyrics Pad and licensed workflow."
-              : "Full tagged preview unlocked with your BVS membership. Listening access is not a beat licence — choose a licence before using or releasing it."
-            : accessLoading
-              ? "Unlocking your member listening access…"
-              : "Member listening could not be verified right now, so the public preview remains available."}
+              : "Full tagged preview unlocked with your BVS membership. Listening access is not a beat licence — choose a licence before using or releasing it."}
           {access?.owned ? (
             <a href={`https://bvsradio.com/beat/${encodeURIComponent(beatId)}#beat-writing`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex font-semibold text-brand">Open your licensed Lyrics Pad on BVS web →</a>
           ) : null}
