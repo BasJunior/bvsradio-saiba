@@ -8,6 +8,8 @@ const keys: Record<LibrarySection, string> = {
   history: 'bvs.library.history.v1',
 }
 
+const cacheOwnerKey = 'bvs.library.cache-owner.v1'
+
 function safeParse(value: string | null): DiscoveryItem[] {
   if (!value) return []
   try { return JSON.parse(value) as DiscoveryItem[] } catch { return [] }
@@ -30,6 +32,30 @@ export function writeLibrary(section: LibrarySection, items: DiscoveryItem[], so
   if (typeof window === 'undefined') return
   window.localStorage.setItem(keys[section], JSON.stringify(items.map(normalizeLibraryItem)))
   window.dispatchEvent(new CustomEvent('bvs:library-change', { detail: { section, source } }))
+}
+
+export function getLibraryCacheOwner() {
+  if (typeof window === 'undefined') return ''
+  return window.localStorage.getItem(cacheOwnerKey) || ''
+}
+
+export function setLibraryCacheOwner(userId?: string | null) {
+  if (typeof window === 'undefined') return
+  const next = String(userId || '').trim()
+  if (next) window.localStorage.setItem(cacheOwnerKey, next)
+  else window.localStorage.removeItem(cacheOwnerKey)
+}
+
+export function clearLibraryCache() {
+  if (typeof window === 'undefined') return
+  ;(Object.keys(keys) as LibrarySection[]).forEach((section) => writeLibrary(section, [], 'remote'))
+  setLibraryCacheOwner(null)
+}
+
+export function clearAccountLibraryCache() {
+  if (!getLibraryCacheOwner()) return false
+  clearLibraryCache()
+  return true
 }
 
 export function hasLibraryItem(section: LibrarySection, id: string) {
