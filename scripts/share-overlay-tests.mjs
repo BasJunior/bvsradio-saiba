@@ -1,6 +1,14 @@
 import fs from 'node:fs'
 
-const share = fs.readFileSync(new URL('../src/components/app-vnext/AppShareButton.tsx', import.meta.url), 'utf8')
+const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
+const share = read('src/components/app-vnext/AppShareButton.tsx')
+const home = read('src/app/app/[surface]/page.tsx')
+const appBeat = read('src/app/app/[surface]/beat/[id]/page.tsx')
+const buyButton = read('src/components/BuyTrackButton.tsx')
+const buyPage = read('src/app/buy/page.tsx')
+const legacyBeatBuy = read('src/app/buy/beat/[beatId]/[licenceId]/page.tsx')
+const purchaseClient = read('src/components/PurchaseHandoffClient.tsx')
+const purchaseServer = read('src/lib/purchase-handoff-server.ts')
 
 function assert(condition, message) {
   if (!condition) throw new Error(message)
@@ -15,4 +23,19 @@ assert(share.includes('setOpen(false);\n      await nextPaint();'), 'BVS overlay
 assert(share.includes('navigator.canShare?.({ files: [storyCard] })'), 'story-card sharing must remain progressive-enhancement only')
 assert(share.includes('await shareBvs({ title:'), 'share must fall back to the normal system/link share path')
 
-console.log('Share overlay assertions passed.')
+assert(home.includes('[clip-path:inset(0_round_2.2rem)]'), 'Home hero glow must hard-clip to its rounded iOS boundary')
+assert(home.includes('absolute inset-0 overflow-hidden rounded-[inherit]'), 'Home hero decoration must live inside an inner clipping layer')
+assert(buyButton.includes('`/buy?track=${encodeURIComponent(trackId)}`'), 'player Buy must use the stable exact-track web handoff')
+assert(appBeat.includes('https://bvsradio.com/buy?beat='), 'BeatStore Buy must use canonical web checkout')
+assert(appBeat.includes('&licence=${encodeURIComponent(licenceId)}'), 'BeatStore Buy must preserve the selected licence id')
+assert(buyPage.includes('resolveTrackPurchase(trackId)'), 'web Buy must resolve the exact track server-side')
+assert(buyPage.includes('resolveBeatPurchase(beatId, licenceId)'), 'web Buy must resolve the exact beat licence server-side')
+assert(purchaseClient.includes('upsertTrackCartLine'), 'track handoff must build the cart in the web browser context')
+assert(purchaseClient.includes('upsertBeatLicenceCartLine'), 'beat handoff must build the licence cart in the web browser context')
+assert(purchaseClient.includes('window.location.replace("/checkout")'), 'purchase handoff must continue to checkout')
+assert(purchaseServer.includes('is_public=eq.true&editorial_status=eq.approved&is_downloadable=eq.true'), 'track Buy must revalidate public approved sale status')
+assert(purchaseServer.includes('is_public=eq.true&status=eq.published&rights_confirmed=eq.true'), 'beat Buy must revalidate public rights-cleared status')
+assert(purchaseServer.includes('licence.is_sold_out === true'), 'beat Buy must reject sold-out licences')
+assert(legacyBeatBuy.includes('/buy?beat='), 'old BeatStore deep links must recover through the stable handoff')
+
+console.log('Share overlay, hero clipping and purchase handoff assertions passed.')

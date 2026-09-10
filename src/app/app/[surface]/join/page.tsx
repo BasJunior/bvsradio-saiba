@@ -29,9 +29,11 @@ export default async function AppJoinPage({ params }: { params: Promise<{ surfac
         ))}
       </div>
 
-      <section className="relative mt-8 overflow-hidden rounded-[1.8rem] border border-brand/16 bg-gradient-to-br from-brand/[.065] via-white/[.02] to-transparent p-5 sm:p-6">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-brand/[.08] blur-3xl" />
-        <div className="relative">
+      <section className="relative isolate mt-8 overflow-hidden rounded-[1.8rem] border border-brand/16 bg-gradient-to-br from-brand/[.065] via-white/[.02] to-transparent p-5 [clip-path:inset(0_round_1.8rem)] [contain:paint] sm:p-6">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
+          <div className="absolute -right-16 -top-20 h-44 w-44 rounded-full bg-brand/[.08] blur-3xl" />
+        </div>
+        <div className="relative z-[1]">
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Start free</p>
           <h2 className="mt-2 text-3xl font-semibold">Create your BVS identity.</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/40">Choose what you want to do first. You can grow the same account into more creator access later.</p>

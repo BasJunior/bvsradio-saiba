@@ -27,6 +27,8 @@ type Props = {
  *
  * The href is pinned to the canonical production website so an App Store build
  * served from a beta/preview origin can never hand the buyer into beta checkout.
+ * Legacy deep links using `/buy/${encodeURIComponent(trackId)}` remain supported
+ * by the existing compatibility page; new buttons use the stable query handoff.
  */
 export default function BuyTrackButton({
   track,
@@ -42,12 +44,14 @@ export default function BuyTrackButton({
   const trackId = String(track.id || "");
   const label =
     variant === "compact" ? `Buy · $${price.toFixed(price % 1 ? 2 : 0)}` : `Buy / Support · $${price.toFixed(2)}`;
-  const purchasePath = `/buy/${encodeURIComponent(trackId)}`;
+  const purchasePath = `/buy?track=${encodeURIComponent(trackId)}`;
   const purchaseHref = `https://bvsradio.com${purchasePath}`;
 
   const prepareWebCart = () => {
     if (!trackId || busy) return;
     setBusy(true);
+    // Keep the current browser context in sync too. The canonical web handoff
+    // resolves the authoritative item again before adding it to the web cart.
     upsertTrackCartLine({
       id: trackId,
       title: track.title,

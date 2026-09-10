@@ -36,9 +36,11 @@ export default function AppJoinCard({ surface }: { surface: AppSurface }) {
   }
 
   return (
-    <section className="relative overflow-hidden rounded-[1.9rem] border border-brand/16 bg-gradient-to-br from-brand/[.075] via-white/[.028] to-transparent p-5 sm:p-7">
-      <div className="pointer-events-none absolute -right-20 -top-24 h-52 w-52 rounded-full bg-brand/[.08] blur-3xl" />
-      <div className="relative">
+    <section className="relative isolate overflow-hidden rounded-[1.9rem] border border-brand/16 bg-gradient-to-br from-brand/[.075] via-white/[.028] to-transparent p-5 [clip-path:inset(0_round_1.9rem)] [contain:paint] sm:p-7">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
+        <div className="absolute -right-20 -top-24 h-52 w-52 rounded-full bg-brand/[.08] blur-3xl" />
+      </div>
+      <div className="relative z-[1]">
         <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">One account · every side of BVS</p>
         <h2 className="mt-3 max-w-2xl text-2xl font-semibold sm:text-3xl">Save what you love. Create when you’re ready.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/46">

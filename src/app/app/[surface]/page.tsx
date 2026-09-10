@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   description: "Listen, discover and create across BVS.",
 };
 
-
 function HomeDiscoveryFallback() {
   return (
     <div className="mt-11 space-y-10" aria-label="Loading BVS discovery">
@@ -38,10 +37,12 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
-      <section className="relative overflow-hidden rounded-[2.2rem] border border-white/[.08] bg-[#111113]/72 px-5 py-7 shadow-[0_28px_90px_rgba(0,0,0,.35)] backdrop-blur-2xl sm:px-9 sm:py-10">
-        <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-brand/[.13] blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 left-[18%] h-56 w-56 rounded-full bg-indigo-500/[.07] blur-3xl" />
-        <div className="relative">
+      <section className="relative isolate overflow-hidden rounded-[2.2rem] border border-white/[.08] bg-[#111113]/72 px-5 py-7 shadow-[0_28px_90px_rgba(0,0,0,.35)] backdrop-blur-2xl [clip-path:inset(0_round_2.2rem)] [contain:paint] sm:px-9 sm:py-10">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
+          <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full bg-brand/[.13] blur-3xl" />
+          <div className="absolute -bottom-24 left-[18%] h-56 w-56 rounded-full bg-indigo-500/[.07] blur-3xl" />
+        </div>
+        <div className="relative z-[1]">
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[.22em]">
             <span className="text-brand">Best Virtual Sound</span>
             <span className="text-white/22">•</span>

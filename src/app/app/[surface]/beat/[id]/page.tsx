@@ -24,7 +24,7 @@ export default async function AppBeatPage({ params }: { params: Promise<{ surfac
     .sort((a, b) => Number(a.price_usd) - Number(b.price_usd));
   const primaryLicence = licences[0];
   const licenceCheckoutHref = (licenceId: string) =>
-    `https://bvsradio.com/buy/beat/${encodeURIComponent(beat.id)}/${encodeURIComponent(licenceId)}`;
+    `https://bvsradio.com/buy?beat=${encodeURIComponent(beat.id)}&licence=${encodeURIComponent(licenceId)}`;
 
   return <div className="mx-auto max-w-4xl px-4 pb-12 pt-6 sm:px-6">
     <Link href={`/app/${surface}/explore`} className="text-sm text-text-secondary">← Explore</Link>
