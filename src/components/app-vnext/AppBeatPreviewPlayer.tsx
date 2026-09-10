@@ -138,7 +138,7 @@ export default function AppBeatPreviewPlayer({
           <p className="text-xs leading-5 text-white/58">Preview plays for everyone. Sign in or join BVS to hear the full beat before you choose a licence.</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <Link href={`/app/${surface}/login?next=${encodeURIComponent(detailPath)}`} className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-xs font-semibold text-black">Sign in for full beat</Link>
-            <Link href={`/app/${surface}/join`} className="inline-flex min-h-9 items-center rounded-full border border-brand/30 px-3 text-xs font-semibold text-brand">Join BVS</Link>
+            <Link href={`/app/${surface}/join?next=${encodeURIComponent(detailPath)}`} className="inline-flex min-h-9 items-center rounded-full border border-brand/30 px-3 text-xs font-semibold text-brand">Join BVS</Link>
           </div>
         </div>
       ) : null}
