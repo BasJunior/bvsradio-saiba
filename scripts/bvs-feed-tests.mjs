@@ -10,6 +10,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 const feed = read("src/lib/bvs-feed.ts");
 const feedList = read("src/components/feed/BvsFeedList.tsx");
 const objectCard = read("src/components/flow/BvsObjectCard.tsx");
+const actionSheet = read("src/components/flow/BvsActionSheet.tsx");
 const appHome = read("src/app/app/[surface]/page.tsx");
 const appNav = read("src/components/app-vnext/AppBottomNav.tsx");
 const mobileWebNav = read("src/components/layout/MobileFlowNav.tsx");
@@ -31,6 +32,11 @@ assert(feedList.includes("canonicalBvsShareUrl"), "feed sharing must use canonic
 assert(feedList.includes('`/beat/${encodeURIComponent(item.object.id)}`'), "web feed beat shares and saved items must use the exact beat id route");
 assert(objectCard.includes('`/beat/${encodeURIComponent(object.id)}`'), "BVS beat cards must resolve web detail navigation by immutable beat id");
 assert(objectCard.includes('action.href.startsWith("/catalogue?type=beat")'), "legacy BeatStore search actions must be upgraded to exact detail routes");
+assert(actionSheet.includes('import { createPortal } from "react-dom"'), "BVS action sheets must portal outside card/feed stacking contexts");
+assert(actionSheet.includes("return createPortal(sheet, document.body)"), "BVS action sheet must render at the document body layer");
+assert(actionSheet.includes('data-bvs-transient-overlay="action-sheet"'), "action sheet must expose the shared transient overlay marker");
+assert(actionSheet.includes("z-[110]"), "action sheet must remain above player, nav, queue and Now Playing chrome");
+assert(actionSheet.includes("max-h-[calc(100dvh-0.75rem)]"), "mobile action sheet must stay within the visible viewport");
 assert(!feedList.toLowerCase().includes("comment"), "feed must not ship a dead comment control before public moderation exists");
 assert(appHome.includes('href={`${base}/feed`}'), "app Home must surface BVS Feed without loading feed data on cold start");
 assert(appNav.includes('pathname.startsWith(`${base}/feed`)'), "contained Feed must keep the Home tab active rather than add a sixth native tab");
