@@ -13,6 +13,7 @@ type Body = {
   role?: string
   resendOnly?: boolean
   attribution?: unknown
+  next?: string
 }
 
 function bad(msg: string, status = 400) {
@@ -21,6 +22,13 @@ function bad(msg: string, status = 400) {
 
 function profileRoleFor(requestedRole: string) {
   return requestedRole === 'producer' ? 'listener' : requestedRole
+}
+
+function safeAppNext(value: unknown) {
+  if (typeof value !== 'string') return ''
+  const clean = value.trim()
+  if (!/^\/app\/(ios|android)(?:\/|$)/.test(clean) || clean.includes('\\') || clean.startsWith('//')) return ''
+  return clean.slice(0, 500)
 }
 
 function cleanAttribution(value: unknown) {
@@ -52,11 +60,15 @@ async function ensureProfile(userId: string, username: string, role: string) {
   })
 }
 
-async function sendSignupConfirm(email: string) {
+async function sendSignupConfirm(email: string, next = '') {
+  const safeNext = safeAppNext(next)
+  const landingPath = safeNext
+    ? `/auth/confirmed?next=${encodeURIComponent(safeNext)}`
+    : '/auth/confirmed'
   const { link } = await generateAuthEmailLink({
     email,
     types: ['signup', 'magiclink'],
-    landingPath: '/auth/confirmed',
+    landingPath,
   })
   await sendConfirmAccountEmail(email, link)
 }
@@ -75,13 +87,14 @@ export async function POST(req: Request) {
     const profileRole = profileRoleFor(role)
     const resendOnly = Boolean(body.resendOnly)
     const firstTouch = cleanAttribution(body.attribution)
+    const next = safeAppNext(body.next)
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return bad('Enter a valid email address (must include @ and a domain).')
     }
 
     if (resendOnly) {
-      await sendSignupConfirm(email)
+      await sendSignupConfirm(email, next)
       return NextResponse.json({
         ok: true,
         message: 'A new confirmation link was sent from BVS Radio. Check inbox and Spam.',
@@ -116,7 +129,7 @@ export async function POST(req: Request) {
       const msg = String(create.data?.msg || create.data?.message || 'Signup failed')
       if (/already|registered|exists/i.test(msg)) {
         try {
-          await sendSignupConfirm(email)
+          await sendSignupConfirm(email, next)
           return NextResponse.json({
             ok: true,
             needsConfirmation: true,
@@ -135,7 +148,7 @@ export async function POST(req: Request) {
       await ensureProfile(userId, username, role)
     }
 
-    await sendSignupConfirm(email)
+    await sendSignupConfirm(email, next)
 
     return NextResponse.json({
       ok: true,
