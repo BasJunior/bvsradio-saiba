@@ -74,7 +74,7 @@ export default function AppBeatPreviewPlayer({
   const elapsed = isCurrent ? player.elapsed : 0;
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0;
 
-  const playableTrack = useMemo(
+  const previewTrack = useMemo(
     () => ({
       title,
       artist,
@@ -97,7 +97,7 @@ export default function AppBeatPreviewPlayer({
       return;
     }
 
-    player.playNow(playableTrack, {
+    player.playNow(previewTrack, {
       from: memberListening ? "BeatStore · member full preview" : "BeatStore preview",
       related: [],
     });
