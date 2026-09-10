@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
-import { useStationPlayer } from '@/components/StationPlayer'
+import EditorialConnectedPreview from '@/components/editorial/EditorialConnectedPreview'
 
 type Profile = {
   id: string
@@ -22,6 +22,7 @@ type Track = {
   artist_name: string
   genre?: string
   file_url?: string
+  review_audio_url?: string
   artwork_url?: string
   editorial_status: string
   is_public: boolean
@@ -53,6 +54,7 @@ type ReleaseTrack = {
   position: number
   title: string
   file_url?: string
+  review_audio_url?: string
 }
 
 type Payload = {
@@ -84,14 +86,6 @@ function publicProfileName(profile?: Profile) {
   return String(profile?.public_name || profile?.display_name || profile?.username || 'BVS creator').trim()
 }
 
-function formatTime(seconds: number) {
-  if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
-  const whole = Math.floor(seconds)
-  const minutes = Math.floor(whole / 60)
-  const remaining = whole % 60
-  return `${minutes}:${String(remaining).padStart(2, '0')}`
-}
-
 function EditorialPreview({
   previewId,
   title,
@@ -109,58 +103,16 @@ function EditorialPreview({
   project?: string
   genre?: string
 }) {
-  const player = useStationPlayer()
-  const id = `editorial-preview:${previewId}`
-  const active = player.current?.id === id
-  const elapsed = active ? player.elapsed : 0
-  const duration = active ? player.duration : 0
-  const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0
-
-  if (!src) {
-    return <div className="rounded-xl border border-dashed border-white/10 px-4 py-3 text-xs text-text-secondary">No preview audio attached.</div>
-  }
-
-  const toggle = () => {
-    if (active) {
-      player.toggle()
-      return
-    }
-    player.playNow({
-      id,
-      title,
-      artist,
-      src,
-      artwork,
-      project,
-      genre,
-      isDownloadable: false,
-      licenceType: 'not_for_sale',
-    }, { from: 'Editorial catalogue preview' })
-  }
-
   return (
-    <div className="flex min-h-14 items-center gap-3 rounded-xl border border-white/10 bg-white/[.055] px-3 py-2">
-      <button
-        type="button"
-        onClick={toggle}
-        className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white text-sm font-black text-black"
-        aria-label={`${active && player.isPlaying ? 'Pause' : 'Preview'} ${title}`}
-      >
-        {active && player.isPlaying ? 'Ⅱ' : '▶'}
-      </button>
-      <span className="w-11 shrink-0 text-right text-xs tabular-nums text-text-secondary">{formatTime(elapsed)}</span>
-      <input
-        type="range"
-        min="0"
-        max="1000"
-        value={Math.round(progress * 1000)}
-        disabled={!active || duration <= 0}
-        onChange={(event) => player.seek(Number(event.target.value) / 1000)}
-        className="min-w-0 flex-1 accent-brand disabled:opacity-45"
-        aria-label={`Seek ${title}`}
-      />
-      <span className="w-11 shrink-0 text-xs tabular-nums text-text-secondary">{duration > 0 ? `-${formatTime(Math.max(0, duration - elapsed))}` : '0:00'}</span>
-    </div>
+    <EditorialConnectedPreview
+      previewId={previewId}
+      title={title}
+      artist={artist}
+      src={src}
+      artwork={artwork}
+      project={`${project || 'Editorial catalogue'} · full submission`}
+      genre={genre}
+    />
   )
 }
 
@@ -266,7 +218,7 @@ function SingleCard({
       </div>
 
       <div className="mt-5">
-        <EditorialPreview previewId={`track:${track.id}`} title={track.title} artist={track.artist_name} src={track.file_url} artwork={track.artwork_url} genre={track.genre} />
+        <EditorialPreview previewId={`track:${track.id}`} title={track.title} artist={track.artist_name} src={track.review_audio_url || track.file_url} artwork={track.artwork_url} genre={track.genre} />
       </div>
 
       <div className="mt-5 space-y-4 border-t border-white/10 pt-5">
@@ -370,7 +322,7 @@ function ReleaseCard({
                 previewId={`release:${release.id}:${member.id}`}
                 title={trackTitles[member.id] || member.title}
                 artist={release.artist_name}
-                src={member.file_url || materialized?.file_url}
+                src={member.review_audio_url || member.file_url || materialized?.review_audio_url || materialized?.file_url}
                 artwork={release.cover_url}
                 project={release.title}
                 genre={release.genre}
