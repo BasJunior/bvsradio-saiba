@@ -7,14 +7,33 @@ export default function AppExperienceStyle() {
         --bvs-app-line: rgba(255, 255, 255, .085);
         --bvs-app-panel: rgba(18, 18, 20, .72);
         --bvs-app-panel-strong: rgba(15, 15, 17, .9);
+        overscroll-behavior-x: none;
+        overscroll-behavior-y: none;
       }
 
       html[data-bvs-app-shell="true"] body {
+        min-height: 100dvh;
+        overscroll-behavior-x: none;
+        overscroll-behavior-y: none;
+        touch-action: pan-y;
         background:
           radial-gradient(circle at 82% -8%, rgba(212, 175, 55, .12), transparent 30rem),
           radial-gradient(circle at -10% 28%, rgba(87, 86, 255, .07), transparent 26rem),
           linear-gradient(180deg, #09090b 0%, #070708 48%, #050506 100%);
         background-attachment: fixed;
+      }
+
+      /*
+       * Keep shell chrome on independent compositor layers. Combined with root
+       * overscroll containment this prevents iOS/WKWebView elastic scrolling
+       * from visually tugging the header, player or tab bar at page boundaries.
+       */
+      html[data-bvs-app-shell="true"] :is(.bvs-app-header, .bvs-persistent-player, .bvs-app-bottom-nav) {
+        -webkit-transform: translate3d(0, 0, 0);
+        transform: translate3d(0, 0, 0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        will-change: transform;
       }
 
       html[data-bvs-app-shell="true"] body::before {
