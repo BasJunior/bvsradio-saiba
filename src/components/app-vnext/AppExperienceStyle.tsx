@@ -36,6 +36,21 @@ export default function AppExperienceStyle() {
         will-change: transform;
       }
 
+      /*
+       * The contained iOS WebView may already begin below the native status bar,
+       * which makes the Now Playing sheet's fallback 0.75rem top padding show as
+       * an extra dark seam. Keep only the real safe-area inset so the full player
+       * attaches cleanly to the top chrome without crowding devices that report it.
+       */
+      html[data-bvs-app-shell="true"] [data-now-playing-shell="true"] {
+        top: 0 !important;
+        background: #090909;
+      }
+
+      html[data-bvs-app-shell="true"] [data-now-playing-shell="true"] > .relative {
+        padding-top: env(safe-area-inset-top, 0px) !important;
+      }
+
       html[data-bvs-app-shell="true"] body::before {
         content: "";
         position: fixed;
