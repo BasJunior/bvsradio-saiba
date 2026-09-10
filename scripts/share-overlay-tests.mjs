@@ -4,6 +4,8 @@ const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), '
 const share = read('src/components/app-vnext/AppShareButton.tsx')
 const home = read('src/app/app/[surface]/page.tsx')
 const appBeat = read('src/app/app/[surface]/beat/[id]/page.tsx')
+const appTopBar = read('src/components/app-vnext/AppTopBar.tsx')
+const appExperience = read('src/components/app-vnext/AppExperienceStyle.tsx')
 const buyButton = read('src/components/BuyTrackButton.tsx')
 const buyPage = read('src/app/buy/page.tsx')
 const legacyBeatBuy = read('src/app/buy/beat/[beatId]/[licenceId]/page.tsx')
@@ -25,6 +27,11 @@ assert(share.includes('await shareBvs({ title:'), 'share must fall back to the n
 
 assert(home.includes('[clip-path:inset(0_round_2.2rem)]'), 'Home hero glow must hard-clip to its rounded iOS boundary')
 assert(home.includes('absolute inset-0 overflow-hidden rounded-[inherit]'), 'Home hero decoration must live inside an inner clipping layer')
+assert(appTopBar.includes('overflow-hidden rounded-xl'), 'app logo must be visibly clipped to rounded corners')
+assert(appExperience.includes('html[data-bvs-app-shell="true"] {'), 'app experience must target the root shell')
+assert(appExperience.includes('overscroll-behavior-y: none'), 'app shell must suppress elastic top/bottom overscroll')
+assert(appExperience.includes(':is(.bvs-app-header, .bvs-persistent-player, .bvs-app-bottom-nav)'), 'header, player and bottom nav must share stable fixed-layer treatment')
+assert(appExperience.includes('translate3d(0, 0, 0)'), 'fixed app chrome must remain on independent compositor layers')
 assert(buyButton.includes('`/buy?track=${encodeURIComponent(trackId)}`'), 'player Buy must use the stable exact-track web handoff')
 assert(appBeat.includes('https://bvsradio.com/buy?beat='), 'BeatStore Buy must use canonical web checkout')
 assert(appBeat.includes('&licence=${encodeURIComponent(licenceId)}'), 'BeatStore Buy must preserve the selected licence id')
@@ -38,4 +45,4 @@ assert(purchaseServer.includes('is_public=eq.true&status=eq.published&rights_con
 assert(purchaseServer.includes('licence.is_sold_out === true'), 'beat Buy must reject sold-out licences')
 assert(legacyBeatBuy.includes('/buy?beat='), 'old BeatStore deep links must recover through the stable handoff')
 
-console.log('Share overlay, hero clipping and purchase handoff assertions passed.')
+console.log('Share overlay, hero clipping, fixed chrome and purchase handoff assertions passed.')
