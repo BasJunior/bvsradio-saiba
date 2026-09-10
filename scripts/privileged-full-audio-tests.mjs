@@ -13,6 +13,8 @@ const releases = read('src/components/ReleaseEditorialPanel.tsx')
 const mine = read('src/app/api/beats/route.ts')
 const memberBeatAccess = read('src/app/api/beats/[id]/access/route.ts')
 const appBeatPreview = read('src/components/app-vnext/AppBeatPreviewPlayer.tsx')
+const appBeatGuard = read('src/components/app-vnext/AppBeatPreviewGuard.tsx')
+const appLayout = read('src/app/app/[surface]/layout.tsx')
 const appBeatDetail = read('src/app/app/[surface]/beat/[id]/page.tsx')
 const appExplore = read('src/components/app-vnext/AppExploreClient.tsx')
 const beatWorkflow = read('src/components/beatstore/BeatWorkflow.tsx')
@@ -44,36 +46,42 @@ assert(creatorApi.includes('releaseTracks'), 'Artist workspace returns owned alb
 assert(creatorApi.includes('audio_url: await privateMediaUrl(String(episode.audio_path'), 'Show creator gets full own episode audio')
 assert(studio.includes('FullAccessAudioPlayer'), 'Studio exposes full owner playback')
 
-// BVS membership unlocks a full listen, but never changes public BeatStore shaping or licence ownership.
-assert(memberBeatAccess.includes('authUserId(url, service, token)'), 'member full-beat access must require an authenticated BVS account')
+// Membership may unlock the complete tagged/watermarked preview, never the clean master.
+assert(memberBeatAccess.includes('authUserId(url, service, token)'), 'member BeatStore access must require an authenticated BVS account')
 assert(memberBeatAccess.includes('is_public=eq.true&status=eq.published&rights_confirmed=eq.true'), 'member listening must only resolve published rights-confirmed BeatStore items')
-assert(memberBeatAccess.includes('const fullAudioUrl = await signedAudio(beat.master_path)'), 'member listening must resolve the private full master only')
-assert(!memberBeatAccess.includes('signedAudio(beat.master_path || beat.preview_path)'), 'member full-beat access must never relabel the public preview as full audio')
+assert(memberBeatAccess.includes('const memberPreviewUrl = await signedAudio(beat.preview_path)'), 'unlicensed members may receive only the tagged preview source')
 assert(memberBeatAccess.includes('member: true'), 'authenticated BVS accounts must be identified as members')
 assert(memberBeatAccess.includes('owned: false'), 'membership alone must not grant a beat licence')
 assert(memberBeatAccess.includes('status=in.(paid,fulfilled)'), 'licensed ownership must remain tied to a paid or fulfilled order')
+assert(memberBeatAccess.includes('signedAudio(beat.master_path || beat.preview_path)'), 'licensed owners may receive the private master with preview fallback')
+assert(memberBeatAccess.indexOf('status=in.(paid,fulfilled)') < memberBeatAccess.indexOf('signedAudio(beat.master_path || beat.preview_path)'), 'clean-master resolution must occur only after the paid-order entitlement check')
 assert(memberBeatAccess.includes('owned: true'), 'paid beat orders must still upgrade the same access response to licensed ownership')
 
-// App BeatStore listening must use the persistent player and upgrade previews by exact immutable beat id.
+// App BeatStore listening stays on the tagged preview: guests are time-limited, signed-in members may hear it fully.
 assert(appBeatPreview.includes('useAppSession'), 'app beat player must use the authenticated app session')
-assert(appBeatPreview.includes('/api/beats/${encodeURIComponent(beatId)}/access'), 'app beat player must resolve member listening by exact beat id')
-assert(appBeatPreview.includes('const fullMemberAudio = Boolean(signedIn && access?.member && access.fullAudioUrl)'), 'app beat player must distinguish member full audio from the public preview')
-assert(appBeatPreview.includes('const playableSrc = fullMemberAudio ? String(access?.fullAudioUrl) : preview'), 'signed-out playback must remain on the public preview')
+assert(appBeatPreview.includes('/api/beats/${encodeURIComponent(beatId)}/access'), 'app beat player must resolve ownership by exact beat id')
+assert(appBeatPreview.includes('export const GUEST_BEAT_PREVIEW_SECONDS = 45'), 'guest BeatStore listening must use the explicit preview window')
+assert(appBeatPreview.includes('const memberListening = Boolean(signedIn)'), 'any signed-in BVS account must unlock the complete tagged preview')
+assert(appBeatPreview.includes('src: preview'), 'native BeatStore playback must remain on the tagged preview asset before licence purchase')
+assert(!appBeatPreview.includes('src: access?.fullAudioUrl'), 'native unlicensed playback must never switch to the private master response')
 assert(appBeatPreview.includes('useStationPlayer'), 'member BeatStore playback must remain on the persistent BVS player')
-assert(appBeatPreview.includes('Sign in for full beat'), 'anonymous beat previews must offer a clear member unlock action')
+assert(appBeatPreview.includes('Sign in for full preview'), 'anonymous beat previews must offer a clear member unlock action')
 assert(appBeatPreview.includes('Listening access is not a beat licence'), 'member listening UI must keep the licence boundary explicit')
+assert(appBeatGuard.includes('GUEST_BEAT_PREVIEW_SECONDS'), 'persistent app chrome must enforce the guest preview window after navigation')
+assert(appBeatGuard.includes('if (loading || signedIn || !isBeatStorePreview'), 'signed-in members must be exempt from the guest preview window')
+assert(appLayout.includes('<AppBeatPreviewGuard />'), 'the guest BeatStore preview guard must live at app-shell scope')
 assert(appBeatDetail.includes('beatId={beat.id}'), 'app beat detail must give the player the immutable beat id')
 assert(appBeatDetail.includes('surface={surface}'), 'app beat detail must preserve contained sign-in return routing')
-assert(appExplore.includes('beatId={item.id}'), 'Discover BeatStore cards must also unlock full member playback')
+assert(appExplore.includes('beatId={item.id}'), 'Discover BeatStore cards must use exact beat identity for member access')
 assert(appExplore.includes('surface={surface}'), 'Discover member unlocks must retain the current app surface')
 
-// Web beat detail follows the same funnel: preview for guests, full listen for members, Lyrics Pad only after purchase.
-assert(beatWorkflow.includes('const hasMemberFullAudio = Boolean(access.member && access.fullAudioUrl)'), 'web BeatStore must unlock the full listen for authenticated members')
+// Web beat detail keeps licence/creation rights separate from member listening.
+assert(beatWorkflow.includes('const hasMemberFullAudio = Boolean(access.member && access.fullAudioUrl)'), 'web BeatStore must accept the server-authorized complete tagged preview for members')
 assert(beatWorkflow.includes('if (!access.owned || !access.orderReference) return'), 'Lyrics Pad creation must remain fail-closed without a paid beat entitlement')
 assert(beatWorkflow.includes('{access.owned ? <section id="beat-writing"'), 'Lyrics Pad must only render for licensed owners')
 assert(beatWorkflow.includes('A licence is still required before you use or release the beat.'), 'member listening must not imply usage rights')
 
-// Public BeatStore shaping stays on previewUrl and never returns master_path in the public object.
+// Public BeatStore shaping stays on previewUrl and never returns a clean master.
 const publicShape = mine.slice(mine.indexOf('// public published beats for catalogue / BeatStore'))
 assert(publicShape.includes('previewUrl: publicStorageUrl(b.preview_path)'), 'Public BeatStore continues to use preview audio')
 assert(!publicShape.includes('masterUrl:'), 'Public BeatStore must not expose private masters')
