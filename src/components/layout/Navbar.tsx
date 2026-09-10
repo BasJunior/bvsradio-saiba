@@ -160,6 +160,7 @@ export default function Navbar() {
 
   const showCreator = Boolean(access?.creator)
   const showEditorial = Boolean(access?.editorial)
+  const studioActive = pathname === '/creator/studio' || pathname.startsWith('/creator/studio/')
   const premiumUntilLabel = formatPremiumUntil(premium?.premiumUntil ?? null)
   const premiumBadge =
     premium?.premiumActive
@@ -275,7 +276,19 @@ export default function Navbar() {
           </Link>
           {user ? (
             <>
-              {showCreator && <span className="relative"><Link href="/creator/studio" className="block px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Studio</Link>{!showEditorial && notificationBadge}</span>}
+              {showCreator && (
+                <span className="relative">
+                  <Link
+                    href="/creator/studio"
+                    data-bvs-web-studio="desktop"
+                    aria-current={studioActive ? 'page' : undefined}
+                    className={`inline-flex min-h-10 items-center rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors ${studioActive ? 'border-brand bg-brand text-black' : 'border-brand/35 bg-brand/10 text-brand hover:border-brand/55 hover:bg-brand/15'}`}
+                  >
+                    Studio
+                  </Link>
+                  {!showEditorial && notificationBadge}
+                </span>
+              )}
               {showEditorial && <span className="relative"><Link href="/editorial" className="block px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>{notificationBadge}</span>}
               {premiumBadge && (
                 <Link
@@ -308,8 +321,19 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile: keep Join one tap away (not only inside the drawer) */}
+        {/* Mobile: keep creator Studio / Join one tap away (not only inside the drawer) */}
         <div className="flex items-center gap-1.5 md:hidden">
+          {user && showCreator && (
+            <Link
+              href="/creator/studio"
+              data-bvs-web-studio="mobile"
+              aria-current={studioActive ? 'page' : undefined}
+              className={`inline-flex h-9 items-center rounded-full border px-3 text-xs font-semibold transition-colors ${studioActive ? 'border-brand bg-brand text-black' : 'border-brand/35 bg-brand/10 text-brand active:bg-brand/20'}`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Studio
+            </Link>
+          )}
           <Link
             href="/checkout"
             aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
