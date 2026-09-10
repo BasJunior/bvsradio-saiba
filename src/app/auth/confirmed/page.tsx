@@ -8,6 +8,13 @@ import type { EmailOtpType } from '@supabase/supabase-js'
 
 type Status = 'loading' | 'ready' | 'error'
 
+function safeRequestedDestination(value: string | null) {
+  if (!value) return ''
+  const clean = value.trim()
+  if (!/^\/app\/(ios|android)(?:\/|$)/.test(clean) || clean.startsWith('//') || clean.includes('\\')) return ''
+  return clean.slice(0, 500)
+}
+
 function friendlyAuthError(code: string | null, description: string | null): string {
   const desc = (description || '').replace(/\+/g, ' ')
   if (code === 'otp_expired' || /expired|invalid/i.test(desc)) {
@@ -35,6 +42,7 @@ export default function ConfirmedPage() {
         const url = new URL(window.location.href)
         const params = url.searchParams
         const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''))
+        const requestedDestination = safeRequestedDestination(params.get('next') || hashParams.get('next'))
 
         const error = params.get('error') || hashParams.get('error')
         const errorCode = params.get('error_code') || hashParams.get('error_code')
@@ -74,6 +82,7 @@ export default function ConfirmedPage() {
           return
         }
 
+        let profileDestination = ''
         const profileRes = await fetch('/api/auth/profile', {
           method: 'POST',
           headers: { Authorization: `Bearer ${data.session.access_token}` },
@@ -83,13 +92,14 @@ export default function ConfirmedPage() {
         } else {
           const profile = await profileRes.json().catch(() => ({}))
           if (typeof profile.destination === 'string' && profile.destination.startsWith('/')) {
-            setDestination(profile.destination)
+            profileDestination = profile.destination
           }
         }
 
+        setDestination(requestedDestination || profileDestination || '/')
         trackMilestone('account_confirmed')
 
-        if (window.location.hash || params.has('code') || params.has('token_hash')) {
+        if (window.location.hash || params.has('code') || params.has('token_hash') || params.has('next')) {
           window.history.replaceState({}, '', '/auth/confirmed')
         }
 
@@ -104,12 +114,14 @@ export default function ConfirmedPage() {
     void finishConfirmation()
   }, [])
 
+  const returningToBeat = /^\/app\/(ios|android)\/beat\//.test(destination)
+
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-xl items-center px-6 py-16 text-center">
       <div className="w-full rounded-3xl border border-white/10 bg-bg-card/50 p-8">
         {status === 'loading' && <><h1 className="text-3xl font-semibold">Confirming your account…</h1><p className="mt-3 text-text-secondary">This should only take a moment.</p></>}
-        {status === 'ready' && <><p className="text-xs uppercase tracking-[.2em] text-brand">Email confirmed</p><h1 className="mt-3 text-3xl font-semibold">Welcome to BVS Radio</h1><p className="mt-3 text-text-secondary">Your account is ready and you are signed in.</p><Link href={destination} className="mt-7 inline-block rounded-full bg-brand px-7 py-3 font-semibold text-black">{destination === '/creator/studio' ? 'Open Creator Studio' : 'Start listening'}</Link></>}
-        {status === 'error' && <><h1 className="text-3xl font-semibold">We could not confirm this link</h1><p className="mt-3 text-left text-text-secondary">{detail}</p><ol className="mt-4 list-decimal space-y-2 px-4 text-left text-sm text-text-secondary"><li>Open signup again and use Resend confirmation (or sign up with the same email).</li><li>Use the newest email only — older links stay expired.</li><li>Open the link in a real browser tab (not the mail app preview).</li></ol><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/auth/signup" className="rounded-full bg-brand px-6 py-3 font-semibold text-black">Resend confirmation</Link><Link href="/auth/login" className="rounded-full border border-white/20 px-6 py-3">Sign in</Link></div></>}
+        {status === 'ready' && <><p className="text-xs uppercase tracking-[.2em] text-brand">Email confirmed</p><h1 className="mt-3 text-3xl font-semibold">Welcome to BVS Radio</h1><p className="mt-3 text-text-secondary">Your account is ready and you are signed in.</p><Link href={destination} className="mt-7 inline-block rounded-full bg-brand px-7 py-3 font-semibold text-black">{returningToBeat ? 'Return to this beat' : destination === '/creator/studio' ? 'Open Creator Studio' : 'Start listening'}</Link></>}
+        {status === 'error' && <><h1 className="text-3xl font-semibold">We could not confirm this link</h1><p className="mt-3 text-left text-text-secondary">{detail}</p><ol className="mt-4 list-decimal space-y-2 px-4 text-left text-sm text-text-secondary"><li>Open signup again and use Resend confirmation (or sign up with the same email).</li><li>Use the newest email only — older links stay expired.</li><li>Open the link in a real browser tab (not the mail app preview pane).</li></ol><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/auth/signup" className="rounded-full bg-brand px-6 py-3 font-semibold text-black">Resend confirmation</Link><Link href="/auth/login" className="rounded-full border border-white/20 px-6 py-3">Sign in</Link></div></>}
       </div>
     </main>
   )
