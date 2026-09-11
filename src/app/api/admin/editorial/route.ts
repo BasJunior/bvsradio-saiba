@@ -5,6 +5,8 @@ import type { EditorialPermission, EditorialRole } from '@/lib/editorial'
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 import { assertCanPublishLiveBeat } from '@/lib/producer-entitlements'
 
+const EDITORIAL_MEDIA_URL_TTL_SECONDS = 6 * 60 * 60
+
 async function jsonOrError(response: Response) {
   if (!response.ok) throw new Error(await response.text())
   const text = await response.text()
@@ -32,7 +34,7 @@ async function requiredJson(path: string) {
 async function signStoredMedia(value?: string | null) {
   if (!value) return value
   const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
-  return key ? signedR2DownloadUrl(key, 900) : value
+  return key ? signedR2DownloadUrl(key, EDITORIAL_MEDIA_URL_TTL_SECONDS) : value
 }
 
 async function notifyApproval(input: { userId?: string; title?: string; kind: 'track' | 'release' | 'beat' }) {
