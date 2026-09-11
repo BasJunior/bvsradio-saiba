@@ -17,6 +17,8 @@ export type CatalogueShelfCard = CollectionCard & {
   source: 'live' | 'pack' | 'release' | 'curated'
   itemCount?: number
   action: ShelfAction
+  producerUsername?: string
+  producerName?: string
 }
 
 const LIVE_BEATSTORE_ID = 'live-beatstore'
@@ -149,8 +151,20 @@ async function loadPublishedBeatPacks(): Promise<CatalogueShelfCard[]> {
     Accept: 'application/json',
   }
 
+  // A pack is visible if it has published public members, even when the pack
+  // row is still "submitted" after editorial published the beats one-by-one.
+  const beatsRes = await fetch(
+    `${url}/rest/v1/beats?is_public=eq.true&status=eq.published&pack_id=not.is.null&select=id,pack_id,artwork_path,published_at&limit=500`,
+    { headers, cache: 'no-store' },
+  )
+  const beatRows = beatsRes.ok
+    ? ((await beatsRes.json()) as Array<{ id: string; pack_id?: string; artwork_path?: string | null }>)
+    : []
+  const packIds = [...new Set(beatRows.map((row) => row.pack_id).filter(Boolean))] as string[]
+  if (!packIds.length) return []
+
   const packsRes = await fetch(
-    `${url}/rest/v1/beat_packs?is_public=eq.true&status=eq.published&select=id,title,description,genre,artwork_path,created_at,updated_at,producer_user_id&order=updated_at.desc.nullslast&limit=40`,
+    `${url}/rest/v1/beat_packs?id=in.(${packIds.join(',')})&select=id,title,description,genre,artwork_path,created_at,updated_at,producer_user_id&limit=80`,
     { headers, cache: 'no-store' },
   )
   if (!packsRes.ok) return []
@@ -162,22 +176,31 @@ async function loadPublishedBeatPacks(): Promise<CatalogueShelfCard[]> {
     artwork_path?: string | null
     created_at?: string
     updated_at?: string
+    producer_user_id?: string
   }>
   if (!packs.length) return []
 
-  const ids = packs.map((p) => p.id)
-  const beatsRes = await fetch(
-    `${url}/rest/v1/beats?pack_id=in.(${ids.join(',')})&is_public=eq.true&status=eq.published&select=id,pack_id,artwork_path,published_at`,
-    { headers, cache: 'no-store' },
-  )
-  const beatRows = beatsRes.ok
-    ? ((await beatsRes.json()) as Array<{ id: string; pack_id?: string; artwork_path?: string | null }>)
+  const producerIds = [...new Set(packs.map((pack) => pack.producer_user_id).filter(Boolean))] as string[]
+  const producersRes = producerIds.length
+    ? await fetch(
+        `${url}/rest/v1/profiles?id=in.(${producerIds.join(',')})&select=id,username,display_name,creator_public_name`,
+        { headers, cache: 'no-store' },
+      )
+    : null
+  const producers = producersRes?.ok
+    ? ((await producersRes.json()) as Array<{
+        id: string
+        username?: string
+        display_name?: string
+        creator_public_name?: string
+      }>)
     : []
 
   return packs
     .map((pack) => {
       const members = beatRows.filter((b) => b.pack_id === pack.id)
       if (!members.length) return null
+      const producer = producers.find((row) => row.id === pack.producer_user_id)
       const cover =
         publicStorageUrl(pack.artwork_path) ||
         publicStorageUrl(members.find((m) => m.artwork_path)?.artwork_path) ||
@@ -192,10 +215,13 @@ async function loadPublishedBeatPacks(): Promise<CatalogueShelfCard[]> {
         shelfKind: 'live-beatstore' as const,
         source: 'pack' as const,
         itemCount: count,
+        producerUsername: producer?.username,
+        producerName: producer?.creator_public_name || producer?.display_name || producer?.username,
         action: { type: 'pack' as const, packId: pack.id },
       }
     })
     .filter((row): row is NonNullable<typeof row> => Boolean(row))
+    .sort((a, b) => Date.parse(b.launchedAt || '') - Date.parse(a.launchedAt || ''))
 }
 
 async function liveBeatStoreShelf(): Promise<CatalogueShelfCard> {

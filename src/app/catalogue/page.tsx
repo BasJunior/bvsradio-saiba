@@ -43,6 +43,9 @@ interface Track {
   producerBeat?: boolean;
   producerUsername?: string;
   packId?: string | null;
+  packPosition?: number | null;
+  publishedAt?: string;
+  createdAt?: string;
 }
 
 type ShelfAction =
@@ -57,6 +60,8 @@ type ShelfCard = CollectionCard & {
   source?: "live" | "pack" | "release" | "curated";
   itemCount?: number;
   action?: ShelfAction;
+  producerUsername?: string;
+  producerName?: string;
 };
 
 const coverArt = "/music/Bvs-3000x3000%202.png";
@@ -432,6 +437,9 @@ function CataloguePageContent() {
                 producer?: string;
                 producer_username?: string;
                 packId?: string | null;
+                packPosition?: number | null;
+                published_at?: string;
+                created_at?: string;
               },
               index: number,
             ) => ({
@@ -453,6 +461,9 @@ function CataloguePageContent() {
               producerBeat: true,
               producerUsername: b.producer_username || undefined,
               packId: b.packId || null,
+              packPosition: b.packPosition ?? null,
+              publishedAt: b.published_at,
+              createdAt: b.created_at,
             }),
           ),
         );
@@ -825,7 +836,7 @@ function CataloguePageContent() {
   const filteredTracks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
-    return scopeTracks.filter((track) => {
+    const rows = scopeTracks.filter((track) => {
       const matchesSearch =
         !normalizedSearch ||
         [track.title, track.artist, track.collection, track.genre].some(
@@ -851,6 +862,17 @@ function CataloguePageContent() {
         matchesType
       );
     });
+    if (packFilter) {
+      return [...rows].sort((a, b) => (a.packPosition || 0) - (b.packPosition || 0));
+    }
+    if (producerFilter) {
+      return [...rows].sort((a, b) => {
+        const tb = Date.parse(b.publishedAt || b.createdAt || "") || 0;
+        const ta = Date.parse(a.publishedAt || a.createdAt || "") || 0;
+        return tb - ta;
+      });
+    }
+    return rows;
   }, [scopeTracks, genreFilter, producerFilter, packFilter, search, typeFilter]);
 
   const openExternalStream = (track: Track) => {
@@ -1008,6 +1030,17 @@ function CataloguePageContent() {
   const musicCount = allTracks.filter(isMusicListing).length;
   const beatCount = allTracks.filter(isBeatListing).length;
   const producerMode = Boolean(producerFilter && beatsMode);
+  const producerPacks = useMemo(
+    () =>
+      producerMode
+        ? activeCollectionCards.filter(
+            (card) =>
+              card.source === "pack" &&
+              producerKeysMatch(producerFilter, card.producerUsername, card.producerName),
+          )
+        : [],
+    [activeCollectionCards, producerFilter, producerMode],
+  );
   const producerLabel =
     resolvePublicHandle(
       filteredTracks.find((track) => track.artist)?.artist || producerFilter,
@@ -1268,7 +1301,7 @@ function CataloguePageContent() {
                   ? producerLabel
                   : `@${producerLabel}`}
               </span>
-              &apos;s published BeatStore catalogue only.
+              &apos;s published BeatStore catalogue only. Newest first.
             </p>
             <button
               type="button"
@@ -1277,6 +1310,37 @@ function CataloguePageContent() {
             >
               Clear producer filter
             </button>
+          </div>
+        </section>
+      )}
+
+      {producerMode && producerPacks.length > 0 && (
+        <section className="mb-8">
+          <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">Packs</p>
+          <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2">
+            {producerPacks.map((pack) => (
+              <button
+                key={pack.id || pack.name}
+                type="button"
+                onClick={() => jumpToCollection(pack.name)}
+                className="w-[min(78vw,16rem)] shrink-0 snap-start overflow-hidden rounded-3xl border border-white/10 bg-white/[.03] text-left"
+              >
+                <div className="relative aspect-square bg-white/5">
+                  <Image
+                    src={pack.img}
+                    alt=""
+                    fill
+                    unoptimized={/^https?:\/\//i.test(pack.img) || pack.img.startsWith("/api/media/")}
+                    sizes="256px"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="truncate text-lg font-semibold">{pack.name}</h3>
+                  <p className="mt-1 text-xs text-text-secondary">{pack.detail}</p>
+                </div>
+              </button>
+            ))}
           </div>
         </section>
       )}
