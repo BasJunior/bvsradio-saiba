@@ -174,7 +174,17 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           if (!res.ok) return;
           const payload = await res.json().catch(() => ({}));
           const next = Array.isArray(payload.tracks) ? (payload.tracks as StationTrack[]) : [];
-          if (!cancelled) setTracks(next);
+          if (!cancelled) {
+            setTracks((prev) => {
+              if (
+                prev.length === next.length &&
+                prev.every((track, index) => trackKey(track) === trackKey(next[index]) && track.src === next[index]?.src)
+              ) {
+                return prev;
+              }
+              return next;
+            });
+          }
         })
         .catch(() => {});
     };
@@ -469,18 +479,43 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         if (live.src === prev.track.src) return prev;
         return { ...prev, track: live };
       }
-      // Current track left the library (e.g. rejected archive) → jump to station head
+      // BeatStore / editorial review audio is not in the station library.
+      // Never snap back to rotation head (currently Birdy).
+      if (
+        prev &&
+        (prev.source === "user" ||
+          prev.source === "preview" ||
+          isBeatTrack(prev.track) ||
+          isEditorialPlay(prev.track) ||
+          editorialHoldRef.current ||
+          modeRef.current === "ondemand")
+      ) {
+        return prev;
+      }
+      if (!prev) return makeQueueItem(tracks[0], "station");
       setMode("station");
       setPlayingFrom("BVS Station");
       return makeQueueItem(tracks[0], "station");
     });
     setUpNext((prev) => {
+      const current = nowRef.current;
+      if (
+        current &&
+        (current.source === "user" ||
+          current.source === "preview" ||
+          isBeatTrack(current.track) ||
+          isEditorialPlay(current.track) ||
+          editorialHoldRef.current ||
+          modeRef.current === "ondemand")
+      ) {
+        return prev.filter((item) => item.source !== "station");
+      }
       const kept = prev.filter((item) => byKey.has(trackKey(item.track))).map((item) => ({
         ...item,
         track: byKey.get(trackKey(item.track))!,
       }));
-      const seed = nowRef.current?.track && byKey.has(trackKey(nowRef.current.track))
-        ? byKey.get(trackKey(nowRef.current.track))
+      const seed = current?.track && byKey.has(trackKey(current.track))
+        ? byKey.get(trackKey(current.track))
         : tracks[0];
       return fillUpNext(seed, kept);
     });
