@@ -251,6 +251,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const repeatRef = useRef(repeat);
   const signedInRef = useRef(false);
   const [signedIn, setSignedIn] = useState(false);
+  const editorialPageRef = useRef(false);
+  const editorialHoldRef = useRef(false);
 
   useEffect(() => {
     tracksRef.current = tracks;
@@ -275,6 +277,19 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       apply(Boolean(session?.user));
     });
     return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const syncEditorialPage = () => {
+      const path = window.location.pathname;
+      editorialPageRef.current =
+        path === "/editorial" ||
+        path.startsWith("/editorial/") ||
+        path.startsWith("/admin/editorial");
+    };
+    syncEditorialPage();
+    window.addEventListener("popstate", syncEditorialPage);
+    return () => window.removeEventListener("popstate", syncEditorialPage);
   }, []);
 
   const index = useMemo(() => {
@@ -313,6 +328,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const fillUpNext = useCallback(
     (seed: StationTrack | undefined, existing: QueueItem[], preferUserKeep = true) => {
+      if (editorialPageRef.current) {
+        return existing;
+      }
       if (isBeatTrack(seed) || existing.some((item) => isBeatTrack(item.track))) {
         return existing.filter((item) => isBeatTrack(item.track)).slice(0, UP_NEXT_TARGET);
       }
@@ -478,7 +496,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   useEffect(() => {
     const releaseStationAudio = (event: Event) => {
       const owner = (event as CustomEvent<{ owner?: string }>).detail?.owner;
-      if (owner !== "catalogue" || !audio.current) return;
+      if (!owner || owner === "station" || !audio.current) return;
+      if (owner === "editorial") editorialHoldRef.current = true;
       audio.current.pause();
       if (isPlaying) flushListening();
       setPlaying(false);
@@ -662,13 +681,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         let nextQueue = [...queue];
         let nextItem = nextQueue.shift();
 
-        if (!nextItem && autoplayRef.current) {
+        if (!nextItem && autoplayRef.current && !editorialPageRef.current && !editorialHoldRef.current) {
           const seed = nowRef.current?.track;
           nextQueue = fillUpNext(seed, []);
           nextItem = nextQueue.shift();
         }
 
-        if (!nextItem && pool.length && !inBeat) {
+        if (!nextItem && pool.length && !inBeat && !editorialPageRef.current && !editorialHoldRef.current) {
           const i = nowRef.current ? pool.findIndex((t) => trackKey(t) === trackKey(nowRef.current!.track)) : 0;
           const t = pool[(Math.max(0, i) + 1) % pool.length];
           nextItem = makeQueueItem(t, "station");
@@ -723,6 +742,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         audio.current.pause();
         flushListening();
       } else {
+        editorialHoldRef.current = false;
         window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
         await audio.current.play();
         failStreak.current = 0;
