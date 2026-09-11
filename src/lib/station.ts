@@ -10,6 +10,8 @@ export type StationTrack = {
   playCount?: number;
   /** Optional genre for similar / auto-fill */
   genre?: string;
+  /** BeatStore listings vs station/catalogue recordings */
+  kind?: "beat" | "track";
   /** Commerce — personal download / support purchase from player */
   isDownloadable?: boolean;
   downloadPrice?: number | null;
