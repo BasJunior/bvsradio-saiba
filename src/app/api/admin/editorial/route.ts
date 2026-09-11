@@ -44,10 +44,12 @@ async function requiredJson(path: string) {
   return response.json()
 }
 
+const EDITORIAL_MEDIA_URL_TTL_SECONDS = 6 * 60 * 60
+
 async function signStoredMedia(value?: string | null) {
   if (!value) return value
   const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
-  return key ? signedR2DownloadUrl(key, 900) : value
+  return key ? signedR2DownloadUrl(key, EDITORIAL_MEDIA_URL_TTL_SECONDS) : value
 }
 
 async function notifyApproval(input: { userId?: string; title?: string; kind: 'track' | 'release' | 'beat' }) {
