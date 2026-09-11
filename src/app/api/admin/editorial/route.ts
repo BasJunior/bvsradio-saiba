@@ -37,6 +37,19 @@ async function signStoredMedia(value?: string | null) {
   return key ? signedR2DownloadUrl(key, EDITORIAL_MEDIA_URL_TTL_SECONDS) : value
 }
 
+async function syncBeatPackLiveState(packId?: string | null) {
+  if (!packId) return
+  const members = (await optionalJson(
+    `beats?pack_id=eq.${encodeURIComponent(packId)}&select=id,status,is_public`,
+  )) as Array<{ id?: string; status?: string; is_public?: boolean }>
+  const liveCount = members.filter((row) => row.is_public && row.status === 'published').length
+  await patchTable('beat_packs', `id=eq.${encodeURIComponent(packId)}`, {
+    status: liveCount ? 'published' : 'submitted',
+    is_public: liveCount > 0,
+    updated_at: new Date().toISOString(),
+  })
+}
+
 async function notifyApproval(input: { userId?: string; title?: string; kind: 'track' | 'release' | 'beat' }) {
   if (!input.userId || !input.title) return
   try {
@@ -905,8 +918,8 @@ export async function PATCH(request: Request) {
         const beatId = String(body.beatId || '')
         const publish = Boolean(body.publish)
         const beat = (await optionalJson(
-          `beats?id=eq.${encodeURIComponent(beatId)}&select=id,producer_user_id,is_public,status&limit=1`,
-        ))[0] as { id?: string; producer_user_id?: string; is_public?: boolean; status?: string } | undefined
+          `beats?id=eq.${encodeURIComponent(beatId)}&select=id,producer_user_id,is_public,status,pack_id&limit=1`,
+        ))[0] as { id?: string; producer_user_id?: string; is_public?: boolean; status?: string; pack_id?: string | null } | undefined
         if (!beat?.producer_user_id) {
           return NextResponse.json({ error: 'Beat or producer profile not found.' }, { status: 404 })
         }
@@ -959,6 +972,7 @@ export async function PATCH(request: Request) {
           }
         }
         await audit(identity.user.id, publish ? 'beat_published' : 'beat_unpublished', 'beat', beatId)
+        await syncBeatPackLiveState(beat.pack_id)
         return NextResponse.json({ result })
       }
       default: return NextResponse.json({ error: 'Unknown editorial action.' }, { status: 400 })
