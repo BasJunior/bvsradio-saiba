@@ -16,7 +16,7 @@ async function signedFullAudio(value: unknown) {
   const raw = String(value || '').trim()
   if (!raw) return ''
   const key = r2KeyFromMediaUrl(raw) || (safeR2Key(raw) && !/^https?:/i.test(raw) ? raw : null)
-  return key ? signedR2DownloadUrl(key, 900) : raw
+  return key ? signedR2DownloadUrl(key, 6 * 60 * 60) : raw
 }
 
 export async function GET(request: Request) {

@@ -75,16 +75,17 @@ export default function EditorialConnectedPreview({
 
   const playSource = (audioSrc: string) => {
     player.playNow({
-      id: '',
+      id: target?.id || previewId,
       title,
       artist,
       src: audioSrc,
       artwork: artwork || undefined,
       project,
       genre,
+      kind: target?.kind === 'beat' ? 'beat' : 'track',
       isDownloadable: false,
       licenceType: 'not_for_sale',
-    }, { from: project, related: [] })
+    }, { from: project, related: [], review: true })
   }
 
   const resolveAndPlay = async () => {

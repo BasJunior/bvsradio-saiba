@@ -9,6 +9,7 @@ import {
   GUEST_BEAT_PREVIEW_SECONDS,
   fetchRelatedBeats,
   isBeatTrack,
+  isEditorialPlay,
 } from "@/lib/beat-playback";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
 import { listeningBucket, trackEvent } from "@/lib/analytics";
@@ -74,7 +75,7 @@ type PlayerContextValue = {
   cycleRepeat: () => void;
   toggleLike: () => void;
   toggleAutoplay: () => void;
-  playNow: (track: StationTrack, opts?: { from?: string; related?: StationTrack[] }) => void;
+  playNow: (track: StationTrack, opts?: { from?: string; related?: StationTrack[]; review?: boolean }) => void;
   playNext: (track: StationTrack) => void;
   addToQueue: (track: StationTrack) => void;
   playAll: (list: StationTrack[], opts?: { from?: string; startIndex?: number }) => void;
@@ -280,6 +281,25 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, []);
 
   useEffect(() => {
+    if (!signedIn) return;
+    const currentItem = nowRef.current;
+    if (currentItem?.source !== "preview") return;
+    setNowPlaying({ ...currentItem, source: "user" });
+    if (isBeatTrack(currentItem.track) && !isEditorialPlay(currentItem.track)) {
+      void fetchRelatedBeats(currentItem.track).then((siblings) => {
+        setUpNext((queue) => {
+          const have = new Set(queue.map((entry) => trackKey(entry.track)));
+          have.add(trackKey(currentItem.track));
+          const extra = siblings
+            .filter((sibling) => !have.has(trackKey(sibling)))
+            .map((sibling) => makeQueueItem(sibling, "user"));
+          return [...queue.filter((item) => item.source !== "station"), ...extra].slice(0, UP_NEXT_TARGET);
+        });
+      });
+    }
+  }, [signedIn]);
+
+  useEffect(() => {
     const syncEditorialPage = () => {
       const path = window.location.pathname;
       editorialPageRef.current =
@@ -328,11 +348,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const fillUpNext = useCallback(
     (seed: StationTrack | undefined, existing: QueueItem[], preferUserKeep = true) => {
-      if (editorialPageRef.current) {
-        return existing;
+      if (editorialPageRef.current || editorialHoldRef.current || isEditorialPlay(seed)) {
+        return existing.filter((item) => item.source !== "station");
       }
       if (isBeatTrack(seed) || existing.some((item) => isBeatTrack(item.track))) {
-        return existing.filter((item) => isBeatTrack(item.track)).slice(0, UP_NEXT_TARGET);
+        return existing.filter((item) => isBeatTrack(item.track) && item.source !== "station").slice(0, UP_NEXT_TARGET);
       }
       const pool = tracksRef.current;
       if (!pool.length) return existing;
@@ -568,7 +588,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     const guestPreview =
       nowRef.current?.source === "preview" &&
       isBeatTrack(nowRef.current.track) &&
-      !signedInRef.current;
+      !signedInRef.current &&
+      !editorialHoldRef.current &&
+      !isEditorialPlay(nowRef.current.track);
     const rawElapsed = el.currentTime || 0;
     const elapsedCap = guestPreview ? Math.min(rawElapsed, GUEST_BEAT_PREVIEW_SECONDS) : rawElapsed;
     setElapsed(elapsedCap);
@@ -641,7 +663,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const advance = useCallback(
     (direction: 1 | -1, opts?: { autoSkip?: boolean }) => {
       const pool = tracksRef.current;
-      const inBeat = isBeatTrack(nowRef.current?.track);
+      const inBeat =
+        isBeatTrack(nowRef.current?.track) ||
+        isEditorialPlay(nowRef.current?.track) ||
+        editorialHoldRef.current;
       if (!pool.length && !upNextRef.current.length && !inBeat) return;
       flushListening();
       setError(null);
@@ -829,7 +854,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     const guestPreview =
       nowRef.current?.source === "preview" &&
       isBeatTrack(nowRef.current.track) &&
-      !signedInRef.current;
+      !signedInRef.current &&
+      !editorialHoldRef.current &&
+      !isEditorialPlay(nowRef.current.track);
     const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
     const next = Math.min(1, Math.max(0, ratio)) * max;
     el.currentTime = next;
@@ -880,11 +907,15 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, [fillUpNext]);
 
   const playNow = useCallback(
-    (track: StationTrack, opts?: { from?: string; related?: StationTrack[] }) => {
+    (track: StationTrack, opts?: { from?: string; related?: StationTrack[]; review?: boolean }) => {
       if (!track?.src) return;
-      const beat = isBeatTrack(track);
-      const tagged = beat ? { ...track, kind: "beat" as const, project: track.project || "BVS BeatStore" } : track;
-      const guestBeat = beat && !signedInRef.current;
+      const review = Boolean(opts?.review) || isEditorialPlay(track, opts?.from) || editorialPageRef.current;
+      if (review) editorialHoldRef.current = true;
+      const beat = isBeatTrack(track) || /beatstore/i.test(`${opts?.from || ""} ${track.project || ""}`);
+      const tagged = beat
+        ? { ...track, kind: "beat" as const, project: track.project || (review ? "Editorial · BeatStore" : "BVS BeatStore") }
+        : track;
+      const guestBeat = beat && !signedInRef.current && !review;
       flushListening();
       setError(null);
       setNotice(null);
@@ -899,7 +930,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       const relatedItems = (opts?.related || [])
         .filter((t) => t.src && trackKey(t) !== trackKey(tagged))
         .map((t) => makeQueueItem(beat ? { ...t, kind: "beat" as const, project: t.project || "BVS BeatStore" } : t, source));
-      if (beat) {
+      if (review) {
+        setUpNext(relatedItems.filter((entry) => entry.source !== "station"));
+      } else if (beat) {
         setUpNext(relatedItems);
         if (!guestBeat) {
           void fetchRelatedBeats(tagged).then((siblings) => {
@@ -909,7 +942,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
               const extra = siblings
                 .filter((sibling) => !have.has(trackKey(sibling)))
                 .map((sibling) => makeQueueItem(sibling, "user"));
-              return [...queue, ...extra].slice(0, UP_NEXT_TARGET);
+              return [...queue.filter((entry) => entry.source !== "station"), ...extra].slice(0, UP_NEXT_TARGET);
             });
           });
         }
@@ -1021,7 +1054,17 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       }
       return;
     }
-    if (nowRef.current?.source === "preview" && isBeatTrack(nowRef.current.track) && !signedInRef.current) {
+    const currentItem = nowRef.current;
+    if (
+      editorialHoldRef.current ||
+      isEditorialPlay(currentItem?.track) ||
+      (currentItem?.source === "preview" && isBeatTrack(currentItem.track) && !signedInRef.current)
+    ) {
+      flushListening();
+      setPlaying(false);
+      return;
+    }
+    if (isBeatTrack(currentItem?.track) && upNextRef.current.length === 0) {
       flushListening();
       setPlaying(false);
       return;

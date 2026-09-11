@@ -5,7 +5,13 @@ export const GUEST_BEAT_PREVIEW_SECONDS = 45;
 
 export function isBeatTrack(track?: Pick<StationTrack, "kind" | "project"> | null) {
   if (!track) return false;
-  return track.kind === "beat" || track.project === "BVS BeatStore";
+  if (track.kind === "beat") return true;
+  const project = track.project || "";
+  return project === "BVS BeatStore" || /beatstore/i.test(project);
+}
+
+export function isEditorialPlay(track?: Pick<StationTrack, "project"> | null, from?: string) {
+  return /editorial/i.test(`${track?.project || ""} ${from || ""}`);
 }
 
 export function toBeatStationTrack(input: {
