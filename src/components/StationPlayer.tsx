@@ -4,6 +4,12 @@ import Link from "next/link";
 import { Capacitor } from "@capacitor/core";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { StationTrack } from "@/lib/station";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  GUEST_BEAT_PREVIEW_SECONDS,
+  fetchRelatedBeats,
+  isBeatTrack,
+} from "@/lib/beat-playback";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
 import { listeningBucket, trackEvent } from "@/lib/analytics";
 import { flowV2Flags } from "@/lib/feature-flags";
@@ -28,7 +34,7 @@ import MusicVideoWatch from "@/components/MusicVideoWatch";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
-export type QueueSource = "station" | "user" | "auto" | "mix";
+export type QueueSource = "station" | "user" | "auto" | "mix" | "preview";
 
 export type QueueItem = {
   key: string;
@@ -243,6 +249,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const autoplayRef = useRef(autoplay);
   const shuffleRef = useRef(shuffle);
   const repeatRef = useRef(repeat);
+  const signedInRef = useRef(false);
+  const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => {
     tracksRef.current = tracks;
@@ -252,7 +260,22 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     autoplayRef.current = autoplay;
     shuffleRef.current = shuffle;
     repeatRef.current = repeat;
-  }, [autoplay, mode, nowPlaying, repeat, shuffle, tracks, upNext]);
+    signedInRef.current = signedIn;
+  }, [autoplay, mode, nowPlaying, repeat, shuffle, signedIn, tracks, upNext]);
+
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const supabase = createClient();
+    const apply = (hasUser: boolean) => {
+      signedInRef.current = hasUser;
+      setSignedIn(hasUser);
+    };
+    void supabase.auth.getSession().then(({ data }) => apply(Boolean(data.session?.user)));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      apply(Boolean(session?.user));
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   const index = useMemo(() => {
     if (!current) return 0;
@@ -290,6 +313,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const fillUpNext = useCallback(
     (seed: StationTrack | undefined, existing: QueueItem[], preferUserKeep = true) => {
+      if (isBeatTrack(seed) || existing.some((item) => isBeatTrack(item.track))) {
+        return existing.filter((item) => isBeatTrack(item.track)).slice(0, UP_NEXT_TARGET);
+      }
       const pool = tracksRef.current;
       if (!pool.length) return existing;
       // On station mode expose the entire circular rotation. On-demand mixes stay concise.
@@ -520,8 +546,25 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const onTimeUpdate = useCallback(() => {
     const el = audio.current;
     if (!el) return;
-    setElapsed(el.currentTime || 0);
-    if (el.duration && Number.isFinite(el.duration)) setDuration(el.duration);
+    const guestPreview =
+      nowRef.current?.source === "preview" &&
+      isBeatTrack(nowRef.current.track) &&
+      !signedInRef.current;
+    const rawElapsed = el.currentTime || 0;
+    const elapsedCap = guestPreview ? Math.min(rawElapsed, GUEST_BEAT_PREVIEW_SECONDS) : rawElapsed;
+    setElapsed(elapsedCap);
+    if (el.duration && Number.isFinite(el.duration)) {
+      setDuration(guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration);
+    }
+
+    if (guestPreview && rawElapsed >= GUEST_BEAT_PREVIEW_SECONDS) {
+      el.pause();
+      el.currentTime = GUEST_BEAT_PREVIEW_SECONDS;
+      flushListening();
+      setPlaying(false);
+      setNotice("Sign in to hear the full beat and keep the next one queued.");
+      return;
+    }
 
     if (
       !flowV2Flags.qualifiedStreams ||
@@ -562,18 +605,25 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       }),
       keepalive: true,
     }).catch(() => {});
-  }, [current, isPlaying]);
+  }, [current, flushListening, isPlaying]);
 
   const onLoadedMetadata = useCallback(() => {
     const el = audio.current;
     if (!el) return;
-    if (el.duration && Number.isFinite(el.duration)) setDuration(el.duration);
+    if (el.duration && Number.isFinite(el.duration)) {
+      const guestPreview =
+        nowRef.current?.source === "preview" &&
+        isBeatTrack(nowRef.current.track) &&
+        !signedInRef.current;
+      setDuration(guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration);
+    }
   }, []);
 
   const advance = useCallback(
     (direction: 1 | -1, opts?: { autoSkip?: boolean }) => {
       const pool = tracksRef.current;
-      if (!pool.length) return;
+      const inBeat = isBeatTrack(nowRef.current?.track);
+      if (!pool.length && !upNextRef.current.length && !inBeat) return;
       flushListening();
       setError(null);
       if (!opts?.autoSkip) setNotice(null);
@@ -618,7 +668,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           nextItem = nextQueue.shift();
         }
 
-        if (!nextItem && pool.length) {
+        if (!nextItem && pool.length && !inBeat) {
           const i = nowRef.current ? pool.findIndex((t) => trackKey(t) === trackKey(nowRef.current!.track)) : 0;
           const t = pool[(Math.max(0, i) + 1) % pool.length];
           nextItem = makeQueueItem(t, "station");
@@ -630,6 +680,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           const filled = autoplayRef.current ? fillUpNext(nextItem.track, nextQueue) : nextQueue;
           return filled;
         }
+        setPlaying(false);
         return queue;
       });
     },
@@ -755,7 +806,12 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const seek = useCallback((ratio: number) => {
     const el = audio.current;
     if (!el || !el.duration || !Number.isFinite(el.duration)) return;
-    const next = Math.min(1, Math.max(0, ratio)) * el.duration;
+    const guestPreview =
+      nowRef.current?.source === "preview" &&
+      isBeatTrack(nowRef.current.track) &&
+      !signedInRef.current;
+    const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
+    const next = Math.min(1, Math.max(0, ratio)) * max;
     el.currentTime = next;
     setElapsed(next);
   }, []);
@@ -806,37 +862,60 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const playNow = useCallback(
     (track: StationTrack, opts?: { from?: string; related?: StationTrack[] }) => {
       if (!track?.src) return;
+      const beat = isBeatTrack(track);
+      const tagged = beat ? { ...track, kind: "beat" as const, project: track.project || "BVS BeatStore" } : track;
+      const guestBeat = beat && !signedInRef.current;
       flushListening();
       setError(null);
       setNotice(null);
       setElapsed(0);
       setDuration(0);
       setMode("ondemand");
-      setPlayingFrom(opts?.from || track.project || track.artist || "On demand");
+      setPlayingFrom(opts?.from || tagged.project || tagged.artist || "On demand");
       if (nowRef.current) pushHistory(nowRef.current.track);
-      const item = makeQueueItem(track, "user");
+      const source = guestBeat ? "preview" : "user";
+      const item = makeQueueItem(tagged, source);
       setNowPlaying(item);
       const relatedItems = (opts?.related || [])
-        .filter((t) => t.src && trackKey(t) !== trackKey(track))
-        .map((t) => makeQueueItem(t, "user"));
-      setUpNext(fillUpNext(track, relatedItems));
+        .filter((t) => t.src && trackKey(t) !== trackKey(tagged))
+        .map((t) => makeQueueItem(beat ? { ...t, kind: "beat" as const, project: t.project || "BVS BeatStore" } : t, source));
+      if (beat) {
+        setUpNext(relatedItems);
+        if (!guestBeat) {
+          void fetchRelatedBeats(tagged).then((siblings) => {
+            setUpNext((queue) => {
+              const have = new Set(queue.map((entry) => trackKey(entry.track)));
+              have.add(trackKey(tagged));
+              const extra = siblings
+                .filter((sibling) => !have.has(trackKey(sibling)))
+                .map((sibling) => makeQueueItem(sibling, "user"));
+              return [...queue, ...extra].slice(0, UP_NEXT_TARGET);
+            });
+          });
+        }
+      } else {
+        setUpNext(fillUpNext(tagged, relatedItems));
+      }
       setPlaying(true);
       setQueueOpen(true);
-      trackEvent("queue_play_now", { track_id: trackLibraryId(track) });
+      trackEvent("queue_play_now", { track_id: trackLibraryId(tagged), content_type: beat ? "beat" : "track" });
     },
     [fillUpNext, flushListening, pushHistory, setQueueOpen],
   );
 
   const playNext = useCallback((track: StationTrack) => {
     if (!track?.src) return;
+    const beat = isBeatTrack(track);
+    const tagged = beat ? { ...track, kind: "beat" as const, project: track.project || "BVS BeatStore" } : track;
+    const source = beat && !signedInRef.current ? "preview" : "user";
     setUpNext((q) => {
-      const item = makeQueueItem(track, "user");
-      const withoutDup = q.filter((i) => trackKey(i.track) !== trackKey(track));
+      const item = makeQueueItem(tagged, source);
+      const withoutDup = q.filter((i) => trackKey(i.track) !== trackKey(tagged));
       return [item, ...withoutDup].slice(0, UP_NEXT_TARGET + 10);
     });
-    setNotice(`Up next: ${track.title}`);
+    setNotice(`Up next: ${tagged.title}`);
     setMode((m) => m);
-    trackEvent("queue_play_next", { track_id: trackLibraryId(track) });
+    trackEvent("queue_play_next", { track_id: trackLibraryId(tagged) });
   }, []);
 
   const addToQueue = useCallback((track: StationTrack) => {
@@ -923,8 +1002,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       }
       return;
     }
+    if (nowRef.current?.source === "preview" && isBeatTrack(nowRef.current.track) && !signedInRef.current) {
+      flushListening();
+      setPlaying(false);
+      return;
+    }
     advance(1);
-  }, [advance]);
+  }, [advance, flushListening]);
 
   // External catalogue / pages → queue
   useEffect(() => {
@@ -934,9 +1018,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         track?: StationTrack;
         tracks?: StationTrack[];
         from?: string;
+        related?: StationTrack[];
       }>).detail;
       if (!detail) return;
-      if (detail.action === "play" && detail.track) playNow(detail.track, { from: detail.from });
+      if (detail.action === "play" && detail.track) playNow(detail.track, { from: detail.from, related: detail.related });
       else if (detail.action === "play-next" && detail.track) playNext(detail.track);
       else if (detail.action === "add" && detail.track) addToQueue(detail.track);
       else if (detail.action === "play-all" && detail.tracks?.length) playAll(detail.tracks, { from: detail.from });

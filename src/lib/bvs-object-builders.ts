@@ -138,13 +138,13 @@ export function beatToObject(
     availabilityLabel: Number(beat.startingPrice) > 0 ? `Licences from $${Number(beat.startingPrice).toFixed(2)}` : "Licence options available",
     media,
     primaryAction: media
-      ? { id: "preview", label: "Preview", intent: "play", media }
+      ? { id: "play", label: "Play", intent: "play", media }
       : { id: "details", label: "View details", intent: "navigate", href: detailHref },
     overflowActions: [
       { id: "details", label: "Beat details", intent: "navigate", href: detailHref },
       ...(media ? [
-        { id: "next", label: "Preview next", intent: "play-next" as const, media },
-        { id: "queue", label: "Add preview to queue", intent: "queue" as const, media },
+        { id: "next", label: "Play next", intent: "play-next" as const, media },
+        { id: "queue", label: "Add to queue", intent: "queue" as const, media },
       ] : []),
       { id: "licence", label: "View licence on BVS website", intent: "navigate", href: catalogueHref },
       ...(beat.producer ? [{ id: "producer", label: `Go to ${beat.producer}`, intent: "navigate" as const, href: producerHref }] : []),

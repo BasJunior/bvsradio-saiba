@@ -65,7 +65,7 @@ const mayPackArt = "/images/music-packs/may-pack-1-2.jpg";
 const straighteninArt = "/images/albums/straightenin.jpg";
 const howlingArt = "/images/albums/howling-in-the-hills-2.jpg";
 const wolfBeenBadArt = "/images/albums/wolf-been-bad.jpg";
-const previewLimitSeconds = 30;
+const previewLimitSeconds = 45;
 
 // Album product cards stay as commerce items; member songs below use the same covers
 // so catalogue, station rotation, and player artwork stay aligned (see music-projects.ts).
@@ -866,6 +866,11 @@ function CataloguePageContent() {
 
     if (!track.src) return;
 
+    if (track.producerBeat || track.type === "beat") {
+      queueAction("play", track);
+      return;
+    }
+
     if (currentTrack?.id === track.id && isPlaying) {
       audioRef.current?.pause();
       setIsPlaying(false);
@@ -937,8 +942,9 @@ function CataloguePageContent() {
     artist: track.artist,
     src: track.src,
     artwork: track.artwork,
-    project: track.collection,
+    project: track.producerBeat ? "BVS BeatStore" : track.collection,
     genre: track.genre,
+    kind: track.producerBeat || track.type === "beat" ? "beat" as const : "track" as const,
   });
 
   const queueAction = (
@@ -965,7 +971,13 @@ function CataloguePageContent() {
             : {
                 action,
                 track: toStationTrack(track),
-                from: track.collection || track.artist,
+                from: track.producerBeat ? "BVS BeatStore" : track.collection || track.artist,
+                related:
+                  action === "play" && (track.producerBeat || track.type === "beat")
+                    ? dbBeats
+                        .filter((item) => item.src && item.id !== track.id)
+                        .map(toStationTrack)
+                    : undefined,
               },
       }),
     );

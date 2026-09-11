@@ -34,6 +34,7 @@ function queueAction(action: BvsAction, object: BvsObject) {
     project: media.project || object.contextLabel || "BVS",
     genre: media.genre,
     artwork: media.artwork || object.artwork,
+    kind: object.kind === "beat" ? "beat" as const : "track" as const,
   };
   const queueAction = action.intent === "play-next" ? "play-next" : action.intent === "queue" ? "add" : "play";
   window.dispatchEvent(new CustomEvent("bvs:queue", { detail: { action: queueAction, track, from: object.contextLabel || "BVS Flow" } }));
