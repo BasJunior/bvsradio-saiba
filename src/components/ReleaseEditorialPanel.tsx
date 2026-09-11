@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import EditorialReviewAudio from '@/components/EditorialReviewAudio'
 import EditorialSectionCarousel, { EditorialArtistGroupCard, groupEditorialByArtist, matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
 import {
   PRIVATE_DSP_PARTNER_CODE,
@@ -277,7 +278,7 @@ export default function ReleaseEditorialPanel({
                           <span className="min-w-0 flex-1">{m.position}. {m.title}</span>
                         </div>
                         {m.file_url && (
-                          <audio controls preload="none" src={m.file_url} className="mt-1 h-8 max-w-full" />
+                          <EditorialReviewAudio src={m.file_url} title={m.title} className="mt-1 h-8 max-w-full" />
                         )}
                         <div className="relative mt-2">
                           <label className="mb-1 block text-[11px] uppercase tracking-wide text-text-secondary">
@@ -453,7 +454,7 @@ export default function ReleaseEditorialPanel({
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={media.waveform_path} alt={`Waveform for ${member.title}`} className="mt-2 h-16 w-full rounded object-cover" />
                             )}
-                            {media?.preview_path && <audio controls preload="none" src={media.preview_path} className="mt-2 h-8 max-w-full" />}
+                            {media?.preview_path && <EditorialReviewAudio src={media.preview_path} title={member.title} className="mt-2 h-8 max-w-full" />}
                           </div>
                         })}
                       </div>
