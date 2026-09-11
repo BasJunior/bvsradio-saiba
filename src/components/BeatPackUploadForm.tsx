@@ -33,6 +33,20 @@ async function putSigned(slot: Slot, file: File, onProgress: (percent: number) =
   return slot.path
 }
 
+async function putArtworkViaServer(token: string, slot: Slot, file: File) {
+  const body = new FormData()
+  body.set('path', slot.path)
+  body.set('file', file)
+  const res = await fetch('/api/beats/upload/artwork', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+  })
+  const payload = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(payload.error || `Upload failed for ${file.name}.`)
+  return String(payload.path || slot.path)
+}
+
 async function uploadFiles(token: string, files: { preview?: File | null; master?: File | null; artwork?: File | null }, onProgress: (label: string) => void) {
   const prepRes = await fetch('/api/beats/upload/prepare', {
     method: 'POST',
@@ -48,7 +62,15 @@ async function uploadFiles(token: string, files: { preview?: File | null; master
   const paths: Record<string, string | null> = { preview: null, master: null, artwork: null }
   for (const kind of ['preview', 'master', 'artwork'] as const) {
     const file = files[kind]
-    if (file && prep.slots?.[kind]) paths[kind] = await putSigned(prep.slots[kind], file, percent => onProgress(`${file.name}: ${percent}%`))
+    if (file && prep.slots?.[kind]) {
+      try {
+        paths[kind] = await putSigned(prep.slots[kind], file, percent => onProgress(`${file.name}: ${percent}%`))
+      } catch (error) {
+        if (kind !== 'artwork') throw error
+        onProgress(`Finishing ${file.name} through BVS...`)
+        paths[kind] = await putArtworkViaServer(token, prep.slots[kind], file)
+      }
+    }
   }
   return paths
 }
