@@ -18,5 +18,5 @@ export default async function AppExplorePage({
   const kindRaw = Array.isArray(queryParams.kind) ? queryParams.kind[0] : queryParams.kind;
   const initialQuery = String(qRaw || "").slice(0, 160);
   const initialKind = allowedKinds.has(String(kindRaw || "")) ? String(kindRaw) : "all";
-  return <AppExploreClient surface={raw as AppSurface} initialQuery={initialQuery} initialKind={initialKind as "all" | "music" | "artists" | "producers" | "beats"} />;
+  return <AppExploreClient key={`${raw}:${initialQuery}:${initialKind}`} surface={raw as AppSurface} initialQuery={initialQuery} initialKind={initialKind as "all" | "music" | "artists" | "producers" | "beats"} />;
 }

@@ -51,8 +51,8 @@ assert(!rootLayout.includes("<MobileFlowNav />"), "root layout must not mount le
 assert(rootChrome.includes('/^\\/app\\/(ios|android)(?:\\/|$)/'), "root chrome guard must recognize vNext iOS/Android routes");
 assert(rootChrome.includes("if (isVNextAppPath(pathname)) return null"), "legacy root chrome must return null on vNext routes");
 
-// Five-tab invariant: Home / Discover / Library / Feed-or-Studio / You.
-// The fourth destination is role-aware: listeners get the live Feed, creators get Studio.
+// Five-tab invariant: Home / Discover / Library / Beats-or-Studio / Feed.
+// Account access remains in the top-right profile shortcut.
 const nav = read("src/components/app-vnext/AppBottomNav.tsx");
 const you = read("src/components/app-vnext/AppYouClient.tsx");
 assert(nav.includes("grid-cols-5"), "bottom navigation must render five columns");
@@ -61,11 +61,12 @@ assert(nav.includes('label: "Discover"'), "bottom navigation must contain Discov
 assert(nav.includes('label: "Library"'), "bottom navigation must contain Library");
 assert(nav.includes('label: "Feed"'), "listener bottom navigation must contain Feed");
 assert(nav.includes('label: "Studio"'), "creator bottom navigation must contain Studio");
-assert(nav.includes('data-bvs-role-tab={isCreator ? "studio" : "feed"}'), "fourth tab must derive from existing creator access");
+assert(nav.includes('data-bvs-role-tab={isCreator ? "studio" : "beats"}'), "fourth tab must derive from existing creator access");
 assert(nav.includes('href: `${base}/feed`'), "listener Feed must stay inside the app shell");
 assert(nav.includes('href: `${base}/studio`'), "creator Studio must stay inside the app shell");
-assert(nav.includes('label: "You"'), "bottom navigation must contain You");
-assert(nav.includes('`${base}/you`'), "You must stay inside the app shell");
+assert(!nav.includes('label: "You"'), "You is accessed from the header, not a duplicate bottom tab");
+assert(read("src/components/app-vnext/AppTopBar.tsx").includes('href={`/app/${surface}/you`}'), "profile shortcut must keep You accessible inside the app shell");
+assert(nav.includes('label: "Beats"'), "listeners must have a distinct fourth tab");
 assert(you.includes('Turn on creator access.'), "listener You must keep Create as the creator-upgrade option");
 
 // Required primary destinations must actually exist so nav cannot point at 404s.
@@ -122,4 +123,4 @@ assert(exists("src/app/beat/[id]/page.tsx"), "web beat workspace must remain pre
 assert(exists("src/components/beatstore/BeatWorkflow.tsx"), "web beat/Lyrics workflow must remain present");
 
 console.log("vNext iOS surface assertions passed.");
-console.log(JSON.stringify({ tabs: 5, fourthTab: "listener-feed_creator-studio", libraryDefault: "all", legacyAppChrome: false, beatWorkspacePreserved: true }, null, 2));
+console.log(JSON.stringify({ tabs: 5, fourthTab: "listener-beats_creator-studio", fifthTab: "feed", libraryDefault: "all", legacyAppChrome: false, beatWorkspacePreserved: true }, null, 2));

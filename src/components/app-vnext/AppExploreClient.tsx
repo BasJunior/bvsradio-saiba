@@ -30,6 +30,14 @@ function safeImage(value?: string) {
   return `/api/media/${value.split("/").map(encodeURIComponent).join("/")}`;
 }
 
+function ExploreArtwork({ src, label, sizes = "(max-width: 640px) 45vw, 240px" }: { src?: string; label: string; sizes?: string }) {
+  const image = safeImage(src);
+  const [failedSrc, setFailedSrc] = useState("");
+  return <div className="relative aspect-square overflow-hidden rounded-[1rem] bg-gradient-to-br from-brand/15 to-white/[.035]">
+    {image && failedSrc !== image ? <Image src={image} alt="" fill sizes={sizes} unoptimized className="object-cover transition duration-500 group-hover:scale-[1.02]" onError={() => setFailedSrc(image)} /> : <span className="absolute inset-0 grid place-items-center text-xs font-semibold uppercase tracking-wider text-brand">{label}</span>}
+  </div>;
+}
+
 export default function AppExploreClient({
   surface,
   initialQuery = "",
@@ -269,10 +277,10 @@ export default function AppExploreClient({
           <h2 className="mt-2 text-3xl font-semibold">Meet the people behind the sound.</h2>
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {filtered.producers.map((item) => (
-              <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}?as=producer`} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-4 transition hover:border-white/15 hover:bg-white/[.04]">
-                <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Producer</p>
-                <h3 className="mt-3 truncate text-lg font-semibold">{item.name}</h3>
-                <p className="mt-1 text-xs text-white/36">{item.beatCount || 0} published beat{item.beatCount === 1 ? "" : "s"}</p>
+              <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}?as=producer`} className="group min-w-0 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
+                <ExploreArtwork src={item.image} label="Producer" />
+                <h3 className="mt-3 truncate px-1 font-semibold">{item.name}</h3>
+                <p className="mt-1 px-1 pb-1 text-xs text-white/36">{item.beatCount || 0} published beat{item.beatCount === 1 ? "" : "s"}</p>
               </Link>
             ))}
           </div>
@@ -285,10 +293,17 @@ export default function AppExploreClient({
           <h2 className="mt-2 text-3xl font-semibold">Find the start of your next record.</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {filtered.beats.map((item) => (
-              <article key={item.id} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-4 transition hover:border-white/15">
-                <h3 className="text-lg font-semibold">{item.title}</h3>
-                <p className="text-sm text-white/46">{item.producer || "BVS producer"}</p>
-                <p className="mt-1 text-xs text-white/32">{[item.genre, item.mood, item.bpm ? `${item.bpm} BPM` : ""].filter(Boolean).join(" · ")}</p>
+              <article key={item.id} className="group min-w-0 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-3 transition hover:border-white/15">
+                <div className="flex min-w-0 items-start gap-3">
+                  <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} aria-label={`View ${item.title}`} className="w-20 shrink-0 sm:w-24">
+                    <ExploreArtwork src={item.artworkUrl} label="Beat" sizes="96px" />
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} className="hover:text-brand"><h3 className="break-words text-lg font-semibold">{item.title}</h3></Link>
+                    <p className="truncate text-sm text-white/46">{item.producer || "BVS producer"}</p>
+                    <p className="mt-1 text-xs text-white/32">{[item.genre, item.mood, item.bpm ? `${item.bpm} BPM` : ""].filter(Boolean).join(" · ")}</p>
+                  </div>
+                </div>
                 {item.previewUrl ? (
                   <AppBeatPreviewPlayer
                     title={item.title}

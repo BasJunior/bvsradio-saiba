@@ -18,7 +18,7 @@
     "test:studio-intent": "node scripts/studio-intent-tests.mjs",
     "test:song-workspace": "node scripts/song-workspace-tests.mjs",
     "test:web-offers": "node scripts/web-offers-tests.mjs",
-    "test:explore-discovery": "node scripts/explore-discovery-tests.mjs",
+    "test:explore-discovery": "node scripts/explore-discovery-tests.mjs && node scripts/header-search-tests.mjs",
     "test:marketplace-storefront": "node scripts/marketplace-storefront-booking-tests.mjs",
     "test:marketplace-economics": "node --experimental-strip-types scripts/marketplace-economics-tests.mjs",
     "typecheck": "tsc --noEmit",

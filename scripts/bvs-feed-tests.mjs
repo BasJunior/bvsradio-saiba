@@ -49,11 +49,12 @@ assert(actionSheet.includes("z-[110]"), "action sheet must remain above player, 
 assert(actionSheet.includes("max-h-[calc(100dvh-0.75rem)]"), "mobile action sheet must stay within the visible viewport");
 assert(!feedList.toLowerCase().includes("comment"), "feed must not ship a dead comment control before public moderation exists");
 assert(appHome.includes('href={`${base}/feed`}'), "app Home must keep a BVS Feed entry for every identity");
-assert(appNav.includes('label: "Feed"'), "listener app navigation must promote Feed to the fourth tab");
+assert(appNav.includes('label: "Feed"'), "app navigation must provide Feed for every identity");
 assert(appNav.includes('href: `${base}/feed`'), "listener Feed tab must stay in the contained app namespace");
-assert(appNav.includes('label: "Studio"'), "creator app navigation must replace the listener Feed tab with Studio");
-assert(appNav.includes('data-bvs-role-tab={isCreator ? "studio" : "feed"}'), "role-aware fourth tab must stay tied to existing creator access");
-assert(appNav.includes('pathname === base || (isCreator && pathname.startsWith(`${base}/feed`))'), "Feed must only map back to Home active state for creator navigation");
+assert(appNav.includes('label: "Studio"'), "creator app navigation must retain Studio alongside Feed");
+assert(appNav.includes('data-bvs-role-tab={isCreator ? "studio" : "beats"}'), "role-aware fourth tab must stay tied to existing creator access");
+assert(!appNav.includes('pathname === base || (isCreator'), "Feed must have its own active tab for creators too");
+assert((appNav.match(/label: "Feed"/g) || []).length === 1, "Feed must appear exactly once");
 assert(appNav.includes('M4 16.5h2.5l2-5 3 8 2.5-12 2.5 9H20'), "app Feed tab must use the same pulse glyph as mobile web");
 assert(mobileWebNav.includes('M4 16.5h2.5l2-5 3 8 2.5-12 2.5 9H20'), "mobile web Feed must retain the shared pulse glyph");
 assert(appYou.includes('Turn on creator access.'), "listener You surface must keep Create as an upgrade option");

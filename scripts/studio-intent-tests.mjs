@@ -71,15 +71,15 @@ assert(vercelBuild.includes("test:ios-surface-gates") && vercelBuild.includes("t
 assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:ios-surface-lock"), "ios-surface-lock remains in gates");
 assert((pkg.scripts["test:ios-surface-gates"] || "").includes("test:apple-ios-surface"), "apple-ios-surface remains in gates");
 
-// vNext keeps the fourth tab contextual: listeners see Feed; creators see contained Studio.
+// vNext keeps the fourth tab contextual: listeners see Beats; creators see contained Studio.
 const appStudioRoute = read("src/app/app/[surface]/studio/page.tsx");
 const appStudio = read("src/components/app-vnext/AppStudioClient.tsx");
 const appNav = read("src/components/app-vnext/AppBottomNav.tsx");
 const appYou = read("src/components/app-vnext/AppYouClient.tsx");
 assert(appStudioRoute.includes("AppStudioClient"), "vNext Studio route must use AppStudioClient");
-assert(appNav.includes('label: "Feed"'), "listener fourth tab must be Feed");
+assert(appNav.includes('label: "Feed"'), "Feed must be available for all roles");
 assert(appNav.includes('label: "Studio"'), "creator fourth tab must be Studio");
-assert(appNav.includes('data-bvs-role-tab={isCreator ? "studio" : "feed"}'), "Feed/Studio switch must use the existing creator access state");
+assert(appNav.includes('data-bvs-role-tab={isCreator ? "studio" : "beats"}'), "Beats/Studio switch must use the existing creator access state");
 assert(appNav.includes('href: `${base}/studio`'), "creator Studio tab must stay in contained app namespace");
 assert(appNav.includes('href: `${base}/feed`'), "listener Feed tab must stay in contained app namespace");
 assert(appYou.includes('Turn on creator access.'), "listener Create option must live under You");

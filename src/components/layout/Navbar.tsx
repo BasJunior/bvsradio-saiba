@@ -9,7 +9,7 @@ import type { User } from '@supabase/supabase-js'
 import HeaderSearch from '@/components/layout/HeaderSearch'
 import { useAppSurface } from '@/components/app/AppSurfaceProvider'
 import { useAppShellMeasurement } from '@/components/app/useAppShellMeasurement'
-import { appExplore, appHome, isAppPrimaryRoot, primaryAppDestinations } from '@/lib/app-surface'
+import { appHome, isAppPrimaryRoot, primaryAppDestinations } from '@/lib/app-surface'
 import { readFlowBackTarget } from '@/lib/flow-session'
 import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
 type Access = {
@@ -220,16 +220,7 @@ export default function Navbar() {
           </div>
           <div className="flex items-center gap-1.5">
             <div className="hidden md:block"><HeaderSearch /></div>
-            <Link
-              href={appExplore(surface)}
-              aria-label="Search BVS"
-              className="grid h-10 w-10 place-items-center rounded-full text-text-secondary hover:bg-white/5 hover:text-brand md:hidden"
-            >
-              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
-                <circle cx="11" cy="11" r="6.5" />
-                <path strokeLinecap="round" d="m16 16 4 4" />
-              </svg>
-            </Link>
+            <div className="md:hidden"><HeaderSearch iconOnly surface={surface} /></div>
             <Link href="/account" className="rounded-full border border-white/15 px-3 py-2 text-xs sm:text-sm">Account</Link>
           </div>
         </div>

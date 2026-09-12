@@ -62,18 +62,18 @@ assert(!layout.includes('AppLibraryViewToggle'), 'Library view switch must not f
 assert(!layout.includes('AppScrollAssist'), 'native app must rely on the platform scroll indicator instead of a duplicate BVS scrollbar')
 assert(!exists('src/components/app-vnext/AppScrollAssist.tsx'), 'duplicate native fast-scroll component must stay removed')
 assert(nav.includes('grid-cols-5'), 'vNext must keep five bottom tabs')
-for (const label of ['Home', 'Discover', 'Library', 'You']) {
+for (const label of ['Home', 'Discover', 'Library', 'Feed']) {
   assert(nav.includes(`label: "${label}"`), `vNext bottom nav must contain ${label}`)
 }
-assert(nav.includes('label: "Feed"'), 'listener vNext bottom nav must use Feed as the fourth tab')
+assert(nav.includes('label: "Feed"'), 'vNext bottom nav must provide Feed for every identity')
 assert(nav.includes('label: "Studio"'), 'creator vNext bottom nav must use Studio as the fourth tab')
-assert(nav.includes('data-bvs-role-tab={isCreator ? "studio" : "feed"}'), 'fourth tab must switch using existing creator access')
+assert(nav.includes('data-bvs-role-tab={isCreator ? "studio" : "beats"}'), 'fourth tab must switch using existing creator access')
 assert(nav.includes('bvs-app-bottom-nav'), 'bottom nav must use the base-anchored safe-area shell')
 assert(nav.includes('bvs-app-bottom-nav-inner'), 'bottom nav controls must stay inside the safe-area inner rail')
 
 // Mobile chrome refinements should stay consistent and useful across the app.
 assert(appTopBar.includes('function MarketplaceIcon()'), 'marketplace must use a recognisable storefront icon')
-assert(appTopBar.includes('function SearchIcon()'), 'search must use the shared-size magnifying glass icon')
+assert(appTopBar.includes('<HeaderSearch iconOnly surface={surface} />'), 'search must open the surface-aware suggestions panel')
 assert(appTopBar.includes('className="h-6 w-6"'), 'top action icons must use one consistent visible size')
 assert(appTopBar.includes('<AppLibraryViewToggle'), 'Library list/grid control must live in the header instead of overlapping filter chips')
 assert(appLibraryViewToggle.includes('bvs.library.view.v1'), 'Library list/grid preference must persist locally')

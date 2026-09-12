@@ -8,6 +8,7 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import AppLibraryViewToggle from "@/components/app-vnext/AppLibraryViewToggle";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { measureHeader } from "@/lib/chrome-layout";
+import HeaderSearch from "@/components/layout/HeaderSearch";
 
 function MarketplaceIcon() {
   return (
@@ -20,19 +21,10 @@ function MarketplaceIcon() {
   );
 }
 
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden="true">
-      <circle cx="10.75" cy="10.75" r="6.25" />
-      <path d="m15.5 15.5 4.25 4.25" />
-    </svg>
-  );
-}
-
 export default function AppTopBar({ surface }: { surface: AppSurface }) {
   const { user, avatarUrl, profileDisplayName, profileUsername, loading, refresh } = useAppSession();
   const pathname = usePathname();
-  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [failedAvatarUrl, setFailedAvatarUrl] = useState("");
   const mountedPath = useRef(pathname);
   const home = `/app/${surface}`;
   const isLibrary = /^\/app\/(ios|android)\/library(?:\/|$)/.test(pathname);
@@ -44,7 +36,6 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
     "B"
   ).trim().charAt(0).toUpperCase();
 
-  useEffect(() => { setAvatarFailed(false); }, [avatarUrl]);
   useEffect(() => {
     if (mountedPath.current === pathname) return;
     mountedPath.current = pathname;
@@ -84,14 +75,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           >
             <MarketplaceIcon />
           </Link>
-          <Link
-            href={`/app/${surface}/explore`}
-            className="grid h-11 w-11 place-items-center rounded-full text-white/62 transition hover:bg-white/[.055] hover:text-white active:scale-95"
-            aria-label="Search"
-            title="Search"
-          >
-            <SearchIcon />
-          </Link>
+          <HeaderSearch iconOnly surface={surface} />
           {isLibrary ? <AppLibraryViewToggle /> : null}
           {loading ? (
             <span className="ml-1 h-9 w-9 animate-pulse rounded-full bg-white/[.06]" aria-hidden="true" />
@@ -101,7 +85,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
               className="relative ml-1 grid h-9 w-9 overflow-hidden rounded-full border border-brand/35 bg-brand text-sm font-bold text-black shadow-[0_0_28px_rgba(227,189,88,.18)] transition hover:scale-[1.03]"
               aria-label="Your profile"
             >
-              {avatarUrl && !avatarFailed ? (
+              {avatarUrl && failedAvatarUrl !== avatarUrl ? (
                 <Image
                   src={avatarUrl}
                   alt=""
@@ -109,7 +93,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
                   sizes="36px"
                   unoptimized
                   className="object-cover"
-                  onError={() => setAvatarFailed(true)}
+                  onError={() => setFailedAvatarUrl(avatarUrl)}
                 />
               ) : (
                 <span className="grid h-full w-full place-items-center" aria-hidden="true">{initial || "B"}</span>
