@@ -102,6 +102,6 @@ assert(settings.includes("Community inbox"), "user settings must expose particip
 assert(cron.includes("CRON_SECRET"), "participation worker must require the Vercel cron secret");
 assert(cron.includes("processParticipationOutbox") && cron.includes("runParticipationDigests") && cron.includes("deliverParticipationPushQueue"), "worker must process outbox, pulse and delivery queue");
 assert(vercel.includes('"/api/cron/participation"') && vercel.includes('"*/5 * * * *"'), "Vercel must schedule the durable participation worker every five minutes");
-assert(vercel.includes('"ignoreCommand"') && vercel.includes('VERCEL_GIT_COMMIT_REF') && vercel.includes('= \\"main\\"'), "Vercel must always build main while ignoring non-main Git deploys so both production hosts stay on the same release SHA");
+assert(vercel.includes('"ignoreCommand"') && vercel.includes('VERCEL_GIT_COMMIT_REF') && vercel.includes('then exit 1') && vercel.includes('else exit 0'), "Vercel must always build main while ignoring non-main Git deploys so both production hosts stay on the same release SHA");
 
 console.log("BVS participation first-release architecture, safety, delivery and UI assertions passed.");
