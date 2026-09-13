@@ -1,11 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import LibraryAction from "@/components/LibraryAction";
+import FeedParticipation, { type ParticipationSummary } from "@/components/feed/FeedParticipation";
+import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { BvsFeedCategory, BvsFeedFilter, BvsFeedItem } from "@/lib/bvs-feed";
+import type { AppSurface } from "@/lib/app-surface";
 import { shareBvs } from "@/lib/app-native";
 import { canonicalBvsShareUrl } from "@/lib/share-url";
+import { readLibrary } from "@/lib/library";
 
 const filters: Array<{ id: BvsFeedFilter; label: string }> = [
   { id: "all", label: "Latest" },
@@ -14,6 +18,13 @@ const filters: Array<{ id: BvsFeedFilter; label: string }> = [
   { id: "beat", label: "Beats" },
   { id: "live", label: "Live" },
   { id: "marketplace", label: "Marketplace" },
+];
+
+type FeedLane = "focus" | "following" | "activity";
+const lanes: Array<{ id: FeedLane; label: string; accent: string }> = [
+  { id: "focus", label: "Focus", accent: "#e3bd58" },
+  { id: "following", label: "Following", accent: "#7db6ff" },
+  { id: "activity", label: "My Activity", accent: "#a88cff" },
 ];
 
 const categoryLabel: Record<BvsFeedCategory, string> = {
@@ -42,12 +53,79 @@ function exactFeedRoute(item: BvsFeedItem) {
   return `/beat/${encodeURIComponent(item.object.id)}`;
 }
 
-export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
+function targetKey(item: BvsFeedItem) {
+  return `${item.object.kind}:${item.object.id}`;
+}
+
+function normalized(value?: string | null) {
+  return String(value || "").trim().toLocaleLowerCase();
+}
+
+export default function BvsFeedList({
+  items,
+  surface,
+  participationEnabled = false,
+}: {
+  items: BvsFeedItem[];
+  surface: AppSurface;
+  participationEnabled?: boolean;
+}) {
+  const session = useAppSession();
   const [filter, setFilter] = useState<BvsFeedFilter>("all");
-  const visible = useMemo(
-    () => filter === "all" ? items : items.filter((item) => item.category === filter),
-    [filter, items],
-  );
+  const [lane, setLane] = useState<FeedLane>("focus");
+  const [summaries, setSummaries] = useState<Record<string, ParticipationSummary>>({});
+  const [myActivity, setMyActivity] = useState<Set<string>>(new Set());
+  const [followIds, setFollowIds] = useState<Set<string>>(new Set());
+  const [followNames, setFollowNames] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const sync = () => {
+      const followed = readLibrary("follows");
+      setFollowIds(new Set(followed.map((item) => String(item.id))));
+      setFollowNames(new Set(followed.flatMap((item) => [normalized(item.title), normalized(item.subtitle)]).filter(Boolean)));
+    };
+    sync();
+    window.addEventListener("bvs:library-change", sync);
+    window.addEventListener("storage", sync);
+    return () => {
+      window.removeEventListener("bvs:library-change", sync);
+      window.removeEventListener("storage", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!participationEnabled || !items.length) return;
+    let active = true;
+    const keys = [...new Set(items.map(targetKey))].slice(0, 120);
+    const params = new URLSearchParams({ keys: keys.join(",") });
+    void fetch(`/api/app/participation?${params.toString()}`, {
+      headers: session.token ? { Authorization: `Bearer ${session.token}` } : undefined,
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return await response.json() as { summaries?: Record<string, ParticipationSummary>; myActivity?: string[] };
+      })
+      .then((payload) => {
+        if (!active || !payload) return;
+        setSummaries(payload.summaries || {});
+        setMyActivity(new Set(payload.myActivity || []));
+      })
+      .catch(() => null);
+    return () => { active = false; };
+  }, [items, participationEnabled, session.token]);
+
+  const visible = useMemo(() => {
+    const categoryItems = filter === "all" ? items : items.filter((item) => item.category === filter);
+    if (lane === "focus") return categoryItems;
+    if (lane === "activity") return categoryItems.filter((item) => myActivity.has(targetKey(item)));
+    return categoryItems.filter((item) => {
+      if (item.category === "creator" && (followIds.has(item.object.id) || followIds.has(item.social?.item.id || ""))) return true;
+      const title = normalized(item.object.title);
+      const subtitle = normalized(item.object.subtitle);
+      return Boolean((title && followNames.has(title)) || (subtitle && followNames.has(subtitle)));
+    });
+  }, [filter, followIds, followNames, items, lane, myActivity]);
 
   async function share(item: BvsFeedItem) {
     await shareBvs({
@@ -57,66 +135,115 @@ export default function BvsFeedList({ items }: { items: BvsFeedItem[] }) {
     });
   }
 
+  function recordActivity(key: string, active: boolean) {
+    setMyActivity((current) => {
+      const next = new Set(current);
+      if (active) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
   return (
     <div>
-      <div className="sticky top-[var(--bvs-app-header-height,4rem)] z-20 -mx-4 overflow-x-auto border-y border-white/[.06] bg-[#08080a]/92 px-4 py-3 backdrop-blur-2xl sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0" aria-label="Feed filters">
-        <div className="flex min-w-max gap-2 sm:flex-wrap">
-          {filters.map((item) => {
-            const active = filter === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setFilter(item.id)}
-                aria-pressed={active}
-                className={`min-h-10 rounded-full border px-4 text-sm font-semibold transition ${active ? "border-brand bg-brand text-black" : "border-white/10 bg-white/[.035] text-white/58 hover:border-white/20 hover:text-white"}`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+      <div className="sticky top-[var(--bvs-app-header-height,4rem)] z-20 -mx-4 border-y border-white/[.06] bg-[#08080a]/92 px-4 py-3 backdrop-blur-2xl sm:static sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/[.015]" aria-label="Feed controls">
+        <div className="overflow-x-auto">
+          <div className="flex min-w-max gap-2" aria-label="Feed lanes">
+            {lanes.map((item) => {
+              const active = lane === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setLane(item.id)}
+                  aria-pressed={active}
+                  className="min-h-10 rounded-full border px-4 text-sm font-semibold transition"
+                  style={active
+                    ? { borderColor: item.accent, backgroundColor: `${item.accent}1f`, color: item.accent }
+                    : { borderColor: "rgba(255,255,255,.1)", backgroundColor: "rgba(255,255,255,.025)", color: "rgba(255,255,255,.58)" }}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="mt-2 overflow-x-auto">
+          <div className="flex min-w-max gap-1.5 sm:flex-wrap" aria-label="Feed categories">
+            {filters.map((item) => {
+              const active = filter === item.id;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setFilter(item.id)}
+                  aria-pressed={active}
+                  className={`min-h-9 rounded-full border px-3 text-xs font-semibold transition ${active ? "border-brand/50 bg-brand/12 text-brand" : "border-white/10 bg-white/[.02] text-white/45 hover:border-white/20 hover:text-white"}`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
       <div className="mt-5 space-y-4 sm:mt-7">
-        {visible.map((item) => (
-          <div key={item.id} className="rounded-[1.65rem] border border-white/[.075] bg-white/[.018] p-3 sm:p-4">
-            <div className="mb-3 flex items-center justify-between gap-3 px-1">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{categoryLabel[item.category]}</span>
-                  <span className="text-white/20" aria-hidden="true">•</span>
-                  <span className="text-xs font-medium text-white/72">{item.category === "beat" ? "New drop" : item.verb}</span>
+        {visible.map((item) => {
+          const key = targetKey(item);
+          return (
+            <div key={item.id} className="rounded-[1.65rem] border border-white/[.075] bg-white/[.018] p-3 sm:p-4">
+              <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{categoryLabel[item.category]}</span>
+                    <span className="text-white/20" aria-hidden="true">•</span>
+                    <span className="text-xs font-medium text-white/72">{item.category === "beat" ? "New drop" : item.verb}</span>
+                  </div>
                 </div>
+                <time suppressHydrationWarning dateTime={item.occurredAt} className="shrink-0 text-xs tabular-nums text-white/35" title={item.occurredAt}>
+                  {relativeTime(item.occurredAt)}
+                </time>
               </div>
-              <time suppressHydrationWarning dateTime={item.occurredAt} className="shrink-0 text-xs tabular-nums text-white/35" title={item.occurredAt}>
-                {relativeTime(item.occurredAt)}
-              </time>
-            </div>
 
-            <BvsObjectCard object={item.object} variant={item.category === "beat" ? "feed-beat" : "feed-row"} />
+              <BvsObjectCard object={item.object} variant={item.category === "beat" ? "feed-beat" : "feed-row"} />
 
-            <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 border-t border-white/[.055] px-1 pt-3">
-              {item.social ? (
-                <LibraryAction item={{ ...item.social.item, href: exactFeedRoute(item) }} section={item.social.section} compact />
-              ) : null}
-              <button
-                type="button"
-                onClick={() => void share(item)}
-                className="min-h-9 rounded-full border border-white/10 px-3 text-xs font-medium text-white/55 transition hover:border-brand/35 hover:text-brand"
-                aria-label={`Share ${item.object.title}`}
-              >
-                Share
-              </button>
-              <span className="ml-auto hidden text-[10px] uppercase tracking-[.14em] text-white/25 sm:inline">BVS pulse</span>
+              <FeedParticipation
+                object={item.object}
+                surface={surface}
+                enabled={participationEnabled}
+                summary={summaries[key]}
+                onActivity={recordActivity}
+              />
+
+              <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 border-t border-white/[.055] px-1 pt-3">
+                {item.social ? (
+                  <LibraryAction item={{ ...item.social.item, href: exactFeedRoute(item) }} section={item.social.section} compact />
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void share(item)}
+                  className="min-h-9 rounded-full border border-white/10 px-3 text-xs font-medium text-white/55 transition hover:border-[#58d6a7]/35 hover:text-[#78e6bb]"
+                  aria-label={`Share ${item.object.title}`}
+                >
+                  Share
+                </button>
+                <span className="ml-auto hidden text-[10px] uppercase tracking-[.14em] text-white/25 sm:inline">BVS pulse</span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {!visible.length ? (
           <div className="rounded-[1.65rem] border border-white/[.07] bg-white/[.02] px-5 py-12 text-center">
-            <p className="text-sm font-medium text-white/70">Nothing new in this lane yet.</p>
-            <p className="mt-2 text-xs text-white/38">When something publishes or goes live on BVS, it will appear here.</p>
+            <p className="text-sm font-medium text-white/70">
+              {lane === "following" ? "Nothing from people you follow in this lane yet." : lane === "activity" ? "You have not participated in this lane yet." : "Nothing new in this lane yet."}
+            </p>
+            <p className="mt-2 text-xs text-white/38">
+              {lane === "activity" && !session.signedIn
+                ? "Sign in to keep your BVS activity connected across the app."
+                : "When something relevant moves across BVS, it will appear here."}
+            </p>
           </div>
         ) : null}
       </div>
