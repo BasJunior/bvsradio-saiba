@@ -25,7 +25,8 @@ export default async function BvsFeedPage() {
         </p>
       </header>
 
-      <BvsFeedList items={items} />
+      {/* Participation stays app-only in Stage 1; the surface is inert while the feature is disabled here. */}
+      <BvsFeedList items={items} surface="ios" />
     </main>
   );
 }
