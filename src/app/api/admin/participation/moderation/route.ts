@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { creatorIdentity } from "@/lib/creator-server";
+import { can, editorialIdentity } from "@/lib/editorial-server";
 import {
   loadParticipationProfiles,
   participationEnabled,
@@ -28,17 +28,17 @@ type MessageRow = { id: string; thread_id: string; author_user_id?: string | nul
 type ModerationAction = "review" | "hide" | "restore" | "lock" | "unlock" | "delete" | "resolve_report" | "dismiss_report";
 const actions = new Set<ModerationAction>(["review", "hide", "restore", "lock", "unlock", "delete", "resolve_report", "dismiss_report"]);
 
-async function adminIdentity(request: Request) {
-  const identity = await creatorIdentity(request);
-  if (!identity?.user?.id || identity.profile?.role !== "admin") return null;
+async function moderationIdentity(request: Request) {
+  const identity = await editorialIdentity(request);
+  if (!identity || !can(identity, "moderate_participation")) return null;
   return identity;
 }
 
 export async function GET(request: Request) {
   if (!participationEnabled()) return NextResponse.json({ enabled: false, reports: [] });
   if (!participationReady()) return NextResponse.json({ error: "Participation moderation is unavailable." }, { status: 503 });
-  const identity = await adminIdentity(request);
-  if (!identity) return NextResponse.json({ error: "Editorial access required." }, { status: 403 });
+  const identity = await moderationIdentity(request);
+  if (!identity) return NextResponse.json({ error: "Participation moderation access required." }, { status: 403 });
   const url = new URL(request.url);
   const status = url.searchParams.get("status") || "open,reviewing";
   const allowedStatus = status.split(",").filter((value) => ["open", "reviewing", "resolved", "dismissed"].includes(value));
@@ -63,6 +63,7 @@ export async function GET(request: Request) {
   const messageById = new Map(messages.map((row) => [row.id, row]));
   return NextResponse.json({
     enabled: true,
+    role: identity.role,
     reports: reports.map((report) => ({
       id: report.id,
       reason: report.reason,
@@ -82,8 +83,8 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   if (!participationEnabled()) return NextResponse.json({ error: "Not found." }, { status: 404 });
   if (!participationReady()) return NextResponse.json({ error: "Participation moderation is unavailable." }, { status: 503 });
-  const identity = await adminIdentity(request);
-  if (!identity) return NextResponse.json({ error: "Editorial access required." }, { status: 403 });
+  const identity = await moderationIdentity(request);
+  if (!identity) return NextResponse.json({ error: "Participation moderation access required." }, { status: 403 });
   const body = await request.json().catch(() => ({})) as { reportId?: string; action?: ModerationAction; reason?: string };
   const reportId = String(body.reportId || "").trim();
   const action = body.action as ModerationAction;
@@ -104,20 +105,19 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: Boolean(updated[0]), status: "reviewing" });
   }
 
-  let auditAction: "hide" | "restore" | "lock" | "unlock" | "delete" | "resolve_report" | "dismiss_report" = action;
   if (action === "hide") {
     if (report.message_id) await participationPatch(`participation_messages?id=eq.${encodeURIComponent(report.message_id)}`, { status: "hidden", updated_at: now });
-    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "hidden", updated_at: now });
+    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "hidden", moderation_reason: reason, updated_at: now });
   } else if (action === "restore") {
     if (report.message_id) await participationPatch(`participation_messages?id=eq.${encodeURIComponent(report.message_id)}`, { status: "published", deleted_at: null, updated_at: now });
-    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "published", updated_at: now });
+    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "published", moderation_reason: null, deleted_at: null, updated_at: now });
   } else if (action === "lock" && report.thread_id) {
-    await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "locked", updated_at: now });
+    await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "locked", moderation_reason: reason, updated_at: now });
   } else if (action === "unlock" && report.thread_id) {
-    await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "published", updated_at: now });
+    await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "published", moderation_reason: null, updated_at: now });
   } else if (action === "delete") {
     if (report.message_id) await participationPatch(`participation_messages?id=eq.${encodeURIComponent(report.message_id)}`, { body: "Removed by BVS moderation.", status: "deleted", deleted_at: now, updated_at: now });
-    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "deleted", updated_at: now });
+    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "deleted", moderation_reason: reason, deleted_at: now, updated_at: now });
   }
 
   if (action === "resolve_report" || action === "dismiss_report") {
@@ -134,7 +134,7 @@ export async function PATCH(request: Request) {
 
   const audits = await participationInsert<{ id: string }>("participation_moderation_audit", {
     staff_user_id: staffId,
-    action: auditAction,
+    action,
     thread_id: report.thread_id || null,
     message_id: report.message_id || null,
     report_id: report.id,
