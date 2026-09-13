@@ -3,6 +3,7 @@ import { editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 
 type ReviewKind = 'track' | 'beat' | 'release-track'
+type ReviewAudioSource = 'full' | 'master' | 'preview'
 type JsonRow = Record<string, unknown>
 
 async function rows(path: string): Promise<JsonRow[]> {
@@ -12,7 +13,7 @@ async function rows(path: string): Promise<JsonRow[]> {
   return Array.isArray(body) ? body as JsonRow[] : []
 }
 
-async function signedFullAudio(value: unknown) {
+async function signedReviewAudio(value: unknown) {
   const raw = String(value || '').trim()
   if (!raw) return ''
   const key = r2KeyFromMediaUrl(raw) || (safeR2Key(raw) && !/^https?:/i.test(raw) ? raw : null)
@@ -32,30 +33,43 @@ export async function GET(request: Request) {
 
   try {
     let stored = ''
+    let audioSource: ReviewAudioSource = 'full'
+
     if (kind === 'track') {
       const row = (await rows(`tracks?id=eq.${encodeURIComponent(id)}&select=id,file_url&limit=1`))[0]
       stored = String(row?.file_url || '')
     } else if (kind === 'beat') {
-      // Editorial must review the submitted master. Never substitute the public/clipped preview.
-      const row = (await rows(`beats?id=eq.${encodeURIComponent(id)}&select=id,master_path&limit=1`))[0]
-      stored = String(row?.master_path || '')
+      // Prefer the private/full master. If the producer only uploaded the tagged
+      // BeatStore preview, Editorial may still review that exact submitted file,
+      // but the response marks it explicitly so the UI never presents it as a master.
+      const row = (await rows(`beats?id=eq.${encodeURIComponent(id)}&select=id,master_path,preview_path&limit=1`))[0]
+      const master = String(row?.master_path || '').trim()
+      const preview = String(row?.preview_path || '').trim()
+      stored = master || preview
+      audioSource = master ? 'master' : 'preview'
     } else {
       const row = (await rows(`release_tracks?id=eq.${encodeURIComponent(id)}&select=id,file_url,audio_path&limit=1`))[0]
       stored = String(row?.file_url || row?.audio_path || '')
     }
 
     if (!stored) {
-      return NextResponse.json({ error: 'Full submission audio is not attached to this item.' }, { status: 404 })
+      return NextResponse.json({ error: 'Submission audio is not attached to this item.' }, { status: 404 })
     }
 
-    const audioUrl = await signedFullAudio(stored)
+    const audioUrl = await signedReviewAudio(stored)
     if (!audioUrl) {
-      return NextResponse.json({ error: 'Full submission audio is unavailable.' }, { status: 404 })
+      return NextResponse.json({ error: 'Submission audio is unavailable.' }, { status: 404 })
     }
-    return NextResponse.json({ audioUrl, kind, id })
+    return NextResponse.json({
+      audioUrl,
+      audioSource,
+      previewFallback: kind === 'beat' && audioSource === 'preview',
+      kind,
+      id,
+    })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not open full Editorial audio.' },
+      { error: error instanceof Error ? error.message : 'Could not open Editorial audio.' },
       { status: 500 },
     )
   }
