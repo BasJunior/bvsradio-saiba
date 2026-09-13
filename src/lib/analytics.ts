@@ -13,6 +13,7 @@ export const analyticsEvents = [
   "beat_save",
   "playlist_created",
   "playlist_track_added",
+  "playlist_beat_added",
   "engagement_action_open",
   "upload_complete",
   "checkout_started",
