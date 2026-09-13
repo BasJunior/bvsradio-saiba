@@ -48,7 +48,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const threadId = String((await params).id || "").trim();
   const payload = await request.json().catch(() => ({})) as {
     body?: string;
-    replyToId?: string;
+    replyToId?: string | null;
     clientKey?: string;
     mentionUserIds?: string[];
   };
@@ -57,27 +57,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (issue) return NextResponse.json({ error: issue }, { status: 400 });
   const clientKey = String(payload.clientKey || "").trim().slice(0, 160);
   if (clientKey.length < 8) return NextResponse.json({ error: "Missing submission key. Retry from the reply box." }, { status: 400 });
-  const replyToId = String(payload.replyToId || "").trim();
-  if (!replyToId) return NextResponse.json({ error: "Choose the message you are replying to." }, { status: 400 });
+  const replyToId = String(payload.replyToId || "").trim() || null;
 
-  const [threads, parents] = await Promise.all([
-    participationRows<ThreadRow>(
-      `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=eq.published&select=id,thread_type,author_user_id,object_owner_user_id,status&limit=1`,
-    ),
-    participationRows<MessageRow>(
-      `participation_messages?id=eq.${encodeURIComponent(replyToId)}&thread_id=eq.${encodeURIComponent(threadId)}&status=in.(published,deleted)&select=id,thread_id,author_user_id,status&limit=1`,
-    ),
-  ]);
+  const threads = await participationRows<ThreadRow>(
+    `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=eq.published&select=id,thread_type,author_user_id,object_owner_user_id,status&limit=1`,
+  );
   const thread = threads[0];
-  const parent = parents[0];
-  if (!thread || !parent) return NextResponse.json({ error: "Conversation or reply target is no longer available." }, { status: 404 });
+  if (!thread) return NextResponse.json({ error: "Conversation is no longer available." }, { status: 404 });
+  if (thread.thread_type === "post" && !replyToId) return NextResponse.json({ error: "Choose the post or reply you are answering." }, { status: 400 });
+
+  const parents = replyToId
+    ? await participationRows<MessageRow>(
+      `participation_messages?id=eq.${encodeURIComponent(replyToId)}&thread_id=eq.${encodeURIComponent(threadId)}&status=in.(published,deleted)&select=id,thread_id,author_user_id,status&limit=1`,
+    )
+    : [];
+  const parent = parents[0] || null;
+  if (replyToId && !parent) return NextResponse.json({ error: "Reply target is no longer available." }, { status: 404 });
   const owner = thread.thread_type === "post" ? thread.author_user_id : thread.object_owner_user_id;
-  if ((owner && await blockedPair(user.id, owner)) || (parent.author_user_id && await blockedPair(user.id, parent.author_user_id))) {
+  if ((owner && await blockedPair(user.id, owner)) || (parent?.author_user_id && await blockedPair(user.id, parent.author_user_id))) {
     return NextResponse.json({ error: "You cannot interact with this account." }, { status: 403 });
   }
 
   const requested = [...new Set((payload.mentionUserIds || []).map(String).filter(Boolean))].slice(0, 5);
-  let mentionIds: string[] = [];
+  const mentionIds: string[] = [];
   if (requested.length) {
     const publicProfiles = await participationRows<{ id: string }>(
       `profiles?id=in.(${requested.map(encodeURIComponent).join(",")})&is_published=eq.true&select=id&limit=5`,
