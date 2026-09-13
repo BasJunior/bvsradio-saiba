@@ -1,312 +1,207 @@
 import { NextResponse } from "next/server";
-import type { BvsObjectKind } from "@/lib/bvs-object";
 import type { AppSurface } from "@/lib/app-surface";
-import { appServiceHeaders, appSupabaseService, appSupabaseUrl, requireAppUser } from "@/lib/app-api-auth";
+import { requireAppUser } from "@/lib/app-api-auth";
 import {
-  cleanParticipationBody,
-  extractMentions,
-  loadMentionProfiles,
-  participationBodyIssue,
+  blockedPair,
+  checkParticipationRateLimit,
+  ensureContentThread,
   participationEnabled,
-  participationRateLimited,
+  participationReady,
+  participationRows,
+  participationRpc,
   resolveParticipationTarget,
-  type ParticipationKind,
+  visibleThreadForObject,
+  type ParticipationObjectKind,
+  type ParticipationReaction,
 } from "@/lib/participation-server";
 
-const objectKinds = new Set<BvsObjectKind>(["track", "release", "creator", "beat", "story", "show", "product", "service"]);
-const interactiveKinds = new Set<ParticipationKind>(["like", "repost", "comment", "reply"]);
+const objectKinds = new Set<ParticipationObjectKind>(["track", "release", "beat"]);
 
-type ParticipationEvent = {
+type ThreadRow = {
   id: string;
-  actor_user_id: string;
-  kind: ParticipationKind;
-  target_kind: BvsObjectKind;
-  target_id: string;
-  target_owner_user_id?: string | null;
-  target_title: string;
-  target_href?: string | null;
-  parent_event_id?: string | null;
-  body?: string | null;
-  metadata?: Record<string, unknown> | null;
-  created_at: string;
-  deleted_at?: string | null;
+  thread_type: "post" | "content";
+  author_user_id?: string | null;
+  object_kind?: ParticipationObjectKind | null;
+  object_id?: string | null;
+  object_owner_user_id?: string | null;
 };
 
 type SummaryRow = {
-  target_key: string;
+  thread_id: string;
   like_count: number | string;
   repost_count: number | string;
-  comment_count: number | string;
+  reply_count: number | string;
   viewer_liked: boolean;
   viewer_reposted: boolean;
 };
 
-function unavailable() {
-  return !appSupabaseUrl || !appSupabaseService;
-}
-
-function serviceUrl(path: string) {
-  return `${appSupabaseUrl}/rest/v1/${path}`;
-}
+type ReactionResult = { active: boolean; event_id?: string | null; changed: boolean };
 
 function parseSurface(value: unknown): AppSurface | null {
   return value === "ios" || value === "android" ? value : null;
 }
 
-function parseTargetKey(value: string) {
+function parseObjectKey(value: string) {
   const separator = value.indexOf(":");
   if (separator < 1) return null;
-  const kind = value.slice(0, separator) as BvsObjectKind;
+  const kind = value.slice(0, separator) as ParticipationObjectKind;
   const id = value.slice(separator + 1).trim();
   if (!objectKinds.has(kind) || !id || id.length > 240) return null;
   return { kind, id, key: `${kind}:${id}` };
 }
 
-async function rows<T>(path: string): Promise<T[]> {
-  const response = await fetch(serviceUrl(path), { headers: appServiceHeaders(), cache: "no-store" }).catch(() => null);
-  if (!response?.ok) return [];
-  const payload = await response.json().catch(() => []);
-  return Array.isArray(payload) ? payload as T[] : [];
-}
-
-async function postRows<T>(path: string, payload: unknown): Promise<T[]> {
-  const response = await fetch(serviceUrl(path), {
-    method: "POST",
-    headers: appServiceHeaders({ Prefer: "return=representation" }),
-    body: JSON.stringify(payload),
-  }).catch(() => null);
-  if (!response?.ok) return [];
-  const result = await response.json().catch(() => []);
-  return Array.isArray(result) ? result as T[] : [];
-}
-
-async function patchRows<T>(path: string, payload: unknown): Promise<T[]> {
-  const response = await fetch(serviceUrl(path), {
-    method: "PATCH",
-    headers: appServiceHeaders({ Prefer: "return=representation" }),
-    body: JSON.stringify(payload),
-  }).catch(() => null);
-  if (!response?.ok) return [];
-  const result = await response.json().catch(() => []);
-  return Array.isArray(result) ? result as T[] : [];
-}
-
-async function summaries(keys: string[], viewer: string | null) {
-  if (!keys.length) return {} as Record<string, {
-    likes: number;
-    reposts: number;
-    comments: number;
-    liked: boolean;
-    reposted: boolean;
-  }>;
-  const response = await fetch(serviceUrl("rpc/participation_summaries"), {
-    method: "POST",
-    headers: appServiceHeaders(),
-    body: JSON.stringify({ target_keys: keys, viewer }),
-    cache: "no-store",
-  }).catch(() => null);
-  const rows = response?.ok ? await response.json().catch(() => []) as SummaryRow[] : [];
-  const output: Record<string, { likes: number; reposts: number; comments: number; liked: boolean; reposted: boolean }> = {};
-  for (const key of keys) output[key] = { likes: 0, reposts: 0, comments: 0, liked: false, reposted: false };
-  for (const row of rows) {
-    output[row.target_key] = {
-      likes: Number(row.like_count) || 0,
-      reposts: Number(row.repost_count) || 0,
-      comments: Number(row.comment_count) || 0,
-      liked: Boolean(row.viewer_liked),
-      reposted: Boolean(row.viewer_reposted),
-    };
-  }
-  return output;
-}
-
-async function commentsFor(target: { kind: BvsObjectKind; id: string }) {
-  const events = await rows<ParticipationEvent>(
-    `participation_events?target_kind=eq.${encodeURIComponent(target.kind)}&target_id=eq.${encodeURIComponent(target.id)}&kind=in.(comment,reply)&deleted_at=is.null&select=id,actor_user_id,kind,target_kind,target_id,parent_event_id,body,created_at&order=created_at.asc&limit=120`,
-  );
-  const actorIds = [...new Set(events.map((event) => event.actor_user_id).filter(Boolean))];
-  const profiles = actorIds.length
-    ? await rows<{ id: string; username?: string | null; display_name?: string | null; creator_public_name?: string | null; avatar_url?: string | null }>(
-      `profiles?id=in.(${actorIds.join(",")})&select=id,username,display_name,creator_public_name,avatar_url&limit=120`,
-    )
-    : [];
-  const byId = new Map(profiles.map((profile) => [profile.id, profile]));
-  return events.map((event) => {
-    const profile = byId.get(event.actor_user_id);
-    return {
-      id: event.id,
-      kind: event.kind,
-      parentEventId: event.parent_event_id || null,
-      body: event.body || "",
-      createdAt: event.created_at,
-      actor: {
-        id: event.actor_user_id,
-        username: profile?.username || null,
-        displayName: profile?.creator_public_name || profile?.display_name || profile?.username || "BVS member",
-        avatarUrl: profile?.avatar_url || null,
-      },
-    };
+async function threadSummaries(threadIds: string[], viewer: string | null) {
+  if (!threadIds.length) return new Map<string, SummaryRow>();
+  const rows = await participationRpc<SummaryRow[]>("participation_thread_summary", {
+    p_thread_ids: threadIds,
+    p_viewer: viewer,
   });
+  return new Map((Array.isArray(rows) ? rows : []).map((row) => [row.thread_id, row]));
 }
 
 export async function GET(request: Request) {
-  if (!participationEnabled()) return NextResponse.json({ enabled: false, summaries: {}, comments: [], myActivity: [] });
-  if (unavailable()) return NextResponse.json({ error: "Participation is unavailable." }, { status: 503 });
+  if (!participationEnabled()) return NextResponse.json({ enabled: false, summaries: {}, myActivity: [] });
+  if (!participationReady()) return NextResponse.json({ error: "Participation is unavailable." }, { status: 503 });
   const user = await requireAppUser(request);
   const url = new URL(request.url);
-  const keys = [...new Set(String(url.searchParams.get("keys") || "")
-    .split(",")
-    .map((value) => parseTargetKey(value.trim()))
-    .filter(Boolean)
-    .map((value) => value!.key))].slice(0, 120);
-  const commentsTarget = parseTargetKey(String(url.searchParams.get("commentsFor") || ""));
-  const [summaryMap, comments, activityRows] = await Promise.all([
-    summaries(keys, user?.id || null),
-    commentsTarget ? commentsFor(commentsTarget) : Promise.resolve([]),
-    user
-      ? rows<Pick<ParticipationEvent, "target_kind" | "target_id" | "kind" | "created_at">>(
-        `participation_events?actor_user_id=eq.${encodeURIComponent(user.id)}&kind=in.(like,repost,comment,reply)&deleted_at=is.null&select=target_kind,target_id,kind,created_at&order=created_at.desc&limit=250`,
+  const parsedKeys = [...new Map(
+    String(url.searchParams.get("keys") || "")
+      .split(",")
+      .map((value) => parseObjectKey(value.trim()))
+      .filter(Boolean)
+      .slice(0, 120)
+      .map((value) => [value!.key, value!]),
+  ).values()];
+
+  const summaries: Record<string, { threadId: string | null; likes: number; reposts: number; comments: number; liked: boolean; reposted: boolean }> = {};
+  for (const target of parsedKeys) {
+    summaries[target.key] = { threadId: null, likes: 0, reposts: 0, comments: 0, liked: false, reposted: false };
+  }
+
+  let contentThreads: ThreadRow[] = [];
+  if (parsedKeys.length) {
+    const ids = [...new Set(parsedKeys.map((target) => target.id))];
+    contentThreads = await participationRows<ThreadRow>(
+      `participation_threads?thread_type=eq.content&status=in.(published,locked)&object_id=in.(${ids.map(encodeURIComponent).join(",")})&select=id,thread_type,object_kind,object_id,object_owner_user_id&limit=150`,
+    );
+  }
+  const byKey = new Map(contentThreads.map((thread) => [`${thread.object_kind}:${thread.object_id}`, thread]));
+  const summaryRows = await threadSummaries(contentThreads.map((thread) => thread.id), user?.id || null);
+  for (const target of parsedKeys) {
+    const thread = byKey.get(target.key);
+    if (!thread) continue;
+    const row = summaryRows.get(thread.id);
+    summaries[target.key] = {
+      threadId: thread.id,
+      likes: Number(row?.like_count) || 0,
+      reposts: Number(row?.repost_count) || 0,
+      comments: Number(row?.reply_count) || 0,
+      liked: Boolean(row?.viewer_liked),
+      reposted: Boolean(row?.viewer_reposted),
+    };
+  }
+
+  let myActivity: string[] = [];
+  if (user) {
+    const [reactionRows, messageRows] = await Promise.all([
+      participationRows<{ thread_id: string }>(
+        `participation_reactions?user_id=eq.${encodeURIComponent(user.id)}&select=thread_id&limit=250`,
+      ),
+      participationRows<{ thread_id: string }>(
+        `participation_messages?author_user_id=eq.${encodeURIComponent(user.id)}&status=eq.published&select=thread_id&limit=250`,
+      ),
+    ]);
+    const threadIds = [...new Set([...reactionRows, ...messageRows].map((row) => row.thread_id))];
+    const activityThreads = threadIds.length
+      ? await participationRows<ThreadRow>(
+        `participation_threads?id=in.(${threadIds.map(encodeURIComponent).join(",")})&status=in.(published,locked)&select=id,thread_type,object_kind,object_id&limit=300`,
       )
-      : Promise.resolve([]),
-  ]);
-  const myActivity = [...new Set(activityRows.map((row) => `${row.target_kind}:${row.target_id}`))];
-  return NextResponse.json({ enabled: true, summaries: summaryMap, comments, myActivity });
+      : [];
+    myActivity = [...new Set(activityThreads.map((thread) => thread.thread_type === "content" && thread.object_kind && thread.object_id
+      ? `${thread.object_kind}:${thread.object_id}`
+      : `post:${thread.id}`))];
+  }
+
+  return NextResponse.json({ enabled: true, summaries, myActivity }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function POST(request: Request) {
   if (!participationEnabled()) return NextResponse.json({ error: "Participation is not enabled on this release." }, { status: 404 });
   const user = await requireAppUser(request);
   if (!user) return NextResponse.json({ error: "Sign in to participate." }, { status: 401 });
-  if (unavailable()) return NextResponse.json({ error: "Participation is unavailable." }, { status: 503 });
+  if (!participationReady()) return NextResponse.json({ error: "Participation is unavailable." }, { status: 503 });
 
   const body = await request.json().catch(() => ({})) as {
-    kind?: ParticipationKind;
-    targetKind?: BvsObjectKind;
+    reaction?: ParticipationReaction;
+    active?: boolean;
+    threadId?: string;
+    targetKind?: ParticipationObjectKind;
     targetId?: string;
-    parentEventId?: string;
-    body?: string;
     surface?: AppSurface;
   };
-  const kind = body.kind as ParticipationKind;
-  const targetKind = body.targetKind as BvsObjectKind;
-  const targetId = String(body.targetId || "").trim().slice(0, 240);
-  if (!interactiveKinds.has(kind) || !objectKinds.has(targetKind) || !targetId) {
-    return NextResponse.json({ error: "Invalid participation request." }, { status: 400 });
+  const reaction = body.reaction;
+  if (reaction !== "like" && reaction !== "repost") {
+    return NextResponse.json({ error: "Invalid reaction." }, { status: 400 });
   }
-  if (await participationRateLimited(user.id, kind)) {
-    return NextResponse.json({ error: "You are doing that too quickly. Try again shortly." }, { status: 429 });
-  }
-  const target = await resolveParticipationTarget(targetKind, targetId, parseSurface(body.surface));
-  if (!target) return NextResponse.json({ error: "That public BVS item is not available." }, { status: 404 });
-
-  if (kind === "like" || kind === "repost") {
-    const dedupeKey = `${kind}:${user.id}:${target.kind}:${target.id}`;
-    const existing = await rows<ParticipationEvent>(
-      `participation_events?dedupe_key=eq.${encodeURIComponent(dedupeKey)}&deleted_at=is.null&select=id,created_at&limit=1`,
+  const rate = await checkParticipationRateLimit(request, user.id, "reaction");
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: "You are doing that too quickly. Try again shortly.", retryAfter: rate.retryAfter },
+      { status: 429, headers: { "Retry-After": String(rate.retryAfter) } },
     );
-    if (existing[0]) {
-      const removed = await patchRows<ParticipationEvent>(
-        `participation_events?id=eq.${encodeURIComponent(existing[0].id)}&actor_user_id=eq.${encodeURIComponent(user.id)}&deleted_at=is.null`,
-        { deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-      );
-      return NextResponse.json({ ok: true, active: false, event: removed[0] || null });
+  }
+
+  let threadId = String(body.threadId || "").trim();
+  let thread: ThreadRow | null = null;
+  if (threadId) {
+    const rows = await participationRows<ThreadRow>(
+      `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=in.(published,locked)&select=id,thread_type,author_user_id,object_owner_user_id&limit=1`,
+    );
+    thread = rows[0] || null;
+  } else {
+    const targetKind = body.targetKind;
+    const targetId = String(body.targetId || "").trim().slice(0, 240);
+    if (!targetKind || !objectKinds.has(targetKind) || !targetId) {
+      return NextResponse.json({ error: "Missing conversation target." }, { status: 400 });
     }
-    const created = await postRows<ParticipationEvent>("participation_events", {
-      actor_user_id: user.id,
-      kind,
-      target_kind: target.kind,
-      target_id: target.id,
-      target_owner_user_id: target.ownerUserId === user.id ? null : target.ownerUserId,
-      target_title: target.title,
-      target_href: target.href,
-      dedupe_key: dedupeKey,
-      metadata: {},
-    });
-    if (!created[0]) return NextResponse.json({ error: "Could not save that reaction." }, { status: 503 });
-    return NextResponse.json({ ok: true, active: true, event: created[0] });
+    const target = await resolveParticipationTarget(targetKind, targetId, parseSurface(body.surface));
+    if (!target) return NextResponse.json({ error: "That public BVS item is not available." }, { status: 404 });
+    threadId = await visibleThreadForObject(target.kind, target.id) || await ensureContentThread(target) || "";
+    if (threadId) {
+      thread = { id: threadId, thread_type: "content", object_owner_user_id: target.ownerUserId };
+    }
+  }
+  if (!threadId || !thread) return NextResponse.json({ error: "Conversation is unavailable." }, { status: 404 });
+  if (thread.thread_type === "post" && thread.author_user_id && await blockedPair(user.id, thread.author_user_id)) {
+    return NextResponse.json({ error: "You cannot interact with this account." }, { status: 403 });
+  }
+  if (thread.thread_type === "content" && thread.object_owner_user_id && await blockedPair(user.id, thread.object_owner_user_id)) {
+    return NextResponse.json({ error: "You cannot interact with this account." }, { status: 403 });
   }
 
-  const cleanBody = cleanParticipationBody(body.body);
-  const issue = participationBodyIssue(cleanBody);
-  if (issue) return NextResponse.json({ error: issue }, { status: 400 });
-
-  let parent: ParticipationEvent | null = null;
-  if (kind === "reply") {
-    const parentId = String(body.parentEventId || "").trim();
-    if (!parentId) return NextResponse.json({ error: "Choose a comment to reply to." }, { status: 400 });
-    const parentRows = await rows<ParticipationEvent>(
-      `participation_events?id=eq.${encodeURIComponent(parentId)}&target_kind=eq.${encodeURIComponent(target.kind)}&target_id=eq.${encodeURIComponent(target.id)}&kind=in.(comment,reply)&deleted_at=is.null&select=id,actor_user_id,kind,target_kind,target_id&limit=1`,
-    );
-    parent = parentRows[0] || null;
-    if (!parent) return NextResponse.json({ error: "That comment is no longer available." }, { status: 404 });
-  }
-
-  const created = await postRows<ParticipationEvent>("participation_events", {
-    actor_user_id: user.id,
-    kind,
-    target_kind: target.kind,
-    target_id: target.id,
-    target_owner_user_id: target.ownerUserId === user.id ? null : target.ownerUserId,
-    target_title: target.title,
-    target_href: target.href,
-    parent_event_id: parent?.id || null,
-    body: cleanBody,
-    metadata: {},
+  const desired = body.active !== false;
+  const result = await participationRpc<ReactionResult[]>("set_participation_reaction", {
+    p_actor: user.id,
+    p_thread: threadId,
+    p_reaction: reaction,
+    p_active: desired,
   });
-  const event = created[0];
-  if (!event) return NextResponse.json({ error: "Could not post that comment." }, { status: 503 });
-
-  const notificationEvents: Array<Record<string, unknown>> = [];
-  if (parent?.actor_user_id && parent.actor_user_id !== user.id && parent.actor_user_id !== target.ownerUserId) {
-    notificationEvents.push({
-      actor_user_id: user.id,
-      kind: "mention",
-      target_kind: target.kind,
-      target_id: target.id,
-      target_owner_user_id: parent.actor_user_id,
-      target_title: target.title,
-      target_href: target.href,
-      parent_event_id: event.id,
-      body: cleanBody,
-      dedupe_key: `reply-notification:${event.id}:${parent.actor_user_id}`,
-      metadata: { notification_kind: "reply", source_event_id: event.id },
-    });
-  }
-
-  const mentions = extractMentions(cleanBody);
-  const mentionedProfiles = await loadMentionProfiles(mentions);
-  for (const profile of mentionedProfiles) {
-    if (profile.id === user.id || profile.id === target.ownerUserId || profile.id === parent?.actor_user_id) continue;
-    notificationEvents.push({
-      actor_user_id: user.id,
-      kind: "mention",
-      target_kind: target.kind,
-      target_id: target.id,
-      target_owner_user_id: profile.id,
-      target_title: target.title,
-      target_href: target.href,
-      parent_event_id: event.id,
-      body: cleanBody,
-      dedupe_key: `mention:${event.id}:${profile.id}`,
-      metadata: { notification_kind: "mention", source_event_id: event.id, username: profile.username },
-    });
-  }
-  if (notificationEvents.length) await postRows<ParticipationEvent>("participation_events", notificationEvents);
-
-  return NextResponse.json({ ok: true, event });
-}
-
-export async function DELETE(request: Request) {
-  if (!participationEnabled()) return NextResponse.json({ error: "Participation is not enabled on this release." }, { status: 404 });
-  const user = await requireAppUser(request);
-  if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-  if (unavailable()) return NextResponse.json({ error: "Participation is unavailable." }, { status: 503 });
-  const eventId = String(new URL(request.url).searchParams.get("eventId") || "").trim();
-  if (!eventId) return NextResponse.json({ error: "Missing comment id." }, { status: 400 });
-  const removed = await patchRows<ParticipationEvent>(
-    `participation_events?id=eq.${encodeURIComponent(eventId)}&actor_user_id=eq.${encodeURIComponent(user.id)}&kind=in.(comment,reply)&deleted_at=is.null`,
-    { deleted_at: new Date().toISOString(), updated_at: new Date().toISOString() },
-  );
-  if (!removed[0]) return NextResponse.json({ error: "Comment not found or not owned by you." }, { status: 404 });
-  return NextResponse.json({ ok: true });
+  const row = Array.isArray(result) ? result[0] : null;
+  if (!row) return NextResponse.json({ error: "Could not save that reaction." }, { status: 503 });
+  const summary = await threadSummaries([threadId], user.id);
+  const current = summary.get(threadId);
+  return NextResponse.json({
+    ok: true,
+    active: Boolean(row.active),
+    changed: Boolean(row.changed),
+    eventId: row.event_id || null,
+    summary: {
+      threadId,
+      likes: Number(current?.like_count) || 0,
+      reposts: Number(current?.repost_count) || 0,
+      comments: Number(current?.reply_count) || 0,
+      liked: Boolean(current?.viewer_liked),
+      reposted: Boolean(current?.viewer_reposted),
+    },
+  });
 }
