@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import BvsFeedList from "@/components/feed/BvsFeedList";
 import { getBvsFeed } from "@/lib/bvs-feed";
 import type { AppSurface } from "@/lib/app-surface";
+import { participationEnabled } from "@/lib/participation-server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function AppFeedPage({ params }: { params: Promise<{ surfac
   if (raw !== "ios" && raw !== "android") notFound();
   const surface = raw as AppSurface;
   const items = await getBvsFeed({ surface, limit: 90 });
+  const participation = participationEnabled();
 
   return (
     <main className="bvs-page-main mx-auto min-h-[100dvh] max-w-4xl px-4 pb-10 sm:px-6">
@@ -20,11 +22,13 @@ export default async function AppFeedPage({ params }: { params: Promise<{ surfac
         </div>
         <h1 className="mt-3 text-[2.4rem] font-semibold leading-none tracking-tight sm:text-5xl">Feed</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-white/48 sm:text-base">
-          The newest movement across BVS — music, creators, beats, live moments and Marketplace drops.
+          {participation
+            ? "See what’s moving across BVS, then like, repost and join the conversation."
+            : "The newest movement across BVS — music, creators, beats, live moments and Marketplace drops."}
         </p>
       </header>
 
-      <BvsFeedList items={items} />
+      <BvsFeedList items={items} surface={surface} participationEnabled={participation} />
       <div className="bvs-app-bottom-spacer" aria-hidden="true" />
     </main>
   );

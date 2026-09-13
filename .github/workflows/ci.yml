@@ -23,6 +23,7 @@ jobs:
       - run: npm run test:rights-compliance
       - run: npm run test:app-flow
       - run: npm run test:apple-ios-surface
+      - run: node scripts/participation-tests.mjs
       - run: npm run typecheck
       - run: npm run build
       - name: Reject newly tracked sensitive or oversized artifacts
