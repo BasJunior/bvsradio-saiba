@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import LibraryAction from "@/components/LibraryAction";
 import FeedComposer from "@/components/feed/FeedComposer";
@@ -74,7 +74,7 @@ export default function BvsFeedList({
   participationEnabled = false,
 }: {
   items: BvsFeedItem[];
-  surface: AppSurface;
+  surface: AppSurface | null;
   participationEnabled?: boolean;
 }) {
   const session = useAppSession();
@@ -84,6 +84,7 @@ export default function BvsFeedList({
   const [myActivity, setMyActivity] = useState<Set<string>>(new Set());
   const [followIds, setFollowIds] = useState<Set<string>>(new Set());
   const [followNames, setFollowNames] = useState<Set<string>>(new Set());
+  const postsRequest = useRef(0);
   const [posts, setPosts] = useState<ParticipationPost[]>([]);
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsError, setPostsError] = useState("");
@@ -128,15 +129,18 @@ export default function BvsFeedList({
 
   const loadPosts = useCallback(async (cursor?: string | null, append = false) => {
     if (!participationEnabled) return;
+    const requestId = ++postsRequest.current;
+    if (!append) setPosts([]);
     setPostsLoading(true);
     setPostsError("");
-    const params = new URLSearchParams({ limit: "20" });
+    const params = new URLSearchParams({ limit: "20", lane, ...(surface ? { surface } : {}) });
     if (cursor) params.set("cursor", cursor);
     const response = await fetch(`/api/app/participation/posts?${params.toString()}`, {
       headers: session.token ? { Authorization: `Bearer ${session.token}` } : undefined,
       cache: "no-store",
     }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) as { posts?: ParticipationPost[]; nextCursor?: string | null; error?: string } : {};
+    if (requestId !== postsRequest.current) return;
     if (!response?.ok) {
       setPostsError(payload.error || "Community posts could not be loaded.");
       setPostsLoading(false);
@@ -150,9 +154,9 @@ export default function BvsFeedList({
     });
     setNextCursor(payload.nextCursor || null);
     setPostsLoading(false);
-  }, [participationEnabled, session.token]);
+  }, [participationEnabled, session.token, lane, surface]);
 
-  useEffect(() => { void loadPosts(null, false); }, [loadPosts]);
+  useEffect(() => { void loadPosts(null, false); return () => { postsRequest.current += 1; }; }, [loadPosts]);
 
   const visibleSystem = useMemo(() => {
     const categoryItems = filter === "all" ? items : items.filter((item) => item.category === filter);
@@ -168,17 +172,8 @@ export default function BvsFeedList({
 
   const visiblePosts = useMemo(() => {
     if (filter !== "all") return [];
-    if (lane === "focus") return posts;
-    if (lane === "activity") {
-      return posts.filter((post) => post.author.id === session.user?.id || myActivity.has(`post:${post.threadId}`));
-    }
-    return posts.filter((post) => {
-      if (followIds.has(post.author.id)) return true;
-      const username = normalized(post.author.username);
-      const display = normalized(post.author.displayName);
-      return Boolean((username && followNames.has(username)) || (display && followNames.has(display)));
-    });
-  }, [filter, followIds, followNames, lane, myActivity, posts, session.user?.id]);
+    return posts;
+  }, [filter, posts]);
 
   const timeline = useMemo<TimelineEntry[]>(() => [
     ...visiblePosts.map((post) => ({ type: "post" as const, at: post.createdAt, id: `post:${post.threadId}`, post })),
@@ -221,7 +216,7 @@ export default function BvsFeedList({
 
   return (
     <div>
-      <FeedComposer surface={surface} enabled={participationEnabled} onCreated={addPost} />
+      <FeedComposer key={session.user?.id || "guest"} surface={surface} enabled={participationEnabled} onCreated={addPost} />
 
       <div className="sticky top-[var(--bvs-app-header-height,4rem)] z-20 -mx-4 mt-4 border-y border-white/[.06] bg-[#08080a]/92 px-4 py-3 backdrop-blur-2xl sm:static sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/[.015]" aria-label="Feed controls">
         <div className="overflow-x-auto">
@@ -234,10 +229,8 @@ export default function BvsFeedList({
                   type="button"
                   onClick={() => setLane(item.id)}
                   aria-pressed={active}
-                  className="min-h-10 rounded-full border px-4 text-sm font-semibold transition"
-                  style={active
-                    ? { borderColor: item.accent, backgroundColor: `${item.accent}1f`, color: item.accent }
-                    : { borderColor: "rgba(255,255,255,.1)", backgroundColor: "rgba(255,255,255,.025)", color: "rgba(255,255,255,.58)" }}
+                  className="bvs-feed-lane min-h-11 rounded-full border border-white/10 px-4 text-sm font-semibold text-white/60 transition"
+
                 >
                   {item.label}
                 </button>
@@ -270,7 +263,7 @@ export default function BvsFeedList({
       <div className="mt-5 space-y-4 sm:mt-7">
         {timeline.map((entry) => {
           if (entry.type === "post") {
-            return <ParticipationPostCard key={entry.id} post={entry.post} surface={surface} enabled={participationEnabled} onChanged={updatePost} onDeleted={deletePost} />;
+            return <ParticipationPostCard key={`${entry.id}:${session.user?.id || "guest"}`} post={entry.post} surface={surface} enabled={participationEnabled} onChanged={updatePost} onDeleted={deletePost} />;
           }
           const item = entry.item;
           const key = targetKey(item);
@@ -292,6 +285,7 @@ export default function BvsFeedList({
               <BvsObjectCard object={item.object} variant={item.category === "beat" ? "feed-beat" : "feed-row"} />
 
               <FeedParticipation
+                key={`${key}:${session.user?.id || "guest"}`}
                 object={item.object}
                 surface={surface}
                 enabled={participationEnabled}
@@ -331,7 +325,7 @@ export default function BvsFeedList({
         ) : null}
 
         {postsLoading && filter === "all" ? <p className="py-4 text-center text-xs text-white/35">Loading community posts…</p> : null}
-        {nextCursor && filter === "all" && lane === "focus" ? (
+        {nextCursor && filter === "all" ? (
           <div className="pt-1 text-center">
             <button type="button" disabled={postsLoading} onClick={() => void loadPosts(nextCursor, true)} className="min-h-11 rounded-full border border-white/10 px-5 text-sm font-semibold text-white/55 transition hover:border-[#929DE0]/35 hover:text-white disabled:opacity-40">
               {postsLoading ? "Loading…" : "Load more posts"}

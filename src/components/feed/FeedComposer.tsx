@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import ParticipationMentionPicker, { type MentionProfile } from "@/components/feed/ParticipationMentionPicker";
 import type { AppSurface } from "@/lib/app-surface";
@@ -54,12 +54,14 @@ export default function FeedComposer({
   enabled,
   onCreated,
 }: {
-  surface: AppSurface;
+  surface: AppSurface | null;
   enabled: boolean;
   onCreated: (post: ParticipationPost) => void;
 }) {
   const session = useAppSession();
   const owner = session.user?.id || "guest";
+  const hydratedOwner = useRef<string | null>(null);
+  const [draftOwner, setDraftOwner] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [intent, setIntent] = useState<ParticipationIntent>("update");
   const [body, setBody] = useState("");
@@ -77,25 +79,27 @@ export default function FeedComposer({
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined") return;
-    const own = parseDraft(window.localStorage.getItem(draftKey(owner)));
-    const guest = owner !== "guest" ? parseDraft(window.localStorage.getItem(draftKey("guest"))) : null;
-    const draft = own || guest;
-    if (!draft) return;
-    setIntent(draft.intent || "update");
-    setBody(draft.body || "");
-    setAttachment(draft.attachment || null);
-    setMentions(draft.mentions || []);
-    setClientKey(draft.clientKey || newClientKey());
-    if (draft.body || draft.attachment || draft.mentions?.length) setExpanded(true);
-    if (!own && guest && owner !== "guest") window.localStorage.setItem(draftKey(owner), JSON.stringify(guest));
+    const draft = parseDraft(window.localStorage.getItem(draftKey(owner)));
+    hydratedOwner.current = owner;
+    setDraftOwner(owner);
+    setIntent(draft?.intent || "update");
+    setBody(draft?.body || "");
+    setAttachment(draft?.attachment || null);
+    setMentions(draft?.mentions || []);
+    setClientKey(draft?.clientKey || newClientKey());
+    setExpanded(Boolean(draft?.body || draft?.attachment || draft?.mentions?.length));
+    setRulesRequired(false);
+    setRulesAccepted(false);
+    setError("");
+    setStatus("");
   }, [enabled, owner]);
 
   useEffect(() => {
-    if (!enabled || typeof window === "undefined") return;
+    if (!enabled || typeof window === "undefined" || draftOwner !== owner || hydratedOwner.current !== owner) return;
     const draft: Draft = { intent, body, attachment, mentions, clientKey };
     if (!body && !attachment && !mentions.length) window.localStorage.removeItem(draftKey(owner));
     else window.localStorage.setItem(draftKey(owner), JSON.stringify(draft));
-  }, [attachment, body, clientKey, enabled, intent, mentions, owner]);
+  }, [attachment, body, clientKey, draftOwner, enabled, intent, mentions, owner]);
 
   useEffect(() => {
     if (!enabled || attachment || attachmentQuery.trim().length < 2) {
@@ -104,7 +108,7 @@ export default function FeedComposer({
     }
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      void fetch(`/api/app/participation/attachments?q=${encodeURIComponent(attachmentQuery.trim())}&surface=${surface}`, { signal: controller.signal })
+      void fetch(`/api/app/participation/attachments?q=${encodeURIComponent(attachmentQuery.trim())}${surface ? `&surface=${surface}` : ""}`, { signal: controller.signal })
         .then(async (response) => response.ok ? await response.json() as { items?: AttachmentOption[] } : { items: [] })
         .then((payload) => setAttachmentResults(payload.items || []))
         .catch(() => null);
@@ -113,7 +117,7 @@ export default function FeedComposer({
   }, [attachment, attachmentQuery, enabled, surface]);
 
   const nearLimit = body.length >= 850;
-  const signInHref = useMemo(() => `/app/${surface}/join`, [surface]);
+  const signInHref = useMemo(() => surface ? `/app/${surface}/join` : `/auth/login?next=${encodeURIComponent("/feed")}`, [surface]);
 
   async function agreeRules() {
     if (!session.token || !rulesAccepted) return false;
@@ -189,7 +193,7 @@ export default function FeedComposer({
   if (!enabled) return null;
 
   return (
-    <section className="rounded-[1.55rem] border border-[#929DE0]/20 bg-[#929DE0]/[.035] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,.025)] sm:p-4" aria-label="Create a BVS Feed post">
+    <section className="bvs-participation-composer rounded-[1.55rem] border border-[#929DE0]/20 bg-[#929DE0]/[.035] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,.025)] sm:p-4" aria-label="Create a BVS Feed post">
       <button
         type="button"
         onClick={() => setExpanded(true)}

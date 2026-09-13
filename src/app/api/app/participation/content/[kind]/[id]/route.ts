@@ -3,6 +3,7 @@ import { requireAppUser } from "@/lib/app-api-auth";
 import type { AppSurface } from "@/lib/app-surface";
 import {
   ensureContentThread,
+  participationRequestSurface,
   participationEnabled,
   participationReady,
   participationRpc,
@@ -22,7 +23,7 @@ function surfaceFrom(request: Request): AppSurface | null {
 async function resolve(request: Request, rawKind: string, id: string, create: boolean) {
   const kind = rawKind as ParticipationObjectKind;
   if (!kinds.has(kind) || !id) return null;
-  const target = await resolveParticipationTarget(kind, id, surfaceFrom(request));
+  const target = await resolveParticipationTarget(kind, id, participationRequestSurface(request));
   if (!target) return null;
   const threadId = await visibleThreadForObject(kind, target.id) || (create ? await ensureContentThread(target) : null);
   return { target, threadId };

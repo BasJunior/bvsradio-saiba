@@ -1,0 +1,34 @@
+/* Local section lighting. No route-dependent writes to html/body or player tokens. */
+.bvs-section-scope { display: contents; --bvs-section-rgb: 212 175 55; --bvs-section-label: #dfc372; --bvs-section-light-label: #705100; }
+[data-bvs-section="explore"] { --bvs-section-rgb: 99 184 170; --bvs-section-label: #8acbbf; --bvs-section-light-label: #256459; }
+[data-bvs-section="feed"] { --bvs-section-rgb: 146 157 224; --bvs-section-label: #b4bdef; --bvs-section-light-label: #424e91; }
+[data-bvs-section="beats"] { --bvs-section-rgb: 174 139 203; --bvs-section-label: #c9aadd; --bvs-section-light-label: #69467f; }
+[data-bvs-section="studio"] { --bvs-section-rgb: 123 169 208; --bvs-section-label: #a5c6e1; --bvs-section-light-label: #315d80; }
+[data-bvs-section="marketplace"] { --bvs-section-rgb: 145 175 133; --bvs-section-label: #b4cbaa; --bvs-section-light-label: #46643b; }
+[data-bvs-section="shows"] { --bvs-section-rgb: 207 137 155; --bvs-section-label: #e0afbd; --bvs-section-light-label: #8a4055; }
+[data-bvs-section="neutral"] { --bvs-section-rgb: 0 0 0; --bvs-section-label: inherit; --bvs-section-light-label: inherit; }
+.bvs-section-scope:not([data-bvs-section="neutral"]):not([data-bvs-section="home"]) main {
+  background-image: radial-gradient(ellipse 32rem 11rem at 20% 5rem, rgb(var(--bvs-section-rgb) / .055), transparent);
+  background-repeat: no-repeat;
+}
+.bvs-section-label { color: var(--bvs-section-label); }
+.bvs-participation-composer { border-color: rgb(var(--bvs-section-rgb) / .18); }
+.bvs-feed-lane[aria-pressed="true"] { color: var(--bvs-section-label); background: rgb(var(--bvs-section-rgb) / .08); border-color: var(--bvs-section-label); }
+:root[data-theme="light"] .bvs-section-label,
+:root[data-theme="light"] .bvs-feed-lane[aria-pressed="true"] { color: var(--bvs-section-light-label); }
+:root[data-theme="light"] .bvs-feed-lane[aria-pressed="true"] { border-color: var(--bvs-section-light-label); }
+[data-bvs-section="feed"] .bvs-participation-composer button,
+[data-bvs-section="feed"] .bvs-feed-lane { min-height: 44px; }
+@media (forced-colors: active) {
+  .bvs-section-scope main { background-image: none !important; }
+  .bvs-section-label { color: CanvasText; }
+  .bvs-feed-lane[aria-pressed="true"] { border-color: Highlight; color: Highlight; }
+}
+/* These foregrounds are intentionally darker than the dark-theme accent labels. */
+:root[data-theme="light"] [data-bvs-section="feed"] [class*="text-[#929DE0]"],
+:root[data-theme="light"] [data-bvs-section="feed"] [class*="text-[#c2c9ff]"] { color: #424e91; }
+:root[data-theme="light"] [data-bvs-section="feed"] [class*="text-[#78e6bb]"],
+:root[data-theme="light"] [data-bvs-section="feed"] [class*="text-[#ff9a92]"] { color: #87443c; }
+:root[data-theme="light"] [data-bvs-section="feed"] [class*="text-[#9bc6ff]"],
+:root[data-theme="light"] [data-bvs-section="feed"] [class*="text-[#a8c9e5]"] { color: #315d80; }
+:root[data-theme="light"] [data-bvs-section="feed"] select { color: #292620; background-color: #fffdf8; }

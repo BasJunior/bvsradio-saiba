@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AppSessionProvider } from "@/components/app-vnext/AppSessionProvider";
 import BvsFeedList from "@/components/feed/BvsFeedList";
+import { participationEnabled } from "@/lib/participation-server";
 import { getBvsFeed } from "@/lib/bvs-feed";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +17,7 @@ export default async function BvsFeedPage() {
   return (
     <main className="mx-auto min-h-screen max-w-4xl px-4 pb-32 pt-24 sm:px-6 sm:pt-28">
       <header className="mb-7 sm:mb-9">
-        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.24em] text-brand">
+        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.24em] bvs-section-label">
           <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_18px_rgba(212,175,55,.75)]" aria-hidden="true" />
           BVS Pulse
         </div>
@@ -26,9 +27,9 @@ export default async function BvsFeedPage() {
         </p>
       </header>
 
-      {/* Participation stays app-only in Stage 1; the shared Feed list still requires the app session boundary. */}
+      {/* Shared Feed list requires the app session boundary even while participation is gated. */}
       <AppSessionProvider>
-        <BvsFeedList items={items} surface="ios" />
+        <BvsFeedList items={items} surface={null} participationEnabled={participationEnabled()} />
       </AppSessionProvider>
     </main>
   );

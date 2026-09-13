@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAppUser } from "@/lib/app-api-auth";
 import {
   cleanParticipationBody,
+  participationVisibleThread,
+  participationRequestSurface,
   participationBodyIssue,
   participationEnabled,
   participationPatch,
@@ -31,6 +33,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const { id: threadId, messageId } = await params;
   if (!await ownedReply(threadId, messageId, user.id)) return NextResponse.json({ error: "You cannot edit this reply." }, { status: 403 });
+  const parentThread = await participationVisibleThread(threadId, user.id, participationRequestSurface(request));
+  if (!parentThread || parentThread.status !== "published") return NextResponse.json({ error: "This conversation cannot be edited." }, { status: 403 });
   const payload = await request.json().catch(() => ({})) as { body?: string };
   const text = cleanParticipationBody(payload.body, 500);
   const issue = participationBodyIssue(text, 500);

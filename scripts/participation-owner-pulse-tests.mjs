@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { windowFor, formatReport } from './participation-owner-pulse.mjs';
+const spring=windowFor(new Date('2026-03-30T08:00:00Z'));
+assert.equal(spring.localDate,'2026-03-29');
+assert.equal(Date.parse(spring.end)-Date.parse(spring.start),23*3600000);
+const fall=windowFor(new Date('2026-10-26T08:00:00Z'));
+assert.equal(Date.parse(fall.end)-Date.parse(fall.start),25*3600000);
+assert.equal(windowFor(new Date('2026-09-14T07:00:00Z')).start,'2026-09-12T22:00:00.000Z');
+assert.match(formatReport('2026-09-13',{posts:0,replies:0,contributors:0,releases:0,unanswered:0,collaborations:0,submissions:0,reports:0,failures:0}),/quiet community day/);
+console.log('Owner pulse calendar/DST and quiet-day tests passed.');

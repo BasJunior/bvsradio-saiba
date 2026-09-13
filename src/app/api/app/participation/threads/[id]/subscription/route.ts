@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAppUser } from "@/lib/app-api-auth";
 import {
   participationEnabled,
+  participationVisibleThread,
+  participationRequestSurface,
   participationInsert,
   participationReady,
   participationRows,
@@ -32,6 +34,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   const user = await requireAppUser(request);
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   const threadId = String((await params).id || "").trim();
+  if (!await participationVisibleThread(threadId, user.id, participationRequestSurface(request))) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const threads = await participationRows<{ id: string }>(
     `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=in.(published,locked)&select=id&limit=1`,
   );

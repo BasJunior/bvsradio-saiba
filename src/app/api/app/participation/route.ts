@@ -3,6 +3,9 @@ import type { AppSurface } from "@/lib/app-surface";
 import { requireAppUser } from "@/lib/app-api-auth";
 import {
   blockedPair,
+  participationThreadEligible,
+  participationRequestSurface,
+  participationVisibleThread,
   checkParticipationRateLimit,
   ensureContentThread,
   participationEnabled,
@@ -85,6 +88,7 @@ export async function GET(request: Request) {
       `participation_threads?thread_type=eq.content&status=in.(published,locked)&object_id=in.(${ids.map(encodeURIComponent).join(",")})&select=id,thread_type,object_kind,object_id,object_owner_user_id&limit=150`,
     );
   }
+  contentThreads = (await Promise.all(contentThreads.map(async thread => await participationThreadEligible(thread, participationRequestSurface(request)) ? thread : null))).filter((thread): thread is ThreadRow => thread !== null);
   const byKey = new Map(contentThreads.map((thread) => [`${thread.object_kind}:${thread.object_id}`, thread]));
   const summaryRows = await threadSummaries(contentThreads.map((thread) => thread.id), user?.id || null);
   for (const target of parsedKeys) {
@@ -154,17 +158,14 @@ export async function POST(request: Request) {
   let threadId = String(body.threadId || "").trim();
   let thread: ThreadRow | null = null;
   if (threadId) {
-    const rows = await participationRows<ThreadRow>(
-      `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=in.(published,locked)&select=id,thread_type,author_user_id,object_owner_user_id&limit=1`,
-    );
-    thread = rows[0] || null;
+    thread = await participationVisibleThread(threadId, user.id, participationRequestSurface(request, body.surface));
   } else {
     const targetKind = body.targetKind;
     const targetId = String(body.targetId || "").trim().slice(0, 240);
     if (!targetKind || !objectKinds.has(targetKind) || !targetId) {
       return NextResponse.json({ error: "Missing conversation target." }, { status: 400 });
     }
-    const target = await resolveParticipationTarget(targetKind, targetId, parseSurface(body.surface));
+    const target = await resolveParticipationTarget(targetKind, targetId, participationRequestSurface(request, body.surface));
     if (!target) return NextResponse.json({ error: "That public BVS item is not available." }, { status: 404 });
     threadId = await visibleThreadForObject(target.kind, target.id) || await ensureContentThread(target) || "";
     if (threadId) {

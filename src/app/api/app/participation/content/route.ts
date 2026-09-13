@@ -3,6 +3,7 @@ import type { AppSurface } from "@/lib/app-surface";
 import { requireAppUser } from "@/lib/app-api-auth";
 import {
   ensureContentThread,
+  participationRequestSurface,
   participationEnabled,
   participationReady,
   participationRows,
@@ -31,6 +32,7 @@ export async function GET(request: Request) {
   const kind = url.searchParams.get("kind") as ParticipationObjectKind;
   const id = String(url.searchParams.get("id") || "").trim().slice(0, 240);
   if (!kinds.has(kind) || !id) return NextResponse.json({ error: "Invalid discussion target." }, { status: 400 });
+  if (!await resolveParticipationTarget(kind, id, participationRequestSurface(request))) return NextResponse.json({ error: "Content not found." }, { status: 404 });
   const threadId = await visibleThreadForObject(kind, id);
   return NextResponse.json({
     enabled: true,
@@ -48,7 +50,7 @@ export async function POST(request: Request) {
   const kind = body.kind as ParticipationObjectKind;
   const id = String(body.id || "").trim().slice(0, 240);
   if (!kinds.has(kind) || !id) return NextResponse.json({ error: "Invalid discussion target." }, { status: 400 });
-  const target = await resolveParticipationTarget(kind, id, parseSurface(body.surface));
+  const target = await resolveParticipationTarget(kind, id, participationRequestSurface(request, body.surface));
   if (!target) return NextResponse.json({ error: "That public BVS item is unavailable." }, { status: 404 });
   const threadId = await ensureContentThread(target);
   if (!threadId) return NextResponse.json({ error: "Could not open the discussion." }, { status: 503 });

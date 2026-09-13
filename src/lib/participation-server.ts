@@ -68,65 +68,74 @@ export function participationServiceUrl(path: string) {
   return `${appSupabaseUrl}/rest/v1/${path}`;
 }
 
-export async function participationRows<T>(path: string): Promise<T[]> {
-  if (!participationReady()) return [];
+export class ParticipationUnavailableError extends Error {
+  constructor(message = "Participation is unavailable.") {
+    super(message);
+    this.name = "ParticipationUnavailableError";
+  }
+}
+
+async function participationResponse(path: string, init: RequestInit) {
+  if (!participationReady()) throw new ParticipationUnavailableError();
   const response = await fetch(participationServiceUrl(path), {
-    headers: appServiceHeaders(),
+    ...init,
     cache: "no-store",
-    signal: AbortSignal.timeout(6000),
   }).catch(() => null);
-  if (!response?.ok) return [];
-  const payload = await response.json().catch(() => []);
+  if (!response?.ok) throw new ParticipationUnavailableError();
+  return response;
+}
+
+export async function participationRows<T>(path: string): Promise<T[]> {
+  const response = await participationResponse(path, {
+    headers: appServiceHeaders(),
+    signal: AbortSignal.timeout(6000),
+  });
+  const raw = await response.text();
+  const payload = raw ? JSON.parse(raw) : [];
   return Array.isArray(payload) ? payload as T[] : [];
 }
 
 export async function participationRpc<T>(name: string, body: Record<string, unknown>): Promise<T | null> {
-  if (!participationReady()) return null;
-  const response = await fetch(participationServiceUrl(`rpc/${name}`), {
+  const response = await participationResponse(`rpc/${name}`, {
     method: "POST",
     headers: appServiceHeaders(),
     body: JSON.stringify(body),
-    cache: "no-store",
     signal: AbortSignal.timeout(7000),
-  }).catch(() => null);
-  if (!response?.ok) return null;
-  return await response.json().catch(() => null) as T | null;
+  });
+  return await response.json() as T | null;
 }
 
 export async function participationInsert<T>(table: string, body: unknown, prefer = "return=representation"): Promise<T[]> {
-  if (!participationReady()) return [];
-  const response = await fetch(participationServiceUrl(table), {
+  const response = await participationResponse(table, {
     method: "POST",
     headers: appServiceHeaders({ Prefer: prefer }),
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(7000),
-  }).catch(() => null);
-  if (!response?.ok) return [];
-  const payload = await response.json().catch(() => []);
+  });
+  const raw = await response.text();
+  const payload = raw ? JSON.parse(raw) : [];
   return Array.isArray(payload) ? payload as T[] : [];
 }
 
 export async function participationPatch<T>(path: string, body: unknown): Promise<T[]> {
-  if (!participationReady()) return [];
-  const response = await fetch(participationServiceUrl(path), {
+  const response = await participationResponse(path, {
     method: "PATCH",
     headers: appServiceHeaders({ Prefer: "return=representation" }),
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(7000),
-  }).catch(() => null);
-  if (!response?.ok) return [];
-  const payload = await response.json().catch(() => []);
+  });
+  const raw = await response.text();
+  const payload = raw ? JSON.parse(raw) : [];
   return Array.isArray(payload) ? payload as T[] : [];
 }
 
 export async function participationDelete(path: string) {
-  if (!participationReady()) return false;
-  const response = await fetch(participationServiceUrl(path), {
+  await participationResponse(path, {
     method: "DELETE",
     headers: appServiceHeaders({ Prefer: "return=minimal" }),
     signal: AbortSignal.timeout(7000),
-  }).catch(() => null);
-  return Boolean(response?.ok);
+  });
+  return true;
 }
 
 function safeId(value: string) {
@@ -147,6 +156,7 @@ export async function resolveParticipationTarget(
     }>(`tracks?id=eq.${encoded}&is_public=eq.true&editorial_status=eq.approved&select=id,user_id,title,artist_name,artwork_url&limit=1`);
     const row = rows[0];
     if (!row) return null;
+    if (surface && !await participationMobileCleared(kind, row.id, surface)) return null;
     return {
       kind,
       id: row.id,
@@ -164,6 +174,7 @@ export async function resolveParticipationTarget(
     }>(`releases?id=eq.${encoded}&is_public=eq.true&editorial_status=eq.approved&select=id,user_id,title,artist_name,cover_url&limit=1`);
     const row = rows[0];
     if (!row) return null;
+    if (surface && !await participationMobileCleared(kind, row.id, surface)) return null;
     return {
       kind,
       id: row.id,
@@ -290,7 +301,7 @@ export async function checkParticipationRateLimit(
   ]);
   const denied = [userResult, ipResult].filter((row) => row && !row.allowed) as RateResult[];
   return {
-    allowed: denied.length === 0,
+    allowed: Boolean(userResult && ipResult) && denied.length === 0,
     retryAfter: denied.length ? Math.max(...denied.map((row) => Number(row.retry_after_seconds) || 1)) : 0,
   };
 }
@@ -320,4 +331,38 @@ export async function userBlockSet(userId: string) {
   const blocked = new Set<string>();
   for (const row of rows) blocked.add(row.blocker_user_id === userId ? row.blocked_user_id : row.blocker_user_id);
   return blocked;
+}
+
+// Keep these checks shared by API reads, writes, and notification delivery.
+export function participationRequestSurface(request: Request, value?: unknown): AppSurface | null {
+  const url = new URL(request.url);
+  const project = process.env.VERCEL_PROJECT_NAME || "";
+  if (project === "bvsradio-app-vnext-2026-09" || url.hostname.includes("bvsradio-app-vnext")) return "ios";
+  const explicit = value || url.searchParams.get("surface");
+  if (explicit === "ios" || explicit === "android") return explicit;
+  const referer = request.headers.get("referer") || "";
+  return /\/app\/ios(?:\/|[?#]|$)/.test(referer) ? "ios" : /\/app\/android(?:\/|[?#]|$)/.test(referer) ? "android" : null;
+}
+
+async function participationMobileCleared(kind: "track" | "release", id: string, surface: AppSurface) {
+  const filter = kind === "track" ? `id=eq.${encodeURIComponent(id)}` : `release_id=eq.${encodeURIComponent(id)}`;
+  return (await participationRows<{ id: string }>(`tracks?${filter}&is_public=eq.true&editorial_status=eq.approved&mobile_distribution_clearances!inner(surface,status)&mobile_distribution_clearances.surface=eq.${surface}&mobile_distribution_clearances.status=eq.cleared&select=id,mobile_distribution_clearances(surface,status)&limit=1`)).length > 0;
+}
+
+export type ParticipationEligibilityThread = {
+  thread_type: "post" | "content"; status?: string; object_kind?: ParticipationObjectKind | null; object_id?: string | null;
+  author_user_id?: string | null; object_owner_user_id?: string | null;
+};
+export async function participationThreadEligible(thread: ParticipationEligibilityThread, surface: AppSurface | null = null) {
+  if (thread.status && !["published", "locked"].includes(thread.status)) return false;
+  if (thread.thread_type === "post") return true;
+  return Boolean(thread.object_kind && thread.object_id && await resolveParticipationTarget(thread.object_kind, thread.object_id, surface));
+}
+
+export async function participationVisibleThread(id: string, viewer: string | null, surface: AppSurface | null = null) {
+  const thread = (await participationRows<ParticipationEligibilityThread & { id: string }>(`participation_threads?id=eq.${encodeURIComponent(id)}&status=in.(published,locked)&select=id,thread_type,status,author_user_id,object_owner_user_id,object_kind,object_id&limit=1`))[0];
+  if (!thread || !await participationThreadEligible(thread, surface)) return null;
+  const owner = thread.thread_type === "post" ? thread.author_user_id : thread.object_owner_user_id;
+  if (viewer && owner && await blockedPair(viewer, owner)) return null;
+  return thread;
 }

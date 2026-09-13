@@ -1,3 +1,4 @@
+import { resolveParticipationTarget, participationRequestSurface } from "@/lib/participation-server";
 import { NextResponse } from "next/server";
 import type { AppSurface } from "@/lib/app-surface";
 import {
@@ -43,7 +44,7 @@ export async function GET(request: Request) {
     ),
   ]);
 
-  const attachments: ParticipationTarget[] = [
+  const candidateAttachments: ParticipationTarget[] = [
     ...tracks.map((row) => ({
       kind: "track" as ParticipationObjectKind,
       id: row.id,
@@ -73,5 +74,6 @@ export async function GET(request: Request) {
     })),
   ].slice(0, 12);
 
+  const attachments = (await Promise.all(candidateAttachments.map(item => resolveParticipationTarget(item.kind, item.id, participationRequestSurface(request))))).filter(Boolean);
   return NextResponse.json({ profiles, attachments }, { headers: { "Cache-Control": "public, max-age=20, stale-while-revalidate=30" } });
 }

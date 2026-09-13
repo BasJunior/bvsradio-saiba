@@ -40,7 +40,7 @@ export default function ParticipationPostCard({
   onDeleted,
 }: {
   post: ParticipationPost;
-  surface: AppSurface;
+  surface: AppSurface | null;
   enabled: boolean;
   onChanged?: (post: ParticipationPost) => void;
   onDeleted?: (threadId: string) => void;
@@ -51,7 +51,7 @@ export default function ParticipationPostCard({
   const [editBody, setEditBody] = useState(post.body);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const permalink = `/app/${surface}/feed/${encodeURIComponent(current.threadId)}`;
+  const permalink = surface ? `/app/${surface}/feed/${encodeURIComponent(current.threadId)}` : `/feed/${encodeURIComponent(current.threadId)}`;
   const own = current.author.id === session.user?.id;
 
   function authHeaders(json = false) {

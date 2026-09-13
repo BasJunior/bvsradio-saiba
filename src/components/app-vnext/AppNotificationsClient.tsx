@@ -35,7 +35,7 @@ function nativeEventHref(surface: AppSurface, event: NotificationEvent) {
 }
 
 export default function AppNotificationsClient({ surface }: { surface: AppSurface }) {
-  const { token, signedIn, loading: sessionLoading } = useAppSession();
+  const { user, token, signedIn, loading: sessionLoading } = useAppSession();
   const [events, setEvents] = useState<NotificationEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -90,11 +90,11 @@ export default function AppNotificationsClient({ surface }: { surface: AppSurfac
           void fetch("/api/app/participation/notifications", {
             method: "PATCH",
             headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ all: true, seen: true }),
+            body: JSON.stringify({ ids: community.events.map((event: NotificationEvent) => event.notificationId).filter(Boolean), seen: true }),
           }).catch(() => null);
         }
         try {
-          window.localStorage.setItem("bvs_notifications_seen_at", new Date().toISOString());
+          window.localStorage.setItem(`bvs_notifications_seen_at:${user?.id}`, new Date().toISOString());
           window.dispatchEvent(new Event("bvs:notifications-seen"));
         } catch {
           // Legacy seen-state remains a client enhancement for operational notices.
@@ -103,7 +103,7 @@ export default function AppNotificationsClient({ surface }: { surface: AppSurfac
       .finally(() => alive && setLoading(false));
 
     return () => { alive = false; };
-  }, [sessionLoading, surface, token]);
+  }, [sessionLoading, surface, token, user?.id]);
 
   const grouped = useMemo(() => {
     const today = new Date();
@@ -127,7 +127,7 @@ export default function AppNotificationsClient({ surface }: { surface: AppSurfac
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ids: [event.notificationId], read: true }),
-    }).catch(() => null);
+    }).then(response => { if (response.ok) window.dispatchEvent(new Event("bvs:notifications-seen")); }).catch(() => null);
   }
 
   if (sessionLoading || loading) return <div className="mx-auto max-w-4xl px-4 pt-8"><div className="h-44 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;

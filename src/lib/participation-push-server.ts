@@ -7,6 +7,8 @@ import {
   participationRows,
 } from "@/lib/participation-server";
 
+import { notificationEligible, notificationHref, quietNow } from "@/lib/participation-delivery-policy";
+
 type PreferenceRow = { user_id: string; external_community_enabled: boolean };
 type DeviceRow = { user_id: string; device_token: string; platform: "ios" | "android"; app_variant?: string | null };
 type NotificationRow = {
@@ -16,6 +18,8 @@ type NotificationRow = {
   title: string;
   detail: string;
   target_href: string;
+  event_id?: string | null;
+  message_id?: string | null;
   thread_id?: string | null;
   created_at: string;
 };
@@ -43,7 +47,7 @@ export async function queueParticipationPushNotifications(limit = 500) {
   const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const [notifications, devices] = await Promise.all([
     participationRows<NotificationRow>(
-      `participation_notifications?recipient_user_id=in.(${userIds.map(encodeURIComponent).join(",")})&created_at=gte.${encodeURIComponent(since)}&select=id,recipient_user_id,category,title,detail,target_href,thread_id,created_at&order=created_at.desc&limit=${Math.min(2000, Math.max(1, limit))}`,
+      `participation_notifications?recipient_user_id=in.(${userIds.map(encodeURIComponent).join(",")})&created_at=gte.${encodeURIComponent(since)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at&order=created_at.desc&limit=${Math.min(2000, Math.max(1, limit))}`,
     ),
     participationRows<DeviceRow>(
       `app_push_devices?user_id=in.(${userIds.map(encodeURIComponent).join(",")})&enabled=eq.true&select=user_id,device_token,platform,app_variant&limit=3000`,
@@ -83,7 +87,7 @@ function retryAt(attempt: number) {
 async function notificationFor(delivery: DeliveryRow) {
   if (!delivery.notification_id) return null;
   return (await participationRows<NotificationRow>(
-    `participation_notifications?id=eq.${encodeURIComponent(delivery.notification_id)}&select=id,recipient_user_id,category,title,detail,target_href,thread_id,created_at&limit=1`,
+    `participation_notifications?id=eq.${encodeURIComponent(delivery.notification_id)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at&limit=1`,
   ))[0] || null;
 }
 
@@ -95,10 +99,10 @@ export async function deliverParticipationPushQueue(limit = 100) {
   const now = new Date().toISOString();
   await participationPatch(
     `participation_deliveries?channel=eq.push&status=eq.processing&lease_until=lt.${encodeURIComponent(now)}`,
-    { status: "failed", error_class: "lease_expired", last_error: "Delivery lease expired before completion.", updated_at: now },
+    { status: "ambiguous", error_class: "lease_expired", last_error: "Delivery lease expired before completion.", updated_at: now },
   );
   const deliveries = await participationRows<DeliveryRow>(
-    `participation_deliveries?channel=eq.push&status=in.(queued,failed,ambiguous)&attempts=lt.5&scheduled_at=lte.${encodeURIComponent(now)}&select=id,notification_id,pulse_run_id,recipient_user_id,destination_key,app_identity,status,attempts&order=scheduled_at.asc&limit=${Math.min(250, Math.max(1, limit))}`,
+    `participation_deliveries?channel=eq.push&status=in.(queued,failed)&attempts=lt.5&scheduled_at=lte.${encodeURIComponent(now)}&select=id,notification_id,pulse_run_id,recipient_user_id,destination_key,app_identity,status,attempts&order=scheduled_at.asc&limit=${Math.min(250, Math.max(1, limit))}`,
   );
   let sent = 0;
   let failed = 0;
@@ -108,7 +112,7 @@ export async function deliverParticipationPushQueue(limit = 100) {
     const attempt = Number(delivery.attempts || 0) + 1;
     const leaseUntil = new Date(Date.now() + 2 * 60_000).toISOString();
     const claimed = await participationPatch<DeliveryRow>(
-      `participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}&status=in.(queued,failed,ambiguous)&attempts=eq.${delivery.attempts}`,
+      `participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}&status=in.(queued,failed)&attempts=eq.${delivery.attempts}`,
       { status: "processing", attempts: attempt, lease_until: leaseUntil, updated_at: new Date().toISOString() },
     );
     if (!claimed[0]) continue;
@@ -125,11 +129,23 @@ export async function deliverParticipationPushQueue(limit = 100) {
       continue;
     }
 
+    const preferences = await participationRows<{ external_community_enabled: boolean; digest_enabled: boolean; timezone: string; quiet_start: string | null; quiet_end: string | null }>(`participation_preferences?user_id=eq.${encodeURIComponent(delivery.recipient_user_id || "")}&select=external_community_enabled,digest_enabled,timezone,quiet_start,quiet_end&limit=1`);
+    const devices = await participationRows<{ user_id: string }>(`app_push_devices?device_token=eq.${encodeURIComponent(delivery.destination_key)}&user_id=eq.${encodeURIComponent(delivery.recipient_user_id || "")}&enabled=eq.true&select=user_id&limit=1`);
+    const muted = notification.thread_id ? await participationRows(`participation_thread_subscriptions?thread_id=eq.${encodeURIComponent(notification.thread_id)}&user_id=eq.${encodeURIComponent(delivery.recipient_user_id || "")}&muted_at=not.is.null&select=user_id&limit=1`) : [];
+    const pref = preferences[0];
+    if (!pref?.external_community_enabled || (delivery.pulse_run_id && !pref.digest_enabled) || !devices.length || muted.length || !(await notificationEligible(notification, delivery.app_identity?.startsWith("ios:") ? "ios" : "android"))) {
+      await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, { status: "suppressed", lease_until: null, error_class: "no_longer_eligible", updated_at: new Date().toISOString() });
+      continue;
+    }
+    if (quietNow(pref.timezone, pref.quiet_start, pref.quiet_end)) {
+      await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, { status: "queued", attempts: delivery.attempts, lease_until: null, scheduled_at: new Date(Date.now() + 300_000).toISOString() });
+      continue;
+    }
     const [platform = "unknown", appVariant = "vnext"] = String(delivery.app_identity || "unknown:vnext").split(":", 2);
     try {
       const response = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${secret}`, "Idempotency-Key": delivery.id },
         body: JSON.stringify({
           token: delivery.destination_key,
           platform,
@@ -139,7 +155,7 @@ export async function deliverParticipationPushQueue(limit = 100) {
             body: notification.detail,
             category: notification.category,
             threadId: notification.thread_id || null,
-            href: notification.target_href,
+            href: notificationHref(notification.target_href, platform === "ios" ? "ios" : "android"),
           },
         }),
         signal: AbortSignal.timeout(8_000),
@@ -172,7 +188,7 @@ export async function deliverParticipationPushQueue(limit = 100) {
     } catch (error) {
       const terminal = attempt >= 5;
       await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, {
-        status: terminal ? "dead_letter" : "ambiguous",
+        status: "ambiguous",
         error_class: "provider_transport",
         last_error: error instanceof Error ? error.message.slice(0, 500) : "Push provider request failed.",
         lease_until: null,

@@ -7,6 +7,8 @@ import {
   participationRows,
 } from "@/lib/participation-server";
 
+import { notificationEligible } from "@/lib/participation-delivery-policy";
+
 type PreferenceRow = {
   user_id: string;
   external_community_enabled: boolean;
@@ -24,11 +26,16 @@ type PulseRun = {
   recipient_key: string;
   local_date: string;
   state: string;
+  window_start: string;
+  window_end: string;
+  updated_at: string;
 };
 
 type NotificationRow = {
   id: string;
   recipient_user_id: string;
+  thread_id?: string | null;
+  message_id?: string | null;
   event_id?: string | null;
   pulse_run_id?: string | null;
   category: string;
@@ -105,9 +112,14 @@ function tokenKey(token: string) {
 
 async function beginRun(preference: PreferenceRow, localDate: string, now: Date) {
   const existing = await participationRows<PulseRun>(
-    `participation_pulse_runs?run_type=eq.user_digest&recipient_key=eq.${encodeURIComponent(preference.user_id)}&local_date=eq.${encodeURIComponent(localDate)}&select=id,recipient_user_id,recipient_key,local_date,state&limit=1`,
+    `participation_pulse_runs?run_type=eq.user_digest&recipient_key=eq.${encodeURIComponent(preference.user_id)}&local_date=eq.${encodeURIComponent(localDate)}&select=id,recipient_user_id,recipient_key,local_date,state,window_start,window_end,updated_at&limit=1`,
   );
-  if (existing[0]) return null;
+  if (existing[0]) {
+    const previous = existing[0];
+    if (previous.state !== "failed" && !(previous.state === "processing" && Date.parse(previous.updated_at) < now.getTime() - 120_000)) return null;
+    const claimed = await participationPatch<PulseRun>(`participation_pulse_runs?id=eq.${previous.id}&state=eq.${previous.state}&updated_at=eq.${encodeURIComponent(previous.updated_at)}`, { state: "processing", updated_at: now.toISOString() });
+    return claimed[0] ? { ...claimed[0], windowStart: previous.window_start, windowEnd: previous.window_end } : null;
+  }
   const windowEnd = now.toISOString();
   const windowStart = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const rows = await participationInsert<PulseRun>(
@@ -172,9 +184,11 @@ async function runDigest(preference: PreferenceRow, now: Date) {
   const run = await beginRun(preference, clock.date, now);
   if (!run) return { status: "already_ran" as const, notifications: 0 };
   try {
-    const activity = await participationRows<NotificationRow>(
-      `participation_notifications?recipient_user_id=eq.${encodeURIComponent(preference.user_id)}&event_id=not.is.null&created_at=gte.${encodeURIComponent(run.windowStart)}&created_at=lt.${encodeURIComponent(run.windowEnd)}&select=id,recipient_user_id,event_id,pulse_run_id,category,title,detail,target_href,created_at&order=created_at.desc&limit=250`,
+    const candidates = await participationRows<NotificationRow>(
+      `participation_notifications?recipient_user_id=eq.${encodeURIComponent(preference.user_id)}&read_at=is.null&seen_at=is.null&event_id=not.is.null&created_at=gte.${encodeURIComponent(run.windowStart)}&created_at=lt.${encodeURIComponent(run.windowEnd)}&select=id,recipient_user_id,event_id,thread_id,message_id,pulse_run_id,category,title,detail,target_href,created_at&order=created_at.desc&limit=250`,
     );
+    const eligibility = await Promise.all(candidates.map(row => notificationEligible(row)));
+    const activity = candidates.filter((_, index) => eligibility[index]);
     if (!activity.length) {
       await participationPatch<PulseRun>(`participation_pulse_runs?id=eq.${encodeURIComponent(run.id)}`, {
         state: "skipped",
@@ -186,7 +200,7 @@ async function runDigest(preference: PreferenceRow, now: Date) {
     }
 
     const detail = summaryText(activity);
-    const created = await participationInsert<NotificationRow>("participation_notifications", {
+    const created = await participationInsert<NotificationRow>("participation_notifications?on_conflict=recipient_user_id,pulse_run_id", {
       recipient_user_id: preference.user_id,
       event_id: null,
       pulse_run_id: run.id,
@@ -195,9 +209,9 @@ async function runDigest(preference: PreferenceRow, now: Date) {
       detail,
       target_href: "/participation/feed",
       created_at: now.toISOString(),
-    });
+    }, "resolution=ignore-duplicates,return=representation");
     const pulseNotification = created[0] || (await participationRows<NotificationRow>(
-      `participation_notifications?recipient_user_id=eq.${encodeURIComponent(preference.user_id)}&pulse_run_id=eq.${encodeURIComponent(run.id)}&select=id,recipient_user_id,event_id,pulse_run_id,category,title,detail,target_href,created_at&limit=1`,
+      `participation_notifications?recipient_user_id=eq.${encodeURIComponent(preference.user_id)}&pulse_run_id=eq.${encodeURIComponent(run.id)}&select=id,recipient_user_id,event_id,thread_id,message_id,pulse_run_id,category,title,detail,target_href,created_at&limit=1`,
     ))[0];
     if (!pulseNotification) throw new Error("pulse notification persistence failed");
 
@@ -243,9 +257,15 @@ async function runDigest(preference: PreferenceRow, now: Date) {
 }
 
 export async function runParticipationDigests(now = new Date(), limit = 300) {
-  const preferences = await participationRows<PreferenceRow>(
-    `participation_preferences?digest_enabled=eq.true&select=user_id,external_community_enabled,digest_enabled,digest_time,timezone,quiet_start,quiet_end&order=updated_at.asc&limit=${Math.min(1000, Math.max(1, limit))}`,
+  const preferences: PreferenceRow[] = [];
+  for (let offset = 0; ; offset += 500) {
+    const batch = await participationRows<PreferenceRow>(
+    `participation_preferences?digest_enabled=eq.true&select=user_id,external_community_enabled,digest_enabled,digest_time,timezone,quiet_start,quiet_end&order=user_id.asc&limit=500&offset=${offset}`,
   );
+    preferences.push(...batch);
+    if (batch.length < 500) break;
+  }
+  void limit;
   const counts: Record<string, number> = {};
   let notifications = 0;
   let queuedPush = 0;

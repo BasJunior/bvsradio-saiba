@@ -22,9 +22,10 @@ function MarketplaceIcon() {
 }
 
 export default function AppTopBar({ surface }: { surface: AppSurface }) {
-  const { user, avatarUrl, profileDisplayName, profileUsername, loading, refresh } = useAppSession();
+  const { user, token, avatarUrl, profileDisplayName, profileUsername, loading, refresh } = useAppSession();
   const pathname = usePathname();
   const [failedAvatarUrl, setFailedAvatarUrl] = useState("");
+  const [unread, setUnread] = useState(0);
   const mountedPath = useRef(pathname);
   const home = `/app/${surface}`;
   const isLibrary = /^\/app\/(ios|android)\/library(?:\/|$)/.test(pathname);
@@ -41,6 +42,20 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
     mountedPath.current = pathname;
     if (user) void refresh();
   }, [pathname, refresh, user]);
+
+  useEffect(() => {
+    let alive = true;
+    setUnread(0);
+    if (!token) return;
+    const refreshUnread = async () => {
+      const response = await fetch(`/api/app/participation/notifications?surface=${surface}&limit=1`, { headers: {Authorization: `Bearer ${token}`}, cache: "no-store" }).catch(() => null);
+      if (response?.ok && alive) { const result = await response.json(); setUnread(Number(result.unreadCount) || 0); }
+    };
+    void refreshUnread();
+    const timer = window.setInterval(() => void refreshUnread(), 60000);
+    window.addEventListener("bvs:notifications-seen", refreshUnread);
+    return () => { alive = false; window.clearInterval(timer); window.removeEventListener("bvs:notifications-seen", refreshUnread); };
+  }, [token, surface]);
 
   return (
     <header
@@ -75,6 +90,10 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           >
             <MarketplaceIcon />
           </Link>
+          {user ? <Link href={`/app/${surface}/notifications`} className="relative grid h-11 w-11 place-items-center rounded-full text-white/62 hover:bg-white/[.055]" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+            {unread ? <span className="absolute right-0 top-0 rounded-full bg-brand px-1.5 text-[10px] font-bold text-black">{unread > 99 ? "99+" : unread}</span> : null}
+          </Link> : null}
           <HeaderSearch iconOnly surface={surface} />
           {isLibrary ? <AppLibraryViewToggle /> : null}
           {loading ? (

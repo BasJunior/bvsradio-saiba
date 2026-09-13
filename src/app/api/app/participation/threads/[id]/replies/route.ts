@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { requireAppUser } from "@/lib/app-api-auth";
 import {
   blockedPair,
+  participationVisibleThread,
+  participationRequestSurface,
   checkParticipationRateLimit,
   cleanParticipationBody,
   hasParticipationRulesAgreement,
@@ -59,11 +61,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (clientKey.length < 8) return NextResponse.json({ error: "Missing submission key. Retry from the reply box." }, { status: 400 });
   const replyToId = String(payload.replyToId || "").trim() || null;
 
-  const threads = await participationRows<ThreadRow>(
-    `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=eq.published&select=id,thread_type,author_user_id,object_owner_user_id,status&limit=1`,
-  );
-  const thread = threads[0];
-  if (!thread) return NextResponse.json({ error: "Conversation is no longer available." }, { status: 404 });
+  const thread = await participationVisibleThread(threadId, user.id, participationRequestSurface(request));
+  if (!thread || thread.status !== "published") return NextResponse.json({ error: "Conversation is no longer available." }, { status: 404 });
   if (thread.thread_type === "post" && !replyToId) return NextResponse.json({ error: "Choose the post or reply you are answering." }, { status: 400 });
 
   const parents = replyToId
@@ -78,7 +77,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return NextResponse.json({ error: "You cannot interact with this account." }, { status: 403 });
   }
 
-  const requested = [...new Set((payload.mentionUserIds || []).map(String).filter(Boolean))].slice(0, 5);
+  const requested = [...new Set((Array.isArray(payload.mentionUserIds) ? payload.mentionUserIds : []).map(String).filter(Boolean))].slice(0, 5);
   const mentionIds: string[] = [];
   if (requested.length) {
     const publicProfiles = await participationRows<{ id: string }>(

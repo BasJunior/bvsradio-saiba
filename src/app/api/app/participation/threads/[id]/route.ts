@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAppUser } from "@/lib/app-api-auth";
 import {
   blockedPair,
+  participationThreadEligible,
+  participationRequestSurface,
+  resolveParticipationTarget,
   cleanParticipationBody,
   loadParticipationProfiles,
   participationBodyIssue,
@@ -57,12 +60,13 @@ type SummaryRow = {
   viewer_reposted: boolean;
 };
 
-async function loadThread(threadId: string, viewerId: string | null) {
+async function loadThread(threadId: string, viewerId: string | null, surface: import("@/lib/app-surface").AppSurface | null) {
   const threads = await participationRows<ThreadRow>(
     `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=in.(published,locked)&select=id,thread_type,author_user_id,intent,object_kind,object_id,object_title,object_href,object_owner_user_id,attachment_kind,attachment_id,attachment_title,attachment_href,status,created_at,updated_at&limit=1`,
   );
   const thread = threads[0];
-  if (!thread) return null;
+  if (!thread || !await participationThreadEligible(thread, surface)) return null;
+  const attachment = thread.attachment_kind && thread.attachment_id ? await resolveParticipationTarget(thread.attachment_kind, thread.attachment_id, surface) : null;
   const rootOwner = thread.thread_type === "post" ? thread.author_user_id : thread.object_owner_user_id;
   if (viewerId && rootOwner && await blockedPair(viewerId, rootOwner)) return null;
 
@@ -102,12 +106,7 @@ async function loadThread(threadId: string, viewerId: string | null) {
         href: thread.object_href || "#",
         ownerUserId: thread.object_owner_user_id || null,
       } : null,
-      attachment: thread.attachment_kind && thread.attachment_id ? {
-        kind: thread.attachment_kind,
-        id: thread.attachment_id,
-        title: thread.attachment_title || "BVS content",
-        href: thread.attachment_href || "#",
-      } : null,
+      attachment,
     },
     messages: visibleMessages.map((message) => {
       const actor = message.author_user_id ? profileById.get(message.author_user_id) : null;
@@ -156,7 +155,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!participationReady()) return NextResponse.json({ error: "Participation is unavailable." }, { status: 503 });
   const user = await requireAppUser(request);
   const threadId = String((await params).id || "").trim();
-  const payload = threadId ? await loadThread(threadId, user?.id || null) : null;
+  const payload = threadId ? await loadThread(threadId, user?.id || null, participationRequestSurface(request)) : null;
   if (!payload) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   return NextResponse.json(payload, { headers: { "Cache-Control": user ? "private, no-store" : "public, max-age=30, stale-while-revalidate=60" } });
 }

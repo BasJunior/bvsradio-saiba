@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import ParticipationMentionPicker, { type MentionProfile } from "@/components/feed/ParticipationMentionPicker";
 import type { AppSurface } from "@/lib/app-surface";
@@ -56,7 +56,7 @@ export default function ParticipationThreadPanel({
   onSummary,
 }: {
   threadId: string;
-  surface: AppSurface;
+  surface: AppSurface | null;
   enabled: boolean;
   showRoot?: boolean;
   onSummary?: (summary: ThreadPayload["summary"]) => void;
@@ -83,10 +83,13 @@ export default function ParticipationThreadPanel({
     ...(session.token ? { Authorization: `Bearer ${session.token}` } : {}),
   }), [session.token]);
 
+  const summaryCallback = useRef(onSummary);
+  summaryCallback.current = onSummary;
+
   const load = useCallback(async () => {
     if (!enabled || !threadId) return;
     setLoading(true);
-    const response = await fetch(`/api/app/participation/threads/${encodeURIComponent(threadId)}`, {
+    const response = await fetch(`/api/app/participation/threads/${encodeURIComponent(threadId)}${surface ? `?surface=${surface}` : ""}`, {
       headers: authHeaders(), cache: "no-store",
     }).catch(() => null);
     const data = response ? await response.json().catch(() => ({})) as ThreadPayload & { error?: string } : null;
@@ -96,12 +99,23 @@ export default function ParticipationThreadPanel({
     } else {
       setPayload(data);
       setError("");
-      onSummary?.(data.summary);
+      summaryCallback.current?.(data.summary);
     }
     setLoading(false);
-  }, [authHeaders, enabled, onSummary, threadId]);
+  }, [authHeaders, enabled, threadId, surface]);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    setDraft("");
+    setDraftKey(clientKey());
+    setMentions([]);
+    setReplyingTo(null);
+    setEditing(null);
+    setReporting(null);
+    setRulesRequired(false);
+    setRulesAccepted(false);
+  }, [session.user?.id, threadId]);
 
   const root = useMemo(() => payload?.messages.find((message) => message.kind === "root") || null, [payload]);
   const conversation = useMemo(() => payload?.messages.filter((message) => message.kind !== "root") || [], [payload]);
@@ -257,7 +271,12 @@ export default function ParticipationThreadPanel({
         <Link href="/contact" className="ml-auto min-h-9 px-2 py-2 text-white/38 hover:text-white">Support</Link>
       </div>
 
-      {showRoot && root ? renderMessage(root) : null}
+      {showRoot && (payload.thread.object || payload.thread.attachment) ? (
+        <Link href={(payload.thread.object || payload.thread.attachment)!.href} className="block rounded-xl border border-white/10 p-3 text-sm bvs-section-label">
+          {(payload.thread.object || payload.thread.attachment)!.title} →
+        </Link>
+      ) : null}
+      {showRoot && root && payload.thread.type === "post" ? renderMessage(root) : null}
       <div className="space-y-2">{conversation.map(renderMessage)}</div>
       {!conversation.length ? <p className="rounded-xl border border-white/[.06] bg-white/[.015] p-4 text-sm text-white/38">No replies yet. Be the first person to add something useful.</p> : null}
 
@@ -280,7 +299,7 @@ export default function ParticipationThreadPanel({
         {rulesRequired ? <label className="mt-2 flex items-start gap-2 rounded-lg border border-[#929DE0]/20 p-2.5 text-xs leading-5 text-white/60"><input type="checkbox" checked={rulesAccepted} onChange={(event) => setRulesAccepted(event.target.checked)} className="mt-1 accent-[#D4AF37]" /><span>I agree to the current BVS community rules before contributing.</span></label> : null}
         {error ? <p className="mt-2 text-xs text-[#ff9a92]" role="alert">{error}</p> : null}
         <div className="mt-2 flex items-center justify-between gap-2">
-          {!session.signedIn ? <Link href={`/app/${surface}/join`} className="min-h-10 rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-white/65">Sign in</Link> : <span />}
+          {!session.signedIn ? <Link href={surface ? `/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/feed/${threadId}`)}` : `/auth/login?next=${encodeURIComponent(`/feed/${threadId}`)}`} className="min-h-10 rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-white/65">Sign in</Link> : <span />}
           <button type="button" disabled={!session.signedIn || !draft.trim() || sending || payload.thread.status === "locked" || (rulesRequired && !rulesAccepted)} onClick={() => void sendReply()} className="min-h-10 rounded-full bg-brand px-4 text-xs font-bold text-black disabled:opacity-40">{sending ? "Sending…" : "Send"}</button>
         </div>
       </div>

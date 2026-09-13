@@ -28,7 +28,7 @@ export default function FeedParticipation({
   onActivity,
 }: {
   object: BvsObject;
-  surface: AppSurface;
+  surface: AppSurface | null;
   enabled: boolean;
   summary?: ParticipationSummary;
   onActivity?: (key: string, active: boolean) => void;
@@ -104,7 +104,7 @@ export default function FeedParticipation({
     }
     setOpening(true);
     setError("");
-    const path = `/api/app/participation/content/${encodeURIComponent(object.kind)}/${encodeURIComponent(object.id)}?surface=${surface}`;
+    const path = `/api/app/participation/content/${encodeURIComponent(object.kind)}/${encodeURIComponent(object.id)}${surface ? `?surface=${surface}` : ""}`;
     const getResponse = await fetch(path, { headers: authHeaders(), cache: "no-store" }).catch(() => null);
     const current = getResponse ? await getResponse.json().catch(() => ({})) as { threadId?: string | null; error?: string } : {};
     if (getResponse?.ok && current.threadId) {
@@ -161,7 +161,7 @@ export default function FeedParticipation({
           ) : (
             <div className="rounded-xl border border-white/[.07] bg-white/[.02] p-4 text-sm text-white/50">
               <p>No discussion yet.</p>
-              {!session.signedIn ? <Link href={`/app/${surface}/join`} className="mt-3 inline-flex min-h-10 items-center rounded-full bg-brand px-4 text-xs font-bold text-black">Sign in to start one</Link> : null}
+              {!session.signedIn ? <Link href={surface ? `/app/${surface}/join` : `/auth/login?next=${encodeURIComponent("/feed")}`} className="mt-3 inline-flex min-h-10 items-center rounded-full bg-brand px-4 text-xs font-bold text-black">Sign in to start one</Link> : null}
             </div>
           )}
         </div>

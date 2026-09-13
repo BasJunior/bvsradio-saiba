@@ -3,8 +3,7 @@ import { can, editorialIdentity } from "@/lib/editorial-server";
 import {
   loadParticipationProfiles,
   participationEnabled,
-  participationInsert,
-  participationPatch,
+  participationRpc,
   participationReady,
   participationRows,
 } from "@/lib/participation-server";
@@ -91,67 +90,13 @@ export async function PATCH(request: Request) {
   const reason = String(body.reason || "").trim().slice(0, 500);
   if (!reportId || !actions.has(action)) return NextResponse.json({ error: "Invalid moderation action." }, { status: 400 });
   if (action !== "review" && !reason) return NextResponse.json({ error: "Add a moderation reason for the audit log." }, { status: 400 });
-  const report = (await participationRows<ReportRow>(
-    `participation_reports?id=eq.${encodeURIComponent(reportId)}&select=id,reporter_user_id,thread_id,message_id,reported_user_id,reason,details,status,review_owner_user_id,reviewed_at,created_at&limit=1`,
-  ))[0];
-  if (!report) return NextResponse.json({ error: "Report not found." }, { status: 404 });
-  const staffId = identity.user.id;
-  const now = new Date().toISOString();
-
-  if (action === "review") {
-    const updated = await participationPatch<ReportRow>(`participation_reports?id=eq.${encodeURIComponent(report.id)}`, {
-      status: "reviewing", review_owner_user_id: staffId,
+  try {
+    const result = await participationRpc<{ ok: boolean; action: string; reportId: string }>("moderate_participation_report", {
+      p_staff: identity.user.id, p_report: reportId, p_action: action, p_reason: reason,
     });
-    return NextResponse.json({ ok: Boolean(updated[0]), status: "reviewing" });
+    if (!result?.ok) return NextResponse.json({ error: "Moderation was not saved. Please retry." }, { status: 503 });
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json({ error: "Moderation was not saved. Please retry." }, { status: 503 });
   }
-
-  if (action === "hide") {
-    if (report.message_id) await participationPatch(`participation_messages?id=eq.${encodeURIComponent(report.message_id)}`, { status: "hidden", updated_at: now });
-    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "hidden", moderation_reason: reason, updated_at: now });
-  } else if (action === "restore") {
-    if (report.message_id) await participationPatch(`participation_messages?id=eq.${encodeURIComponent(report.message_id)}`, { status: "published", deleted_at: null, updated_at: now });
-    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "published", moderation_reason: null, deleted_at: null, updated_at: now });
-  } else if (action === "lock" && report.thread_id) {
-    await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "locked", moderation_reason: reason, updated_at: now });
-  } else if (action === "unlock" && report.thread_id) {
-    await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "published", moderation_reason: null, updated_at: now });
-  } else if (action === "delete") {
-    if (report.message_id) await participationPatch(`participation_messages?id=eq.${encodeURIComponent(report.message_id)}`, { body: "Removed by BVS moderation.", status: "deleted", deleted_at: now, updated_at: now });
-    else if (report.thread_id) await participationPatch(`participation_threads?id=eq.${encodeURIComponent(report.thread_id)}`, { status: "deleted", moderation_reason: reason, deleted_at: now, updated_at: now });
-  }
-
-  if (action === "resolve_report" || action === "dismiss_report") {
-    await participationPatch(`participation_reports?id=eq.${encodeURIComponent(report.id)}`, {
-      status: action === "resolve_report" ? "resolved" : "dismissed",
-      review_owner_user_id: staffId,
-      reviewed_at: now,
-    });
-  } else {
-    await participationPatch(`participation_reports?id=eq.${encodeURIComponent(report.id)}`, {
-      status: "reviewing", review_owner_user_id: staffId,
-    });
-  }
-
-  const audits = await participationInsert<{ id: string }>("participation_moderation_audit", {
-    staff_user_id: staffId,
-    action,
-    thread_id: report.thread_id || null,
-    message_id: report.message_id || null,
-    report_id: report.id,
-    reason,
-    created_at: now,
-  });
-  const audit = audits[0];
-  if (audit) {
-    await participationInsert("participation_domain_events", {
-      source_key: `moderation:${audit.id}`,
-      event_type: "thread_moderated",
-      actor_user_id: staffId,
-      thread_id: report.thread_id || null,
-      message_id: report.message_id || null,
-      occurred_at: now,
-      payload: { report_id: report.id, action, reported_user_id: report.reported_user_id || null, reason },
-    }, "return=minimal");
-  }
-  return NextResponse.json({ ok: true, action, reportId: report.id });
 }

@@ -13,6 +13,8 @@ const reactionFix = read("supabase-participation-reaction-outbox.sql");
 const pulseInbox = read("supabase-participation-pulse-inbox.sql");
 const securityHardening = read("supabase-participation-security-hardening.sql");
 const performanceHardening = read("supabase-participation-performance-hardening.sql");
+const reviewSecurity = read("supabase-participation-review-security.sql");
+const reviewNotifications = read("supabase-participation-review-notifications.sql");
 const server = read("src/lib/participation-server.ts");
 const notifications = read("src/lib/participation-notifications-server.ts");
 const pulse = read("src/lib/participation-pulse-server.ts");
@@ -22,6 +24,7 @@ const replies = read("src/app/api/app/participation/threads/[id]/replies/route.t
 const moderation = read("src/app/api/admin/participation/moderation/route.ts");
 const editorial = read("src/lib/editorial.ts");
 const cron = read("src/app/api/cron/participation/route.ts");
+const workerOwner = read("src/lib/participation-worker-owner.ts");
 const feed = read("src/components/feed/BvsFeedList.tsx");
 const composer = read("src/components/feed/FeedComposer.tsx");
 const inbox = read("src/components/app-vnext/AppNotificationsClient.tsx");
@@ -84,8 +87,10 @@ assert(push.includes('status: "dead_letter"') || push.includes('"dead_letter"'),
 
 assert(moderation.includes("editorialIdentity") && moderation.includes("moderate_participation"), "moderation API must use trusted Editorial permission checks");
 assert(editorial.includes("moderate_participation"), "Editorial roles must explicitly grant participation moderation");
-assert(moderation.includes("participation_moderation_audit"), "moderation actions must write immutable audit records");
-assert(moderation.includes("thread_moderated"), "moderation actions must emit domain events");
+assert(moderation.includes("moderate_participation_report"), "moderation API must persist actions through a trusted RPC");
+assert(reviewSecurity.includes("participation_moderation_audit"), "moderation actions must write immutable audit records");
+assert(reviewSecurity.includes("thread_moderated"), "moderation actions must emit domain events");
+assert(reviewNotifications.includes("fanout_lease_until"), "outbox recovery must lease in-flight fanout work");
 assert(exists("src/app/admin/editorial/participation/page.tsx"), "staff participation moderation queue must exist inside Editorial");
 assert(!exists("src/app/api/admin/participation/route.ts"), "duplicate broad participation admin endpoint must not remain");
 
@@ -101,8 +106,10 @@ assert(settings.includes("Community inbox"), "user settings must expose particip
 
 assert(cron.includes("CRON_SECRET"), "participation worker must require the Vercel cron secret");
 assert(cron.includes("processParticipationOutbox") && cron.includes("runParticipationDigests") && cron.includes("deliverParticipationPushQueue"), "worker must process outbox, pulse and delivery queue");
-assert(cron.includes("VERCEL_PROJECT_ID") && cron.includes("PARTICIPATION_WORKER_PROJECT_ID"), "participation cron must have one explicit Vercel project owner");
-assert(cron.includes('skipped: "non_worker_project"') && cron.includes("APP_HOST_PREFIX"), "isolated app host cron must safely no-op before touching participation queues");
+assert(workerOwner.includes("PARTICIPATION_WORKER_PROJECT_ID") && workerOwner.includes("VERCEL_PROJECT_ID"), "participation cron must have one explicit Vercel project owner");
+assert(workerOwner.includes('VERCEL_ENV === "production"'), "participation worker must run only in production");
+assert(cron.includes("isParticipationWorkerOwner") && cron.includes('skipped: "non_worker_project"'), "isolated app host cron must safely no-op before touching participation queues");
+assert(!cron.includes("APP_HOST_PREFIX"), "queue ownership must not fall back to a request Host header");
 assert(vercel.includes('"/api/cron/participation"') && vercel.includes('"*/5 * * * *"'), "Vercel must schedule the durable participation worker every five minutes");
 assert(vercel.includes('"ignoreCommand"') && vercel.includes('VERCEL_GIT_COMMIT_REF') && vercel.includes('then exit 1') && vercel.includes('else exit 0'), "Vercel must always build main while ignoring non-main Git deploys so both production hosts stay on the same release SHA");
 

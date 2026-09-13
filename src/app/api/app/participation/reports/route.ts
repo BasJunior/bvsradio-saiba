@@ -4,6 +4,8 @@ import {
   checkParticipationRateLimit,
   cleanParticipationBody,
   participationEnabled,
+  participationVisibleThread,
+  participationRequestSurface,
   participationInsert,
   participationReady,
   participationRows,
@@ -29,6 +31,7 @@ export async function POST(request: Request) {
   if (!threadId || !reasons.has(reason)) return NextResponse.json({ error: "Choose a report reason." }, { status: 400 });
   const details = cleanParticipationBody(body.details, 500) || null;
 
+  if (!await participationVisibleThread(threadId, user.id, participationRequestSurface(request))) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   const threads = await participationRows<ThreadTarget>(
     `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=in.(published,locked)&select=id,author_user_id,object_owner_user_id,status&limit=1`,
   );

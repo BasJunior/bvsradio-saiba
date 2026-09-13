@@ -6,6 +6,7 @@ import {
   participationPatch,
   participationRows,
   userBlockSet,
+  participationThreadEligible,
 } from "@/lib/participation-server";
 
 type DomainEvent = {
@@ -17,9 +18,13 @@ type DomainEvent = {
   occurred_at: string;
   payload?: Record<string, unknown> | null;
   fanout_status: string;
+  fanout_attempts: number;
 };
 
 type ThreadRow = {
+  status: string;
+  object_kind: "track" | "beat" | "release" | null;
+  object_id: string | null;
   id: string;
   thread_type: "post" | "content";
   author_user_id?: string | null;
@@ -28,6 +33,7 @@ type ThreadRow = {
 };
 
 type MessageRow = {
+  status: string;
   id: string;
   author_user_id?: string | null;
   reply_to_id?: string | null;
@@ -69,17 +75,17 @@ function addCandidate(map: Map<string, Candidate>, candidate: Candidate, actorId
 async function eventContext(event: DomainEvent) {
   const thread = event.thread_id
     ? (await participationRows<ThreadRow>(
-      `participation_threads?id=eq.${encodeURIComponent(event.thread_id)}&select=id,thread_type,author_user_id,object_owner_user_id,object_title&limit=1`,
+      `participation_threads?id=eq.${encodeURIComponent(event.thread_id)}&select=id,status,object_kind,object_id,thread_type,author_user_id,object_owner_user_id,object_title&limit=1`,
     ))[0] || null
     : null;
   const message = event.message_id
     ? (await participationRows<MessageRow>(
-      `participation_messages?id=eq.${encodeURIComponent(event.message_id)}&select=id,author_user_id,reply_to_id,body&limit=1`,
+      `participation_messages?id=eq.${encodeURIComponent(event.message_id)}&select=id,status,author_user_id,reply_to_id,body&limit=1`,
     ))[0] || null
     : null;
   const parent = message?.reply_to_id
     ? (await participationRows<MessageRow>(
-      `participation_messages?id=eq.${encodeURIComponent(message.reply_to_id)}&select=id,author_user_id,reply_to_id,body&limit=1`,
+      `participation_messages?id=eq.${encodeURIComponent(message.reply_to_id)}&select=id,status,author_user_id,reply_to_id,body&limit=1`,
     ))[0] || null
     : null;
   const mentions = event.message_id
@@ -92,7 +98,7 @@ async function eventContext(event: DomainEvent) {
 
 async function eligibleCandidates(event: DomainEvent) {
   const { thread, message, parent, mentions } = await eventContext(event);
-  if (!thread || !event.thread_id) return { candidates: [], thread: null, message: null };
+  if (!thread || !event.thread_id || !["published", "locked"].includes(thread.status) || (message && message.status !== "published") || !(await participationThreadEligible(thread))) return { candidates: [], thread: null, message: null };
   const actorId = event.actor_user_id || null;
   const actorProfile = actorId ? (await loadParticipationProfiles([actorId]))[0] : null;
   const actorName = actorProfile?.displayName || "A BVS member";
@@ -182,7 +188,7 @@ async function eligibleCandidates(event: DomainEvent) {
 async function fanoutEvent(event: DomainEvent) {
   const claimed = await participationPatch<DomainEvent>(
     `participation_domain_events?id=eq.${encodeURIComponent(event.id)}&fanout_status=in.(pending,failed)`,
-    { fanout_status: "processing", last_error: null },
+    { fanout_status: "processing", last_error: null, fanout_attempts: (event.fanout_attempts || 0) + 1, fanout_lease_until: new Date(Date.now() + 120_000).toISOString() },
   );
   if (!claimed[0]) return { processed: false, notifications: 0 };
 
@@ -190,7 +196,7 @@ async function fanoutEvent(event: DomainEvent) {
     const { candidates, thread, message } = await eligibleCandidates(event);
     if (!thread || !event.thread_id) {
       await participationPatch<DomainEvent>(`participation_domain_events?id=eq.${encodeURIComponent(event.id)}`, {
-        fanout_status: "complete", processed_at: new Date().toISOString(), fanout_checkpoint: "no-thread",
+        fanout_status: "complete", fanout_lease_until: null, processed_at: new Date().toISOString(), fanout_checkpoint: "no-thread",
       });
       return { processed: true, notifications: 0 };
     }
@@ -241,7 +247,7 @@ async function fanoutEvent(event: DomainEvent) {
     }
 
     await participationPatch<DomainEvent>(`participation_domain_events?id=eq.${encodeURIComponent(event.id)}`, {
-      fanout_status: "complete",
+      fanout_status: "complete", fanout_lease_until: null,
       fanout_checkpoint: `recipients:${notifications.length}`,
       processed_at: new Date().toISOString(),
       last_error: null,
@@ -249,7 +255,7 @@ async function fanoutEvent(event: DomainEvent) {
     return { processed: true, notifications: notifications.length };
   } catch (error) {
     await participationPatch<DomainEvent>(`participation_domain_events?id=eq.${encodeURIComponent(event.id)}`, {
-      fanout_status: "failed",
+      fanout_status: "failed", fanout_lease_until: null,
       last_error: error instanceof Error ? error.message.slice(0, 500) : "notification fanout failed",
     });
     return { processed: false, notifications: 0 };
@@ -257,8 +263,9 @@ async function fanoutEvent(event: DomainEvent) {
 }
 
 export async function processParticipationOutbox(limit = 25) {
+  await participationPatch("participation_domain_events?fanout_status=eq.processing&fanout_lease_until=lt." + encodeURIComponent(new Date().toISOString()), { fanout_status: "failed", fanout_lease_until: null });
   const events = await participationRows<DomainEvent>(
-    `participation_domain_events?fanout_status=in.(pending,failed)&event_type=in.(post_created,message_replied,message_mentioned,thread_liked,thread_reposted)&select=id,event_type,actor_user_id,thread_id,message_id,occurred_at,payload,fanout_status&order=occurred_at.asc&limit=${Math.min(100, Math.max(1, limit))}`,
+    `participation_domain_events?fanout_status=in.(pending,failed)&fanout_attempts=lt.10&event_type=in.(post_created,message_replied,message_mentioned,thread_liked,thread_reposted)&select=id,event_type,actor_user_id,thread_id,message_id,occurred_at,payload,fanout_status,fanout_attempts&order=occurred_at.asc&limit=${Math.min(100, Math.max(1, limit))}`,
   );
   let processed = 0;
   let notifications = 0;

@@ -17,9 +17,11 @@ import NowPlayingSwipeGestures from "@/components/NowPlayingSwipeGestures";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
+import BvsSectionScope from "@/components/layout/BvsSectionScope";
 import "./globals.css";
 import "./light-premium.css";
 import "./app-light-mode.css";
+import "./section-accents.css";
 
 const defaultSiteUrl = "https://bvsradio.com";
 const siteUrl = (() => {
@@ -109,7 +111,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <EditorialCommandCenter />
                   <EditorialWorkBridge />
                   <EditorialWorkspaceNav />
-                  {children}
+                  <BvsSectionScope>{children}</BvsSectionScope>
                 </main>
                 <Footer />
                 <div className="bvs-app-bottom-spacer" aria-hidden="true" />

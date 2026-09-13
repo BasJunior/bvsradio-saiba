@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { requireAppUser } from "@/lib/app-api-auth";
 import { participationEnabled, participationPatch, participationReady, participationRows } from "@/lib/participation-server";
 import { processParticipationOutbox } from "@/lib/participation-notifications-server";
+import { notificationEligible, notificationHref } from "@/lib/participation-delivery-policy";
 import type { AppSurface } from "@/lib/app-surface";
 
 type NotificationRow = {
   id: string;
+  recipient_user_id: string;
+  event_id?: string | null;
   category: "reply" | "mention" | "like" | "repost" | "follow" | "community" | "moderation";
   title: string;
   detail: string;
@@ -22,10 +25,7 @@ function parseSurface(value: string | null): AppSurface | null {
 }
 
 function appHref(row: NotificationRow, surface: AppSurface | null) {
-  const match = row.target_href.match(/^\/participation\/thread\/([^/?#]+)/);
-  if (match && surface) return `/app/${surface}/feed/${encodeURIComponent(match[1])}`;
-  if (match) return `/feed`;
-  return row.target_href;
+  return notificationHref(row.target_href, surface);
 }
 
 function safeCursor(raw: string | null) {
@@ -60,13 +60,17 @@ export async function GET(request: Request) {
     ? `&or=(created_at.lt.${encodeURIComponent(cursor.createdAt)},and(created_at.eq.${encodeURIComponent(cursor.createdAt)},id.lt.${encodeURIComponent(cursor.id)}))`
     : "";
   const rows = await participationRows<NotificationRow>(
-    `participation_notifications?recipient_user_id=eq.${encodeURIComponent(user.id)}${cursorClause}&select=id,category,title,detail,target_href,thread_id,message_id,seen_at,read_at,created_at&order=created_at.desc,id.desc&limit=${limit + 1}`,
+    `participation_notifications?recipient_user_id=eq.${encodeURIComponent(user.id)}${cursorClause}&select=id,recipient_user_id,event_id,category,title,detail,target_href,thread_id,message_id,seen_at,read_at,created_at&order=created_at.desc,id.desc&limit=${limit + 1}`,
   );
-  const page = rows.slice(0, limit);
-  const unread = await participationRows<{ id: string }>(
-    `participation_notifications?recipient_user_id=eq.${encodeURIComponent(user.id)}&read_at=is.null&select=id&limit=500`,
+  const rawPage = rows.slice(0, limit);
+  const eligible = await Promise.all(rawPage.map(row => notificationEligible(row, surface)));
+  const page = rawPage.filter((_, index) => eligible[index]);
+  const unread = await participationRows<NotificationRow>(
+    `participation_notifications?recipient_user_id=eq.${encodeURIComponent(user.id)}&read_at=is.null&select=id,recipient_user_id,event_id,thread_id,message_id&limit=500`,
   );
+  const unreadEligible = await Promise.all(unread.map(row => notificationEligible(row, surface)));
   return NextResponse.json({
+    cutoff: new Date().toISOString(),
     enabled: true,
     events: page.map((row) => ({
       id: `participation-${row.id}`,
@@ -81,9 +85,9 @@ export async function GET(request: Request) {
       threadId: row.thread_id || null,
       messageId: row.message_id || null,
     })),
-    unreadCount: unread.length,
+    unreadCount: unreadEligible.filter(Boolean).length,
     unreadCountCapped: unread.length >= 500,
-    nextCursor: rows.length > limit ? cursorFor(page[page.length - 1]) : null,
+    nextCursor: rows.length > limit ? cursorFor(rawPage[rawPage.length - 1]) : null,
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
@@ -92,7 +96,7 @@ export async function PATCH(request: Request) {
   if (!participationReady()) return NextResponse.json({ error: "Participation inbox is unavailable." }, { status: 503 });
   const user = await requireAppUser(request);
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
-  const body = await request.json().catch(() => ({})) as { ids?: string[]; all?: boolean; seen?: boolean; read?: boolean };
+  const body = await request.json().catch(() => ({})) as { ids?: string[]; all?: boolean; seen?: boolean; read?: boolean; cutoff?: string };
   const ids = [...new Set((body.ids || []).map((value) => String(value).replace(/^participation-/, "")).filter(Boolean))].slice(0, 100);
   if (!body.all && !ids.length) return NextResponse.json({ error: "Choose notifications to update." }, { status: 400 });
   if (body.seen !== true && body.read !== true) return NextResponse.json({ error: "Choose seen or read state." }, { status: 400 });
@@ -103,7 +107,8 @@ export async function PATCH(request: Request) {
     patch.seen_at = now;
     patch.read_at = now;
   }
-  const filter = body.all ? "" : `&id=in.(${ids.map(encodeURIComponent).join(",")})`;
+  if (body.all && (!body.cutoff || Number.isNaN(Date.parse(body.cutoff)) || Date.parse(body.cutoff) > Date.now())) return NextResponse.json({ error: "A valid inbox cutoff is required." }, { status: 400 });
+  const filter = body.all ? `&created_at=lte.${encodeURIComponent(body.cutoff!)}` : `&id=in.(${ids.map(encodeURIComponent).join(",")})`;
   const updated = await participationPatch<NotificationRow>(
     `participation_notifications?recipient_user_id=eq.${encodeURIComponent(user.id)}${filter}`,
     patch,
