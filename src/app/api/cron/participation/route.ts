@@ -28,10 +28,13 @@ function workerOwner(request: Request) {
 }
 
 export async function GET(request: Request) {
-  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  // The isolated App Store project shares vercel.json with public web, so Vercel
+  // invokes this cron there too. Skip it before auth so that project does not need
+  // CRON_SECRET at all; only the canonical worker project owns the secret/queues.
   if (!workerOwner(request)) {
     return NextResponse.json({ ok: true, enabled: participationEnabled(), skipped: "non_worker_project" }, { headers: { "Cache-Control": "no-store" } });
   }
+  if (!authorized(request)) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   if (!participationEnabled()) return NextResponse.json({ ok: true, enabled: false, skipped: "feature_disabled" });
   if (!participationReady()) return NextResponse.json({ error: "Participation storage is unavailable." }, { status: 503 });
 
