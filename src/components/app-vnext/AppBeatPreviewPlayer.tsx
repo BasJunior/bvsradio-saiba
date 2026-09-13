@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
+import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
 import { useStationPlayer } from "@/components/StationPlayer";
 
 export const GUEST_BEAT_PREVIEW_SECONDS = 45;
@@ -76,6 +77,7 @@ export default function AppBeatPreviewPlayer({
 
   const previewTrack = useMemo(
     () => ({
+      id: beatId ? `beat-${beatId}` : undefined,
       title,
       artist,
       src: preview,
@@ -83,7 +85,7 @@ export default function AppBeatPreviewPlayer({
       project: memberListening ? "BeatStore member preview" : "BeatStore preview",
       genre,
     }),
-    [artist, artwork, genre, memberListening, preview, title],
+    [artist, artwork, beatId, genre, memberListening, preview, title],
   );
 
   const togglePlayback = () => {
@@ -135,6 +137,8 @@ export default function AppBeatPreviewPlayer({
           />
         </div>
       </div>
+
+      {beatId ? <div className="mt-3 flex flex-wrap items-center gap-2"><AppPlaylistPicker beatId={beatId} compact /></div> : null}
 
       {!sessionLoading && beatId && surface && !signedIn ? (
         <div className="mt-3 rounded-xl border border-brand/20 bg-brand/[.055] p-3">
