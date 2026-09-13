@@ -12,6 +12,7 @@ function formatTime(seconds: number) {
 }
 
 type ReviewTarget = { kind: 'track' | 'beat' | 'release-track'; id: string }
+type ReviewAudioSource = 'full' | 'master' | 'preview'
 
 function reviewTarget(previewId: string): ReviewTarget | null {
   const parts = String(previewId || '').split(':').filter(Boolean)
@@ -29,9 +30,10 @@ function reviewTarget(previewId: string): ReviewTarget | null {
  * Canonical Editorial review-audio surface.
  *
  * Known Editorial objects resolve their audio again through the authenticated
- * review-audio endpoint at play time. That makes the server authoritative for
- * full/master access and prevents a public BeatStore preview from being used as
- * an Editorial fallback. Playback itself stays in the persistent BVS player.
+ * review-audio endpoint at play time. The server stays authoritative for private
+ * media access. Beat masters are preferred; when only the producer's uploaded
+ * preview exists, Editorial may review it with an explicit preview-only label.
+ * Playback itself stays in the persistent BVS player.
  */
 export default function EditorialConnectedPreview({
   previewId,
@@ -55,37 +57,45 @@ export default function EditorialConnectedPreview({
   const player = useStationPlayer()
   const target = useMemo(() => reviewTarget(previewId), [previewId])
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null)
+  const [resolvedAudioSource, setResolvedAudioSource] = useState<ReviewAudioSource | null>(null)
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState('')
 
   useEffect(() => {
     setResolvedSrc(null)
+    setResolvedAudioSource(null)
     setResolveError('')
     setResolving(false)
   }, [previewId])
 
-  // For recognized Editorial objects, never trust a caller-provided preview as
-  // the playable source. Unknown legacy objects may still use an already-signed
+  // For recognized Editorial objects, never trust a caller-provided URL as the
+  // playable source. Unknown legacy objects may still use an already-signed
   // source supplied by their authenticated Editorial API.
   const playableSrc = target ? resolvedSrc : (src || null)
-  const active = Boolean(playableSrc) && player.current?.src === playableSrc && player.playingFrom === project
+  const playbackProject = target?.kind === 'beat' && resolvedAudioSource === 'preview'
+    ? 'Editorial · uploaded preview'
+    : project
+  const active = Boolean(playableSrc) && player.current?.src === playableSrc && player.playingFrom === playbackProject
   const elapsed = active ? player.elapsed : 0
   const duration = active ? player.duration : 0
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0
 
-  const playSource = (audioSrc: string) => {
+  const playSource = (audioSrc: string, audioSource: ReviewAudioSource | null = resolvedAudioSource) => {
+    const sourceProject = target?.kind === 'beat' && audioSource === 'preview'
+      ? 'Editorial · uploaded preview'
+      : project
     player.playNow({
       id: target?.id || previewId,
       title,
       artist,
       src: audioSrc,
       artwork: artwork || undefined,
-      project,
+      project: sourceProject,
       genre,
       kind: target?.kind === 'beat' ? 'beat' : 'track',
       isDownloadable: false,
       licenceType: 'not_for_sale',
-    }, { from: project, related: [], review: true })
+    }, { from: sourceProject, related: [], review: true })
   }
 
   const resolveAndPlay = async () => {
@@ -109,12 +119,18 @@ export default function EditorialConnectedPreview({
         headers: { Authorization: `Bearer ${token}` },
         cache: 'no-store',
       })
-      const body = await response.json().catch(() => ({})) as { audioUrl?: string; error?: string }
-      if (!response.ok || !body.audioUrl) throw new Error(body.error || 'Full submission audio is unavailable.')
+      const body = await response.json().catch(() => ({})) as {
+        audioUrl?: string
+        audioSource?: ReviewAudioSource
+        error?: string
+      }
+      if (!response.ok || !body.audioUrl) throw new Error(body.error || 'Submission audio is unavailable.')
+      const audioSource = body.audioSource || (target.kind === 'beat' ? 'master' : 'full')
       setResolvedSrc(body.audioUrl)
-      playSource(body.audioUrl)
+      setResolvedAudioSource(audioSource)
+      playSource(body.audioUrl, audioSource)
     } catch (error) {
-      setResolveError(error instanceof Error ? error.message : 'Full submission audio is unavailable.')
+      setResolveError(error instanceof Error ? error.message : 'Submission audio is unavailable.')
     } finally {
       setResolving(false)
     }
@@ -129,7 +145,7 @@ export default function EditorialConnectedPreview({
   }
 
   if (!target && !src) {
-    return <div className="rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-text-secondary">Full submission audio is not available.</div>
+    return <div className="rounded-xl border border-dashed border-white/10 px-3 py-2 text-xs text-text-secondary">Submission audio is not available.</div>
   }
 
   return (
@@ -137,6 +153,7 @@ export default function EditorialConnectedPreview({
       <div
         data-editorial-connected-preview={previewId}
         data-editorial-review-audio={previewId}
+        data-editorial-audio-source={resolvedAudioSource || undefined}
         className={`flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/[.055] ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
       >
         <button
@@ -144,7 +161,7 @@ export default function EditorialConnectedPreview({
           onClick={toggle}
           disabled={resolving}
           className={`${compact ? 'h-9 w-9' : 'h-10 w-10'} grid shrink-0 place-items-center rounded-full bg-white text-sm font-black text-black disabled:opacity-60`}
-          aria-label={`${active && player.isPlaying ? 'Pause' : 'Play full audio'} ${title}`}
+          aria-label={`${active && player.isPlaying ? 'Pause' : 'Play review audio'} ${title}`}
         >
           {resolving ? '…' : active && player.isPlaying ? 'Ⅱ' : '▶'}
         </button>
@@ -157,10 +174,15 @@ export default function EditorialConnectedPreview({
           disabled={!active || duration <= 0}
           onChange={(event) => player.seek(Number(event.target.value) / 1000)}
           className="min-w-20 flex-1 accent-brand disabled:opacity-45"
-          aria-label={`Seek full audio for ${title}`}
+          aria-label={`Seek review audio for ${title}`}
         />
         <span className="w-10 shrink-0 text-[11px] tabular-nums text-text-secondary">{duration > 0 ? `-${formatTime(Math.max(0, duration - elapsed))}` : '0:00'}</span>
       </div>
+      {target?.kind === 'beat' && resolvedAudioSource === 'preview' ? (
+        <p className="mt-1 text-[11px] text-amber-200" data-editorial-preview-fallback>
+          Playing the producer&apos;s uploaded preview — a full master is not attached.
+        </p>
+      ) : null}
       {resolveError ? <p className="mt-1 text-[11px] text-amber-200">{resolveError}</p> : null}
     </div>
   )
