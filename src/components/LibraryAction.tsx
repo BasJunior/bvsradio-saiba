@@ -34,6 +34,9 @@ export default function LibraryAction({ item, section = 'favourites', compact = 
     {section === 'favourites' ? (saved ? '♥ ' : '♡ ') : (saved ? '✓ ' : '+ ')}{label}
   </button>
 
-  if (section !== 'favourites' || item.kind !== 'track') return button
-  return <div className="flex flex-wrap items-center gap-2">{button}<PlaylistQuickAdd trackId={item.id} compact={compact} /></div>
+  if (section !== 'favourites' || (item.kind !== 'track' && item.kind !== 'beat')) return button
+  return <div className="flex flex-wrap items-center gap-2">
+    {button}
+    <PlaylistQuickAdd trackId={item.kind === 'track' ? item.id : undefined} beatId={item.kind === 'beat' ? item.id : undefined} compact={compact} />
+  </div>
 }

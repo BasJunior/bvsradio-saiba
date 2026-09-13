@@ -11,6 +11,7 @@ type Playlist = {
   description?: string | null
   is_public?: boolean
   trackCount?: number
+  itemCount?: number
 }
 
 export default function WebPlaylists({ embedded = false }: { embedded?: boolean }) {
@@ -94,8 +95,8 @@ export default function WebPlaylists({ embedded = false }: { embedded?: boolean 
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Your playlists</p>
-        <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Put the music together your way.</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Build listening sessions from BVS tracks. Public playlists can be discovered in Explore; private playlists stay yours.</p>
+        <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">Put the music and beats together your way.</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Mix BVS tracks and BeatStore beats in one listening order. Public playlists can be discovered in Explore; private playlists stay yours.</p>
       </div>
       {token ? <button type="button" onClick={() => setShowCreate(value => !value)} className="min-h-10 rounded-full border border-brand/30 px-4 text-sm font-semibold text-brand hover:bg-brand/10">{showCreate ? 'Cancel' : '+ New playlist'}</button> : null}
     </div>
@@ -113,10 +114,13 @@ export default function WebPlaylists({ embedded = false }: { embedded?: boolean 
     {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
 
     {token && playlists.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">
-      {playlists.map(playlist => <Link key={playlist.id} href={`/playlist/${playlist.id}`} className="rounded-2xl border border-white/10 bg-black/10 p-4 transition hover:border-brand/30 hover:bg-white/[.03]"><div className="flex items-center justify-between gap-3"><h3 className="truncate font-semibold">{playlist.title}</h3><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">{playlist.is_public ? 'Public' : 'Private'}</span></div>{playlist.description ? <p className="mt-2 line-clamp-2 text-sm text-text-secondary">{playlist.description}</p> : null}<div className="mt-3 flex items-center justify-between text-sm"><span className="text-text-secondary">{playlist.trackCount || 0} track{playlist.trackCount === 1 ? '' : 's'}</span><span className="font-semibold text-brand">Open →</span></div></Link>)}
+      {playlists.map(playlist => {
+        const itemCount = playlist.itemCount ?? playlist.trackCount ?? 0
+        return <Link key={playlist.id} href={`/playlist/${playlist.id}`} className="rounded-2xl border border-white/10 bg-black/10 p-4 transition hover:border-brand/30 hover:bg-white/[.03]"><div className="flex items-center justify-between gap-3"><h3 className="truncate font-semibold">{playlist.title}</h3><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">{playlist.is_public ? 'Public' : 'Private'}</span></div>{playlist.description ? <p className="mt-2 line-clamp-2 text-sm text-text-secondary">{playlist.description}</p> : null}<div className="mt-3 flex items-center justify-between text-sm"><span className="text-text-secondary">{itemCount} item{itemCount === 1 ? '' : 's'}</span><span className="font-semibold text-brand">Open →</span></div></Link>
+      })}
     </div> : null}
 
-    {token && loaded && !playlists.length && !showCreate ? <p className="mt-5 rounded-2xl border border-dashed border-white/15 p-5 text-sm text-text-secondary">Create your first playlist, then add tracks while you discover music on BVS.</p> : null}
+    {token && loaded && !playlists.length && !showCreate ? <p className="mt-5 rounded-2xl border border-dashed border-white/15 p-5 text-sm text-text-secondary">Create your first playlist, then add tracks or beats while you discover BVS.</p> : null}
   </div>
 
   if (embedded) return content
