@@ -101,6 +101,8 @@ assert(settings.includes("Community inbox"), "user settings must expose particip
 
 assert(cron.includes("CRON_SECRET"), "participation worker must require the Vercel cron secret");
 assert(cron.includes("processParticipationOutbox") && cron.includes("runParticipationDigests") && cron.includes("deliverParticipationPushQueue"), "worker must process outbox, pulse and delivery queue");
+assert(cron.includes("VERCEL_PROJECT_ID") && cron.includes("PARTICIPATION_WORKER_PROJECT_ID"), "participation cron must have one explicit Vercel project owner");
+assert(cron.includes('skipped: "non_worker_project"') && cron.includes("APP_HOST_PREFIX"), "isolated app host cron must safely no-op before touching participation queues");
 assert(vercel.includes('"/api/cron/participation"') && vercel.includes('"*/5 * * * *"'), "Vercel must schedule the durable participation worker every five minutes");
 assert(vercel.includes('"ignoreCommand"') && vercel.includes('VERCEL_GIT_COMMIT_REF') && vercel.includes('then exit 1') && vercel.includes('else exit 0'), "Vercel must always build main while ignoring non-main Git deploys so both production hosts stay on the same release SHA");
 
