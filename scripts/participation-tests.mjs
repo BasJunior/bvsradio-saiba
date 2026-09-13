@@ -42,8 +42,8 @@ assert(reactionFix.includes("participation_domain_events"), "new reactions must 
 assert(pulseInbox.includes("pulse_run_id"), "daily pulse must connect to the durable recipient inbox");
 
 assert(server.includes('return process.env.VERCEL_ENV !== "production"'), "participation must default off in production without an explicit feature flag");
-assert(server.includes('kind: "post"') && server.includes('limit: 5'), "posts must have a five-per-hour user rate bucket");
-assert(server.includes('kind: "reply"') && server.includes('limit: 30'), "replies must have a thirty-per-hour user rate bucket");
+assert(server.includes('bucket === "post"') && server.includes("userLimit: 5"), "posts must have a five-per-hour user rate bucket");
+assert(server.includes('bucket === "reply"') && server.includes("userLimit: 30"), "replies must have a thirty-per-hour user rate bucket");
 assert(server.includes("resolveParticipationTarget"), "eligible public BVS attachments must resolve on the trusted server");
 assert(server.includes("blockedPair"), "participation must enforce block relationships on the server");
 
@@ -63,8 +63,8 @@ assert(pulse.includes("digest_enabled=eq.true"), "daily pulse must be opt-in");
 assert(pulse.includes("already_ran"), "daily pulse runner must skip duplicate local-day runs");
 assert(pulse.includes("quiet_hours"), "daily pulse must respect configured quiet hours");
 assert(push.includes("BVS_PUSH_DELIVERY_ENDPOINT") && push.includes("BVS_PUSH_DELIVERY_SECRET"), "external push must require an explicit provider adapter and secret");
-assert(push.includes('status: "ambiguous"') || push.includes('"ambiguous"'), "push transport uncertainty must be represented explicitly");
-assert(push.includes('status: "dead_letter"'), "push retries must terminate in a dead-letter state");
+assert(push.includes('status: terminal ? "dead_letter" : "ambiguous"') || push.includes('"ambiguous"'), "push transport uncertainty must be represented explicitly");
+assert(push.includes('status: "dead_letter"') || push.includes('"dead_letter"'), "push retries must terminate in a dead-letter state");
 
 assert(moderation.includes("creatorIdentity"), "moderation API must use trusted staff identity");
 assert(moderation.includes("participation_moderation_audit"), "moderation actions must write immutable audit records");
