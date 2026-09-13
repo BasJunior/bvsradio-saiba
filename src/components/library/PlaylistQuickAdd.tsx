@@ -7,8 +7,15 @@ import { trackEvent } from '@/lib/analytics'
 
 type Playlist = { id: string; title: string; trackCount?: number }
 
-export default function PlaylistQuickAdd({ trackId, compact = false }: { trackId: string; compact?: boolean }) {
-  const canonicalTrackId = trackId.replace(/^track-/, '')
+type Props = {
+  trackId?: string
+  beatId?: string
+  compact?: boolean
+}
+
+export default function PlaylistQuickAdd({ trackId, beatId, compact = false }: Props) {
+  const canonicalTrackId = trackId?.replace(/^track-/, '') || ''
+  const canonicalBeatId = beatId?.replace(/^beat-/, '') || ''
   const [token, setToken] = useState('')
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [open, setOpen] = useState(false)
@@ -32,27 +39,28 @@ export default function PlaylistQuickAdd({ trackId, compact = false }: { trackId
   }, [])
 
   const add = async (playlist: Playlist) => {
-    if (!token) return
+    if (!token || (!canonicalTrackId && !canonicalBeatId)) return
     setBusy(playlist.id)
     setMessage('')
     const response = await fetch(`/api/playlists/${playlist.id}/tracks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ trackId: canonicalTrackId }),
+      body: JSON.stringify(canonicalBeatId ? { beatId: canonicalBeatId } : { trackId: canonicalTrackId }),
     }).catch(() => null)
     if (response?.ok) {
       setMessage(`Added to ${playlist.title}`)
-      trackEvent('playlist_track_added', { playlist_id: playlist.id, track_id: canonicalTrackId })
+      if (canonicalBeatId) trackEvent('playlist_beat_added', { playlist_id: playlist.id, beat_id: canonicalBeatId })
+      else trackEvent('playlist_track_added', { playlist_id: playlist.id, track_id: canonicalTrackId })
       window.dispatchEvent(new CustomEvent('bvs:playlists-change'))
       setOpen(false)
     } else {
       const payload = await response?.json().catch(() => ({})) as { error?: string } | undefined
-      setMessage(payload?.error || 'Could not add track.')
+      setMessage(payload?.error || `Could not add ${canonicalBeatId ? 'beat' : 'track'}.`)
     }
     setBusy('')
   }
 
-  if (!token) return null
+  if (!token || (!canonicalTrackId && !canonicalBeatId)) return null
 
   return <div className="relative">
     <button type="button" onClick={() => { setOpen(value => !value); setMessage('') }} className={compact ? 'rounded-full border border-white/20 px-3 py-1 text-xs text-text-secondary hover:border-brand hover:text-white' : 'rounded-full border border-white/20 px-5 py-3 text-sm font-semibold hover:border-brand hover:text-brand'}>+ Playlist</button>
