@@ -11,6 +11,8 @@ const schema = read("supabase-participation.sql");
 const contentRootFix = read("supabase-participation-content-root-fix.sql");
 const reactionFix = read("supabase-participation-reaction-outbox.sql");
 const pulseInbox = read("supabase-participation-pulse-inbox.sql");
+const securityHardening = read("supabase-participation-security-hardening.sql");
+const performanceHardening = read("supabase-participation-performance-hardening.sql");
 const server = read("src/lib/participation-server.ts");
 const notifications = read("src/lib/participation-notifications-server.ts");
 const pulse = read("src/lib/participation-pulse-server.ts");
@@ -41,6 +43,19 @@ assert(contentRootFix.includes("content-root:"), "content threads must have a ca
 assert(reactionFix.includes("set_participation_reaction"), "reaction state must have a durable state RPC");
 assert(reactionFix.includes("participation_domain_events"), "new reactions must emit durable outbox events");
 assert(pulseInbox.includes("pulse_run_id"), "daily pulse must connect to the durable recipient inbox");
+
+for (const rpc of [
+  "consume_participation_rate_limit", "create_participation_post", "create_participation_reply",
+  "ensure_participation_content_thread", "set_participation_reaction",
+  "mark_participation_notifications_read", "participation_thread_summary",
+]) {
+  assert(securityHardening.includes(rpc), `security hardening must cover ${rpc}`);
+}
+assert(securityHardening.includes("FROM PUBLIC, anon, authenticated"), "security-definer participation RPCs must be unavailable to direct client roles");
+assert(securityHardening.includes("TO service_role"), "trusted participation RPCs must remain executable by the service role");
+assert(performanceHardening.includes("participation_messages_reply_to_idx"), "thread reply foreign keys must be indexed");
+assert(performanceHardening.includes("participation_deliveries_recipient_idx"), "delivery recipient foreign keys must be indexed");
+assert(performanceHardening.includes("(SELECT auth.uid())"), "account-scoped participation RLS must cache auth identity per statement");
 
 assert(server.includes('return process.env.VERCEL_ENV !== "production"'), "participation must default off in production without an explicit feature flag");
 assert(server.includes('bucket === "post"') && server.includes("userLimit: 5"), "posts must have a five-per-hour user rate bucket");
