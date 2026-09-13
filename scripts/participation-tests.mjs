@@ -18,6 +18,7 @@ const push = read("src/lib/participation-push-server.ts");
 const posts = read("src/app/api/app/participation/posts/route.ts");
 const replies = read("src/app/api/app/participation/threads/[id]/replies/route.ts");
 const moderation = read("src/app/api/admin/participation/moderation/route.ts");
+const editorial = read("src/lib/editorial.ts");
 const cron = read("src/app/api/cron/participation/route.ts");
 const feed = read("src/components/feed/BvsFeedList.tsx");
 const composer = read("src/components/feed/FeedComposer.tsx");
@@ -66,10 +67,12 @@ assert(push.includes("BVS_PUSH_DELIVERY_ENDPOINT") && push.includes("BVS_PUSH_DE
 assert(push.includes('status: terminal ? "dead_letter" : "ambiguous"') || push.includes('"ambiguous"'), "push transport uncertainty must be represented explicitly");
 assert(push.includes('status: "dead_letter"') || push.includes('"dead_letter"'), "push retries must terminate in a dead-letter state");
 
-assert(moderation.includes("creatorIdentity"), "moderation API must use trusted staff identity");
+assert(moderation.includes("editorialIdentity") && moderation.includes("moderate_participation"), "moderation API must use trusted Editorial permission checks");
+assert(editorial.includes("moderate_participation"), "Editorial roles must explicitly grant participation moderation");
 assert(moderation.includes("participation_moderation_audit"), "moderation actions must write immutable audit records");
 assert(moderation.includes("thread_moderated"), "moderation actions must emit domain events");
-assert(exists("src/app/admin/participation/page.tsx"), "staff participation moderation queue must exist");
+assert(exists("src/app/admin/editorial/participation/page.tsx"), "staff participation moderation queue must exist inside Editorial");
+assert(!exists("src/app/api/admin/participation/route.ts"), "duplicate broad participation admin endpoint must not remain");
 
 assert(feed.includes('"focus"') && feed.includes('"following"') && feed.includes('"activity"'), "Feed must expose Focus, Following and My Activity lanes");
 assert(feed.includes("FeedComposer"), "Feed must include the public composer");
