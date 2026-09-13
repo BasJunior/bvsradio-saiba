@@ -12,6 +12,7 @@ export type AppPlaylist = {
   cover_url?: string | null;
   is_public?: boolean;
   trackCount?: number;
+  itemCount?: number;
   updated_at?: string;
 };
 
@@ -67,8 +68,8 @@ export default function AppPlaylists({ surface }: { surface: AppSurface }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Playlists</p>
-          <h2 className="mt-2 text-3xl font-semibold">Put the music together your way.</h2>
-          <p className="mt-2 text-sm leading-6 text-white/38">Playlists start private. Share one only when you choose to make it public.</p>
+          <h2 className="mt-2 text-3xl font-semibold">Put the music and beats together your way.</h2>
+          <p className="mt-2 text-sm leading-6 text-white/38">Mix BVS tracks and BeatStore beats in one order. Playlists start private; share one only when you make it public.</p>
         </div>
         <button type="button" onClick={() => setShowCreate((value) => !value)} className="min-h-10 rounded-full border border-brand/28 px-4 text-sm font-semibold text-brand transition hover:bg-brand/[.08]">{showCreate ? "Cancel" : "+ New playlist"}</button>
       </div>
@@ -88,16 +89,17 @@ export default function AppPlaylists({ surface }: { surface: AppSurface }) {
       {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
 
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
-        {playlists.map((playlist) => (
-          <Link key={playlist.id} href={`/app/${surface}/playlist/${playlist.id}`} className="group rounded-[1.25rem] border border-white/[.07] bg-black/10 p-4 transition hover:border-white/15 hover:bg-white/[.03]">
+        {playlists.map((playlist) => {
+          const itemCount = playlist.itemCount ?? playlist.trackCount ?? 0;
+          return <Link key={playlist.id} href={`/app/${surface}/playlist/${playlist.id}`} className="group rounded-[1.25rem] border border-white/[.07] bg-black/10 p-4 transition hover:border-white/15 hover:bg-white/[.03]">
             <div className="flex items-center justify-between gap-3"><h3 className="truncate font-semibold">{playlist.title}</h3><span className="shrink-0 rounded-full border border-white/[.07] px-2.5 py-1 text-[11px] text-white/34">{playlist.is_public === false ? "Private" : "Public"}</span></div>
             {playlist.description ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/38">{playlist.description}</p> : null}
-            <div className="mt-3 flex items-center justify-between gap-2"><p className="text-sm text-white/34">{playlist.trackCount || 0} track{playlist.trackCount === 1 ? "" : "s"}</p><span className="text-white/48 transition group-hover:text-brand">Open →</span></div>
-          </Link>
-        ))}
+            <div className="mt-3 flex items-center justify-between gap-2"><p className="text-sm text-white/34">{itemCount} item{itemCount === 1 ? "" : "s"}</p><span className="text-white/48 transition group-hover:text-brand">Open →</span></div>
+          </Link>;
+        })}
       </div>
 
-      {!playlists.length ? <p className="mt-5 rounded-[1rem] border border-dashed border-white/10 p-4 text-sm text-white/38">Create a playlist, then add music from Discover.</p> : null}
+      {!playlists.length ? <p className="mt-5 rounded-[1rem] border border-dashed border-white/10 p-4 text-sm text-white/38">Create a playlist, then add music or beats from Discover.</p> : null}
     </section>
   );
 }
