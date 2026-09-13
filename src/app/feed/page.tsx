@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AppSessionProvider } from "@/components/app-vnext/AppSessionProvider";
 import BvsFeedList from "@/components/feed/BvsFeedList";
 import { getBvsFeed } from "@/lib/bvs-feed";
 
@@ -25,8 +26,10 @@ export default async function BvsFeedPage() {
         </p>
       </header>
 
-      {/* Participation stays app-only in Stage 1; the surface is inert while the feature is disabled here. */}
-      <BvsFeedList items={items} surface="ios" />
+      {/* Participation stays app-only in Stage 1; the shared Feed list still requires the app session boundary. */}
+      <AppSessionProvider>
+        <BvsFeedList items={items} surface="ios" />
+      </AppSessionProvider>
     </main>
   );
 }
