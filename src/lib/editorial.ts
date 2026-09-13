@@ -1,10 +1,10 @@
 export type EditorialRole = 'founder' | 'administrator' | 'editor' | 'programmer' | 'credits_editor' | 'commerce_manager'
-export type EditorialPermission = 'approve_submissions' | 'publish_artists' | 'manage_rotation' | 'schedule_programmes' | 'verify_credits' | 'manage_licensing' | 'manage_artist_wallet' | 'manage_staff'
+export type EditorialPermission = 'approve_submissions' | 'publish_artists' | 'manage_rotation' | 'schedule_programmes' | 'verify_credits' | 'manage_licensing' | 'manage_artist_wallet' | 'manage_staff' | 'moderate_participation'
 
 export const rolePermissions: Record<EditorialRole, EditorialPermission[]> = {
-  founder: ['approve_submissions', 'publish_artists', 'manage_rotation', 'schedule_programmes', 'verify_credits', 'manage_licensing', 'manage_artist_wallet', 'manage_staff'],
-  administrator: ['approve_submissions', 'publish_artists', 'manage_rotation', 'schedule_programmes', 'verify_credits', 'manage_licensing', 'manage_artist_wallet', 'manage_staff'],
-  editor: ['approve_submissions', 'publish_artists'],
+  founder: ['approve_submissions', 'publish_artists', 'manage_rotation', 'schedule_programmes', 'verify_credits', 'manage_licensing', 'manage_artist_wallet', 'manage_staff', 'moderate_participation'],
+  administrator: ['approve_submissions', 'publish_artists', 'manage_rotation', 'schedule_programmes', 'verify_credits', 'manage_licensing', 'manage_artist_wallet', 'manage_staff', 'moderate_participation'],
+  editor: ['approve_submissions', 'publish_artists', 'moderate_participation'],
   programmer: ['manage_rotation', 'schedule_programmes'],
   credits_editor: ['verify_credits'],
   commerce_manager: ['manage_licensing', 'manage_artist_wallet'],
