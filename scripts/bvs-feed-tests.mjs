@@ -9,6 +9,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 
 const feed = read("src/lib/bvs-feed.ts");
 const feedList = read("src/components/feed/BvsFeedList.tsx");
+const publicFeedPage = read("src/app/feed/page.tsx");
 const objectCard = read("src/components/flow/BvsObjectCard.tsx");
 const actionSheet = read("src/components/flow/BvsActionSheet.tsx");
 const appHome = read("src/app/app/[surface]/page.tsx");
@@ -19,6 +20,8 @@ const footer = read("src/components/layout/Footer.tsx");
 
 assert(exists("src/app/feed/page.tsx"), "public web BVS Feed route must exist");
 assert(exists("src/app/app/[surface]/feed/page.tsx"), "contained app BVS Feed route must exist");
+assert(publicFeedPage.includes('AppSessionProvider'), "public Feed must provide the session boundary required by shared Feed components");
+assert(publicFeedPage.indexOf('<AppSessionProvider>') < publicFeedPage.indexOf('<BvsFeedList'), "public Feed list must render inside AppSessionProvider");
 assert(feed.includes("in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved"), "feed tracks must be public Editorial-approved rotation only");
 assert(feed.includes("mobile_distribution_clearances!inner(surface,status)"), "app feed tracks must preserve mobile rights-clearance gating");
 assert(feed.includes("status=eq.published&rights_confirmed=eq.true" ) || feed.includes("listPublishedBeats"), "feed beats must come from the published rights-cleared BeatStore source");
@@ -62,4 +65,4 @@ assert(mobileWebNav.includes('grid-cols-5'), "mobile web navigation must make Fe
 assert(mobileWebNav.includes('href={feedHref}'), "mobile web navigation must link BVS Feed");
 assert(footer.includes('href="/feed"'), "desktop web must expose BVS Feed in discovery navigation");
 
-console.log("BVS Feed public-data, all-content hierarchy, social-action, icon and role-aware navigation assertions passed.");
+console.log("BVS Feed public-data, session-boundary, all-content hierarchy, social-action, icon and role-aware navigation assertions passed.");
