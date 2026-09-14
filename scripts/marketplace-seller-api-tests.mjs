@@ -20,6 +20,11 @@ const post=body=>POST(new Request('https://test.invalid/api/marketplace',{method
 const base={action:'save_listing',listingType:'digital_product',category:'sample_pack',title:'Sounds',priceUsd:12,rightsConfirmed:true};
 existing={id,seller_user_id:uid,listing_type:'digital_product',slug:'stable-slug',asset_path:`marketplace/${uid}/product.zip`,artwork_path:null,status:'published'};
 let response=await post({...base,id,submit:true});assert.equal(response.status,200);assert.equal(writes.at(-1).method,'PATCH');assert.equal(writes.at(-1).payload.slug,'stable-slug');assert.equal(writes.at(-1).payload.asset_path,existing.asset_path);assert.equal(writes.at(-1).payload.status,'submitted');assert.match(writes.at(-1).url,new RegExp(`seller_user_id=eq.${uid}`));
+existing={id,seller_user_id:uid,listing_type:'digital_product',slug:'legacy-stable-slug',asset_path:'marketplace/legacy-owner/product.zip',artwork_path:'marketplace/legacy-owner/artwork.png',status:'published'};
+response=await post({...base,id,submit:true});assert.equal(response.status,200,'transferred listing keeps its exact existing files');assert.equal(writes.at(-1).payload.asset_path,existing.asset_path);assert.equal(writes.at(-1).payload.artwork_path,existing.artwork_path);
+response=await post({...base,id,submit:true,assetPath:'marketplace/legacy-owner/other.zip'});assert.equal(response.status,400,'seller cannot switch to a different foreign storage path');
+response=await post({...base,id,submit:true,assetPath:`marketplace/${uid}/replacement.zip`});assert.equal(response.status,200,'seller can replace legacy file with a newly owned upload');
+response=await GET(new Request('https://test.invalid/api/marketplace?scope=mine'));assert.equal(response.status,200);let mine=await response.json();assert.equal(mine.listings[0].artwork_url,'https://signed.invalid/'+existing.artwork_path,'seller desk signs safe artwork already attached to transferred listing');
 response=await post({...base});assert.equal(response.status,409,'new listing respects cap while edit does not consume another slot');
 existing=null;response=await post({...base,id});assert.equal(response.status,404,'cannot edit another seller listing');
 profile=null;response=await post({...base});assert.equal(response.status,200,'draft before editorial profile approval');response=await post({...base,submit:true});assert.equal(response.status,403,'submission requires approved profile');
@@ -27,7 +32,7 @@ profile={user_id:uid,status:'approved'};response=await post({...base,rightsConfi
 response=await post({action:'save_profile',roles:['producer'],avatarPath:`marketplace/${uid}/private-asset-aabb.jpg`});assert.equal(response.status,400,'private assets cannot be made public storefront images');
 response=await post({action:'pause_listing',id});assert.equal(response.status,200);assert.equal(writes.at(-1).payload.status,'archived');
 fail=true;response=await post(base);assert.equal(response.status,503,'database outage fails closed');response=await GET(new Request('https://test.invalid/api/marketplace?scope=mine'));assert.equal(response.status,503,'failed load never presents empty storefront');
-console.log('Marketplace seller API runtime tests passed: edits, ownership, cap, draft/review, image isolation, pause, outage.');
+console.log('Marketplace seller API runtime tests passed: edits, transferred files, ownership, cap, draft/review, image isolation, pause, outage.');
 globalThis.__marketplaceTest.r2Configured=()=>true;
 globalThis.__marketplaceTest.signedR2UploadUrl=async(path,type)=>`https://upload.invalid/${path}?type=${type}`;
 let uploadSource=fs.readFileSync('src/app/api/marketplace/upload/prepare/route.ts','utf8').replace(/import[\s\S]*?from\s+"[^"]+";/g,'');
