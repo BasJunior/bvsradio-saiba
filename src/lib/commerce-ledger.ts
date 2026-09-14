@@ -52,6 +52,10 @@ export type CommerceItem = OrderItem & {
 
 const CURATED_SELLER_USERNAME: Record<string, string> = {
   "mix:3": "BasJunior",
+  "marketplace-service:wolfbridges-studio:record-mix-master-own-beat": "wolf-bridges",
+  "marketplace-service:wolfbridges-studio:record-beat-mix-master": "wolf-bridges",
+  "marketplace-service:wolfbridges-studio:beat-lease-mp3": "wolf-bridges",
+  "marketplace-service:wolfbridges-studio:beat-lease-mp3-wav": "wolf-bridges",
 };
 
 async function resolveSellerUserId(
