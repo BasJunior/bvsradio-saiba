@@ -86,6 +86,11 @@ export function storefrontSlug(value: string) {
     .slice(0, 80)
 }
 
+export function canonicalMarketplaceStorefrontSlug(value: string) {
+  const slug = storefrontSlug(value)
+  return slug === 'wolf-bridges' || slug === 'wolfbridges' ? 'wolfbridges-studio' : slug
+}
+
 export const seededStorefronts: MarketplaceStorefront[] = [
   {
     slug: 'wolfbridges-studio',
@@ -244,7 +249,7 @@ export function liveStorefronts(
         revisionsIncluded: listing.revisions_included,
       }))
     return {
-      slug: storefrontSlug(displayName),
+      slug: canonicalMarketplaceStorefrontSlug(displayName),
       sellerUserId: profile.user_id,
       source: 'creator',
       name: displayName,
