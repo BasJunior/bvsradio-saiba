@@ -129,6 +129,15 @@ export default function AppExperienceStyle() {
 
       /* Native player is a docked shell layer, never a floating inset card. */
       @media (max-width: 767px) {
+        /*
+         * iOS Safari/WKWebView auto-zooms focused form controls below 16px and
+         * can leave the whole app magnified after submit. Keep contained-app
+         * controls at the native no-zoom threshold without disabling pinch zoom.
+         */
+        html[data-bvs-app-shell="true"] :is(input, textarea, select) {
+          font-size: 16px !important;
+        }
+
         html[data-bvs-app-shell="true"] .bvs-persistent-player {
           inset-inline: 0 !important;
           left: 0 !important;
