@@ -89,13 +89,19 @@ export default function Navbar() {
     const seen = async () => {
       const { data } = await createClient().auth.getSession()
       if (!data.session) { if (alive) setNotificationCount(0); return }
-      const operations = await fetch('/api/notifications', { headers: {Authorization: `Bearer ${data.session.access_token}`}, cache:'no-store' }).catch(() => null)
+      const headers = {Authorization: `Bearer ${data.session.access_token}`}
+      const [operations, marketplace, response] = await Promise.all([
+        fetch('/api/notifications', { headers, cache:'no-store' }).catch(() => null),
+        fetch('/api/marketplace/messages/notifications', { headers, cache:'no-store' }).catch(() => null),
+        fetch('/api/app/participation/notifications?limit=1', { headers, cache:'no-store' }).catch(() => null),
+      ])
       const operationPayload = operations?.ok ? await operations.json() : {events:[]}
+      const marketplacePayload = marketplace?.ok ? await marketplace.json() : {events:[]}
       const seenAt = window.localStorage.getItem(`bvs_notifications_seen_at:${data.session.user.id}`) || ''
       const operationalUnread = (operationPayload.events || []).filter((event: {created_at:string}) => !seenAt || event.created_at > seenAt).length
-      const response = await fetch('/api/app/participation/notifications?limit=1', { headers: {Authorization: `Bearer ${data.session.access_token}`}, cache:'no-store' }).catch(() => null)
+      const marketplaceUnread = (marketplacePayload.events || []).filter((event: {created_at:string}) => !seenAt || event.created_at > seenAt).length
       const payload = response?.ok ? await response.json() as { unreadCount?: number } : {}
-      if (alive) setNotificationCount(operationalUnread + (Number(payload.unreadCount) || 0))
+      if (alive) setNotificationCount(operationalUnread + marketplaceUnread + (Number(payload.unreadCount) || 0))
     }
     if (!isSupabaseConfigured()) return
     void seen()
@@ -178,276 +184,93 @@ export default function Navbar() {
   const openNotifications = () => {
     window.localStorage.setItem(`bvs_notifications_seen_at:${user?.id}`, new Date().toISOString())
     setIsMenuOpen(false)
+    router.push('/notifications')
   }
-  const notificationBadge = notificationCount > 0 ? (
-    <Link
-      href="/notifications"
-      onClick={openNotifications}
-      aria-label={`Open ${notificationCount} unread notification${notificationCount === 1 ? '' : 's'}`}
-      className="absolute -right-1 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black"
-    >
-      {notificationCount > 9 ? '9+' : notificationCount}
-    </Link>
-  ) : null
+
+  const appPrimaryLinks = surface ? primaryAppDestinations(surface) : []
+  const flowBack = surface ? readFlowBackTarget(surface) : null
+  const appRootActive = surface ? isAppPrimaryRoot(pathname, surface) : false
 
   if (appChrome && surface) {
-    const destinations = primaryAppDestinations(surface)
-    const showBack = !isAppPrimaryRoot(pathname, surface)
-    const goBack = () => {
-      const route = `${window.location.pathname}${window.location.search}${window.location.hash}`
-      if (readFlowBackTarget(route)) {
-        router.back()
-      } else {
-        router.replace(appHome(surface))
-      }
-    }
     return (
-      <nav ref={appHeaderRef} className="bvs-app-header fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
-        <div className="bvs-app-header-inner mx-auto flex h-16 max-w-5xl items-center justify-between gap-3">
+      <header ref={appHeaderRef} className="bvs-app-header fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-2xl">
+        <div className="mx-auto flex min-h-14 max-w-lg items-center justify-between gap-2 px-3 pt-[env(safe-area-inset-top)]">
           <div className="flex min-w-0 items-center gap-1">
-            {showBack ? (
+            {!appRootActive && flowBack ? (
               <button
                 type="button"
-                onClick={goBack}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-2xl text-brand transition hover:bg-brand/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-                aria-label="Back to previous screen"
+                aria-label={`Back to ${flowBack.label}`}
+                onClick={() => router.push(flowBack.href)}
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-text-secondary hover:bg-white/5 hover:text-white"
               >
-                ‹
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
+                </svg>
               </button>
             ) : null}
-            <Link href={appHome(surface)} replace className="flex min-w-0 items-center gap-2" aria-label="BVS Radio app home">
-              <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-10 w-auto rounded-md object-contain" priority />
+            <Link href={appHome(surface)} className="inline-flex min-w-0 items-center" aria-label="BVS Radio home">
+              <Image src="/branding/bvs-logo.png" width={1032} height={552} alt="BVS Radio" className="h-9 w-auto rounded-md object-contain" priority />
             </Link>
           </div>
-          <div className="hidden items-center gap-5 text-sm font-medium md:flex">
-            {destinations.map((item) => (
-              <Link key={item.id} href={item.href} className={`transition-colors ${pathname === item.href.split('?')[0] ? 'text-brand' : 'text-text-secondary hover:text-brand'}`}>
-                {item.label}
-              </Link>
-            ))}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="hidden md:block"><HeaderSearch /></div>
-            <div className="md:hidden"><HeaderSearch iconOnly surface={surface} /></div>
-            <Link href="/account" className="rounded-full border border-white/15 px-3 py-2 text-xs sm:text-sm">Account</Link>
+          <div className="flex items-center gap-1">
+            <HeaderSearch iconOnly surface={surface} />
+            <button
+              type="button"
+              onClick={openNotifications}
+              className="relative grid h-9 w-9 place-items-center rounded-xl text-text-secondary hover:bg-white/5 hover:text-white"
+              aria-label={`Notifications${notificationCount ? `, ${notificationCount} unread` : ''}`}
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M9.5 21h5" />
+              </svg>
+              {notificationCount > 0 ? <span className="absolute -right-1 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span> : null}
+            </button>
           </div>
         </div>
-      </nav>
+      </header>
     )
   }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center" onClick={() => setIsMenuOpen(false)} aria-label="BVS Radio home">
-          <Image
-            src="/branding/bvs-logo.png"
-            alt="BVS Radio"
-            width={1032}
-            height={552}
-            className="h-11 w-auto rounded-md object-contain"
-            priority
-          />
+        <Link href="/" className="flex items-center" aria-label="BVS Radio home">
+          <Image src="/branding/bvs-logo.png" width={1032} height={552} alt="BVS Radio" className="h-11 w-auto rounded-md object-contain" priority />
         </Link>
 
-        {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-7 text-sm font-medium tracking-wide">
-          {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="text-text-secondary hover:text-brand transition-colors">
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => <Link key={link.href} href={link.href} className="text-text-secondary hover:text-brand transition-colors">{link.label}</Link>)}
         </div>
 
         <div className="hidden md:flex items-center gap-2">
           <HeaderSearch />
-          <Link
-            href="/checkout"
-            aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
-            className="relative px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors"
-          >
-            Cart
-            {cartCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">
-                {cartCount > 9 ? '9+' : cartCount}
-              </span>
-            )}
-          </Link>
+          <Link aria-label="Cart" className="relative px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors" href="/checkout">Cart{cartCount > 0 ? <span className="ml-1 inline-flex min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{cartCount > 9 ? '9+' : cartCount}</span> : null}</Link>
           {user ? (
             <>
-              {showCreator && (
-                <span className="relative">
-                  <Link
-                    href="/creator/studio"
-                    data-bvs-web-studio="desktop"
-                    aria-current={studioActive ? 'page' : undefined}
-                    className={`inline-flex min-h-10 items-center rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors ${studioActive ? 'border-brand bg-brand text-black' : 'border-brand/35 bg-brand/10 text-brand hover:border-brand/55 hover:bg-brand/15'}`}
-                  >
-                    Studio
-                  </Link>
-                  {!showEditorial && notificationBadge}
-                </span>
-              )}
-              {showEditorial && <span className="relative"><Link href="/editorial" className="block px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>{notificationBadge}</span>}
-              {premiumBadge && (
-                <Link
-                  href="/artist/premium"
-                  title={premiumBadge}
-                  className="max-w-[14rem] truncate rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-brand hover:bg-brand/20"
-                >
-                  {premiumBadge}
-                </Link>
-              )}
-              <span className="relative"><Link href="/account" className="block px-2.5 py-2 text-sm text-text-primary hover:text-brand transition-colors">Account</Link>{!showCreator && !showEditorial && notificationBadge}</span>
-              <button
-                type="button"
-                onClick={signOut}
-                className="ml-1 px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors"
-                title={user.email || 'Sign out'}
-              >
-                Sign out
-              </button>
+              {showCreator ? <Link className={`px-3 py-2 text-sm transition-colors ${studioActive ? 'text-brand' : 'text-text-primary hover:text-brand'}`} href="/creator/studio">Studio</Link> : null}
+              {showEditorial ? <Link className="px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors" href="/editorial">Editorial</Link> : null}
+              <button type="button" onClick={openNotifications} className="relative px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors" aria-label={`Open ${notificationCount} unread notification${notificationCount === 1 ? '' : 's'}`}>Notifications{notificationCount > 0 ? <span className="absolute -right-1 -top-0.5 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span> : null}</button>
+              {premiumBadge ? <Link href="/artist/premium" title={premiumBadge} className="rounded-full border border-brand/35 px-3 py-1.5 text-xs font-semibold text-brand">{premiumBadge}</Link> : null}
+              <Link className="px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors" href="/account">Account</Link>
+              <button type="button" onClick={signOut} className="px-3 py-2 text-sm text-text-secondary hover:text-white transition-colors">Sign out</button>
             </>
           ) : (
             <>
-              <Link href="/auth/login" className="px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors">
-                Sign in
-              </Link>
-              <Link href="/auth/signup" className="px-4 py-2 text-sm font-medium bg-brand text-black rounded-full hover:bg-brand-dark transition-colors">
-                Join
-              </Link>
+              <Link className="px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors" href="/auth/login">Sign in</Link>
+              <Link className="px-4 py-2 text-sm font-medium bg-brand text-black rounded-full hover:bg-brand-dark transition-colors" href="/auth/signup">Join</Link>
             </>
           )}
         </div>
 
-        {/* Mobile: keep creator Studio / Join one tap away (not only inside the drawer) */}
         <div className="flex items-center gap-1.5 md:hidden">
-          {user && showCreator && (
-            <Link
-              href="/creator/studio"
-              data-bvs-web-studio="mobile"
-              aria-current={studioActive ? 'page' : undefined}
-              className={`inline-flex h-9 items-center rounded-full border px-3 text-xs font-semibold transition-colors ${studioActive ? 'border-brand bg-brand text-black' : 'border-brand/35 bg-brand/10 text-brand active:bg-brand/20'}`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Studio
-            </Link>
-          )}
-          <Link
-            href="/checkout"
-            aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition hover:bg-white/5 hover:text-brand"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l3-8H6.4M7 13 5.4 5M7 13l-1.2 6h12.4M10 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
-            </svg>
-            {cartCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold leading-none text-black">
-                {cartCount > 9 ? '9+' : cartCount}
-              </span>
-            )}
-          </Link>
-          {!user && (
-            <Link
-              href="/auth/signup"
-              className="rounded-full bg-brand px-3.5 py-1.5 text-xs font-semibold tracking-wide text-black shadow-[0_0_0_1px_rgba(0,0,0,0.08)] transition hover:bg-brand-dark active:scale-[0.98]"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Join
-            </Link>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="rounded-lg p-2 text-text-secondary transition hover:bg-white/5 hover:text-brand"
-            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={isMenuOpen}
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              {isMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
+          <Link aria-label="Cart" className="relative flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition hover:bg-white/5 hover:text-brand" href="/checkout"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M3 3h2l.4 2M7 13h10l3-8H6.4M7 13 5.4 5M7 13l-1.2 6h12.4M10 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" /></svg>{cartCount > 0 ? <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{cartCount > 9 ? '9+' : cartCount}</span> : null}</Link>
+          {user ? <button type="button" onClick={openNotifications} className="relative flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition hover:bg-white/5 hover:text-brand" aria-label={`Notifications${notificationCount ? `, ${notificationCount} unread` : ''}`}><svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M9.5 21h5" /></svg>{notificationCount > 0 ? <span className="absolute -right-1 -top-1 flex min-h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[10px] font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span> : null}</button> : null}
+          {!user ? <Link className="rounded-full bg-brand px-3.5 py-1.5 text-xs font-semibold tracking-wide text-black shadow-[0_0_0_1px_rgba(0,0,0,0.08)] transition hover:bg-brand-dark active:scale-[0.98]" href="/auth/signup">Join</Link> : null}
+          <button type="button" onClick={() => setIsMenuOpen(!isMenuOpen)} className="rounded-lg p-2 text-text-secondary transition hover:bg-white/5 hover:text-brand" aria-label="Open menu" aria-expanded={isMenuOpen}><svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMenuOpen ? 'M6 18 18 6M6 6l12 12' : 'M4 6h16M4 12h16M4 18h16'} /></svg></button>
         </div>
       </div>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-white/10 bg-bg-primary/95 pb-[calc(7rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden">
-          <div className="px-4 py-4 space-y-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="block py-2.5 text-text-secondary hover:text-brand transition-colors"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="pt-2">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">BVS Services</div>
-              {serviceLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="block py-2 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
-                  <span className="block">{link.label}</span>
-                  <span className="block text-xs text-text-secondary/70">{link.detail}</span>
-                </Link>
-              ))}
-            </div>
-            <div className="pt-2">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">For Artists</div>
-              {artistLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="block py-2 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-            <Link href="/checkout" className="flex items-center justify-between py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
-              <span>Cart</span>
-              {cartCount > 0 && (
-                <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{cartCount > 9 ? '9+' : cartCount}</span>
-              )}
-            </Link>
-            <div className="pt-3 border-t border-white/10 flex flex-col gap-2">
-              {user ? (
-                <>
-                  <p className="py-1 text-sm text-text-secondary truncate">{user.email}</p>
-                  {premiumBadge && (
-                    <Link
-                      href="/artist/premium"
-                      className="block rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-sm font-semibold text-brand"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      {premiumBadge}
-                    </Link>
-                  )}
-                  <Link href="/account" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Account Centre</span>{!showCreator && !showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
-                  {showCreator && <Link href="/creator/studio" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Creator studio</span>{!showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
-                  {showEditorial && <Link href="/editorial" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Editorial dashboard</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
-                  {showEditorial && <Link href="/admin/creator-workflows" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Writing &amp; research review</Link>}
-                  <Link href="/notifications" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={openNotifications}><span>Notifications</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
-                  <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
-                    Sign in
-                  </Link>
-                  <Link href="/auth/signup" className="py-2.5 text-center bg-brand text-black font-medium rounded-full" onClick={() => setIsMenuOpen(false)}>
-                    Join
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {isMenuOpen ? <div className="border-t border-white/10 bg-bg-primary px-4 py-4 md:hidden"><div className="grid gap-1">{navLinks.map(link => <Link onClick={() => setIsMenuOpen(false)} key={link.href} href={link.href} className="rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-white/5 hover:text-brand">{link.label}</Link>)}<div className="my-2 border-t border-white/10" />{serviceLinks.map(link => <Link onClick={() => setIsMenuOpen(false)} key={link.href} href={link.href} className="rounded-lg px-3 py-2.5"><span className="block text-sm text-text-primary">{link.label}</span><span className="block text-xs text-text-secondary">{link.detail}</span></Link>)}{user ? <>{showCreator ? <><div className="my-2 border-t border-white/10" />{artistLinks.map(link => <Link onClick={() => setIsMenuOpen(false)} key={link.href} href={link.href} className="rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-white/5 hover:text-brand">{link.label}</Link>)}</> : null}{showEditorial ? <Link onClick={() => setIsMenuOpen(false)} href="/editorial" className="rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-white/5 hover:text-brand">Editorial</Link> : null}<Link onClick={() => setIsMenuOpen(false)} href="/account" className="rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-white/5 hover:text-brand">Account</Link><button type="button" onClick={signOut} className="rounded-lg px-3 py-2.5 text-left text-sm text-text-secondary hover:bg-white/5 hover:text-white">Sign out</button></> : <><div className="my-2 border-t border-white/10" /><Link onClick={() => setIsMenuOpen(false)} href="/auth/login" className="rounded-lg px-3 py-2.5 text-sm text-text-secondary hover:bg-white/5 hover:text-brand">Sign in</Link><Link onClick={() => setIsMenuOpen(false)} href="/auth/signup" className="mt-1 rounded-lg bg-brand px-3 py-2.5 text-center text-sm font-semibold text-black">Join BVS</Link></>}</div></div> : null}
     </nav>
   )
 }
