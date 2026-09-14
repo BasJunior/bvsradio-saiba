@@ -10,6 +10,7 @@ export default function MarketplaceReview() {
       profiles: Row[];
       listings: Row[];
       serviceOrders: Row[];
+      messages: Row[];
     } | null>(null),
     [error, setError] = useState(""),
     [notes, setNotes] = useState<Record<string, string>>({});
@@ -36,6 +37,7 @@ export default function MarketplaceReview() {
     decision: string,
     extra: Record<string, unknown> = {},
   ) => {
+    setError("");
     const t = await token();
     const r = await fetch("/api/admin/editorial/marketplace", {
       method: "POST",
@@ -56,7 +58,42 @@ export default function MarketplaceReview() {
       setError(p.error);
       return;
     }
+    if (decision === "send_message")
+      setNotes((current) => ({ ...current, [id]: "" }));
     await load();
+  };
+  const thread = (entity: string, id: string) =>
+    (data?.messages || [])
+      .filter(
+        (message) =>
+          String(message.entity_type) === entity && String(message.entity_id) === id,
+      )
+      .slice(-8);
+  const conversation = (entity: string, id: string) => {
+    const messages = thread(entity, id);
+    if (!messages.length) return null;
+    return (
+      <div className="mt-4 space-y-2 rounded-xl border border-white/10 bg-white/[.02] p-3">
+        <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">
+          Conversation
+        </p>
+        {messages.map((message) => (
+          <div key={String(message.id)} className="rounded-lg bg-black/20 p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-text-secondary">
+              <strong className="font-medium text-text-primary">
+                {String(message.author_kind) === "creator" ? "Creator" : "Editorial"}
+              </strong>
+              <time dateTime={String(message.created_at)}>
+                {new Date(String(message.created_at)).toLocaleString()}
+              </time>
+            </div>
+            <p className="mt-2 whitespace-pre-wrap text-text-secondary">
+              {String(message.message || "")}
+            </p>
+          </div>
+        ))}
+      </div>
+    );
   };
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
@@ -163,14 +200,23 @@ export default function MarketplaceReview() {
                     </div>
                   ))}
                 </div>
+                {conversation("profile", id)}
                 <textarea
                   value={notes[id] || ""}
                   onChange={(e) => setNotes({ ...notes, [id]: e.target.value })}
-                  placeholder="Review notes / evidence required"
-                  className="mt-3 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+                  placeholder="Message to creator or review note"
+                  maxLength={2000}
+                  className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
                 />
                 {data.canReview ? (
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      disabled={!notes[id]?.trim()}
+                      onClick={() => void act("profile", id, "send_message")}
+                      className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Send message
+                    </button>
                     <button
                       onClick={() => void act("profile", id, "approve")}
                       className="rounded-full bg-emerald-400 px-4 py-2 text-xs text-black"
@@ -262,7 +308,7 @@ export default function MarketplaceReview() {
                     ${Number(row.price_usd).toFixed(2)} · {String(row.status)}
                   </span>
                 </div>
-                {Boolean(row.artwork_url) && <img src={String(row.artwork_url)} alt={`${String(row.title || 'Listing')} artwork for review`} className="mt-4 h-36 w-36 rounded-xl object-cover" />}
+                {Boolean(row.artwork_url) && <img src={String(row.artwork_url)} alt={`${String(row.title || "Listing")} artwork for review`} className="mt-4 h-36 w-36 rounded-xl object-cover" />}
                 <p className="mt-2 text-sm text-text-secondary">
                   {String(row.listing_type).replaceAll("_", " ")} ·{" "}
                   {String(row.category).replaceAll("_", " ")}
@@ -290,14 +336,23 @@ export default function MarketplaceReview() {
                       ? "present"
                       : "missing"}
                 </p>
+                {conversation("listing", id)}
                 <textarea
                   value={notes[id] || ""}
                   onChange={(e) => setNotes({ ...notes, [id]: e.target.value })}
-                  placeholder="Review notes"
-                  className="mt-3 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
+                  placeholder="Message to creator or review note"
+                  maxLength={2000}
+                  className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
                 />
                 {data.canReview ? (
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      disabled={!notes[id]?.trim()}
+                      onClick={() => void act("listing", id, "send_message")}
+                      className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Send message
+                    </button>
                     <button
                       onClick={() => void act("listing", id, "approve")}
                       className="rounded-full border border-emerald-300 px-4 py-2 text-xs"
