@@ -9,9 +9,35 @@ import {
 import { safeR2Key, signedR2DownloadUrl } from "@/lib/r2-storage";
 
 async function imagePreview(path: unknown, owner: unknown, storefront = false) {
-  if (typeof path !== 'string' || !safeR2Key(path) || !path.startsWith(`marketplace/${owner}/`)) return null;
+  if (typeof path !== "string" || !safeR2Key(path) || !path.startsWith(`marketplace/${owner}/`)) return null;
   if (storefront && !/-storefront_(avatar|banner)-[a-f0-9]+\.(jpg|jpeg|png|webp)$/.test(path)) return null;
-  try { return await signedR2DownloadUrl(path); } catch { return null; }
+  try {
+    return await signedR2DownloadUrl(path);
+  } catch {
+    return null;
+  }
+}
+
+async function sendMarketplaceMessage(input: {
+  sellerUserId: string;
+  entity: "profile" | "listing";
+  entityId: string;
+  authorUserId: string;
+  message: string;
+}) {
+  const response = await fetch(editorialUrl("creator_marketplace_review_messages"), {
+    method: "POST",
+    headers: { ...serviceHeaders, Prefer: "return=minimal" },
+    body: JSON.stringify({
+      seller_user_id: input.sellerUserId,
+      entity_type: input.entity,
+      entity_id: input.entityId,
+      author_user_id: input.authorUserId,
+      author_kind: "editor",
+      message: input.message,
+    }),
+  });
+  return response.ok;
 }
 
 export async function GET(request: Request) {
@@ -21,7 +47,7 @@ export async function GET(request: Request) {
       { error: "Active Editorial staff access is required." },
       { status: 403 },
     );
-  const [profilesResponse, listingsResponse, servicesResponse] =
+  const [profilesResponse, listingsResponse, servicesResponse, messagesResponse] =
     await Promise.all([
       fetch(
         editorialUrl(
@@ -41,29 +67,43 @@ export async function GET(request: Request) {
         ),
         { headers: serviceHeaders, cache: "no-store" },
       ),
+      fetch(
+        editorialUrl(
+          "creator_marketplace_review_messages?select=id,seller_user_id,entity_type,entity_id,author_user_id,author_kind,message,created_at&order=created_at.asc&limit=1000",
+        ),
+        { headers: serviceHeaders, cache: "no-store" },
+      ),
     ]);
   if (!profilesResponse.ok || !listingsResponse.ok || !servicesResponse.ok)
     return NextResponse.json(
       { error: "Creator Marketplace review data is unavailable." },
       { status: 503 },
     );
-  const profiles = await profilesResponse.json() as Array<Record<string, unknown>>;
-  const listings = await listingsResponse.json() as Array<Record<string, unknown>>;
-  const hydratedProfiles = await Promise.all(profiles.map(async profile => {
-    const entries = Array.isArray(profile.portfolio) ? profile.portfolio : [];
-    const [avatar_url, banner_url] = await Promise.all([
-      imagePreview(entries.find(item => item?.kind === 'storefront_avatar')?.path, profile.user_id, true),
-      imagePreview(entries.find(item => item?.kind === 'storefront_banner')?.path, profile.user_id, true),
-    ]);
-    return { ...profile, avatar_url, banner_url };
-  }));
-  const hydratedListings = await Promise.all(listings.map(async listing => ({ ...listing, artwork_url: await imagePreview(listing.artwork_path, listing.seller_user_id) })));
+  const profiles = (await profilesResponse.json()) as Array<Record<string, unknown>>;
+  const listings = (await listingsResponse.json()) as Array<Record<string, unknown>>;
+  const hydratedProfiles = await Promise.all(
+    profiles.map(async (profile) => {
+      const entries = Array.isArray(profile.portfolio) ? profile.portfolio : [];
+      const [avatar_url, banner_url] = await Promise.all([
+        imagePreview(entries.find((item) => item?.kind === "storefront_avatar")?.path, profile.user_id, true),
+        imagePreview(entries.find((item) => item?.kind === "storefront_banner")?.path, profile.user_id, true),
+      ]);
+      return { ...profile, avatar_url, banner_url };
+    }),
+  );
+  const hydratedListings = await Promise.all(
+    listings.map(async (listing) => ({
+      ...listing,
+      artwork_url: await imagePreview(listing.artwork_path, listing.seller_user_id),
+    })),
+  );
   return NextResponse.json({
     role: identity.role,
     canReview: identity.permissions.includes("approve_submissions"),
     profiles: hydratedProfiles,
     listings: hydratedListings,
     serviceOrders: await servicesResponse.json(),
+    messages: messagesResponse.ok ? await messagesResponse.json() : [],
   });
 }
 
@@ -74,10 +114,7 @@ export async function POST(request: Request) {
       { error: "Editorial approval permission is required." },
       { status: 403 },
     );
-  const body = (await request.json().catch(() => ({}))) as Record<
-    string,
-    unknown
-  >;
+  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const entity = String(body.entity || ""),
     id = String(body.id || ""),
     decision = String(body.decision || ""),
@@ -94,14 +131,68 @@ export async function POST(request: Request) {
       "archive",
       "verify_claim",
       "unverify_claim",
+      "send_message",
     ].includes(decision)
   )
     return NextResponse.json(
       { error: "Invalid review action." },
       { status: 400 },
     );
+  if (decision === "send_message" && !notes)
+    return NextResponse.json(
+      { error: "Write a message before sending." },
+      { status: 400 },
+    );
   const now = new Date().toISOString();
+
   if (entity === "profile") {
+    if (decision === "send_message") {
+      const lookup = await fetch(
+        editorialUrl(
+          `creator_marketplace_profiles?user_id=eq.${encodeURIComponent(id)}&select=user_id&limit=1`,
+        ),
+        { headers: serviceHeaders, cache: "no-store" },
+      );
+      const profile = lookup.ok ? (await lookup.json())[0] : null;
+      if (!profile)
+        return NextResponse.json({ error: "Creator profile not found." }, { status: 404 });
+      const sent = await sendMarketplaceMessage({
+        sellerUserId: id,
+        entity: "profile",
+        entityId: id,
+        authorUserId: identity.user.id,
+        message: notes,
+      });
+      if (!sent)
+        return NextResponse.json(
+          { error: "Could not send the Marketplace message." },
+          { status: 503 },
+        );
+      await fetch(
+        editorialUrl(
+          `creator_marketplace_profiles?user_id=eq.${encodeURIComponent(id)}`,
+        ),
+        {
+          method: "PATCH",
+          headers: { ...serviceHeaders, Prefer: "return=minimal" },
+          body: JSON.stringify({
+            review_notes: notes,
+            reviewed_by: identity.user.id,
+            reviewed_at: now,
+            updated_at: now,
+          }),
+        },
+      );
+      await audit(
+        identity.user.id,
+        "creator_marketplace_profile_message_sent",
+        "creator_marketplace_profile",
+        id,
+        { notes },
+      );
+      return NextResponse.json({ ok: true });
+    }
+
     if (decision === "verify_claim" || decision === "unverify_claim") {
       const claimIndex = Number(body.claimIndex);
       const lookup = await fetch(
@@ -191,10 +282,11 @@ export async function POST(request: Request) {
     );
     return NextResponse.json({ ok: true });
   }
+
   if (entity === "listing") {
     const lookup = await fetch(
       editorialUrl(
-        `creator_marketplace_listings?id=eq.${encodeURIComponent(id)}&select=id,listing_type,asset_path,licence_summary,rights_confirmed,packages,turnaround_days,revisions_included&limit=1`,
+        `creator_marketplace_listings?id=eq.${encodeURIComponent(id)}&select=id,seller_user_id,listing_type,asset_path,licence_summary,rights_confirmed,packages,turnaround_days,revisions_included&limit=1`,
       ),
       { headers: serviceHeaders, cache: "no-store" },
     );
@@ -204,12 +296,47 @@ export async function POST(request: Request) {
         { error: "Listing not found." },
         { status: 404 },
       );
+
+    if (decision === "send_message") {
+      const sent = await sendMarketplaceMessage({
+        sellerUserId: String(listing.seller_user_id),
+        entity: "listing",
+        entityId: id,
+        authorUserId: identity.user.id,
+        message: notes,
+      });
+      if (!sent)
+        return NextResponse.json(
+          { error: "Could not send the Marketplace message." },
+          { status: 503 },
+        );
+      await fetch(
+        editorialUrl(`creator_marketplace_listings?id=eq.${encodeURIComponent(id)}`),
+        {
+          method: "PATCH",
+          headers: { ...serviceHeaders, Prefer: "return=minimal" },
+          body: JSON.stringify({
+            review_notes: notes,
+            reviewed_by: identity.user.id,
+            reviewed_at: now,
+            updated_at: now,
+          }),
+        },
+      );
+      await audit(
+        identity.user.id,
+        "creator_marketplace_listing_message_sent",
+        "creator_marketplace_listing",
+        id,
+        { notes },
+      );
+      return NextResponse.json({ ok: true });
+    }
+
     if (
       decision === "publish" &&
       listing.listing_type === "digital_product" &&
-      (!listing.asset_path ||
-        !listing.licence_summary ||
-        !listing.rights_confirmed)
+      (!listing.asset_path || !listing.licence_summary || !listing.rights_confirmed)
     )
       return NextResponse.json(
         {
