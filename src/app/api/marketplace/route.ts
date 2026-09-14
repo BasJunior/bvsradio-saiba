@@ -91,7 +91,12 @@ async function getMarketplace(request: Request) {
     const images = storefrontImages(profiles[0]?.portfolio);
     const avatarUrl = ownedPath(images.avatar_path, identity.user.id) ? await signedR2DownloadUrl(images.avatar_path) : null;
     const bannerUrl = ownedPath(images.banner_path, identity.user.id) ? await signedR2DownloadUrl(images.banner_path) : null;
-    const hydratedListings = await Promise.all(listings.map(async listing => ({ ...listing, artwork_url: listing.artwork_path && ownedPath(listing.artwork_path, identity.user.id) ? await signedR2DownloadUrl(listing.artwork_path) : null })));
+    const hydratedListings = await Promise.all(listings.map(async listing => ({
+      ...listing,
+      artwork_url: listing.artwork_path && safeMarketplacePath(listing.artwork_path)
+        ? await signedR2DownloadUrl(listing.artwork_path)
+        : null,
+    })));
     return NextResponse.json({
       profile: profiles[0] ? { ...profiles[0], ...images, avatar_url: avatarUrl, banner_url: bannerUrl } : null,
       seller: identity.profile || null,
@@ -270,14 +275,13 @@ async function postMarketplace(request: Request) {
         { error: "Upload the private product file before submitting." },
         { status: 400 },
       );
-    const paths = [
-      assetPath,
-      artworkPath,
-      previewPath,
-    ].filter((path): path is string => Boolean(path));
-    if (
-      paths.some((path) => !ownedPath(path, identity.user.id))
-    )
+    const paths = [assetPath, artworkPath, previewPath].filter((path): path is string => Boolean(path));
+    const pathPairs = [
+      { path: assetPath, currentPath: current?.asset_path },
+      { path: artworkPath, currentPath: current?.artwork_path },
+      { path: previewPath, currentPath: current?.preview_path },
+    ].filter((entry): entry is { path: string; currentPath: unknown } => Boolean(entry.path));
+    if (pathPairs.some(({ path, currentPath }) => !reusableMarketplacePath(path, currentPath, identity.user.id)))
       return NextResponse.json(
         { error: "Invalid marketplace upload path." },
         { status: 400 },
@@ -299,8 +303,7 @@ async function postMarketplace(request: Request) {
             name: clean((item as Record<string, unknown>)?.name, 100),
             description: clean(
               (item as Record<string, unknown>)?.description,
-              500,
-            ),
+              500),
             priceUsd: Math.max(
               1,
               Number((item as Record<string, unknown>)?.priceUsd) || price,
@@ -363,7 +366,11 @@ async function postMarketplace(request: Request) {
 }
 
 function uuid(value: string) { return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value); }
-function ownedPath(path: string, userId: string) { return path.startsWith(`marketplace/${userId}/`) && !path.includes('..') && !path.includes('?') && !path.includes('#'); }
+function safeMarketplacePath(path: string) { return path.startsWith('marketplace/') && !path.includes('..') && !path.includes('?') && !path.includes('#'); }
+function ownedPath(path: string, userId: string) { return path.startsWith(`marketplace/${userId}/`) && safeMarketplacePath(path); }
+function reusableMarketplacePath(path: string, currentPath: unknown, userId: string) {
+  return ownedPath(path, userId) || (safeMarketplacePath(path) && path === clean(currentPath, 500));
+}
 function storefrontImages(portfolio: unknown) {
   const entries = Array.isArray(portfolio) ? portfolio : [];
   return { avatar_path: clean(entries.find(item => item?.kind === 'storefront_avatar')?.path, 500), banner_path: clean(entries.find(item => item?.kind === 'storefront_banner')?.path, 500) };

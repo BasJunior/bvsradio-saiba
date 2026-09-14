@@ -78,12 +78,17 @@ export type SeededMarketplaceSelection = {
 }
 
 export function storefrontSlug(value: string) {
-  return value
+  const slug = value
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 80)
+  return slug === 'wolf-bridges' || slug === 'wolfbridges' ? 'wolfbridges-studio' : slug
+}
+
+export function canonicalMarketplaceStorefrontSlug(value: string) {
+  return storefrontSlug(value)
 }
 
 export const seededStorefronts: MarketplaceStorefront[] = [
@@ -244,7 +249,7 @@ export function liveStorefronts(
         revisionsIncluded: listing.revisions_included,
       }))
     return {
-      slug: storefrontSlug(displayName),
+      slug: canonicalMarketplaceStorefrontSlug(displayName),
       sellerUserId: profile.user_id,
       source: 'creator',
       name: displayName,
