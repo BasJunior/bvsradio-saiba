@@ -6,6 +6,7 @@ const editorialPage = fs.readFileSync('src/app/editorial/marketplace/page.tsx', 
 const editorialApi = fs.readFileSync('src/app/api/admin/editorial/marketplace/route.ts', 'utf8');
 const notificationsPage = fs.readFileSync('src/app/notifications/page.tsx', 'utf8');
 const marketplaceInbox = fs.readFileSync('src/app/api/marketplace/messages/notifications/route.ts', 'utf8');
+const navbar = fs.readFileSync('src/components/layout/Navbar.tsx', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/20260914164500_creator_marketplace_review_messages.sql', 'utf8');
 
 assert.match(editorialPage, /Send message/, 'Editorial Marketplace needs an explicit send-message action');
@@ -17,6 +18,8 @@ assert.match(editorialApi, /creator_marketplace_listing_message_sent/, 'listing 
 assert.match(notificationsPage, /Reply to Editorial/, 'creators need a reply control in Notifications');
 assert.match(notificationsPage, /\/api\/marketplace\/messages/, 'creator replies must use the authenticated Marketplace message endpoint');
 assert.match(marketplaceInbox, /author_kind=eq\.editor/, 'creator inbox must only surface Editorial-authored Marketplace messages');
+assert.match(navbar, /\/api\/marketplace\/messages\/notifications/, 'notification badge must count new Marketplace Editorial messages');
+assert.match(navbar, /operationalUnread \+ marketplaceUnread/, 'Marketplace messages must contribute to the unread badge total');
 assert.match(migration, /author_kind text not null check \(author_kind in \('editor', 'creator'\)\)/, 'message table must distinguish Editorial and creator authors');
 assert.match(migration, /auth\.uid\(\) = seller_user_id/, 'Marketplace message RLS must scope reads to the seller');
 
@@ -74,4 +77,4 @@ assert.equal(writes.at(-1).entity_type, 'profile');
 response = await post({ entity: 'profile', entityId: uid, message: '   ' });
 assert.equal(response.status, 400, 'blank Marketplace replies must be rejected');
 
-console.log('Marketplace messaging tests passed: explicit Editorial send, seller-scoped creator reply, inbox and RLS contract.');
+console.log('Marketplace messaging tests passed: explicit Editorial send, seller-scoped creator reply, inbox, unread badge and RLS contract.');
