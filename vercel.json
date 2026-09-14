@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"main\" ]; then exit 1; else exit 0; fi",
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"main\" ] || [ \"$VERCEL_GIT_COMMIT_REF\" = \"saiba/marketplace-experience-2026-09-14\" ]; then exit 1; else exit 0; fi",
   "crons": [
     {
       "path": "/api/cron/participation",
