@@ -15,6 +15,11 @@ async function rows(path: string) {
   return Array.isArray(payload) ? payload : [];
 }
 
+function providerStorefrontSlug(value: string) {
+  const slug = storefrontSlug(value);
+  return slug === "wolf-bridges" || slug === "wolfbridges" ? "wolfbridges-studio" : slug;
+}
+
 async function providerFor(request: Request) {
   const identity = await creatorIdentity(request);
   if (!identity?.user?.id) return { error: "Sign in required.", status: 401 as const };
@@ -30,7 +35,7 @@ async function providerFor(request: Request) {
   if (market?.status !== "approved") {
     return { error: "Editorial must approve your Marketplace profile before you publish availability.", status: 403 as const };
   }
-  const providerKey = storefrontSlug(profile?.creator_public_name || profile?.display_name || profile?.username || "");
+  const providerKey = providerStorefrontSlug(profile?.creator_public_name || profile?.display_name || profile?.username || "");
   if (!providerKey) return { error: "Set a public creator name or username before publishing availability.", status: 409 as const };
   return { identity, providerKey, profile };
 }
