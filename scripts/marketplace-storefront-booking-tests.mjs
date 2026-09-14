@@ -17,6 +17,7 @@ const bookingPage = await readFile(new URL("../src/app/marketplace/[slug]/book/p
 const bookingApi = await readFile(new URL("../src/app/api/marketplace/bookings/route.ts", import.meta.url), "utf8");
 const availabilityApi = await readFile(new URL("../src/app/api/marketplace/availability/route.ts", import.meta.url), "utf8");
 const sellerApi = await readFile(new URL("../src/app/api/marketplace/route.ts", import.meta.url), "utf8");
+const commerceLedger = await readFile(new URL("../src/lib/commerce-ledger.ts", import.meta.url), "utf8");
 const availabilityDesk = await readFile(new URL("../src/components/MarketplaceAvailabilityDesk.tsx", import.meta.url), "utf8");
 const providerMap = await readFile(new URL("../src/components/MarketplaceProviderMap.tsx", import.meta.url), "utf8");
 const shop = await readFile(new URL("../src/app/shop/page.tsx", import.meta.url), "utf8");
@@ -74,6 +75,8 @@ assert.match(availabilityApi, /p_owner_user_id: provider\.identity\.user\.id/, "
 assert.match(availabilityApi, /action === "respond_booking"/, "Provider API must support booking responses");
 assert.match(sellerApi, /reusableMarketplacePath\(path, currentPath, identity\.user\.id\)/, "Transferred listing files may only be grandfathered when the stored path is unchanged");
 assert.match(sellerApi, /safeMarketplacePath\(listing\.artwork_path\)/, "Seller desk may preview a safe transferred artwork path after ownership transfer");
+assert.match(commerceLedger, /marketplace-service:wolfbridges-studio:record-mix-master-own-beat[\s\S]*?wolf-bridges/, "Wolf seeded studio checkout must resolve Wolf as seller");
+assert.match(commerceLedger, /marketplace-service:wolfbridges-studio:beat-lease-mp3-wav[\s\S]*?wolf-bridges/, "Wolf seeded beat lease checkout must resolve Wolf as seller");
 assert.match(availabilityDesk, /Confirm booking/, "Provider desk must expose booking confirmation");
 assert.match(availabilityDesk, /Decline/, "Provider desk must expose booking decline");
 assert.doesNotMatch(availabilityDesk, /Math\.random|generateSlots|mockSlots|fakeSlots/i, "Provider desk must not synthesize fake availability");
