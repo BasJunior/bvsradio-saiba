@@ -125,3 +125,6 @@
   .bvs-surface-hover:hover { transform: none; }
   .bvs-provider-map-grid { animation: none; }
 }
+
+/* Cover photography keeps white titles in either site theme. */
+.marketplace-storefront-hero h1, :root[data-theme="light"] .marketplace-storefront-hero h1 { color: #fff; }

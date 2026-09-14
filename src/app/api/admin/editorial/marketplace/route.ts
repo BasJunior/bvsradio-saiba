@@ -6,6 +6,14 @@ import {
   audit,
 } from "@/lib/editorial-server";
 
+import { safeR2Key, signedR2DownloadUrl } from "@/lib/r2-storage";
+
+async function imagePreview(path: unknown, owner: unknown, storefront = false) {
+  if (typeof path !== 'string' || !safeR2Key(path) || !path.startsWith(`marketplace/${owner}/`)) return null;
+  if (storefront && !/-storefront_(avatar|banner)-[a-f0-9]+\.(jpg|jpeg|png|webp)$/.test(path)) return null;
+  try { return await signedR2DownloadUrl(path); } catch { return null; }
+}
+
 export async function GET(request: Request) {
   const identity = await editorialIdentity(request);
   if (!identity)
@@ -39,11 +47,22 @@ export async function GET(request: Request) {
       { error: "Creator Marketplace review data is unavailable." },
       { status: 503 },
     );
+  const profiles = await profilesResponse.json() as Array<Record<string, unknown>>;
+  const listings = await listingsResponse.json() as Array<Record<string, unknown>>;
+  const hydratedProfiles = await Promise.all(profiles.map(async profile => {
+    const entries = Array.isArray(profile.portfolio) ? profile.portfolio : [];
+    const [avatar_url, banner_url] = await Promise.all([
+      imagePreview(entries.find(item => item?.kind === 'storefront_avatar')?.path, profile.user_id, true),
+      imagePreview(entries.find(item => item?.kind === 'storefront_banner')?.path, profile.user_id, true),
+    ]);
+    return { ...profile, avatar_url, banner_url };
+  }));
+  const hydratedListings = await Promise.all(listings.map(async listing => ({ ...listing, artwork_url: await imagePreview(listing.artwork_path, listing.seller_user_id) })));
   return NextResponse.json({
     role: identity.role,
     canReview: identity.permissions.includes("approve_submissions"),
-    profiles: await profilesResponse.json(),
-    listings: await listingsResponse.json(),
+    profiles: hydratedProfiles,
+    listings: hydratedListings,
     serviceOrders: await servicesResponse.json(),
   });
 }

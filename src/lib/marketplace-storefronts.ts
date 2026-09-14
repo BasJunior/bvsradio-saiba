@@ -1,4 +1,5 @@
 import { officialBvsServices } from '@/lib/official-services'
+import { mediaUrlForStoredValue } from '@/lib/media-url'
 
 export type StorefrontService = {
   id: string
@@ -14,6 +15,7 @@ export type StorefrontService = {
   turnaroundDays?: number | null
   revisionsIncluded?: number | null
   note?: string
+  artworkImage?: string
 }
 
 export type MarketplaceStorefront = {
@@ -41,6 +43,7 @@ type MarketplaceProfileRow = {
   headline?: string
   bio?: string
   skills?: string[]
+  portfolio?: Array<{ kind?: string; path?: string; title?: string; url?: string }>
   profiles?: {
     username?: string
     creator_public_name?: string
@@ -225,6 +228,7 @@ export function liveStorefronts(
         listingId: listing.id,
         listingType: listing.listing_type === 'digital_product' ? 'digital_product' : 'service',
         title: listing.title,
+        artworkImage: mediaUrlForStoredValue(listing.artwork_path) || undefined,
         category: listing.category.replaceAll('_', ' '),
         description: listing.description || '',
         priceUsd: Number(listing.price_usd) || 0,
@@ -247,8 +251,8 @@ export function liveStorefronts(
       kind,
       headline: profile.headline || `${kind.replaceAll('_', ' ')} on BVS`,
       bio: profile.bio || '',
-      heroImage: profile.profiles?.avatar_url,
-      avatarImage: profile.profiles?.avatar_url,
+      heroImage: mediaUrlForStoredValue(profile.portfolio?.find(item => item.kind === 'storefront_banner')?.path) || profile.profiles?.avatar_url,
+      avatarImage: mediaUrlForStoredValue(profile.portfolio?.find(item => item.kind === 'storefront_avatar')?.path) || profile.profiles?.avatar_url,
       specialties: [...new Set([...(profile.skills || []), ...roles])].slice(0, 10),
       verified: true,
       username: username || undefined,
@@ -281,6 +285,8 @@ export function marketplaceStorefronts(
       ...seed,
       sellerUserId: claim.sellerUserId,
       username: claim.username,
+      heroImage: profiles.find(profile => profile.user_id === claim.sellerUserId)?.portfolio?.some(item => item.kind === 'storefront_banner' && item.path) ? claim.heroImage : seed.heroImage,
+      avatarImage: claim.avatarImage || seed.avatarImage,
       verified: seed.verified || claim.verified,
       services: mergeServices(seed.services, claim.services),
     }

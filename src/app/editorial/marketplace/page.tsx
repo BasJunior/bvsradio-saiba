@@ -106,6 +106,10 @@ export default function MarketplaceReview() {
                     </p>
                   </div>
                 </div>
+                {(Boolean(row.avatar_url) || Boolean(row.banner_url)) && <div className="mt-4 flex flex-wrap items-end gap-4">
+                  {Boolean(row.banner_url) && <figure><img src={String(row.banner_url)} alt="Submitted storefront banner" className="h-36 w-full max-w-lg rounded-xl object-cover" /><figcaption className="mt-1 text-xs text-text-secondary">Storefront banner</figcaption></figure>}
+                  {Boolean(row.avatar_url) && <figure><img src={String(row.avatar_url)} alt="Submitted storefront profile image" className="h-24 w-24 rounded-full object-cover" /><figcaption className="mt-1 text-xs text-text-secondary">Profile image</figcaption></figure>}
+                </div>}
                 <p className="mt-3 text-sm text-text-secondary">
                   {String(row.headline || row.bio || "")}
                 </p>
@@ -258,6 +262,7 @@ export default function MarketplaceReview() {
                     ${Number(row.price_usd).toFixed(2)} · {String(row.status)}
                   </span>
                 </div>
+                {Boolean(row.artwork_url) && <img src={String(row.artwork_url)} alt={`${String(row.title || 'Listing')} artwork for review`} className="mt-4 h-36 w-36 rounded-xl object-cover" />}
                 <p className="mt-2 text-sm text-text-secondary">
                   {String(row.listing_type).replaceAll("_", " ")} ·{" "}
                   {String(row.category).replaceAll("_", " ")}

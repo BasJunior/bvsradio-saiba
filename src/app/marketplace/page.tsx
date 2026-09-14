@@ -65,9 +65,13 @@ export default function MarketplacePage() {
   const [data, setData] = useState<MarketplacePayload>({});
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [added, setAdded] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [providerKind, setProviderKind] = useState("all");
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
+    setState("loading");
     fetch("/api/marketplace", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Marketplace unavailable");
@@ -81,13 +85,17 @@ export default function MarketplacePage() {
         if ((error as Error).name !== "AbortError") setState("error");
       });
     return () => controller.abort();
-  }, []);
+  }, [retry]);
 
   const storefronts = useMemo(
     () => marketplaceStorefronts(data.profiles || [], data.listings || []),
     [data],
   );
 
+  const normalizedQuery = query.trim().toLowerCase();
+  const matchingStorefronts = storefronts.filter(provider =>
+    (providerKind === "all" || provider.kind === providerKind) &&
+    `${provider.name} ${provider.headline} ${provider.specialties.join(" ")} ${provider.services.map(service => service.title).join(" ")}`.toLowerCase().includes(normalizedQuery));
   const liveProducts = (data.listings || []).filter((item) => item.listing_type === "digital_product");
 
   function addProduct(item: (typeof liveProducts)[number]) {
@@ -122,8 +130,17 @@ export default function MarketplacePage() {
           <a href="#providers" className="rounded-full bg-brand px-5 py-2.5 font-semibold text-black shadow-[0_10px_28px_rgba(212,175,55,.18)]">Studios &amp; engineers</a>
           <a href="#services" className="rounded-full border border-white/15 bg-white/[.03] px-5 py-2.5">Browse services</a>
           <Link href="/catalogue?type=beat#beatstore" className="rounded-full border border-white/15 bg-white/[.03] px-5 py-2.5">BeatStore</Link>
-          <Link href="/creator/marketplace" className="rounded-full border border-brand/45 bg-brand/[.06] px-5 py-2.5 text-brand">Open a provider store</Link>
+          <Link href="/creator/marketplace" className="rounded-full border border-brand/45 bg-brand/[.06] px-5 py-2.5 text-brand">My marketplace workspace</Link>
         </div>
+      </section>
+
+      <section className="mt-8 rounded-2xl border border-white/10 bg-white/[.025] p-4 sm:p-5" aria-label="Find a provider">
+        <label htmlFor="marketplace-search" className="mb-2 block text-sm font-medium">What do you need for your next project?</label>
+        <input id="marketplace-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search studios, mixing, artwork…" className="min-h-12 w-full rounded-xl border border-white/15 bg-black/20 px-4 text-base outline-none focus:border-brand" />
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="Provider type">
+          {[["all", "Everyone"], ["studio", "Studios"], ["engineer", "Engineers"], ["producer", "Producers"], ["official", "BVS services"]].map(([value, label]) => <button key={value} aria-pressed={providerKind === value} onClick={() => setProviderKind(value)} className={`min-h-11 rounded-full border px-4 text-sm ${providerKind === value ? "border-brand bg-brand/10 text-brand" : "border-white/10 text-text-secondary"}`}>{label}</button>)}
+        </div>
+        <p role="status" className="mt-3 text-xs text-text-secondary">{matchingStorefronts.length} {matchingStorefronts.length === 1 ? "store" : "stores"}{normalizedQuery ? ` matching “${query.trim()}”` : " to explore"}</p>
       </section>
 
       <section id="providers" className="mt-10 sm:mt-16" aria-labelledby="marketplace-providers-title">
@@ -133,16 +150,16 @@ export default function MarketplacePage() {
           <p className="max-w-lg text-sm text-text-secondary">Each provider keeps their services, prices, policies and availability together in one store.</p>
         </div>
         <div className="mt-5 grid gap-4 sm:mt-7 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {storefronts.map((provider) => <ProviderCard key={provider.slug} provider={provider} />)}
+          {matchingStorefronts.map((provider) => <ProviderCard key={provider.slug} provider={provider} />)}
         </div>
-        <MarketplaceProviderMap providers={storefronts} />
+        <MarketplaceProviderMap providers={matchingStorefronts} />
       </section>
 
       <section id="services" className="mt-10 sm:mt-16" aria-labelledby="marketplace-services-title">
         <p className="bvs-section-kicker">Services</p>
         <h2 id="marketplace-services-title" className="mt-2 text-3xl font-semibold sm:text-4xl">Browse what providers offer</h2>
         <div className="mt-5 grid gap-3 sm:mt-7 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {storefronts.flatMap((provider) => provider.services.map((service) => (
+          {matchingStorefronts.flatMap((provider) => provider.services.map((service) => (
             <article key={`${provider.slug}-${service.id}`} className="bvs-surface bvs-surface-hover rounded-[1.35rem] p-4 sm:rounded-2xl sm:p-5">
               <p className="bvs-chip bvs-chip-brand">{service.category}</p>
               <h3 className="mt-3 text-xl font-semibold">{service.title}</h3>
@@ -159,14 +176,16 @@ export default function MarketplacePage() {
         </div>
       </section>
 
+      {!matchingStorefronts.length && state !== "loading" ? <div className="mt-6 rounded-2xl border border-dashed border-white/15 p-8 text-center"><h2 className="text-xl font-semibold">No stores match yet</h2><p className="mt-2 text-sm text-text-secondary">Try a different service or browse all providers.</p><button onClick={() => { setQuery(""); setProviderKind("all"); }} className="mt-4 min-h-11 rounded-full border border-brand/40 px-5 text-brand">Clear filters</button></div> : null}
       {state === "error" ? (
         <p className="bvs-surface-quiet mt-8 rounded-[1.35rem] border-dashed p-4 text-sm text-text-secondary sm:mt-12 sm:p-5">
-          Live creator listings could not load. The seeded BVS provider stores remain available while the Marketplace reconnects.
+          Latest creator listings could not load. You can still explore BVS providers. <button onClick={() => setRetry(value => value + 1)} className="ml-2 text-brand underline">Try again</button>
         </p>
       ) : null}
 
       {state === "loading" ? <div className="bvs-surface mt-8 h-24 animate-pulse rounded-[1.35rem] sm:mt-12" /> : null}
 
+      <p role="status" className="sr-only">{added ? "Product added to your basket." : ""}</p>
       {liveProducts.length ? (
         <section className="mt-10 sm:mt-16" aria-labelledby="marketplace-products-title">
           <p className="bvs-section-kicker">Digital products</p>

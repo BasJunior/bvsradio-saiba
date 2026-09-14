@@ -25,16 +25,22 @@ export default function MarketplaceStorefrontPage() {
   const selectedService = search.get("service") || "";
   const [data, setData] = useState<MarketplacePayload>({});
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const [offerFilter, setOfferFilter] = useState("all");
+  const [shareMessage, setShareMessage] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
+    setLoadError(false);
+    setLoaded(false);
     fetch("/api/marketplace", { cache: "no-store", signal: controller.signal })
       .then((response) => response.ok ? response.json() as Promise<MarketplacePayload> : Promise.reject(new Error("Marketplace unavailable")))
       .then((payload) => setData(payload))
-      .catch(() => null)
-      .finally(() => setLoaded(true));
+      .catch((error) => { if (error.name !== "AbortError") setLoadError(true); })
+      .finally(() => { if (!controller.signal.aborted) setLoaded(true); });
     return () => controller.abort();
-  }, []);
+  }, [retry]);
 
   const provider = useMemo<MarketplaceStorefront | null>(() => {
     return marketplaceStorefronts(data.profiles || [], data.listings || []).find((item) => item.slug === slug) || null;
@@ -42,6 +48,14 @@ export default function MarketplaceStorefrontPage() {
 
   if (!provider && !loaded) {
     return <main className="mx-auto max-w-6xl px-6 py-14"><div className="h-72 animate-pulse rounded-3xl bg-white/[.04]" /></main>;
+  }
+
+  if (loadError && !provider) {
+    return <main className="mx-auto max-w-3xl px-6 py-20 text-center">
+      <h1 className="text-3xl font-semibold">Your connection to this store was interrupted</h1>
+      <p className="mt-3 text-text-secondary">Try again to load the provider’s latest offers.</p>
+      <button onClick={() => setRetry(value => value + 1)} className="mt-6 min-h-11 rounded-full bg-brand px-6 font-semibold text-black">Try again</button>
+    </main>;
   }
 
   if (!provider) {
@@ -95,10 +109,20 @@ export default function MarketplaceStorefrontPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-      <Link href="/marketplace" className="text-sm text-brand hover:underline">← Marketplace</Link>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href="/marketplace" className="text-sm text-brand hover:underline">← Marketplace</Link>
+        <div className="flex items-center gap-3">
+          <span role="status" className="text-xs text-text-secondary">{shareMessage}</span>
+          <button type="button" className="min-h-11 rounded-full border border-white/15 px-4 text-sm" onClick={async () => {
+            try { await navigator.clipboard.writeText(window.location.href); setShareMessage("Store link copied"); }
+            catch { setShareMessage("Copy the link from your address bar to share this store."); }
+          }}>Share store</button>
+        </div>
+      </div>
+      {loadError ? <p role="alert" className="mt-4 rounded-xl border border-white/15 p-4 text-sm">Latest creator offers could not load. <button onClick={() => setRetry(value => value + 1)} className="text-brand underline">Try again</button></p> : null}
 
       <section className="mt-6 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[.03]">
-        <div className="relative aspect-[16/7] min-h-64 overflow-hidden bg-black/40">
+        <div className="marketplace-storefront-hero relative aspect-[16/7] min-h-64 overflow-hidden bg-black/40">
           {provider.heroImage ? (
             <img src={provider.heroImage} alt="" className={`h-full w-full object-cover ${wolf ? "object-top" : "object-center"}`} />
           ) : null}
@@ -107,7 +131,10 @@ export default function MarketplaceStorefrontPage() {
             <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">
               {provider.kind.replaceAll("_", " ")}{provider.official ? " · Official BVS provider" : provider.verified ? " · BVS verified" : ""}
             </p>
-            <h1 className="mt-2 text-balance text-4xl font-semibold text-white sm:text-5xl">{provider.name}</h1>
+            <div className="mt-3 flex items-center gap-4">
+              {provider.avatarImage ? <img src={provider.avatarImage} alt="" className="h-16 w-16 shrink-0 rounded-2xl border-2 border-white/30 object-cover sm:h-20 sm:w-20" /> : null}
+              <h1 className="text-balance text-3xl font-semibold text-white sm:text-5xl">{provider.name}</h1>
+            </div>
             <p className="mt-2 max-w-2xl text-white/75">{provider.headline}</p>
             {provider.location ? <p className="mt-3 text-sm font-medium text-brand">{provider.location}</p> : null}
           </div>
@@ -119,13 +146,18 @@ export default function MarketplaceStorefrontPage() {
           <section aria-labelledby="provider-services-title">
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Services &amp; products</p>
             <h2 id="provider-services-title" className="mt-2 text-3xl font-semibold">What {provider.name} offers</h2>
+            <div className="mt-5 flex flex-wrap gap-2" aria-label="Filter offers">
+              {[['all', 'All offers'], ['service', 'Services'], ['digital_product', 'Downloads']].map(([value, label]) => <button key={value} type="button" aria-pressed={offerFilter === value} onClick={() => setOfferFilter(value)} className={`min-h-11 rounded-full border px-4 text-sm ${offerFilter === value ? 'border-brand bg-brand/10 text-brand' : 'border-white/10 text-text-secondary'}`}>{label}</button>)}
+            </div>
+            {!provider.services.some(service => offerFilter === 'all' || (service.listingType || 'service') === offerFilter) ? <div className="mt-6 rounded-2xl border border-dashed border-white/15 p-8 text-center"><h3 className="font-semibold">No {offerFilter === 'digital_product' ? 'downloads' : offerFilter === 'service' ? 'services' : 'offers'} available yet</h3><p className="mt-2 text-sm text-text-secondary">New offers will appear here when this provider publishes them.</p></div> : null}
             <div className="mt-6 grid gap-5 md:grid-cols-2">
-              {provider.services.map((service) => {
+              {provider.services.filter(service => offerFilter === 'all' || (service.listingType || 'service') === offerFilter).map((service) => {
                 const active = selectedService === service.id;
                 const bookingHref = `/marketplace/${provider.slug}/book?service=${encodeURIComponent(service.id)}`;
                 const packageCheckout = service.bookingMode === "checkout" && !service.listingId && Boolean(service.packages?.length);
                 return (
                   <article id={`service-${service.id}`} key={service.id} className={`rounded-2xl border p-5 ${active ? "border-brand/60 bg-brand/[.06]" : "border-white/10 bg-white/[.025]"}`}>
+                    {service.artworkImage ? <img src={service.artworkImage} alt="" loading="lazy" className="mb-4 aspect-[16/10] w-full rounded-xl object-cover" /> : null}
                     <div className="flex items-start justify-between gap-4">
                       <div>
                         <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">{service.category}</p>
@@ -195,7 +227,7 @@ export default function MarketplaceStorefrontPage() {
             </div>
             {wolf ? (
               <p className="mt-5 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                Pricing is based on the WolfBridges reference supplied to BVS. Booking times appear only after the studio publishes real availability.
+                Choose an available time to request a studio session. All times are shown in the studio’s timezone.
               </p>
             ) : null}
             <Link href="/marketplace" className="mt-5 inline-flex text-sm text-brand hover:underline">Compare other providers →</Link>

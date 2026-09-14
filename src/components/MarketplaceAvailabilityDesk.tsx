@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -82,38 +82,60 @@ export default function MarketplaceAvailabilityDesk() {
   const [state, setState] = useState<"idle" | "loading" | "ready" | "blocked">("idle");
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState("");
+  const mutationBusy = useRef(false);
+  const loadVersion = useRef(0);
+  const activeToken = useRef("");
+  const [showHistory, setShowHistory] = useState(false);
   const [form, setForm] = useState({ date: "", start: "", end: "", timezone: "Africa/Harare", note: "" });
 
   const load = async (accessToken: string) => {
+    if (accessToken !== activeToken.current) return;
+    const version = ++loadVersion.current;
     setState("loading");
-    const response = await fetch("/api/marketplace/availability", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-      cache: "no-store",
-    });
-    const payload = await response.json();
-    if (!response.ok) {
-      setMessage(payload.error || "Availability is not ready.");
+    try {
+      const response = await fetch("/api/marketplace/availability", {
+        headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store",
+      });
+      const payload = await response.json();
+      if (version !== loadVersion.current) return;
+      if (!response.ok) throw new Error(payload.error || "Availability could not load.");
+      setProviderKey(payload.providerKey || "");
+      setSlots(payload.slots || []);
+      setBookings(payload.bookings || []);
+      setState("ready");
+    } catch (error) {
+      if (version !== loadVersion.current) return;
+      setMessage(error instanceof Error ? error.message : "Could not connect. Try again.");
       setState("blocked");
-      return;
     }
-    setProviderKey(payload.providerKey || "");
-    setSlots(payload.slots || []);
-    setBookings(payload.bookings || []);
-    setState("ready");
   };
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-    createClient().auth.getSession().then(({ data }) => {
-      const accessToken = data.session?.access_token || "";
+    if (!isSupabaseConfigured()) { setState("blocked"); setMessage("Sign-in is currently unavailable."); return; }
+    const client = createClient();
+    let active = true;
+    let currentUser = "";
+    const applySession = (session: { access_token: string; user: { id: string } } | null) => {
+      if (!active) return;
+      const accessToken = session?.access_token || "";
+      activeToken.current = accessToken;
       setToken(accessToken);
+      if (currentUser !== (session?.user.id || "")) {
+        currentUser = session?.user.id || "";
+        setSlots([]); setBookings([]); setProviderKey(""); setMessage("");
+        setForm({ date: "", start: "", end: "", timezone: "Africa/Harare", note: "" });
+      }
       if (accessToken) void load(accessToken);
-    });
+      else { ++loadVersion.current; setState("blocked"); setMessage("Sign in to manage your availability."); }
+    };
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => applySession(session));
+    return () => { active = false; activeToken.current = ""; ++loadVersion.current; subscription.unsubscribe(); };
   }, []);
 
-  const available = useMemo(() => slots.filter((slot) => slot.status === "available"), [slots]);
+  const available = slots.filter((slot) => slot.status === "available" && Date.parse(slot.starts_at) > Date.now()).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  const history = slots.filter((slot) => slot.status === "blocked" || Date.parse(slot.ends_at) <= Date.now()).sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at));
   const pendingBookings = useMemo(() => bookings.filter((booking) => booking.status === "requested"), [bookings]);
-  const confirmedBookings = useMemo(() => bookings.filter((booking) => booking.status === "confirmed"), [bookings]);
+  const confirmedBookings = useMemo(() => bookings.filter((booking) => booking.status === "confirmed" && slots.some((slot) => slot.id === booking.slot_id && Date.parse(slot.ends_at) > Date.now())), [bookings, slots]);
   const slotById = useMemo(() => new Map(slots.map((slot) => [slot.id, slot])), [slots]);
 
   async function post(body: Record<string, unknown>) {
@@ -126,12 +148,14 @@ export default function MarketplaceAvailabilityDesk() {
       body: JSON.stringify(body),
     });
     const payload = await response.json();
+    if (token !== activeToken.current) throw new Error("Your account changed. Reload availability before continuing.");
     if (!response.ok) throw new Error(payload.error || "Availability update failed.");
     return payload;
   }
 
   async function addSlot(event: FormEvent) {
     event.preventDefault();
+    if (mutationBusy.current) return;
     setMessage("");
     const startsAt = zonedInputIso(form.date, form.start, form.timezone);
     const endsAt = zonedInputIso(form.date, form.end, form.timezone);
@@ -139,6 +163,13 @@ export default function MarketplaceAvailabilityDesk() {
       setMessage("Choose a valid date, time and IANA timezone such as Africa/Harare.");
       return;
     }
+    if (Date.parse(startsAt) <= Date.now() || Date.parse(endsAt) <= Date.parse(startsAt)) {
+      setMessage("Choose a future start, with an end time later on the same day."); return;
+    }
+    if (Date.parse(endsAt) - Date.parse(startsAt) > 12 * 60 * 60 * 1000) {
+      setMessage("Keep each slot to 12 hours or less."); return;
+    }
+    mutationBusy.current = true; setBusyId("publish");
     try {
       await post({ action: "add_slot", startsAt, endsAt, timezone: form.timezone, note: form.note });
       setMessage("Availability published.");
@@ -146,10 +177,12 @@ export default function MarketplaceAvailabilityDesk() {
       await load(token);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not publish availability.");
-    }
+    } finally { mutationBusy.current = false; setBusyId(""); }
   }
 
   async function closeSlot(slotId: string) {
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
     setMessage("");
     setBusyId(slotId);
     try {
@@ -159,11 +192,14 @@ export default function MarketplaceAvailabilityDesk() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not close slot.");
     } finally {
+      mutationBusy.current = false;
       setBusyId("");
     }
   }
 
   async function respondBooking(bookingId: string, decision: "confirm" | "decline") {
+    if (mutationBusy.current) return;
+    mutationBusy.current = true;
     setMessage("");
     setBusyId(bookingId);
     try {
@@ -173,37 +209,44 @@ export default function MarketplaceAvailabilityDesk() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not update booking.");
     } finally {
+      mutationBusy.current = false;
       setBusyId("");
     }
   }
 
-  if (!token) return null;
+
 
   return (
-    <section className="mt-8 rounded-2xl border border-white/10 p-6" aria-labelledby="marketplace-availability-title">
+    <section className="rounded-2xl border border-white/10 bg-white/[.02] p-4 sm:p-6" aria-labelledby="marketplace-availability-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Booking calendar</p>
-          <h2 id="marketplace-availability-title" className="mt-1 text-2xl font-semibold">Publish real studio availability</h2>
+          <h2 id="marketplace-availability-title" className="mt-1 text-2xl font-semibold">Your availability</h2>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">Customers only see slots you publish here. Requests hold a slot until you confirm or decline it, preventing the same time from being booked twice.</p>
         </div>
-        {providerKey ? <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-text-secondary">Store: {providerKey}</span> : null}
+        {providerKey ? <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-text-secondary">{providerKey}</span> : null}
       </div>
 
-      {message ? <p className="mt-4 rounded-xl border border-white/10 p-3 text-sm text-text-secondary">{message}</p> : null}
+      {message ? <p role="status" aria-live="polite" className="mt-4 rounded-xl border border-white/10 p-3 text-sm text-text-secondary">{message}</p> : null}
 
       {state === "blocked" ? (
-        <p className="mt-5 text-sm text-text-secondary">Availability unlocks after Editorial approves your Marketplace profile and the booking schema is active.</p>
+        <div className="mt-5"><p className="text-sm text-text-secondary">Check your connection or Marketplace profile approval, then try again.</p>{token ? <button type="button" onClick={() => void load(token)} className="mt-3 min-h-11 rounded-full border border-white/15 px-5 text-sm">Try again</button> : <a href="/login" className="mt-3 inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 text-sm">Sign in</a>}</div>
+      ) : state !== "ready" ? (
+        <p role="status" className="mt-6 animate-pulse py-8 text-sm text-text-secondary">Loading your availability and requests…</p>
       ) : (
         <>
-          <form onSubmit={addSlot} className="mt-6 grid gap-3 md:grid-cols-5">
+          <div className="mt-5 grid grid-cols-3 gap-2">{[[available.length, "Open slots"], [pendingBookings.length, "Requests"], [confirmedBookings.length, "Confirmed"]].map(([count, title]) => <div key={title} className="rounded-xl border border-white/10 p-3"><p className="text-2xl font-semibold">{count}</p><p className="text-xs text-text-secondary">{title}</p></div>)}</div>
+          <h3 className="mt-6 font-semibold">Add an available time</h3>
+          <p className="mt-1 text-sm text-text-secondary">Choose one session on a single day, up to 12 hours. All times use the timezone below.</p>
+          <form onSubmit={addSlot} className="mt-4"><fieldset disabled={Boolean(busyId)} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 disabled:opacity-60">
             <label className="text-xs text-text-secondary">Date<input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" /></label>
-            <label className="text-xs text-text-secondary">Starts<input required type="time" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" /></label>
-            <label className="text-xs text-text-secondary">Ends<input required type="time" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" /></label>
-            <label className="text-xs text-text-secondary">Timezone<input value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" /></label>
-            <div className="flex items-end"><button className="min-h-11 w-full rounded-full bg-brand px-4 text-sm font-semibold text-black">Publish slot</button></div>
-            <label className="text-xs text-text-secondary md:col-span-5">Slot note (optional)<input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" placeholder="e.g. Vocal booth available" /></label>
-          </form>
+            <label className="text-xs text-text-secondary">Start time<input required type="time" value={form.start} onChange={(e) => setForm({ ...form, start: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" /></label>
+            <label className="text-xs text-text-secondary">End time<input required type="time" value={form.end} onChange={(e) => setForm({ ...form, end: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" /></label>
+            <label className="text-xs text-text-secondary">Timezone<input required list="marketplace-timezones" value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" /></label>
+            <datalist id="marketplace-timezones">{["Africa/Harare", "Africa/Johannesburg", "Europe/Berlin", "Europe/London", "America/New_York", "America/Los_Angeles", "UTC"].map((zone) => <option key={zone} value={zone} />)}</datalist>
+            <label className="text-xs text-text-secondary sm:col-span-2 lg:col-span-4">Slot note (optional, visible to customers)<input maxLength={300} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="mt-1 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm text-white" placeholder="e.g. Vocal booth available" /></label>
+            <div className="sm:col-span-2 lg:col-span-4"><button disabled={Boolean(busyId)} className="min-h-11 w-full rounded-full bg-brand px-5 text-sm font-semibold text-black disabled:opacity-50 sm:w-auto">{busyId === "publish" ? "Publishing…" : "Publish availability"}</button></div>
+          </fieldset></form>
 
           <div className="mt-8 border-t border-white/10 pt-7">
             <div className="flex flex-wrap items-end justify-between gap-3">
@@ -223,15 +266,15 @@ export default function MarketplaceAvailabilityDesk() {
                       <div>
                         <p className="text-xs uppercase tracking-[.12em] text-brand">{booking.service_title}</p>
                         <h4 className="mt-1 font-semibold">{booking.customer_name}</h4>
-                        {slot ? <p className="mt-1 text-sm text-text-secondary">{label(slot)}</p> : null}
-                        <p className="mt-1 text-xs text-text-secondary">{booking.customer_email}{booking.customer_phone ? ` · ${booking.customer_phone}` : ""}</p>
+                        {slot ? <p className="mt-1 text-sm text-text-secondary">{label(slot)} · {slot.timezone}</p> : null}
+                        <p className="mt-1 break-words text-xs text-text-secondary">{booking.customer_email}{booking.customer_phone ? ` · ${booking.customer_phone}` : ""}</p>
                       </div>
                       {booking.price_usd != null ? <strong>${Number(booking.price_usd).toFixed(2)}</strong> : null}
                     </div>
                     {booking.project_notes ? <p className="mt-3 whitespace-pre-wrap rounded-xl border border-white/10 p-3 text-sm text-text-secondary">{booking.project_notes}</p> : null}
                     <div className="mt-4 flex flex-wrap gap-2">
-                      <button disabled={busyId === booking.id} type="button" onClick={() => void respondBooking(booking.id, "confirm")} className="min-h-11 rounded-full bg-brand px-4 text-sm font-semibold text-black disabled:opacity-40">Confirm booking</button>
-                      <button disabled={busyId === booking.id} type="button" onClick={() => void respondBooking(booking.id, "decline")} className="min-h-11 rounded-full border border-white/15 px-4 text-sm disabled:opacity-40">Decline</button>
+                      <button disabled={Boolean(busyId)} type="button" onClick={() => void respondBooking(booking.id, "confirm")} className="min-h-11 rounded-full bg-brand px-4 text-sm font-semibold text-black disabled:opacity-40">Confirm booking</button>
+                      <button disabled={Boolean(busyId)} type="button" onClick={() => void respondBooking(booking.id, "decline")} className="min-h-11 rounded-full border border-white/15 px-4 text-sm disabled:opacity-40">Decline</button>
                     </div>
                   </article>
                 );
@@ -248,7 +291,7 @@ export default function MarketplaceAvailabilityDesk() {
                   return (
                     <div key={booking.id} className="rounded-xl border border-white/10 p-4">
                       <div className="flex flex-wrap justify-between gap-3">
-                        <div><p className="font-medium">{booking.service_title} · {booking.customer_name}</p>{slot ? <p className="mt-1 text-xs text-text-secondary">{label(slot)}</p> : null}</div>
+                        <div><p className="font-medium">{booking.service_title} · {booking.customer_name}</p>{slot ? <p className="mt-1 text-xs text-text-secondary">{label(slot)} · {slot.timezone}</p> : null}</div>
                         <span className="text-xs font-semibold text-brand">Confirmed</span>
                       </div>
                     </div>
@@ -260,17 +303,17 @@ export default function MarketplaceAvailabilityDesk() {
 
           <div className="mt-8 border-t border-white/10 pt-7">
             <h3 className="font-semibold">Upcoming published slots</h3>
-            {state === "loading" ? <div className="mt-3 h-16 animate-pulse rounded-xl bg-white/[.04]" /> : null}
-            {state === "ready" && !available.length ? <p className="mt-3 text-sm text-text-secondary">No open slots published yet.</p> : null}
+            {state === "ready" && !available.length ? <p className="mt-3 text-sm text-text-secondary">You have no upcoming open slots. Add a time above so customers can request a session.</p> : null}
             <div className="mt-3 space-y-2">
               {available.map((slot) => (
                 <div key={slot.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 p-3">
-                  <div><p className="text-sm font-medium">{label(slot)}</p>{slot.note ? <p className="mt-1 text-xs text-text-secondary">{slot.note}</p> : null}</div>
-                  <button disabled={busyId === slot.id} type="button" onClick={() => void closeSlot(slot.id)} className="rounded-full border border-white/15 px-3 py-2 text-xs text-text-secondary hover:text-white disabled:opacity-40">Close slot</button>
+                  <div><p className="text-sm font-medium">{label(slot)} · {slot.timezone}</p>{slot.note ? <p className="mt-1 text-xs text-text-secondary">{slot.note}</p> : null}</div>
+                  <button disabled={Boolean(busyId)} type="button" onClick={() => void closeSlot(slot.id)} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-text-secondary hover:text-white disabled:opacity-40">Close slot</button>
                 </div>
               ))}
             </div>
           </div>
+          {history.length > 0 ? <div className="mt-6 border-t border-white/10 pt-5"><button type="button" aria-expanded={showHistory} onClick={() => setShowHistory(!showHistory)} className="min-h-11 text-sm text-text-secondary">{showHistory ? "Hide" : "Show"} past and closed slots ({history.length})</button>{showHistory ? <div className="mt-3 space-y-2">{history.map((slot) => <div key={slot.id} className="rounded-xl border border-white/10 p-3 text-sm text-text-secondary"><p>{label(slot)} · {slot.timezone}</p><p className="mt-1 text-xs">{slot.status === "blocked" ? "Closed" : "Past session"}{slot.note ? ` · ${slot.note}` : ""}</p></div>)}</div> : null}</div> : null}
         </>
       )}
     </section>

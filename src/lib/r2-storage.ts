@@ -121,7 +121,7 @@ export async function isPublicR2MediaKey(key: string) {
   const encUrl = encodeURIComponent(mediaUrl);
 
   // Targeted lookups — avoid the old limit=500 scan that missed rows / shared keys.
-  const [trackByUrl, trackByKey, beatByPath, beatByUrl, episodeByPath, episodeByUrl, marketplaceMedia, musicVideo] = await Promise.all([
+  const [trackByUrl, trackByKey, beatByPath, beatByUrl, episodeByPath, episodeByUrl, marketplaceMedia, storefrontMedia, musicVideo] = await Promise.all([
     fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&or=(file_url.eq.${encUrl},artwork_url.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&or=(file_url.eq.${enc},artwork_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&or=(preview_path.eq.${enc},artwork_path.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
@@ -129,6 +129,7 @@ export async function isPublicR2MediaKey(key: string) {
     fetch(`${url}/rest/v1/show_episodes?status=eq.published&or=(audio_path.eq.${enc},artwork_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/show_episodes?status=eq.published&or=(audio_path.eq.${encUrl},artwork_url.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/creator_marketplace_listings?status=eq.published&or=(artwork_path.eq.${enc},preview_path.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/creator_marketplace_profiles?status=eq.approved&portfolio=cs.${encodeURIComponent(JSON.stringify([{ path: key }]))}&select=user_id,portfolio&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/music_videos?is_public=eq.true&editorial_status=eq.approved&or=(video_url.eq.${encUrl},video_url.eq.${enc},poster_url.eq.${encUrl},poster_url.eq.${enc},video_path.eq.${enc},poster_path.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
   ]);
 
@@ -146,6 +147,7 @@ export async function isPublicR2MediaKey(key: string) {
     || (await nonempty(episodeByPath))
     || (await nonempty(episodeByUrl))
     || (await nonempty(marketplaceMedia))
+    || (storefrontMedia.ok && (await storefrontMedia.json() as Array<{user_id: string; portfolio?: Array<{kind?: string; path?: string}>}>).some(row => row.portfolio?.some(item => item.path === key && key.startsWith(`marketplace/${row.user_id}/`) && ['storefront_avatar', 'storefront_banner'].includes(item.kind || '') && /-storefront_(avatar|banner)-[a-f0-9]+\.(jpg|jpeg|png|webp)$/.test(key))))
     || (await nonempty(musicVideo))
   );
 }

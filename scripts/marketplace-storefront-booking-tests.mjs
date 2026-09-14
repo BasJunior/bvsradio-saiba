@@ -38,7 +38,7 @@ assert.match(store, /marketplaceStorefronts\(data\.profiles \|\| \[\], data\.lis
 assert.match(bookingPage, /marketplaceStorefronts\(marketplace\.profiles \|\| \[\], marketplace\.listings \|\| \[\]\)/, "Booking must resolve the same merged provider model");
 assert.match(marketplace, /Open Wolf Studio/, "Marketplace must expose the requested Open Wolf Studio CTA");
 assert.match(shop, /redirect\("\/marketplace\/bvs-studio-services"\)/, "Legacy BVS services route must resolve inside Marketplace");
-assert.match(marketplace, /MarketplaceProviderMap providers=\{storefronts\}/, "Marketplace home must show the provider map");
+assert.match(marketplace, /MarketplaceProviderMap providers=\{matchingStorefronts\}/, "Marketplace home must show the provider map");
 assert.match(store, /MarketplaceProviderMap providers=\{\[provider\]\} compact/, "Physical provider stores must retain the map");
 assert.match(providerMap, /tile\.openstreetmap\.org/, "Provider map must use the dark themed OSM tile map (beta style)");
 assert.match(providerMap, /grayscale invert saturate/, "Provider map must keep the dark inverted tile treatment");
