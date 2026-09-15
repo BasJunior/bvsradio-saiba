@@ -2,7 +2,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import LibraryAction from "@/components/LibraryAction";
-import ShareCreatorButton from "@/components/ShareCreatorButton";
+import AppCreatorPlayback from "@/components/app-vnext/AppCreatorPlayback";
+import AppShareButton from "@/components/app-vnext/AppShareButton";
 import FlowRelationships from "@/components/flow/FlowRelationships";
 
 function external(value: string) {
@@ -67,6 +68,7 @@ export default async function ArtistPage({
   const hasConnections = profile.tracks.some(track => track.credits.length > 0);
   const hasBeats = Boolean(profile.beats?.length);
   const producerFirst = /producer/i.test(profile.role) && hasBeats;
+  const hasPlayableIdentity = /^[0-9a-f-]{36}$/i.test(profile.id);
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
       <Link href="/music/artists" className="text-sm text-brand">
@@ -93,7 +95,12 @@ export default async function ArtistPage({
             <p className="mt-3 text-sm text-brand">{profile.location}</p>
           )}
           <p className="mt-5 max-w-prose text-text-secondary">{profile.bio}</p>
-          <div className="mt-6 flex flex-wrap gap-3">
+          {hasMusic && hasPlayableIdentity ? (
+            <div className="mt-6">
+              <AppCreatorPlayback creatorId={profile.id} creatorName={profile.name} />
+            </div>
+          ) : null}
+          <div className="mt-5 flex flex-wrap gap-3">
             <LibraryAction item={item} section="follows" />
             {profile.beats && profile.beats.length > 0 && (
               <Link
@@ -103,7 +110,13 @@ export default async function ArtistPage({
                 View producer catalogue
               </Link>
             )}
-            <ShareCreatorButton name={profile.name} />
+            <AppShareButton
+              title={profile.name}
+              text={`Follow ${profile.name} on BVS`}
+              path={`/artist/${encodeURIComponent(profile.username)}`}
+              image={profile.image}
+              kicker={`Verified ${profile.role}`}
+            />
             {profile.links?.instagram && (
               <a
                 href={
@@ -218,6 +231,11 @@ export default async function ArtistPage({
                             </Link>
                           </div>
                         </div>
+                        {hasPlayableIdentity ? (
+                          <div className="mt-2">
+                            <AppCreatorPlayback creatorId={profile.id} creatorName={profile.name} startTrackId={track.id} compact />
+                          </div>
+                        ) : null}
                         {(track.isrc || track.spotify_url) && (
                           <p className="mt-2 text-xs text-text-secondary">
                             {track.isrc ? `ISRC ${track.isrc}` : "DSP linked"}
