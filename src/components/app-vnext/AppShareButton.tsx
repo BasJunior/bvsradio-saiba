@@ -50,10 +50,10 @@ function drawWrappedText(
 async function loadStoryImage(src?: string) {
   if (!src || typeof window === "undefined") return null;
   try {
-    const resolved = new URL(src, window.location.origin);
+    const resolved = new URL(src, "https://bvsradio.com");
     const response = await fetch(resolved.href, {
       cache: "force-cache",
-      credentials: resolved.origin === window.location.origin ? "same-origin" : "omit",
+      credentials: "same-origin",
       mode: "cors",
     });
     if (!response.ok) return null;
