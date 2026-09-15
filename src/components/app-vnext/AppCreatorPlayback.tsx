@@ -53,8 +53,11 @@ export default function AppCreatorPlayback({
     try {
       let tracks = await loadTracks();
       if (!tracks.length) throw new Error("No BVS-playable tracks are available for this creator yet.");
+      if (startTrackId && !shuffle && !tracks.some((track) => track.id === startTrackId)) {
+        throw new Error("This track is not cleared for playback on this BVS surface.");
+      }
       if (shuffle) tracks = shuffled(tracks);
-      const startIndex = shuffle || !startTrackId ? 0 : Math.max(0, tracks.findIndex((track) => track.id === startTrackId));
+      const startIndex = shuffle || !startTrackId ? 0 : tracks.findIndex((track) => track.id === startTrackId);
       player.playAll(tracks, { from: `${creatorName} · BVS`, startIndex });
       player.setQueueOpen(false);
     } catch (issue) {
