@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import LibraryAction from "@/components/LibraryAction";
+import AppCreatorPlayback from "@/components/app-vnext/AppCreatorPlayback";
 import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
 import AppShareButton from "@/components/app-vnext/AppShareButton";
 import type { DiscoveryItem } from "@/lib/discovery";
@@ -76,7 +77,12 @@ export default async function AppCreatorPage({
           <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{displayName}</h1>
           {profile.location ? <p className="mt-2 text-sm text-text-secondary">{profile.location}</p> : null}
           <p className="mt-4 max-w-2xl text-sm leading-6 text-text-secondary">{profile.bio}</p>
-          <div className="mt-5 flex flex-wrap gap-2">
+          {profile.tracks.length ? (
+            <div className="mt-5">
+              <AppCreatorPlayback creatorId={profile.id} creatorName={displayName} surface={surface} />
+            </div>
+          ) : null}
+          <div className="mt-4 flex flex-wrap gap-2">
             <LibraryAction item={item} section="follows" />
             <AppShareButton
               title={displayName}
@@ -98,7 +104,10 @@ export default async function AppCreatorPage({
       {profile.tracks.length ? (
         <section className="mt-9">
           <p className="text-xs uppercase tracking-[.18em] text-brand">Music</p>
-          <h2 className="mt-1 text-2xl font-semibold">Published on BVS</h2>
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <h2 className="mt-1 text-2xl font-semibold">Published on BVS</h2>
+            <span className="text-xs text-text-secondary">{profile.tracks.length} {profile.tracks.length === 1 ? "track" : "tracks"}</span>
+          </div>
           <div className="mt-4 space-y-2">
             {profile.tracks.map((track) => (
               <article key={track.id} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[.025] p-3">
@@ -112,6 +121,7 @@ export default async function AppCreatorPage({
                   <p className="mt-1 text-xs text-text-secondary">{track.genre || "BVS release"}{track.in_rotation ? " · In rotation" : ""}</p>
                   {track.credits?.length ? <p className="mt-1 line-clamp-1 text-xs text-text-secondary">{track.credits.map((credit) => `${credit.credit_role}: ${credit.person_name}`).join(" · ")}</p> : null}
                   <div className="mt-2 flex flex-wrap gap-2">
+                    <AppCreatorPlayback creatorId={profile.id} creatorName={displayName} surface={surface} startTrackId={track.id} compact />
                     <AppPlaylistPicker trackId={track.id} compact />
                     {track.spotify_url ? <a href={track.spotify_url} target="_blank" rel="noreferrer" className="min-h-9 rounded-full border border-white/10 px-3 py-2 text-xs">DSP</a> : null}
                   </div>

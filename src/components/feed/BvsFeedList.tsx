@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import LibraryAction from "@/components/LibraryAction";
 import FeedComposer from "@/components/feed/FeedComposer";
@@ -37,6 +38,8 @@ const categoryLabel: Record<BvsFeedCategory, string> = {
   live: "Live",
   marketplace: "Marketplace",
 };
+
+const PULL_REFRESH_TRIGGER = 54;
 
 function relativeTime(iso: string) {
   const age = Math.max(0, Date.now() - Date.parse(iso));
@@ -77,6 +80,7 @@ export default function BvsFeedList({
   surface: AppSurface | null;
   participationEnabled?: boolean;
 }) {
+  const router = useRouter();
   const session = useAppSession();
   const [filter, setFilter] = useState<BvsFeedFilter>("all");
   const [lane, setLane] = useState<FeedLane>("focus");
@@ -89,6 +93,9 @@ export default function BvsFeedList({
   const [postsLoading, setPostsLoading] = useState(false);
   const [postsError, setPostsError] = useState("");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const pullStart = useRef<{ x: number; y: number } | null>(null);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const sync = () => {
@@ -158,6 +165,48 @@ export default function BvsFeedList({
 
   useEffect(() => { void loadPosts(null, false); return () => { postsRequest.current += 1; }; }, [loadPosts]);
 
+  const refreshFeed = useCallback(async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    setPullDistance(PULL_REFRESH_TRIGGER);
+    window.dispatchEvent(new CustomEvent("bvs:feed-refresh", { detail: { surface, lane } }));
+    router.refresh();
+    await Promise.allSettled([
+      loadPosts(null, false),
+      new Promise<void>((resolve) => window.setTimeout(resolve, 520)),
+    ]);
+    setRefreshing(false);
+    setPullDistance(0);
+  }, [lane, loadPosts, refreshing, router, surface]);
+
+  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    if (refreshing || window.scrollY > 0 || !event.touches[0]) {
+      pullStart.current = null;
+      return;
+    }
+    pullStart.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
+  }, [refreshing]);
+
+  const handleTouchMove = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    const start = pullStart.current;
+    const touch = event.touches[0];
+    if (!start || !touch || window.scrollY > 0 || refreshing) return;
+    const dy = touch.clientY - start.y;
+    const dx = Math.abs(touch.clientX - start.x);
+    if (dy <= 0 || dy < dx * 1.15) {
+      setPullDistance(0);
+      return;
+    }
+    setPullDistance(Math.min(88, dy * 0.46));
+  }, [refreshing]);
+
+  const finishPull = useCallback(() => {
+    pullStart.current = null;
+    if (refreshing) return;
+    if (pullDistance >= PULL_REFRESH_TRIGGER) void refreshFeed();
+    else setPullDistance(0);
+  }, [pullDistance, refreshFeed, refreshing]);
+
   const visibleSystem = useMemo(() => {
     const categoryItems = filter === "all" ? items : items.filter((item) => item.category === filter);
     if (lane === "focus") return categoryItems;
@@ -214,8 +263,35 @@ export default function BvsFeedList({
     recordActivity(`post:${threadId}`, false);
   }
 
+  const pullReady = pullDistance >= PULL_REFRESH_TRIGGER;
+  const pulseStrength = Math.min(1, pullDistance / PULL_REFRESH_TRIGGER);
+
   return (
-    <div>
+    <div
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={finishPull}
+      onTouchCancel={finishPull}
+    >
+      <div
+        aria-live="polite"
+        className="pointer-events-none -mt-1 flex items-center justify-center overflow-hidden transition-[height,opacity] duration-200"
+        style={{ height: refreshing || pullDistance > 2 ? `${Math.max(24, pullDistance)}px` : "0px", opacity: refreshing || pullDistance > 2 ? 1 : 0 }}
+      >
+        <div className="flex items-center gap-2 rounded-full border border-brand/20 bg-brand/[.055] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[.16em] text-brand">
+          <span className="flex h-4 items-center gap-[2px]" aria-hidden="true">
+            {[0.45, 0.8, 1, 0.72, 0.42].map((factor, index) => (
+              <span
+                key={index}
+                className={refreshing ? "w-[2px] animate-pulse rounded-full bg-brand" : "w-[2px] rounded-full bg-brand transition-all"}
+                style={{ height: `${4 + Math.round(10 * factor * Math.max(.18, pulseStrength))}px`, animationDelay: `${index * 70}ms` }}
+              />
+            ))}
+          </span>
+          <span>{refreshing ? "Refreshing BVS" : pullReady ? "Release for fresh BVS" : "Pull to refresh"}</span>
+        </div>
+      </div>
+
       <FeedComposer key={session.user?.id || "guest"} surface={surface} enabled={participationEnabled} onCreated={addPost} />
 
       <div className="sticky top-[var(--bvs-app-header-height,4rem)] z-20 -mx-4 mt-4 border-y border-white/[.06] bg-[#08080a]/92 px-4 py-3 backdrop-blur-2xl sm:static sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/[.015]" aria-label="Feed controls">
@@ -230,7 +306,6 @@ export default function BvsFeedList({
                   onClick={() => setLane(item.id)}
                   aria-pressed={active}
                   className="bvs-feed-lane min-h-11 rounded-full border border-white/10 px-4 text-sm font-semibold text-white/60 transition"
-
                 >
                   {item.label}
                 </button>
