@@ -28,11 +28,48 @@ type PushPlugin = {
   addListener(eventName: "registrationError", listener: (error: { error?: string }) => void): Promise<ListenerHandle>;
   addListener(eventName: "pushNotificationActionPerformed", listener: (action: AppPushAction) => void): Promise<ListenerHandle>;
 };
+type NativeMessageHandler = { postMessage: (payload: unknown) => void };
+type NativeBridgeWindow = Window & {
+  webkit?: { messageHandlers?: Record<string, NativeMessageHandler | undefined> };
+};
 
 const Preferences = registerPlugin<PreferencesPlugin>("Preferences");
 const Network = registerPlugin<NetworkPlugin>("Network");
 const Share = registerPlugin<SharePlugin>("Share");
 const PushNotifications = registerPlugin<PushPlugin>("PushNotifications");
+
+function iosPushBridge() {
+  if (typeof window === "undefined" || !isNativeRuntime() || Capacitor.getPlatform() !== "ios") return null;
+  return (window as NativeBridgeWindow).webkit?.messageHandlers?.bvsPushRegistration || null;
+}
+
+function waitForWindowEvent<T>(name: string, timeoutMs = 12000) {
+  return new Promise<T>((resolve, reject) => {
+    let timer = 0;
+    const handler = (event: Event) => {
+      window.clearTimeout(timer);
+      window.removeEventListener(name, handler);
+      resolve((event as CustomEvent<T>).detail);
+    };
+    window.addEventListener(name, handler);
+    timer = window.setTimeout(() => {
+      window.removeEventListener(name, handler);
+      reject(new Error("Native notification bridge timed out."));
+    }, timeoutMs);
+  });
+}
+
+async function savePushDevice(accessToken: string, platform: NativePlatform, deviceToken: string) {
+  const response = await fetch("/api/app/push/register", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ deviceToken, platform, appVariant: "vnext" }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({})) as { error?: string };
+    throw new Error(payload.error || "BVS could not save this device for notifications.");
+  }
+}
 
 export function isNativeRuntime() {
   return Capacitor.isNativePlatform();
@@ -121,6 +158,16 @@ export async function shareBvs(options: { title: string; text?: string; url: str
 
 export async function listenPushNotificationActions(listener: (action: AppPushAction) => void): Promise<() => Promise<void>> {
   if (!isNativeRuntime()) return async () => undefined;
+
+  if (Capacitor.getPlatform() === "ios" && iosPushBridge()) {
+    const onAction = (event: Event) => {
+      const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
+      listener({ notification: { data: detail } });
+    };
+    window.addEventListener("bvs:native-push-action", onAction);
+    return async () => window.removeEventListener("bvs:native-push-action", onAction);
+  }
+
   try {
     const handle = await PushNotifications.addListener("pushNotificationActionPerformed", listener);
     return () => handle.remove();
@@ -131,6 +178,18 @@ export async function listenPushNotificationActions(listener: (action: AppPushAc
 
 export async function getPushPermission(): Promise<PushPermissionState> {
   if (!isNativeRuntime()) return "unavailable";
+
+  const bridge = iosPushBridge();
+  if (bridge) {
+    try {
+      const state = waitForWindowEvent<{ state?: PushPermissionState }>("bvs:native-push-permission", 3500);
+      bridge.postMessage({ action: "status" });
+      return (await state).state || "unavailable";
+    } catch {
+      return "unavailable";
+    }
+  }
+
   try {
     return (await PushNotifications.checkPermissions()).receive;
   } catch {
@@ -140,6 +199,24 @@ export async function getPushPermission(): Promise<PushPermissionState> {
 
 export async function registerPushDevice(accessToken: string, platform: NativePlatform): Promise<{ ok: boolean; permission: PushPermissionState; error?: string }> {
   if (!isNativeRuntime()) return { ok: false, permission: "unavailable", error: "Native push is available in the installed app build." };
+
+  const bridge = iosPushBridge();
+  if (platform === "ios" && bridge) {
+    try {
+      const permissionPromise = waitForWindowEvent<{ state?: PushPermissionState }>("bvs:native-push-permission");
+      const registrationPromise = waitForWindowEvent<{ token?: string; error?: string }>("bvs:native-push-registration");
+      bridge.postMessage({ action: "register" });
+      const permission = (await permissionPromise).state || "unavailable";
+      if (permission !== "granted") return { ok: false, permission };
+      const registration = await registrationPromise;
+      if (!registration.token) throw new Error(registration.error || "Apple Push registration failed.");
+      await savePushDevice(accessToken, platform, registration.token);
+      return { ok: true, permission: "granted" };
+    } catch (error) {
+      return { ok: false, permission: "unavailable", error: error instanceof Error ? error.message : "Push registration failed." };
+    }
+  }
+
   try {
     let permission = (await PushNotifications.checkPermissions()).receive;
     if (permission === "prompt" || permission === "prompt-with-rationale") {
@@ -168,15 +245,7 @@ export async function registerPushDevice(accessToken: string, platform: NativePl
       await errorHandle.remove().catch(() => undefined);
     }
 
-    const response = await fetch("/api/app/push/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ deviceToken, platform, appVariant: "vnext" }),
-    });
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({})) as { error?: string };
-      throw new Error(payload.error || "BVS could not save this device for notifications.");
-    }
+    await savePushDevice(accessToken, platform, deviceToken);
     return { ok: true, permission: "granted" };
   } catch (error) {
     return { ok: false, permission: "unavailable", error: error instanceof Error ? error.message : "Push registration failed." };
