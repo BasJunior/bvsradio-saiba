@@ -3,16 +3,19 @@ import AVFoundation
 import MediaPlayer
 import Capacitor
 import WebKit
+import UserNotifications
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
+class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, UNUserNotificationCenterDelegate {
 
     var window: UIWindow?
     private var webViewURLObservation: NSKeyValueObservation?
     private let navigationRouteHandler = "bvsNavigationRoute"
     private let nowPlayingRouteHandler = "bvsNowPlaying"
+    private let pushRegistrationHandler = "bvsPushRegistration"
     private var remoteCommandsConfigured = false
     private var currentArtworkURL = ""
+    private var pendingPushHref: String?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Allow HTML5 / WebView audio to continue when the screen locks (radio use case).
@@ -27,6 +30,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
             // Non-fatal: playback still works while app is foregrounded.
             print("AVAudioSession setup failed: \(error)")
         }
+        UNUserNotificationCenter.current().delegate = self
         configureRemoteCommandsIfNeeded()
         DispatchQueue.main.async { [weak self] in
             self?.configureNavigationGesturesIfNeeded()
@@ -35,7 +39,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
-        // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and begins the transition to the background state.
+        // Sent when the application is about to move from active to inactive state.
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
@@ -52,7 +56,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
-        // Called when the application is about to terminate. Save data if appropriate.
+        // Called when the application is about to terminate.
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
@@ -61,6 +65,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
 
     func application(_ application: UIApplication, continue userActivity: NSUserActivity, restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void) -> Bool {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        let token = deviceToken.map { String(format: "%02.2hhx", $0) }.joined()
+        emitPushEvent("bvs:native-push-registration", payload: ["token": token])
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        emitPushEvent("bvs:native-push-registration", payload: ["error": error.localizedDescription])
     }
 
     private func configureNavigationGesturesIfNeeded() {
@@ -102,15 +115,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
         webView.configuration.userContentController.addUserScript(routeBridge)
         webView.configuration.userContentController.add(self, name: navigationRouteHandler)
         webView.configuration.userContentController.add(self, name: nowPlayingRouteHandler)
+        webView.configuration.userContentController.add(self, name: pushRegistrationHandler)
         webView.evaluateJavaScript(routeBridge.source)
         webViewURLObservation = webView.observe(\.url, options: [.initial, .new]) { [weak self] observedWebView, _ in
             self?.updateNavigationGestures(for: observedWebView)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.flushPendingPushAction()
         }
     }
 
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         if message.name == nowPlayingRouteHandler {
             handleNowPlayingMessage(message.body)
+            return
+        }
+        if message.name == pushRegistrationHandler {
+            handlePushRegistrationMessage(message.body)
             return
         }
 
@@ -249,6 +270,94 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler {
         #if DEBUG
         NSLog("BVS navigation route=%@ layer=%@ gesture=%@", url.path, url.fragment ?? "none", gestureEnabled.description)
         #endif
+    }
+
+    private func handlePushRegistrationMessage(_ body: Any) {
+        guard let payload = body as? [String: Any], let action = payload["action"] as? String else { return }
+        let center = UNUserNotificationCenter.current()
+        if action == "status" {
+            center.getNotificationSettings { [weak self] settings in
+                self?.emitPushPermission(settings.authorizationStatus)
+            }
+            return
+        }
+        guard action == "register" else { return }
+        center.requestAuthorization(options: [.alert, .badge, .sound]) { [weak self] granted, error in
+            guard let self else { return }
+            if let error {
+                self.emitPushEvent("bvs:native-push-permission", payload: ["state": "denied", "error": error.localizedDescription])
+                return
+            }
+            center.getNotificationSettings { [weak self] settings in
+                guard let self else { return }
+                self.emitPushPermission(settings.authorizationStatus)
+                if granted || settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional || settings.authorizationStatus == .ephemeral {
+                    DispatchQueue.main.async {
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+                }
+            }
+        }
+    }
+
+    private func emitPushPermission(_ status: UNAuthorizationStatus) {
+        let state: String
+        switch status {
+        case .authorized, .provisional, .ephemeral:
+            state = "granted"
+        case .denied:
+            state = "denied"
+        case .notDetermined:
+            state = "prompt"
+        @unknown default:
+            state = "unavailable"
+        }
+        emitPushEvent("bvs:native-push-permission", payload: ["state": state])
+    }
+
+    private func emitPushEvent(_ name: String, payload: [String: Any]) {
+        guard JSONSerialization.isValidJSONObject(payload),
+              let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8) else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  let bridge = self.window?.rootViewController as? CAPBridgeViewController,
+                  let webView = bridge.webView else { return }
+            webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('\(name)',{detail:\(json)}));")
+        }
+    }
+
+    private func emitPushAction(_ href: String) {
+        guard !href.isEmpty else { return }
+        guard let bridge = window?.rootViewController as? CAPBridgeViewController,
+              let webView = bridge.webView,
+              let data = try? JSONSerialization.data(withJSONObject: ["href": href]),
+              let json = String(data: data, encoding: .utf8) else {
+            pendingPushHref = href
+            return
+        }
+        pendingPushHref = nil
+        DispatchQueue.main.async {
+            webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('bvs:native-push-action',{detail:\(json)}));")
+        }
+    }
+
+    private func flushPendingPushAction() {
+        guard let href = pendingPushHref else { return }
+        emitPushAction(href)
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound, .badge])
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let info = response.notification.request.content.userInfo
+        if let href = info["href"] as? String, !href.isEmpty {
+            pendingPushHref = href
+            emitPushAction(href)
+        }
+        completionHandler()
     }
 
 }
