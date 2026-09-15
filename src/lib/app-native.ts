@@ -207,7 +207,10 @@ export async function registerPushDevice(accessToken: string, platform: NativePl
       const registrationPromise = waitForWindowEvent<{ token?: string; error?: string }>("bvs:native-push-registration");
       bridge.postMessage({ action: "register" });
       const permission = (await permissionPromise).state || "unavailable";
-      if (permission !== "granted") return { ok: false, permission };
+      if (permission !== "granted") {
+        void registrationPromise.catch(() => undefined);
+        return { ok: false, permission };
+      }
       const registration = await registrationPromise;
       if (!registration.token) throw new Error(registration.error || "Apple Push registration failed.");
       await savePushDevice(accessToken, platform, registration.token);
