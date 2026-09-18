@@ -3,6 +3,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
+import { Capacitor } from "@capacitor/core";
+import { getPushPermission, isNativeRuntime, registerPushDevice } from "@/lib/app-native";
 
 export type AppAccess = {
   creator?: boolean;
@@ -105,6 +107,18 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
     });
     return () => data.subscription.unsubscribe();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (!token || !isNativeRuntime()) return;
+    let alive = true;
+    void (async () => {
+      const permission = await getPushPermission();
+      if (!alive || permission !== "granted") return;
+      const platform = Capacitor.getPlatform() === "android" ? "android" : "ios";
+      await registerPushDevice(token, platform).catch(() => undefined);
+    })();
+    return () => { alive = false; };
+  }, [token]);
 
   const isCreator = Boolean(
     access?.creator || access?.artist || access?.producer || access?.writer || access?.showCreator || access?.admin,
