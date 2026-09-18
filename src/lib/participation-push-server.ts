@@ -39,8 +39,6 @@ function tokenKey(token: string) {
   return createHash("sha256").update(token).digest("hex").slice(0, 24);
 }
 
-const SOCIAL_PUSH_CATEGORIES = new Set(["like", "repost", "reply", "mention", "community", "follow"]);
-
 async function optedOutUserIds(userIds: string[]) {
   if (!userIds.length) return new Set<string>();
   const preferences = await participationRows<PreferenceRow>(
@@ -81,8 +79,7 @@ export async function queueParticipationPushNotifications(limit = 500) {
   const notifications = await participationRows<NotificationRow>(
     `participation_notifications?recipient_user_id=in.(${eligibleIds.map(encodeURIComponent).join(",")})&created_at=gte.${encodeURIComponent(since)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at&order=created_at.desc&limit=${Math.min(2000, Math.max(1, limit))}`,
   );
-  const social = notifications.filter((row) => SOCIAL_PUSH_CATEGORIES.has(row.category));
-  const rows = pushRowsFor(social, devices.filter((device) => eligibleIds.includes(device.user_id)));
+  const rows = pushRowsFor(notifications, devices.filter((device) => eligibleIds.includes(device.user_id)));
   if (rows.length) {
     await participationInsert(
       "participation_deliveries?on_conflict=dedupe_key",
@@ -90,20 +87,19 @@ export async function queueParticipationPushNotifications(limit = 500) {
       "resolution=ignore-duplicates,return=minimal",
     );
   }
-  return { users: eligibleIds.length, notifications: social.length, devices: devices.length, queuedCandidates: rows.length };
+  return { users: eligibleIds.length, notifications: notifications.length, devices: devices.length, queuedCandidates: rows.length };
 }
 
 export async function queueAndDeliverPushForNotifications(notifications: NotificationRow[]) {
-  const social = notifications.filter((row) => SOCIAL_PUSH_CATEGORIES.has(row.category));
-  if (!social.length) return { queued: 0, delivered: { configured: false, scanned: 0, sent: 0, failed: 0, deadLetter: 0 } };
-  const userIds = [...new Set(social.map((row) => row.recipient_user_id))];
+  if (!notifications.length) return { queued: 0, delivered: { configured: false, scanned: 0, sent: 0, failed: 0, deadLetter: 0 } };
+  const userIds = [...new Set(notifications.map((row) => row.recipient_user_id))];
   const [devices, optedOut] = await Promise.all([
     participationRows<DeviceRow>(
       `app_push_devices?user_id=in.(${userIds.map(encodeURIComponent).join(",")})&enabled=eq.true&select=user_id,device_token,platform,app_variant&limit=3000`,
     ),
     optedOutUserIds(userIds),
   ]);
-  const eligible = social.filter((row) => !optedOut.has(row.recipient_user_id));
+  const eligible = notifications.filter((row) => !optedOut.has(row.recipient_user_id));
   const rows = pushRowsFor(eligible, devices);
   if (rows.length) {
     await participationInsert(
