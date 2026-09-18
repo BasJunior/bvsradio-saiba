@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
+import AppNotificationSettings from "@/components/app-vnext/AppNotificationSettings";
 
 type CreatorRole = "artist" | "producer" | "writer" | "show_creator";
 type Profile = {
@@ -252,6 +253,8 @@ export default function AppAccountClient({ surface }: { surface: AppSurface }) {
           {profile.is_producer ? <span className="rounded-full border border-white/[.07] px-3 py-2 text-xs text-white/36">Producer access</span> : null}
         </div>
       </form>
+
+      <AppNotificationSettings surface={surface} />
 
       <section id="creator-role" className="mt-7 rounded-[1.7rem] border border-white/[.07] bg-white/[.022] p-5 sm:p-6">
         <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Creator access</p>

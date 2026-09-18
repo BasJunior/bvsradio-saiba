@@ -24,10 +24,21 @@ export async function PATCH(request: Request) {
   const patch: Record<string, boolean> = {};
   for (const key of allowed) if (typeof body[key] === "boolean") patch[key] = body[key] as boolean;
   if (!Object.keys(patch).length) return NextResponse.json({ error: "No valid preference changes." }, { status: 400 });
+
+  let current = { ...defaults };
+  const existing = await fetch(`${appSupabaseUrl}/rest/v1/app_notification_preferences?user_id=eq.${encodeURIComponent(user.id)}&select=releases,shows,creator_work,orders,community,marketing&limit=1`, {
+    headers: appServiceHeaders(), cache: "no-store",
+  });
+  if (existing.ok) {
+    const rows = await existing.json() as Array<Record<string, boolean>>;
+    current = { ...defaults, ...(rows[0] || {}) };
+  }
+
+  const next = { ...current, ...patch };
   const response = await fetch(`${appSupabaseUrl}/rest/v1/app_notification_preferences?on_conflict=user_id`, {
     method: "POST",
     headers: appServiceHeaders({ Prefer: "resolution=merge-duplicates,return=representation" }),
-    body: JSON.stringify({ user_id: user.id, ...patch, updated_at: new Date().toISOString() }),
+    body: JSON.stringify({ user_id: user.id, ...next, updated_at: new Date().toISOString() }),
   });
   if (!response.ok) return NextResponse.json({ error: "Could not save notification preferences." }, { status: 503 });
   const rows = await response.json() as Array<Record<string, boolean>>;
