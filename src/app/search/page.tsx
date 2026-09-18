@@ -343,9 +343,9 @@ export default function SearchPage() {
 
   const activeMode = exploreModes.find(item => item.value === mode) || exploreModes[0]
 
-  return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 py-12 sm:px-6">
+  return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 pb-12 pt-8 sm:px-6 sm:pt-10">
     <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Explore BVS</p>
-    <h1 className="text-4xl md:text-5xl">Music, playlists, creators and the scene around them</h1>
+    <h1 className="scroll-mt-28 text-4xl md:text-5xl">Music, playlists, creators and the scene around them</h1>
     <p className="mt-3 max-w-2xl text-text-secondary">Search published BVS content or move through recent music, public playlists, verified creators, BeatStore and programmes.</p>
     <label className="mt-8 block max-w-3xl"><span className="sr-only">Search BVS</span><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Try “Vibes”, “Wolf Bridges” or “gospel”" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
     {flowV2Flags.exploreModes && !query.trim() ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${mode === item.value ? 'bg-brand text-black' : 'border border-white/10 bg-white/[.03] text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
@@ -360,7 +360,7 @@ export default function SearchPage() {
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           {group.items.map(item => <article key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-3 transition hover:border-brand/35">
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</div>
+            <div className={`relative h-16 w-16 shrink-0 overflow-hidden bg-white/5 ${item.kind === 'artist' || item.kind === 'producer' ? 'rounded-full' : 'rounded-xl'}`}>{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</div>
             {item.detail ? (
               <button type="button" onClick={() => openResult(item)} className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || item.kind}</span>

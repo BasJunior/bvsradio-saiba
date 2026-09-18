@@ -11,7 +11,7 @@ export const metadata = {
 export default async function ProducersDirectoryPage() {
   const producers = fairDailyOrder(await getPublishedProducers(), "producers");
   return (
-    <main className="mx-auto min-h-[70vh] max-w-6xl px-6 py-12">
+    <main className="mx-auto min-h-[70vh] max-w-6xl px-6 pb-12 pt-8 sm:pt-10">
       <p className="text-xs uppercase tracking-[.25em] text-brand">
         BVS BeatStore
       </p>
@@ -37,14 +37,14 @@ export default async function ProducersDirectoryPage() {
         </Link>
       </div>
       {producers.length ? (
-        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           {producers.map((producer) => (
             <article
               key={producer.id}
-              className="overflow-hidden rounded-2xl border border-white/10 bg-white/[.03]"
+              className="min-w-0"
             >
-              <Link href={`/artist/${producer.username}`}>
-                <div className="relative aspect-square overflow-hidden bg-black/40">
+              <Link href={`/artist/${producer.username}`} className="group block text-center">
+                <div className="relative mx-auto aspect-square w-[min(100%,14rem)] overflow-hidden rounded-full bg-black/40">
                   <Image
                     src={producer.image}
                     alt={producer.name}
@@ -54,7 +54,7 @@ export default async function ProducersDirectoryPage() {
                     className="object-cover object-center transition duration-300 group-hover:scale-[1.04]"
                   />
                 </div>
-                <div className="p-5">
+                <div className="mt-4">
                   <p className="text-[10px] uppercase tracking-[.2em] text-brand">
                     Verified producer
                   </p>
@@ -70,12 +70,12 @@ export default async function ProducersDirectoryPage() {
                   </p>
                 </div>
               </Link>
-              <div className="px-5 pb-5">
+              <div className="mt-3 text-center">
                 <Link
                   href={`/catalogue?type=beat&producer=${encodeURIComponent(producer.username)}#browse`}
-                  className="text-sm text-brand"
+                  className="text-sm font-semibold text-brand hover:underline"
                 >
-                  View this producer’s catalogue →
+                  License crate →
                 </Link>
               </div>
             </article>

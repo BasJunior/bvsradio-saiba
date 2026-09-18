@@ -67,19 +67,27 @@ export default async function ArtistPage({
   const hasConnections = profile.tracks.some(track => track.credits.length > 0);
   const hasBeats = Boolean(profile.beats?.length);
   const producerFirst = /producer/i.test(profile.role) && hasBeats;
+  const genreTags = Array.from(
+    new Set(
+      [
+        ...profile.tracks.map((track) => track.genre),
+        ...(profile.beats || []).map((beat) => beat.genre),
+      ].filter((genre): genre is string => Boolean(genre && genre.trim())),
+    ),
+  ).slice(0, 8);
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
+    <main className="mx-auto max-w-5xl px-6 pb-16 pt-8 sm:pt-10">
       <Link href="/music/artists" className="text-sm text-brand">
         ← All BVS creators
       </Link>
       <div className="mt-8 flex flex-col gap-10 md:flex-row">
-        <div className="relative aspect-square w-full shrink-0 self-start overflow-hidden rounded-2xl border border-white/10 bg-black/40 md:h-80 md:w-80">
+        <div className="relative aspect-[4/5] w-full shrink-0 self-start overflow-hidden bg-black/40 md:w-[22rem]">
           <Image
             src={profile.image}
             alt={profile.name}
             fill
             unoptimized={/^https?:\/\//i.test(profile.image)}
-            sizes="(max-width:768px) 100vw, 320px"
+            sizes="(max-width:768px) 100vw, 352px"
             className="object-cover object-center"
             priority
           />
@@ -88,9 +96,21 @@ export default async function ArtistPage({
           <p className="text-xs uppercase tracking-[0.25em] text-brand">
             Verified {profile.role}
           </p>
-          <h1 className="mt-2 text-5xl">{profile.name}</h1>
+          <h1 className="mt-2 scroll-mt-28 text-5xl">{profile.name}</h1>
           {profile.location && (
             <p className="mt-3 text-sm text-brand">{profile.location}</p>
+          )}
+          {genreTags.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2" aria-label="Genre tags">
+              {genreTags.map((genre) => (
+                <span
+                  key={genre}
+                  className="rounded-full border border-brand/25 bg-brand/10 px-3 py-1 text-xs font-medium text-brand"
+                >
+                  {genre}
+                </span>
+              ))}
+            </div>
           )}
           <p className="mt-5 max-w-prose text-text-secondary">{profile.bio}</p>
           <div className="mt-6 flex flex-wrap gap-3">
@@ -154,7 +174,7 @@ export default async function ArtistPage({
 
           {producerFirst ? <section id="beats" className="scroll-mt-24"><FlowRelationships kind="creator" id={profile.id} view="beats" /></section> : null}
 
-          {hasMusic ? <section id="music" className="mt-8 scroll-mt-24 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          {hasMusic ? <section id="music" className="mt-8 scroll-mt-28">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-brand">
@@ -168,16 +188,16 @@ export default async function ArtistPage({
               </span>
             </div>
             {profile.tracks.length ? (
-              <div className="mt-4 space-y-4">
+              <div className="mt-5 space-y-5">
                 {profile.tracks.map((track) => (
                   <article
                     key={track.id}
-                    className="rounded-xl border border-white/10 p-3"
+                    className="py-1"
                     data-flow-focus-id={`track:${track.id}`}
                     tabIndex={-1}
                   >
                     <div className="flex gap-4">
-                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-white/5">
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden bg-white/5">
                         {track.artwork_url && (
                           <Image
                             src={track.artwork_url}
