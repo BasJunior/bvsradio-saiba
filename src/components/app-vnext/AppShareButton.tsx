@@ -14,6 +14,8 @@ type AppShareButtonProps = {
   compact?: boolean;
 };
 
+const BVS_STORY_LOGO = "/branding/bvs-logo.png";
+
 function drawWrappedText(
   context: CanvasRenderingContext2D,
   value: string,
@@ -98,6 +100,26 @@ function drawCoverImage(
   context.restore();
 }
 
+function drawContainedImage(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
+  const renderedWidth = image.naturalWidth * scale;
+  const renderedHeight = image.naturalHeight * scale;
+  context.drawImage(
+    image,
+    x + ((width - renderedWidth) / 2),
+    y + ((height - renderedHeight) / 2),
+    renderedWidth,
+    renderedHeight,
+  );
+}
+
 function drawArtworkFallback(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) {
   const panel = context.createLinearGradient(x, y, x + width, y + height);
   panel.addColorStop(0, "#241b08");
@@ -144,15 +166,22 @@ async function makeStoryCard({ title, text, kicker, image }: { title: string; te
   context.fillStyle = glow;
   context.fillRect(0, 0, 1080, 1050);
 
+  // Use the production BVS mark rather than recreating it with canvas text.
+  // A contained image box keeps the mark consistent and prevents header clipping.
+  const storyLogo = await loadStoryImage(BVS_STORY_LOGO);
   context.fillStyle = "#f2ce65";
   context.beginPath();
   context.roundRect(72, 64, 250, 154, 26);
   context.fill();
-  context.fillStyle = "#050505";
-  context.font = "900 56px Arial, sans-serif";
-  context.fillText("BVS", 96, 132);
-  context.font = "900 48px Arial, sans-serif";
-  context.fillText("radio", 96, 190);
+  if (storyLogo?.image) drawContainedImage(context, storyLogo.image, 88, 78, 218, 126);
+  else {
+    // This only covers an unavailable image asset; it deliberately avoids branded text fragments.
+    context.fillStyle = "#050505";
+    context.beginPath();
+    context.roundRect(171, 111, 52, 52, 14);
+    context.fill();
+  }
+  if (storyLogo?.objectUrl) URL.revokeObjectURL(storyLogo.objectUrl);
 
   context.fillStyle = "rgba(255,255,255,.48)";
   context.font = "700 25px Arial, sans-serif";
