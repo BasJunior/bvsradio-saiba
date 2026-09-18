@@ -13,7 +13,7 @@ const rows: Array<{ key: PreferenceKey; title: string; note: string }> = [
   { key: "shows", title: "Shows & rooms", note: "Reminders for followed shows, rooms going live and important schedule changes." },
   { key: "creator_work", title: "Studio work", note: "Editorial requests, release reviews, rights tasks and creator actions." },
   { key: "orders", title: "Orders & money", note: "Marketplace orders, deliveries, payout and account-money state changes." },
-  { key: "community", title: "Community push", note: "Optional device alerts for replies, mentions and public participation. Off by default." },
+  { key: "community", title: "Community push", note: "Lock-screen alerts for new Feed posts, discussions, likes, reposts, replies and mentions." },
   { key: "marketing", title: "BVS news", note: "Optional product/news messages. Off by default." },
 ];
 

@@ -184,6 +184,26 @@ async function eligibleCandidates(event: DomainEvent) {
     }, actorId);
   }
 
+  if (event.event_type === "creator_followed" && ownerId) {
+    addCandidate(map, {
+      userId: ownerId,
+      category: "community",
+      title: `${actorName} followed you on BVS`,
+      detail: "Someone new is following your work.",
+      priority: 12,
+    }, actorId);
+  }
+
+  if (event.event_type === "thread_moderated" && ownerId) {
+    addCandidate(map, {
+      userId: ownerId,
+      category: "community",
+      title: "BVS updated a conversation you started",
+      detail: "Open the thread for the current status.",
+      priority: 18,
+    }, actorId);
+  }
+
   const candidates = [...map.values()];
   if (!candidates.length) return { candidates: [], thread, message };
 
@@ -287,7 +307,7 @@ async function fanoutEvent(event: DomainEvent) {
 export async function processParticipationOutbox(limit = 25) {
   await participationPatch("participation_domain_events?fanout_status=eq.processing&fanout_lease_until=lt." + encodeURIComponent(new Date().toISOString()), { fanout_status: "failed", fanout_lease_until: null });
   const events = await participationRows<DomainEvent>(
-    `participation_domain_events?fanout_status=in.(pending,failed)&fanout_attempts=lt.10&event_type=in.(post_created,message_replied,message_mentioned,thread_liked,thread_reposted)&select=id,event_type,actor_user_id,thread_id,message_id,occurred_at,payload,fanout_status,fanout_attempts&order=occurred_at.asc&limit=${Math.min(100, Math.max(1, limit))}`,
+    `participation_domain_events?fanout_status=in.(pending,failed)&fanout_attempts=lt.10&event_type=in.(post_created,message_replied,message_mentioned,thread_liked,thread_reposted,creator_followed,thread_reported,thread_moderated)&select=id,event_type,actor_user_id,thread_id,message_id,occurred_at,payload,fanout_status,fanout_attempts&order=occurred_at.asc&limit=${Math.min(100, Math.max(1, limit))}`,
   );
   let processed = 0;
   let notifications = 0;
