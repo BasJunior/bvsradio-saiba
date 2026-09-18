@@ -15,6 +15,7 @@ xcodebuild -workspace ios/App/App.xcworkspace \
   -allowProvisioningDeviceRegistration \
   DEVELOPMENT_TEAM=VGFK77VH73 \
   CODE_SIGN_STYLE=Automatic \
+  CODE_SIGN_ENTITLEMENTS=App/App.entitlements \
   ENABLE_USER_SCRIPT_SANDBOXING=NO \
   archive
 echo "Archive OK: $ROOT/build/BVSRadio.xcarchive"

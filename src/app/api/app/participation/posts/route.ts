@@ -80,8 +80,11 @@ function encodeCursor(row?: ThreadRow) {
 async function hydratePosts(threads: ThreadRow[], viewerId: string | null, surface: AppSurface | null): Promise<ParticipationPost[]> {
   if (!threads.length) return [];
   const threadIds = threads.map((thread) => thread.id);
+  // Feed cards only hydrate published roots. Deleted roots can remain as a
+  // tombstone on their direct thread permalink so replies keep context, but
+  // they must never survive as a card in the main social feed.
   const messages = await participationRows<MessageRow>(
-    `participation_messages?thread_id=in.(${threadIds.map(encodeURIComponent).join(",")})&message_kind=eq.root&status=in.(published,deleted)&select=id,thread_id,author_user_id,body,created_at,edited_at&limit=${threads.length + 10}`,
+    `participation_messages?thread_id=in.(${threadIds.map(encodeURIComponent).join(",")})&message_kind=eq.root&status=eq.published&select=id,thread_id,author_user_id,body,created_at,edited_at&limit=${threads.length + 10}`,
   );
   const summaries = await participationRpc<SummaryRow[]>("participation_thread_summary", {
     p_thread_ids: threadIds,
@@ -139,7 +142,11 @@ export async function GET(request: Request) {
     if (!user) return NextResponse.json({ enabled: true, posts: [], nextCursor: null });
     if (lane === "following") {
       const follows = await participationRows<{ item_id: string }>(`user_library_items?user_id=eq.${encodeURIComponent(user.id)}&section=eq.follows&select=item_id&limit=1000`);
-      const ids = follows.map(row => row.item_id).filter(id => /^[0-9a-f-]{36}$/i.test(id));
+      const ids = [...new Set(follows.flatMap((row) => {
+        const raw = String(row.item_id || "");
+        const candidate = raw.startsWith("artist-") ? raw.slice("artist-".length) : raw;
+        return /^[0-9a-f-]{36}$/i.test(candidate) ? [candidate] : [];
+      }))];
       if (!ids.length) return NextResponse.json({ enabled: true, posts: [], nextCursor: null });
       laneClause = `&author_user_id=in.(${ids.map(encodeURIComponent).join(",")})`;
     } else {

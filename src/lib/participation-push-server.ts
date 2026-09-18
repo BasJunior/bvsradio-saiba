@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { apnsConfigured, sendApnsPush } from "@/lib/apns-server";
 import {
   participationInsert,
   participationPatch,
@@ -91,10 +92,36 @@ async function notificationFor(delivery: DeliveryRow) {
   ))[0] || null;
 }
 
+async function markSent(deliveryId: string, receipt: string) {
+  await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(deliveryId)}`, {
+    status: "sent",
+    provider_receipt: receipt.slice(0, 500),
+    error_class: null,
+    last_error: null,
+    lease_until: null,
+    updated_at: new Date().toISOString(),
+  });
+}
+
+async function markProviderFailure(delivery: DeliveryRow, attempt: number, now: string, status: number, message: string, terminal: boolean) {
+  const dead = terminal || attempt >= 5;
+  await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, {
+    status: dead ? "dead_letter" : "failed",
+    error_class: status ? `provider_${status}` : "provider_unavailable",
+    last_error: message.slice(0, 500),
+    lease_until: null,
+    scheduled_at: dead ? now : retryAt(attempt),
+    updated_at: new Date().toISOString(),
+  });
+  return dead;
+}
+
 export async function deliverParticipationPushQueue(limit = 100) {
   const endpoint = String(process.env.BVS_PUSH_DELIVERY_ENDPOINT || "").trim();
   const secret = String(process.env.BVS_PUSH_DELIVERY_SECRET || "").trim();
-  if (!endpoint || !secret) return { configured: false, scanned: 0, sent: 0, failed: 0, deadLetter: 0 };
+  const externalConfigured = Boolean(endpoint && secret);
+  const directAppleConfigured = apnsConfigured();
+  if (!externalConfigured && !directAppleConfigured) return { configured: false, scanned: 0, sent: 0, failed: 0, deadLetter: 0 };
 
   const now = new Date().toISOString();
   await participationPatch(
@@ -141,7 +168,50 @@ export async function deliverParticipationPushQueue(limit = 100) {
       await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, { status: "queued", attempts: delivery.attempts, lease_until: null, scheduled_at: new Date(Date.now() + 300_000).toISOString() });
       continue;
     }
+
     const [platform = "unknown", appVariant = "vnext"] = String(delivery.app_identity || "unknown:vnext").split(":", 2);
+    const href = notificationHref(notification.target_href, platform === "ios" ? "ios" : "android");
+
+    if (platform === "ios" && directAppleConfigured) {
+      try {
+        const result = await sendApnsPush({
+          token: delivery.destination_key,
+          title: notification.title,
+          body: notification.detail,
+          category: notification.category,
+          threadId: notification.thread_id || null,
+          href,
+        });
+        if (result.ok) {
+          await markSent(delivery.id, result.receipt || "apns:accepted");
+          sent += 1;
+          continue;
+        }
+        if (result.status === 410 || /BadDeviceToken|Unregistered/i.test(result.error || "")) {
+          await participationPatch(`app_push_devices?device_token=eq.${encodeURIComponent(delivery.destination_key)}`, {
+            enabled: false,
+            updated_at: new Date().toISOString(),
+          }).catch(() => undefined);
+        }
+        const dead = await markProviderFailure(delivery, attempt, now, result.status, result.error || "Apple Push rejected the notification.", result.terminal);
+        if (dead) deadLetter += 1;
+        else failed += 1;
+        continue;
+      } catch (error) {
+        const dead = await markProviderFailure(delivery, attempt, now, 0, error instanceof Error ? error.message : "Apple Push request failed.", false);
+        if (dead) deadLetter += 1;
+        else failed += 1;
+        continue;
+      }
+    }
+
+    if (!externalConfigured) {
+      const dead = await markProviderFailure(delivery, attempt, now, 0, `No push provider is configured for ${platform}.`, false);
+      if (dead) deadLetter += 1;
+      else failed += 1;
+      continue;
+    }
+
     try {
       const response = await fetch(endpoint, {
         method: "POST",
@@ -155,7 +225,7 @@ export async function deliverParticipationPushQueue(limit = 100) {
             body: notification.detail,
             category: notification.category,
             threadId: notification.thread_id || null,
-            href: notificationHref(notification.target_href, platform === "ios" ? "ios" : "android"),
+            href,
           },
         }),
         signal: AbortSignal.timeout(8_000),
@@ -163,32 +233,24 @@ export async function deliverParticipationPushQueue(limit = 100) {
       });
       const providerBody = await response.json().catch(() => ({})) as { receipt?: string; id?: string; error?: string };
       if (response.ok) {
-        await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, {
-          status: "sent",
-          provider_receipt: String(providerBody.receipt || providerBody.id || "accepted").slice(0, 500),
-          error_class: null,
-          last_error: null,
-          lease_until: null,
-          updated_at: new Date().toISOString(),
-        });
+        await markSent(delivery.id, String(providerBody.receipt || providerBody.id || "accepted"));
         sent += 1;
         continue;
       }
-      const terminal = response.status === 400 || response.status === 404 || response.status === 410 || attempt >= 5;
-      await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, {
-        status: terminal ? "dead_letter" : "failed",
-        error_class: `provider_${response.status}`,
-        last_error: String(providerBody.error || `Push provider returned HTTP ${response.status}.`).slice(0, 500),
-        lease_until: null,
-        scheduled_at: terminal ? now : retryAt(attempt),
-        updated_at: new Date().toISOString(),
-      });
-      if (terminal) deadLetter += 1;
+      const dead = await markProviderFailure(
+        delivery,
+        attempt,
+        now,
+        response.status,
+        String(providerBody.error || `Push provider returned HTTP ${response.status}.`),
+        response.status === 400 || response.status === 404 || response.status === 410,
+      );
+      if (dead) deadLetter += 1;
       else failed += 1;
     } catch (error) {
       const terminal = attempt >= 5;
       await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, {
-        status: "ambiguous",
+        status: terminal ? "dead_letter" : "ambiguous",
         error_class: "provider_transport",
         last_error: error instanceof Error ? error.message.slice(0, 500) : "Push provider request failed.",
         lease_until: null,
@@ -199,5 +261,5 @@ export async function deliverParticipationPushQueue(limit = 100) {
       else failed += 1;
     }
   }
-  return { configured: true, scanned: deliveries.length, sent, failed, deadLetter };
+  return { configured: true, scanned: deliveries.length, sent, failed, deadLetter, providers: { apns: directAppleConfigured, external: externalConfigured } };
 }

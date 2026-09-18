@@ -119,6 +119,26 @@ async function eligibleCandidates(event: DomainEvent) {
     }
   }
 
+  // Creator follows are stored in the shared library. A creator card uses the
+  // `artist-<profile id>` key while older clients may have stored the UUID
+  // directly, so fan out to both forms. Mentions/replies still win because
+  // addCandidate keeps the highest-priority notification for each event/user.
+  if (event.event_type === "post_created" && actorId && thread.thread_type === "post") {
+    const followKeys = [actorId, `artist-${actorId}`];
+    const followers = await participationRows<{ user_id: string }>(
+      `user_library_items?section=eq.follows&item_id=in.(${followKeys.map(encodeURIComponent).join(",")})&select=user_id&limit=5000`,
+    );
+    for (const follower of followers) {
+      addCandidate(map, {
+        userId: follower.user_id,
+        category: "community",
+        title: `${actorName} posted on BVS`,
+        detail,
+        priority: 8,
+      }, actorId);
+    }
+  }
+
   if (event.event_type === "message_replied") {
     if (parent?.author_user_id) {
       addCandidate(map, {

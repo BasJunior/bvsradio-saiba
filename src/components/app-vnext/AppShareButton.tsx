@@ -47,7 +47,83 @@ function drawWrappedText(
   return y + (lines.length * lineHeight);
 }
 
-async function makeStoryCard({ title, text, kicker }: { title: string; text?: string; kicker: string }) {
+async function loadStoryImage(src?: string) {
+  if (!src || typeof window === "undefined") return null;
+  try {
+    const resolved = new URL(src, "https://bvsradio.com");
+    const response = await fetch(resolved.href, {
+      cache: "force-cache",
+      credentials: "same-origin",
+      mode: "cors",
+    });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const image = await new Promise<HTMLImageElement | null>((resolve) => {
+      const candidate = new Image();
+      candidate.onload = () => resolve(candidate);
+      candidate.onerror = () => resolve(null);
+      candidate.src = objectUrl;
+    });
+    return { image, objectUrl };
+  } catch {
+    return null;
+  }
+}
+
+function drawCoverImage(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  const sourceX = Math.max(0, (image.naturalWidth - sourceWidth) / 2);
+  const sourceY = Math.max(0, (image.naturalHeight - sourceHeight) / 2);
+  context.save();
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
+  context.clip();
+  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
+  const shade = context.createLinearGradient(0, y, 0, y + height);
+  shade.addColorStop(0, "rgba(0,0,0,0)");
+  shade.addColorStop(1, "rgba(0,0,0,.22)");
+  context.fillStyle = shade;
+  context.fillRect(x, y, width, height);
+  context.restore();
+}
+
+function drawArtworkFallback(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) {
+  const panel = context.createLinearGradient(x, y, x + width, y + height);
+  panel.addColorStop(0, "#241b08");
+  panel.addColorStop(0.55, "#111116");
+  panel.addColorStop(1, "#050506");
+  context.fillStyle = panel;
+  context.beginPath();
+  context.roundRect(x, y, width, height, 48);
+  context.fill();
+  context.strokeStyle = "rgba(232,189,56,.35)";
+  context.lineWidth = 3;
+  context.stroke();
+
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+  const heights = [110, 210, 320, 430, 290, 170, 90];
+  heights.forEach((barHeight, index) => {
+    const barX = centerX - 162 + (index * 54);
+    context.fillStyle = index === 3 ? "#f1c94a" : "rgba(241,201,74,.7)";
+    context.beginPath();
+    context.roundRect(barX, centerY - barHeight / 2, 26, barHeight, 13);
+    context.fill();
+  });
+}
+
+async function makeStoryCard({ title, text, kicker, image }: { title: string; text?: string; kicker: string; image?: string }) {
   if (typeof document === "undefined") return null;
   const canvas = document.createElement("canvas");
   canvas.width = 1080;
@@ -56,50 +132,76 @@ async function makeStoryCard({ title, text, kicker }: { title: string; text?: st
   if (!context) return null;
 
   const background = context.createLinearGradient(0, 0, 1080, 1920);
-  background.addColorStop(0, "#18130a");
-  background.addColorStop(0.48, "#08090c");
+  background.addColorStop(0, "#211708");
+  background.addColorStop(0.32, "#0c0b0b");
   background.addColorStop(1, "#020204");
   context.fillStyle = background;
   context.fillRect(0, 0, 1080, 1920);
 
-  const glow = context.createRadialGradient(850, 250, 20, 850, 250, 700);
-  glow.addColorStop(0, "rgba(231,187,53,.32)");
+  const glow = context.createRadialGradient(820, 180, 20, 820, 180, 760);
+  glow.addColorStop(0, "rgba(231,187,53,.34)");
   glow.addColorStop(1, "rgba(231,187,53,0)");
   context.fillStyle = glow;
-  context.fillRect(0, 0, 1080, 1100);
+  context.fillRect(0, 0, 1080, 1050);
 
   context.fillStyle = "#f2ce65";
-  context.fillRect(72, 72, 250, 154);
+  context.beginPath();
+  context.roundRect(72, 64, 250, 154, 26);
+  context.fill();
   context.fillStyle = "#050505";
   context.font = "900 56px Arial, sans-serif";
-  context.fillText("BVS", 96, 140);
+  context.fillText("BVS", 96, 132);
   context.font = "900 48px Arial, sans-serif";
-  context.fillText("radio", 96, 197);
+  context.fillText("radio", 96, 190);
+
+  context.fillStyle = "rgba(255,255,255,.48)";
+  context.font = "700 25px Arial, sans-serif";
+  context.textAlign = "right";
+  context.fillText("SHARED FROM BVS", 1002, 132);
+  context.textAlign = "left";
+
+  const loaded = await loadStoryImage(image);
+  if (loaded?.image) drawCoverImage(context, loaded.image, 72, 278, 936, 936, 54);
+  else drawArtworkFallback(context, 72, 278, 936, 936);
+  if (loaded?.objectUrl) URL.revokeObjectURL(loaded.objectUrl);
 
   context.fillStyle = "#e8bd38";
-  context.font = "700 30px Arial, sans-serif";
+  context.font = "700 28px Arial, sans-serif";
   context.letterSpacing = "5px";
-  context.fillText(kicker.toUpperCase().slice(0, 46), 78, 1020);
+  context.fillText(kicker.toUpperCase().slice(0, 46), 78, 1315);
   context.letterSpacing = "0px";
 
   context.fillStyle = "#ffffff";
-  context.font = "700 92px Arial, sans-serif";
-  const afterTitle = drawWrappedText(context, title, 78, 1125, 920, 106, 4);
+  context.font = "700 82px Arial, sans-serif";
+  const afterTitle = drawWrappedText(context, title, 78, 1415, 924, 92, 3);
 
   if (text) {
-    context.fillStyle = "rgba(255,255,255,.70)";
-    context.font = "400 40px Arial, sans-serif";
-    drawWrappedText(context, text, 82, Math.min(afterTitle + 46, 1580), 900, 56, 3);
+    context.fillStyle = "rgba(255,255,255,.68)";
+    context.font = "400 36px Arial, sans-serif";
+    drawWrappedText(context, text, 82, Math.min(afterTitle + 32, 1670), 900, 50, 2);
   }
 
-  context.fillStyle = "rgba(232,189,56,.98)";
-  context.font = "700 31px Arial, sans-serif";
-  context.letterSpacing = "4px";
-  context.fillText("B V S R A D I O . C O M", 78, 1780);
+  context.fillStyle = "rgba(232,189,56,.14)";
+  context.beginPath();
+  context.roundRect(78, 1733, 924, 104, 36);
+  context.fill();
+  context.strokeStyle = "rgba(232,189,56,.28)";
+  context.lineWidth = 2;
+  context.stroke();
+  context.fillStyle = "#f0c94f";
+  context.font = "700 28px Arial, sans-serif";
+  context.letterSpacing = "3px";
+  context.fillText("OPEN ON BVS", 112, 1797);
   context.letterSpacing = "0px";
-  context.fillStyle = "rgba(255,255,255,.38)";
-  context.font = "400 27px Arial, sans-serif";
-  context.fillText("Listen · discover · create", 78, 1832);
+  context.fillStyle = "rgba(255,255,255,.68)";
+  context.font = "600 30px Arial, sans-serif";
+  context.textAlign = "right";
+  context.fillText("bvsradio.com", 968, 1797);
+  context.textAlign = "left";
+
+  context.fillStyle = "rgba(255,255,255,.30)";
+  context.font = "400 24px Arial, sans-serif";
+  context.fillText("Music · creators · culture", 80, 1880);
 
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png", 0.96));
   if (!blob) return null;
@@ -145,7 +247,7 @@ export default function AppShareButton({
     setSharing(true);
     const shareText = text || `${title} on BVS Radio`;
     try {
-      const storyCard = await makeStoryCard({ title, text: shareText, kicker });
+      const storyCard = await makeStoryCard({ title, text: shareText, kicker, image });
       const canShareStory = Boolean(storyCard && navigator.canShare?.({ files: [storyCard] }));
 
       // Dismiss BVS chrome before asking iOS/Android to present its own share sheet.
@@ -202,16 +304,19 @@ export default function AppShareButton({
         </div>
 
         <div
-          className="relative mt-5 min-h-52 overflow-hidden rounded-[1.6rem] border border-brand/25 bg-black bg-cover bg-center p-5"
-          style={image ? { backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.18), rgba(0,0,0,.92)), url(${JSON.stringify(image)})` } : undefined}
+          className="relative mt-5 min-h-72 overflow-hidden rounded-[1.6rem] border border-brand/25 bg-black bg-cover bg-center p-5"
+          style={image ? { backgroundImage: `linear-gradient(180deg, rgba(0,0,0,.08), rgba(0,0,0,.88)), url(${JSON.stringify(image)})` } : undefined}
         >
           <div className="absolute inset-0 bg-gradient-to-br from-brand/10 via-transparent to-black/70" />
-          <div className="relative flex min-h-42 flex-col justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-[.24em] text-brand">{kicker}</p>
+          <div className="relative flex min-h-64 flex-col justify-between">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[.24em] text-brand">{kicker}</p>
+              <span className="rounded-full border border-white/15 bg-black/35 px-2 py-1 text-[9px] font-semibold uppercase tracking-[.12em] text-white/60">BVS Radio</span>
+            </div>
             <div>
               <h3 className="line-clamp-2 text-3xl font-semibold tracking-tight text-white">{title}</h3>
-              {text ? <p className="mt-2 line-clamp-2 text-sm text-white/65">{text}</p> : null}
-              <p className="mt-4 text-xs font-semibold uppercase tracking-[.18em] text-brand">bvsradio.com</p>
+              {text ? <p className="mt-2 line-clamp-2 text-sm text-white/70">{text}</p> : null}
+              <p className="mt-4 text-xs font-semibold uppercase tracking-[.18em] text-brand">Open on BVS · bvsradio.com</p>
             </div>
           </div>
         </div>
@@ -225,7 +330,7 @@ export default function AppShareButton({
         <button type="button" disabled={sharing} onClick={() => void share()} className="mt-3 min-h-12 w-full rounded-2xl bg-brand px-5 text-sm font-semibold text-black disabled:opacity-60">
           {sharing ? "Preparing story card…" : "Share story card"}
         </button>
-        <p className="mt-2 text-center text-[11px] leading-5 text-white/35">BVS prepares a 9:16 card when your phone supports file sharing. Otherwise it opens the normal system share sheet with the canonical BVS link.</p>
+        <p className="mt-2 text-center text-[11px] leading-5 text-white/35">BVS prepares a 9:16 artwork card for supported apps, then hands it to the native share sheet with the canonical BVS link.</p>
         <button type="button" onClick={() => void copy()} className="mt-3 min-h-11 w-full rounded-2xl border border-white/12 px-5 text-sm font-semibold text-white/70">
           {copied ? "Link copied ✓" : "Copy bvsradio.com link"}
         </button>
