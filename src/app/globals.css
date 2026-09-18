@@ -152,6 +152,7 @@ html[data-bvs-surface] :where(a, button, input, select, textarea, [tabindex]):fo
 /* Prevent iOS WebView from overflowing wide words / tracking */
 html {
   overflow-x: clip;
+  scroll-padding-top: calc(4.5rem + env(safe-area-inset-top, 0px));
 }
 
 /* Premium typography scale (Apple-inspired) */
@@ -238,4 +239,13 @@ p, .text-base {
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Artwork-led discovery shelves: large covers, compact labels, no extra card chrome. */
+.bvs-discovery-shelf {
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.bvs-discovery-shelf::-webkit-scrollbar {
+  display: none;
 }

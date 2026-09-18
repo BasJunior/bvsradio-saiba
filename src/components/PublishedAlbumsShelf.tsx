@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
 import type { PublicRelease } from '@/lib/public-releases'
+import DiscoveryShelf from '@/components/discovery/DiscoveryShelf'
+import ArtworkPlayTile from '@/components/discovery/ArtworkPlayTile'
 
 export default function PublishedAlbumsShelf() {
   const [releases, setReleases] = useState<PublicRelease[]>([])
@@ -17,38 +18,52 @@ export default function PublishedAlbumsShelf() {
 
   if (!releases.length) return null
 
-  return (
-    <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-      <p className="text-xs uppercase tracking-[3px] text-brand">Release directory</p>
-      <h2 className="mt-1 text-2xl font-semibold tracking-tight">Albums &amp; EPs</h2>
-      <p className="mt-1 text-sm text-text-secondary">Open a release directly instead of browsing another row of cover cards.</p>
+  const playRelease = (release: PublicRelease) => {
+    const tracks = release.tracks
+      .filter((track) => track.src)
+      .map((track) => ({
+        id: track.id,
+        title: track.title,
+        artist: release.artist,
+        src: track.src,
+        artwork: release.cover,
+        project: release.title,
+        genre: release.genre,
+      }))
+    if (!tracks.length) return
+    window.dispatchEvent(
+      new CustomEvent('bvs:queue', {
+        detail: { action: 'play-all', tracks, from: release.title },
+      }),
+    )
+  }
 
-      <div className="mt-4 grid gap-2 md:grid-cols-2">
-        {releases.map((release) => (
-          <Link
-            key={release.id}
-            href={`/album/${release.id}`}
-            className="group flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-2.5 transition hover:border-brand/40 hover:bg-white/[0.035]"
-          >
-            <div className="relative h-14 w-14 flex-none overflow-hidden rounded-lg border border-white/10 bg-black/40">
-              <Image
-                src={release.cover}
-                alt={`${release.title} cover`}
-                fill
-                unoptimized={/^https?:\/\//i.test(release.cover)}
-                sizes="56px"
-                className="object-cover object-center"
-              />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h3 className="truncate text-sm font-semibold group-hover:text-brand">{release.title}</h3>
-              <p className="truncate text-xs text-text-secondary">{release.artist}</p>
-              <p className="mt-0.5 truncate text-[11px] text-white/45">{release.releaseType} · {release.tracks.length} tracks</p>
-            </div>
-            <span className="flex-none text-sm text-white/40 transition group-hover:translate-x-0.5 group-hover:text-brand" aria-hidden="true">→</span>
-          </Link>
-        ))}
-      </div>
-    </section>
+  return (
+    <DiscoveryShelf
+      eyebrow="Published releases"
+      title="Albums & EPs"
+      description="Open a release for the tracklist, credits and format details."
+      action={
+        <Link href="/catalogue" className="text-sm font-medium text-brand hover:underline">
+          Browse catalogue →
+        </Link>
+      }
+    >
+      {releases.map((release) => (
+        <ArtworkPlayTile
+          key={release.id}
+          layout="shelf"
+          title={release.title}
+          subtitle={release.artist}
+          image={release.cover}
+          meta={`${release.tracks.length} tracks${release.genre ? ` · ${release.genre}` : ''}`}
+          canPlay={release.tracks.some((track) => track.src)}
+          onPlay={() => playRelease(release)}
+          onOpen={() => {
+            window.location.assign(`/album/${release.id}`)
+          }}
+        />
+      ))}
+    </DiscoveryShelf>
   )
 }

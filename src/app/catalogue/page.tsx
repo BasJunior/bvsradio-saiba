@@ -16,6 +16,9 @@ import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
+import DiscoveryShelf from "@/components/discovery/DiscoveryShelf";
+import ArtworkPlayTile from "@/components/discovery/ArtworkPlayTile";
+import CollectionCollageTile from "@/components/discovery/CollectionCollageTile";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
 import { writeCartLines } from "@/lib/cart-client";
@@ -1084,17 +1087,17 @@ function CataloguePageContent() {
   const clearProducerFilter = showAllBeats;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12 pb-28">
-      <section className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-end mb-10">
+    <div className="mx-auto max-w-7xl px-6 pb-28 pt-8 sm:pt-10">
+      <section className="mb-10 grid items-end gap-10 lg:grid-cols-[1.1fr_0.9fr]">
         <div>
-          <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
+          <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">
             {producerMode
               ? "Producer crate"
               : beatsMode
                 ? "BVS BeatStore"
                 : "BVS Music"}
           </p>
-          <h1 className="text-5xl font-semibold mb-4">
+          <h1 className="mb-4 scroll-mt-28 text-5xl font-semibold">
             {producerMode
               ? producerLabel
               : beatsMode
@@ -1348,78 +1351,54 @@ function CataloguePageContent() {
       {!beatsMode && <PublishedArtistsShelf />}
       {!beatsMode && <PublishedAlbumsShelf />}
 
+      {!producerMode && activeCollectionCards.length > 0 && (
+        <DiscoveryShelf
+          eyebrow="Scene crates"
+          title="Collections you can browse in place."
+          description="Large artwork, curator labels and item counts — tune in, then support the people behind the music."
+        >
+          {activeCollectionCards.map((collection) => (
+            <CollectionCollageTile
+              key={collection.id || collection.name}
+              name={collection.name}
+              image={collection.img}
+              curator={collection.producerName}
+              itemCount={collection.itemCount}
+              detail={collection.detail}
+              active={collectionJump === collection.name}
+              onOpen={() => jumpToCollection(collection.name)}
+            />
+          ))}
+        </DiscoveryShelf>
+      )}
+
       {!producerMode && trendingCards.length > 0 && (
-        <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[3px] text-brand">
-                Trending on BVS
-              </p>
-              <h2 className="mt-1 text-2xl font-semibold tracking-tight">
-                What listeners are opening now.
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-                Ranked from recent play activity. No editorial placement is used to manufacture the order.
-              </p>
-            </div>
+        <DiscoveryShelf
+          eyebrow="Trending on BVS"
+          title="What listeners are opening now."
+          description="Ranked from recent play activity. No editorial placement is used to manufacture the order."
+          action={
             <span className="rounded-full border border-brand/25 bg-brand/5 px-3 py-1 text-xs font-medium text-brand">
               Live signal
             </span>
-          </div>
-
-          <ol className="mt-4 divide-y divide-white/10">
-            {trendingCards.map((collection, index) => {
-              const isActive = collectionJump === collection.name;
-              return (
-                <li key={collection.id || collection.name}>
-                  <button
-                    type="button"
-                    onClick={() => jumpToCollection(collection.name)}
-                    className={`grid w-full grid-cols-[2rem_3rem_minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-2 py-2.5 text-left transition hover:bg-white/[0.04] ${isActive ? "bg-brand/[0.06] ring-1 ring-brand/25" : ""}`}
-                  >
-                    <span className="text-center text-lg font-semibold tabular-nums text-white/45">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div className="relative h-12 w-12 overflow-hidden rounded-lg border border-white/10">
-                      <Image
-                        src={collection.img}
-                        alt=""
-                        fill
-                        unoptimized={
-                          /^https?:\/\//i.test(collection.img) ||
-                          collection.img.startsWith("/api/media/")
-                        }
-                        sizes="48px"
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-sm font-semibold">
-                          {collection.name}
-                        </span>
-                        {collection.badge && (
-                          <span className="flex-none rounded-full bg-brand px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
-                            {collection.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="truncate text-xs text-text-secondary">
-                        {collection.detail}
-                      </p>
-                      {collection.statLine && (
-                        <p className="mt-0.5 text-[11px] text-brand/90">
-                          {collection.statLine}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-sm text-white/40" aria-hidden="true">→</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
+          }
+        >
+          {trendingCards.map((collection) => (
+            <CollectionCollageTile
+              key={collection.id || collection.name}
+              name={collection.name}
+              image={collection.img}
+              curator={
+                activeCollectionCards.find((card) => card.name === collection.name)
+                  ?.producerName
+              }
+              itemCount={collection.itemCount}
+              detail={collection.statLine || collection.detail}
+              active={collectionJump === collection.name}
+              onOpen={() => jumpToCollection(collection.name)}
+            />
+          ))}
+        </DiscoveryShelf>
       )}
 
       <section id="browse" className="scroll-mt-24">
@@ -1564,115 +1543,37 @@ function CataloguePageContent() {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      <section className="grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {filteredTracks.map((track) => {
           const active = currentTrack?.id === track.id && isPlaying;
+          const price = trackPrice(track);
+          const commerceLabel =
+            track.streamOnly || price == null
+              ? null
+              : `${track.type === "beat" || track.producerBeat ? "License" : "Buy"} · $${price}`;
 
           return (
-            <article
+            <ArtworkPlayTile
               key={track.id}
-              className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-card/45 transition hover:border-brand/40"
-            >
-              <button
-                type="button"
-                onClick={() => setSelectedTrack(track)}
-                className="block w-full text-left"
-              >
-                <div className="relative aspect-square overflow-hidden">
-                  <Image
-                    src={track.artwork}
-                    alt={track.title}
-                    fill
-                    unoptimized={/^https?:\/\//i.test(track.artwork)}
-                    className="object-cover transition duration-300 group-hover:scale-[1.02]"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-                  <span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] uppercase tracking-[1.5px] text-white">
-                    {offerLabel(track)}
-                  </span>
-                </div>
-              </button>
-
-              <div className="p-4">
-                <div className="mb-1 flex items-start justify-between gap-2">
-                  <h2 className="min-w-0 truncate text-[15px] font-semibold leading-tight">
-                    {track.title}
-                  </h2>
-                  <span className="flex-shrink-0 rounded bg-brand/10 px-1.5 py-px text-[10px] tracking-widest text-brand">
-                    HiFi
-                  </span>
-                </div>
-                <p className="truncate text-sm text-text-secondary">
-                  {track.artist}
-                </p>
-                <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-secondary">
-                  <span className="truncate">{track.genre}</span>
-                  <span className="flex-shrink-0">{priceBadge(track)}</span>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {track.streamOnly ? (
-                    <>
-                      {track.src ? (
-                        <button
-                          type="button"
-                          onClick={() => previewTrack(track)}
-                          className="flex-1 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black hover:bg-brand-dark"
-                        >
-                          {active ? "Pause preview" : "Preview stream"}
-                        </button>
-                      ) : null}
-                      {track.externalUrl ? (
-                        <a
-                          href={track.externalUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`${track.src ? "" : "flex-1 "}rounded-full border border-[#1DB954]/50 bg-[#1DB954]/15 px-3 py-2 text-center text-xs font-semibold text-[#1DB954] hover:bg-[#1DB954]/25`}
-                        >
-                          Open stream
-                        </a>
-                      ) : null}
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => previewTrack(track)}
-                        className="flex-1 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black hover:bg-brand-dark"
-                      >
-                        {active ? "Pause" : "Preview"}
-                      </button>
-                      {track.src && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => queueAction("play", track)}
-                            className="rounded-full border border-brand/40 px-3 py-2 text-xs text-brand hover:bg-brand/10"
-                            title="Play in site player"
-                          >
-                            Play
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => queueAction("play-next", track)}
-                            className="rounded-full border border-white/20 px-3 py-2 text-xs hover:bg-white/5"
-                            title="Play next"
-                          >
-                            Next
-                          </button>
-                        </>
-                      )}
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedTrack(track)}
-                    className="rounded-full border border-white/20 px-3 py-2 text-xs hover:bg-white/5"
-                  >
-                    Details
-                  </button>
-                </div>
-              </div>
-            </article>
+              title={track.title}
+              subtitle={track.artist}
+              image={track.artwork}
+              playing={active}
+              canPlay={Boolean(track.src)}
+              meta={`${track.genre}${priceBadge(track) ? ` · ${priceBadge(track)}` : ""}`}
+              commerceLabel={commerceLabel}
+              onPlay={() =>
+                track.src ? queueAction("play", track) : previewTrack(track)
+              }
+              onCommerce={() => {
+                if (track.type === "beat" || track.producerBeat) {
+                  setSelectedTrack(track);
+                  return;
+                }
+                addToCart(track);
+              }}
+              onOpen={() => setSelectedTrack(track)}
+            />
           );
         })}
 
