@@ -8,6 +8,7 @@ import {
   userBlockSet,
   participationThreadEligible,
 } from "@/lib/participation-server";
+import { queueAndDeliverPushForNotifications } from "@/lib/participation-push-server";
 
 type DomainEvent = {
   id: string;
@@ -264,6 +265,7 @@ async function fanoutEvent(event: DomainEvent) {
         })),
         "resolution=ignore-duplicates,return=minimal",
       );
+      await queueAndDeliverPushForNotifications(notifications).catch(() => null);
     }
 
     await participationPatch<DomainEvent>(`participation_domain_events?id=eq.${encodeURIComponent(event.id)}`, {

@@ -137,7 +137,14 @@ export default function AppNotificationSettings({ surface }: { surface: AppSurfa
     setMessage("");
     const result = await registerPushDevice(token, surface);
     setPushPermission(result.permission);
-    setMessage(result.ok ? "This device is registered for BVS notifications." : (result.error || (result.permission === "denied" ? "Notifications are disabled in system settings." : "Notifications were not enabled.")));
+    if (result.ok) {
+      await patchParticipation({ external_community_enabled: true }, true);
+      setPreferences((current) => ({ ...current, community: true }));
+      void saveCategory({ ...preferences, community: true });
+      setMessage("This device is registered for BVS lock-screen alerts.");
+    } else {
+      setMessage(result.error || (result.permission === "denied" ? "Notifications are disabled in iPhone Settings." : "Notifications were not enabled."));
+    }
     setBusy(false);
   };
 
