@@ -10,6 +10,19 @@ out
 output
 data
 
+# Keep the small, tracked native release-contract inputs available to the
+# production gate. The Next.js runtime still does not ship native sources or
+# store artifacts.
+!ios/
+!ios/App/
+!ios/App/App/
+!ios/App/App/AppDelegate.swift
+!ios/App/App/App.entitlements
+!ops/
+!ops/store-launch/
+!ops/store-launch/scripts/
+!ops/store-launch/scripts/archive-ios.sh
+
 # Local / tooling
 .next
 node_modules
