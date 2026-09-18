@@ -94,26 +94,39 @@ export default function AppNotificationSettings({ surface }: { surface: AppSurfa
     return true;
   };
 
-  const update = async (key: PreferenceKey, value: boolean) => {
-    if (!token) return;
-    const before = preferences;
-    setPreferences((current) => ({ ...current, [key]: value }));
+  const saveCategory = async (next: Preferences) => {
+    if (!token) return false;
     const response = await fetch("/api/app/notification-preferences", {
       method: "PATCH",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ [key]: value }),
+      body: JSON.stringify(next),
     }).catch(() => null);
-    if (!response?.ok) {
-      setPreferences(before);
-      setMessage("Notification preferences will activate when the isolated vNext database pack is applied.");
-      return;
-    }
+    return Boolean(response?.ok);
+  };
+
+  const update = async (key: PreferenceKey, value: boolean) => {
+    if (!token) return;
+    const before = preferences;
+    const next = { ...preferences, [key]: value };
+    setPreferences(next);
+    setMessage("");
+
     if (key === "community" && participationAvailable) {
       const saved = await patchParticipation({ external_community_enabled: value }, true);
       if (!saved) {
         setPreferences(before);
         return;
       }
+      void saveCategory(next);
+      setMessage("Saved.");
+      return;
+    }
+
+    const saved = await saveCategory(next);
+    if (!saved) {
+      setPreferences(before);
+      setMessage("Could not save that notification setting.");
+      return;
     }
     setMessage("Saved.");
   };
