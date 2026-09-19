@@ -16,7 +16,8 @@ const cron = read("src/app/api/cron/participation/route.ts");
 const delivery = read("src/lib/participation-delivery-policy.ts");
 const migration = read("supabase-growth-activation.sql");
 
-assert(confirmed.includes("requestedDestination || '/start'"), "confirmed members route through BVS Start");
+assert(confirmed.includes("profileDestination = '/start'"), "ordinary confirmed members route through BVS Start");
+assert(confirmed.includes("requestedDestination || profileDestination || '/'"), "contained app context still wins over BVS Start");
 assert(start.includes('id: "first_listen"'), "listener activation requires a first listen");
 assert(start.includes('id: "follow_three"'), "activation requires following three creators");
 assert(start.includes('id: "save_one"'), "activation requires a save");
