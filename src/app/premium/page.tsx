@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   FAMILY_LABELS,
   PREMIUM_CATALOG,
@@ -58,6 +58,11 @@ function visiblePlansFor(family: MembershipFamily): DisplayPlan[] {
 export default function PremiumEcosystemPage() {
   const [family, setFamily] = useState<MembershipFamily>("artist");
   const plans = useMemo(() => visiblePlansFor(family), [family]);
+
+  useEffect(() => {
+    const requestedFamily = new URLSearchParams(window.location.search).get("family") as MembershipFamily | null;
+    if (requestedFamily && FAMILIES.includes(requestedFamily)) setFamily(requestedFamily);
+  }, []);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">

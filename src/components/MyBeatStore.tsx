@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import FullAccessAudioPlayer from '@/components/FullAccessAudioPlayer'
+import CreatorNextMoveCard from '@/components/CreatorNextMoveCard'
+import CreatorNextMovePrompt from '@/components/CreatorNextMovePrompt'
+import { producerBeatNextMove } from '@/lib/creator-next-move'
 
 type Licence = {
   id?: string
@@ -274,8 +277,32 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
     )
   }
 
+  const nextMoveForBeat = (beat: Beat) =>
+    producerBeatNextMove({
+      beatId: beat.id,
+      title: beat.title,
+      status: beat.status,
+      isPublic: beat.is_public,
+      tier: entitlements?.tier,
+      liveCount: entitlements?.liveCount,
+      beatLiveLimit: entitlements?.beatLiveLimit,
+      softWarn: entitlements?.softWarn,
+      canGoLive: entitlements?.canGoLive,
+    })
+  const promptBeat = creationOnly
+    ? undefined
+    : beats.find((beat) => {
+        const move = nextMoveForBeat(beat)
+        return Boolean(move && move.id !== 'producer-review-attention')
+      })
+  const promptMove = promptBeat ? nextMoveForBeat(promptBeat) : null
+
   return (
     <section className={creationOnly ? '' : 'mt-10'}>
+      <CreatorNextMovePrompt
+        move={promptMove}
+        storageKey={promptBeat ? `producer-beat:${promptBeat.id}` : 'producer-beat:none'}
+      />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-brand">Producer</p>
@@ -447,6 +474,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
         <h3 className="text-xl">Your beats</h3>
         {beats.map((beat) => {
           const priceUsd = beat.beat_licence_options?.[0]?.price_usd
+          const nextMove = nextMoveForBeat(beat)
           return (
             <article key={beat.id} className="rounded-xl border border-white/10 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -463,6 +491,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
                   <div className="mt-3">
                     <FullAccessAudioPlayer accessId={`studio-beat:${beat.id}`} title={beat.title} artist="Your BeatStore submission" src={beat.master_path || beat.preview_path} artwork={beat.artwork_path} sourceLabel="Studio · your full beat" genre={beat.genre} compact />
                   </div>
+                  <CreatorNextMoveCard move={nextMove} className="mt-3" />
                   <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
                     <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
                     <div className="mt-2 space-y-2">
