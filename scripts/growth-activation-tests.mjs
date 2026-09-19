@@ -14,7 +14,7 @@ const growthPage = read("src/app/admin/growth/page.tsx");
 const growthWorker = read("src/lib/growth-reactivation-server.ts");
 const cron = read("src/app/api/cron/participation/route.ts");
 const delivery = read("src/lib/participation-delivery-policy.ts");
-const migration = read("supabase-growth-activation.sql");
+const migration = read("supabase/migrations/20260919211500_growth_activation.sql");
 
 assert(confirmed.includes("profileDestination = '/start'"), "ordinary confirmed members route through BVS Start");
 assert(confirmed.includes("requestedDestination || profileDestination || '/'"), "contained app context still wins over BVS Start");
