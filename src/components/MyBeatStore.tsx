@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import FullAccessAudioPlayer from '@/components/FullAccessAudioPlayer'
+import CreatorNextMoveCard from '@/components/CreatorNextMoveCard'
+import { producerBeatNextMove } from '@/lib/creator-next-move'
 
 type Licence = {
   id?: string
@@ -447,6 +449,17 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
         <h3 className="text-xl">Your beats</h3>
         {beats.map((beat) => {
           const priceUsd = beat.beat_licence_options?.[0]?.price_usd
+          const nextMove = producerBeatNextMove({
+            beatId: beat.id,
+            title: beat.title,
+            status: beat.status,
+            isPublic: beat.is_public,
+            tier: entitlements?.tier,
+            liveCount: entitlements?.liveCount,
+            beatLiveLimit: entitlements?.beatLiveLimit,
+            softWarn: entitlements?.softWarn,
+            canGoLive: entitlements?.canGoLive,
+          })
           return (
             <article key={beat.id} className="rounded-xl border border-white/10 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -463,6 +476,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
                   <div className="mt-3">
                     <FullAccessAudioPlayer accessId={`studio-beat:${beat.id}`} title={beat.title} artist="Your BeatStore submission" src={beat.master_path || beat.preview_path} artwork={beat.artwork_path} sourceLabel="Studio · your full beat" genre={beat.genre} compact />
                   </div>
+                  <CreatorNextMoveCard move={nextMove} className="mt-3" />
                   <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
                     <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
                     <div className="mt-2 space-y-2">
