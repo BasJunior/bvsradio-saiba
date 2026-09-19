@@ -53,6 +53,10 @@ export const analyticsEvents = [
   "first_save",
   "first_follow",
   "return_session",
+  "activation_hub_open",
+  "activation_task_open",
+  "activation_task_complete",
+  "activation_completed",
 ] as const
 
 export type AnalyticsEvent = (typeof analyticsEvents)[number]
