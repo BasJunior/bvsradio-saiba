@@ -298,14 +298,14 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
   const promptMove = promptBeat ? nextMoveForBeat(promptBeat) : null
 
   return (
-    <section className={creationOnly ? '' : 'mt-10'}>
+    <section data-studio-accent="beats" className={creationOnly ? '' : 'mt-8'}>
       <CreatorNextMovePrompt
         move={promptMove}
         storageKey={promptBeat ? `producer-beat:${promptBeat.id}` : 'producer-beat:none'}
       />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.22em] text-brand">Producer</p>
+          <p className="bvs-studio-accent-label text-xs uppercase tracking-[0.22em]">Producer</p>
           <h2 className="mt-1 text-2xl">{creationOnly ? 'Upload a single beat' : 'My BeatStore'}</h2>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
             Upload a tagged preview, set a Standard lease price, and submit for editorial. Published
@@ -343,11 +343,11 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
           )}
         </div>
         {creationOnly ? (
-          <Link href="/creator/studio" className="text-sm text-brand">
+          <Link href="/creator/studio" className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm font-semibold">
             Manage my beats →
           </Link>
         ) : (
-          <Link href="/catalogue?type=beat#beatstore" className="text-sm text-brand">
+          <Link href="/catalogue?type=beat#beatstore" className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm font-semibold">
             View public BeatStore →
           </Link>
         )}
@@ -357,7 +357,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
       {message && <p className="mt-4 rounded-xl bg-brand/10 p-4 text-brand">{message}</p>}
 
       <form
-        className="mt-6 grid gap-3 rounded-2xl border border-white/10 p-6"
+        className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-black/10 p-5 sm:p-6"
         onSubmit={(e) => void onSubmit(e, false)}
       >
         <h3 className="text-xl">Add beat</h3>
@@ -457,12 +457,12 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
             type="button"
             disabled={busy}
             onClick={(e) => void onSubmit(e as unknown as FormEvent, true)}
-            className="rounded-full bg-brand px-5 py-2 font-semibold text-black disabled:opacity-40"
+            className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold disabled:opacity-40"
           >
             {busy ? 'Working…' : 'Submit for review'}
           </button>
         </div>
-        {uploadProgress && <p className="text-sm text-brand" role="status">{uploadProgress}</p>}
+        {uploadProgress && <p className="bvs-studio-accent-label text-sm" role="status">{uploadProgress}</p>}
         <p className="text-xs text-text-secondary">
           Licence tiers: Standard Lease ($15–$50), Premium Lease ($50–$200), Exclusive ($200–$2000).
           Your listed price is authoritative at checkout (server-resolved from your licence option).
@@ -476,7 +476,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
           const priceUsd = beat.beat_licence_options?.[0]?.price_usd
           const nextMove = nextMoveForBeat(beat)
           return (
-            <article key={beat.id} className="rounded-xl border border-white/10 p-4">
+            <article key={beat.id} className="bvs-studio-accent-card rounded-2xl border border-white/10 bg-white/[.012] p-4 sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h4 className="font-medium">{beat.title}</h4>
@@ -492,8 +492,8 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
                     <FullAccessAudioPlayer accessId={`studio-beat:${beat.id}`} title={beat.title} artist="Your BeatStore submission" src={beat.master_path || beat.preview_path} artwork={beat.artwork_path} sourceLabel="Studio · your full beat" genre={beat.genre} compact />
                   </div>
                   <CreatorNextMoveCard move={nextMove} className="mt-3" />
-                  <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
+                  <div data-studio-accent="insights" className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4">
+                    <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-wider">Review conversation</p>
                     <div className="mt-2 space-y-2">
                       {(beat.beat_review_messages || []).map(item => (
                         <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs">
@@ -505,7 +505,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
                     </div>
                     <div className="mt-2 flex gap-2">
                       <input value={reviewReplies[beat.id] || ''} onChange={event => setReviewReplies(current => ({ ...current, [beat.id]: event.target.value }))} placeholder="Reply to editorial…" className={`${field} py-2 text-sm`} />
-                      <button type="button" disabled={busy || !(reviewReplies[beat.id] || '').trim()} onClick={() => void sendReviewMessage(beat.id)} className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40">Send</button>
+                      <button type="button" disabled={busy || !(reviewReplies[beat.id] || '').trim()} onClick={() => void sendReviewMessage(beat.id)} className="bvs-studio-accent-button rounded-full border px-4 py-2 text-xs font-semibold disabled:opacity-40">Send</button>
                     </div>
                   </div>
                 </div>
@@ -514,7 +514,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
                     type="button"
                     disabled={busy}
                     onClick={() => void submitExisting(beat.id)}
-                    className="rounded-full border border-brand px-4 py-2 text-xs text-brand disabled:opacity-40"
+                    className="bvs-studio-accent-button rounded-full border px-4 py-2 text-xs font-semibold disabled:opacity-40"
                   >
                     Submit
                   </button>
