@@ -365,29 +365,34 @@ function StudioOverview({
   showCreator: boolean;
   trackCount: number;
 }) {
-  const roles = [artist && "Artist", producer && "Producer", writer && "Writer", showCreator && "Show creator"].filter(Boolean) as string[];
+  const roles = [
+    artist && { label: "Artist", accent: "core" as StudioAccent },
+    producer && { label: "Producer", accent: "beats" as StudioAccent },
+    writer && { label: "Writer", accent: "insights" as StudioAccent },
+    showCreator && { label: "Show creator", accent: "shows" as StudioAccent },
+  ].filter(Boolean) as Array<{ label: string; accent: StudioAccent }>;
   const tasks = [
-    artist && { href: "/upload", eyebrow: "Music", title: "Submit a release", copy: "Upload a single, EP or album for editorial review." },
-    artist && { href: "#releases", eyebrow: `${trackCount} track${trackCount === 1 ? "" : "s"}`, title: "Manage releases", copy: "Check decisions, requests, publication and distribution status." },
-    producer && { href: "#beatstore", eyebrow: "BeatStore", title: "Manage beats", copy: "Upload, price and review your published beat catalogue." },
-    { href: "#marketplace-desk", eyebrow: "Marketplace", title: "Products & services", copy: "Manage listings without mixing commerce with editorial decisions." },
-    (artist || producer) && { href: "#insights", eyebrow: "Performance", title: "View insights", copy: "See plays and editorially meaningful performance signals." },
-    { href: "/artists", eyebrow: "Money", title: "Wallet & earnings", copy: "Review sales, fees, processing, refunds and payout readiness." },
-  ].filter(Boolean) as Array<{ href: string; eyebrow: string; title: string; copy: string }>;
+    artist && { href: "/upload", accent: "core" as StudioAccent, eyebrow: "Music", title: "Submit a release", copy: "Upload a single, EP or album for editorial review." },
+    artist && { href: "#releases", accent: "core" as StudioAccent, eyebrow: `${trackCount} track${trackCount === 1 ? "" : "s"}`, title: "Manage releases", copy: "Check decisions, requests, publication and distribution status." },
+    producer && { href: "#beatstore", accent: "beats" as StudioAccent, eyebrow: "BeatStore", title: "Manage beats", copy: "Upload, price and review your published beat catalogue." },
+    { href: "#marketplace-desk", accent: "marketplace" as StudioAccent, eyebrow: "Marketplace", title: "Products & services", copy: "Manage listings without mixing commerce with editorial decisions." },
+    (artist || producer) && { href: "#insights", accent: "insights" as StudioAccent, eyebrow: "Performance", title: "View insights", copy: "See plays and editorially meaningful performance signals." },
+    { href: "/artists", accent: "money" as StudioAccent, eyebrow: "Money", title: "Wallet & earnings", copy: "Review sales, fees, processing, refunds and payout readiness." },
+  ].filter(Boolean) as Array<{ href: string; accent: StudioAccent; eyebrow: string; title: string; copy: string }>;
 
   return <section className="mt-10 scroll-mt-24" aria-labelledby="studio-overview-heading">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Overview</p><h2 id="studio-overview-heading" className="mt-2 text-2xl font-semibold">What do you want to do?</h2></div>
-      <div className="flex flex-wrap gap-2" aria-label="Your creator roles">{roles.map(role => <span key={role} className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs text-brand">{role}</span>)}</div>
+      <div className="flex flex-wrap gap-2" aria-label="Your creator roles">{roles.map(role => <span key={role.label} data-studio-accent={role.accent} className="bvs-studio-accent-button rounded-full border px-3 py-1 text-xs font-medium">{role.label}</span>)}</div>
     </div>
     <nav className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Studio sections">
-      {artist && <Link href="#artist-access" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Artist access</Link>}
-      {producer && <Link href="#beatstore" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">BeatStore</Link>}
-      <Link href="#business" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Business</Link>
-      {writer && <Link href="#writer-work" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Writing</Link>}
-      {showCreator && <Link href="#show-work" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Shows</Link>}
+      {artist && <Link href="#artist-access" data-studio-accent="core" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">Artist access</Link>}
+      {producer && <Link href="#beatstore" data-studio-accent="beats" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">BeatStore</Link>}
+      <Link href="#business" data-studio-accent="marketplace" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">Business</Link>
+      {writer && <Link href="#writer-work" data-studio-accent="insights" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">Writing</Link>}
+      {showCreator && <Link href="#show-work" data-studio-accent="shows" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">Shows</Link>}
     </nav>
-    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tasks.map(task => <Link key={`${task.href}-${task.title}`} href={task.href} className="group rounded-2xl border border-white/10 bg-white/[.025] p-5 transition hover:border-brand/40 hover:bg-brand/[.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><span className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{task.eyebrow}</span><h3 className="mt-2 text-lg font-semibold group-hover:text-brand">{task.title}</h3><p className="mt-1 text-sm text-text-secondary">{task.copy}</p></Link>)}</div>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tasks.map(task => <Link key={`${task.href}-${task.title}`} href={task.href} data-studio-accent={task.accent} className="bvs-studio-accent-card group rounded-2xl border border-white/10 bg-white/[.025] p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><span className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{task.eyebrow}</span><h3 className="mt-2 text-lg font-semibold">{task.title}</h3><p className="mt-1 text-sm text-text-secondary">{task.copy}</p></Link>)}</div>
   </section>;
 }
 
@@ -395,17 +400,19 @@ function CreatorDropDown({
   label,
   count,
   defaultOpen = false,
+  accent,
   children,
 }: {
   label: string;
   count?: number;
   defaultOpen?: boolean;
+  accent?: StudioAccent;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = `creator-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
-    <section className="mt-8 rounded-2xl border border-white/10 bg-white/[.015]">
+    <section data-studio-accent={accent} data-state={open ? "open" : "closed"} className="bvs-studio-panel mt-5 rounded-2xl border border-white/10 bg-white/[.012]">
       <button
         type="button"
         aria-expanded={open}
@@ -414,9 +421,9 @@ function CreatorDropDown({
         className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition hover:bg-white/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <span className="flex min-w-0 items-center gap-3">
-          <span className="font-semibold">{label}</span>
+          <span className={accent ? "bvs-studio-accent-label font-semibold" : "font-semibold"}>{label}</span>
           {typeof count === "number" && (
-            <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-text-secondary">
+            <span className="rounded-full border border-white/10 bg-black/10 px-2.5 py-0.5 text-xs text-text-secondary">
               {count}
             </span>
           )}
@@ -440,7 +447,7 @@ function CreatorDropDown({
         </span>
       </button>
       {open && (
-        <div id={panelId} className="border-t border-white/10 px-5 pb-6 pt-1">
+        <div id={panelId} className="border-t border-white/10 px-5 pb-6 pt-3 sm:px-6">
           {children}
         </div>
       )}
