@@ -102,10 +102,10 @@ export default async function HomePage() {
 
       <HomeEngagementHub />
 
-      <section className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16" aria-label="Discover BVS music">
+      <section data-home-accent="discover" className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16" aria-label="Discover BVS music">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-3xl">
-            <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Discover</p>
+            <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Discover</p>
             <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Find your next favourite before everyone else does.</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
               Move from a song to the artist, release and wider BVS catalogue without breaking the listening flow.
@@ -121,11 +121,11 @@ export default async function HomePage() {
 
       <HomePublicPlaylistRail />
 
-      <section className="border-y border-white/10 bg-bg-secondary/65 py-10 sm:py-16">
+      <section data-home-accent="shows" className="border-y border-white/10 bg-bg-secondary/65 py-10 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
             <div className="max-w-3xl">
-              <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Shows on BVS</p>
+              <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Shows on BVS</p>
               <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">More than a playlist.</h2>
               <p className="mt-3 text-sm text-text-secondary sm:text-base">Programmes, conversations and replay moments built around the music and the people making it.</p>
             </div>
@@ -145,10 +145,10 @@ export default async function HomePage() {
                     <Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-[1.025]" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
                     <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
-                      <p className="text-[10px] font-semibold uppercase tracking-[.17em] text-brand">{show.schedule}</p>
+                      <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.17em]">{show.schedule}</p>
                       <h3 className={`mt-2 font-semibold text-white ${featured ? "text-2xl sm:text-3xl" : "text-xl"}`}>{show.title}</h3>
                       <p className="mt-1 line-clamp-2 text-sm text-white/70">{show.tagline}</p>
-                      <p className="mt-3 text-sm font-semibold text-brand">Open show →</p>
+                      <p className="bvs-home-accent-label mt-3 text-sm font-semibold">Open show →</p>
                     </div>
                   </div>
                 </Link>
