@@ -169,7 +169,7 @@ export function producerBeatNextMove(input: {
         tone: "warning",
         primaryAction: {
           label: `Producer Plus · US$${PRODUCER_PLUS_MONTHLY_USD}/mo`,
-          href: "/premium",
+          href: "/premium?family=producer",
         },
         secondaryAction: { label: "Manage live beats", href: "/creator/studio#beatstore" },
       };
@@ -217,7 +217,7 @@ export function producerBeatNextMove(input: {
       tone: "warning",
       primaryAction: {
         label: `Producer Plus · US$${PRODUCER_PLUS_MONTHLY_USD}/mo`,
-        href: "/premium",
+        href: "/premium?family=producer",
       },
       secondaryAction: { label: "Manage live beats", href: "/creator/studio#beatstore" },
     };
@@ -236,7 +236,7 @@ export function producerBeatNextMove(input: {
       tone: "brand",
       primaryAction: {
         label: `Grow with Producer Plus · US$${PRODUCER_PLUS_MONTHLY_USD}/mo`,
-        href: "/premium",
+        href: "/premium?family=producer",
       },
       secondaryAction: { label: "Keep Free for now", href: "/creator/studio#beatstore" },
     };
