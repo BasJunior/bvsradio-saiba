@@ -27,10 +27,10 @@ export default async function AppHomeDiscoverySections({ surface }: { surface: M
   return (
     <>
       {artists.length ? (
-        <section className="mt-11">
+        <section data-home-accent="discover" className="mt-11">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">On our radar</p>
+              <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">On our radar</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Artists worth knowing.</h2>
             </div>
             <Link href={`${base}/explore`} className="shrink-0 text-sm font-semibold text-white/58 transition hover:text-brand">See all →</Link>
@@ -59,10 +59,10 @@ export default async function AppHomeDiscoverySections({ surface }: { surface: M
       ) : null}
 
       {shows.length ? (
-        <section className="mt-12">
+        <section data-home-accent="shows" className="mt-12">
           <div className="flex items-end justify-between gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Live energy</p>
+              <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Live energy</p>
               <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Shows, rooms, conversations.</h2>
             </div>
             <Link href={`${base}/rooms`} className="shrink-0 text-sm font-semibold text-white/58 transition hover:text-brand">Open rooms →</Link>
@@ -79,7 +79,7 @@ export default async function AppHomeDiscoverySections({ surface }: { surface: M
                   <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 to-transparent" />
                 </div>
                 <div className="p-4">
-                  <p className="text-xs font-medium text-brand">{show.schedule}</p>
+                  <p className="bvs-home-accent-label text-xs font-medium">{show.schedule}</p>
                   <h3 className="mt-1 text-xl font-semibold">{show.title}</h3>
                   <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/45">{show.description}</p>
                 </div>
@@ -89,8 +89,8 @@ export default async function AppHomeDiscoverySections({ surface }: { surface: M
         </section>
       ) : (
         <section className="mt-12">
-          <Link href={`${base}/rooms`} className="block rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 transition hover:border-brand/25">
-            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Live rooms</p>
+          <Link href={`${base}/rooms`} data-home-accent="shows" className="bvs-home-accent-card block rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5">
+            <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Live rooms</p>
             <h2 className="mt-2 text-2xl font-semibold">Listen together when something is happening.</h2>
           </Link>
         </section>

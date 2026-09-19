@@ -59,7 +59,7 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
             <a href="#listen" className="inline-flex min-h-11 items-center rounded-full bg-white px-5 text-sm font-semibold text-black transition hover:bg-brand">
               Listen now
             </a>
-            <Link href={`${base}/explore`} className="inline-flex min-h-11 items-center rounded-full border border-white/12 bg-white/[.035] px-5 text-sm font-semibold text-white/82 transition hover:border-brand/35 hover:text-white">
+            <Link href={`${base}/explore`} data-home-accent="discover" className="bvs-home-accent-button inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold">
               Discover music
             </Link>
           </div>
@@ -78,17 +78,17 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
 
       <Link
         href={`${base}/feed`}
-        className="bvs-app-feed-entry group mt-5 flex items-center justify-between gap-5 overflow-hidden rounded-[1.55rem] border border-brand/15 bg-gradient-to-r from-brand/[.075] via-white/[.025] to-white/[.015] px-5 py-4 transition hover:border-brand/30 hover:bg-brand/[.085]"
+        data-home-accent="feed" className="bvs-home-accent-card bvs-app-feed-entry group mt-5 flex items-center justify-between gap-5 overflow-hidden rounded-[1.55rem] border border-white/[.07] bg-white/[.022] px-5 py-4"
       >
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em] text-brand">
+          <div className="bvs-home-accent-label flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.2em]">
             <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_16px_rgba(212,175,55,.7)]" aria-hidden="true" />
             BVS Feed
           </div>
           <p className="mt-2 text-base font-semibold text-white">Feel what’s moving across BVS.</p>
           <p className="mt-1 text-xs leading-5 text-white/42">New music, creators, BeatStore drops, live moments and Marketplace activity.</p>
         </div>
-        <span className="shrink-0 text-2xl text-brand transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
+        <span className="bvs-home-accent-arrow shrink-0 text-2xl transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
       </Link>
 
       <div className="mt-5">
@@ -100,20 +100,20 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
       </Suspense>
 
       <section className="mt-12 grid gap-3 sm:grid-cols-3">
-        <Link href={`${base}/library`} className="group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 transition hover:border-white/15 hover:bg-white/[.04]">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Library</p>
+        <Link href={`${base}/library`} data-home-accent="feed" className="bvs-home-accent-card group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5">
+          <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Library</p>
           <h2 className="mt-3 text-2xl font-semibold">Everything you want to come back to.</h2>
           <p className="mt-3 text-sm leading-6 text-white/42">Likes, playlists, follows, history and offline music in one place.</p>
           <span className="mt-5 inline-block text-sm font-semibold text-white/64 group-hover:text-brand">Open Library →</span>
         </Link>
-        <Link href={`${base}/studio`} className="group rounded-[1.65rem] border border-brand/18 bg-brand/[.045] p-5 transition hover:border-brand/30 hover:bg-brand/[.07]">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Studio</p>
+        <Link href={`${base}/studio`} data-home-accent="studio" className="bvs-home-accent-card group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5">
+          <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Studio</p>
           <h2 className="mt-3 text-2xl font-semibold">From listening to releasing.</h2>
           <p className="mt-3 text-sm leading-6 text-white/42">Create, submit, follow review, publish and understand what happens next.</p>
-          <span className="mt-5 inline-block text-sm font-semibold text-brand">Enter Studio →</span>
+          <span className="bvs-home-accent-arrow mt-5 inline-block text-sm font-semibold">Enter Studio →</span>
         </Link>
-        <Link href={`${base}/marketplace`} className="group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 transition hover:border-white/15 hover:bg-white/[.04]">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Marketplace</p>
+        <Link href={`${base}/marketplace`} data-home-accent="marketplace" className="bvs-home-accent-card group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5">
+          <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Marketplace</p>
           <h2 className="mt-3 text-2xl font-semibold">Find the people who move your work forward.</h2>
           <p className="mt-3 text-sm leading-6 text-white/42">Studios, production and creative services, connected to the same ecosystem.</p>
           <span className="mt-5 inline-block text-sm font-semibold text-white/64 group-hover:text-brand">Browse Marketplace →</span>

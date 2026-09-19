@@ -23,6 +23,12 @@ const FAMILIES: MembershipFamily[] = [
 
 type DisplayPlan = CatalogPlan & { priceUnit?: "month" | "release" };
 
+type PremiumAccent = "instant" | MembershipFamily;
+
+function premiumAccentFor(family: MembershipFamily, planId?: string): PremiumAccent {
+  return planId === "artist_instant" ? "instant" : family;
+}
+
 const PREMIUM_INSTANT_PLAN: DisplayPlan = {
   id: "artist_instant",
   family: "artist",
@@ -65,27 +71,27 @@ export default function PremiumEcosystemPage() {
   }, []);
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-12 md:px-6 md:py-16">
-      <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand">BVS membership family</p>
+    <main className="mx-auto max-w-6xl px-4 py-10 md:px-6 md:py-14">
+      <p data-premium-accent="instant" className="bvs-premium-accent-label text-xs font-semibold uppercase tracking-[0.2em]">BVS membership family</p>
       <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight md:text-5xl">
-        Pay for the outcome you need. <span className="text-brand">Keep the free foundation.</span>
+        Pay for the outcome you need. <span data-premium-accent="instant" className="bvs-premium-accent-label">Keep the free foundation.</span>
       </h1>
       <p className="mt-4 max-w-3xl text-lg text-text-secondary">
         BVS Radio listening, editorial submission and approved rotation remain separate from paid distribution. Premium adds wider commercial delivery plus royalty and payout reporting support without buying editorial influence.
       </p>
 
       <div className="mt-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-brand/35 bg-brand/[.07] p-6">
-          <p className="text-xs uppercase tracking-wider text-brand">Premium Instant</p>
+        <div data-premium-accent="instant" className="bvs-premium-accent-card rounded-2xl border p-6">
+          <p className="bvs-premium-accent-label text-xs uppercase tracking-wider">Premium Instant</p>
           <p className="mt-2 text-3xl font-semibold">US$5.99 per release</p>
           <p className="mt-2 text-sm text-text-secondary">One-time release fee. No monthly subscription. Best for artists releasing occasionally.</p>
-          <Link href="/artist/premium/instant" className="mt-5 inline-flex min-h-11 items-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Choose an approved release</Link>
+          <Link href="/artist/premium/instant" className="bvs-premium-accent-button mt-5 inline-flex min-h-11 items-center rounded-full border px-5 py-2.5 text-sm font-semibold">Choose an approved release</Link>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-          <p className="text-xs uppercase tracking-wider text-text-secondary">Artist Premium</p>
+        <div data-premium-accent="artist" className="bvs-premium-accent-card rounded-2xl border p-6">
+          <p className="bvs-premium-accent-label text-xs uppercase tracking-wider">Artist Premium</p>
           <p className="mt-2 text-3xl font-semibold">US$12/month</p>
           <p className="mt-2 text-sm text-text-secondary">Or US$120/year. Ongoing distribution access, royalty reporting support and payout readiness for artists releasing regularly.</p>
-          <Link href="/artist/premium" className="mt-5 inline-flex min-h-11 items-center rounded-full border border-brand/50 px-5 py-2.5 text-sm font-semibold text-brand">Open Artist Premium</Link>
+          <Link href="/artist/premium" className="bvs-premium-accent-button mt-5 inline-flex min-h-11 items-center rounded-full border px-5 py-2.5 text-sm font-semibold">Open Artist Premium</Link>
         </div>
       </div>
 
@@ -93,28 +99,28 @@ export default function PremiumEcosystemPage() {
         The Founding Artist Premium offer closed on 27 August 2026. Existing founding members keep their grandfathered plan while continuously eligible; new purchases use Premium Instant or Artist Premium.
       </p>
 
-      <div className="mt-12 flex flex-wrap gap-2">
+      <div className="mt-10 overflow-x-auto pb-2" aria-label="Membership families">
+        <div className="flex min-w-max gap-2">
         {FAMILIES.map((item) => (
           <button
             key={item}
             type="button"
             onClick={() => setFamily(item)}
-            className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium transition ${
-              family === item
-                ? "bg-brand text-black"
-                : "border border-white/15 text-text-secondary hover:border-brand hover:text-text-primary"
-            }`}
+            data-premium-accent={item}
+            aria-pressed={family === item}
+            className="bvs-premium-accent-button min-h-11 rounded-full border px-4 py-2 text-sm font-medium"
           >
             {FAMILY_LABELS[item]}
           </button>
         ))}
+        </div>
       </div>
 
       <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {plans.map((plan) => {
           const unit = plan.priceUnit || "month";
           return (
-            <article key={plan.id} className={`flex flex-col rounded-2xl border p-5 ${plan.featured ? "border-brand/40 bg-brand/5" : "border-white/10 bg-white/[0.03]"}`}>
+            <article key={plan.id} data-premium-accent={premiumAccentFor(plan.family, plan.id)} className="bvs-premium-accent-card flex flex-col rounded-2xl border p-5">
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-text-secondary">{plan.name}</p>
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${statusClass(plan.status)}`}>{plan.status}</span>
@@ -126,7 +132,7 @@ export default function PremiumEcosystemPage() {
                 )}
               </p>
               {plan.yearlyUsd != null && plan.yearlyUsd > 0 && <p className="text-xs text-text-secondary">or US${plan.yearlyUsd}/year</p>}
-              <p className="mt-1 text-[11px] uppercase tracking-wide text-brand">{plan.badge}</p>
+              <p className="bvs-premium-accent-label mt-1 text-[11px] uppercase tracking-wide">{plan.badge}</p>
               <p className="mt-3 text-sm text-text-secondary">{plan.summary}</p>
               {plan.commissionPercent != null && <p className="mt-2 text-xs text-amber-100/90">Marketplace fee: {plan.commissionPercent}%</p>}
               <ul className="mt-4 flex-1 list-disc space-y-1.5 pl-4 text-sm text-text-secondary">
@@ -134,13 +140,13 @@ export default function PremiumEcosystemPage() {
               </ul>
               <div className="mt-5">
                 {plan.id === "artist_instant" ? (
-                  <Link href="/artist/premium/instant" className="inline-flex min-h-11 items-center rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">Choose a release</Link>
+                  <Link href="/artist/premium/instant" className="bvs-premium-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Choose a release</Link>
                 ) : plan.id === "artist_standard" ? (
-                  <Link href="/artist/premium" className="inline-flex min-h-11 items-center rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">Open desk</Link>
+                  <Link href="/artist/premium" className="bvs-premium-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Open desk</Link>
                 ) : plan.quoteOnly ? (
                   <Link href="/contact" className="inline-flex min-h-11 items-center rounded-full border border-white/20 px-4 py-2 text-sm">Contact sales</Link>
                 ) : plan.status === "live" || plan.status === "pilot" ? (
-                  <Link href={plan.family === "producer" ? "/catalogue?type=beat#beatstore" : "/auth/signup"} className="inline-flex min-h-11 items-center rounded-full border border-white/20 px-4 py-2 text-sm hover:border-brand">
+                  <Link href={plan.family === "producer" ? "/catalogue?type=beat#beatstore" : "/auth/signup"} className="bvs-premium-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm">
                     {plan.monthlyUsd === 0 ? "Start free" : "Open / join"}
                   </Link>
                 ) : (
@@ -152,17 +158,17 @@ export default function PremiumEcosystemPage() {
         })}
       </section>
 
-      <section className="mt-16">
+      <section data-premium-accent="artist" className="mt-14">
         <h2 className="text-2xl font-semibold">Where Artist distribution can take your music</h2>
         <p className="mt-2 max-w-3xl text-sm text-text-secondary">
           Both Premium Instant and active Artist Premium use the same approved-release distribution path. Premium also prepares royalty and payout reporting for eligible BVS sales and future partner statements. Store availability varies by clearance, territory and delivery readiness.
         </p>
         <ul className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
-          {PREMIUM_DISTRIBUTION_STORES.map((store) => <li key={store} className="rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-sm">{store}</li>)}
+          {PREMIUM_DISTRIBUTION_STORES.map((store) => <li key={store} className="bvs-premium-accent-card rounded-xl border px-3 py-2 text-sm">{store}</li>)}
         </ul>
       </section>
 
-      <section className="mt-16 grid gap-6 md:grid-cols-2">
+      <section className="mt-14 grid gap-4 md:grid-cols-2">
         <div className="rounded-2xl border border-white/10 p-6">
           <h2 className="text-xl font-semibold">What stays free</h2>
           <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-text-secondary">
@@ -172,8 +178,8 @@ export default function PremiumEcosystemPage() {
             <li>No paid editorial approval, chart rank or guaranteed streams</li>
           </ul>
         </div>
-        <div className="rounded-2xl border border-brand/25 bg-brand/[.04] p-6">
-          <h2 className="text-xl font-semibold">Which artist option?</h2>
+        <div data-premium-accent="artist" className="bvs-premium-accent-card rounded-2xl border p-6">
+          <h2 className="bvs-premium-accent-label text-xl font-semibold">Which artist option?</h2>
           <p className="mt-3 text-sm text-text-secondary"><strong className="text-text-primary">Occasional releases:</strong> Premium Instant at US$5.99 per release.</p>
           <p className="mt-3 text-sm text-text-secondary"><strong className="text-text-primary">Regular releases:</strong> Artist Premium at US$12/month or US$120/year.</p>
         </div>

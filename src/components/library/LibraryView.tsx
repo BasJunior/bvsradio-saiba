@@ -68,6 +68,13 @@ function rawTrackId(item: DiscoveryItem) {
   return item.kind === "track" ? item.id.replace(/^track-/, "") : "";
 }
 
+function libraryAccent(section: ActiveSection) {
+  if (section === "saved-beats" || section === "licensed-beats") return "beats";
+  if (section === "downloads") return "downloads";
+  if (section === "following") return "discover";
+  return "library";
+}
+
 export default function LibraryView() {
   const [active, setActive] = useState<ActiveSection>("all");
   const [favourites, setFavourites] = useState<DiscoveryItem[]>([]);
@@ -274,11 +281,11 @@ export default function LibraryView() {
     <div className="mx-auto min-h-[60vh] max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Your BVS</p>
+          <p data-library-accent="library" className="bvs-library-accent-label mb-3 text-xs uppercase tracking-[0.25em]">Your BVS</p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Library</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">Everything you keep is one tap away. Liked music no longer pushes playlists, downloads or recent listening down the page.</p>
         </div>
-        <Link href={discoverHref} className="rounded-full border border-brand/30 px-4 py-2.5 text-sm font-semibold text-brand">Explore BVS →</Link>
+        <Link href={discoverHref} data-library-accent="discover" className="bvs-library-accent-button rounded-full border px-4 py-2.5 text-sm font-semibold">Explore BVS →</Link>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-text-secondary">
@@ -300,28 +307,28 @@ export default function LibraryView() {
           {primarySections.map(section => {
             const meta = metaFor(section);
             const count = countFor(section);
-            return <button key={section} type="button" onClick={() => changeSection(section)} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${active === section ? "border-brand bg-brand text-black" : "border-white/15 text-text-secondary hover:border-brand/45 hover:text-text-primary"}`}>
+            return <button key={section} type="button" onClick={() => changeSection(section)} className="bvs-library-accent-button shrink-0 rounded-full border px-4 py-2 text-sm font-semibold" data-library-accent={libraryAccent(section)} aria-pressed={active === section}>
               {meta.label}{typeof count === "number" ? ` · ${count}` : ""}
             </button>;
           })}
         </nav>
         <nav className="mt-2 flex gap-2 overflow-x-auto" aria-label="More library sections">
-          {secondarySections.map(section => <button key={section} type="button" onClick={() => changeSection(section)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs transition ${active === section ? "bg-white/10 text-brand" : "text-text-secondary hover:text-text-primary"}`}>{metaFor(section).label}{typeof countFor(section) === "number" ? ` · ${countFor(section)}` : ""}</button>)}
+          {secondarySections.map(section => <button key={section} type="button" onClick={() => changeSection(section)} className="bvs-library-accent-button shrink-0 rounded-full border px-3 py-1.5 text-xs" data-library-accent={libraryAccent(section)} aria-pressed={active === section}>{metaFor(section).label}{typeof countFor(section) === "number" ? ` · ${countFor(section)}` : ""}</button>)}
           {webOnly ? creatorSections.map(section => <button key={section} type="button" onClick={() => changeSection(section)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs transition ${active === section ? "bg-white/10 text-brand" : "text-text-secondary hover:text-text-primary"}`}>{metaFor(section).label}{typeof countFor(section) === "number" ? ` · ${countFor(section)}` : ""}</button>) : null}
         </nav>
       </div>
 
       {active === "all" ? <section className="mt-6" aria-labelledby="library-all-heading">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Library hub</p><h2 id="library-all-heading" className="mt-2 text-2xl font-semibold sm:text-3xl">Your library now</h2></div>
+          <div data-library-accent="library"><p className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Library hub</p><h2 id="library-all-heading" className="mt-2 text-2xl font-semibold sm:text-3xl">Your library now</h2></div>
           {libraryMetaLoading ? <span className="text-xs text-text-secondary">Refreshing account items…</span> : null}
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <QuickAccessCard label="Liked Music" count={likedMusic.length} detail="Saved songs & releases" symbol="♥" onClick={() => changeSection("liked")} />
-          <QuickAccessCard label="Playlists" count={playlists.length} detail="Your listening sessions" symbol="▶" onClick={() => changeSection("playlists")} />
-          <QuickAccessCard label="Downloads" count={downloads.length} detail={signedIn ? "Purchased files ready" : "Sign in for purchases"} symbol="↓" onClick={() => changeSection("downloads")} />
-          <QuickAccessCard label="Recently Played" count={history.length} detail="Continue listening" symbol="◷" onClick={() => changeSection("recent")} />
+          <QuickAccessCard accent="library" label="Liked Music" count={likedMusic.length} detail="Saved songs & releases" symbol="♥" onClick={() => changeSection("liked")} />
+          <QuickAccessCard accent="library" label="Playlists" count={playlists.length} detail="Your listening sessions" symbol="▶" onClick={() => changeSection("playlists")} />
+          <QuickAccessCard accent="downloads" label="Downloads" count={downloads.length} detail={signedIn ? "Purchased files ready" : "Sign in for purchases"} symbol="↓" onClick={() => changeSection("downloads")} />
+          <QuickAccessCard accent="library" label="Recently Played" count={history.length} detail="Continue listening" symbol="◷" onClick={() => changeSection("recent")} />
         </div>
 
         {history.length ? <LibraryShelf title="Continue listening" actionLabel="See recent" onAction={() => changeSection("recent")} items={history.slice(0, 4)} /> : null}
@@ -338,11 +345,11 @@ export default function LibraryView() {
         </div>
       </section> : null}
 
-      {active !== "all" ? <section className="mt-6 rounded-[1.65rem] border border-white/10 bg-white/[.02] p-5 sm:p-6" aria-labelledby="library-section-title">
+      {active !== "all" ? <section data-library-accent={libraryAccent(active)} className="mt-6 rounded-[1.65rem] border border-white/10 bg-white/[.02] p-5 sm:p-6" aria-labelledby="library-section-title">
         {active === "playlists" ? <WebPlaylists embedded /> : <>
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{active.startsWith("saved") || active.startsWith("licensed") ? "Creator library" : "Your library"}</p>
+              <p className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{active.startsWith("saved") || active.startsWith("licensed") ? "Creator library" : "Your library"}</p>
               <h2 id="library-section-title" className="mt-2 text-2xl font-semibold sm:text-3xl">{activeMeta.label}</h2>
               <p className="mt-2 text-sm text-text-secondary">{activeMeta.copy}</p>
             </div>
@@ -375,9 +382,9 @@ export default function LibraryView() {
   );
 }
 
-function QuickAccessCard({ label, count, detail, symbol, onClick }: { label: string; count: number; detail: string; symbol: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="group min-h-32 rounded-3xl border border-white/10 bg-white/[.025] p-4 text-left transition hover:border-brand/40 hover:bg-brand/[.04] sm:p-5">
-    <div className="flex items-start justify-between gap-3"><span className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-brand/25 bg-brand/10 text-lg text-brand">{symbol}</span><span className="text-2xl font-semibold text-brand">{count}</span></div>
+function QuickAccessCard({ accent, label, count, detail, symbol, onClick }: { accent: "library" | "downloads"; label: string; count: number; detail: string; symbol: string; onClick: () => void }) {
+  return <button type="button" data-library-accent={accent} onClick={onClick} className="bvs-library-accent-card group min-h-32 rounded-3xl border border-white/10 bg-white/[.025] p-4 text-left sm:p-5">
+    <div className="flex items-start justify-between gap-3"><span className="bvs-library-accent-button inline-flex h-9 w-9 items-center justify-center rounded-full border text-lg">{symbol}</span><span className="bvs-library-accent-label text-2xl font-semibold">{count}</span></div>
     <p className="mt-4 font-semibold group-hover:text-brand">{label}</p>
     <p className="mt-1 text-xs text-text-secondary">{detail}</p>
   </button>;

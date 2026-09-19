@@ -6,6 +6,9 @@
 [data-bvs-section="studio"] { --bvs-section-rgb: 123 169 208; --bvs-section-label: #a5c6e1; --bvs-section-light-label: #315d80; }
 [data-bvs-section="marketplace"] { --bvs-section-rgb: 145 175 133; --bvs-section-label: #b4cbaa; --bvs-section-light-label: #46643b; }
 [data-bvs-section="shows"] { --bvs-section-rgb: 207 137 155; --bvs-section-label: #e0afbd; --bvs-section-light-label: #8a4055; }
+[data-bvs-section="editorial"] { --bvs-section-rgb: 99 184 170; --bvs-section-label: #8acbbf; --bvs-section-light-label: #256459; }
+[data-bvs-section="premium"] { --bvs-section-rgb: 227 189 88; --bvs-section-label: #e3bd58; --bvs-section-light-label: #705100; }
+[data-bvs-section="library"] { --bvs-section-rgb: 146 157 224; --bvs-section-label: #b4bdef; --bvs-section-light-label: #424e91; }
 [data-bvs-section="neutral"] { --bvs-section-rgb: 0 0 0; --bvs-section-label: inherit; --bvs-section-light-label: inherit; }
 .bvs-section-scope:not([data-bvs-section="neutral"]):not([data-bvs-section="home"]) main {
   background-image: radial-gradient(ellipse 32rem 11rem at 20% 5rem, rgb(var(--bvs-section-rgb) / .055), transparent);
@@ -117,4 +120,117 @@
   .bvs-studio-accent-card .bvs-studio-accent-arrow { color: CanvasText; }
   .bvs-studio-accent-button,
   .bvs-studio-accent-card:hover { border-color: Highlight; }
+}
+
+
+/* Editorial uses semantic work accents while preserving explicit status colours. */
+[data-editorial-accent="core"] { --bvs-editorial-rgb: 99 184 170; --bvs-editorial-label: #8acbbf; --bvs-editorial-light-label: #256459; }
+[data-editorial-accent="releases"] { --bvs-editorial-rgb: 123 169 208; --bvs-editorial-label: #a5c6e1; --bvs-editorial-light-label: #315d80; }
+[data-editorial-accent="beats"] { --bvs-editorial-rgb: 174 139 203; --bvs-editorial-label: #c9aadd; --bvs-editorial-light-label: #69467f; }
+[data-editorial-accent="people"] { --bvs-editorial-rgb: 146 157 224; --bvs-editorial-label: #b4bdef; --bvs-editorial-light-label: #424e91; }
+[data-editorial-accent="marketplace"] { --bvs-editorial-rgb: 145 175 133; --bvs-editorial-label: #b4cbaa; --bvs-editorial-light-label: #46643b; }
+[data-editorial-accent="shows"] { --bvs-editorial-rgb: 207 137 155; --bvs-editorial-label: #e0afbd; --bvs-editorial-light-label: #8a4055; }
+[data-editorial-accent="money"] { --bvs-editorial-rgb: 227 189 88; --bvs-editorial-label: #e3bd58; --bvs-editorial-light-label: #705100; }
+.bvs-editorial-accent-label { color: var(--bvs-editorial-label); }
+.bvs-editorial-accent-button {
+  color: var(--bvs-editorial-label);
+  border-color: rgb(var(--bvs-editorial-rgb) / .28);
+  background: rgb(var(--bvs-editorial-rgb) / .055);
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+}
+.bvs-editorial-accent-button:hover {
+  border-color: rgb(var(--bvs-editorial-rgb) / .48);
+  background: rgb(var(--bvs-editorial-rgb) / .095);
+}
+.bvs-editorial-accent-card {
+  transition: border-color .2s ease, background-color .2s ease;
+}
+.bvs-editorial-accent-card:hover {
+  border-color: rgb(var(--bvs-editorial-rgb) / .32);
+  background: rgb(var(--bvs-editorial-rgb) / .032);
+}
+.bvs-editorial-panel[data-state="open"][data-editorial-accent] {
+  border-color: rgb(var(--bvs-editorial-rgb) / .18);
+}
+:root[data-theme="light"] .bvs-editorial-accent-label,
+:root[data-theme="light"] .bvs-editorial-accent-button { color: var(--bvs-editorial-light-label); }
+
+/* Premium family accents mirror the product surface they unlock. */
+[data-premium-accent="instant"] { --bvs-premium-rgb: 227 189 88; --bvs-premium-label: #e3bd58; --bvs-premium-light-label: #705100; }
+[data-premium-accent="artist"] { --bvs-premium-rgb: 123 169 208; --bvs-premium-label: #a5c6e1; --bvs-premium-light-label: #315d80; }
+[data-premium-accent="producer"] { --bvs-premium-rgb: 174 139 203; --bvs-premium-label: #c9aadd; --bvs-premium-light-label: #69467f; }
+[data-premium-accent="creator_bundle"] { --bvs-premium-rgb: 146 157 224; --bvs-premium-label: #b4bdef; --bvs-premium-light-label: #424e91; }
+[data-premium-accent="service"] { --bvs-premium-rgb: 145 175 133; --bvs-premium-label: #b4cbaa; --bvs-premium-light-label: #46643b; }
+[data-premium-accent="team"] { --bvs-premium-rgb: 123 169 208; --bvs-premium-label: #a5c6e1; --bvs-premium-light-label: #315d80; }
+[data-premium-accent="curator"] { --bvs-premium-rgb: 99 184 170; --bvs-premium-label: #8acbbf; --bvs-premium-light-label: #256459; }
+[data-premium-accent="supporter"] { --bvs-premium-rgb: 207 137 155; --bvs-premium-label: #e0afbd; --bvs-premium-light-label: #8a4055; }
+[data-premium-accent="brand"] { --bvs-premium-rgb: 146 157 224; --bvs-premium-label: #b4bdef; --bvs-premium-light-label: #424e91; }
+.bvs-premium-accent-label { color: var(--bvs-premium-label); }
+.bvs-premium-accent-button {
+  color: var(--bvs-premium-label);
+  border-color: rgb(var(--bvs-premium-rgb) / .28);
+  background: rgb(var(--bvs-premium-rgb) / .06);
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+}
+.bvs-premium-accent-button:hover,
+.bvs-premium-accent-button[aria-pressed="true"] {
+  border-color: rgb(var(--bvs-premium-rgb) / .5);
+  background: rgb(var(--bvs-premium-rgb) / .12);
+}
+.bvs-premium-accent-card {
+  border-color: rgb(var(--bvs-premium-rgb) / .2);
+  background: rgb(var(--bvs-premium-rgb) / .035);
+  transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+}
+.bvs-premium-accent-card:hover {
+  border-color: rgb(var(--bvs-premium-rgb) / .38);
+  background: rgb(var(--bvs-premium-rgb) / .055);
+}
+:root[data-theme="light"] .bvs-premium-accent-label,
+:root[data-theme="light"] .bvs-premium-accent-button { color: var(--bvs-premium-light-label); }
+
+@media (forced-colors: active) {
+  .bvs-editorial-accent-label,
+  .bvs-editorial-accent-button,
+  .bvs-premium-accent-label,
+  .bvs-premium-accent-button { color: CanvasText; }
+  .bvs-editorial-accent-button,
+  .bvs-editorial-accent-card:hover,
+  .bvs-premium-accent-button,
+  .bvs-premium-accent-card { border-color: Highlight; }
+}
+
+
+/* Library stays mostly lavender, with teal discovery and purple beat lanes. */
+[data-library-accent="library"] { --bvs-library-rgb: 146 157 224; --bvs-library-label: #b4bdef; --bvs-library-light-label: #424e91; }
+[data-library-accent="discover"] { --bvs-library-rgb: 99 184 170; --bvs-library-label: #8acbbf; --bvs-library-light-label: #256459; }
+[data-library-accent="beats"] { --bvs-library-rgb: 174 139 203; --bvs-library-label: #c9aadd; --bvs-library-light-label: #69467f; }
+[data-library-accent="downloads"] { --bvs-library-rgb: 123 169 208; --bvs-library-label: #a5c6e1; --bvs-library-light-label: #315d80; }
+.bvs-library-accent-label { color: var(--bvs-library-label); }
+.bvs-library-accent-button {
+  color: var(--bvs-library-label);
+  border-color: rgb(var(--bvs-library-rgb) / .28);
+  background: rgb(var(--bvs-library-rgb) / .055);
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+}
+.bvs-library-accent-button:hover,
+.bvs-library-accent-button[aria-pressed="true"] {
+  border-color: rgb(var(--bvs-library-rgb) / .48);
+  background: rgb(var(--bvs-library-rgb) / .11);
+}
+.bvs-library-accent-card {
+  transition: border-color .2s ease, background-color .2s ease;
+}
+.bvs-library-accent-card:hover {
+  border-color: rgb(var(--bvs-library-rgb) / .32);
+  background: rgb(var(--bvs-library-rgb) / .035);
+}
+:root[data-theme="light"] .bvs-library-accent-label,
+:root[data-theme="light"] .bvs-library-accent-button { color: var(--bvs-library-light-label); }
+
+@media (forced-colors: active) {
+  .bvs-library-accent-label,
+  .bvs-library-accent-button { color: CanvasText; }
+  .bvs-library-accent-button,
+  .bvs-library-accent-card:hover { border-color: Highlight; }
 }

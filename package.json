@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:editorial-connected && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:creator-next-move && npm run test:explore-discovery && npm run test:playlist-beats && npm run test:marketplace-storefront && npm run test:privileged-audio && npm run test:bvs-feed && npm run test:growth-activation && npm run test:home-accents && npm run test:studio-ui && next build",
-    "vercel-build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:editorial-connected && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:creator-next-move && npm run test:explore-discovery && npm run test:playlist-beats && npm run test:marketplace-storefront && npm run test:privileged-audio && npm run test:bvs-feed && npm run test:growth-activation && npm run test:home-accents && npm run test:studio-ui && next build",
+    "build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:editorial-connected && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:creator-next-move && npm run test:explore-discovery && npm run test:playlist-beats && npm run test:marketplace-storefront && npm run test:privileged-audio && npm run test:bvs-feed && npm run test:growth-activation && npm run test:home-accents && npm run test:studio-ui && npm run test:cross-surface-ui && next build",
+    "vercel-build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:editorial-connected && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:creator-next-move && npm run test:explore-discovery && npm run test:playlist-beats && npm run test:marketplace-storefront && npm run test:privileged-audio && npm run test:bvs-feed && npm run test:growth-activation && npm run test:home-accents && npm run test:studio-ui && npm run test:cross-surface-ui && next build",
     "test:ios-surface-gates": "npm run test:ios-surface-lock && npm run test:apple-ios-surface",
     "start": "next start",
     "lint": "eslint",
@@ -36,7 +36,8 @@
     "test:growth-activation": "node scripts/growth-activation-tests.mjs",
     "test:creator-next-move": "node --experimental-strip-types scripts/creator-next-move-tests.mjs",
     "test:home-accents": "node scripts/home-accent-tests.mjs",
-    "test:studio-ui": "node scripts/studio-ui-tests.mjs"
+    "test:studio-ui": "node scripts/studio-ui-tests.mjs",
+    "test:cross-surface-ui": "node scripts/cross-surface-ui-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",

@@ -10,7 +10,10 @@ export function sectionForPath(pathname: string) {
   if (/^\/(studio|creator)(\/|$)/.test(path)) return "studio";
   if (/^\/(marketplace|shop)(\/|$)/.test(path)) return "marketplace";
   if (/^\/(shows|show|episodes)(\/|$)/.test(path)) return "shows";
-  if (/^\/(library|account|you|notifications|login|join)(\/|$)/.test(path)) return "neutral";
+  if (/^\/editorial(\/|$)/.test(path)) return "editorial";
+  if (/^\/premium(\/|$)/.test(path)) return "premium";
+  if (/^\/library(\/|$)/.test(path)) return "library";
+  if (/^\/(account|you|notifications|login|join)(\/|$)/.test(path)) return "neutral";
   return "home";
 }
 export default function BvsSectionScope({ children }: { children: ReactNode }) {
