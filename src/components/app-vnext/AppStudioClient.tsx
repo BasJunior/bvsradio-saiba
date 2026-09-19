@@ -27,6 +27,7 @@ type Workspace = {
   episodes?: WorkflowItem[];
 };
 
+type StudioAccent = "core" | "beats" | "marketplace" | "insights" | "shows" | "money";
 type Task = { id: string; eyebrow: string; title: string; note: string; href: string; tone?: "urgent" | "normal" };
 type PathStep = { label: string; note: string; href: string; state: "done" | "current" | "next" };
 
@@ -166,31 +167,31 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
     </div>
   );
 
-  const work = [
-    ...(access?.artist ? [{ href: `/app/${surface}/studio/release`, title: "Releases", copy: "Upload music, follow review and see exactly what is live." }] : []),
-    ...(access?.producer ? [{ href: `/app/${surface}/studio/beats`, title: "BeatStore", copy: "Upload beats and packs, then manage your producer catalogue." }] : []),
-    { href: `/app/${surface}/studio/insights`, title: "Insights", copy: "See listening activity and the signals that matter." },
-    { href: `/app/${surface}/studio/money`, title: "Money", copy: "Understand balances, settlements and what is payable." },
-    { href: `/app/${surface}/studio/marketplace`, title: "Marketplace", copy: "Manage your creator profile, products and services." },
-    { href: `/app/${surface}/studio/orders`, title: "Orders", copy: "Track client work, customer orders and delivery." },
+  const work: Array<{ href: string; title: string; copy: string; accent: StudioAccent }> = [
+    ...(access?.artist ? [{ href: `/app/${surface}/studio/release`, title: "Releases", copy: "Upload music, follow review and see exactly what is live.", accent: "core" as const }] : []),
+    ...(access?.producer ? [{ href: `/app/${surface}/studio/beats`, title: "BeatStore", copy: "Upload beats and packs, then manage your producer catalogue.", accent: "beats" as const }] : []),
+    { href: `/app/${surface}/studio/insights`, title: "Insights", copy: "See listening activity and the signals that matter.", accent: "insights" },
+    { href: `/app/${surface}/studio/money`, title: "Money", copy: "Understand balances, settlements and what is payable.", accent: "money" },
+    { href: `/app/${surface}/studio/marketplace`, title: "Marketplace", copy: "Manage your creator profile, products and services.", accent: "marketplace" },
+    { href: `/app/${surface}/studio/orders`, title: "Orders", copy: "Track client work, customer orders and delivery.", accent: "marketplace" },
   ];
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">BVS Studio</p>
+      <p data-studio-accent="core" className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.22em]">BVS Studio</p>
       <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
           <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">What moves your work forward today?</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-white/43 sm:text-base">Create, respond, publish, deliver and understand the business around your work from one place.</p>
         </div>
-        {premiumActive ? <span className="shrink-0 rounded-full border border-brand/25 bg-brand/[.08] px-4 py-2 text-xs font-semibold text-brand">Premium · {premiumPlanLabel || "Active"}</span> : null}
+        {premiumActive ? <span data-studio-accent="money" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-xs font-semibold">Premium · {premiumPlanLabel || "Active"}</span> : null}
       </div>
 
       {artistPath ? (
-        <section className="mt-8 rounded-[1.8rem] border border-brand/16 bg-gradient-to-br from-brand/[.065] via-white/[.02] to-transparent p-5 sm:p-6">
+        <section data-studio-accent="core" className="mt-8 rounded-[1.8rem] border border-[#7ba9d0]/16 bg-gradient-to-br from-[#7ba9d0]/[.06] via-white/[.02] to-transparent p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Current release</p>
+              <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Current release</p>
               <h2 className="mt-2 text-3xl font-semibold">From upload to audience.</h2>
               <p className="mt-2 text-xs text-white/35">Following: {artistPath.focusTitle}</p>
             </div>
@@ -208,17 +209,17 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
           </div>
 
           <div className="mt-4 rounded-[1.25rem] border border-white/[.07] bg-black/15 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Next</p>
+            <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Next</p>
             <h3 className="mt-2 text-lg font-semibold">{artistPath.next.title}</h3>
             <p className="mt-2 text-sm leading-6 text-white/40">{artistPath.next.copy}</p>
           </div>
         </section>
       ) : null}
 
-      <section className="mt-7 rounded-[1.7rem] border border-white/[.07] bg-white/[.022] p-5 sm:p-6">
+      <section data-studio-accent="insights" className="mt-7 rounded-[1.7rem] border border-white/[.07] bg-white/[.022] p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Action inbox</p>
+            <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Action inbox</p>
             <h2 className="mt-2 text-2xl font-semibold">{workspaceLoading ? "Checking your work…" : tasks.length ? `${tasks.length} item${tasks.length === 1 ? "" : "s"} need attention` : "Nothing needs you right now"}</h2>
           </div>
           {workspace ? <span className="rounded-full border border-white/[.07] px-3 py-1.5 text-xs text-white/34">{(workspace.releases || []).length} releases · {(workspace.tracks || []).length} tracks</span> : null}
@@ -237,13 +238,13 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
       </section>
 
       <section className="mt-9">
-        <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Workspace</p>
+        <p data-studio-accent="core" className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Workspace</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {work.map((item) => (
-            <Link key={item.href} href={item.href} className="group rounded-[1.45rem] border border-white/[.07] bg-white/[.022] p-5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
+            <Link key={item.href} href={item.href} data-studio-accent={item.accent} className="bvs-studio-accent-card group rounded-[1.45rem] border border-white/[.07] bg-white/[.022] p-5 hover:-translate-y-0.5">
               <h2 className="text-xl font-semibold">{item.title}</h2>
               <p className="mt-2 text-sm leading-6 text-white/38">{item.copy}</p>
-              <span className="mt-5 inline-block text-sm font-semibold text-white/50 transition group-hover:text-brand">Open →</span>
+              <span className="bvs-studio-accent-arrow mt-5 inline-block text-sm font-semibold">Open →</span>
             </Link>
           ))}
         </div>
