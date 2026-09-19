@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { readLibrary } from "@/lib/library";
-import { trackEvent, trackMilestone } from "@/lib/analytics";
+import { trackEvent } from "@/lib/analytics";
 
 type Role = "listener" | "artist" | "producer" | "creator";
 
@@ -196,8 +196,11 @@ export default function ActivationStartClient() {
       trackEvent("activation_task_complete", { role, task: task.id });
     }
     if (allComplete) {
-      window.localStorage.setItem(`bvs.activation.complete.v1:${session.user.id}`, "1");
-      trackMilestone("activation_completed", { role });
+      const completeKey = `bvs.activation.complete.v1:${session.user.id}`;
+      if (window.localStorage.getItem(completeKey) !== "1") {
+        window.localStorage.setItem(completeKey, "1");
+        trackEvent("activation_completed", { role });
+      }
     }
   }, [allComplete, role, session.user, tasks]);
 
