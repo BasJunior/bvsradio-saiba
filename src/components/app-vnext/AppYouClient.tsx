@@ -73,7 +73,7 @@ export default function AppYouClient({ surface }: { surface: AppSurface }) {
         <p className="mt-2 truncate text-xl font-semibold">{user?.email}</p>
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-full border border-white/[.08] bg-white/[.025] px-3 py-1.5 text-xs text-white/52">{isCreator ? "Creator" : "Listener"}</span>
-          {premiumActive ? <span className="rounded-full border border-brand/25 bg-brand/[.08] px-3 py-1.5 text-xs font-semibold text-brand">Premium · {premiumPlanLabel || "Active"}</span> : null}
+          {premiumActive ? <span data-studio-accent="money" className="bvs-studio-accent-button rounded-full border px-3 py-1.5 text-xs font-semibold">Premium · {premiumPlanLabel || "Active"}</span> : null}
         </div>
       </section>
 
@@ -119,8 +119,8 @@ export default function AppYouClient({ surface }: { surface: AppSurface }) {
           <p className="mt-2 text-sm leading-6 text-white/38">Profile, creator roles, privacy, export and account controls.</p>
         </Link>
         {isCreator ? (
-          <Link href={`/app/${surface}/studio`} className="group rounded-[1.35rem] border border-brand/18 bg-brand/[.045] p-5 transition hover:border-brand/30 hover:bg-brand/[.07]">
-            <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Studio</p>
+          <Link href={`/app/${surface}/studio`} data-studio-accent="core" className="bvs-studio-accent-card group rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-5">
+            <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Studio</p>
             <h2 className="mt-2 text-xl font-semibold">Your work starts here.</h2>
             <p className="mt-2 text-sm leading-6 text-white/38">Releases, review, distribution, performance and money.</p>
           </Link>
