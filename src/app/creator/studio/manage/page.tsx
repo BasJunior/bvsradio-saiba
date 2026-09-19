@@ -14,6 +14,8 @@ import CreatorInsights from "@/components/CreatorInsights";
 import StudioPremiumDesk from "@/components/StudioPremiumDesk";
 import DistributionPathTimeline from "@/components/DistributionPathTimeline";
 import FullAccessAudioPlayer from "@/components/FullAccessAudioPlayer";
+import CreatorNextMoveCard from "@/components/CreatorNextMoveCard";
+import { artistReleaseNextMove } from "@/lib/creator-next-move";
 import { CreatorMarketplaceDesk } from "@/components/CreatorMarketplaceDesk";
 import CreatorServiceOrders from "@/components/CreatorServiceOrders";
 import {
@@ -896,6 +898,19 @@ function ArtistReleases({
           <div className="mt-4 space-y-3">
             {releases.map((release) => {
               const job = jobByRelease.get(release.id);
+              const hasSpotifyLink = tracks.some(
+                (track) => track.release_id === release.id && Boolean(track.spotify_url),
+              );
+              const nextMove = artistReleaseNextMove({
+                releaseId: release.id,
+                title: release.title,
+                editorialStatus: release.editorial_status,
+                isPublic: release.is_public,
+                hasSpotifyLink,
+                distributionStatus: job?.status,
+                premiumActive: flags?.premiumActive,
+                distributionEnabled: flags?.distributionEnabled,
+              });
               return (
                 <article
                   key={release.id}
@@ -928,12 +943,7 @@ function ArtistReleases({
                       <FullAccessAudioPlayer accessId={`studio-release:${member.id}`} title={member.title} artist={release.artist_name || 'Your submission'} src={member.file_url} sourceLabel={`Studio · ${release.title} · full submission`} compact />
                     </div>
                   ))}
-                  {!(flags?.premiumActive && flags?.distributionEnabled) &&
-                    release.is_public && (
-                      <p className="mt-3 text-xs text-amber-100">
-                        Live on BVS. Multi-platform needs active Artist Premium.
-                      </p>
-                    )}
+                  <CreatorNextMoveCard move={nextMove} className="mt-4" />
                 </article>
               );
             })}
