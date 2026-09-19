@@ -27,6 +27,7 @@ type Payload = {
 
 export default function PremiumInstantClient() {
   const searchParams = useSearchParams();
+  const preferredReleaseId = searchParams.get("release") || "";
   const [token, setToken] = useState("");
   const [data, setData] = useState<Payload | null>(null);
   const [releaseId, setReleaseId] = useState("");
@@ -49,9 +50,13 @@ export default function PremiumInstantClient() {
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(payload.error || "Could not load Premium Instant.");
     setData(payload);
-    const first = (payload.releases || []).find((item: ReleaseOption) => item.canPurchase);
+    const releases = (payload.releases || []) as ReleaseOption[];
+    const preferred = preferredReleaseId
+      ? releases.find((item) => item.id === preferredReleaseId && item.canPurchase)
+      : undefined;
+    const first = preferred || releases.find((item) => item.canPurchase);
     if (first) setReleaseId((current) => current || first.id);
-  }, []);
+  }, [preferredReleaseId]);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
