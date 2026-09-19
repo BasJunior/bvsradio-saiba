@@ -15,6 +15,7 @@ import StudioPremiumDesk from "@/components/StudioPremiumDesk";
 import DistributionPathTimeline from "@/components/DistributionPathTimeline";
 import FullAccessAudioPlayer from "@/components/FullAccessAudioPlayer";
 import CreatorNextMoveCard from "@/components/CreatorNextMoveCard";
+import CreatorNextMovePrompt from "@/components/CreatorNextMovePrompt";
 import { artistReleaseNextMove } from "@/lib/creator-next-move";
 import { CreatorMarketplaceDesk } from "@/components/CreatorMarketplaceDesk";
 import CreatorServiceOrders from "@/components/CreatorServiceOrders";
@@ -870,8 +871,29 @@ function ArtistReleases({
     void act({ action: "track_request", trackId, requestType, message });
   };
   const jobByRelease = new Map(jobs.map((j) => [j.release_id, j]));
+  const nextMoveForRelease = (release: AlbumRelease) =>
+    artistReleaseNextMove({
+      releaseId: release.id,
+      title: release.title,
+      editorialStatus: release.editorial_status,
+      isPublic: release.is_public,
+      hasSpotifyLink: tracks.some(
+        (track) => track.release_id === release.id && Boolean(track.spotify_url),
+      ),
+      distributionStatus: jobByRelease.get(release.id)?.status,
+      premiumActive: flags?.premiumActive,
+      distributionEnabled: flags?.distributionEnabled,
+    });
+  const promptRelease = releases.find(
+    (release) => nextMoveForRelease(release)?.id === "artist-instant-offer",
+  );
+  const promptMove = promptRelease ? nextMoveForRelease(promptRelease) : null;
   return (
     <section className="mt-10">
+      <CreatorNextMovePrompt
+        move={promptMove}
+        storageKey={promptRelease ? `artist-release:${promptRelease.id}` : "artist-release:none"}
+      />
       <div className="grid gap-3 sm:grid-cols-5">
         {[
           ["Uploads", tracks.length],
@@ -898,19 +920,7 @@ function ArtistReleases({
           <div className="mt-4 space-y-3">
             {releases.map((release) => {
               const job = jobByRelease.get(release.id);
-              const hasSpotifyLink = tracks.some(
-                (track) => track.release_id === release.id && Boolean(track.spotify_url),
-              );
-              const nextMove = artistReleaseNextMove({
-                releaseId: release.id,
-                title: release.title,
-                editorialStatus: release.editorial_status,
-                isPublic: release.is_public,
-                hasSpotifyLink,
-                distributionStatus: job?.status,
-                premiumActive: flags?.premiumActive,
-                distributionEnabled: flags?.distributionEnabled,
-              });
+              const nextMove = nextMoveForRelease(release);
               return (
                 <article
                   key={release.id}
