@@ -36,6 +36,26 @@ CREATE INDEX IF NOT EXISTS growth_members_reengagement_idx
 ALTER TABLE public.growth_members ENABLE ROW LEVEL SECURITY;
 -- No browser policies. Signup, analytics and growth workers use service-role APIs.
 
+-- Backfill existing accounts for cohort visibility without retroactively sending lifecycle nudges.
+INSERT INTO public.growth_members (
+  user_id, joined_at, role, utm_source, utm_medium, utm_campaign, utm_content, ref,
+  last_active_at, reengagement_sent_at, updated_at
+)
+SELECT
+  u.id,
+  u.created_at,
+  COALESCE(NULLIF(u.raw_user_meta_data->>'account_type', ''), NULLIF(u.raw_user_meta_data->>'role', ''), 'listener'),
+  NULLIF(u.raw_user_meta_data->'first_touch'->>'utm_source', ''),
+  NULLIF(u.raw_user_meta_data->'first_touch'->>'utm_medium', ''),
+  NULLIF(u.raw_user_meta_data->'first_touch'->>'utm_campaign', ''),
+  NULLIF(u.raw_user_meta_data->'first_touch'->>'utm_content', ''),
+  NULLIF(u.raw_user_meta_data->'first_touch'->>'ref', ''),
+  u.created_at,
+  NOW(),
+  NOW()
+FROM auth.users u
+ON CONFLICT (user_id) DO NOTHING;
+
 ALTER TABLE public.analytics_events
   ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS analytics_events_user_created_idx
