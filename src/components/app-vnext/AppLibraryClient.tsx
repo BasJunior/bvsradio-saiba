@@ -21,6 +21,12 @@ const primarySections: Array<{ id: ActiveSection; label: string }> = [
   { id: "downloads", label: "Downloads" },
 ];
 
+function appLibraryAccent(section: ActiveSection) {
+  if (section === "downloads") return "downloads";
+  if (section === "following") return "discover";
+  return "library";
+}
+
 function nativeHref(surface: AppSurface, item: DiscoveryItem) {
   try {
     const translated = appDestination(surface, new URL(item.href || "/", "https://bvs.local"));
@@ -180,11 +186,11 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
     <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Your BVS</p>
+          <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.22em]">Your BVS</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-6xl">Library</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45 sm:text-base">The things you keep should be the easiest things to reach.</p>
         </div>
-        <Link href={`/app/${surface}/explore`} className="min-h-11 rounded-full border border-brand/28 px-5 py-3 text-sm font-semibold text-brand">Discover music →</Link>
+        <Link href={`/app/${surface}/explore`} data-library-accent="discover" className="bvs-library-accent-button min-h-11 rounded-full border px-5 py-3 text-sm font-semibold">Discover music →</Link>
       </div>
 
       {!signedIn ? (
@@ -201,7 +207,7 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
                 type="button"
                 onClick={() => setActive(section.id)}
                 aria-pressed={active === section.id}
-                className={`min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition ${active === section.id ? "border-brand bg-brand text-black" : "border-white/[.09] text-white/48 hover:border-brand/35 hover:text-white"}`}
+                className="bvs-library-accent-button min-h-10 shrink-0 rounded-full border px-4 text-sm font-semibold" data-library-accent={appLibraryAccent(section.id)}
               >
                 {section.label}{typeof count === "number" ? ` · ${count}` : ""}
               </button>
@@ -215,17 +221,17 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
           <section className="mt-6" aria-labelledby="quick-access-heading">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Quick access</p>
+                <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Quick access</p>
                 <h2 id="quick-access-heading" className="mt-1 text-2xl font-semibold">Everything important, above the fold.</h2>
               </div>
               {libraryMetaLoading ? <span className="text-xs text-white/30">Updating…</span> : null}
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <QuickCard icon="♡" label="Liked Music" value={`${liked.length} saved`} onClick={() => setActive("liked")} />
-              <QuickCard icon="▶" label="Playlists" value={signedIn ? `${playlists.length} playlists` : "Sign in to sync"} onClick={() => setActive("playlists")} />
-              <QuickCard icon="↓" label="Downloads" value={`${downloadCount} offline`} onClick={() => setActive("downloads")} />
-              <QuickCard icon="◷" label="Recently Played" value={recent.length ? `${recent.length} recent` : "Ready when you listen"} onClick={() => setActive("recent")} />
+              <QuickCard accent="library" icon="♡" label="Liked Music" value={`${liked.length} saved`} onClick={() => setActive("liked")} />
+              <QuickCard accent="library" icon="▶" label="Playlists" value={signedIn ? `${playlists.length} playlists` : "Sign in to sync"} onClick={() => setActive("playlists")} />
+              <QuickCard accent="downloads" icon="↓" label="Downloads" value={`${downloadCount} offline`} onClick={() => setActive("downloads")} />
+              <QuickCard accent="library" icon="◷" label="Recently Played" value={recent.length ? `${recent.length} recent` : "Ready when you listen"} onClick={() => setActive("recent")} />
             </div>
           </section>
 
@@ -283,12 +289,12 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
 
           <section className="mt-8 grid gap-3 sm:grid-cols-2">
             <button type="button" onClick={() => setActive("following")} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-4 text-left transition hover:border-white/15">
-              <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Following</p>
+              <p data-library-accent="discover" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Following</p>
               <p className="mt-2 text-xl font-semibold">{following.length} creator{following.length === 1 ? "" : "s"}</p>
               <p className="mt-1 text-sm text-white/38">Keep the people behind the music close.</p>
             </button>
             <button type="button" onClick={() => setActive("recent")} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-4 text-left transition hover:border-white/15">
-              <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Recently played</p>
+              <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Recently played</p>
               <p className="mt-2 text-xl font-semibold">{recentHistory[0]?.title || "Your listening history"}</p>
               <p className="mt-1 truncate text-sm text-white/38">{recentHistory[0]?.subtitle || "Pick up where you left off."}</p>
             </button>
@@ -338,10 +344,10 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
   );
 }
 
-function QuickCard({ icon, label, value, onClick }: { icon: string; label: string; value: string; onClick: () => void }) {
+function QuickCard({ accent, icon, label, value, onClick }: { accent: "library" | "downloads"; icon: string; label: string; value: string; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="min-h-[7.2rem] rounded-[1.35rem] border border-white/[.07] bg-white/[.022] p-4 text-left transition hover:-translate-y-0.5 hover:border-brand/25 hover:bg-white/[.035]">
-      <span className="text-xl text-brand" aria-hidden="true">{icon}</span>
+    <button type="button" data-library-accent={accent} onClick={onClick} className="bvs-library-accent-card min-h-[7.2rem] rounded-[1.35rem] border border-white/[.07] bg-white/[.022] p-4 text-left transition hover:-translate-y-0.5">
+      <span className="bvs-library-accent-label text-xl" aria-hidden="true">{icon}</span>
       <span className="mt-3 block font-semibold">{label}</span>
       <span className="mt-1 block text-sm text-white/38">{value}</span>
     </button>
