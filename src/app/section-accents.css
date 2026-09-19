@@ -91,6 +91,15 @@
   border-color: rgb(var(--bvs-studio-rgb) / .48);
   background: rgb(var(--bvs-studio-rgb) / .10);
 }
+
+.bvs-studio-accent-button[aria-current="page"] {
+  border-color: rgb(var(--bvs-studio-rgb) / .55);
+  background: rgb(var(--bvs-studio-rgb) / .14);
+}
+.bvs-studio-panel[data-state="open"][data-studio-accent] {
+  border-color: rgb(var(--bvs-studio-rgb) / .18);
+}
+
 .bvs-studio-accent-card {
   transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
 }
