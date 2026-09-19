@@ -132,10 +132,10 @@ export default function HomeEngagementHub() {
     trackEvent('engagement_action_open', { activity: 'discover_3', track_id: track.id || null, progress: Math.min(3, next.length) })
   }
 
-  return <section className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14" aria-labelledby="next-move-title">
+  return <section data-home-accent="feed" className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14" aria-labelledby="next-move-title">
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Your BVS</p>
+        <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Your BVS</p>
         <h2 id="next-move-title" className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">There is always something worth doing next.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">Listen, collect, create or follow a thread. BVS adapts the next move to the way you use music.</p>
       </div>
