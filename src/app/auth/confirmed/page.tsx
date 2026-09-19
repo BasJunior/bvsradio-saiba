@@ -82,7 +82,6 @@ export default function ConfirmedPage() {
           return
         }
 
-        let profileDestination = ''
         const profileRes = await fetch('/api/auth/profile', {
           method: 'POST',
           headers: { Authorization: `Bearer ${data.session.access_token}` },
@@ -90,10 +89,7 @@ export default function ConfirmedPage() {
         if (!profileRes.ok) {
           console.warn('profile setup failed', await profileRes.text())
         } else {
-          const profile = await profileRes.json().catch(() => ({}))
-          if (typeof profile.destination === 'string' && profile.destination.startsWith('/')) {
-            profileDestination = profile.destination
-          }
+          await profileRes.json().catch(() => ({}))
         }
 
         setDestination(requestedDestination || '/start')
