@@ -196,3 +196,38 @@
   .bvs-premium-accent-button,
   .bvs-premium-accent-card { border-color: Highlight; }
 }
+
+
+/* Library stays mostly lavender, with teal discovery and purple beat lanes. */
+[data-library-accent="library"] { --bvs-library-rgb: 146 157 224; --bvs-library-label: #b4bdef; --bvs-library-light-label: #424e91; }
+[data-library-accent="discover"] { --bvs-library-rgb: 99 184 170; --bvs-library-label: #8acbbf; --bvs-library-light-label: #256459; }
+[data-library-accent="beats"] { --bvs-library-rgb: 174 139 203; --bvs-library-label: #c9aadd; --bvs-library-light-label: #69467f; }
+[data-library-accent="downloads"] { --bvs-library-rgb: 123 169 208; --bvs-library-label: #a5c6e1; --bvs-library-light-label: #315d80; }
+.bvs-library-accent-label { color: var(--bvs-library-label); }
+.bvs-library-accent-button {
+  color: var(--bvs-library-label);
+  border-color: rgb(var(--bvs-library-rgb) / .28);
+  background: rgb(var(--bvs-library-rgb) / .055);
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+}
+.bvs-library-accent-button:hover,
+.bvs-library-accent-button[aria-pressed="true"] {
+  border-color: rgb(var(--bvs-library-rgb) / .48);
+  background: rgb(var(--bvs-library-rgb) / .11);
+}
+.bvs-library-accent-card {
+  transition: border-color .2s ease, background-color .2s ease;
+}
+.bvs-library-accent-card:hover {
+  border-color: rgb(var(--bvs-library-rgb) / .32);
+  background: rgb(var(--bvs-library-rgb) / .035);
+}
+:root[data-theme="light"] .bvs-library-accent-label,
+:root[data-theme="light"] .bvs-library-accent-button { color: var(--bvs-library-light-label); }
+
+@media (forced-colors: active) {
+  .bvs-library-accent-label,
+  .bvs-library-accent-button { color: CanvasText; }
+  .bvs-library-accent-button,
+  .bvs-library-accent-card:hover { border-color: Highlight; }
+}
