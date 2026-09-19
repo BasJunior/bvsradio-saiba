@@ -32,7 +32,7 @@ assert(analyticsApi.includes("authenticatedUserId"), "analytics API verifies the
 assert(analyticsApi.includes("growth_members"), "analytics API updates growth-member milestones");
 assert(signup.includes("recordGrowthMember"), "signup persists member acquisition attribution");
 assert(signup.includes("utm_campaign"), "signup persists campaign attribution");
-assert(feedComposer.includes('trackMilestone("first_post"'), "Feed marks first post");
+assert(feedComposer.includes('trackEvent("first_post"'), "Feed marks first post");
 
 assert(growthApi.includes("activationRate"), "growth API reports activation rate");
 assert(growthApi.includes("purchaseRate"), "growth API reports purchase rate");
