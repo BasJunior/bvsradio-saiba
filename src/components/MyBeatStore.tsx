@@ -6,6 +6,7 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import FullAccessAudioPlayer from '@/components/FullAccessAudioPlayer'
 import CreatorNextMoveCard from '@/components/CreatorNextMoveCard'
+import CreatorNextMovePrompt from '@/components/CreatorNextMovePrompt'
 import { producerBeatNextMove } from '@/lib/creator-next-move'
 
 type Licence = {
@@ -276,8 +277,32 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
     )
   }
 
+  const nextMoveForBeat = (beat: Beat) =>
+    producerBeatNextMove({
+      beatId: beat.id,
+      title: beat.title,
+      status: beat.status,
+      isPublic: beat.is_public,
+      tier: entitlements?.tier,
+      liveCount: entitlements?.liveCount,
+      beatLiveLimit: entitlements?.beatLiveLimit,
+      softWarn: entitlements?.softWarn,
+      canGoLive: entitlements?.canGoLive,
+    })
+  const promptBeat = creationOnly
+    ? undefined
+    : beats.find((beat) => {
+        const move = nextMoveForBeat(beat)
+        return Boolean(move && move.id !== 'producer-review-attention')
+      })
+  const promptMove = promptBeat ? nextMoveForBeat(promptBeat) : null
+
   return (
     <section className={creationOnly ? '' : 'mt-10'}>
+      <CreatorNextMovePrompt
+        move={promptMove}
+        storageKey={promptBeat ? `producer-beat:${promptBeat.id}` : 'producer-beat:none'}
+      />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.22em] text-brand">Producer</p>
@@ -449,17 +474,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
         <h3 className="text-xl">Your beats</h3>
         {beats.map((beat) => {
           const priceUsd = beat.beat_licence_options?.[0]?.price_usd
-          const nextMove = producerBeatNextMove({
-            beatId: beat.id,
-            title: beat.title,
-            status: beat.status,
-            isPublic: beat.is_public,
-            tier: entitlements?.tier,
-            liveCount: entitlements?.liveCount,
-            beatLiveLimit: entitlements?.beatLiveLimit,
-            softWarn: entitlements?.softWarn,
-            canGoLive: entitlements?.canGoLive,
-          })
+          const nextMove = nextMoveForBeat(beat)
           return (
             <article key={beat.id} className="rounded-xl border border-white/10 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
