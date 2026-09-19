@@ -191,11 +191,11 @@ export default function CreatorStudioHome() {
           <Link href="/creator/studio/manage" data-studio-accent="core" className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Open full Studio →</Link>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <ManageLink href="/creator/studio/manage#releases" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
-          {artist && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" />}
-          <ManageLink href="/artists" label="Money" detail="Wallet & earnings" />
-          <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" />
-          <ManageLink href="/creator/marketplace" label="Profile & storefront" detail="Advanced setup" />
+          <ManageLink href="/creator/studio/manage#releases" accent="core" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
+          {artist && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" accent="core" />}
+          <ManageLink href="/artists" label="Money" detail="Wallet & earnings" accent="money" />
+          <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" accent="marketplace" />
+          <ManageLink href="/creator/marketplace" label="Profile & storefront" detail="Advanced setup" accent="marketplace" />
         </div>
         {(activity.pending > 0 || activity.distributing > 0) && (
           <div className="mt-5 flex flex-wrap gap-2 text-xs text-text-secondary">
@@ -260,9 +260,9 @@ function ProofMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ManageLink({ href, label, detail }: { href: string; label: string; detail: string }) {
+function ManageLink({ href, label, detail, accent }: { href: string; label: string; detail: string; accent: "core" | "marketplace" | "money" }) {
   return (
-    <Link href={href} className="flex min-h-[4.5rem] flex-col justify-center rounded-2xl border border-white/10 p-4 transition hover:border-brand/35 hover:bg-white/[.025]">
+    <Link href={href} data-studio-accent={accent} className="bvs-studio-accent-card flex min-h-[4.5rem] flex-col justify-center rounded-2xl border border-white/10 p-4">
       <p className="font-semibold">{label}</p>
       <p className="mt-1 text-xs text-text-secondary">{detail}</p>
     </Link>
