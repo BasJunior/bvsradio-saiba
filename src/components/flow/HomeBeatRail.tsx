@@ -54,11 +54,11 @@ export default function HomeBeatRail() {
   }));
 
   return (
-    <section className="border-y border-white/10 bg-bg-secondary/45 py-12 sm:py-16" aria-labelledby="fresh-beats-title">
+    <section data-home-accent="beats" className="border-y border-white/10 bg-bg-secondary/45 py-12 sm:py-16" aria-labelledby="fresh-beats-title">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex items-end justify-between gap-4">
-          <div><p className="text-xs uppercase tracking-[.2em] text-brand">Connected discovery</p><h2 id="fresh-beats-title" className="mt-2 text-3xl sm:text-4xl">Fresh from BeatStore</h2><p className="mt-2 text-sm text-text-secondary">Preview producer work, save beats you like and come back to them when you are ready to create.</p></div>
-          <Link href="/catalogue?type=beat#beatstore" className="hidden text-sm text-brand hover:underline sm:block">View all beats →</Link>
+          <div><p className="bvs-home-accent-label text-xs uppercase tracking-[.2em]">Connected discovery</p><h2 id="fresh-beats-title" className="mt-2 text-3xl sm:text-4xl">Fresh from BeatStore</h2><p className="mt-2 text-sm text-text-secondary">Preview producer work, save beats you like and come back to them when you are ready to create.</p></div>
+          <Link href="/catalogue?type=beat#beatstore" className="bvs-home-accent-button hidden rounded-full border px-4 py-2 text-sm font-semibold sm:block">View all beats →</Link>
         </div>
         <div className="mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4" data-flow-scroll-key="home-beatstore">
           {objects.map((object, index) => {

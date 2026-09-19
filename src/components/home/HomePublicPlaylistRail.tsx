@@ -29,19 +29,19 @@ export default function HomePublicPlaylistRail() {
 
   if (!playlists.length) return null
 
-  return <section className="border-y border-white/10 bg-bg-secondary/35 py-10 sm:py-14" aria-labelledby="made-on-bvs-title">
+  return <section data-home-accent="feed" className="border-y border-white/10 bg-bg-secondary/35 py-10 sm:py-14" aria-labelledby="made-on-bvs-title">
     <div className="mx-auto max-w-7xl px-4 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Made on BVS</p>
+          <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Made on BVS</p>
           <h2 id="made-on-bvs-title" className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Playlists from listeners and creators.</h2>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary sm:text-base">See how other people are putting the BVS catalogue together, then build your own.</p>
         </div>
-        <Link href="/search?mode=playlists" className="text-sm font-semibold text-brand hover:underline">Explore playlists →</Link>
+        <Link href="/search?mode=playlists" className="bvs-home-accent-button rounded-full border px-4 py-2 text-sm font-semibold">Explore playlists →</Link>
       </div>
 
       <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
-        {playlists.map(playlist => <Link key={playlist.id} href={`/playlist/${playlist.id}`} className="group w-[15.5rem] shrink-0 snap-start overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[.025] transition hover:-translate-y-0.5 hover:border-brand/35">
+        {playlists.map(playlist => <Link key={playlist.id} href={`/playlist/${playlist.id}`} className="bvs-home-accent-card group w-[15.5rem] shrink-0 snap-start overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[.025] hover:-translate-y-0.5">
           <div className="relative aspect-square bg-gradient-to-br from-brand/20 via-white/[.04] to-black">
             {playlist.coverUrl ? <img src={playlist.coverUrl} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-5xl font-semibold text-brand/65">BVS</div>}
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
@@ -51,7 +51,7 @@ export default function HomePublicPlaylistRail() {
             <h3 className="truncate text-lg font-semibold">{playlist.title}</h3>
             <p className="mt-1 truncate text-sm text-text-secondary">by {playlist.creator}</p>
             {playlist.description ? <p className="mt-2 line-clamp-2 text-sm leading-5 text-text-secondary">{playlist.description}</p> : null}
-            <p className="mt-3 text-sm font-semibold text-brand">Open playlist →</p>
+            <p className="bvs-home-accent-arrow mt-3 text-sm font-semibold">Open playlist →</p>
           </div>
         </Link>)}
       </div>

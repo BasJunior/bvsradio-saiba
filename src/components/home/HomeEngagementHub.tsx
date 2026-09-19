@@ -11,6 +11,15 @@ import type { StationTrack } from '@/lib/station'
 type CreatorCategory = 'listener' | 'artist' | 'producer' | 'writer' | 'show_creator'
 type Move = { kicker: string; title: string; copy: string; href: string }
 
+function accentForMove(kicker: string) {
+  const key = kicker.toLowerCase()
+  if (key.includes('beat')) return 'beats'
+  if (key.includes('create') || key.includes('proof') || key.includes('write') || key.includes('show')) return 'studio'
+  if (key.includes('collect') || key.includes('programme')) return 'feed'
+  if (key.includes('follow') || key.includes('research') || key.includes('inspiration')) return 'discover'
+  return 'listen'
+}
+
 function dayKey() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -123,23 +132,23 @@ export default function HomeEngagementHub() {
     trackEvent('engagement_action_open', { activity: 'discover_3', track_id: track.id || null, progress: Math.min(3, next.length) })
   }
 
-  return <section className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14" aria-labelledby="next-move-title">
+  return <section data-home-accent="feed" className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14" aria-labelledby="next-move-title">
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Your BVS</p>
+        <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Your BVS</p>
         <h2 id="next-move-title" className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">There is always something worth doing next.</h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">Listen, collect, create or follow a thread. BVS adapts the next move to the way you use music.</p>
       </div>
-      {!signedIn ? <Link href="/auth/signup" className="rounded-full border border-brand/30 px-5 py-2.5 text-sm font-semibold text-brand">Make it yours →</Link> : null}
+      {!signedIn ? <Link href="/auth/signup" data-home-accent="feed" className="bvs-home-accent-button rounded-full border px-5 py-2.5 text-sm font-semibold">Make it yours →</Link> : null}
     </div>
 
     <div className="mt-6 grid gap-3 md:grid-cols-3">
-      {moves.map(move => <Link key={`${move.kicker}-${move.title}`} href={move.href} onClick={() => trackEvent('engagement_action_open', { activity: move.kicker.toLowerCase(), category })} className="group rounded-[1.45rem] border border-white/10 bg-white/[.025] p-5 transition hover:-translate-y-0.5 hover:border-brand/35 hover:bg-white/[.045]"><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{move.kicker}</p><h3 className="mt-2 text-xl font-semibold tracking-tight">{move.title}</h3><p className="mt-2 text-sm leading-relaxed text-text-secondary">{move.copy}</p><p className="mt-4 text-sm font-semibold text-brand">Open →</p></Link>)}
+      {moves.map(move => <Link key={`${move.kicker}-${move.title}`} href={move.href} data-home-accent={accentForMove(move.kicker)} onClick={() => trackEvent('engagement_action_open', { activity: move.kicker.toLowerCase(), category })} className="bvs-home-accent-card group rounded-[1.45rem] border border-white/10 bg-white/[.025] p-5 hover:-translate-y-0.5"><p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{move.kicker}</p><h3 className="mt-2 text-xl font-semibold tracking-tight">{move.title}</h3><p className="mt-2 text-sm leading-relaxed text-text-secondary">{move.copy}</p><p className="bvs-home-accent-arrow mt-4 text-sm font-semibold">Open →</p></Link>)}
     </div>
 
-    {discovery.length ? <div id="discover-three" className="mt-7 rounded-[1.6rem] border border-white/10 bg-black/10 p-5 sm:p-6">
-      <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Daily discovery</p><h3 className="mt-2 text-2xl font-semibold">Discover 3 today.</h3><p className="mt-2 text-sm text-text-secondary">Three tracks from the current BVS catalogue. Hear all three and choose what deserves a place in your Library.</p></div><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary">{Math.min(3, discovered.length)} / 3 heard</span></div>
-      <div className="mt-5 grid gap-2 md:grid-cols-3">{discovery.map(track => { const id = track.id || track.src; const heard = discovered.includes(id); return <button key={id} type="button" onClick={() => playDiscovery(track)} className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${heard ? 'border-brand/25 bg-brand/[.06]' : 'border-white/10 bg-white/[.02] hover:border-brand/30'}`}><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/5 text-brand">{heard ? '✓' : '▶'}</span><span className="min-w-0"><span className="block truncate font-semibold">{track.title}</span><span className="block truncate text-sm text-text-secondary">{track.artist}</span></span></button> })}</div>
+    {discovery.length ? <div id="discover-three" data-home-accent="discover" className="mt-7 rounded-[1.6rem] border border-white/10 bg-black/10 p-5 sm:p-6">
+      <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Daily discovery</p><h3 className="mt-2 text-2xl font-semibold">Discover 3 today.</h3><p className="mt-2 text-sm text-text-secondary">Three tracks from the current BVS catalogue. Hear all three and choose what deserves a place in your Library.</p></div><span className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary">{Math.min(3, discovered.length)} / 3 heard</span></div>
+      <div className="mt-5 grid gap-2 md:grid-cols-3">{discovery.map(track => { const id = track.id || track.src; const heard = discovered.includes(id); return <button key={id} type="button" onClick={() => playDiscovery(track)} className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition ${heard ? 'border-[#63b8aa]/25 bg-[#63b8aa]/[.06]' : 'border-white/10 bg-white/[.02] hover:border-[#63b8aa]/30'}`}><span className="bvs-home-accent-label grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-white/5">{heard ? '✓' : '▶'}</span><span className="min-w-0"><span className="block truncate font-semibold">{track.title}</span><span className="block truncate text-sm text-text-secondary">{track.artist}</span></span></button> })}</div>
     </div> : null}
   </section>
 }

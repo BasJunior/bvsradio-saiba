@@ -32,3 +32,42 @@
 :root[data-theme="light"] [data-bvs-section="feed"] [class*="text-[#9bc6ff]"],
 :root[data-theme="light"] [data-bvs-section="feed"] [class*="text-[#a8c9e5]"] { color: #315d80; }
 :root[data-theme="light"] [data-bvs-section="feed"] select { color: #292620; background-color: #fffdf8; }
+
+
+/* Home borrows the product-section palette as quiet interaction colour, not section-wide theming. */
+[data-home-accent="listen"] { --bvs-home-rgb: 227 189 88; --bvs-home-label: #e3bd58; --bvs-home-light-label: #705100; }
+[data-home-accent="discover"] { --bvs-home-rgb: 99 184 170; --bvs-home-label: #8acbbf; --bvs-home-light-label: #256459; }
+[data-home-accent="feed"] { --bvs-home-rgb: 146 157 224; --bvs-home-label: #b4bdef; --bvs-home-light-label: #424e91; }
+[data-home-accent="beats"] { --bvs-home-rgb: 174 139 203; --bvs-home-label: #c9aadd; --bvs-home-light-label: #69467f; }
+[data-home-accent="studio"] { --bvs-home-rgb: 123 169 208; --bvs-home-label: #a5c6e1; --bvs-home-light-label: #315d80; }
+[data-home-accent="marketplace"] { --bvs-home-rgb: 145 175 133; --bvs-home-label: #b4cbaa; --bvs-home-light-label: #46643b; }
+[data-home-accent="shows"] { --bvs-home-rgb: 207 137 155; --bvs-home-label: #e0afbd; --bvs-home-light-label: #8a4055; }
+.bvs-home-accent-label { color: var(--bvs-home-label); }
+.bvs-home-accent-button {
+  color: var(--bvs-home-label);
+  border-color: rgb(var(--bvs-home-rgb) / .28);
+  background: rgb(var(--bvs-home-rgb) / .065);
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease, transform .2s ease;
+}
+.bvs-home-accent-button:hover {
+  border-color: rgb(var(--bvs-home-rgb) / .48);
+  background: rgb(var(--bvs-home-rgb) / .105);
+}
+.bvs-home-accent-card {
+  transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+}
+.bvs-home-accent-card:hover {
+  border-color: rgb(var(--bvs-home-rgb) / .34);
+  background: rgb(var(--bvs-home-rgb) / .038);
+}
+.bvs-home-accent-card .bvs-home-accent-arrow { color: var(--bvs-home-label); }
+:root[data-theme="light"] .bvs-home-accent-label,
+:root[data-theme="light"] .bvs-home-accent-button,
+:root[data-theme="light"] .bvs-home-accent-card .bvs-home-accent-arrow { color: var(--bvs-home-light-label); }
+@media (forced-colors: active) {
+  .bvs-home-accent-label,
+  .bvs-home-accent-button,
+  .bvs-home-accent-card .bvs-home-accent-arrow { color: CanvasText; }
+  .bvs-home-accent-button,
+  .bvs-home-accent-card:hover { border-color: Highlight; }
+}
