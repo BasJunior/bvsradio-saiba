@@ -53,6 +53,7 @@ export const analyticsEvents = [
   "first_save",
   "first_follow",
   "return_session",
+  "first_post",
   "activation_hub_open",
   "activation_task_open",
   "activation_task_complete",
