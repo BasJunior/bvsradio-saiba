@@ -6,6 +6,7 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import ParticipationMentionPicker, { type MentionProfile } from "@/components/feed/ParticipationMentionPicker";
 import type { AppSurface } from "@/lib/app-surface";
 import type { ParticipationIntent, ParticipationObjectKind, ParticipationPost } from "@/lib/participation-server";
+import { trackMilestone } from "@/lib/analytics";
 
 type AttachmentOption = {
   kind: ParticipationObjectKind;
@@ -173,7 +174,10 @@ export default function FeedComposer({
       setSubmitting(false);
       return;
     }
-    if (payload.post) onCreated(payload.post);
+    if (payload.post) {
+      onCreated(payload.post);
+      trackMilestone("first_post", { intent, surface: surface || "web" });
+    }
     setBody("");
     setAttachment(null);
     setAttachmentQuery("");
