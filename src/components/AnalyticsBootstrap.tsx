@@ -7,8 +7,10 @@ import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 export default function AnalyticsBootstrap() {
   useEffect(() => {
     captureFirstTouchAttribution()
-    trackReturnSessionIfNeeded()
-    if (!isSupabaseConfigured()) return
+    if (!isSupabaseConfigured()) {
+      trackReturnSessionIfNeeded()
+      return
+    }
 
     let alive = true
     const supabase = createClient()
@@ -16,6 +18,7 @@ export default function AnalyticsBootstrap() {
       if (!alive) return
       if (data.session) setAnalyticsIdentity(data.session.user.id, data.session.access_token)
       else clearAnalyticsIdentity()
+      trackReturnSessionIfNeeded()
     })
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
