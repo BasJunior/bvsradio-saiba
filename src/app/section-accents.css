@@ -71,3 +71,50 @@
   .bvs-home-accent-button,
   .bvs-home-accent-card:hover { border-color: Highlight; }
 }
+
+
+/* Studio uses the same product palette, but only for semantic creator actions. */
+[data-studio-accent="core"] { --bvs-studio-rgb: 123 169 208; --bvs-studio-label: #a5c6e1; --bvs-studio-light-label: #315d80; }
+[data-studio-accent="beats"] { --bvs-studio-rgb: 174 139 203; --bvs-studio-label: #c9aadd; --bvs-studio-light-label: #69467f; }
+[data-studio-accent="marketplace"] { --bvs-studio-rgb: 145 175 133; --bvs-studio-label: #b4cbaa; --bvs-studio-light-label: #46643b; }
+[data-studio-accent="insights"] { --bvs-studio-rgb: 99 184 170; --bvs-studio-label: #8acbbf; --bvs-studio-light-label: #256459; }
+[data-studio-accent="shows"] { --bvs-studio-rgb: 207 137 155; --bvs-studio-label: #e0afbd; --bvs-studio-light-label: #8a4055; }
+[data-studio-accent="money"] { --bvs-studio-rgb: 227 189 88; --bvs-studio-label: #e3bd58; --bvs-studio-light-label: #705100; }
+.bvs-studio-accent-label { color: var(--bvs-studio-label); }
+.bvs-studio-accent-button {
+  color: var(--bvs-studio-label);
+  border-color: rgb(var(--bvs-studio-rgb) / .28);
+  background: rgb(var(--bvs-studio-rgb) / .06);
+  transition: border-color .2s ease, background-color .2s ease, color .2s ease;
+}
+.bvs-studio-accent-button:hover {
+  border-color: rgb(var(--bvs-studio-rgb) / .48);
+  background: rgb(var(--bvs-studio-rgb) / .10);
+}
+
+.bvs-studio-accent-button[aria-current="page"] {
+  border-color: rgb(var(--bvs-studio-rgb) / .55);
+  background: rgb(var(--bvs-studio-rgb) / .14);
+}
+.bvs-studio-panel[data-state="open"][data-studio-accent] {
+  border-color: rgb(var(--bvs-studio-rgb) / .18);
+}
+
+.bvs-studio-accent-card {
+  transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+}
+.bvs-studio-accent-card:hover {
+  border-color: rgb(var(--bvs-studio-rgb) / .34);
+  background: rgb(var(--bvs-studio-rgb) / .035);
+}
+.bvs-studio-accent-card .bvs-studio-accent-arrow { color: var(--bvs-studio-label); }
+:root[data-theme="light"] .bvs-studio-accent-label,
+:root[data-theme="light"] .bvs-studio-accent-button,
+:root[data-theme="light"] .bvs-studio-accent-card .bvs-studio-accent-arrow { color: var(--bvs-studio-light-label); }
+@media (forced-colors: active) {
+  .bvs-studio-accent-label,
+  .bvs-studio-accent-button,
+  .bvs-studio-accent-card .bvs-studio-accent-arrow { color: CanvasText; }
+  .bvs-studio-accent-button,
+  .bvs-studio-accent-card:hover { border-color: Highlight; }
+}

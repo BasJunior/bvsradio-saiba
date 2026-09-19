@@ -109,10 +109,10 @@ export default function StudioMoneySummary({ token }: { token: string }) {
   const bps = latest?.platform_fee_bps == null ? null : Number(latest.platform_fee_bps) || 0;
 
   return (
-    <div className="space-y-6 py-2">
+    <div data-studio-accent="money" className="space-y-6 py-2">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Seller money</p>
+          <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.18em]">Seller money</p>
           <h3 className="mt-1 text-xl font-semibold">Wallet & settlement summary</h3>
           <p className="mt-2 max-w-2xl text-sm text-text-secondary">
             Read-only Studio view of the existing seller ledger. Sale economics are frozen on each settlement,
@@ -121,7 +121,7 @@ export default function StudioMoneySummary({ token }: { token: string }) {
         </div>
         <Link
           href="/artists"
-          className="rounded-full border border-white/20 px-4 py-2 text-sm hover:border-brand"
+          className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm"
         >
           Full wallet & payouts
         </Link>
@@ -131,7 +131,7 @@ export default function StudioMoneySummary({ token }: { token: string }) {
         {cards.map(([label, value]) => (
           <div key={label} className="rounded-xl border border-white/10 bg-black/20 p-4">
             <p className="text-xs text-text-secondary">{label}</p>
-            <p className="mt-1 text-xl font-semibold text-brand">{value}</p>
+            <p className="bvs-studio-accent-label mt-1 text-xl font-semibold">{value}</p>
           </div>
         ))}
       </div>

@@ -113,6 +113,8 @@ type Data = {
   distributionJobs?: DistJob[];
   profileFlags?: ProfileFlags;
 };
+type StudioAccent = "core" | "beats" | "marketplace" | "insights" | "shows" | "money";
+
 const field =
   "w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand";
 
@@ -190,10 +192,7 @@ export default function CreatorStudio() {
     data.profile.role === "admin";
   return (
     <main className="mx-auto max-w-6xl px-5 py-12 sm:px-6">
-      <Link href="/creator/studio" className="inline-flex min-h-11 items-center text-sm text-brand">
-        ← Studio home
-      </Link>
-      <p className="mt-6 text-xs uppercase tracking-[.22em] text-brand">
+      <p data-studio-accent="core" className="bvs-studio-accent-label text-xs uppercase tracking-[.22em]">
         Creator studio
       </p>
       <h1 className="mt-2 text-4xl font-semibold">
@@ -219,52 +218,53 @@ export default function CreatorStudio() {
         trackCount={(data.tracks || []).length}
       />
       {artist && (
-        <section id="artist-access" className="scroll-mt-24 pt-12" aria-labelledby="artist-access-heading">
-          <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Artist access</p>
+        <section id="artist-access" data-studio-accent="core" className="scroll-mt-24 pt-12" aria-labelledby="artist-access-heading">
+          <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Artist access</p>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
             <div>
               <h2 id="artist-access-heading" className="text-3xl font-semibold">Music and releases</h2>
               <p className="mt-2 max-w-2xl text-sm text-text-secondary">Submit music, follow editorial decisions, manage published recordings and track the path to distribution.</p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href="/upload" className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Submit music</Link>
-              <Link href="/artists" className="rounded-full border border-white/20 px-5 py-2.5 text-sm hover:border-brand">Wallet &amp; earnings</Link>
-              <Link href="/artist/premium" className="rounded-full border border-brand/40 px-5 py-2.5 text-sm text-brand hover:bg-brand/10">Artist Premium</Link>
+              <Link href="/upload" className="bvs-studio-accent-button rounded-full border px-5 py-2.5 text-sm font-semibold">Submit music</Link>
+              <Link href="/artists" data-studio-accent="money" className="bvs-studio-accent-button rounded-full border px-5 py-2.5 text-sm">Wallet &amp; earnings</Link>
+              <Link href="/artist/premium" data-studio-accent="money" className="bvs-studio-accent-button rounded-full border px-5 py-2.5 text-sm">Artist Premium</Link>
             </div>
           </div>
         </section>
       )}
       {artist && (
         <div id="release-path" className="scroll-mt-24">
-          <CreatorDropDown label="Release path">
+          <CreatorDropDown label="Release path" accent="core">
             <ArtistPathBoard data={data} />
           </CreatorDropDown>
         </div>
       )}
       {artist && (
         <div id="releases" className="scroll-mt-24">
-          <CreatorDropDown label="Releases and artist requests" count={(data.tracks || []).length} defaultOpen>
+          <CreatorDropDown label="Releases and artist requests" accent="core" count={(data.tracks || []).length} defaultOpen>
             <ArtistReleases tracks={data.tracks || []} requests={data.trackRequests || []} jobs={data.distributionJobs || []} releases={data.releases || []} releaseTracks={data.releaseTracks || []} flags={data.profileFlags} act={act} />
           </CreatorDropDown>
         </div>
       )}
-      {(artist || producer) && <div id="insights" className="scroll-mt-24"><CreatorDropDown label="Performance and editorial insights" defaultOpen><CreatorInsights token={token} /></CreatorDropDown></div>}
-      {producer && <div id="beatstore" className="scroll-mt-24"><CreatorDropDown label="My BeatStore"><MyBeatStore /></CreatorDropDown></div>}
+      {(artist || producer) && <div id="insights" className="scroll-mt-24"><CreatorDropDown label="Performance and editorial insights" accent="insights" defaultOpen><CreatorInsights token={token} /></CreatorDropDown></div>}
+      {producer && <div id="beatstore" className="scroll-mt-24"><CreatorDropDown label="My BeatStore" accent="beats"><MyBeatStore /></CreatorDropDown></div>}
 
-      <section id="business" className="scroll-mt-24 pt-12" aria-labelledby="business-heading">
-        <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Creator business</p>
+      <section id="business" data-studio-accent="marketplace" className="scroll-mt-24 pt-12" aria-labelledby="business-heading">
+        <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Creator business</p>
         <h2 id="business-heading" className="mt-2 text-3xl font-semibold">Sell, deliver and grow</h2>
         <p className="mt-2 max-w-2xl text-sm text-text-secondary">Marketplace listings, customer service orders and optional Premium capabilities live here—separate from editorial approval and radio rotation.</p>
       </section>
-      <div id="marketplace-desk" className="scroll-mt-24"><CreatorDropDown label="Marketplace listings"><CreatorMarketplaceDesk accessToken={token} embedded /></CreatorDropDown></div>
-      <div id="service-orders" className="scroll-mt-24"><CreatorDropDown label="Service orders"><CreatorServiceOrders token={token} /></CreatorDropDown></div>
-      <div id="premium-desk" className="scroll-mt-24"><CreatorDropDown label="Premium capabilities"><StudioPremiumDesk token={token} /></CreatorDropDown></div>
+      <div id="marketplace-desk" className="scroll-mt-24"><CreatorDropDown label="Marketplace listings" accent="marketplace"><CreatorMarketplaceDesk accessToken={token} embedded /></CreatorDropDown></div>
+      <div id="service-orders" className="scroll-mt-24"><CreatorDropDown label="Service orders" accent="marketplace"><CreatorServiceOrders token={token} /></CreatorDropDown></div>
+      <div id="premium-desk" className="scroll-mt-24"><CreatorDropDown label="Premium capabilities" accent="money"><StudioPremiumDesk token={token} /></CreatorDropDown></div>
       {writer && (
-        <section id="writer-work" className="scroll-mt-24 pt-12">
-          <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Editorial writing</p>
+        <section id="writer-work" data-studio-accent="insights" className="scroll-mt-24 pt-12">
+          <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Editorial writing</p>
           <h2 className="mt-2 text-3xl font-semibold">Stories and research</h2>
           <CreatorDropDown
             label="Writer application"
+            accent="insights"
             defaultOpen={
               !data.application ||
               ["submitted", "information_requested"].includes(
@@ -276,12 +276,13 @@ export default function CreatorStudio() {
           </CreatorDropDown>
           {(data.profile.role === "admin" ||
             data.application?.status === "approved") && (
-            <CreatorDropDown label="Create a new article">
+            <CreatorDropDown label="Create a new article" accent="insights">
               <ArticleForm act={act} />
             </CreatorDropDown>
           )}
           <CreatorDropDown
             label="Your articles"
+            accent="insights"
             count={data.articles.length}
             defaultOpen={data.articles.some((item) =>
               ["submitted", "in_review", "changes_requested"].includes(
@@ -293,6 +294,7 @@ export default function CreatorStudio() {
           </CreatorDropDown>
           <CreatorDropDown
             label="Assigned research briefs"
+            accent="insights"
             count={data.briefs.length}
           >
             <Queue
@@ -304,20 +306,22 @@ export default function CreatorStudio() {
         </section>
       )}
       {showCreator && (
-        <section id="show-work" className="scroll-mt-24 pt-12">
-          <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Shows</p>
+        <section id="show-work" data-studio-accent="shows" className="scroll-mt-24 pt-12">
+          <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Shows</p>
           <h2 className="mt-2 text-3xl font-semibold">Programmes and episodes</h2>
-          <CreatorDropDown label="Propose a weekly show">
+          <CreatorDropDown label="Propose a weekly show" accent="shows">
             <ShowForm act={act} />
           </CreatorDropDown>
           <CreatorDropDown
             label="Submit a weekly episode"
+            accent="shows"
             defaultOpen={data.shows.some((show) => show.status === "approved")}
           >
             <EpisodeForm shows={data.shows} token={token} act={act} />
           </CreatorDropDown>
           <CreatorDropDown
             label="Your shows"
+            accent="shows"
             count={data.shows.length}
             defaultOpen={data.shows.some((item) =>
               ["submitted", "in_review", "changes_requested"].includes(
@@ -329,6 +333,7 @@ export default function CreatorStudio() {
           </CreatorDropDown>
           <CreatorDropDown
             label="Your episodes"
+            accent="shows"
             count={data.episodes.length}
             defaultOpen={data.episodes.some((item) =>
               ["submitted", "in_review", "changes_requested"].includes(
@@ -357,29 +362,27 @@ function StudioOverview({
   showCreator: boolean;
   trackCount: number;
 }) {
-  const roles = [artist && "Artist", producer && "Producer", writer && "Writer", showCreator && "Show creator"].filter(Boolean) as string[];
+  const roles = [
+    artist && { label: "Artist", accent: "core" as StudioAccent },
+    producer && { label: "Producer", accent: "beats" as StudioAccent },
+    writer && { label: "Writer", accent: "insights" as StudioAccent },
+    showCreator && { label: "Show creator", accent: "shows" as StudioAccent },
+  ].filter(Boolean) as Array<{ label: string; accent: StudioAccent }>;
   const tasks = [
-    artist && { href: "/upload", eyebrow: "Music", title: "Submit a release", copy: "Upload a single, EP or album for editorial review." },
-    artist && { href: "#releases", eyebrow: `${trackCount} track${trackCount === 1 ? "" : "s"}`, title: "Manage releases", copy: "Check decisions, requests, publication and distribution status." },
-    producer && { href: "#beatstore", eyebrow: "BeatStore", title: "Manage beats", copy: "Upload, price and review your published beat catalogue." },
-    { href: "#marketplace-desk", eyebrow: "Marketplace", title: "Products & services", copy: "Manage listings without mixing commerce with editorial decisions." },
-    (artist || producer) && { href: "#insights", eyebrow: "Performance", title: "View insights", copy: "See plays and editorially meaningful performance signals." },
-    { href: "/artists", eyebrow: "Money", title: "Wallet & earnings", copy: "Review sales, fees, processing, refunds and payout readiness." },
-  ].filter(Boolean) as Array<{ href: string; eyebrow: string; title: string; copy: string }>;
+    artist && { href: "/upload", accent: "core" as StudioAccent, eyebrow: "Music", title: "Submit a release", copy: "Upload a single, EP or album for editorial review." },
+    artist && { href: "#releases", accent: "core" as StudioAccent, eyebrow: `${trackCount} track${trackCount === 1 ? "" : "s"}`, title: "Manage releases", copy: "Check decisions, requests, publication and distribution status." },
+    producer && { href: "#beatstore", accent: "beats" as StudioAccent, eyebrow: "BeatStore", title: "Manage beats", copy: "Upload, price and review your published beat catalogue." },
+    { href: "#marketplace-desk", accent: "marketplace" as StudioAccent, eyebrow: "Marketplace", title: "Products & services", copy: "Manage listings without mixing commerce with editorial decisions." },
+    (artist || producer) && { href: "#insights", accent: "insights" as StudioAccent, eyebrow: "Performance", title: "View insights", copy: "See plays and editorially meaningful performance signals." },
+    { href: "/artists", accent: "money" as StudioAccent, eyebrow: "Money", title: "Wallet & earnings", copy: "Review sales, fees, processing, refunds and payout readiness." },
+  ].filter(Boolean) as Array<{ href: string; accent: StudioAccent; eyebrow: string; title: string; copy: string }>;
 
   return <section className="mt-10 scroll-mt-24" aria-labelledby="studio-overview-heading">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Overview</p><h2 id="studio-overview-heading" className="mt-2 text-2xl font-semibold">What do you want to do?</h2></div>
-      <div className="flex flex-wrap gap-2" aria-label="Your creator roles">{roles.map(role => <span key={role} className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs text-brand">{role}</span>)}</div>
+      <div data-studio-accent="core"><p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Overview</p><h2 id="studio-overview-heading" className="mt-2 text-2xl font-semibold">What do you want to do?</h2></div>
+      <div className="flex flex-wrap gap-2" aria-label="Your creator roles">{roles.map(role => <span key={role.label} data-studio-accent={role.accent} className="bvs-studio-accent-button rounded-full border px-3 py-1 text-xs font-medium">{role.label}</span>)}</div>
     </div>
-    <nav className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Studio sections">
-      {artist && <Link href="#artist-access" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Artist access</Link>}
-      {producer && <Link href="#beatstore" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">BeatStore</Link>}
-      <Link href="#business" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Business</Link>
-      {writer && <Link href="#writer-work" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Writing</Link>}
-      {showCreator && <Link href="#show-work" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Shows</Link>}
-    </nav>
-    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tasks.map(task => <Link key={`${task.href}-${task.title}`} href={task.href} className="group rounded-2xl border border-white/10 bg-white/[.025] p-5 transition hover:border-brand/40 hover:bg-brand/[.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><span className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{task.eyebrow}</span><h3 className="mt-2 text-lg font-semibold group-hover:text-brand">{task.title}</h3><p className="mt-1 text-sm text-text-secondary">{task.copy}</p></Link>)}</div>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tasks.map(task => <Link key={`${task.href}-${task.title}`} href={task.href} data-studio-accent={task.accent} className="bvs-studio-accent-card group rounded-2xl border border-white/10 bg-white/[.025] p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><span className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{task.eyebrow}</span><h3 className="mt-2 text-lg font-semibold">{task.title}</h3><p className="mt-1 text-sm text-text-secondary">{task.copy}</p></Link>)}</div>
   </section>;
 }
 
@@ -387,17 +390,19 @@ function CreatorDropDown({
   label,
   count,
   defaultOpen = false,
+  accent,
   children,
 }: {
   label: string;
   count?: number;
   defaultOpen?: boolean;
+  accent?: StudioAccent;
   children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const panelId = `creator-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
   return (
-    <section className="mt-8 rounded-2xl border border-white/10 bg-white/[.015]">
+    <section data-studio-accent={accent} data-state={open ? "open" : "closed"} className="bvs-studio-panel mt-5 rounded-2xl border border-white/10 bg-white/[.012]">
       <button
         type="button"
         aria-expanded={open}
@@ -406,9 +411,9 @@ function CreatorDropDown({
         className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition hover:bg-white/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <span className="flex min-w-0 items-center gap-3">
-          <span className="font-semibold">{label}</span>
+          <span className={accent ? "bvs-studio-accent-label font-semibold" : "font-semibold"}>{label}</span>
           {typeof count === "number" && (
-            <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-text-secondary">
+            <span className="rounded-full border border-white/10 bg-black/10 px-2.5 py-0.5 text-xs text-text-secondary">
               {count}
             </span>
           )}
@@ -432,7 +437,7 @@ function CreatorDropDown({
         </span>
       </button>
       {open && (
-        <div id={panelId} className="border-t border-white/10 px-5 pb-6 pt-1">
+        <div id={panelId} className="border-t border-white/10 px-5 pb-6 pt-3 sm:px-6">
           {children}
         </div>
       )}
@@ -451,7 +456,7 @@ function WriterApplication({
     [beats, setBeats] = useState("Music, Culture");
   if (application)
     return (
-      <section className="mt-10 rounded-2xl border border-white/10 p-6">
+      <section className="mt-5 rounded-2xl border border-white/10 p-5 sm:p-6">
         <h2 className="text-2xl">Writer application</h2>
         <p className="mt-2 text-brand">
           {application.status.replaceAll("_", " ")}
@@ -474,7 +479,7 @@ function WriterApplication({
           beats: beats.split(","),
         });
       }}
-      className="mt-10 space-y-3 rounded-2xl border border-white/10 p-6"
+      className="mt-5 space-y-3 rounded-2xl border border-white/10 p-5 sm:p-6"
     >
       <h2 className="text-2xl">Apply to write</h2>
       <textarea
@@ -497,7 +502,7 @@ function WriterApplication({
         placeholder="Portfolio URL (optional)"
         className={field}
       />
-      <button className="rounded-full bg-brand px-5 py-2 font-semibold text-black">
+      <button className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold">
         Submit application
       </button>
     </form>
@@ -523,7 +528,7 @@ function ArticleForm({
   return (
     <form
       onSubmit={submit}
-      className="mt-10 grid gap-3 rounded-2xl border border-white/10 p-6"
+      className="mt-5 grid gap-3 rounded-2xl border border-white/10 p-5 sm:p-6"
     >
       <h2 className="text-2xl">New article</h2>
       <input
@@ -560,7 +565,7 @@ function ArticleForm({
         </button>
         <button
           value="submit"
-          className="rounded-full bg-brand px-5 py-2 font-semibold text-black"
+          className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold"
         >
           Submit for review
         </button>
@@ -585,7 +590,7 @@ function ShowForm({
         e.preventDefault();
         void act({ action: "save_show", ...form, submit: true });
       }}
-      className="mt-10 grid gap-3 rounded-2xl border border-white/10 p-6"
+      className="mt-5 grid gap-3 rounded-2xl border border-white/10 p-5 sm:p-6"
     >
       <h2 className="text-2xl">Propose a weekly show</h2>
       <input
@@ -613,7 +618,7 @@ function ShowForm({
         placeholder="Artwork URL (optional)"
         className={field}
       />
-      <button className="rounded-full bg-brand px-5 py-2 font-semibold text-black">
+      <button className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold">
         Submit show
       </button>
     </form>
@@ -688,7 +693,7 @@ function EpisodeForm({
   return (
     <form
       onSubmit={submit}
-      className="mt-10 grid gap-3 rounded-2xl border border-white/10 p-6"
+      className="mt-5 grid gap-3 rounded-2xl border border-white/10 p-5 sm:p-6"
     >
       <h2 className="text-2xl">Submit a weekly episode</h2>
       <p className="text-sm text-text-secondary">
@@ -740,7 +745,7 @@ function EpisodeForm({
       )}
       <button
         disabled={busy || !approved.length}
-        className="rounded-full bg-brand px-5 py-2 font-semibold text-black disabled:opacity-40"
+        className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold disabled:opacity-40"
       >
         {busy ? "Uploading…" : "Upload and submit"}
       </button>
@@ -889,7 +894,7 @@ function ArtistReleases({
   );
   const promptMove = promptRelease ? nextMoveForRelease(promptRelease) : null;
   return (
-    <section className="mt-10">
+    <section className="mt-5">
       <CreatorNextMovePrompt
         move={promptMove}
         storageKey={promptRelease ? `artist-release:${promptRelease.id}` : "artist-release:none"}

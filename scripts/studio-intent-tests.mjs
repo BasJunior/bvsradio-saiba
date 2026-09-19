@@ -19,6 +19,7 @@ function assert(condition, message) {
 // Public web Creator Studio keeps its existing production workflows.
 const home = read("src/app/creator/studio/page.tsx");
 const manage = read("src/app/creator/studio/manage/page.tsx");
+const studioShell = read("src/components/StudioProductionShell.tsx");
 const marketplace = read("src/app/api/marketplace/route.ts");
 const analytics = read("src/lib/analytics.ts");
 const capacitor = read("capacitor.config.ts");
@@ -39,7 +40,7 @@ assert(exists("src/app/creator/studio/create/release/page.tsx"), "web release ro
 assert(exists("src/app/creator/studio/create/beat/page.tsx"), "web beat route exists");
 assert(exists("src/app/creator/studio/create/service/page.tsx"), "web service route exists");
 assert(manage.includes("Welcome,") || manage.includes("Creator studio"), "web manage keeps production Studio");
-assert(manage.includes("/creator/studio"), "web manage links home");
+assert(studioShell.includes('href: "/creator/studio"') && studioShell.includes('label: "Home"'), "Studio shell keeps canonical Home navigation");
 assert(marketplace.includes('"recording"'), "recording category remains");
 assert(marketplace.includes('"studio_session"'), "studio_session category remains");
 assert(analytics.includes("create_intent_selected"), "create_intent_selected remains allowlisted");

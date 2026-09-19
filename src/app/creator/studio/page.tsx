@@ -108,7 +108,7 @@ export default function CreatorStudioHome() {
   if (error && !data) {
     return (
       <main className="mx-auto min-h-[65vh] max-w-2xl px-5 py-20 text-center sm:px-6">
-        <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">BVS Studio</p>
+        <p data-studio-accent="core" className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">BVS Studio</p>
         <h1 className="mt-3 text-3xl font-semibold">Studio needs your creator account</h1>
         <p className="mt-4 text-text-secondary">{error}</p>
         <Link href="/auth/login?next=/creator/studio" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 py-3 font-semibold text-black">Sign in</Link>
@@ -131,6 +131,7 @@ export default function CreatorStudioHome() {
       label: "Release music",
       copy: "Send a single, EP or album to BVS for rights checks, review and distribution.",
       cta: "Start a release",
+      accent: "core",
     },
     artist && {
       href: "/creator/studio/create/video",
@@ -138,6 +139,7 @@ export default function CreatorStudioHome() {
       label: "Music video",
       copy: "Upload an MP4. After approval, listeners can tap Watch on your track — radio rotation still advances to the next song when the audio ends.",
       cta: "Upload a video",
+      accent: "core",
     },
     producer && {
       href: "/creator/studio/create/beat",
@@ -145,6 +147,7 @@ export default function CreatorStudioHome() {
       label: "Sell a beat",
       copy: "Upload the beat, choose a price and send it to BVS. We handle the BeatStore listing behind the scenes.",
       cta: "Post a beat",
+      accent: "beats",
     },
     {
       href: "/creator/studio/create/service",
@@ -152,8 +155,9 @@ export default function CreatorStudioHome() {
       label: "Offer a service",
       copy: "List mixing, mastering, recording, a studio session or another music service without navigating the full marketplace desk.",
       cta: "Add a service",
+      accent: "marketplace",
     },
-  ].filter(Boolean) as Array<{ href: string; intent: string; label: string; copy: string; cta: string }>;
+  ].filter(Boolean) as Array<{ href: string; intent: string; label: string; copy: string; cta: string; accent: "core" | "beats" | "marketplace" }>;
 
   return (
     <main className="mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-6 sm:pt-12">
@@ -167,13 +171,13 @@ export default function CreatorStudioHome() {
 
       <section className="mt-8 grid gap-3 md:grid-cols-3" aria-label="Create in BVS">
         {createActions.map((action, index) => (
-          <Link key={action.href} href={action.href} onClick={() => trackEvent("create_intent_selected", { intent: action.intent })} className="group flex min-h-52 flex-col justify-between rounded-3xl border border-white/10 bg-white/[.025] p-6 transition hover:border-brand/45 hover:bg-brand/[.045] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+          <Link key={action.href} href={action.href} data-studio-accent={action.accent} onClick={() => trackEvent("create_intent_selected", { intent: action.intent })} className="bvs-studio-accent-card group flex min-h-52 flex-col justify-between rounded-3xl border border-white/10 bg-white/[.025] p-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
             <div>
-              <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full border border-brand/30 bg-brand/10 px-2 text-xs font-semibold text-brand">{index + 1}</span>
-              <h2 className="mt-5 text-2xl font-semibold group-hover:text-brand">{action.label}</h2>
+              <span className="bvs-studio-accent-button inline-flex h-8 min-w-8 items-center justify-center rounded-full border px-2 text-xs font-semibold">{index + 1}</span>
+              <h2 className="mt-5 text-2xl font-semibold">{action.label}</h2>
               <p className="mt-2 text-sm leading-6 text-text-secondary">{action.copy}</p>
             </div>
-            <span className="mt-6 inline-flex min-h-11 items-center text-sm font-semibold text-brand">{action.cta} →</span>
+            <span className="bvs-studio-accent-arrow mt-6 inline-flex min-h-11 items-center text-sm font-semibold">{action.cta} →</span>
           </Link>
         ))}
       </section>
@@ -184,14 +188,14 @@ export default function CreatorStudioHome() {
             <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Your work</p>
             <h2 className="mt-2 text-xl font-semibold">Manage when you need to</h2>
           </div>
-          <Link href="/creator/studio/manage" className="inline-flex min-h-11 items-center text-sm text-brand">Open full Studio →</Link>
+          <Link href="/creator/studio/manage" data-studio-accent="core" className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Open full Studio →</Link>
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <ManageLink href="/creator/studio/manage#releases" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
-          {artist && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" />}
-          <ManageLink href="/artists" label="Money" detail="Wallet & earnings" />
-          <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" />
-          <ManageLink href="/creator/marketplace" label="Profile & storefront" detail="Advanced setup" />
+          <ManageLink href="/creator/studio/manage#releases" accent="core" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
+          {artist && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" accent="core" />}
+          <ManageLink href="/artists" label="Money" detail="Wallet & earnings" accent="money" />
+          <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" accent="marketplace" />
+          <ManageLink href="/creator/marketplace" label="Profile & storefront" detail="Advanced setup" accent="marketplace" />
         </div>
         {(activity.pending > 0 || activity.distributing > 0) && (
           <div className="mt-5 flex flex-wrap gap-2 text-xs text-text-secondary">
@@ -203,8 +207,8 @@ export default function CreatorStudioHome() {
 
       {(writer || showCreator) && (
         <section className="mt-6 flex flex-wrap gap-2 text-sm">
-          {writer && <Link href="/creator/studio/manage#writer-work" className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 hover:border-brand">Writing tools</Link>}
-          {showCreator && <Link href="/creator/studio/manage#show-work" className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 hover:border-brand">Show & broadcast tools</Link>}
+          {writer && <Link href="/creator/studio/manage#writer-work" data-studio-accent="insights" className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2">Writing tools</Link>}
+          {showCreator && <Link href="/creator/studio/manage#show-work" data-studio-accent="shows" className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2">Show & broadcast tools</Link>}
         </section>
       )}
     </main>
@@ -224,14 +228,14 @@ function ArtistActivationPanel({ activity }: { activity: { catalogue: number; pe
         : { href: "/creator/studio/manage#releases", label: "Open catalogue", detail: "Review status and prepare the next release." };
 
   return (
-    <section className="mt-8 rounded-3xl border border-brand/20 bg-brand/[.045] p-5 sm:p-6" aria-label="Artist activation">
+    <section data-studio-accent="core" className="mt-8 rounded-3xl border border-[#7ba9d0]/20 bg-[#7ba9d0]/[.045] p-5 sm:p-6" aria-label="Artist activation">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
-          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Artist path</p>
+          <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.18em]">Artist path</p>
           <h2 className="mt-2 text-2xl font-semibold">Next proof step</h2>
           <p className="mt-2 text-sm leading-6 text-text-secondary">{primary.detail}</p>
         </div>
-        <Link href={primary.href} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">
+        <Link href={primary.href} className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-5 py-2.5 text-sm font-semibold">
           {primary.label}
         </Link>
       </div>
@@ -251,14 +255,14 @@ function ProofMetric({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
       <p className="text-[11px] uppercase tracking-[.14em] text-text-secondary">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-brand">{value.toLocaleString()}</p>
+      <p data-studio-accent="core" className="bvs-studio-accent-label mt-2 text-2xl font-semibold">{value.toLocaleString()}</p>
     </div>
   );
 }
 
-function ManageLink({ href, label, detail }: { href: string; label: string; detail: string }) {
+function ManageLink({ href, label, detail, accent }: { href: string; label: string; detail: string; accent: "core" | "marketplace" | "money" }) {
   return (
-    <Link href={href} className="flex min-h-[4.5rem] flex-col justify-center rounded-2xl border border-white/10 p-4 transition hover:border-brand/35 hover:bg-white/[.025]">
+    <Link href={href} data-studio-accent={accent} className="bvs-studio-accent-card flex min-h-[4.5rem] flex-col justify-center rounded-2xl border border-white/10 p-4">
       <p className="font-semibold">{label}</p>
       <p className="mt-1 text-xs text-text-secondary">{detail}</p>
     </Link>
