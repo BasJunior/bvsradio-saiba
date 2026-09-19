@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   FAMILY_LABELS,
@@ -56,7 +57,10 @@ function visiblePlansFor(family: MembershipFamily): DisplayPlan[] {
 }
 
 export default function PremiumEcosystemPage() {
-  const [family, setFamily] = useState<MembershipFamily>("artist");
+  const searchParams = useSearchParams();
+  const requestedFamily = searchParams.get("family") as MembershipFamily | null;
+  const initialFamily = requestedFamily && FAMILIES.includes(requestedFamily) ? requestedFamily : "artist";
+  const [family, setFamily] = useState<MembershipFamily>(initialFamily);
   const plans = useMemo(() => visiblePlansFor(family), [family]);
 
   return (
