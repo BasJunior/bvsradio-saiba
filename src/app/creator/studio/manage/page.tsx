@@ -192,10 +192,7 @@ export default function CreatorStudio() {
     data.profile.role === "admin";
   return (
     <main className="mx-auto max-w-6xl px-5 py-12 sm:px-6">
-      <Link href="/creator/studio" data-studio-accent="core" className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm">
-        ← Studio home
-      </Link>
-      <p data-studio-accent="core" className="bvs-studio-accent-label mt-6 text-xs uppercase tracking-[.22em]">
+      <p data-studio-accent="core" className="bvs-studio-accent-label text-xs uppercase tracking-[.22em]">
         Creator studio
       </p>
       <h1 className="mt-2 text-4xl font-semibold">
@@ -382,16 +379,9 @@ function StudioOverview({
 
   return <section className="mt-10 scroll-mt-24" aria-labelledby="studio-overview-heading">
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <div><p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Overview</p><h2 id="studio-overview-heading" className="mt-2 text-2xl font-semibold">What do you want to do?</h2></div>
+      <div data-studio-accent="core"><p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Overview</p><h2 id="studio-overview-heading" className="mt-2 text-2xl font-semibold">What do you want to do?</h2></div>
       <div className="flex flex-wrap gap-2" aria-label="Your creator roles">{roles.map(role => <span key={role.label} data-studio-accent={role.accent} className="bvs-studio-accent-button rounded-full border px-3 py-1 text-xs font-medium">{role.label}</span>)}</div>
     </div>
-    <nav className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Studio sections">
-      {artist && <Link href="#artist-access" data-studio-accent="core" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">Artist access</Link>}
-      {producer && <Link href="#beatstore" data-studio-accent="beats" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">BeatStore</Link>}
-      <Link href="#business" data-studio-accent="marketplace" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">Business</Link>
-      {writer && <Link href="#writer-work" data-studio-accent="insights" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">Writing</Link>}
-      {showCreator && <Link href="#show-work" data-studio-accent="shows" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-sm">Shows</Link>}
-    </nav>
     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tasks.map(task => <Link key={`${task.href}-${task.title}`} href={task.href} data-studio-accent={task.accent} className="bvs-studio-accent-card group rounded-2xl border border-white/10 bg-white/[.025] p-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"><span className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{task.eyebrow}</span><h3 className="mt-2 text-lg font-semibold">{task.title}</h3><p className="mt-1 text-sm text-text-secondary">{task.copy}</p></Link>)}</div>
   </section>;
 }
@@ -466,7 +456,7 @@ function WriterApplication({
     [beats, setBeats] = useState("Music, Culture");
   if (application)
     return (
-      <section className="mt-10 rounded-2xl border border-white/10 p-6">
+      <section className="mt-5 rounded-2xl border border-white/10 p-5 sm:p-6">
         <h2 className="text-2xl">Writer application</h2>
         <p className="mt-2 text-brand">
           {application.status.replaceAll("_", " ")}
@@ -489,7 +479,7 @@ function WriterApplication({
           beats: beats.split(","),
         });
       }}
-      className="mt-10 space-y-3 rounded-2xl border border-white/10 p-6"
+      className="mt-5 space-y-3 rounded-2xl border border-white/10 p-5 sm:p-6"
     >
       <h2 className="text-2xl">Apply to write</h2>
       <textarea
@@ -512,7 +502,7 @@ function WriterApplication({
         placeholder="Portfolio URL (optional)"
         className={field}
       />
-      <button className="rounded-full bg-brand px-5 py-2 font-semibold text-black">
+      <button className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold">
         Submit application
       </button>
     </form>
@@ -538,7 +528,7 @@ function ArticleForm({
   return (
     <form
       onSubmit={submit}
-      className="mt-10 grid gap-3 rounded-2xl border border-white/10 p-6"
+      className="mt-5 grid gap-3 rounded-2xl border border-white/10 p-5 sm:p-6"
     >
       <h2 className="text-2xl">New article</h2>
       <input
@@ -575,7 +565,7 @@ function ArticleForm({
         </button>
         <button
           value="submit"
-          className="rounded-full bg-brand px-5 py-2 font-semibold text-black"
+          className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold"
         >
           Submit for review
         </button>
@@ -600,7 +590,7 @@ function ShowForm({
         e.preventDefault();
         void act({ action: "save_show", ...form, submit: true });
       }}
-      className="mt-10 grid gap-3 rounded-2xl border border-white/10 p-6"
+      className="mt-5 grid gap-3 rounded-2xl border border-white/10 p-5 sm:p-6"
     >
       <h2 className="text-2xl">Propose a weekly show</h2>
       <input
@@ -628,7 +618,7 @@ function ShowForm({
         placeholder="Artwork URL (optional)"
         className={field}
       />
-      <button className="rounded-full bg-brand px-5 py-2 font-semibold text-black">
+      <button className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold">
         Submit show
       </button>
     </form>
@@ -703,7 +693,7 @@ function EpisodeForm({
   return (
     <form
       onSubmit={submit}
-      className="mt-10 grid gap-3 rounded-2xl border border-white/10 p-6"
+      className="mt-5 grid gap-3 rounded-2xl border border-white/10 p-5 sm:p-6"
     >
       <h2 className="text-2xl">Submit a weekly episode</h2>
       <p className="text-sm text-text-secondary">
@@ -755,7 +745,7 @@ function EpisodeForm({
       )}
       <button
         disabled={busy || !approved.length}
-        className="rounded-full bg-brand px-5 py-2 font-semibold text-black disabled:opacity-40"
+        className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold disabled:opacity-40"
       >
         {busy ? "Uploading…" : "Upload and submit"}
       </button>
@@ -904,7 +894,7 @@ function ArtistReleases({
   );
   const promptMove = promptRelease ? nextMoveForRelease(promptRelease) : null;
   return (
-    <section className="mt-10">
+    <section className="mt-5">
       <CreatorNextMovePrompt
         move={promptMove}
         storageKey={promptRelease ? `artist-release:${promptRelease.id}` : "artist-release:none"}
