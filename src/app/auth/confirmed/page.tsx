@@ -82,6 +82,7 @@ export default function ConfirmedPage() {
           return
         }
 
+        let profileDestination = '/start'
         const profileRes = await fetch('/api/auth/profile', {
           method: 'POST',
           headers: { Authorization: `Bearer ${data.session.access_token}` },
@@ -92,7 +93,7 @@ export default function ConfirmedPage() {
           await profileRes.json().catch(() => ({}))
         }
 
-        setDestination(requestedDestination || '/start')
+        setDestination(requestedDestination || profileDestination || '/')
         trackMilestone('account_confirmed')
 
         if (window.location.hash || params.has('code') || params.has('token_hash') || params.has('next')) {
