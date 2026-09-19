@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS public.participation_domain_events (
   source_key TEXT NOT NULL UNIQUE CHECK (char_length(source_key) BETWEEN 8 AND 220),
   event_type TEXT NOT NULL CHECK (event_type IN (
     'post_created', 'message_replied', 'message_mentioned', 'thread_liked', 'thread_reposted',
-    'creator_followed', 'thread_reported', 'thread_moderated'
+    'creator_followed', 'thread_reported', 'thread_moderated', 'activation_nudge'
   )),
   actor_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   thread_id UUID REFERENCES public.participation_threads(id) ON DELETE CASCADE,
