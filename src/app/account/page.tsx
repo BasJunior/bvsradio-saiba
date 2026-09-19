@@ -129,6 +129,7 @@ export default function AccountPage() {
     if (access.editorial) {
       items.push({ href: '/editorial', title: 'Editorial', copy: 'Review music, releases, artists and operational queues.' })
       items.push({ href: '/admin/creator-workflows', title: 'Writing & research', copy: 'Review research briefs, approve drafting and review submitted articles.' })
+      items.push({ href: '/admin/growth', title: 'Growth cohorts', copy: 'Compare signup campaigns by activation, return, submission and purchase.' })
     }
     return items
   }, [access])

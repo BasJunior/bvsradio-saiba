@@ -60,6 +60,29 @@ async function ensureProfile(userId: string, username: string, role: string) {
   })
 }
 
+async function recordGrowthMember(userId: string, role: string, firstTouch: Record<string, string>) {
+  const now = new Date().toISOString()
+  const response = await supabaseAdmin('/rest/v1/growth_members?on_conflict=user_id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({
+      user_id: userId,
+      joined_at: now,
+      role,
+      utm_source: firstTouch.utm_source || null,
+      utm_medium: firstTouch.utm_medium || null,
+      utm_campaign: firstTouch.utm_campaign || null,
+      utm_content: firstTouch.utm_content || null,
+      ref: firstTouch.ref || null,
+      last_active_at: now,
+      updated_at: now,
+    }),
+  })
+  if (!response.res.ok) {
+    console.warn('growth member bootstrap unavailable', response.res.status)
+  }
+}
+
 async function sendSignupConfirm(email: string, next = '') {
   const safeNext = safeAppNext(next)
   const landingPath = safeNext
@@ -146,6 +169,7 @@ export async function POST(req: Request) {
     const userId = create.data?.id as string | undefined
     if (userId) {
       await ensureProfile(userId, username, role)
+      await recordGrowthMember(userId, role, firstTouch)
     }
 
     await sendSignupConfirm(email, next)

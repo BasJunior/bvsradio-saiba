@@ -5,6 +5,7 @@ import { runParticipationDigests } from "@/lib/participation-pulse-server";
 import { deliverParticipationPushQueue, queueParticipationPushNotifications } from "@/lib/participation-push-server";
 import { isParticipationWorkerOwner } from "@/lib/participation-worker-owner";
 import { withParticipationErrors } from "@/lib/participation-route";
+import { runGrowthReactivation } from "@/lib/growth-reactivation-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
   return withParticipationErrors(async () => {
   const startedAt = new Date().toISOString();
   const outbox = await processParticipationOutbox(100);
+  const growthReactivation = await runGrowthReactivation(new Date(), 40).catch(() => ({ scanned: 0, candidates: 0, nudged: 0, skipped: "growth_storage_unavailable" }));
   const digests = await runParticipationDigests(new Date(), 500);
   const pushQueue = await queueParticipationPushNotifications(1000);
   const pushDelivery = await deliverParticipationPushQueue(150);
@@ -37,6 +39,7 @@ export async function GET(request: Request) {
     startedAt,
     finishedAt: new Date().toISOString(),
     outbox,
+    growthReactivation,
     digests,
     pushQueue,
     pushDelivery,

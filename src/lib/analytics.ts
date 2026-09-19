@@ -53,6 +53,11 @@ export const analyticsEvents = [
   "first_save",
   "first_follow",
   "return_session",
+  "first_post",
+  "activation_hub_open",
+  "activation_task_open",
+  "activation_task_complete",
+  "activation_completed",
 ] as const
 
 export type AnalyticsEvent = (typeof analyticsEvents)[number]
@@ -64,6 +69,18 @@ const VISITOR_KEY = "bvs.analytics.visitor.v1"
 const FIRST_SESSION_AT_KEY = "bvs.analytics.first_session_at.v1"
 const RETURN_MARK_KEY = "bvs.analytics.return_mark.v1"
 const PLAY_ATTEMPT_KEY = "bvs.analytics.play_attempt.v1"
+
+let authenticatedIdentity: { userId: string; token: string } | null = null
+
+export function setAnalyticsIdentity(userId: string, token: string) {
+  const cleanUserId = String(userId || "").trim()
+  const cleanToken = String(token || "").trim()
+  authenticatedIdentity = cleanUserId && cleanToken ? { userId: cleanUserId, token: cleanToken } : null
+}
+
+export function clearAnalyticsIdentity() {
+  authenticatedIdentity = null
+}
 
 function safeValue(value: string | null) {
   if (!value) return undefined
@@ -155,7 +172,17 @@ function sendEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) 
     sessionId: sessionId(),
     visitorId: visitorId(),
     path: window.location.pathname,
+    userId: authenticatedIdentity?.userId || null,
   })
+  if (authenticatedIdentity?.token) {
+    void fetch("/api/analytics", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${authenticatedIdentity.token}` },
+      body,
+      keepalive: true,
+    })
+    return
+  }
   if (navigator.sendBeacon) {
     navigator.sendBeacon("/api/analytics", new Blob([body], { type: "application/json" }))
     return
