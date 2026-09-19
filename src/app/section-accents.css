@@ -6,6 +6,9 @@
 [data-bvs-section="studio"] { --bvs-section-rgb: 123 169 208; --bvs-section-label: #a5c6e1; --bvs-section-light-label: #315d80; }
 [data-bvs-section="marketplace"] { --bvs-section-rgb: 145 175 133; --bvs-section-label: #b4cbaa; --bvs-section-light-label: #46643b; }
 [data-bvs-section="shows"] { --bvs-section-rgb: 207 137 155; --bvs-section-label: #e0afbd; --bvs-section-light-label: #8a4055; }
+[data-bvs-section="editorial"] { --bvs-section-rgb: 99 184 170; --bvs-section-label: #8acbbf; --bvs-section-light-label: #256459; }
+[data-bvs-section="premium"] { --bvs-section-rgb: 227 189 88; --bvs-section-label: #e3bd58; --bvs-section-light-label: #705100; }
+[data-bvs-section="library"] { --bvs-section-rgb: 146 157 224; --bvs-section-label: #b4bdef; --bvs-section-light-label: #424e91; }
 [data-bvs-section="neutral"] { --bvs-section-rgb: 0 0 0; --bvs-section-label: inherit; --bvs-section-light-label: inherit; }
 .bvs-section-scope:not([data-bvs-section="neutral"]):not([data-bvs-section="home"]) main {
   background-image: radial-gradient(ellipse 32rem 11rem at 20% 5rem, rgb(var(--bvs-section-rgb) / .055), transparent);
