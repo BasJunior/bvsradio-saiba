@@ -125,7 +125,7 @@ export default function CreatorServiceOrders({ token }: { token: string }) {
       </p>
     );
   return (
-    <div className="mt-4 space-y-4">
+    <div data-studio-accent="marketplace" className="mt-4 space-y-4">
       {notice && (
         <p className="rounded-xl border border-brand/30 p-3 text-sm">
           {notice}
@@ -168,7 +168,7 @@ export default function CreatorServiceOrders({ token }: { token: string }) {
           >
             <div className="flex flex-wrap justify-between gap-3">
               <h3 className="font-semibold">{order.title_snapshot}</h3>
-              <span className="text-sm capitalize text-brand">
+              <span className="bvs-studio-accent-label text-sm capitalize">
                 {order.status.replaceAll("_", " ")}
               </span>
             </div>
@@ -188,7 +188,7 @@ export default function CreatorServiceOrders({ token }: { token: string }) {
                   key={event.id}
                   className="rounded-lg bg-white/[.03] p-3 text-xs"
                 >
-                  <span className="capitalize text-brand">
+                  <span className="bvs-studio-accent-label capitalize">
                     {event.event_type.replaceAll("_", " ")}
                   </span>
                   {event.message && (
@@ -235,7 +235,7 @@ export default function CreatorServiceOrders({ token }: { token: string }) {
                   key={action}
                   type="button"
                   onClick={() => void act(order, action)}
-                  className="rounded-full border border-white/20 px-3 py-1.5 text-xs capitalize hover:border-brand"
+                  className="bvs-studio-accent-button rounded-full border px-3 py-1.5 text-xs capitalize"
                 >
                   {action.replaceAll("_", " ")}
                 </button>
