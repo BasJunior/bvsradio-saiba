@@ -6,6 +6,7 @@ export function notificationHref(target: string, surface: AppSurface | null) {
   const thread = target.match(/^\/participation\/thread\/([a-f0-9-]+)$/i);
   if (thread) return surface ? `/app/${surface}/feed/${thread[1]}` : `/feed/${thread[1]}`;
   if (target === "/participation/feed") return surface ? `/app/${surface}/notifications` : "/notifications";
+  if (target === "/start") return surface ? `/app/${surface}/you` : "/start";
   return surface ? `/app/${surface}/notifications` : "/notifications";
 }
 
@@ -18,7 +19,13 @@ export function quietNow(timezone: string, start?: string | null, end?: string |
 }
 
 export async function notificationEligible(row: { recipient_user_id: string; event_id?: string | null; thread_id?: string | null; message_id?: string | null }, surface: AppSurface | null = null) {
-  if (!row.thread_id) return !row.event_id;
+  if (!row.thread_id) {
+    if (!row.event_id) return true;
+    const events = await participationRows<{ event_type: string; actor_user_id: string | null }>(
+      `participation_domain_events?id=eq.${encodeURIComponent(row.event_id)}&select=event_type,actor_user_id&limit=1`,
+    );
+    return events[0]?.event_type === "activation_nudge";
+  }
   const threads = await participationRows<{ id: string; status: string; thread_type: "post" | "content"; object_kind: "track" | "beat" | "release" | null; object_id: string | null; author_user_id: string | null }>(`participation_threads?id=eq.${encodeURIComponent(row.thread_id)}&select=id,status,thread_type,object_kind,object_id,author_user_id&limit=1`);
   const thread = threads[0];
   if (!thread || !["published", "locked"].includes(thread.status) || !(await participationThreadEligible(thread, surface))) return false;
