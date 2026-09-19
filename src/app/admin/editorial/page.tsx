@@ -282,32 +282,32 @@ export default function EditorialDashboard() {
   const releaseQueue = releaseNeedsReview  // only badge items needing action
 
   const jump = [
-    { id: 'ed-overview', label: 'Overview' },
-    { id: 'ed-analytics', label: 'Analytics' },
-    { id: 'ed-releases', label: `Albums/EPs${releaseQueue ? ` (${releaseQueue})` : ''}` },
-    { id: 'ed-beats', label: `BeatStore${beatQueue ? ` (${beatQueue})` : ''}` },
-    { id: 'ed-tracks', label: `Singles${trackQueue ? ` (${trackQueue})` : ''}` },
-    { id: 'ed-requests', label: `Requests${requestQueue ? ` (${requestQueue})` : ''}` },
-    { id: 'ed-role-applications', label: `Role applications${roleQueue ? ` (${roleQueue})` : ''}` },
-    { id: 'ed-identities', label: `Public names${identityQueue ? ` (${identityQueue})` : ''}` },
-    { id: 'ed-artists', label: 'Artists' },
-    { id: 'ed-programmes', label: 'Programmes' },
-    ...(allowed('manage_staff') ? [{ id: 'ed-staff', label: 'Staff' }] : []),
-    ...(allowed('manage_artist_wallet') ? [{ id: 'ed-wallet', label: 'Wallet' }] : []),
-    { id: 'ed-audit', label: 'Audit' },
+    { id: 'ed-overview', label: 'Overview', accent: 'core' },
+    { id: 'ed-analytics', label: 'Analytics', accent: 'core' },
+    { id: 'ed-releases', label: `Albums/EPs${releaseQueue ? ` (${releaseQueue})` : ''}`, accent: 'releases' },
+    { id: 'ed-beats', label: `BeatStore${beatQueue ? ` (${beatQueue})` : ''}`, accent: 'beats' },
+    { id: 'ed-tracks', label: `Singles${trackQueue ? ` (${trackQueue})` : ''}`, accent: 'releases' },
+    { id: 'ed-requests', label: `Requests${requestQueue ? ` (${requestQueue})` : ''}`, accent: 'core' },
+    { id: 'ed-role-applications', label: `Role applications${roleQueue ? ` (${roleQueue})` : ''}`, accent: 'people' },
+    { id: 'ed-identities', label: `Public names${identityQueue ? ` (${identityQueue})` : ''}`, accent: 'people' },
+    { id: 'ed-artists', label: 'Artists', accent: 'people' },
+    { id: 'ed-programmes', label: 'Programmes', accent: 'shows' },
+    ...(allowed('manage_staff') ? [{ id: 'ed-staff', label: 'Staff', accent: 'people' }] : []),
+    ...(allowed('manage_artist_wallet') ? [{ id: 'ed-wallet', label: 'Wallet', accent: 'money' }] : []),
+    { id: 'ed-audit', label: 'Audit', accent: null },
   ]
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-12">
+    <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-12">
       <div className="flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <p className="text-xs uppercase tracking-[.22em] text-brand">BVS operations</p>
+        <div data-editorial-accent="core">
+          <p className="bvs-editorial-accent-label text-xs uppercase tracking-[.22em]">BVS operations</p>
           <h1 className="mt-2 text-4xl font-semibold">Editorial workflow</h1>
           <p className="mt-3 text-text-secondary">
             Signed in as {roleLabels[data.identity.role]}. Every action is recorded.
           </p>
         </div>
-        <button onClick={() => load(token)} className="rounded-full border border-white/20 px-5 py-2 text-sm">
+        <button onClick={() => load(token)} data-editorial-accent="core" className="bvs-editorial-accent-button rounded-full border px-5 py-2 text-sm">
           Refresh
         </button>
       </div>
@@ -317,16 +317,17 @@ export default function EditorialDashboard() {
 
       <Link
         href="/admin/creator-workflows"
-        className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand/[.06] p-5 transition hover:border-brand/60"
+        data-editorial-accent="core"
+        className="bvs-editorial-accent-card mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.02] p-5"
       >
         <div>
           <p className="font-semibold">Writing &amp; Research Review</p>
           <p className="mt-1 text-sm text-text-secondary">Approve research briefs for drafting and review articles returned by the BVS Editorial Desk.</p>
         </div>
-        <span className="text-sm font-semibold text-brand">Open queue →</span>
+        <span className="bvs-editorial-accent-label text-sm font-semibold">Open queue →</span>
       </Link>
 
-      <div id="ed-music-videos" className="mt-6 scroll-mt-28">
+      <div id="ed-music-videos" data-editorial-accent="core" className="mt-5 scroll-mt-28">
         <MusicVideoEditorialPanel />
       </div>
 
@@ -339,7 +340,8 @@ export default function EditorialDashboard() {
             <a
               key={item.id}
               href={`#${item.id}`}
-              className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary transition hover:border-brand hover:text-brand"
+              data-editorial-accent={item.accent || undefined}
+              className={item.accent ? "bvs-editorial-accent-button rounded-full border px-3 py-1.5 text-xs" : "rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary transition hover:border-white/25"}
             >
               {item.label}
             </a>
@@ -347,55 +349,55 @@ export default function EditorialDashboard() {
         </div>
       </nav>
 
-      <section id="ed-overview" className="mt-8 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
+      <section id="ed-overview" className="mt-7 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          ['Tracks needing review', trackNeedsReview],
-          ['Tracks processed', trackProcessed],
-          ['Beats needing review', beatNeedsReview],
-          ['Beats processed', beatProcessed],
-          ['Releases needing review', releaseNeedsReview],
-          ['Releases processed', releaseProcessed],
-          ['Published', data.tracks.filter((t) => t.is_public).length],
-        ].map(([label, value]) => (
-          <div key={String(label)} className="rounded-2xl border border-white/10 bg-white/[.03] p-5">
-            <p className="text-sm text-text-secondary">{label}</p>
-            <p className="mt-2 text-3xl font-semibold text-brand">{value}</p>
+          { label: 'Needs review', value: trackNeedsReview + beatNeedsReview + releaseNeedsReview, detail: `${releaseNeedsReview} releases · ${trackNeedsReview} singles · ${beatNeedsReview} beats`, accent: 'core' },
+          { label: 'Processed decisions', value: trackProcessed + beatProcessed + releaseProcessed, detail: 'Approved, published or rejected work', accent: 'releases' },
+          { label: 'People & requests', value: requestQueue + roleQueue + identityQueue, detail: 'Artist requests, roles and public names', accent: 'people' },
+          { label: 'Published tracks', value: data.tracks.filter((t) => t.is_public).length, detail: 'Currently public in the BVS catalogue', accent: 'releases' },
+        ].map((item) => (
+          <div key={item.label} data-editorial-accent={item.accent} className="bvs-editorial-accent-card rounded-2xl border border-white/10 bg-white/[.025] p-5">
+            <p className="text-sm text-text-secondary">{item.label}</p>
+            <p className="bvs-editorial-accent-label mt-2 text-3xl font-semibold">{item.value}</p>
+            <p className="mt-2 text-xs leading-5 text-text-secondary">{item.detail}</p>
           </div>
         ))}
       </section>
 
       <Link
           href="/editorial/finance"
-          className="mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-brand/25 bg-brand/[.06] p-5 transition hover:border-brand/60"
+          data-editorial-accent="money"
+          className="bvs-editorial-accent-card mt-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.02] p-5"
         >
           <span>
-            <span className="block text-xs uppercase tracking-[.18em] text-brand">Accounting & performance</span>
+            <span className="bvs-editorial-accent-label block text-xs uppercase tracking-[.18em]">Accounting & performance</span>
             <span className="mt-1 block text-lg font-semibold">Quarterly goals versus live BVS statistics</span>
             <span className="mt-1 block text-sm text-text-secondary">Open the separate finance workspace for GMV, MRR, artist liabilities, controls and target charts.</span>
           </span>
-          <span className="rounded-full border border-brand/40 px-4 py-2 text-sm text-brand">Open finance dashboard →</span>
+          <span className="bvs-editorial-accent-button rounded-full border px-4 py-2 text-sm">Open finance dashboard →</span>
         </Link>
 
       <Link
           href="/editorial/marketplace"
-          className="mt-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-5 transition hover:border-brand/50"
+          data-editorial-accent="marketplace"
+          className="bvs-editorial-accent-card mt-3 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[.02] p-5"
         >
           <span>
-            <span className="block text-xs uppercase tracking-[.18em] text-brand">Creator Marketplace</span>
+            <span className="bvs-editorial-accent-label block text-xs uppercase tracking-[.18em]">Creator Marketplace</span>
             <span className="mt-1 block text-lg font-semibold">Review creator profiles, accomplishments and listings</span>
             <span className="mt-1 block text-sm text-text-secondary">Approval is evidence-based. Premium never buys publication, ranking or verified claims.</span>
           </span>
-          <span className="rounded-full border border-white/20 px-4 py-2 text-sm text-brand">Open marketplace review →</span>
+          <span className="bvs-editorial-accent-button rounded-full border px-4 py-2 text-sm">Open marketplace review →</span>
         </Link>
 
       <section className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr]">
-        <div className="rounded-2xl border border-brand/25 bg-brand/[.055] p-5">
-          <p className="text-xs uppercase tracking-[.18em] text-brand">Quarter control</p>
+        <div data-editorial-accent="core" className="bvs-editorial-accent-card rounded-2xl border border-white/10 bg-white/[.02] p-5">
+          <p className="bvs-editorial-accent-label text-xs uppercase tracking-[.18em]">Quarter control</p>
           <h2 className="mt-2 text-lg font-semibold">Proof loop for the next 14 days</h2>
           <div className="mt-4 grid gap-2 text-sm text-text-secondary sm:grid-cols-3">
-            <Link href="#ed-analytics" className="rounded-xl border border-white/10 p-3 transition hover:border-brand hover:text-brand">Metrics baseline</Link>
-            <Link href="/creator/studio" className="rounded-xl border border-white/10 p-3 transition hover:border-brand hover:text-brand">Artist next action</Link>
-            <Link href="#ed-releases" className="rounded-xl border border-white/10 p-3 transition hover:border-brand hover:text-brand">48h release review</Link>
+            <Link href="#ed-analytics" className="bvs-editorial-accent-button rounded-xl border p-3 transition">Metrics baseline</Link>
+            <Link href="/creator/studio" className="bvs-editorial-accent-button rounded-xl border p-3 transition">Artist next action</Link>
+            <Link href="#ed-releases" className="bvs-editorial-accent-button rounded-xl border p-3 transition">48h release review</Link>
           </div>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[.03] p-5">
@@ -415,7 +417,7 @@ export default function EditorialDashboard() {
 
       <EditorialAnalytics token={token} />
 
-      <EditorialDropDown id="ed-releases" label="Albums and EPs" count={releaseQueue} defaultOpen={releaseQueue > 0}>
+      <EditorialDropDown id="ed-releases" label="Albums and EPs" accent="releases" count={releaseQueue} defaultOpen={releaseQueue > 0}>
         <ReleaseEditorialPanel
           releases={data.releases || []}
           releaseTracks={data.releaseTracks || []}
@@ -433,7 +435,7 @@ export default function EditorialDashboard() {
         />
       </EditorialDropDown>
 
-      <EditorialDropDown id="ed-beats" label="Producer BeatStore" count={beatQueue} defaultOpen={beatQueue > 0}>
+      <EditorialDropDown id="ed-beats" label="Producer BeatStore" accent="beats" count={beatQueue} defaultOpen={beatQueue > 0}>
         <BeatStoreEditorialPanel
           beats={data.beats || []}
           messages={data.beatReviewMessages || []}
@@ -444,7 +446,7 @@ export default function EditorialDashboard() {
         />
       </EditorialDropDown>
 
-      <EditorialDropDown id="ed-tracks" label="Single-track submissions" count={trackQueue} defaultOpen={trackQueue > 0}>
+      <EditorialDropDown id="ed-tracks" label="Single-track submissions" accent="releases" count={trackQueue} defaultOpen={trackQueue > 0}>
         <h2 className="text-2xl font-semibold">Single-track submission queue</h2>
         <p className="mt-2 text-sm text-text-secondary">
           Legacy single uploads. Prefer Album/EP for multi-track. Approval does not automatically publish or
@@ -465,7 +467,7 @@ export default function EditorialDashboard() {
         )}
       </EditorialDropDown>
 
-      <EditorialDropDown id="ed-requests" label="Artist requests" count={requestQueue} defaultOpen={requestQueue > 0}>
+      <EditorialDropDown id="ed-requests" label="Artist requests" accent="core" count={requestQueue} defaultOpen={requestQueue > 0}>
         <ArtistRequestPanel
           requests={data.trackRequests}
           tracks={data.tracks}
@@ -476,7 +478,7 @@ export default function EditorialDashboard() {
         />
       </EditorialDropDown>
 
-      <EditorialDropDown id="ed-role-applications" label="Role applications" count={roleQueue} defaultOpen={roleQueue > 0}>
+      <EditorialDropDown id="ed-role-applications" label="Role applications" accent="people" count={roleQueue} defaultOpen={roleQueue > 0}>
         <RoleApplicationPanel
           applications={data.roleApplications || []}
           profiles={data.profiles}
@@ -486,7 +488,7 @@ export default function EditorialDashboard() {
         />
       </EditorialDropDown>
 
-      <EditorialDropDown id="ed-identities" label="Creator public names" count={identityQueue} defaultOpen={identityQueue > 0}>
+      <EditorialDropDown id="ed-identities" label="Creator public names" accent="people" count={identityQueue} defaultOpen={identityQueue > 0}>
         <IdentityReviewPanel
           profiles={data.profiles}
           enabled={allowed('publish_artists')}
@@ -495,7 +497,7 @@ export default function EditorialDashboard() {
         />
       </EditorialDropDown>
 
-      <EditorialDropDown id="ed-artists" label="Creator publishing and programmes">
+      <EditorialDropDown id="ed-artists" label="Creator publishing and programmes" accent="people">
         <div className="grid gap-10 lg:grid-cols-2">
         <div>
           <h2 className="text-2xl font-semibold">Creator publishing and BeatStore access</h2>
@@ -514,12 +516,12 @@ export default function EditorialDashboard() {
       </EditorialDropDown>
 
       {allowed('manage_staff') && (
-        <EditorialDropDown id="ed-staff" label="Staff and permissions">
+        <EditorialDropDown id="ed-staff" label="Staff and permissions" accent="people">
           <StaffPanel profiles={data.profiles} staff={data.staff} act={act} />
         </EditorialDropDown>
       )}
       {allowed('manage_artist_wallet') && (
-        <EditorialDropDown id="ed-wallet" label="Artist wallet operations">
+        <EditorialDropDown id="ed-wallet" label="Artist wallet operations" accent="money">
           <ArtistWalletPanel
             waitlist={data.artistWaitlist}
             deposits={data.artistDeposits}
@@ -562,19 +564,21 @@ function EditorialDropDown({
   label,
   count,
   defaultOpen = false,
+  accent,
   children,
 }: {
   id: string
   label: string
   count?: number
   defaultOpen?: boolean
+  accent?: 'core' | 'releases' | 'beats' | 'people' | 'marketplace' | 'shows' | 'money'
   children: ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
   const panelId = `${id}-panel`
 
   return (
-    <section id={id} className="mt-10 scroll-mt-28 rounded-2xl border border-white/10 bg-white/[.015]">
+    <section id={id} data-editorial-accent={accent} data-state={open ? 'open' : 'closed'} className="bvs-editorial-panel mt-5 scroll-mt-28 rounded-2xl border border-white/10 bg-white/[.012]">
       {/* Sticky section header so mobile can always leave / collapse this queue */}
       <div className="sticky top-16 z-20 rounded-2xl bg-bg-primary/95 backdrop-blur-xl supports-[backdrop-filter]:bg-bg-primary/90">
         <button
@@ -585,9 +589,9 @@ function EditorialDropDown({
           className="flex w-full items-center justify-between gap-4 rounded-2xl px-5 py-4 text-left transition hover:bg-white/[.035] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           <span className="flex min-w-0 items-center gap-3">
-            <span className="font-semibold">{label}</span>
+            <span className={accent ? "bvs-editorial-accent-label font-semibold" : "font-semibold"}>{label}</span>
             {typeof count === 'number' && (
-              <span className="rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-text-secondary">
+              <span className="rounded-full border border-white/10 bg-black/10 px-2.5 py-0.5 text-xs text-text-secondary">
                 {count}
               </span>
             )}
@@ -607,7 +611,7 @@ function EditorialDropDown({
           </span>
         </button>
       </div>
-      {open && <div id={panelId} className="border-t border-white/10 px-3 pb-6 pt-1 sm:px-5">{children}</div>}
+      {open && <div id={panelId} className="border-t border-white/10 px-3 pb-6 pt-3 sm:px-5">{children}</div>}
     </section>
   )
 }
