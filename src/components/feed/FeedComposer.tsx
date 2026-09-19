@@ -6,7 +6,7 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import ParticipationMentionPicker, { type MentionProfile } from "@/components/feed/ParticipationMentionPicker";
 import type { AppSurface } from "@/lib/app-surface";
 import type { ParticipationIntent, ParticipationObjectKind, ParticipationPost } from "@/lib/participation-server";
-import { trackMilestone } from "@/lib/analytics";
+import { trackEvent } from "@/lib/analytics";
 
 type AttachmentOption = {
   kind: ParticipationObjectKind;
@@ -176,7 +176,11 @@ export default function FeedComposer({
     }
     if (payload.post) {
       onCreated(payload.post);
-      trackMilestone("first_post", { intent, surface: surface || "web" });
+      const firstPostKey = session.user?.id ? `bvs.analytics.first-post.v1:${session.user.id}` : "";
+      if (!firstPostKey || window.localStorage.getItem(firstPostKey) !== "1") {
+        if (firstPostKey) window.localStorage.setItem(firstPostKey, "1");
+        trackEvent("first_post", { intent, surface: surface || "web" });
+      }
     }
     setBody("");
     setAttachment(null);
