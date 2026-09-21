@@ -66,11 +66,14 @@ type PlayerContextValue = {
   nowPlayingOpen: boolean;
   openNowPlaying: () => void;
   closeNowPlaying: () => void;
+  play: () => Promise<void>;
+  pause: () => void;
   toggle: () => void;
   next: () => void;
   previous: () => void;
   setVolume: (value: number) => void;
   seek: (ratio: number) => void;
+  seekTo: (seconds: number) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
   toggleLike: () => void;
@@ -795,37 +798,87 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     advance(1, { autoSkip: true });
   }, [advance, current, flushListening, tracks.length]);
 
-  const toggle = useCallback(async () => {
-    if (!audio.current || !current) return setError("No track is loaded. Open Listen or pick something from the catalogue.");
+  const play = useCallback(async () => {
+    const el = audio.current;
+    if (!el || !current) {
+      setError("No track is loaded. Open Listen or pick something from the catalogue.");
+      return;
+    }
+    if (!el.paused && !el.ended) {
+      setPlaying(true);
+      return;
+    }
     try {
-      if (isPlaying) {
-        audio.current.pause();
-        flushListening();
-      } else {
-        editorialHoldRef.current = false;
-        window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
-        await audio.current.play();
-        failStreak.current = 0;
-        pushHistory(current);
-        recordListening({
-          id: trackLibraryId(current),
-          kind: "track",
-          title: current.title,
-          subtitle: current.artist,
-          href: "/radio",
-        });
-      }
-      setPlaying(!isPlaying);
+      editorialHoldRef.current = false;
+      window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
+      await el.play();
+      failStreak.current = 0;
+      setPlaying(true);
       setError(null);
       setNotice(null);
+      pushHistory(current);
+      recordListening({
+        id: trackLibraryId(current),
+        kind: "track",
+        title: current.title,
+        subtitle: current.artist,
+        href: "/radio",
+      });
     } catch {
       setPlaying(false);
       trackEvent("playback_error", { track_id: trackLibraryId(current), stage: "start" });
       setError("Playback could not start. Please try again.");
     }
-  }, [current, flushListening, isPlaying, pushHistory]);
+  }, [current, pushHistory]);
 
-  // Keep lock-screen / notification controls attached to the real BVS queue.
+  const pause = useCallback(() => {
+    const el = audio.current;
+    if (!el) return;
+    const wasPlaying = !el.paused && !el.ended;
+    el.pause();
+    if (wasPlaying) flushListening();
+    setPlaying(false);
+  }, [flushListening]);
+
+  const toggle = useCallback(async () => {
+    const el = audio.current;
+    if (!el || !current) {
+      setError("No track is loaded. Open Listen or pick something from the catalogue.");
+      return;
+    }
+    if (el.paused || el.ended) await play();
+    else pause();
+  }, [current, pause, play]);
+
+  const seekTo = useCallback((seconds: number) => {
+    const el = audio.current;
+    if (!el || !el.duration || !Number.isFinite(el.duration) || !Number.isFinite(seconds)) return;
+    const guestPreview =
+      nowRef.current?.source === "preview" &&
+      isBeatTrack(nowRef.current.track) &&
+      !signedInRef.current &&
+      !editorialHoldRef.current &&
+      !isEditorialPlay(nowRef.current.track);
+    const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
+    const next = Math.min(max, Math.max(0, seconds));
+    el.currentTime = next;
+    setElapsed(next);
+  }, []);
+
+  const seek = useCallback((ratio: number) => {
+    const el = audio.current;
+    if (!el || !el.duration || !Number.isFinite(el.duration)) return;
+    const guestPreview =
+      nowRef.current?.source === "preview" &&
+      isBeatTrack(nowRef.current.track) &&
+      !signedInRef.current &&
+      !editorialHoldRef.current &&
+      !isEditorialPlay(nowRef.current.track);
+    const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
+    seekTo(Math.min(1, Math.max(0, ratio)) * max);
+  }, [seekTo]);
+
+  // Keep browser / web-app lock-screen controls attached to the real BVS queue.
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
@@ -837,26 +890,57 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       }
     };
 
+    const nativeIosBridge =
+      Capacitor.isNativePlatform() &&
+      Capacitor.getPlatform() === "ios" &&
+      Boolean(
+        (window as Window & {
+          webkit?: { messageHandlers?: { bvsNowPlaying?: unknown } };
+        }).webkit?.messageHandlers?.bvsNowPlaying,
+      );
+
+    // Newer iOS binaries own remote commands through MPRemoteCommandCenter.
+    // Keep Web Media Session as the fallback for Safari and older app builds,
+    // but never let both layers process one lock-screen tap.
+    if (nativeIosBridge) {
+      for (const action of ["play", "pause", "previoustrack", "nexttrack", "seekto", "seekbackward", "seekforward"] as MediaSessionAction[]) {
+        setHandler(action, null);
+      }
+      return;
+    }
+
     setHandler("play", () => {
-      if (!isPlaying) void toggle();
+      void play();
     });
     setHandler("pause", () => {
-      if (isPlaying) void toggle();
+      pause();
     });
     setHandler("previoustrack", () => advance(-1));
     setHandler("nexttrack", () => advance(1));
-
-    // Prefer track navigation over the platform's default ±10 second buttons.
-    setHandler("seekbackward", null);
-    setHandler("seekforward", null);
+    setHandler("seekto", (details) => {
+      if (typeof details.seekTime === "number") seekTo(details.seekTime);
+    });
+    setHandler("seekbackward", (details) => {
+      const el = audio.current;
+      if (!el) return;
+      seekTo((el.currentTime || 0) - (details.seekOffset || 15));
+    });
+    setHandler("seekforward", (details) => {
+      const el = audio.current;
+      if (!el) return;
+      seekTo((el.currentTime || 0) + (details.seekOffset || 15));
+    });
 
     return () => {
       setHandler("play", null);
       setHandler("pause", null);
       setHandler("previoustrack", null);
       setHandler("nexttrack", null);
+      setHandler("seekto", null);
+      setHandler("seekbackward", null);
+      setHandler("seekforward", null);
     };
-  }, [advance, isPlaying, toggle]);
+  }, [advance, pause, play, seekTo]);
 
   useEffect(() => {
     if (!("mediaSession" in navigator) || !current || typeof MediaMetadata === "undefined") return;
@@ -883,19 +967,18 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     }
   }, [isPlaying]);
 
-  const seek = useCallback((ratio: number) => {
-    const el = audio.current;
-    if (!el || !el.duration || !Number.isFinite(el.duration)) return;
-    const guestPreview =
-      nowRef.current?.source === "preview" &&
-      isBeatTrack(nowRef.current.track) &&
-      !signedInRef.current &&
-      !editorialHoldRef.current &&
-      !isEditorialPlay(nowRef.current.track);
-    const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
-    const next = Math.min(1, Math.max(0, ratio)) * max;
-    el.currentTime = next;
-    setElapsed(next);
+  // Reconcile the React player after iOS interruptions / route changes once the
+  // contained app becomes active again. Do not bind this to the audio pause
+  // event because changing tracks can legitimately pause the media element.
+  useEffect(() => {
+    const reconcile = () => {
+      const el = audio.current;
+      if (!el) return;
+      setPlaying(!el.paused && !el.ended);
+      if (Number.isFinite(el.currentTime)) setElapsed(Math.max(0, el.currentTime));
+    };
+    window.addEventListener("bvs:app-resume", reconcile);
+    return () => window.removeEventListener("bvs:app-resume", reconcile);
   }, []);
 
   const toggleShuffle = useCallback(() => {
@@ -1151,11 +1234,14 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       nowPlayingOpen,
       openNowPlaying,
       closeNowPlaying,
+      play,
+      pause,
       toggle,
       next: () => advance(1),
       previous: () => advance(-1),
       setVolume,
       seek,
+      seekTo,
       toggleShuffle,
       cycleRepeat,
       toggleLike,
@@ -1193,9 +1279,12 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       nowPlayingOpen,
       openNowPlaying,
       closeNowPlaying,
+      play,
+      pause,
       toggle,
       advance,
       seek,
+      seekTo,
       toggleShuffle,
       cycleRepeat,
       toggleLike,
