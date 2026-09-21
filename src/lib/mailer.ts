@@ -54,12 +54,19 @@ export function wrapBvsEmailHtml(opts: {
 </html>`;
 }
 
+export type BvsEmailAttachment = {
+  filename: string;
+  content: Buffer | Uint8Array;
+  contentType?: string;
+};
+
 export async function sendBvsEmail(opts: {
   to: string;
   subject: string;
   text: string;
   html?: string;
   replyTo?: string;
+  attachments?: BvsEmailAttachment[];
 }): Promise<void> {
   const host = process.env.SMTP_HOST || "smtp.ionos.de";
   const port = Number(process.env.SMTP_PORT || "587");
@@ -84,6 +91,11 @@ export async function sendBvsEmail(opts: {
     text: opts.text,
     html: opts.html || opts.text.replace(/\n/g, "<br/>"),
     replyTo: opts.replyTo || user,
+    attachments: (opts.attachments || []).map((file) => ({
+      filename: file.filename,
+      content: Buffer.isBuffer(file.content) ? file.content : Buffer.from(file.content),
+      contentType: file.contentType || "application/octet-stream",
+    })),
   });
 }
 
