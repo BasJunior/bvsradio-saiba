@@ -890,6 +890,25 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       }
     };
 
+    const nativeIosBridge =
+      Capacitor.isNativePlatform() &&
+      Capacitor.getPlatform() === "ios" &&
+      Boolean(
+        (window as Window & {
+          webkit?: { messageHandlers?: { bvsNowPlaying?: unknown } };
+        }).webkit?.messageHandlers?.bvsNowPlaying,
+      );
+
+    // Newer iOS binaries own remote commands through MPRemoteCommandCenter.
+    // Keep Web Media Session as the fallback for Safari and older app builds,
+    // but never let both layers process one lock-screen tap.
+    if (nativeIosBridge) {
+      for (const action of ["play", "pause", "previoustrack", "nexttrack", "seekto", "seekbackward", "seekforward"] as MediaSessionAction[]) {
+        setHandler(action, null);
+      }
+      return;
+    }
+
     setHandler("play", () => {
       void play();
     });
