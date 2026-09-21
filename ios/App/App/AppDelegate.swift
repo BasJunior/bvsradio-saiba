@@ -32,6 +32,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             print("AVAudioSession setup failed: \(error)")
         }
         UNUserNotificationCenter.current().delegate = self
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAudioSessionInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: AVAudioSession.sharedInstance()
+        )
         configureRemoteCommandsIfNeeded()
         DispatchQueue.main.async { [weak self] in
             self?.configureNavigationGesturesIfNeeded()
@@ -205,6 +211,33 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             info[MPNowPlayingInfoPropertyPlaybackRate] = playing ? 1.0 : 0.0
         }
         center.nowPlayingInfo = info
+    }
+
+    @objc private func handleAudioSessionInterruption(_ notification: Notification) {
+        guard
+            let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+            let type = AVAudioSession.InterruptionType(rawValue: rawType)
+        else { return }
+
+        if type == .began {
+            var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+            info[MPNowPlayingInfoPropertyPlaybackRate] = 0.0
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+            _ = emitNativeMediaCommand("pause")
+            return
+        }
+
+        guard type == .ended else { return }
+        let rawOptions = notification.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+        let options = AVAudioSession.InterruptionOptions(rawValue: rawOptions)
+        if options.contains(.shouldResume) {
+            do {
+                try AVAudioSession.sharedInstance().setActive(true)
+            } catch {
+                print("AVAudioSession resume failed: \(error)")
+            }
+            _ = emitNativeMediaCommand("play")
+        }
     }
 
     private func number(_ value: Any?) -> Double? {
