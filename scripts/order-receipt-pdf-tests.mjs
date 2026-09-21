@@ -15,7 +15,7 @@ assert(page.includes("Download receipt PDF"), "paid order page exposes receipt P
 assert(page.includes("/receipt"), "order page calls authenticated receipt endpoint");
 assert(page.includes("Authorization"), "order page sends auth token for receipt PDF");
 
-assert(route.includes("Authorization"), "receipt endpoint requires bearer auth");
+assert(route.toLowerCase().includes("authorization") && route.includes("Bearer"), "receipt endpoint requires bearer auth");
 assert(route.includes("application/pdf"), "receipt endpoint returns PDF content type");
 assert(route.includes("Content-Disposition"), "receipt endpoint returns downloadable filename");
 assert(route.includes("buildOrderReceiptPdf"), "receipt endpoint builds receipt from order truth");
