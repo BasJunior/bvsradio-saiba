@@ -162,6 +162,9 @@ assert(stationPlayer.includes('seekTo: (seconds: number) => void'), 'station pla
 assert(stationPlayer.includes('setHandler("seekto"'), 'web Media Session must support lock-screen scrubbing')
 assert(stationPlayer.includes('setHandler("seekforward"'), 'web Media Session must support forward seeking')
 assert(stationPlayer.includes('setHandler("seekbackward"'), 'web Media Session must support backward seeking')
+assert(stationPlayer.includes('nativeIosBridge'), 'station player must detect the native iOS remote-command bridge')
+assert(stationPlayer.includes('bvsNowPlaying?: unknown'), 'native bridge detection must be capability based for old-binary fallback')
+assert(stationPlayer.includes('setHandler(action, null)'), 'native iOS must not double-handle lock-screen commands through Web Media Session')
 assert(stationPlayer.includes('window.addEventListener("bvs:app-resume", reconcile)'), 'player must reconcile real audio state after iOS interruptions')
 assert(stationPlayer.includes('if (!el.paused && !el.ended)'), 'remote play must be idempotent against real media state')
 
@@ -170,6 +173,7 @@ assert(appDelegate.includes('commands.skipForwardCommand.preferredIntervals = [1
 assert(appDelegate.includes('commands.skipBackwardCommand.preferredIntervals = [15]'), 'native iOS must expose a 15 second backward skip')
 assert(appDelegate.includes('window.__bvsReceiveNativeMediaCommand'), 'native commands must use the queued WebView bridge')
 assert(appDelegate.includes('pendingNativeMediaPayloads'), 'failed native media dispatches must be retained for retry')
+assert(appDelegate.includes('DispatchQueue.main.async'), 'native WebView media dispatch must stay on the main thread')
 assert(appDelegate.includes('AVAudioSession.interruptionNotification'), 'native app must observe audio-session interruptions')
 assert(appDelegate.includes('options.contains(.shouldResume)'), 'native app must resume only when iOS marks interruption resumable')
 
