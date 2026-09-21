@@ -804,6 +804,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setError("No track is loaded. Open Listen or pick something from the catalogue.");
       return;
     }
+    if (!el.paused && !el.ended) {
+      setPlaying(true);
+      return;
+    }
     try {
       editorialHoldRef.current = false;
       window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
@@ -830,8 +834,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const pause = useCallback(() => {
     const el = audio.current;
     if (!el) return;
+    const wasPlaying = !el.paused && !el.ended;
     el.pause();
-    flushListening();
+    if (wasPlaying) flushListening();
     setPlaying(false);
   }, [flushListening]);
 
