@@ -71,6 +71,7 @@ type PlayerContextValue = {
   previous: () => void;
   setVolume: (value: number) => void;
   seek: (ratio: number) => void;
+  seekTo: (seconds: number) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
   toggleLike: () => void;
@@ -825,7 +826,28 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     }
   }, [current, flushListening, isPlaying, pushHistory]);
 
-  // Keep lock-screen / notification controls attached to the real BVS queue.
+  const seekTo = useCallback((seconds: number) => {
+    const el = audio.current;
+    if (!el || !el.duration || !Number.isFinite(el.duration) || !Number.isFinite(seconds)) return;
+    const guestPreview =
+      nowRef.current?.source === "preview" &&
+      isBeatTrack(nowRef.current.track) &&
+      !signedInRef.current &&
+      !editorialHoldRef.current &&
+      !isEditorialPlay(nowRef.current.track);
+    const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
+    const next = Math.min(max, Math.max(0, seconds));
+    el.currentTime = next;
+    setElapsed(next);
+  }, []);
+
+  const seek = useCallback((ratio: number) => {
+    const el = audio.current;
+    if (!el || !el.duration || !Number.isFinite(el.duration)) return;
+    seekTo(Math.min(1, Math.max(0, ratio)) * el.duration);
+  }, [seekTo]);
+
+  // Keep browser / web-app lock-screen controls attached to the real BVS queue.
   useEffect(() => {
     if (!("mediaSession" in navigator)) return;
 
@@ -845,18 +867,30 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     });
     setHandler("previoustrack", () => advance(-1));
     setHandler("nexttrack", () => advance(1));
-
-    // Prefer track navigation over the platform's default ±10 second buttons.
-    setHandler("seekbackward", null);
-    setHandler("seekforward", null);
+    setHandler("seekto", (details) => {
+      if (typeof details.seekTime === "number") seekTo(details.seekTime);
+    });
+    setHandler("seekbackward", (details) => {
+      const el = audio.current;
+      if (!el) return;
+      seekTo((el.currentTime || 0) - (details.seekOffset || 15));
+    });
+    setHandler("seekforward", (details) => {
+      const el = audio.current;
+      if (!el) return;
+      seekTo((el.currentTime || 0) + (details.seekOffset || 15));
+    });
 
     return () => {
       setHandler("play", null);
       setHandler("pause", null);
       setHandler("previoustrack", null);
       setHandler("nexttrack", null);
+      setHandler("seekto", null);
+      setHandler("seekbackward", null);
+      setHandler("seekforward", null);
     };
-  }, [advance, isPlaying, toggle]);
+  }, [advance, isPlaying, seekTo, toggle]);
 
   useEffect(() => {
     if (!("mediaSession" in navigator) || !current || typeof MediaMetadata === "undefined") return;
@@ -883,19 +917,18 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     }
   }, [isPlaying]);
 
-  const seek = useCallback((ratio: number) => {
-    const el = audio.current;
-    if (!el || !el.duration || !Number.isFinite(el.duration)) return;
-    const guestPreview =
-      nowRef.current?.source === "preview" &&
-      isBeatTrack(nowRef.current.track) &&
-      !signedInRef.current &&
-      !editorialHoldRef.current &&
-      !isEditorialPlay(nowRef.current.track);
-    const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
-    const next = Math.min(1, Math.max(0, ratio)) * max;
-    el.currentTime = next;
-    setElapsed(next);
+  // Reconcile the React player after iOS interruptions / route changes once the
+  // contained app becomes active again. Do not bind this to the audio pause
+  // event because changing tracks can legitimately pause the media element.
+  useEffect(() => {
+    const reconcile = () => {
+      const el = audio.current;
+      if (!el) return;
+      setPlaying(!el.paused && !el.ended);
+      if (Number.isFinite(el.currentTime)) setElapsed(Math.max(0, el.currentTime));
+    };
+    window.addEventListener("bvs:app-resume", reconcile);
+    return () => window.removeEventListener("bvs:app-resume", reconcile);
   }, []);
 
   const toggleShuffle = useCallback(() => {
@@ -1156,6 +1189,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       previous: () => advance(-1),
       setVolume,
       seek,
+      seekTo,
       toggleShuffle,
       cycleRepeat,
       toggleLike,
@@ -1196,6 +1230,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       toggle,
       advance,
       seek,
+      seekTo,
       toggleShuffle,
       cycleRepeat,
       toggleLike,
