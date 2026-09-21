@@ -16,6 +16,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     private var remoteCommandsConfigured = false
     private var currentArtworkURL = ""
     private var pendingPushHref: String?
+    private var pendingNativeMediaPayloads: [[String: Any]] = []
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Allow HTML5 / WebView audio to continue when the screen locks (radio use case).
@@ -53,6 +54,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     func applicationDidBecomeActive(_ application: UIApplication) {
         configureNavigationGesturesIfNeeded()
         configureRemoteCommandsIfNeeded()
+        flushPendingNativeMediaCommands()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -106,6 +108,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
                 };
               }
               window.addEventListener('popstate', emit);
+              window.__bvsNativeMediaQueue = window.__bvsNativeMediaQueue || [];
+              window.__bvsNativeMediaReady = Boolean(window.__bvsNativeMediaReady);
+              window.__bvsReceiveNativeMediaCommand = (payload) => {
+                if (window.__bvsNativeMediaReady) {
+                  window.dispatchEvent(new CustomEvent('bvs:native-media-command', { detail: payload }));
+                } else {
+                  window.__bvsNativeMediaQueue.push(payload);
+                }
+              };
               emit();
             })();
             """,
@@ -122,6 +133,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.flushPendingPushAction()
+            self?.flushPendingNativeMediaCommands()
         }
     }
 
@@ -150,6 +162,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         if action == "clear" {
             center.nowPlayingInfo = nil
             currentArtworkURL = ""
+            let commands = MPRemoteCommandCenter.shared()
+            commands.nextTrackCommand.isEnabled = false
+            commands.previousTrackCommand.isEnabled = false
+            commands.skipForwardCommand.isEnabled = false
+            commands.skipBackwardCommand.isEnabled = false
+            commands.changePlaybackPositionCommand.isEnabled = false
             return
         }
 
@@ -161,6 +179,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             if let artwork = payload["artwork"] as? String, !artwork.isEmpty, artwork != currentArtworkURL {
                 currentArtworkURL = artwork
                 loadNowPlayingArtwork(artwork)
+            }
+
+            let commands = MPRemoteCommandCenter.shared()
+            if let canNext = boolean(payload["canNext"]) {
+                commands.nextTrackCommand.isEnabled = canNext
+            }
+            if let canPrevious = boolean(payload["canPrevious"]) {
+                commands.previousTrackCommand.isEnabled = canPrevious
+            }
+            if let canSeek = boolean(payload["canSeek"]) {
+                commands.skipForwardCommand.isEnabled = canSeek
+                commands.skipBackwardCommand.isEnabled = canSeek
+                commands.changePlaybackPositionCommand.isEnabled = canSeek
             }
         }
 
@@ -213,36 +244,80 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
 
         commands.playCommand.isEnabled = true
         commands.playCommand.addTarget { [weak self] _ in
-            self?.emitNativeMediaCommand("play")
-            return .success
+            return self?.emitNativeMediaCommand("play") == true ? .success : .commandFailed
         }
         commands.pauseCommand.isEnabled = true
         commands.pauseCommand.addTarget { [weak self] _ in
-            self?.emitNativeMediaCommand("pause")
-            return .success
+            return self?.emitNativeMediaCommand("pause") == true ? .success : .commandFailed
         }
-        commands.nextTrackCommand.isEnabled = true
+
+        // Availability is updated from the real BVS queue in handleNowPlayingMessage.
+        commands.nextTrackCommand.isEnabled = false
         commands.nextTrackCommand.addTarget { [weak self] _ in
-            self?.emitNativeMediaCommand("next")
-            return .success
+            return self?.emitNativeMediaCommand("next") == true ? .success : .commandFailed
         }
-        commands.previousTrackCommand.isEnabled = true
+        commands.previousTrackCommand.isEnabled = false
         commands.previousTrackCommand.addTarget { [weak self] _ in
-            self?.emitNativeMediaCommand("previous")
-            return .success
+            return self?.emitNativeMediaCommand("previous") == true ? .success : .commandFailed
         }
+
+        commands.skipForwardCommand.preferredIntervals = [15]
         commands.skipForwardCommand.isEnabled = false
+        commands.skipForwardCommand.addTarget { [weak self] event in
+            guard let event = event as? MPSkipIntervalCommandEvent else { return .commandFailed }
+            return self?.emitNativeMediaCommand("skip-forward", extra: ["interval": event.interval]) == true ? .success : .commandFailed
+        }
+        commands.skipBackwardCommand.preferredIntervals = [15]
         commands.skipBackwardCommand.isEnabled = false
+        commands.skipBackwardCommand.addTarget { [weak self] event in
+            guard let event = event as? MPSkipIntervalCommandEvent else { return .commandFailed }
+            return self?.emitNativeMediaCommand("skip-backward", extra: ["interval": event.interval]) == true ? .success : .commandFailed
+        }
         commands.changePlaybackPositionCommand.isEnabled = false
+        commands.changePlaybackPositionCommand.addTarget { [weak self] event in
+            guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
+            return self?.emitNativeMediaCommand("seek", extra: ["position": max(0, event.positionTime)]) == true ? .success : .commandFailed
+        }
     }
 
-    private func emitNativeMediaCommand(_ command: String) {
-        guard let bridge = window?.rootViewController as? CAPBridgeViewController,
-              let webView = bridge.webView,
-              let data = try? JSONSerialization.data(withJSONObject: ["command": command]),
-              let json = String(data: data, encoding: .utf8) else { return }
-        DispatchQueue.main.async {
-            webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('bvs:native-media-command',{detail:\(json)}));")
+    @discardableResult
+    private func emitNativeMediaCommand(_ command: String, extra: [String: Any] = [:]) -> Bool {
+        var payload = extra
+        payload["command"] = command
+        return emitNativeMediaPayload(payload)
+    }
+
+    @discardableResult
+    private func emitNativeMediaPayload(_ payload: [String: Any]) -> Bool {
+        guard JSONSerialization.isValidJSONObject(payload),
+              let data = try? JSONSerialization.data(withJSONObject: payload),
+              let json = String(data: data, encoding: .utf8),
+              let bridge = window?.rootViewController as? CAPBridgeViewController,
+              let webView = bridge.webView else {
+            pendingNativeMediaPayloads.append(payload)
+            return false
+        }
+
+        let script = "window.__bvsReceiveNativeMediaCommand ? window.__bvsReceiveNativeMediaCommand(\(json)) : (window.__bvsNativeMediaQueue = (window.__bvsNativeMediaQueue || []).concat([\(json)]));"
+        DispatchQueue.main.async { [weak self, weak webView] in
+            guard let self, let webView else { return }
+            webView.evaluateJavaScript(script) { _, error in
+                if error != nil {
+                    self.pendingNativeMediaPayloads.append(payload)
+                }
+            }
+        }
+        return true
+    }
+
+    private func flushPendingNativeMediaCommands() {
+        guard !pendingNativeMediaPayloads.isEmpty else { return }
+        let pending = pendingNativeMediaPayloads
+        pendingNativeMediaPayloads.removeAll()
+        for payload in pending {
+            if !emitNativeMediaPayload(payload) {
+                break
+            }
         }
     }
 
