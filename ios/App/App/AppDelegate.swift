@@ -322,25 +322,30 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
 
     @discardableResult
     private func emitNativeMediaPayload(_ payload: [String: Any]) -> Bool {
-        guard JSONSerialization.isValidJSONObject(payload),
-              let data = try? JSONSerialization.data(withJSONObject: payload),
-              let json = String(data: data, encoding: .utf8),
-              let bridge = window?.rootViewController as? CAPBridgeViewController,
-              let webView = bridge.webView else {
+        guard JSONSerialization.isValidJSONObject(payload) else { return false }
+        DispatchQueue.main.async { [weak self] in
+            self?.deliverNativeMediaPayload(payload)
+        }
+        return true
+    }
+
+    private func deliverNativeMediaPayload(_ payload: [String: Any]) {
+        guard
+            let data = try? JSONSerialization.data(withJSONObject: payload),
+            let json = String(data: data, encoding: .utf8),
+            let bridge = window?.rootViewController as? CAPBridgeViewController,
+            let webView = bridge.webView
+        else {
             pendingNativeMediaPayloads.append(payload)
-            return false
+            return
         }
 
         let script = "window.__bvsReceiveNativeMediaCommand ? window.__bvsReceiveNativeMediaCommand(\(json)) : (window.__bvsNativeMediaQueue = (window.__bvsNativeMediaQueue || []).concat([\(json)]));"
-        DispatchQueue.main.async { [weak self, weak webView] in
-            guard let self, let webView else { return }
-            webView.evaluateJavaScript(script) { _, error in
-                if error != nil {
-                    self.pendingNativeMediaPayloads.append(payload)
-                }
+        webView.evaluateJavaScript(script) { [weak self] _, error in
+            if error != nil {
+                self?.pendingNativeMediaPayloads.append(payload)
             }
         }
-        return true
     }
 
     private func flushPendingNativeMediaCommands() {
@@ -348,9 +353,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         let pending = pendingNativeMediaPayloads
         pendingNativeMediaPayloads.removeAll()
         for payload in pending {
-            if !emitNativeMediaPayload(payload) {
-                break
-            }
+            deliverNativeMediaPayload(payload)
         }
     }
 
