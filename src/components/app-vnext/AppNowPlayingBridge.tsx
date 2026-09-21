@@ -51,7 +51,8 @@ export default function AppNowPlayingBridge() {
   const commandState = useRef({
     isPlaying: player.isPlaying,
     elapsed: player.elapsed,
-    toggle: player.toggle,
+    play: player.play,
+    pause: player.pause,
     next: player.next,
     previous: player.previous,
     seekTo: player.seekTo,
@@ -69,12 +70,13 @@ export default function AppNowPlayingBridge() {
     commandState.current = {
       isPlaying: player.isPlaying,
       elapsed: player.elapsed,
-      toggle: player.toggle,
+      play: player.play,
+      pause: player.pause,
       next: player.next,
       previous: player.previous,
       seekTo: player.seekTo,
     };
-  }, [player.elapsed, player.isPlaying, player.next, player.previous, player.seekTo, player.toggle]);
+  }, [player.elapsed, player.isPlaying, player.next, player.pause, player.play, player.previous, player.seekTo]);
 
   useEffect(() => {
     if (!("mediaSession" in navigator) || !current || typeof MediaMetadata === "undefined") return;
@@ -144,8 +146,8 @@ export default function AppNowPlayingBridge() {
     const execute = (payload?: NativeMediaCommandPayload) => {
       const command = payload?.command;
       const state = commandState.current;
-      if (command === "play" && !state.isPlaying) void state.toggle();
-      else if (command === "pause" && state.isPlaying) void state.toggle();
+      if (command === "play") void state.play();
+      else if (command === "pause") state.pause();
       else if (command === "next") state.next();
       else if (command === "previous") state.previous();
       else if (command === "seek" && typeof payload?.position === "number") state.seekTo(payload.position);
