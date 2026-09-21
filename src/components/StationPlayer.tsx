@@ -868,7 +868,14 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const seek = useCallback((ratio: number) => {
     const el = audio.current;
     if (!el || !el.duration || !Number.isFinite(el.duration)) return;
-    seekTo(Math.min(1, Math.max(0, ratio)) * el.duration);
+    const guestPreview =
+      nowRef.current?.source === "preview" &&
+      isBeatTrack(nowRef.current.track) &&
+      !signedInRef.current &&
+      !editorialHoldRef.current &&
+      !isEditorialPlay(nowRef.current.track);
+    const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
+    seekTo(Math.min(1, Math.max(0, ratio)) * max);
   }, [seekTo]);
 
   // Keep browser / web-app lock-screen controls attached to the real BVS queue.
