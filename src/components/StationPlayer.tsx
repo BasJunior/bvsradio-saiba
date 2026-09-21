@@ -66,6 +66,8 @@ type PlayerContextValue = {
   nowPlayingOpen: boolean;
   openNowPlaying: () => void;
   closeNowPlaying: () => void;
+  play: () => Promise<void>;
+  pause: () => void;
   toggle: () => void;
   next: () => void;
   previous: () => void;
@@ -796,35 +798,52 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     advance(1, { autoSkip: true });
   }, [advance, current, flushListening, tracks.length]);
 
-  const toggle = useCallback(async () => {
-    if (!audio.current || !current) return setError("No track is loaded. Open Listen or pick something from the catalogue.");
+  const play = useCallback(async () => {
+    const el = audio.current;
+    if (!el || !current) {
+      setError("No track is loaded. Open Listen or pick something from the catalogue.");
+      return;
+    }
     try {
-      if (isPlaying) {
-        audio.current.pause();
-        flushListening();
-      } else {
-        editorialHoldRef.current = false;
-        window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
-        await audio.current.play();
-        failStreak.current = 0;
-        pushHistory(current);
-        recordListening({
-          id: trackLibraryId(current),
-          kind: "track",
-          title: current.title,
-          subtitle: current.artist,
-          href: "/radio",
-        });
-      }
-      setPlaying(!isPlaying);
+      editorialHoldRef.current = false;
+      window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
+      await el.play();
+      failStreak.current = 0;
+      setPlaying(true);
       setError(null);
       setNotice(null);
+      pushHistory(current);
+      recordListening({
+        id: trackLibraryId(current),
+        kind: "track",
+        title: current.title,
+        subtitle: current.artist,
+        href: "/radio",
+      });
     } catch {
       setPlaying(false);
       trackEvent("playback_error", { track_id: trackLibraryId(current), stage: "start" });
       setError("Playback could not start. Please try again.");
     }
-  }, [current, flushListening, isPlaying, pushHistory]);
+  }, [current, pushHistory]);
+
+  const pause = useCallback(() => {
+    const el = audio.current;
+    if (!el) return;
+    el.pause();
+    flushListening();
+    setPlaying(false);
+  }, [flushListening]);
+
+  const toggle = useCallback(async () => {
+    const el = audio.current;
+    if (!el || !current) {
+      setError("No track is loaded. Open Listen or pick something from the catalogue.");
+      return;
+    }
+    if (el.paused || el.ended) await play();
+    else pause();
+  }, [current, pause, play]);
 
   const seekTo = useCallback((seconds: number) => {
     const el = audio.current;
@@ -860,10 +879,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     };
 
     setHandler("play", () => {
-      if (!isPlaying) void toggle();
+      void play();
     });
     setHandler("pause", () => {
-      if (isPlaying) void toggle();
+      pause();
     });
     setHandler("previoustrack", () => advance(-1));
     setHandler("nexttrack", () => advance(1));
@@ -890,7 +909,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setHandler("seekbackward", null);
       setHandler("seekforward", null);
     };
-  }, [advance, isPlaying, seekTo, toggle]);
+  }, [advance, pause, play, seekTo]);
 
   useEffect(() => {
     if (!("mediaSession" in navigator) || !current || typeof MediaMetadata === "undefined") return;
@@ -1184,6 +1203,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       nowPlayingOpen,
       openNowPlaying,
       closeNowPlaying,
+      play,
+      pause,
       toggle,
       next: () => advance(1),
       previous: () => advance(-1),
@@ -1227,6 +1248,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       nowPlayingOpen,
       openNowPlaying,
       closeNowPlaying,
+      play,
+      pause,
       toggle,
       advance,
       seek,
