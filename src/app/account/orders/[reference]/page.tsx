@@ -46,21 +46,24 @@ function statusClass(status: string) {
 export default function OrderReceiptPage() {
   const params = useParams<{ reference: string }>()
   const configured = isSupabaseConfigured()
+  const [token, setToken] = useState('')
   const [order, setOrder] = useState<Receipt | null>(null)
   const [error, setError] = useState(configured ? '' : 'Account service unavailable.')
   const [loading, setLoading] = useState(configured)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   useEffect(() => {
     if (!configured) return
     createClient().auth.getSession().then(async ({ data }) => {
-      const token = data.session?.access_token
-      if (!token) {
+      const accessToken = data.session?.access_token
+      if (!accessToken) {
         setError('Sign in to view this receipt.')
         setLoading(false)
         return
       }
+      setToken(accessToken)
       const response = await fetch(`/api/account/orders/${encodeURIComponent(params.reference)}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
         cache: 'no-store',
       })
       const payload = await response.json()
@@ -69,6 +72,35 @@ export default function OrderReceiptPage() {
       setLoading(false)
     })
   }, [configured, params.reference])
+
+  async function downloadReceiptPdf() {
+    if (!token || !params.reference) return
+    setDownloadingPdf(true)
+    setError('')
+    try {
+      const response = await fetch(`/api/account/orders/${encodeURIComponent(params.reference)}/receipt`, {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: 'no-store',
+      })
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}))
+        throw new Error(payload.error || 'Could not download receipt PDF.')
+      }
+      const blob = await response.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = objectUrl
+      anchor.download = `BVS-Receipt-${params.reference}.pdf`
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(objectUrl)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Could not download receipt PDF.')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   if (loading) {
     return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Loading receipt…</main>
@@ -216,16 +248,27 @@ export default function OrderReceiptPage() {
           )}
         </section>
 
-        <div className="border-t border-white/10 px-6 py-5 sm:px-9 print:hidden">
+        <div className="border-t border-white/10 px-6 py-5 sm:px-9 print:hidden flex flex-wrap gap-3">
+          {paid ? (
+            <button
+              type="button"
+              onClick={() => void downloadReceiptPdf()}
+              disabled={downloadingPdf || !token}
+              className="rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black disabled:opacity-50"
+            >
+              {downloadingPdf ? 'Preparing PDF…' : 'Download receipt PDF'}
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => window.print()}
             className="rounded-full border border-white/20 px-5 py-2 text-sm hover:bg-white/5"
           >
-            Print / save PDF
+            Print page
           </button>
         </div>
       </section>
+      {error ? <p className="mt-5 rounded-2xl border border-red-400/25 bg-red-500/10 p-4 text-sm text-red-100">{error}</p> : null}
     </main>
   )
 }

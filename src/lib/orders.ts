@@ -332,21 +332,43 @@ export async function notifyCustomerOrderEmail(
       "",
       deliveryNote,
       "",
+      isPaid ? "A PDF receipt is attached to this email." : null,
       `Order page: ${orderUrl}`,
       "Questions: contact@bvsradio.com",
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     const bodyHtml = `
       <p style="color:#cfcfcf;line-height:1.5;margin:0 0 14px">${
         isPaid
-          ? "Thanks — <strong>payment is confirmed</strong>. Here is your receipt."
+          ? "Thanks — <strong>payment is confirmed</strong>. Your receipt PDF is attached, and the same record is on your order page."
           : "Thanks — we received your order. Complete payment if you have not already."
       }</p>
       <p style="margin:0 0 8px;color:#fafafa"><strong>Reference:</strong> ${escapeHtml(order.reference)}</p>
       <p style="margin:0 0 8px;color:#cfcfcf"><strong>Total:</strong> $${Number(order.total).toFixed(2)} ${escapeHtml(String(order.currency || "USD"))} · ${escapeHtml(String(order.paymentMethod))} · ${escapeHtml(String(order.status))}</p>
       <ul style="padding-left:18px;margin:12px 0 18px">${itemHtml}</ul>
       <p style="color:#cfcfcf;line-height:1.5;margin:0 0 18px">${escapeHtml(deliveryNote)}</p>
-      <p style="margin:0"><a href="${orderUrl}" style="display:inline-block;background:#f5c518;color:#000;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">View order</a></p>`;
+      <p style="margin:0"><a href="${orderUrl}" style="display:inline-block;background:#f5c518;color:#000;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:999px">View order / download PDF</a></p>`;
+
+    const attachments = [];
+    if (isPaid) {
+      try {
+        const {
+          buildOrderReceiptPdf,
+          receiptInputFromStoredOrder,
+          receiptPdfFilename,
+        } = await import("@/lib/order-receipt-pdf");
+        const pdfBytes = await buildOrderReceiptPdf(receiptInputFromStoredOrder(order));
+        attachments.push({
+          filename: receiptPdfFilename(order.reference),
+          content: pdfBytes,
+          contentType: "application/pdf",
+        });
+      } catch (pdfErr) {
+        console.error("notifyCustomerOrderEmail pdf", order.reference, pdfErr);
+      }
+    }
 
     await sendBvsEmail({
       to,
@@ -356,6 +378,7 @@ export async function notifyCustomerOrderEmail(
         title: isPaid ? "Payment confirmed" : "Order received",
         bodyHtml,
       }),
+      attachments,
     });
   } catch (err) {
     console.error("notifyCustomerOrderEmail", order.reference, err);
