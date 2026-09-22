@@ -78,6 +78,33 @@ export default function AppNowPlayingBridge() {
     };
   }, [player.elapsed, player.isPlaying, player.next, player.pause, player.play, player.previous, player.seekTo]);
 
+  // Older installed iOS binaries still rely on Web Media Session for remote
+  // controls. Keep those controls music-first: previous / play-pause / next.
+  // Absolute timeline scrubbing remains available, but podcast-style interval
+  // skip commands stay disabled so iOS does not replace track navigation.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !("mediaSession" in navigator)) return;
+
+    const applyMusicControls = () => {
+      try {
+        navigator.mediaSession.setActionHandler("previoustrack", () => commandState.current.previous());
+        navigator.mediaSession.setActionHandler("nexttrack", () => commandState.current.next());
+        navigator.mediaSession.setActionHandler("seekto", (details) => {
+          if (typeof details.seekTime === "number") commandState.current.seekTo(details.seekTime);
+        });
+        navigator.mediaSession.setActionHandler("seekbackward", null);
+        navigator.mediaSession.setActionHandler("seekforward", null);
+      } catch {
+        // iOS/WKWebView versions expose different Media Session subsets.
+      }
+    };
+
+    // StationPlayer owns the generic browser fallback. Apply the contained-app
+    // policy one task later so this wins on old binaries without a native bridge.
+    const timeout = window.setTimeout(applyMusicControls, 0);
+    return () => window.clearTimeout(timeout);
+  }, [current?.id, current?.src]);
+
   useEffect(() => {
     if (!("mediaSession" in navigator) || !current || typeof MediaMetadata === "undefined") return;
     try {
