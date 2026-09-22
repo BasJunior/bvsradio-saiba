@@ -195,8 +195,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
                 commands.previousTrackCommand.isEnabled = canPrevious
             }
             if let canSeek = boolean(payload["canSeek"]) {
-                commands.skipForwardCommand.isEnabled = canSeek
-                commands.skipBackwardCommand.isEnabled = canSeek
+                // BVS is a music player: keep transport controls as previous/next track.
+                // Seeking remains available through the scrubber without replacing those controls.
+                commands.skipForwardCommand.isEnabled = false
+                commands.skipBackwardCommand.isEnabled = false
                 commands.changePlaybackPositionCommand.isEnabled = canSeek
             }
         }
@@ -294,6 +296,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             return self?.emitNativeMediaCommand("previous") == true ? .success : .commandFailed
         }
 
+        // Keep interval skip commands disabled for music UX. The progress scrubber
+        // uses changePlaybackPositionCommand instead and does not replace track controls.
         commands.skipForwardCommand.preferredIntervals = [15]
         commands.skipForwardCommand.isEnabled = false
         commands.skipForwardCommand.addTarget { [weak self] event in
