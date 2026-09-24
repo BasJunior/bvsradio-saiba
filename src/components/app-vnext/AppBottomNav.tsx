@@ -43,30 +43,32 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
     { href: `${base}/feed`, label: "Feed", icon: "feed", active: pathname.startsWith(`${base}/feed`) },
   ];
 
+  const activeIndex = items.findIndex((item) => item.active);
+
   return (
     <nav
       ref={measureBottomNav}
       data-bvs-bottom-nav
       data-bvs-app-nav
       data-bvs-role-tab={isCreator ? "studio" : "beats"}
-      className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.06] bg-[#08080a]/96 pt-1 shadow-[0_-18px_50px_rgba(0,0,0,.32)] backdrop-blur-2xl"
+      className="bvs-app-bottom-nav bvs-mobile-nav fixed inset-x-0 bottom-0 z-[49]"
       aria-label="Primary navigation"
     >
-      <div className="bvs-app-bottom-nav-inner mx-auto grid h-[4.45rem] max-w-xl grid-cols-5 px-1 sm:px-3">
+      <div className="bvs-glass-subtle bvs-nav-bar">
+        {activeIndex >= 0 ? (
+          <span className="bvs-glass-focus bvs-nav-lens" aria-hidden="true" style={{ transform: `translateX(${activeIndex * 100}%)` }} />
+        ) : null}
         {items.map((item) => (
           <Link
             key={item.href}
             href={item.href}
             aria-current={item.active ? "page" : undefined}
-            className={`relative flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all sm:text-[11px] ${item.active ? "text-white" : "text-white/46 hover:text-white/82"}`}
+            className="bvs-nav-item"
           >
-            <span
-              className={`grid h-8 w-11 place-items-center rounded-full leading-none transition-all ${item.active ? "bg-brand/14 text-brand shadow-[0_0_22px_rgba(227,189,88,.12)]" : ""}`}
-            >
+            <span className="grid h-7 w-10 place-items-center leading-none">
               <NavIcon name={item.icon} />
             </span>
             <span className="truncate">{item.label}</span>
-            {item.active ? <span className="absolute bottom-0 h-0.5 w-5 rounded-full bg-brand" aria-hidden="true" /> : null}
           </Link>
         ))}
       </div>

@@ -202,7 +202,7 @@ export default function Navbar() {
       }
     }
     return (
-      <nav ref={appHeaderRef} className="bvs-app-header fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-bg-primary/95 backdrop-blur-xl">
+      <nav ref={appHeaderRef} className="bvs-app-header bvs-glass-subtle fixed inset-x-0 top-0 z-50 border-b">
         <div className="bvs-app-header-inner mx-auto flex h-16 max-w-5xl items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-1">
             {showBack ? (
@@ -237,7 +237,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
+    <nav className="bvs-glass-subtle fixed top-0 left-0 right-0 z-50 border-b">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center" onClick={() => setIsMenuOpen(false)} aria-label="BVS Radio home">
           <Image
@@ -377,7 +377,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-white/10 bg-bg-primary/95 pb-[calc(7rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden">
+        <div className="bvs-glass-surface max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t pb-[calc(7rem+env(safe-area-inset-bottom))] md:hidden">
           <div className="px-4 py-4 space-y-1">
             {navLinks.map((link) => (
               <Link

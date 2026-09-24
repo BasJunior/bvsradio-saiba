@@ -151,8 +151,10 @@ export default function AppExperienceStyle() {
           border-right: 0 !important;
           border-bottom: 0 !important;
           border-radius: 1.15rem 1.15rem 0 0 !important;
-          background: rgba(24,24,26,.96);
-          box-shadow: 0 16px 44px rgba(0,0,0,.48);
+          background: linear-gradient(180deg, rgb(255 255 255 / 12%), transparent 46%), rgb(16 16 20 / 72%);
+          -webkit-backdrop-filter: blur(24px) saturate(160%);
+          backdrop-filter: blur(24px) saturate(160%);
+          box-shadow: inset 0 1px 0 rgb(255 255 255 / 28%), 0 16px 44px rgba(0,0,0,.48);
         }
 
         html[data-bvs-app-shell="true"] .bvs-persistent-player-inner {

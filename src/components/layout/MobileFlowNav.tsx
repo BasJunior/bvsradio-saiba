@@ -55,39 +55,48 @@ export default function MobileFlowNav() {
   const feedHref = appChrome && surface ? `/app/${surface}/feed` : "/feed";
   const feedActive = pathname === "/feed" || Boolean(surface && pathname.startsWith(`/app/${surface}/feed`));
 
+  const items = destinations.flatMap((item, index) => {
+    const primary = {
+      key: item.id,
+      href: item.href,
+      label: item.label,
+      active: matchPrimaryDestination(item.id, pathname, search),
+      icon: <Icon id={item.id} active={matchPrimaryDestination(item.id, pathname, search)} />,
+      replace: true,
+    };
+    if (index !== 0) return [primary];
+    return [
+      primary,
+      {
+        key: "feed",
+        href: feedHref,
+        label: "Feed",
+        active: feedActive,
+        icon: <FeedIcon />,
+        replace: false,
+      },
+    ];
+  });
+  const activeIndex = items.findIndex((item) => item.active);
+
   return (
-    <nav ref={navRef} className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 backdrop-blur-2xl md:hidden" aria-label="Primary">
-      <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-5">
-        {destinations.flatMap((item, index) => {
-          const active = matchPrimaryDestination(item.id, pathname, search);
-          const primary = (
-            <Link
-              key={item.id}
-              href={item.href}
-              replace
-              aria-current={active ? "page" : undefined}
-              className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${active ? "text-brand" : "text-text-secondary hover:text-white"}`}
-            >
-              <span className={`grid h-7 w-10 place-items-center rounded-full ${active ? "bg-brand/15" : ""}`}>
-                <Icon id={item.id} active={active} />
-              </span>
-              <span>{item.label}</span>
-            </Link>
-          );
-          if (index !== 0) return [primary];
-          return [
-            primary,
-            <Link
-              key="feed"
-              href={feedHref}
-              aria-current={feedActive ? "page" : undefined}
-              className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${feedActive ? "text-brand" : "text-text-secondary hover:text-white"}`}
-            >
-              <span className={`grid h-7 w-10 place-items-center rounded-full ${feedActive ? "bg-brand/15" : ""}`}><FeedIcon /></span>
-              <span>Feed</span>
-            </Link>,
-          ];
-        })}
+    <nav ref={navRef} className="bvs-app-bottom-nav bvs-mobile-nav fixed inset-x-0 bottom-0 z-[49] md:hidden" aria-label="Primary">
+      <div className="bvs-glass-subtle bvs-nav-bar">
+        {activeIndex >= 0 ? (
+          <span className="bvs-glass-focus bvs-nav-lens" aria-hidden="true" style={{ transform: `translateX(${activeIndex * 100}%)` }} />
+        ) : null}
+        {items.map((item) => (
+          <Link
+            key={item.key}
+            href={item.href}
+            replace={item.replace}
+            aria-current={item.active ? "page" : undefined}
+            className="bvs-nav-item"
+          >
+            <span className="grid h-7 w-10 place-items-center">{item.icon}</span>
+            <span className="truncate">{item.label}</span>
+          </Link>
+        ))}
       </div>
     </nav>
   );
