@@ -7,7 +7,7 @@ export default function AppExperienceStyle() {
         --bvs-app-line: rgba(255, 255, 255, .085);
         --bvs-app-panel: rgba(18, 18, 20, .72);
         --bvs-app-panel-strong: rgba(15, 15, 17, .9);
-        --bvs-app-bottom-stack-height: calc(var(--bvs-app-bottom-nav-height) + var(--bvs-app-player-height) + .55rem);
+        --bvs-app-bottom-stack-height: calc(var(--bvs-nav-height, var(--bvs-app-bottom-nav-height)) + var(--bvs-app-player-height) + .7rem);
         overscroll-behavior-x: none;
         overscroll-behavior-y: none;
       }
@@ -146,7 +146,7 @@ export default function AppExperienceStyle() {
         html[data-bvs-app-shell="true"] .bvs-persistent-player {
           left: max(.7rem, env(safe-area-inset-left)) !important;
           right: max(.7rem, env(safe-area-inset-right)) !important;
-          bottom: calc(var(--bvs-app-bottom-nav-height) + .55rem) !important;
+          bottom: calc(var(--bvs-nav-height, var(--bvs-app-bottom-nav-height)) + .7rem) !important;
           width: auto !important;
           max-width: 34rem !important;
           margin-inline: auto !important;
