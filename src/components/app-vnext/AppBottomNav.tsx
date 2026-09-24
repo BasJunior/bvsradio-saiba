@@ -54,7 +54,7 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
       className="bvs-app-bottom-nav bvs-mobile-nav fixed inset-x-0 bottom-0 z-[49]"
       aria-label="Primary navigation"
     >
-      <div className="bvs-glass-subtle bvs-nav-bar">
+      <div className="bvs-app-bottom-nav-inner bvs-glass-subtle bvs-nav-bar grid-cols-5">
         {activeIndex >= 0 ? (
           <span className="bvs-glass-focus bvs-nav-lens" aria-hidden="true" style={{ transform: `translateX(${activeIndex * 100}%)` }} />
         ) : null}

@@ -81,15 +81,25 @@ export default function MobileFlowNav() {
 
   return (
     <nav ref={navRef} className="bvs-app-bottom-nav bvs-mobile-nav fixed inset-x-0 bottom-0 z-[49] md:hidden" aria-label="Primary">
-      <div className="bvs-glass-subtle bvs-nav-bar">
+      <div className="bvs-app-bottom-nav-inner bvs-glass-subtle bvs-nav-bar grid grid-cols-5">
         {activeIndex >= 0 ? (
           <span className="bvs-glass-focus bvs-nav-lens" aria-hidden="true" style={{ transform: `translateX(${activeIndex * 100}%)` }} />
         ) : null}
-        {items.map((item) => (
+        {items.map((item) => item.key === "feed" ? (
+          <Link
+            key="feed"
+            href={feedHref}
+            aria-current={item.active ? "page" : undefined}
+            className="bvs-nav-item"
+          >
+            <span className="grid h-7 w-10 place-items-center">{item.icon}</span>
+            <span className="truncate">{item.label}</span>
+          </Link>
+        ) : (
           <Link
             key={item.key}
             href={item.href}
-            replace={item.replace}
+            replace
             aria-current={item.active ? "page" : undefined}
             className="bvs-nav-item"
           >
