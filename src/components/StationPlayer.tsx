@@ -920,16 +920,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setHandler("seekto", (details) => {
       if (typeof details.seekTime === "number") seekTo(details.seekTime);
     });
-    setHandler("seekbackward", (details) => {
-      const el = audio.current;
-      if (!el) return;
-      seekTo((el.currentTime || 0) - (details.seekOffset || 15));
-    });
-    setHandler("seekforward", (details) => {
-      const el = audio.current;
-      if (!el) return;
-      seekTo((el.currentTime || 0) + (details.seekOffset || 15));
-    });
+
+    // BVS is a music player on every surface. Interval skip handlers make iOS
+    // and Safari render podcast-style ±10/15s buttons instead of track
+    // navigation, so keep absolute timeline scrubbing but reserve the primary
+    // transport controls for previous / play-pause / next.
+    setHandler("seekbackward", null);
+    setHandler("seekforward", null);
 
     return () => {
       setHandler("play", null);
