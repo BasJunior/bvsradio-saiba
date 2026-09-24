@@ -151,14 +151,12 @@ export default function AppExperienceStyle() {
           max-width: 34rem !important;
           margin-inline: auto !important;
           overflow: hidden;
-          border: 1px solid rgba(255,255,255,.12) !important;
+          border: 1px solid rgba(255,255,255,.085) !important;
           border-radius: 1.2rem !important;
-          background:
-            linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 42%),
-            rgb(16 16 20 / 64%);
-          -webkit-backdrop-filter: blur(20px) saturate(145%);
-          backdrop-filter: blur(20px) saturate(145%);
-          box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%), 0 10px 28px rgba(0,0,0,.34);
+          background: rgb(14 14 17 / 82%);
+          -webkit-backdrop-filter: blur(18px) saturate(125%);
+          backdrop-filter: blur(18px) saturate(125%);
+          box-shadow: inset 0 1px 0 rgb(255 255 255 / 9%), 0 8px 22px rgba(0,0,0,.3);
         }
 
         html[data-bvs-app-shell="true"] .bvs-persistent-player-inner {
