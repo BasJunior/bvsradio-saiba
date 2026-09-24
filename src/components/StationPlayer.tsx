@@ -1668,7 +1668,7 @@ export function PersistentPlayer() {
           >
             <CoverArt src={art} sizeClass="h-11 w-11 sm:h-12 sm:w-12" rounded="rounded-md sm:rounded-lg" />
             <span className="min-w-0 flex-1 leading-tight">
-              <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-brand sm:text-[10px] sm:tracking-[0.18em]">
+              <span className="hidden truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-brand sm:block sm:text-[10px] sm:tracking-[0.18em]">
                 {player.playingFrom || player.current?.project || "Continuous rotation"}
               </span>
               <span className="mt-0.5 block truncate text-sm font-medium sm:text-base">{player.current?.title || "BVS Radio rotation"}</span>
@@ -1690,18 +1690,18 @@ export function PersistentPlayer() {
                 event.stopPropagation();
                 player.openNowPlaying();
               }}
-              className="shrink-0 rounded-full border border-brand/40 bg-brand/15 px-3 py-1.5 text-[11px] font-semibold text-brand hover:bg-brand/25 sm:text-xs"
+              className="hidden shrink-0 rounded-full border border-brand/40 bg-brand/15 px-3 py-1.5 text-[11px] font-semibold text-brand hover:bg-brand/25 sm:block sm:text-xs"
               aria-label={`Watch music video for ${player.current.title}`}
             >
               Watch
             </button>
           ) : null}
-          <BuyTrackButton track={player.current} variant="compact" />
+          <BuyTrackButton track={player.current} variant="compact" className="hidden sm:inline-flex" />
           <button
             type="button"
             onClick={player.toggleLike}
             disabled={!player.current}
-            className={`rounded-full p-2 text-sm disabled:opacity-40 ${player.liked ? "text-brand" : "text-text-secondary hover:text-white"}`}
+            className={`hidden rounded-full p-2 text-sm disabled:opacity-40 sm:block ${player.liked ? "text-brand" : "text-text-secondary hover:text-white"}`}
             aria-pressed={player.liked}
             aria-label={player.liked ? "Remove from library" : "Save to library"}
           >
@@ -1724,7 +1724,7 @@ export function PersistentPlayer() {
             type="button"
             onClick={player.toggle}
             disabled={!player.current}
-            className="grid h-12 w-12 place-items-center rounded-full bg-brand font-bold text-black disabled:opacity-40"
+            className="grid h-11 w-11 place-items-center rounded-full bg-brand text-sm font-bold text-black disabled:opacity-40 sm:h-12 sm:w-12 sm:text-base"
             aria-label={player.isPlaying ? "Pause" : "Play"}
           >
             {player.isPlaying ? "Ⅱ" : "▶"}
