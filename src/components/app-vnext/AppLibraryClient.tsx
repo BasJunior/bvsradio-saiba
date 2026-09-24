@@ -179,8 +179,10 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
   };
 
   const recentLiked = liked.slice(0, 4);
-  const recentHistory = recent.slice(0, 3);
+  const recentHistory = recent.slice(0, 6);
   const recentPlaylists = playlists.slice(0, 4);
+  const continueItem = recent[0];
+  const continuePlayable = Boolean(continueItem?.kind === "track" && continueItem?.id && clearedById.has(continueItem.id));
 
   return (
     <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
@@ -188,7 +190,7 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
         <div>
           <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.22em]">Your BVS</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-6xl">Library</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45 sm:text-base">The things you keep should be the easiest things to reach.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45 sm:text-base">Your music, playlists, downloads and creators — ready to play, not buried in menus.</p>
         </div>
         <Link href={`/app/${surface}/explore`} data-library-accent="discover" className="bvs-library-accent-button min-h-11 rounded-full border px-5 py-3 text-sm font-semibold">Discover music →</Link>
       </div>
@@ -218,11 +220,48 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
 
       {active === "all" ? (
         <>
-          <section className="mt-6" aria-labelledby="quick-access-heading">
+          <section className="mt-6 overflow-hidden rounded-[1.7rem] border border-white/[.08] bg-white/[.025]" aria-labelledby="continue-listening-heading">
+            {continueItem ? (
+              <div className="grid grid-cols-[7rem_minmax(0,1fr)] gap-4 p-3 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-5 sm:p-4">
+                <button
+                  type="button"
+                  disabled={!continuePlayable}
+                  onClick={() => continuePlayable && playItem(continueItem, "Recently Played", playableRecent)}
+                  className="relative aspect-square overflow-hidden rounded-[1.25rem] border border-white/[.07] bg-white/[.035] disabled:cursor-default"
+                  aria-label={continuePlayable ? `Continue ${continueItem.title}` : undefined}
+                >
+                  {continueItem.image ? <Image src={continueItem.image} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center text-brand">BVS</span>}
+                  {continuePlayable ? <span className="absolute inset-0 grid place-items-center bg-black/20 text-2xl text-white">▶</span> : null}
+                </button>
+                <div className="flex min-w-0 flex-col justify-center py-1">
+                  <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Continue listening</p>
+                  <h2 id="continue-listening-heading" className="mt-2 truncate text-2xl font-semibold sm:text-3xl">{continueItem.title}</h2>
+                  <p className="mt-1 truncate text-sm text-white/42">{continueItem.subtitle}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {continuePlayable ? (
+                      <button type="button" onClick={() => playItem(continueItem, "Recently Played", playableRecent)} className="min-h-10 rounded-full bg-white px-4 text-xs font-semibold text-black">▶ Play</button>
+                    ) : (
+                      <Link href={nativeHref(surface, continueItem)} className="inline-flex min-h-10 items-center rounded-full bg-white px-4 text-xs font-semibold text-black">Open</Link>
+                    )}
+                    <button type="button" onClick={() => setActive("recent")} className="min-h-10 rounded-full border border-white/[.1] px-4 text-xs font-semibold text-white/68">History</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-5 sm:p-6">
+                <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Continue listening</p>
+                <h2 id="continue-listening-heading" className="mt-2 text-2xl font-semibold">Your Library wakes up as you listen.</h2>
+                <p className="mt-2 text-sm leading-6 text-white/42">Play something from Discover and BVS will keep your next move here.</p>
+                <Link href={`/app/${surface}/explore`} className="mt-4 inline-flex min-h-10 items-center rounded-full bg-white px-4 text-xs font-semibold text-black">Start listening</Link>
+              </div>
+            )}
+          </section>
+
+          <section className="mt-7" aria-labelledby="quick-access-heading">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Quick access</p>
-                <h2 id="quick-access-heading" className="mt-1 text-2xl font-semibold">Everything important, above the fold.</h2>
+                <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Your collection</p>
+                <h2 id="quick-access-heading" className="mt-1 text-2xl font-semibold">Go straight to what you saved.</h2>
               </div>
               {libraryMetaLoading ? <span className="text-xs text-white/30">Updating…</span> : null}
             </div>
@@ -232,28 +271,6 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
               <QuickCard accent="library" icon="▶" label="Playlists" value={signedIn ? `${playlists.length} playlists` : "Sign in to sync"} onClick={() => setActive("playlists")} />
               <QuickCard accent="downloads" icon="↓" label="Downloads" value={`${downloadCount} offline`} onClick={() => setActive("downloads")} />
               <QuickCard accent="library" icon="◷" label="Recently Played" value={recent.length ? `${recent.length} recent` : "Ready when you listen"} onClick={() => setActive("recent")} />
-            </div>
-          </section>
-
-          <section className="mt-7 rounded-[1.6rem] border border-white/[.07] bg-white/[.022] p-4 sm:p-5" aria-labelledby="library-now-heading">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Your Library now</p>
-                <h2 id="library-now-heading" className="mt-1 text-xl font-semibold">Pick up without hunting for it.</h2>
-              </div>
-              {playableRecent.length ? <button type="button" onClick={() => playCollection(playableRecent, "Recently Played")} className="min-h-10 shrink-0 rounded-full bg-white px-4 text-xs font-semibold text-black">▶ Continue</button> : null}
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={() => setActive("recent")} className="rounded-[1.2rem] border border-white/[.07] bg-black/10 p-4 text-left transition hover:border-white/15">
-                <span className="text-xs font-semibold text-brand">Continue listening</span>
-                <span className="mt-2 block truncate font-semibold">{recent[0]?.title || "Your next listen will appear here"}</span>
-                <span className="mt-1 block truncate text-sm text-white/38">{recent[0]?.subtitle || "Recently played stays within reach."}</span>
-              </button>
-              <button type="button" onClick={() => setActive("downloads")} className="rounded-[1.2rem] border border-white/[.07] bg-black/10 p-4 text-left transition hover:border-white/15">
-                <span className="text-xs font-semibold text-brand">Offline ready</span>
-                <span className="mt-2 block font-semibold">{downloadCount ? `${downloadCount} download${downloadCount === 1 ? "" : "s"} on this device` : "No downloads yet"}</span>
-                <span className="mt-1 block text-sm text-white/38">Keep listening where connectivity drops.</span>
-              </button>
             </div>
           </section>
 
@@ -287,16 +304,42 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
             </div>
           </section>
 
-          <section className="mt-8 grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => setActive("following")} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-4 text-left transition hover:border-white/15">
-              <p data-library-accent="discover" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Following</p>
-              <p className="mt-2 text-xl font-semibold">{following.length} creator{following.length === 1 ? "" : "s"}</p>
-              <p className="mt-1 text-sm text-white/38">Keep the people behind the music close.</p>
-            </button>
-            <button type="button" onClick={() => setActive("recent")} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-4 text-left transition hover:border-white/15">
-              <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Recently played</p>
-              <p className="mt-2 text-xl font-semibold">{recentHistory[0]?.title || "Your listening history"}</p>
-              <p className="mt-1 truncate text-sm text-white/38">{recentHistory[0]?.subtitle || "Pick up where you left off."}</p>
+          {recentHistory.length ? (
+            <section className="mt-8" aria-labelledby="recent-shelf-heading">
+              <ShelfHeading eyebrow="Recently played" title="Your last listens, visually." action="See all" onAction={() => setActive("recent")} />
+              <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+                {recentHistory.map((item) => {
+                  const canPlay = item.kind === "track" && clearedById.has(item.id);
+                  return (
+                    <article key={`recent-shelf-${item.id}`} className="w-[9.5rem] shrink-0">
+                      <button
+                        type="button"
+                        disabled={!canPlay}
+                        onClick={() => canPlay ? playItem(item, "Recently Played", playableRecent) : undefined}
+                        className="relative aspect-square w-full overflow-hidden rounded-[1.2rem] border border-white/[.07] bg-white/[.03] disabled:cursor-default"
+                        aria-label={canPlay ? `Play ${item.title}` : undefined}
+                      >
+                        {item.image ? <Image src={item.image} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center text-brand">BVS</span>}
+                        {canPlay ? <span className="absolute bottom-2 right-2 grid h-9 w-9 place-items-center rounded-full bg-black/65 text-xs text-white backdrop-blur">▶</span> : null}
+                      </button>
+                      <Link href={nativeHref(surface, item)} className="mt-2 block min-w-0">
+                        <p className="truncate text-sm font-semibold">{item.title}</p>
+                        <p className="mt-0.5 truncate text-xs text-white/36">{item.subtitle}</p>
+                      </Link>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          ) : null}
+
+          <section className="mt-8">
+            <button type="button" onClick={() => setActive("following")} className="flex w-full items-center justify-between gap-4 rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-4 text-left transition hover:border-white/15">
+              <span className="min-w-0">
+                <span data-library-accent="discover" className="bvs-library-accent-label block text-[10px] font-semibold uppercase tracking-[.16em]">Following</span>
+                <span className="mt-1 block truncate text-lg font-semibold">{following.length} creator{following.length === 1 ? "" : "s"} kept close</span>
+              </span>
+              <span className="shrink-0 text-brand">→</span>
             </button>
           </section>
         </>
