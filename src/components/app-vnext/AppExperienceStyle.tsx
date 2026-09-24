@@ -7,7 +7,6 @@ export default function AppExperienceStyle() {
         --bvs-app-line: rgba(255, 255, 255, .085);
         --bvs-app-panel: rgba(18, 18, 20, .72);
         --bvs-app-panel-strong: rgba(15, 15, 17, .9);
-        --bvs-app-bottom-stack-height: calc(var(--bvs-nav-height, var(--bvs-app-bottom-nav-height)) + var(--bvs-app-player-height) + .7rem);
         overscroll-behavior-x: none;
         overscroll-behavior-y: none;
       }
@@ -128,11 +127,7 @@ export default function AppExperienceStyle() {
         background: rgba(227,189,88,.28);
       }
 
-      /*
-       * Mini-player and tab bar read as one bottom dock: two quiet floating
-       * layers with the same width language instead of a full-width frosted
-       * sheet sitting on top of a pill.
-       */
+      /* Native player is a docked shell layer, never a floating inset card. */
       @media (max-width: 767px) {
         /*
          * iOS Safari/WKWebView auto-zooms focused form controls below 16px and
@@ -144,36 +139,25 @@ export default function AppExperienceStyle() {
         }
 
         html[data-bvs-app-shell="true"] .bvs-persistent-player {
-          left: max(.7rem, env(safe-area-inset-left)) !important;
-          right: max(.7rem, env(safe-area-inset-right)) !important;
-          bottom: calc(var(--bvs-nav-height, var(--bvs-app-bottom-nav-height)) + .7rem) !important;
+          inset-inline: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
           width: auto !important;
-          max-width: 34rem !important;
-          margin-inline: auto !important;
+          max-width: none !important;
+          margin-inline: 0 !important;
           overflow: hidden;
-          border: 1px solid rgba(255,255,255,.12) !important;
-          border-radius: 1.2rem !important;
-          background:
-            linear-gradient(180deg, rgb(255 255 255 / 8%), transparent 42%),
-            rgb(16 16 20 / 64%);
-          -webkit-backdrop-filter: blur(20px) saturate(145%);
-          backdrop-filter: blur(20px) saturate(145%);
-          box-shadow: inset 0 1px 0 rgb(255 255 255 / 18%), 0 10px 28px rgba(0,0,0,.34);
+          border: 1px solid rgba(255,255,255,.1);
+          border-left: 0 !important;
+          border-right: 0 !important;
+          border-bottom: 0 !important;
+          border-radius: 1.15rem 1.15rem 0 0 !important;
+          background: rgba(24,24,26,.96);
+          box-shadow: 0 16px 44px rgba(0,0,0,.48);
         }
 
         html[data-bvs-app-shell="true"] .bvs-persistent-player-inner {
-          height: 4.15rem !important;
-          padding-left: max(.6rem, env(safe-area-inset-left));
-          padding-right: max(.45rem, env(safe-area-inset-right));
-          gap: .35rem !important;
-        }
-
-        html[data-bvs-app-shell="true"] .bvs-persistent-player-inner > button:first-of-type {
-          gap: .55rem !important;
-        }
-
-        html[data-bvs-app-shell="true"] .bvs-persistent-player-inner > :is(a, button):not(:first-child) {
-          flex-shrink: 0;
+          padding-left: max(.65rem, env(safe-area-inset-left));
+          padding-right: max(.55rem, env(safe-area-inset-right));
         }
       }
 

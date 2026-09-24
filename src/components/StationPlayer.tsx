@@ -1429,7 +1429,7 @@ function QueueSheet() {
     : player.upNext;
   if (!player.queueOpen) return null;
   return (
-    <div className="bvs-queue-sheet bvs-glass-surface fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
+    <div className="bvs-queue-sheet fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
@@ -1653,7 +1653,7 @@ export function PersistentPlayer() {
           </div>
         </section>
       )}
-      <section ref={playerRef} className="bvs-persistent-player bvs-glass-surface fixed inset-x-0 bottom-16 z-50 border-t md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
+      <section ref={playerRef} className="bvs-persistent-player fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
         <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
         {(player.error || player.notice) && (
           <p className={`px-4 py-1 text-center text-xs ${player.error ? "bg-red-500/15 text-red-200" : "bg-brand/10 text-brand"}`} role="status">

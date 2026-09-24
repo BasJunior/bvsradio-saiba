@@ -91,8 +91,8 @@ assert(library.includes('{ id: "all", label: "All" }'), "Library must expose All
 assert(library.includes('{ id: "liked", label: "Liked" }'), "Library must expose Liked");
 assert(library.includes('{ id: "playlists", label: "Playlists" }'), "Library must expose Playlists");
 assert(library.includes('{ id: "downloads", label: "Downloads" }'), "Library must expose Downloads");
-assert(library.includes("Continue listening"), "Library must lead with continue listening");
-assert(library.includes("Recently Played"), "Library must keep a recently played shelf");
+assert(library.includes("Quick access"), "Library must keep quick-access hub");
+assert(library.includes("Your Library now"), "Library must keep activity hub");
 assert(!library.includes('label: "Lyrics"'), "Lyrics must not return as a Library tab");
 assert(library.includes("<AppPlaylists"), "Library must keep native playlists");
 assert(library.includes("<AppOfflineDownloads"), "Library must keep native downloads");
