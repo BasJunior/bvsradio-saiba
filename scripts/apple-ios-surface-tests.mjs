@@ -160,8 +160,10 @@ assert(!nowPlayingBridge.includes('}, [player]);'), 'native media listener must 
 
 assert(stationPlayer.includes('seekTo: (seconds: number) => void'), 'station player must expose absolute seeking')
 assert(stationPlayer.includes('setHandler("seekto"'), 'web Media Session must support lock-screen scrubbing')
-assert(stationPlayer.includes('setHandler("seekforward"'), 'web Media Session must support forward seeking')
-assert(stationPlayer.includes('setHandler("seekbackward"'), 'web Media Session must support backward seeking')
+assert(stationPlayer.includes('setHandler("seekforward", null);'), 'web Media Session must keep podcast-style forward skip disabled')
+assert(stationPlayer.includes('setHandler("seekbackward", null);'), 'web Media Session must keep podcast-style backward skip disabled')
+assert(!stationPlayer.includes('setHandler("seekforward", (details)'), 'web Media Session must not register a forward interval-skip handler')
+assert(!stationPlayer.includes('setHandler("seekbackward", (details)'), 'web Media Session must not register a backward interval-skip handler')
 assert(stationPlayer.includes('nativeIosBridge'), 'station player must detect the native iOS remote-command bridge')
 assert(stationPlayer.includes('bvsNowPlaying?: unknown'), 'native bridge detection must be capability based for old-binary fallback')
 assert(stationPlayer.includes('setHandler(action, null)'), 'native iOS must not double-handle lock-screen commands through Web Media Session')
