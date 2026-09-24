@@ -419,7 +419,7 @@ function StudioOverview({
       <div><p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Overview</p><h2 id="studio-overview-heading" className="mt-2 text-2xl font-semibold">What do you want to do?</h2></div>
       <div className="flex flex-wrap gap-2" aria-label="Your creator roles">{roles.map(role => <span key={role} className="rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs text-brand">{role}</span>)}</div>
     </div>
-    <nav className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Studio sections">
+    <nav className="bvs-glass-subtle bvs-studio-tray mt-5 flex gap-2 overflow-x-auto rounded-full border p-2" aria-label="Studio sections">
       {artist && <Link href="#artist-access" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Artist access</Link>}
       {artist && <Link href="#artist-upload" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Upload music</Link>}
       {producer && <Link href="#producer-access" className="shrink-0 rounded-full border border-white/15 px-4 py-2 text-sm hover:border-brand">Producer</Link>}

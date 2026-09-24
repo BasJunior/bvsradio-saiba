@@ -109,7 +109,7 @@ export default function BvsActionSheet({
 
   return (
     <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={`bvs-actions-${object.id}`} className="w-full max-w-lg rounded-t-[2rem] border border-white/10 bg-bg-primary p-5 shadow-2xl sm:rounded-[2rem] sm:p-6">
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby={`bvs-actions-${object.id}`} className="bvs-glass-surface w-full max-w-lg rounded-t-[2rem] border p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-[2rem] sm:p-6">
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">

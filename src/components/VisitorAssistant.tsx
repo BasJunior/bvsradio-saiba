@@ -154,8 +154,8 @@ export default function VisitorAssistant() {
     }
   }
 
-  return <div className="fixed bottom-[calc(9.25rem+env(safe-area-inset-bottom))] right-3 z-[60] sm:right-6 md:bottom-[calc(6.25rem+env(safe-area-inset-bottom))]">
-    {open && <section aria-label="Ask BVS" className="mb-3 flex h-[min(38rem,calc(100dvh-12rem-env(safe-area-inset-bottom)))] min-h-72 w-[calc(100vw-1.5rem)] max-w-[400px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#181818] shadow-2xl md:h-[min(640px,74vh)] md:w-[calc(100vw-3rem)]">
+  return <div className="fixed bottom-[calc(12rem+env(safe-area-inset-bottom))] right-3 z-[60] sm:right-6 md:bottom-[calc(7rem+env(safe-area-inset-bottom))]">
+    {open && <section aria-label="Ask BVS" className="bvs-assistant-panel mb-3 flex h-[min(38rem,calc(100dvh-16rem-env(safe-area-inset-bottom)))] min-h-0 w-[calc(100vw-1.5rem)] max-w-[400px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#181818] shadow-2xl md:h-[min(640px,74vh)] md:w-[calc(100vw-3rem)]">
       <header className="flex items-center justify-between border-b border-white/10 bg-bg-secondary px-5 py-4">
         <div><h2 className="font-semibold text-brand">Ask BVS</h2><p className="text-xs text-text-secondary">Flow discovery · published BVS data</p></div>
         <button onClick={() => setOpen(false)} aria-label="Close Ask BVS" className="grid h-11 w-11 place-items-center rounded-full text-2xl text-text-secondary hover:bg-white/5">×</button>

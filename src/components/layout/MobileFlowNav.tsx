@@ -4,6 +4,17 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
+function NavIcon({ name }: { name: string }) {
+  return (
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {name === "listen" ? <><circle cx="12" cy="12" r="4" /><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8M8.5 2.8a10 10 0 0 1 7 0M8.5 21.2a10 10 0 0 0 7 0" /></> : null}
+      {name === "discover" ? <><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></> : null}
+      {name === "beats" ? <><path d="M4 10v4M8 6v12M12 3v18M16 6v12M20 10v4" /></> : null}
+      {name === "library" ? <><path d="M4 4v16M8 4v16M13 4l6-1 3 16-6 1z" /></> : null}
+    </svg>
+  );
+}
+
 function MobileFlowNavContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -15,13 +26,13 @@ function MobileFlowNavContent() {
     {
       href: "/radio",
       label: "Listen",
-      icon: "◉",
+      icon: "listen",
       active: pathname === "/radio" || pathname.startsWith("/shows/"),
     },
     {
       href: "/search",
       label: "Discover",
-      icon: "⌕",
+      icon: "discover",
       active:
         pathname === "/search" ||
         pathname.startsWith("/album/") ||
@@ -32,13 +43,13 @@ function MobileFlowNavContent() {
     {
       href: "/catalogue?type=beat#beatstore",
       label: "Beats",
-      icon: "◇",
+      icon: "beats",
       active: beatCatalogue || pathname.startsWith("/music/producers"),
     },
     {
       href: "/library",
       label: "Library",
-      icon: "♡",
+      icon: "library",
       active: pathname.startsWith("/library"),
     },
   ];
@@ -47,23 +58,21 @@ function MobileFlowNavContent() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-2xl md:hidden"
+      className="bvs-mobile-nav fixed inset-x-0 z-[49] md:hidden"
       aria-label="Primary"
     >
-      <div className="mx-auto grid h-16 max-w-lg grid-cols-4 px-2">
+      <div className="bvs-glass-subtle bvs-nav-bar">
+        {destinations.some((item) => item.active) ? (
+          <span className="bvs-glass-focus bvs-nav-lens" aria-hidden="true" style={{ transform: `translateX(${destinations.findIndex((item) => item.active) * 100}%)` }} />
+        ) : null}
         {destinations.map((item) => (
           <Link
             key={item.label}
             href={item.href}
             aria-current={item.active ? "page" : undefined}
-            className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${item.active ? "text-brand" : "text-text-secondary hover:text-white"}`}
+            className="bvs-nav-item"
           >
-            <span
-              className={`grid h-7 w-10 place-items-center rounded-full text-xl leading-none ${item.active ? "bg-brand/15" : ""}`}
-              aria-hidden="true"
-            >
-              {item.icon}
-            </span>
+            <NavIcon name={item.icon} />
             <span>{item.label}</span>
           </Link>
         ))}

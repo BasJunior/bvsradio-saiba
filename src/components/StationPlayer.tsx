@@ -1075,7 +1075,7 @@ function QueueSheet() {
     : player.upNext;
   if (!player.queueOpen) return null;
   return (
-    <div className="fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
+    <div className="bvs-glass-surface bvs-glass-queue fixed inset-x-0 z-[60] mx-auto flex max-h-[60svh] max-w-3xl flex-col overflow-hidden rounded-3xl border md:max-h-[72svh]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
@@ -1208,7 +1208,7 @@ export function PersistentPlayer() {
     <>
       <QueueSheet />
       {nowPlayingOpen && (
-        <section className="fixed inset-0 z-[70] overflow-y-auto bg-[#090909] text-white" role="dialog" aria-modal="true" aria-label="Now Playing World">
+        <section className="bvs-media-glass fixed inset-0 z-[70] overflow-y-auto bg-[#090909] text-white" role="dialog" aria-modal="true" aria-label="Now Playing World">
           {art ? (
             // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
             <img src={art} alt="" className="pointer-events-none fixed inset-0 h-full w-full scale-110 object-cover opacity-25 blur-3xl" />
@@ -1216,12 +1216,12 @@ export function PersistentPlayer() {
           <div className="fixed inset-0 bg-gradient-to-b from-black/25 via-[#090909]/80 to-[#090909]" aria-hidden="true" />
           <div className="relative mx-auto flex min-h-full max-w-6xl flex-col px-5 pb-12 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8">
             <header className="flex items-center justify-between">
-              <button type="button" onClick={player.closeNowPlaying} className="grid h-11 w-11 place-items-center rounded-full border border-white/15 bg-black/20 text-xl backdrop-blur" aria-label="Close Now Playing">⌄</button>
+              <button type="button" onClick={player.closeNowPlaying} className="bvs-glass-surface grid h-11 w-11 place-items-center rounded-full border text-xl" aria-label="Close Now Playing">⌄</button>
               <div className="text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Now Playing World</p>
                 <p className="mt-1 text-xs text-white/60">{player.playingFrom || "BVS Radio"}</p>
               </div>
-              <button type="button" onClick={() => { player.closeNowPlaying(); player.setQueueOpen(true); }} className="grid h-11 min-w-11 place-items-center rounded-full border border-white/15 bg-black/20 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
+              <button type="button" onClick={() => { player.closeNowPlaying(); player.setQueueOpen(true); }} className="bvs-glass-surface grid h-11 min-w-11 place-items-center rounded-full border px-3 text-xs" aria-label="Open queue">Queue</button>
             </header>
 
             <div className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:gap-16">
@@ -1245,9 +1245,9 @@ export function PersistentPlayer() {
 
                 <div className="mt-8 flex items-center justify-between gap-3 sm:justify-start sm:gap-6">
                   <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-full px-4 text-sm ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60"}`}>Shuffle</button>
-                  <button type="button" onClick={player.previous} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Previous recording">◀</button>
+                  <button type="button" onClick={player.previous} className="bvs-glass-surface grid h-12 w-12 place-items-center rounded-full border text-xl hover:bg-white/10" aria-label="Previous recording">◀</button>
                   <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-16 w-16 place-items-center rounded-full bg-brand text-xl font-bold text-black disabled:opacity-40" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
-                  <button type="button" onClick={player.next} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Next recording">▶</button>
+                  <button type="button" onClick={player.next} className="bvs-glass-surface grid h-12 w-12 place-items-center rounded-full border text-xl hover:bg-white/10" aria-label="Next recording">▶</button>
                   <button type="button" onClick={player.toggleLike} aria-pressed={player.liked} className={`grid h-11 w-11 place-items-center rounded-full text-2xl ${player.liked ? "bg-brand/15 text-brand" : "text-white/60"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥" : "♡"}</button>
                 </div>
 
@@ -1270,7 +1270,7 @@ export function PersistentPlayer() {
           </div>
         </section>
       )}
-      {!nowPlayingOpen ? <section className="fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
+      {!nowPlayingOpen ? <section className="bvs-glass-surface bvs-player-dock fixed z-50 overflow-hidden border" aria-label="BVS rotation player">
         <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
         {player.interruptedBy === "show-video" ? (
           <div className="flex items-center justify-center gap-3 border-b border-white/10 bg-brand/10 px-4 py-2 text-xs text-brand" role="status">
