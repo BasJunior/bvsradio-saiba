@@ -19,8 +19,6 @@ import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
 import BvsSectionScope from "@/components/layout/BvsSectionScope";
 import "./globals.css";
-import "./light-premium.css";
-import "./app-light-mode.css";
 import "./section-accents.css";
 
 const defaultSiteUrl = "https://bvsradio.com";
@@ -81,23 +79,17 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
-    { media: "(prefers-color-scheme: light)", color: "#F4EFE6" },
-  ],
+  themeColor: "#0A0A0A",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  colorScheme: "dark light",
+  colorScheme: "dark",
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: `try{const t=localStorage.getItem('bvs_theme');const v=t==='light'||t==='dark'?t:(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');document.documentElement.dataset.theme=v;document.documentElement.style.colorScheme=v}catch(e){}` }} />
-      </head>
+    <html lang="en" data-theme="dark" style={{ colorScheme: "dark" }}>
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
         <LibrarySyncProvider>
           <StationPlayerProvider tracks={[]}>
