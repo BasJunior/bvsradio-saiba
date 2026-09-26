@@ -25,6 +25,74 @@ function bvsLicenceEvidence(workspace: WorkspaceContext) {
 
 type Slot = { path: string; signedUrl: string; contentType: string; index?: number }
 
+type ReleaseFinalizePayload = Record<string, unknown> & {
+  title: string
+  genre: string
+  coverPath: string | null
+  tracks: Array<{ title: string; audioPath: string; position: number }>
+}
+
+type PendingReleaseFinalize = {
+  createdAt: number
+  payload: ReleaseFinalizePayload
+}
+
+const PENDING_RELEASE_FINALIZE_KEY = 'bvs.creator.pending-release-finalize.v1'
+const PENDING_RELEASE_FINALIZE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+function readPendingReleaseFinalize(): PendingReleaseFinalize | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(PENDING_RELEASE_FINALIZE_KEY)
+    if (!raw) return null
+    const pending = JSON.parse(raw) as PendingReleaseFinalize
+    if (
+      !pending?.payload?.title ||
+      !pending.payload.coverPath ||
+      !Array.isArray(pending.payload.tracks) ||
+      !pending.payload.tracks.length ||
+      Date.now() - Number(pending.createdAt || 0) > PENDING_RELEASE_FINALIZE_MAX_AGE_MS
+    ) {
+      window.localStorage.removeItem(PENDING_RELEASE_FINALIZE_KEY)
+      return null
+    }
+    return pending
+  } catch {
+    return null
+  }
+}
+
+function rememberPendingReleaseFinalize(pending: PendingReleaseFinalize) {
+  try {
+    window.localStorage.setItem(PENDING_RELEASE_FINALIZE_KEY, JSON.stringify(pending))
+  } catch {
+    // Recovery state must never block the actual submission.
+  }
+}
+
+function forgetPendingReleaseFinalize() {
+  try {
+    window.localStorage.removeItem(PENDING_RELEASE_FINALIZE_KEY)
+  } catch {
+    // Ignore cleanup failures.
+  }
+}
+
+async function registerReleaseSubmission(accessToken: string, payload: ReleaseFinalizePayload) {
+  return fetchJson<{ error?: string; resumed?: boolean; release?: { id?: string } }>(
+    '/api/releases',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+    'registering release',
+  )
+}
+
 const genres = [
   'Hip-Hop', 'Trap', 'Afrobeats', 'Amapiano', 'R&B', 'Dancehall', 'Electronic', 'Lofi',
   'Gospel', 'Jazz', 'Pop', 'Sungura', 'Zimdancehall', 'Chimurenga', 'Other',
@@ -97,6 +165,40 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [pendingReleaseFinalize, setPendingReleaseFinalize] = useState<PendingReleaseFinalize | null>(null)
+
+  useEffect(() => {
+    setPendingReleaseFinalize(readPendingReleaseFinalize())
+  }, [])
+
+  const retryPendingReleaseFinalize = async () => {
+    if (!pendingReleaseFinalize || !isSupabaseConfigured()) return
+    setLoading(true)
+    setError(null)
+    setProgress('Recovering your uploaded release…')
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Sign in again, then tap Recover release.')
+      const result = await registerReleaseSubmission(session.access_token, pendingReleaseFinalize.payload)
+      if (!result.ok) throw new Error(result.data.error || `Could not recover release (${result.status})`)
+      forgetPendingReleaseFinalize()
+      setPendingReleaseFinalize(null)
+      trackEvent('upload_complete', {
+        genre: pendingReleaseFinalize.payload.genre,
+        track_count: pendingReleaseFinalize.payload.tracks.length,
+        release_type: String(pendingReleaseFinalize.payload.releaseType || 'album'),
+        recovered_finalize: true,
+      })
+      trackEvent('release_submitted', { recovered_finalize: true })
+      onSuccess?.()
+    } catch (err) {
+      setError(humanizeUploadError(err))
+    } finally {
+      setLoading(false)
+      setProgress('')
+    }
+  }
 
   const onFiles = (list: FileList | null) => {
     setError(null)
@@ -215,80 +317,88 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
         })
       }
 
-      setProgress('Registering release for review…')
-      const finResult = await fetchJson<{ error?: string }>(
-        '/api/releases',
-        {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          title: title.trim(),
-          genre,
-          description: description.trim(),
-          releaseType,
-          rightsConfirmed: true,
-          explicit,
-          explicitDeclared: true,
-          copyrightYear: Number(copyrightYear),
-          masterOwnerName: masterOwner.trim(),
-          compositionOwnerNames: compositionOwners.split(',').map((value) => value.trim()).filter(Boolean),
-          territories: ['WORLD'],
-          songwriters: songwriters.split(',').map((value) => value.trim()).filter(Boolean),
-          producers: producers.split(',').map((value) => value.trim()).filter(Boolean),
-          featuredArtists: featuredArtists.split(',').map((value) => value.trim()).filter(Boolean),
-          materialTypes,
-          evidence: evidenceEntries.map(({ materialType, file }, index) => ({
-            materialType,
-            path: preparedEvidence[index].path,
-            originalFileName: file.name,
-            mimeType: file.type,
-            size: file.size,
-            artistNotes: materialType === 'leased_beat' && autoLicensedBeat
-              ? `BVS_SONG_WORKSPACE:${songWorkspaceId}`
-              : evidenceNotes[materialType] || '',
-          })),
-          clearanceItems: evidenceEntries.map(({ materialType }, index) => ({
-            materialType: materialType === 'other_third_party' ? 'third_party' : materialType,
-            riskLevel: 'medium',
-            title: `${materialOptions.find(([value]) => value === materialType)?.[1] || materialType} clearance`,
-            description: evidenceNotes[materialType] || 'Documentary clearance evidence uploaded with this release.',
-            licenceOrPermissionRef: evidenceNotes[materialType] || `Uploaded evidence: ${preparedEvidence[index].path}`,
-            documentStoragePath: preparedEvidence[index].path,
-          })),
-          coverPath: prep.cover?.path || null,
-          tracks: files.map((_, i) => ({
-            title: (trackTitles[i] || `Track ${i + 1}`).trim(),
-            audioPath: preparedTracks[i].path,
-            position: i + 1,
-          })),
-          containsCover,
-          containsRemix,
-          containsSamples,
-          containsLeasedBeats,
-          containsThirdParty,
-          masterControl,
-          compositionControl,
-          featuredContributorsCleared: featuredCleared,
-          samplesBeatsCleared: samplesCleared,
-          grantHost,
-          grantStream,
-          grantCatalogue,
-          grantPromote,
-          accuracyConfirmed,
-          clearanceNote: evidenceEntries
-            .map(({ materialType }) => evidenceNotes[materialType]?.trim())
-            .filter(Boolean)
-            .join('; ')
-            .slice(0, 2000) || undefined,
-        }),
-        },
-        'registering release',
-      )
-      const fin = finResult.data
-      if (!finResult.ok) throw new Error(fin.error || 'Submit failed')
+      const finalizePayload: ReleaseFinalizePayload = {
+        title: title.trim(),
+        genre,
+        description: description.trim(),
+        releaseType,
+        rightsConfirmed: true,
+        explicit,
+        explicitDeclared: true,
+        copyrightYear: Number(copyrightYear),
+        masterOwnerName: masterOwner.trim(),
+        compositionOwnerNames: compositionOwners.split(',').map((value) => value.trim()).filter(Boolean),
+        territories: ['WORLD'],
+        songwriters: songwriters.split(',').map((value) => value.trim()).filter(Boolean),
+        producers: producers.split(',').map((value) => value.trim()).filter(Boolean),
+        featuredArtists: featuredArtists.split(',').map((value) => value.trim()).filter(Boolean),
+        materialTypes,
+        evidence: evidenceEntries.map(({ materialType, file }, index) => ({
+          materialType,
+          path: preparedEvidence[index].path,
+          originalFileName: file.name,
+          mimeType: file.type,
+          size: file.size,
+          artistNotes: materialType === 'leased_beat' && autoLicensedBeat
+            ? `BVS_SONG_WORKSPACE:${songWorkspaceId}`
+            : evidenceNotes[materialType] || '',
+        })),
+        clearanceItems: evidenceEntries.map(({ materialType }, index) => ({
+          materialType: materialType === 'other_third_party' ? 'third_party' : materialType,
+          riskLevel: 'medium',
+          title: `${materialOptions.find(([value]) => value === materialType)?.[1] || materialType} clearance`,
+          description: evidenceNotes[materialType] || 'Documentary clearance evidence uploaded with this release.',
+          licenceOrPermissionRef: evidenceNotes[materialType] || `Uploaded evidence: ${preparedEvidence[index].path}`,
+          documentStoragePath: preparedEvidence[index].path,
+        })),
+        coverPath: prep.cover?.path || null,
+        tracks: files.map((_, i) => ({
+          title: (trackTitles[i] || `Track ${i + 1}`).trim(),
+          audioPath: preparedTracks[i].path,
+          position: i + 1,
+        })),
+        containsCover,
+        containsRemix,
+        containsSamples,
+        containsLeasedBeats,
+        containsThirdParty,
+        masterControl,
+        compositionControl,
+        featuredContributorsCleared: featuredCleared,
+        samplesBeatsCleared: samplesCleared,
+        grantHost,
+        grantStream,
+        grantCatalogue,
+        grantPromote,
+        accuracyConfirmed,
+        clearanceNote: evidenceEntries
+          .map(({ materialType }) => evidenceNotes[materialType]?.trim())
+          .filter(Boolean)
+          .join('; ')
+          .slice(0, 2000) || undefined,
+      }
 
-      trackEvent('upload_complete', { genre, track_count: files.length, release_type: releaseType, song_workspace: Boolean(autoLicensedBeat) })
-      trackEvent('release_submitted', { song_workspace: Boolean(autoLicensedBeat) })
+      // All media/evidence is now safely in storage. Persist the metadata needed to
+      // finish registration before making the multi-step database request.
+      const pendingFinalize: PendingReleaseFinalize = { createdAt: Date.now(), payload: finalizePayload }
+      rememberPendingReleaseFinalize(pendingFinalize)
+      setPendingReleaseFinalize(pendingFinalize)
+
+      setProgress('Registering release for review…')
+      const finResult = await registerReleaseSubmission(session.access_token, finalizePayload)
+      const fin = finResult.data
+      if (!finResult.ok) throw new Error(fin.error || 'Submit failed. Your files are saved; use Recover release.')
+
+      forgetPendingReleaseFinalize()
+      setPendingReleaseFinalize(null)
+      trackEvent('upload_complete', {
+        genre,
+        track_count: files.length,
+        release_type: releaseType,
+        song_workspace: Boolean(autoLicensedBeat),
+        recovered_finalize: Boolean(fin.resumed),
+      })
+      trackEvent('release_submitted', { song_workspace: Boolean(autoLicensedBeat), recovered_finalize: Boolean(fin.resumed) })
       setProgress('')
       setTitle('')
       setGenre('')
@@ -326,6 +436,23 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
 
   return (
     <form onSubmit={submit} noValidate className="space-y-5">
+      {pendingReleaseFinalize && (
+        <div className="rounded-xl border border-amber-300/30 bg-amber-300/[.07] p-4 text-sm">
+          <p className="font-semibold text-amber-100">Your previous release files are already safely uploaded.</p>
+          <p className="mt-1 text-text-secondary">
+            BVS still needs to finish registering <strong className="text-text-primary">{pendingReleaseFinalize.payload.title}</strong>.
+            Do not upload the tracks, cover or clearance files again.
+          </p>
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void retryPendingReleaseFinalize()}
+            className="mt-3 rounded-full border border-amber-200/40 px-4 py-2 font-medium text-amber-100 hover:bg-amber-200/10 disabled:opacity-60"
+          >
+            Recover release
+          </button>
+        </div>
+      )}
       <p className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm text-text-secondary">
         Submit an <strong className="text-text-primary">album, EP or multi-track project</strong> (cover + ordered
         songs). After editorial approve &amp; publish, tracks can enter continuous rotation. Premium is separate —
