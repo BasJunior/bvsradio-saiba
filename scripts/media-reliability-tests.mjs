@@ -22,4 +22,20 @@ assert.ok(
   "/api/media must continue redirecting authorized public media to a signed R2 URL.",
 );
 
+
+const playerSource = await readFile(new URL("../src/components/StationPlayer.tsx", import.meta.url), "utf8");
+
+for (const requiredSignal of ["error_name", "media_error_message", "media_extension", "ready_state"]) {
+  assert.ok(
+    playerSource.includes(requiredSignal),
+    `Player reliability telemetry must retain ${requiredSignal}.`,
+  );
+}
+
+assert.match(
+  playerSource,
+  /error_name === "AbortError"\) return;/,
+  "Interrupted play() promises must not be counted as broken recordings.",
+);
+
 console.log("media reliability gates passed");
