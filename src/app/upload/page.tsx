@@ -19,6 +19,71 @@ type SignedSlot = {
   contentType: string
 }
 
+type TrackFinalizePayload = {
+  title: string
+  genre: string
+  description: string
+  rightsConfirmed: true
+  explicit: boolean
+  audioPath: string
+  artworkPath: string
+}
+
+type PendingTrackFinalize = {
+  createdAt: number
+  payload: TrackFinalizePayload
+}
+
+const PENDING_TRACK_FINALIZE_KEY = 'bvs.creator.pending-track-finalize.v1'
+const PENDING_TRACK_FINALIZE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+
+function readPendingTrackFinalize(): PendingTrackFinalize | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(PENDING_TRACK_FINALIZE_KEY)
+    if (!raw) return null
+    const pending = JSON.parse(raw) as PendingTrackFinalize
+    if (!pending?.payload?.audioPath || !pending.payload.artworkPath || Date.now() - Number(pending.createdAt || 0) > PENDING_TRACK_FINALIZE_MAX_AGE_MS) {
+      window.localStorage.removeItem(PENDING_TRACK_FINALIZE_KEY)
+      return null
+    }
+    return pending
+  } catch {
+    return null
+  }
+}
+
+function rememberPendingTrackFinalize(pending: PendingTrackFinalize) {
+  try {
+    window.localStorage.setItem(PENDING_TRACK_FINALIZE_KEY, JSON.stringify(pending))
+  } catch {
+    // Recovery storage must never block the actual submission.
+  }
+}
+
+function forgetPendingTrackFinalize() {
+  try {
+    window.localStorage.removeItem(PENDING_TRACK_FINALIZE_KEY)
+  } catch {
+    // Ignore storage cleanup failures.
+  }
+}
+
+async function registerTrackSubmission(accessToken: string, payload: TrackFinalizePayload) {
+  return fetchJson<{ error?: string; message?: string; track?: { id?: string }; resumed?: boolean }>(
+    '/api/tracks/upload',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    },
+    'registering submission',
+  )
+}
+
 function UploadPageInner() {
   const searchParams = useSearchParams()
   const [title, setTitle] = useState('')
@@ -36,6 +101,7 @@ function UploadPageInner() {
   const [uploadType, setUploadType] = useState<'music' | 'beats'>('music')
   const [mode, setMode] = useState<'single' | 'release'>('release')
   const [beatMode, setBeatMode] = useState<'single' | 'pack'>('single')
+  const [pendingTrackFinalize, setPendingTrackFinalize] = useState<PendingTrackFinalize | null>(null)
 
   const genres = [
     'Hip-Hop', 'Trap', 'Afrobeats', 'Amapiano', 'R&B',
@@ -68,6 +134,37 @@ function UploadPageInner() {
       setSignedInAs(email || (data.session ? 'signed in' : null))
     })
   }, [])
+
+  useEffect(() => {
+    setPendingTrackFinalize(readPendingTrackFinalize())
+  }, [])
+
+  const retryPendingTrackFinalize = async () => {
+    if (!pendingTrackFinalize || !isSupabaseConfigured()) return
+    setLoading(true)
+    setError(null)
+    setProgress('Recovering your uploaded submission…')
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Sign in again, then tap Recover submission.')
+      const result = await registerTrackSubmission(session.access_token, pendingTrackFinalize.payload)
+      if (!result.ok) throw new Error(result.data.error || `Could not recover submission (${result.status})`)
+      forgetPendingTrackFinalize()
+      setPendingTrackFinalize(null)
+      trackEvent('upload_complete', {
+        genre: pendingTrackFinalize.payload.genre,
+        has_artwork: true,
+        recovered_finalize: true,
+      })
+      setSuccess(true)
+    } catch (err) {
+      setError(humanizeUploadError(err))
+    } finally {
+      setLoading(false)
+      setProgress('')
+    }
+  }
 
   const onAudioChosen = (file: File | null) => {
     setError(null)
@@ -192,32 +289,32 @@ function UploadPageInner() {
         await putToSignedSlot(prep.artwork, artworkFile, { label: 'cover art' })
       }
 
-      // 3) Register the review row (JSON metadata only)
+      // 3) Files are safely uploaded. Persist the finalize payload before the DB request
+      // so a refresh/network failure can recover without re-uploading large media.
+      const finalizePayload: TrackFinalizePayload = {
+        title: title.trim(),
+        genre,
+        description: description.trim(),
+        rightsConfirmed: true,
+        explicit,
+        audioPath: prep.audio.path,
+        artworkPath: prep.artwork?.path || '',
+      }
+      const pendingFinalize: PendingTrackFinalize = { createdAt: Date.now(), payload: finalizePayload }
+      rememberPendingTrackFinalize(pendingFinalize)
+      setPendingTrackFinalize(pendingFinalize)
+
       setProgress('Registering submission for review…')
-      const finResult = await fetchJson<{ error?: string; message?: string; track?: { id?: string } }>(
-        '/api/tracks/upload',
-        {
-          method: 'POST',
-          headers: authHeaders,
-          body: JSON.stringify({
-            title: title.trim(),
-            genre,
-            description: description.trim(),
-            rightsConfirmed: true,
-            explicit,
-            audioPath: prep.audio.path,
-            artworkPath: prep.artwork?.path || null,
-          }),
-        },
-        'registering submission',
-      )
+      const finResult = await registerTrackSubmission(session.access_token, finalizePayload)
       const data = finResult.data
       if (!finResult.ok) {
         console.error('[bvs upload] finalize error', finResult.status, data)
-        throw new Error(data.error || `Upload failed (${finResult.status})`)
+        throw new Error(data.error || `Upload failed (${finResult.status}). Your files are saved; use Recover submission.`)
       }
 
-      trackEvent('upload_complete', { genre, has_artwork: Boolean(artworkFile) })
+      forgetPendingTrackFinalize()
+      setPendingTrackFinalize(null)
+      trackEvent('upload_complete', { genre, has_artwork: Boolean(artworkFile), recovered_finalize: Boolean(data.resumed) })
       setSuccess(true)
     } catch (err: unknown) {
       console.error('[bvs upload] failed', err)
@@ -447,6 +544,23 @@ function UploadPageInner() {
             </div>
           ) : (
           <form onSubmit={handleSubmit} noValidate className="space-y-6 rounded-2xl border border-white/10 bg-bg-card/30 p-8">
+            {pendingTrackFinalize && (
+              <div className="rounded-xl border border-amber-300/30 bg-amber-300/[.07] p-4 text-sm">
+                <p className="font-semibold text-amber-100">Your previous files are already safely uploaded.</p>
+                <p className="mt-1 text-text-secondary">
+                  BVS still needs to finish registering <strong className="text-text-primary">{pendingTrackFinalize.payload.title}</strong> for editorial review.
+                  Do not upload the files again.
+                </p>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => void retryPendingTrackFinalize()}
+                  className="mt-3 rounded-full border border-amber-200/40 px-4 py-2 font-medium text-amber-100 hover:bg-amber-200/10 disabled:opacity-60"
+                >
+                  Recover submission
+                </button>
+              </div>
+            )}
             <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-text-secondary">
               <strong className="text-text-primary">Where it goes:</strong> Browser → Supabase bucket{' '}
               <code className="text-brand">bvsradio-audio</code> under{' '}
