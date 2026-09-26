@@ -41,6 +41,7 @@ type Analytics = {
     mediaFailures: number
     autoplayBlocks: number
     qualifiedListens: number
+    qualificationStarts: number
     qualificationRate: number
     recoveredFinalizations: number
     completedUploads: number
@@ -306,7 +307,7 @@ export default function EditorialAnalytics({ token }: { token: string }) {
               <Metric
                 label="Qualified 30s listens"
                 value={data.reliability.qualifiedListens}
-                note={`${data.reliability.qualificationRate}% of playback starts`}
+                note={`${data.reliability.qualificationRate}% of ${data.reliability.qualificationStarts} server-recorded track starts`}
               />
               <Metric
                 label="Playback error sessions"
