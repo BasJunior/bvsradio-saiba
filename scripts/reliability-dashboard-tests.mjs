@@ -11,6 +11,7 @@ for (const required of [
   "mediaFailures",
   "autoplayBlocks",
   "qualifiedListens",
+  "qualificationStarts",
   "qualificationRate",
   "recoveredFinalizations",
   "recoveryRate",
@@ -24,6 +25,21 @@ for (const required of [
 assert.ok(
   route.includes("event.properties?.recovered_finalize === true"),
   "Recovery metrics must only count explicitly recovered finalizations.",
+);
+
+assert.ok(
+  route.includes("track_play_events?created_at=gte.") &&
+    route.includes("stream_qualifications?created_at=gte.") &&
+    route.includes("const qualificationStarts = trackPlayEvents.length") &&
+    route.includes("const qualifiedListens = streamQualifications.length"),
+  "Qualification rate must use server-side playback and qualification records rather than client event timing.",
+);
+
+assert.ok(
+  route.includes("Math.min(100,") &&
+    component.includes("server-recorded track starts") &&
+    !component.includes("% of playback starts"),
+  "Qualification KPI must never present an impossible client-event conversion rate.",
 );
 
 assert.ok(
