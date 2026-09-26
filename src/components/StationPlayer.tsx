@@ -110,6 +110,17 @@ function trackKey(track: StationTrack) {
   return track.id || track.src;
 }
 
+function playbackFailureDetails(error: unknown) {
+  const candidate = error && typeof error === "object" ? (error as { name?: unknown; message?: unknown }) : null;
+  const errorName = String(candidate?.name || "UnknownError").slice(0, 64);
+  const message = String(candidate?.message || "").trim().slice(0, 160);
+  return {
+    error_name: errorName,
+    error_message: message || null,
+    recoverable: errorName === "NotAllowedError",
+  };
+}
+
 function makeQueueItem(track: StationTrack, source: QueueSource): QueueItem {
   return {
     key: `${trackKey(track)}-${source}-${Math.random().toString(36).slice(2, 8)}`,
@@ -603,10 +614,18 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
             }
           }
         })
-        .catch(() => {
-          trackEvent("playback_error", { track_id: trackLibraryId(current), stage: "track_change" });
+        .catch((playError: unknown) => {
+          const details = playbackFailureDetails(playError);
+          // A source/pause change can legitimately interrupt an in-flight play() promise.
+          // Do not count that browser lifecycle event as a broken recording.
+          if (details.error_name === "AbortError") return;
+          trackEvent("playback_error", {
+            track_id: trackLibraryId(current),
+            stage: "track_change",
+            ...details,
+          });
           setPlaying(false);
-          setError("This recording could not be played.");
+          setError(details.error_name === "NotAllowedError" ? "Tap Play to continue." : "This recording could not be played.");
         });
     }
   }, [current, isPlaying]);
@@ -778,6 +797,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       stage: "media",
       fail_streak: failStreak.current,
       media_error_code: media?.error?.code ?? null,
+      media_error_message: media?.error?.message?.slice(0, 160) || null,
       media_src_host: (() => {
         try {
           return current?.src ? new URL(current.src, window.location.origin).host : null;
@@ -785,7 +805,18 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           return null;
         }
       })(),
+      media_extension: (() => {
+        try {
+          const pathname = current?.src ? new URL(current.src, window.location.origin).pathname : "";
+          const extension = pathname.split(".").pop()?.toLowerCase() || "";
+          return extension.slice(0, 12) || null;
+        } catch {
+          return null;
+        }
+      })(),
       network_state: media?.networkState ?? null,
+      ready_state: media?.readyState ?? null,
+      current_time: Math.round(media?.currentTime || 0),
     });
     if (failStreak.current >= Math.min(8, Math.max(3, tracks.length || 3))) {
       setPlaying(false);
@@ -824,10 +855,16 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         subtitle: current.artist,
         href: "/radio",
       });
-    } catch {
+    } catch (playError: unknown) {
       setPlaying(false);
-      trackEvent("playback_error", { track_id: trackLibraryId(current), stage: "start" });
-      setError("Playback could not start. Please try again.");
+      const details = playbackFailureDetails(playError);
+      if (details.error_name === "AbortError") return;
+      trackEvent("playback_error", {
+        track_id: trackLibraryId(current),
+        stage: "start",
+        ...details,
+      });
+      setError(details.error_name === "NotAllowedError" ? "Tap Play to start audio." : "Playback could not start. Please try again.");
     }
   }, [current, pushHistory]);
 
