@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:editorial-connected && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:creator-next-move && npm run test:explore-discovery && npm run test:playlist-beats && npm run test:marketplace-storefront && npm run test:privileged-audio && npm run test:bvs-feed && npm run test:growth-activation && npm run test:home-accents && npm run test:studio-ui && npm run test:cross-surface-ui && npm run test:media-reliability && npm run test:order-receipt-pdf && next build",
-    "vercel-build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:editorial-connected && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:creator-next-move && npm run test:explore-discovery && npm run test:playlist-beats && npm run test:marketplace-storefront && npm run test:privileged-audio && npm run test:bvs-feed && npm run test:growth-activation && npm run test:home-accents && npm run test:studio-ui && npm run test:cross-surface-ui && npm run test:media-reliability && npm run test:order-receipt-pdf && next build",
+    "build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:editorial-connected && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:creator-next-move && npm run test:explore-discovery && npm run test:playlist-beats && npm run test:marketplace-storefront && npm run test:privileged-audio && npm run test:bvs-feed && npm run test:growth-activation && npm run test:home-accents && npm run test:studio-ui && npm run test:cross-surface-ui && npm run test:media-reliability && npm run test:creator-upload-reliability && npm run test:order-receipt-pdf && next build",
+    "vercel-build": "npm run test:ios-surface-gates && npm run test:editorial-normalization && npm run test:editorial-connected && npm run test:studio-intent && npm run test:song-workspace && npm run test:web-offers && npm run test:creator-next-move && npm run test:explore-discovery && npm run test:playlist-beats && npm run test:marketplace-storefront && npm run test:privileged-audio && npm run test:bvs-feed && npm run test:growth-activation && npm run test:home-accents && npm run test:studio-ui && npm run test:cross-surface-ui && npm run test:media-reliability && npm run test:creator-upload-reliability && npm run test:order-receipt-pdf && next build",
     "test:ios-surface-gates": "npm run test:ios-surface-lock && npm run test:apple-ios-surface",
     "start": "next start",
     "lint": "eslint",
@@ -39,7 +39,8 @@
     "test:studio-ui": "node scripts/studio-ui-tests.mjs",
     "test:cross-surface-ui": "node scripts/cross-surface-ui-tests.mjs",
     "test:order-receipt-pdf": "node scripts/order-receipt-pdf-tests.mjs",
-    "test:media-reliability": "node scripts/media-reliability-tests.mjs"
+    "test:media-reliability": "node scripts/media-reliability-tests.mjs",
+    "test:creator-upload-reliability": "node scripts/creator-upload-reliability-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",
