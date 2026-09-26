@@ -17,6 +17,8 @@ type Analytics = {
     listeningMinutes: number
     uploads: number
     trackSaves: number
+    qualifiedListens: number
+    returnSessions: number
   }
   pipeline: {
     awaitingReview: number
@@ -33,6 +35,18 @@ type Analytics = {
   reliability: {
     playbackErrors: number
     playbackErrorRate: number
+    playbackErrorSessions: number
+    failedStarts: number
+    failedTrackChanges: number
+    mediaFailures: number
+    autoplayBlocks: number
+    qualifiedListens: number
+    qualificationRate: number
+    recoveredFinalizations: number
+    completedUploads: number
+    recoveryRate: number
+    returnSessions: number
+    playbackFailureBreakdown: Array<{ label: string; count: number }>
     checkoutStarts?: number
     checkoutCompletions?: number
     paymentErrors?: number
@@ -276,6 +290,50 @@ export default function EditorialAnalytics({ token }: { token: string }) {
             <RankedList title={`Most playback starts · ${data.rangeDays} days`} rows={data.performance.topPlayed.map((item) => ({ label: item.label, value: item.plays }))} />
             <RankedList title="Most saved this period" rows={data.performance.topSaved.map((item) => ({ label: item.label, value: item.saves }))} />
             <RankedList title={`Genres by playback starts · ${data.rangeDays} days`} rows={data.performance.popularGenres.map((item) => ({ label: item.genre, value: item.plays }))} />
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-brand/20 bg-brand/[.025] p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[.2em] text-brand">Reliability control</p>
+                <h3 className="mt-2 text-lg font-semibold">Playback and submission health</h3>
+              </div>
+              <p className="max-w-xl text-xs leading-5 text-text-secondary">
+                Use this before feature work: successful starts, qualified listening, browser/media failures, and creator recovery events.
+              </p>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Metric
+                label="Qualified 30s listens"
+                value={data.reliability.qualifiedListens}
+                note={`${data.reliability.qualificationRate}% of playback starts`}
+              />
+              <Metric
+                label="Playback error sessions"
+                value={data.reliability.playbackErrorSessions}
+                note={`${data.reliability.playbackErrors} total error event${data.reliability.playbackErrors === 1 ? '' : 's'}`}
+              />
+              <Metric
+                label="Recovered submissions"
+                value={data.reliability.recoveredFinalizations}
+                note={`${data.reliability.recoveryRate}% of completed uploads used recovery`}
+              />
+              <Metric
+                label="Return sessions"
+                value={data.reliability.returnSessions}
+                note="Privacy-safe return-session milestones"
+              />
+              <Metric label="Failed play starts" value={data.reliability.failedStarts} />
+              <Metric label="Failed track changes" value={data.reliability.failedTrackChanges} />
+              <Metric label="Media element failures" value={data.reliability.mediaFailures} />
+              <Metric label="Autoplay blocks" value={data.reliability.autoplayBlocks} note="NotAllowedError · user gesture required" />
+            </div>
+            <div className="mt-4">
+              <RankedList
+                title="Playback failure classification"
+                rows={data.reliability.playbackFailureBreakdown.map((item) => ({ label: item.label, value: item.count }))}
+              />
+            </div>
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[.025] p-5">
