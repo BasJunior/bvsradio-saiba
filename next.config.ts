@@ -4,8 +4,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  // Beat/track covers live on Supabase Storage; without this next/image fails or looks broken.
+  // Reliability gate: BVS artwork/media can be served through /api/media, which validates
+  // public R2 keys and redirects to short-lived signed URLs. Production currently shows
+  // repeated /_next/image runtime failures for that proxied path, so keep image delivery
+  // browser-direct until the optimizer path is proven stable again.
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
