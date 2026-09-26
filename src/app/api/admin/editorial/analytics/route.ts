@@ -95,10 +95,43 @@ export async function GET(request: Request) {
         .reduce((sum, event) => sum + numberProperty(event, 'seconds_bucket'), 0) / 60,
     )
     const playerStarts = playbackStarts.length
-    const playbackErrors = events.filter((event) => {
+    const playbackErrorEvents = events.filter((event) => {
       if (event.event_name !== 'playback_error' || !trackName.has(eventTrackId(event))) return false
       return !['window_error', 'unhandled_rejection'].includes(String(event.properties?.stage || ''))
-    }).length
+    })
+    const playbackErrors = playbackErrorEvents.length
+    const playbackErrorSessions = new Set(playbackErrorEvents.map((event) => event.session_id).filter(Boolean)).size
+    const failedStarts = playbackErrorEvents.filter((event) => String(event.properties?.stage || '') === 'start').length
+    const failedTrackChanges = playbackErrorEvents.filter((event) => String(event.properties?.stage || '') === 'track_change').length
+    const mediaFailures = playbackErrorEvents.filter((event) => String(event.properties?.stage || '') === 'media').length
+    const autoplayBlocks = playbackErrorEvents.filter((event) => String(event.properties?.error_name || '') === 'NotAllowedError').length
+    const qualifiedListens = countEvent('stream_qualified_30s')
+    const recoveredFinalizations = events.filter(
+      (event) => event.event_name === 'upload_complete' && event.properties?.recovered_finalize === true,
+    ).length
+    const completedUploads = countEvent('upload_complete')
+    const returnSessions = countEvent('return_session')
+    const playbackFailureBreakdown = Object.entries(
+      playbackErrorEvents.reduce<Record<string, number>>((acc, event) => {
+        const stage = String(event.properties?.stage || 'unknown')
+        const errorName = String(event.properties?.error_name || '')
+        const mediaCode = String(event.properties?.media_error_code || '')
+        const extension = String(event.properties?.media_extension || '')
+        const detail = errorName
+          ? errorName
+          : mediaCode
+            ? `media code ${mediaCode}${extension ? ` · ${extension.toUpperCase()}` : ''}`
+            : extension
+              ? extension.toUpperCase()
+              : 'unclassified'
+        const label = `${stage} · ${detail}`
+        acc[label] = (acc[label] || 0) + 1
+        return acc
+      }, {}),
+    )
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 8)
+      .map(([label, count]) => ({ label, count }))
     const checkoutStarts = countEvent('checkout_started')
     const paymentErrors = countEvent('payment_error')
     const checkoutCompletions = events.filter((event) =>
@@ -157,8 +190,10 @@ export async function GET(request: Request) {
         uniqueSessions,
         playerStarts,
         listeningMinutes,
-        uploads: countEvent('upload_complete'),
+        uploads: completedUploads,
         trackSaves: countEvent('track_save'),
+        qualifiedListens,
+        returnSessions,
       },
       pipeline: {
         awaitingReview: submitted,
@@ -181,6 +216,18 @@ export async function GET(request: Request) {
       reliability: {
         playbackErrors,
         playbackErrorRate: playerStarts ? Math.round((playbackErrors / playerStarts) * 1000) / 10 : 0,
+        playbackErrorSessions,
+        failedStarts,
+        failedTrackChanges,
+        mediaFailures,
+        autoplayBlocks,
+        qualifiedListens,
+        qualificationRate: playerStarts ? Math.round((qualifiedListens / playerStarts) * 1000) / 10 : 0,
+        recoveredFinalizations,
+        completedUploads,
+        recoveryRate: completedUploads ? Math.round((recoveredFinalizations / completedUploads) * 1000) / 10 : 0,
+        returnSessions,
+        playbackFailureBreakdown,
         ...(canSeeCommerce ? {
           checkoutStarts,
           checkoutCompletions,
