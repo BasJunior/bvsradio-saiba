@@ -199,6 +199,24 @@ export async function POST(req: Request) {
     }
     const artworkUrl = r2MediaUrl(artworkPath);
 
+    // Idempotency: an interrupted/lost finalize response must never create a duplicate
+    // review row when the creator retries registration for the same uploaded object.
+    const existingRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/tracks?user_id=eq.${encodeURIComponent(userId)}&file_url=eq.${encodeURIComponent(audioUrl)}&select=*&limit=1`,
+      { headers: adminHeaders, cache: "no-store" },
+    );
+    if (existingRes.ok) {
+      const existingRows = await existingRes.json().catch(() => []);
+      const existingTrack = Array.isArray(existingRows) ? existingRows[0] : null;
+      if (existingTrack?.id) {
+        return NextResponse.json({
+          message: "Submission was already registered. No duplicate was created.",
+          track: existingTrack,
+          resumed: true,
+        });
+      }
+    }
+
     const artistName = creatorPublicName({
       publicName: profile.creator_public_name,
       publicNameStatus: profile.creator_name_status,
