@@ -253,50 +253,61 @@ export async function POST(req: Request) {
       accuracyConfirmed: body.accuracyConfirmed !== false,
     };
 
-    const created = await restPost<ReleaseRow[]>("releases", {
-      user_id: user.id,
-      title,
-      artist_name: artistName,
-      genre,
-      description,
-      cover_url: coverUrl,
-      release_type: releaseType,
-      editorial_status: "submitted",
-      is_public: false,
-      in_rotation: false,
-      rights_confirmed: true,
-      explicit_content: Boolean(body.explicit),
-      explicit_declared: true,
-      copyright_year: copyrightYear,
-      master_owner_name: masterOwnerName,
-      composition_owner_names: compositionOwnerNames,
-      territories: territories.length ? territories : ["WORLD"],
-      passport_version: 1,
-      material_types: materialTypes,
-      clearance_declaration_version: 1,
-      preflight_status: "not_checked",
-      track_count: tracks.length,
-      contains_cover: materialFlags.containsCover,
-      contains_remix: materialFlags.containsRemix,
-      contains_samples: materialFlags.containsSamples,
-      contains_leased_beats: materialFlags.containsLeasedBeats,
-      contains_third_party: materialFlags.containsThirdParty,
-    });
+    // The uploaded cover path is unique to this prepared release folder. Use it as the
+    // idempotency key so a lost finalize response can resume the same release instead
+    // of creating a duplicate album/EP row.
+    const existingReleases = await restGet<ReleaseRow[]>(
+      `releases?user_id=eq.${encodeURIComponent(user.id)}&cover_url=eq.${encodeURIComponent(coverUrl)}&select=*&limit=1`,
+    );
+    let release = existingReleases?.[0] || null;
+    const resumedFinalize = Boolean(release?.id);
 
-    if (!created.ok || !created.data) {
-      console.error("release insert", created.status, created.text);
-      return NextResponse.json(
-        {
-          error:
-            created.status === 404 || created.text.includes("does not exist")
-              ? "Releases table missing. Run supabase-releases-pipeline.sql in Supabase."
-              : "Could not create release record.",
-        },
-        { status: created.status === 404 ? 503 : 500 },
-      );
+    if (!release) {
+      const created = await restPost<ReleaseRow[]>("releases", {
+        user_id: user.id,
+        title,
+        artist_name: artistName,
+        genre,
+        description,
+        cover_url: coverUrl,
+        release_type: releaseType,
+        editorial_status: "submitted",
+        is_public: false,
+        in_rotation: false,
+        rights_confirmed: true,
+        explicit_content: Boolean(body.explicit),
+        explicit_declared: true,
+        copyright_year: copyrightYear,
+        master_owner_name: masterOwnerName,
+        composition_owner_names: compositionOwnerNames,
+        territories: territories.length ? territories : ["WORLD"],
+        passport_version: 1,
+        material_types: materialTypes,
+        clearance_declaration_version: 1,
+        preflight_status: "not_checked",
+        track_count: tracks.length,
+        contains_cover: materialFlags.containsCover,
+        contains_remix: materialFlags.containsRemix,
+        contains_samples: materialFlags.containsSamples,
+        contains_leased_beats: materialFlags.containsLeasedBeats,
+        contains_third_party: materialFlags.containsThirdParty,
+      });
+
+      if (!created.ok || !created.data) {
+        console.error("release insert", created.status, created.text);
+        return NextResponse.json(
+          {
+            error:
+              created.status === 404 || created.text.includes("does not exist")
+                ? "Releases table missing. Run supabase-releases-pipeline.sql in Supabase."
+                : "Could not create release record.",
+          },
+          { status: created.status === 404 ? 503 : 500 },
+        );
+      }
+
+      release = Array.isArray(created.data) ? created.data[0] : (created.data as ReleaseRow);
     }
-
-    const release = Array.isArray(created.data) ? created.data[0] : (created.data as ReleaseRow);
     if (!release?.id) {
       return NextResponse.json({ error: "Release create returned empty." }, { status: 500 });
     }
@@ -312,37 +323,54 @@ export async function POST(req: Request) {
       };
     });
 
-    const members = await restPost<ReleaseTrackRow[]>("release_tracks", memberRows);
-    if (!members.ok) {
-      console.error("release_tracks insert", members.status, members.text);
+    const existingMembers = await restGet<ReleaseTrackRow[]>(
+      `release_tracks?release_id=eq.${encodeURIComponent(release.id)}&select=*&order=position.asc`,
+    );
+    const memberByPosition = new Map((existingMembers || []).map((member) => [member.position, member]));
+    const missingMemberRows = memberRows.filter((row) => !memberByPosition.has(row.position));
+    if (missingMemberRows.length) {
+      const insertedMembers = await restPost<ReleaseTrackRow[]>("release_tracks", missingMemberRows);
+      if (!insertedMembers.ok) {
+        console.error("release_tracks insert", insertedMembers.status, insertedMembers.text);
+        return NextResponse.json(
+          { error: "Release created but tracks failed to save. Use Recover submission before uploading again." },
+          { status: 500 },
+        );
+      }
+    }
+
+    const savedMembers = await restGet<ReleaseTrackRow[]>(
+      `release_tracks?release_id=eq.${encodeURIComponent(release.id)}&select=*&order=position.asc`,
+    );
+    if (!savedMembers || savedMembers.length !== memberRows.length) {
       return NextResponse.json(
-        { error: "Release created but tracks failed to save. Contact BVS." },
+        { error: "Release tracks were saved incompletely. Use Recover submission before uploading again." },
         { status: 500 },
       );
     }
-    const savedMembers = Array.isArray(members.data) ? members.data : [];
-    if (savedMembers.length !== memberRows.length) {
-      return NextResponse.json(
-        { error: "Release tracks were saved incompletely. Contact BVS before retrying." },
-        { status: 500 },
-      );
-    }
-    const mediaJobs = await restPost(
-      "media_processing_jobs",
-      savedMembers.map((member) => ({
+
+    const existingJobs = await restGet<Array<{ release_track_id: string }>>(
+      `media_processing_jobs?release_id=eq.${encodeURIComponent(release.id)}&select=release_track_id`,
+    );
+    const jobTrackIds = new Set((existingJobs || []).map((job) => job.release_track_id));
+    const missingJobs = savedMembers
+      .filter((member) => !jobTrackIds.has(member.id))
+      .map((member) => ({
         release_id: release.id,
         release_track_id: member.id,
         owner_user_id: user.id,
         source_path: member.audio_path,
         status: "queued",
-      })),
-    );
-    if (!mediaJobs.ok) {
-      console.error("media processing enqueue", mediaJobs.status, mediaJobs.text);
-      return NextResponse.json(
-        { error: "Release was saved, but audio preflight could not be queued. Contact BVS." },
-        { status: 500 },
-      );
+      }));
+    if (missingJobs.length) {
+      const mediaJobs = await restPost("media_processing_jobs", missingJobs);
+      if (!mediaJobs.ok) {
+        console.error("media processing enqueue", mediaJobs.status, mediaJobs.text);
+        return NextResponse.json(
+          { error: "Release was saved, but audio preflight could not be queued. Use Recover submission." },
+          { status: 500 },
+        );
+      }
     }
 
     const contributors = [
@@ -355,26 +383,51 @@ export async function POST(req: Request) {
       ...contributor,
       rights_confirmed: true,
     }));
-    const savedContributors = await restPost("release_contributors", contributors);
-    if (!savedContributors.ok) {
-      console.error("release contributors insert", savedContributors.status, savedContributors.text);
-      return NextResponse.json(
-        { error: "Release files were saved, but the Rights Passport could not be completed. Contact BVS." },
-        { status: 500 },
-      );
+    const existingContributors = await restGet<Array<{ person_name: string; contribution_role: string }>>(
+      `release_contributors?release_id=eq.${encodeURIComponent(release.id)}&select=person_name,contribution_role`,
+    );
+    const contributorKeys = new Set(
+      (existingContributors || []).map((row) => `${row.contribution_role}\n${row.person_name}`),
+    );
+    const missingContributors = contributors.filter(
+      (row) => !contributorKeys.has(`${row.contribution_role}\n${row.person_name}`),
+    );
+    if (missingContributors.length) {
+      const savedContributors = await restPost("release_contributors", missingContributors);
+      if (!savedContributors.ok) {
+        console.error("release contributors insert", savedContributors.status, savedContributors.text);
+        return NextResponse.json(
+          { error: "Release files were saved, but the Rights Passport could not be completed. Use Recover submission." },
+          { status: 500 },
+        );
+      }
     }
 
-    // Versioned immutable rights attestation (Apple-compliance). Failures block "ready" preflight.
-    const attestation = await recordReleaseAttestation({
-      releaseId: release.id,
-      userId: user.id,
-      flags: attestationFlags,
-      materialFlags,
-      request: req,
-    });
+    // Rights attestations are immutable. A retry must reuse the already-recorded
+    // attestation instead of trying to insert a second immutable snapshot.
+    const existingAttestations = await restGet<Array<{ id: string; agreement_version: string }>>(
+      `release_rights_attestations?release_id=eq.${encodeURIComponent(release.id)}&user_id=eq.${encodeURIComponent(user.id)}&select=id,agreement_version&order=attested_at.desc&limit=1`,
+    );
+    let attestation:
+      | { ok: true; attestationId: string; agreementVersion: string }
+      | { ok: false; error: string };
+    if (existingAttestations?.[0]?.id) {
+      attestation = {
+        ok: true,
+        attestationId: existingAttestations[0].id,
+        agreementVersion: existingAttestations[0].agreement_version,
+      };
+    } else {
+      attestation = await recordReleaseAttestation({
+        releaseId: release.id,
+        userId: user.id,
+        flags: attestationFlags,
+        materialFlags,
+        request: req,
+      });
+    }
     if (!attestation.ok) {
       console.error("release attestation", attestation.error);
-      // Release + tracks already saved; return 409 so client can finish attestation/clearance.
       return NextResponse.json(
         {
           error: attestation.error || "Rights attestation could not be recorded.",
@@ -422,43 +475,61 @@ export async function POST(req: Request) {
         ? sanitizeClientText(item.documentStoragePath, 500)
         : null;
       if (!ref && !doc) continue;
-      const clr = await addClearanceItem({
-        releaseId: release.id,
-        userId: user.id,
-        materialType,
-        riskLevel: ["low", "medium", "high", "critical"].includes(String(item.riskLevel))
-          ? String(item.riskLevel)
-          : "medium",
-        title: sanitizeClientText(item.title || `${materialType} clearance`, 200),
-        description: sanitizeClientText(item.description || clearanceNote, 4000),
-        licenceOrPermissionRef: ref || undefined,
-        documentStoragePath: doc,
-      });
-      if (!clr.ok) {
-        console.error("clearance insert", clr.error);
-        return NextResponse.json(
-          { error: "Release saved, but its structured clearance record could not be registered. Contact BVS." },
-          { status: 500 },
-        );
+      const existingClearance = await restGet<Array<{ id: string }>>(
+        doc
+          ? `release_clearance_items?release_id=eq.${encodeURIComponent(release.id)}&material_type=eq.${encodeURIComponent(materialType)}&document_storage_path=eq.${encodeURIComponent(doc)}&select=id&limit=1`
+          : `release_clearance_items?release_id=eq.${encodeURIComponent(release.id)}&material_type=eq.${encodeURIComponent(materialType)}&licence_or_permission_ref=eq.${encodeURIComponent(ref)}&select=id&limit=1`,
+      );
+      if (!existingClearance?.[0]?.id) {
+        const clr = await addClearanceItem({
+          releaseId: release.id,
+          userId: user.id,
+          materialType,
+          riskLevel: ["low", "medium", "high", "critical"].includes(String(item.riskLevel))
+            ? String(item.riskLevel)
+            : "medium",
+          title: sanitizeClientText(item.title || `${materialType} clearance`, 200),
+          description: sanitizeClientText(item.description || clearanceNote, 4000),
+          licenceOrPermissionRef: ref || undefined,
+          documentStoragePath: doc,
+        });
+        if (!clr.ok) {
+          console.error("clearance insert", clr.error);
+          return NextResponse.json(
+            { error: "Release saved, but its structured clearance record could not be registered. Use Recover submission." },
+            { status: 500 },
+          );
+        }
       }
     }
 
     if (evidence.length) {
-      const savedEvidence = await restPost("release_clearance_evidence", evidence.map((item) => ({
-        release_id: release.id,
-        owner_user_id: user.id,
-        material_type: String(item.materialType),
-        evidence_version: 1,
-        file_path: String(item.path),
-        original_file_name: String(item.originalFileName || "evidence").slice(0, 255),
-        mime_type: String(item.mimeType || "application/octet-stream").slice(0, 120),
-        file_size: Number(item.size || 0),
-        artist_notes: String(item.artistNotes || "").slice(0, 2000) || null,
-        review_status: "submitted",
-      })));
-      if (!savedEvidence.ok) {
-        console.error("release clearance evidence insert", savedEvidence.status, savedEvidence.text);
-        return NextResponse.json({ error: "Release saved, but clearance evidence could not be registered. Contact BVS." }, { status: 500 });
+      const existingEvidence = await restGet<Array<{ material_type: string; evidence_version: number }>>(
+        `release_clearance_evidence?release_id=eq.${encodeURIComponent(release.id)}&select=material_type,evidence_version`,
+      );
+      const evidenceKeys = new Set(
+        (existingEvidence || []).map((row) => `${row.material_type}\n${row.evidence_version}`),
+      );
+      const missingEvidence = evidence
+        .filter((item) => !evidenceKeys.has(`${String(item.materialType)}\n1`))
+        .map((item) => ({
+          release_id: release.id,
+          owner_user_id: user.id,
+          material_type: String(item.materialType),
+          evidence_version: 1,
+          file_path: String(item.path),
+          original_file_name: String(item.originalFileName || "evidence").slice(0, 255),
+          mime_type: String(item.mimeType || "application/octet-stream").slice(0, 120),
+          file_size: Number(item.size || 0),
+          artist_notes: String(item.artistNotes || "").slice(0, 2000) || null,
+          review_status: "submitted",
+        }));
+      if (missingEvidence.length) {
+        const savedEvidence = await restPost("release_clearance_evidence", missingEvidence);
+        if (!savedEvidence.ok) {
+          console.error("release clearance evidence insert", savedEvidence.status, savedEvidence.text);
+          return NextResponse.json({ error: "Release saved, but clearance evidence could not be registered. Use Recover submission." }, { status: 500 });
+        }
       }
     }
 
@@ -483,11 +554,14 @@ export async function POST(req: Request) {
     void notifyNewRelease(title, artistName, user.id, tracks.length);
 
     return NextResponse.json({
-      message: preflight.data?.status === "ready"
-        ? "Release submitted. Audio preflight is queued before editorial publication."
-        : "Release submitted. Editorial must approve the clearance evidence before publication.",
+      message: resumedFinalize
+        ? "Release registration recovered. No duplicate release was created."
+        : preflight.data?.status === "ready"
+          ? "Release submitted. Audio preflight is queued before editorial publication."
+          : "Release submitted. Editorial must approve the clearance evidence before publication.",
       release,
       preflight: preflight.data,
+      resumed: resumedFinalize,
     });
   } catch (err) {
     console.error("release finalize", err);
