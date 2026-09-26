@@ -50,12 +50,14 @@ export async function GET(request: Request) {
   const previousStartIso = previousStart.toISOString()
 
   try {
-    const [profiles, events, tracks, releases, requests] = await Promise.all([
+    const [profiles, events, tracks, releases, requests, trackPlayEvents, streamQualifications] = await Promise.all([
       rows(`profiles?created_at=gte.${encodeURIComponent(previousStartIso)}&select=role,created_at&order=created_at.asc&limit=5000`),
       rows(`analytics_events?created_at=gte.${encodeURIComponent(periodStartIso)}&select=event_name,session_id,properties,source,created_at&order=created_at.asc&limit=20000`) as Promise<AnalyticsEvent[]>,
       rows('tracks?select=id,title,artist_name,genre,file_url,play_count,like_count,editorial_status,is_public,in_rotation,created_at&order=play_count.desc&limit=2000'),
       rows('releases?select=id,editorial_status,is_public,in_rotation,created_at&limit=2000'),
       rows('track_review_requests?select=id,status,created_at&limit=2000').catch(() => []),
+      rows(`track_play_events?created_at=gte.${encodeURIComponent(periodStartIso)}&select=id,created_at&limit=20000`).catch(() => []),
+      rows(`stream_qualifications?created_at=gte.${encodeURIComponent(periodStartIso)}&select=id,status,created_at&limit=20000`).catch(() => []),
     ])
 
     const currentProfiles = profiles.filter((profile) => String(profile.created_at) >= periodStartIso)
@@ -105,7 +107,14 @@ export async function GET(request: Request) {
     const failedTrackChanges = playbackErrorEvents.filter((event) => String(event.properties?.stage || '') === 'track_change').length
     const mediaFailures = playbackErrorEvents.filter((event) => String(event.properties?.stage || '') === 'media').length
     const autoplayBlocks = playbackErrorEvents.filter((event) => String(event.properties?.error_name || '') === 'NotAllowedError').length
-    const qualifiedListens = countEvent('stream_qualified_30s')
+    // Use server-side playback truth for the qualification KPI. Client analytics can
+    // straddle the reporting boundary (a start just before midnight can qualify just
+    // after it), which can otherwise produce impossible >100% conversion rates.
+    const qualificationStarts = trackPlayEvents.length
+    const qualifiedListens = streamQualifications.length
+    const qualificationRate = qualificationStarts
+      ? Math.min(100, Math.round((qualifiedListens / qualificationStarts) * 1000) / 10)
+      : 0
     const recoveredFinalizations = events.filter(
       (event) => event.event_name === 'upload_complete' && event.properties?.recovered_finalize === true,
     ).length
@@ -222,7 +231,8 @@ export async function GET(request: Request) {
         mediaFailures,
         autoplayBlocks,
         qualifiedListens,
-        qualificationRate: playerStarts ? Math.round((qualifiedListens / playerStarts) * 1000) / 10 : 0,
+        qualificationStarts,
+        qualificationRate,
         recoveredFinalizations,
         completedUploads,
         recoveryRate: completedUploads ? Math.round((recoveredFinalizations / completedUploads) * 1000) / 10 : 0,
