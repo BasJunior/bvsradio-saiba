@@ -1,4 +1,11 @@
 export const analyticsEvents = [
+  "playback_intent",
+  "playback_media_requested",
+  "playback_first_audio",
+  "playback_10s",
+  "playback_continue_60s",
+  "playback_skip",
+  "playback_recovered",
   "player_start",
   "listening_duration",
   "search_no_results",
@@ -132,15 +139,33 @@ function visitorId() {
   return value
 }
 
-function playbackAttemptId(event: AnalyticsEvent) {
+function playbackAttemptId(event: AnalyticsEvent, properties: AnalyticsProperties) {
   if (typeof window === "undefined") return undefined
+  const explicit = typeof properties.attempt_id === "string" ? properties.attempt_id.trim().slice(0, 80) : ""
+  if (explicit) {
+    try {
+      window.sessionStorage.setItem(PLAY_ATTEMPT_KEY, explicit)
+    } catch {
+      // Analytics correlation must never block playback.
+    }
+    return explicit
+  }
   try {
-    if (event === "player_start") {
+    if (event === "playback_intent") {
       const value = crypto.randomUUID()
       window.sessionStorage.setItem(PLAY_ATTEMPT_KEY, value)
       return value
     }
-    if (event === "playback_error") {
+    if (
+      event === "playback_media_requested" ||
+      event === "playback_first_audio" ||
+      event === "playback_10s" ||
+      event === "playback_continue_60s" ||
+      event === "playback_skip" ||
+      event === "playback_recovered" ||
+      event === "player_start" ||
+      event === "playback_error"
+    ) {
       let value = window.sessionStorage.getItem(PLAY_ATTEMPT_KEY)
       if (!value) {
         value = crypto.randomUUID()
@@ -164,7 +189,7 @@ function milestoneKey(event: AnalyticsEvent) {
 }
 
 function sendEvent(event: AnalyticsEvent, properties: AnalyticsProperties = {}) {
-  const attemptId = playbackAttemptId(event)
+  const attemptId = playbackAttemptId(event, properties)
   const nextProperties = attemptId ? { ...properties, attempt_id: attemptId } : properties
   const body = JSON.stringify({
     event,
