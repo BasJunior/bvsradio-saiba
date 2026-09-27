@@ -1,6 +1,7 @@
 import "server-only";
 
 import {
+  DeleteObjectsCommand,
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -38,6 +39,31 @@ export async function r2ObjectExists(key: string) {
   } catch {
     return false;
   }
+}
+
+export async function deleteR2Objects(keys: string[]) {
+  const unique = [...new Set(keys.map((key) => key.trim()).filter((key) => safeR2Key(key)))];
+  if (!unique.length) return { deleted: 0 };
+  if (unique.length > 1000) throw new Error("R2 cleanup batch exceeds 1000 objects");
+
+  const response = await r2Client().send(
+    new DeleteObjectsCommand({
+      Bucket: bucket,
+      Delete: {
+        Quiet: true,
+        Objects: unique.map((Key) => ({ Key })),
+      },
+    }),
+  );
+  if (response.Errors?.length) {
+    throw new Error(
+      `R2 cleanup failed for ${response.Errors.length} object(s): ${response.Errors
+        .slice(0, 3)
+        .map((item) => item.Key || item.Code || "unknown")
+        .join(", ")}`,
+    );
+  }
+  return { deleted: unique.length };
 }
 
 export async function signedR2DownloadUrl(
