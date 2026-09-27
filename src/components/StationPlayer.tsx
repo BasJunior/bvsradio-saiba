@@ -182,7 +182,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const qualification = useRef<StreamQualificationState | null>(null);
   const qualificationSent = useRef(false);
   const playbackAttempt = useRef<PlaybackAttemptState | null>(null);
-  const lastPlaybackFailure = useRef<{ at: number; stage: string; trackId: string } | null>(null);
+  const lastPlaybackFailure = useRef<{ at: number; stage: string; trackId: string; attemptId: string | null } | null>(null);
   const pendingPlaybackTrigger = useRef<{ trigger: string; intent: boolean } | null>(null);
   const failStreak = useRef(0);
   const hydrated = useRef(false);
@@ -335,6 +335,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       at: Date.now(),
       stage,
       trackId: track ? trackLibraryId(track) : attempt?.trackId || "unknown",
+      attemptId: attempt?.id || null,
     };
   }, []);
 
@@ -759,6 +760,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
             attempt_id: attempt.id,
             track_id: attempt.trackId,
             previous_track_id: failure.trackId,
+            previous_attempt_id: failure.attemptId,
             previous_stage: failure.stage,
             recovery_ms: Math.max(0, attempt.firstAudioAt - failure.at),
           });
