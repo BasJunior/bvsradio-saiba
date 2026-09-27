@@ -19,12 +19,13 @@ export async function GET(request: Request) {
   if (!identity.profile || !hasCreatorAccess(identity.profile)) return NextResponse.json({ error: 'This workspace requires a creator account.' }, { status: 403 })
   const id = identity.user.id
   const empty = { application: null, articles: [], briefs: [], shows: [], episodes: [] }
-  const [tracksResponse, requestsResponse, releasesResponse, jobsResponse, profileFlagsResponse] = await Promise.all([
+  const [tracksResponse, requestsResponse, releasesResponse, jobsResponse, profileFlagsResponse, uploadSessionsResponse] = await Promise.all([
     fetch(creatorUrl(`tracks?user_id=eq.${id}&select=id,title,artist_name,genre,file_url,artwork_url,editorial_status,editorial_notes,is_public,in_rotation,is_downloadable,download_price,licence_type,play_count,like_count,created_at,updated_at,release_id,isrc,spotify_url&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`track_review_requests?artist_user_id=eq.${id}&select=*&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`releases?user_id=eq.${id}&select=id,title,artist_name,genre,editorial_status,editorial_notes,is_public,in_rotation,release_type,track_count,created_at,published_at&order=created_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`distribution_jobs?artist_user_id=eq.${id}&select=id,release_id,status,notes,updated_at,created_at&order=updated_at.desc&limit=50`), { headers: creatorHeaders, cache: 'no-store' }),
     fetch(creatorUrl(`profiles?id=eq.${id}&select=premium_active,premium_until,distribution_enabled,premium_plan_id&limit=1`), { headers: creatorHeaders, cache: 'no-store' }),
+    fetch(creatorUrl(`creator_upload_sessions?user_id=eq.${id}&select=id,submission_type,state,payload,result_type,result_id,last_error,expires_at,submitted_at,created_at,updated_at&order=updated_at.desc&limit=12`), { headers: creatorHeaders, cache: 'no-store' }).catch(() => null),
   ])
   let tracks = tracksResponse.ok ? await tracksResponse.json() : []
   // Older DBs may lack isrc/spotify_url columns — fall back so studio still loads.
@@ -57,7 +58,24 @@ export async function GET(request: Request) {
     distributionEnabled: Boolean(profileFlagsRow?.distribution_enabled),
     premiumPlanId: profileFlagsRow?.premium_plan_id || null,
   }
-  const pathBundle = { releases, releaseTracks, distributionJobs, profileFlags }
+  const rawUploadSessions = uploadSessionsResponse?.ok ? await uploadSessionsResponse.json().catch(() => []) : []
+  const uploadSessions = (Array.isArray(rawUploadSessions) ? rawUploadSessions : []).map((session: Record<string, unknown>) => {
+    const payload = session.payload && typeof session.payload === 'object' ? session.payload as Record<string, unknown> : {}
+    return {
+      id: String(session.id || ''),
+      submissionType: session.submission_type === 'release' ? 'release' : 'track',
+      state: String(session.state || 'uploading'),
+      title: clean(payload.title || (session.submission_type === 'release' ? 'Untitled release' : 'Untitled track'), 160),
+      resultType: session.result_type ? String(session.result_type) : null,
+      resultId: session.result_id ? String(session.result_id) : null,
+      lastError: session.last_error ? clean(session.last_error, 500) : null,
+      expiresAt: session.expires_at ? String(session.expires_at) : null,
+      submittedAt: session.submitted_at ? String(session.submitted_at) : null,
+      createdAt: String(session.created_at || ''),
+      updatedAt: String(session.updated_at || ''),
+    }
+  }).filter((session: { id: string }) => Boolean(session.id))
+  const pathBundle = { releases, releaseTracks, distributionJobs, profileFlags, uploadSessions }
   if (!['writer', 'show_creator', 'admin'].includes(identity.profile.role)) {
     return NextResponse.json({ profile: identity.profile, ...empty, tracks, trackRequests, ...pathBundle })
   }
