@@ -712,6 +712,59 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
           </button>
         </div>
       )}
+      {serverReleaseDraft && !pendingReleaseFinalize && (
+        <div className={`rounded-xl border p-4 text-sm ${
+          serverReleaseDraft.readyToFinalize
+            ? 'border-emerald-300/30 bg-emerald-300/[.07]'
+            : 'border-sky-300/25 bg-sky-300/[.06]'
+        }`}>
+          <p className={`font-semibold ${
+            serverReleaseDraft.readyToFinalize ? 'text-emerald-100' : 'text-sky-100'
+          }`}>
+            {serverReleaseDraft.readyToFinalize
+              ? 'BVS verified every file for this release.'
+              : 'BVS kept an unfinished release draft.'}
+          </p>
+          <p className="mt-1 text-text-secondary">
+            <strong className="text-text-primary">{serverReleaseDraft.title}</strong> ·
+            {' '}{serverReleaseDraft.tracksUploaded}/{serverReleaseDraft.trackCount} tracks verified ·
+            {' '}cover {serverReleaseDraft.coverUploaded ? 'verified' : 'not verified'}
+            {serverReleaseDraft.evidenceCount > 0
+              ? ` · ${serverReleaseDraft.evidenceUploaded}/${serverReleaseDraft.evidenceCount} clearance files verified`
+              : ''}
+            .
+          </p>
+          {serverReleaseDraft.lastError ? (
+            <p className="mt-2 text-xs text-text-secondary">{serverReleaseDraft.lastError}</p>
+          ) : null}
+          <p className="mt-2 text-xs text-text-secondary">
+            Nothing is published until editorial registration completes.
+            {serverReleaseDraft.readyToFinalize
+              ? ' You can finish registration without uploading the files again.'
+              : ' If the original files are no longer available in this browser, start again safely or dismiss this draft.'}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {serverReleaseDraft.readyToFinalize ? (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void retryServerReleaseDraft()}
+                className="rounded-full border border-emerald-200/40 px-4 py-2 font-medium text-emerald-100 hover:bg-emerald-200/10 disabled:opacity-60"
+              >
+                Recover release
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void dismissServerReleaseDraft()}
+              className="rounded-full border border-white/15 px-4 py-2 text-text-secondary hover:bg-white/5 disabled:opacity-60"
+            >
+              Dismiss draft
+            </button>
+          </div>
+        </div>
+      )}
       <p className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm text-text-secondary">
         Submit an <strong className="text-text-primary">album, EP or multi-track project</strong> (cover + ordered
         songs). After editorial approve &amp; publish, tracks can enter continuous rotation. Premium is separate —
