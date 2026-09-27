@@ -26,15 +26,50 @@ function bvsLicenceEvidence(workspace: WorkspaceContext) {
 type Slot = { path: string; signedUrl: string; contentType: string; index?: number }
 
 type ReleaseFinalizePayload = Record<string, unknown> & {
+  submissionId?: string
   title: string
   genre: string
-  coverPath: string | null
-  tracks: Array<{ title: string; audioPath: string; position: number }>
+  coverPath?: string | null
+  tracks: Array<{ title: string; audioPath?: string; position: number }>
 }
 
 type PendingReleaseFinalize = {
   createdAt: number
   payload: ReleaseFinalizePayload
+}
+
+type ServerReleaseDraft = {
+  id: string
+  state: string
+  title: string
+  genre: string
+  releaseType: string
+  trackCount: number
+  tracksUploaded: number
+  coverUploaded: boolean
+  evidenceCount: number
+  evidenceUploaded: number
+  readyToFinalize: boolean
+  lastError: string | null
+}
+
+type RecoverableReleaseSessionResponse = {
+  error?: string
+  session?: {
+    id: string
+    state: string
+    payload?: Record<string, unknown>
+    mediaManifest?: Record<string, unknown>
+    createdAt?: string
+    expiresAt?: string
+    lastError?: string | null
+  } | null
+  tracksUploaded?: number
+  trackCount?: number
+  coverUploaded?: boolean
+  evidenceUploaded?: number
+  evidenceCount?: number
+  readyToFinalize?: boolean
 }
 
 const PENDING_RELEASE_FINALIZE_KEY = 'bvs.creator.pending-release-finalize.v1'
@@ -79,7 +114,7 @@ function forgetPendingReleaseFinalize() {
 }
 
 async function registerReleaseSubmission(accessToken: string, payload: ReleaseFinalizePayload) {
-  return fetchJson<{ error?: string; resumed?: boolean; release?: { id?: string } }>(
+  return fetchJson<{ error?: string; resumed?: boolean; release?: { id?: string }; submissionId?: string | null; state?: string }>(
     '/api/releases',
     {
       method: 'POST',
@@ -166,10 +201,118 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
   const [progress, setProgress] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [pendingReleaseFinalize, setPendingReleaseFinalize] = useState<PendingReleaseFinalize | null>(null)
+  const [serverReleaseDraft, setServerReleaseDraft] = useState<ServerReleaseDraft | null>(null)
 
   useEffect(() => {
     setPendingReleaseFinalize(readPendingReleaseFinalize())
+    if (!isSupabaseConfigured()) return
+
+    let cancelled = false
+    void (async () => {
+      try {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+        const result = await fetchJson<RecoverableReleaseSessionResponse>(
+          '/api/releases/prepare',
+          {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            cache: 'no-store',
+          },
+          'checking unfinished release',
+        )
+        if (cancelled || !result.ok || !result.data.session) return
+        const recovered = result.data
+        const recoveredSession = recovered.session!
+        const payload = recoveredSession.payload || {}
+        const trackMeta = Array.isArray(payload.tracks) ? payload.tracks : []
+        setServerReleaseDraft({
+          id: recoveredSession.id,
+          state: recoveredSession.state,
+          title: String(payload.title || 'Untitled release'),
+          genre: String(payload.genre || ''),
+          releaseType: String(payload.releaseType || 'album'),
+          trackCount: Number(recovered.trackCount || trackMeta.length || 0),
+          tracksUploaded: Number(recovered.tracksUploaded || 0),
+          coverUploaded: Boolean(recovered.coverUploaded),
+          evidenceCount: Number(recovered.evidenceCount || 0),
+          evidenceUploaded: Number(recovered.evidenceUploaded || 0),
+          readyToFinalize: Boolean(recovered.readyToFinalize),
+          lastError: recoveredSession.lastError || null,
+        })
+      } catch (draftError) {
+        console.info('[bvs release] no recoverable server draft', draftError)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  const retryServerReleaseDraft = async () => {
+    if (!serverReleaseDraft?.readyToFinalize || !isSupabaseConfigured()) return
+    setLoading(true)
+    setError(null)
+    setProgress('Recovering your verified release…')
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Sign in again, then tap Recover release.')
+      const result = await registerReleaseSubmission(session.access_token, {
+        submissionId: serverReleaseDraft.id,
+        title: serverReleaseDraft.title,
+        genre: serverReleaseDraft.genre,
+        tracks: [],
+      })
+      if (!result.ok) throw new Error(result.data.error || `Could not recover release (${result.status})`)
+      forgetPendingReleaseFinalize()
+      setPendingReleaseFinalize(null)
+      setServerReleaseDraft(null)
+      trackEvent('upload_complete', {
+        genre: serverReleaseDraft.genre,
+        track_count: serverReleaseDraft.trackCount,
+        release_type: serverReleaseDraft.releaseType,
+        recovered_finalize: true,
+        durable_submission: true,
+      })
+      trackEvent('release_submitted', { recovered_finalize: true, durable_submission: true })
+      onSuccess?.()
+    } catch (err) {
+      setError(humanizeUploadError(err))
+    } finally {
+      setLoading(false)
+      setProgress('')
+    }
+  }
+
+  const dismissServerReleaseDraft = async () => {
+    if (!serverReleaseDraft || !isSupabaseConfigured()) return
+    setLoading(true)
+    setError(null)
+    setProgress('Dismissing unfinished release…')
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Sign in again, then try once more.')
+      const result = await fetchJson<{ error?: string; ok?: boolean }>(
+        `/api/releases/prepare?submissionId=${encodeURIComponent(serverReleaseDraft.id)}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        },
+        'dismissing release draft',
+      )
+      if (!result.ok) throw new Error(result.data.error || 'Could not dismiss release draft.')
+      setServerReleaseDraft(null)
+    } catch (err) {
+      setError(humanizeUploadError(err))
+    } finally {
+      setLoading(false)
+      setProgress('')
+    }
+  }
 
   const retryPendingReleaseFinalize = async () => {
     if (!pendingReleaseFinalize || !isSupabaseConfigured()) return
@@ -184,6 +327,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       if (!result.ok) throw new Error(result.data.error || `Could not recover release (${result.status})`)
       forgetPendingReleaseFinalize()
       setPendingReleaseFinalize(null)
+      setServerReleaseDraft(null)
       trackEvent('upload_complete', {
         genre: pendingReleaseFinalize.payload.genre,
         track_count: pendingReleaseFinalize.payload.tracks.length,
@@ -276,13 +420,73 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
           : evidenceFiles[materialType] as File,
       }))
 
+      // Persist the complete non-media submission contract before large files move.
+      // File paths are injected from the server-side manifest during finalization.
+      const submissionPayload: ReleaseFinalizePayload = {
+        title: title.trim(),
+        genre,
+        description: description.trim(),
+        releaseType,
+        rightsConfirmed: true,
+        explicit,
+        explicitDeclared: true,
+        copyrightYear: Number(copyrightYear),
+        masterOwnerName: masterOwner.trim(),
+        compositionOwnerNames: compositionOwners.split(',').map((value) => value.trim()).filter(Boolean),
+        territories: ['WORLD'],
+        songwriters: songwriters.split(',').map((value) => value.trim()).filter(Boolean),
+        producers: producers.split(',').map((value) => value.trim()).filter(Boolean),
+        featuredArtists: featuredArtists.split(',').map((value) => value.trim()).filter(Boolean),
+        materialTypes,
+        evidence: evidenceEntries.map(({ materialType, file }) => ({
+          materialType,
+          originalFileName: file.name,
+          mimeType: file.type,
+          size: file.size,
+          artistNotes: materialType === 'leased_beat' && autoLicensedBeat
+            ? `BVS_SONG_WORKSPACE:${songWorkspaceId}`
+            : evidenceNotes[materialType] || '',
+        })),
+        clearanceItems: evidenceEntries.map(({ materialType }) => ({
+          materialType: materialType === 'other_third_party' ? 'third_party' : materialType,
+          riskLevel: 'medium',
+          title: `${materialOptions.find(([value]) => value === materialType)?.[1] || materialType} clearance`,
+          description: evidenceNotes[materialType] || 'Documentary clearance evidence uploaded with this release.',
+          licenceOrPermissionRef: evidenceNotes[materialType] || '',
+        })),
+        tracks: files.map((_, i) => ({
+          title: (trackTitles[i] || `Track ${i + 1}`).trim(),
+          position: i + 1,
+        })),
+        containsCover,
+        containsRemix,
+        containsSamples,
+        containsLeasedBeats,
+        containsThirdParty,
+        masterControl,
+        compositionControl,
+        featuredContributorsCleared: featuredCleared,
+        samplesBeatsCleared: samplesCleared,
+        grantHost,
+        grantStream,
+        grantCatalogue,
+        grantPromote,
+        accuracyConfirmed,
+        clearanceNote: evidenceEntries
+          .map(({ materialType }) => evidenceNotes[materialType]?.trim())
+          .filter(Boolean)
+          .join('; ')
+          .slice(0, 2000) || undefined,
+      }
+
       setProgress('Preparing secure upload slots…')
-      const prepResult = await fetchJson<{ error?: string; tracks?: Slot[]; cover?: Slot | null; evidence?: Slot[] }>(
+      const prepResult = await fetchJson<{ error?: string; submissionId?: string; state?: string; tracks?: Slot[]; cover?: Slot | null; evidence?: Slot[] }>(
         '/api/releases/prepare',
         {
           method: 'POST',
           headers,
           body: JSON.stringify({
+            submission: submissionPayload,
             tracks: files.map((f) => ({ name: f.name, type: f.type, size: f.size })),
             cover: cover ? { name: cover.name, type: cover.type, size: cover.size } : null,
             evidence: evidenceEntries.map(({ materialType, file }) => ({ materialType, name: file.name, type: file.type, size: file.size })),
@@ -292,6 +496,23 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       )
       const prep = prepResult.data
       if (!prepResult.ok) throw new Error(prep.error || 'Prepare failed')
+      if (!prep.submissionId || !prep.cover) {
+        throw new Error('BVS could not create the durable release submission. Try again.')
+      }
+      setServerReleaseDraft({
+        id: prep.submissionId,
+        state: prep.state || 'uploading',
+        title: title.trim(),
+        genre,
+        releaseType,
+        trackCount: files.length,
+        tracksUploaded: 0,
+        coverUploaded: false,
+        evidenceCount: evidenceEntries.length,
+        evidenceUploaded: 0,
+        readyToFinalize: false,
+        lastError: null,
+      })
       const preparedTracks = prep.tracks
       const preparedEvidence = Array.isArray(prep.evidence) ? prep.evidence : []
       if (!Array.isArray(preparedTracks) || preparedTracks.length !== files.length) {
@@ -317,22 +538,58 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
         })
       }
 
+      setProgress('Verifying release files reached BVS…')
+      const verified = await fetchJson<{
+        error?: string
+        session?: { id?: string; state?: string }
+        tracksUploaded?: number
+        trackCount?: number
+        coverUploaded?: boolean
+        evidenceUploaded?: number
+        evidenceCount?: number
+        readyToFinalize?: boolean
+      }>(
+        '/api/releases/prepare',
+        {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ submissionId: prep.submissionId }),
+        },
+        'verifying release files',
+      )
+      if (!verified.ok || !verified.data.readyToFinalize) {
+        setServerReleaseDraft((current) => current && current.id === prep.submissionId
+          ? {
+              ...current,
+              state: verified.data.session?.state || 'uploading',
+              tracksUploaded: Number(verified.data.tracksUploaded || 0),
+              coverUploaded: Boolean(verified.data.coverUploaded),
+              evidenceUploaded: Number(verified.data.evidenceUploaded || 0),
+              readyToFinalize: false,
+              lastError: verified.data.error || 'BVS could not verify every release file yet.',
+            }
+          : current)
+        throw new Error(
+          verified.data.error ||
+          'BVS kept your release draft, but not every file is verified yet. Do not guess — return here to check the upload state.',
+        )
+      }
+
+      setServerReleaseDraft((current) => current && current.id === prep.submissionId
+        ? {
+            ...current,
+            state: verified.data.session?.state || 'uploaded',
+            tracksUploaded: files.length,
+            coverUploaded: true,
+            evidenceUploaded: evidenceEntries.length,
+            readyToFinalize: true,
+            lastError: null,
+          }
+        : current)
+
       const finalizePayload: ReleaseFinalizePayload = {
-        title: title.trim(),
-        genre,
-        description: description.trim(),
-        releaseType,
-        rightsConfirmed: true,
-        explicit,
-        explicitDeclared: true,
-        copyrightYear: Number(copyrightYear),
-        masterOwnerName: masterOwner.trim(),
-        compositionOwnerNames: compositionOwners.split(',').map((value) => value.trim()).filter(Boolean),
-        territories: ['WORLD'],
-        songwriters: songwriters.split(',').map((value) => value.trim()).filter(Boolean),
-        producers: producers.split(',').map((value) => value.trim()).filter(Boolean),
-        featuredArtists: featuredArtists.split(',').map((value) => value.trim()).filter(Boolean),
-        materialTypes,
+        ...submissionPayload,
+        submissionId: prep.submissionId,
         evidence: evidenceEntries.map(({ materialType, file }, index) => ({
           materialType,
           path: preparedEvidence[index].path,
@@ -391,14 +648,16 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
 
       forgetPendingReleaseFinalize()
       setPendingReleaseFinalize(null)
+      setServerReleaseDraft(null)
       trackEvent('upload_complete', {
         genre,
         track_count: files.length,
         release_type: releaseType,
         song_workspace: Boolean(autoLicensedBeat),
         recovered_finalize: Boolean(fin.resumed),
+        durable_submission: true,
       })
-      trackEvent('release_submitted', { song_workspace: Boolean(autoLicensedBeat), recovered_finalize: Boolean(fin.resumed) })
+      trackEvent('release_submitted', { song_workspace: Boolean(autoLicensedBeat), recovered_finalize: Boolean(fin.resumed), durable_submission: true })
       setProgress('')
       setTitle('')
       setGenre('')
@@ -451,6 +710,59 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
           >
             Recover release
           </button>
+        </div>
+      )}
+      {serverReleaseDraft && !pendingReleaseFinalize && (
+        <div className={`rounded-xl border p-4 text-sm ${
+          serverReleaseDraft.readyToFinalize
+            ? 'border-emerald-300/30 bg-emerald-300/[.07]'
+            : 'border-sky-300/25 bg-sky-300/[.06]'
+        }`}>
+          <p className={`font-semibold ${
+            serverReleaseDraft.readyToFinalize ? 'text-emerald-100' : 'text-sky-100'
+          }`}>
+            {serverReleaseDraft.readyToFinalize
+              ? 'BVS verified every file for this release.'
+              : 'BVS kept an unfinished release draft.'}
+          </p>
+          <p className="mt-1 text-text-secondary">
+            <strong className="text-text-primary">{serverReleaseDraft.title}</strong> ·
+            {' '}{serverReleaseDraft.tracksUploaded}/{serverReleaseDraft.trackCount} tracks verified ·
+            {' '}cover {serverReleaseDraft.coverUploaded ? 'verified' : 'not verified'}
+            {serverReleaseDraft.evidenceCount > 0
+              ? ` · ${serverReleaseDraft.evidenceUploaded}/${serverReleaseDraft.evidenceCount} clearance files verified`
+              : ''}
+            .
+          </p>
+          {serverReleaseDraft.lastError ? (
+            <p className="mt-2 text-xs text-text-secondary">{serverReleaseDraft.lastError}</p>
+          ) : null}
+          <p className="mt-2 text-xs text-text-secondary">
+            Nothing is published until editorial registration completes.
+            {serverReleaseDraft.readyToFinalize
+              ? ' You can finish registration without uploading the files again.'
+              : ' If the original files are no longer available in this browser, start again safely or dismiss this draft.'}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {serverReleaseDraft.readyToFinalize ? (
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => void retryServerReleaseDraft()}
+                className="rounded-full border border-emerald-200/40 px-4 py-2 font-medium text-emerald-100 hover:bg-emerald-200/10 disabled:opacity-60"
+              >
+                Recover release
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => void dismissServerReleaseDraft()}
+              className="rounded-full border border-white/15 px-4 py-2 text-text-secondary hover:bg-white/5 disabled:opacity-60"
+            >
+              Dismiss draft
+            </button>
+          </div>
         </div>
       )}
       <p className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm text-text-secondary">

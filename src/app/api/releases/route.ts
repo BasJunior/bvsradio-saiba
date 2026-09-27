@@ -9,6 +9,11 @@ import {
 } from "@/lib/releases-server";
 import { authUserId } from "@/lib/storage-upload";
 import { creatorPublicName } from "@/lib/public-name";
+import {
+  getCreatorUploadSession,
+  updateCreatorUploadSession,
+  type CreatorUploadSessionRow,
+} from "@/lib/creator-upload-session-server";
 import { r2Configured, r2ObjectExists } from "@/lib/r2-storage";
 import {
   accountUploadAllowed,
@@ -25,6 +30,109 @@ import {
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+
+type ReleaseFinalizeBody = {
+  submissionId?: string;
+  title?: string;
+  genre?: string;
+  description?: string;
+  releaseType?: string;
+  rightsConfirmed?: boolean;
+  explicit?: boolean;
+  explicitDeclared?: boolean;
+  copyrightYear?: number;
+  masterOwnerName?: string;
+  compositionOwnerNames?: string[];
+  territories?: string[];
+  songwriters?: string[];
+  producers?: string[];
+  featuredArtists?: string[];
+  materialTypes?: string[];
+  evidence?: Array<{
+    materialType?: string;
+    path?: string;
+    originalFileName?: string;
+    mimeType?: string;
+    size?: number;
+    artistNotes?: string;
+  }>;
+  coverPath?: string | null;
+  tracks?: Array<{ title?: string; audioPath?: string; position?: number }>;
+  containsCover?: boolean;
+  containsRemix?: boolean;
+  containsSamples?: boolean;
+  containsLeasedBeats?: boolean;
+  containsThirdParty?: boolean;
+  masterControl?: boolean;
+  compositionControl?: boolean;
+  featuredContributorsCleared?: boolean;
+  samplesBeatsCleared?: boolean;
+  grantHost?: boolean;
+  grantStream?: boolean;
+  grantCatalogue?: boolean;
+  grantPromote?: boolean;
+  accuracyConfirmed?: boolean;
+  clearanceItems?: Array<{
+    materialType?: string;
+    riskLevel?: string;
+    title?: string;
+    description?: string;
+    licenceOrPermissionRef?: string;
+    documentStoragePath?: string;
+  }>;
+  clearanceNote?: string;
+};
+
+type ReleaseSessionManifest = {
+  tracks?: Array<{ index?: number; path?: string }>;
+  cover?: { path?: string };
+  evidence?: Array<{
+    index?: number;
+    materialType?: string;
+    path?: string;
+    originalFileName?: string;
+    contentType?: string;
+    size?: number;
+  }>;
+};
+
+function authoritativeReleaseBody(session: CreatorUploadSessionRow): ReleaseFinalizeBody {
+  const payload = (session.payload || {}) as ReleaseFinalizeBody;
+  const manifest = (session.media_manifest || {}) as ReleaseSessionManifest;
+  const trackMeta = Array.isArray(payload.tracks) ? payload.tracks : [];
+  const mediaTracks = Array.isArray(manifest.tracks) ? manifest.tracks : [];
+  const evidenceMeta = Array.isArray(payload.evidence) ? payload.evidence : [];
+  const mediaEvidence = Array.isArray(manifest.evidence) ? manifest.evidence : [];
+  const clearanceMeta = Array.isArray(payload.clearanceItems) ? payload.clearanceItems : [];
+
+  return {
+    ...payload,
+    submissionId: session.id,
+    coverPath: String(manifest.cover?.path || ""),
+    tracks: trackMeta.map((track, index) => ({
+      ...track,
+      audioPath: String(mediaTracks[index]?.path || ""),
+      position: Number(track.position) || index + 1,
+    })),
+    evidence: evidenceMeta.map((item, index) => ({
+      ...item,
+      materialType: String(item.materialType || mediaEvidence[index]?.materialType || ""),
+      path: String(mediaEvidence[index]?.path || ""),
+      originalFileName: String(item.originalFileName || mediaEvidence[index]?.originalFileName || "evidence"),
+      mimeType: String(item.mimeType || mediaEvidence[index]?.contentType || "application/octet-stream"),
+      size: Number(item.size || mediaEvidence[index]?.size || 0),
+    })),
+    clearanceItems: clearanceMeta.map((item, index) => {
+      const path = String(mediaEvidence[index]?.path || "");
+      return {
+        ...item,
+        documentStoragePath: path,
+        licenceOrPermissionRef:
+          String(item.licenceOrPermissionRef || "").trim() || (path ? `Uploaded evidence: ${path}` : ""),
+      };
+    }),
+  };
+}
 
 async function notifyNewRelease(title: string, artist: string, userId: string, count: number) {
   const text = [
@@ -106,49 +214,43 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Approved artist access is required before submitting a release." }, { status: 403 });
     }
 
-    const body = (await req.json()) as {
-      title?: string;
-      genre?: string;
-      description?: string;
-      releaseType?: string;
-      rightsConfirmed?: boolean;
-      explicit?: boolean;
-      explicitDeclared?: boolean;
-      copyrightYear?: number;
-      masterOwnerName?: string;
-      compositionOwnerNames?: string[];
-      territories?: string[];
-      songwriters?: string[];
-      producers?: string[];
-      featuredArtists?: string[];
-      materialTypes?: string[];
-      evidence?: Array<{ materialType?: string; path?: string; originalFileName?: string; mimeType?: string; size?: number; artistNotes?: string }>;
-      coverPath?: string | null;
-      tracks?: Array<{ title?: string; audioPath?: string; position?: number }>;
-      containsCover?: boolean;
-      containsRemix?: boolean;
-      containsSamples?: boolean;
-      containsLeasedBeats?: boolean;
-      containsThirdParty?: boolean;
-      masterControl?: boolean;
-      compositionControl?: boolean;
-      featuredContributorsCleared?: boolean;
-      samplesBeatsCleared?: boolean;
-      grantHost?: boolean;
-      grantStream?: boolean;
-      grantCatalogue?: boolean;
-      grantPromote?: boolean;
-      accuracyConfirmed?: boolean;
-      clearanceItems?: Array<{
-        materialType?: string;
-        riskLevel?: string;
-        title?: string;
-        description?: string;
-        licenceOrPermissionRef?: string;
-        documentStoragePath?: string;
-      }>;
-      clearanceNote?: string;
-    };
+    const rawBody = (await req.json()) as ReleaseFinalizeBody;
+    const submissionId = String(rawBody.submissionId || "").trim();
+    let durableSession: CreatorUploadSessionRow | null = null;
+    let body: ReleaseFinalizeBody = rawBody;
+
+    if (submissionId) {
+      durableSession = await getCreatorUploadSession(submissionId, user.id);
+      if (!durableSession || durableSession.submission_type !== "release") {
+        return NextResponse.json({ error: "Release upload session not found for this account." }, { status: 404 });
+      }
+      if (durableSession.state === "abandoned") {
+        return NextResponse.json({ error: "This release draft was dismissed. Start a new submission." }, { status: 409 });
+      }
+      if (
+        durableSession.state !== "submitted" &&
+        Number.isFinite(Date.parse(durableSession.expires_at)) &&
+        Date.parse(durableSession.expires_at) < Date.now()
+      ) {
+        return NextResponse.json({ error: "This release upload session expired. Start a new submission." }, { status: 410 });
+      }
+      if (durableSession.state === "submitted" && durableSession.result_type === "release" && durableSession.result_id) {
+        const submittedRows = await restGet<ReleaseRow[]>(
+          `releases?id=eq.${encodeURIComponent(durableSession.result_id)}&user_id=eq.${encodeURIComponent(user.id)}&select=*&limit=1`,
+        );
+        const submittedRelease = submittedRows?.[0];
+        if (submittedRelease?.id) {
+          return NextResponse.json({
+            message: "Release was already submitted. No duplicate release was created.",
+            release: submittedRelease,
+            submissionId: durableSession.id,
+            state: "submitted",
+            resumed: true,
+          });
+        }
+      }
+      body = authoritativeReleaseBody(durableSession);
+    }
 
     const title = String(body.title || "").trim().slice(0, 160);
     const genre = String(body.genre || "").trim().slice(0, 80);
@@ -225,10 +327,28 @@ export async function POST(req: Request) {
     }
     const objectChecks = await Promise.all(uploadedPaths.map((path) => r2ObjectExists(path)));
     if (objectChecks.some((exists) => !exists)) {
+      if (durableSession) {
+        await updateCreatorUploadSession(durableSession.id, user.id, {
+          state: "uploading",
+          last_error: "One or more release files are not present in storage.",
+        }).catch(() => null);
+      }
       return NextResponse.json(
-        { error: "One or more release files did not finish uploading. Please retry." },
-        { status: 400 },
+        {
+          error: "One or more release files did not finish uploading. BVS kept the release draft so its state is not lost.",
+          submissionId: durableSession?.id || null,
+          state: durableSession ? "uploading" : null,
+        },
+        { status: 409 },
       );
+    }
+
+    if (durableSession) {
+      durableSession =
+        (await updateCreatorUploadSession(durableSession.id, user.id, {
+          state: "finalizing",
+          last_error: null,
+        })) || durableSession;
     }
 
     const coverUrl = coverPath ? fileUrlForPath(coverPath) : "/assets/images/default-artwork.jpg";
@@ -551,6 +671,18 @@ export async function POST(req: Request) {
       );
     }
 
+    if (durableSession && release.id) {
+      await updateCreatorUploadSession(durableSession.id, user.id, {
+        state: "submitted",
+        result_type: "release",
+        result_id: release.id,
+        submitted_at: new Date().toISOString(),
+        last_error: null,
+      }).catch((sessionError) => {
+        console.error("release upload session submit-state update", sessionError);
+      });
+    }
+
     void notifyNewRelease(title, artistName, user.id, tracks.length);
 
     return NextResponse.json({
@@ -561,6 +693,8 @@ export async function POST(req: Request) {
           : "Release submitted. Editorial must approve the clearance evidence before publication.",
       release,
       preflight: preflight.data,
+      submissionId: durableSession?.id || null,
+      state: "submitted",
       resumed: resumedFinalize,
     });
   } catch (err) {

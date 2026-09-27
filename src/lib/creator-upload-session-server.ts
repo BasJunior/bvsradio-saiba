@@ -86,16 +86,27 @@ export async function getCreatorUploadSession(id: string, userId: string) {
   return rows[0] || null;
 }
 
-export async function getLatestRecoverableTrackUploadSession(userId: string) {
+export async function getLatestRecoverableUploadSession(
+  userId: string,
+  submissionType: "track" | "release",
+) {
   const response = await fetch(
     endpoint(
-      `creator_upload_sessions?user_id=eq.${encodeURIComponent(userId)}&submission_type=eq.track&state=in.(preparing,uploading,uploaded,finalizing,failed)&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=*&order=created_at.desc&limit=1`,
+      `creator_upload_sessions?user_id=eq.${encodeURIComponent(userId)}&submission_type=eq.${submissionType}&state=in.(preparing,uploading,uploaded,finalizing,failed)&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&select=*&order=created_at.desc&limit=1`,
     ),
     { headers: serviceHeaders(), cache: "no-store" },
   );
   if (!response.ok) return null;
   const rows = (await response.json()) as CreatorUploadSessionRow[];
   return rows[0] || null;
+}
+
+export async function getLatestRecoverableTrackUploadSession(userId: string) {
+  return getLatestRecoverableUploadSession(userId, "track");
+}
+
+export async function getLatestRecoverableReleaseUploadSession(userId: string) {
+  return getLatestRecoverableUploadSession(userId, "release");
 }
 
 export async function updateCreatorUploadSession(
