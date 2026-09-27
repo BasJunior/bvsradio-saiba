@@ -183,6 +183,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const qualificationSent = useRef(false);
   const playbackAttempt = useRef<PlaybackAttemptState | null>(null);
   const lastPlaybackFailure = useRef<{ at: number; stage: string; trackId: string } | null>(null);
+  const pendingPlaybackTrigger = useRef<{ trigger: string; intent: boolean } | null>(null);
   const failStreak = useRef(0);
   const hydrated = useRef(false);
   const [tracks, setTracks] = useState<StationTrack[]>(initialTracks);
@@ -659,7 +660,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   useEffect(() => {
     if (!audio.current || !current) return;
     if (isPlaying) {
-      const attempt = beginPlaybackAttempt(current, "track_change");
+      const pending = pendingPlaybackTrigger.current;
+      const attempt = beginPlaybackAttempt(
+        current,
+        pending?.trigger || "track_change",
+        { intent: Boolean(pending?.intent) },
+      );
+      pendingPlaybackTrigger.current = null;
       window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
       audio.current
         .play()
@@ -874,6 +881,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         const prev = history[0];
         if (prev) {
           const item = makeQueueItem(prev, "user");
+          pendingPlaybackTrigger.current = {
+            trigger: opts?.userSkip ? "user_previous" : "history_previous",
+            intent: Boolean(opts?.userSkip),
+          };
           setNowPlaying((cur) => {
             if (cur) setUpNext((q) => [cur, ...q].slice(0, UP_NEXT_TARGET + 5));
             return item;
@@ -896,6 +907,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         recordPlaybackSkip(opts.skipReason || (direction === 1 ? "next" : "previous"));
       }
 
+      pendingPlaybackTrigger.current = {
+        trigger: opts?.autoSkip ? "error_auto_skip" : opts?.userSkip ? "user_skip" : "autoplay",
+        intent: Boolean(opts?.userSkip),
+      };
+
       setUpNext((queue) => {
         let nextQueue = [...queue];
         let nextItem = nextQueue.shift();
@@ -914,11 +930,6 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
         if (nextItem) {
           if (nowRef.current) pushHistory(nowRef.current.track);
-          beginPlaybackAttempt(
-            nextItem.track,
-            opts?.autoSkip ? "error_auto_skip" : opts?.userSkip ? "user_skip" : "autoplay",
-            { forceNew: true, intent: Boolean(opts?.userSkip) },
-          );
           setNowPlaying(nextItem);
           const filled = autoplayRef.current ? fillUpNext(nextItem.track, nextQueue) : nextQueue;
           return filled;
@@ -927,7 +938,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         return queue;
       });
     },
-    [beginPlaybackAttempt, fillUpNext, flushListening, history, pushHistory, recordPlaybackSkip],
+    [fillUpNext, flushListening, history, pushHistory, recordPlaybackSkip],
   );
 
   const handleMediaError = useCallback(() => {
