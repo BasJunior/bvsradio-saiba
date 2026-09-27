@@ -31,6 +31,7 @@ import {
   openTransientLayer,
 } from "@/lib/transient-navigation";
 import BuyTrackButton from "@/components/BuyTrackButton";
+import LibraryAction from "@/components/LibraryAction";
 import MusicVideoWatch from "@/components/MusicVideoWatch";
 
 type RepeatMode = "off" | "all" | "one";
@@ -1772,20 +1773,70 @@ function LibraryLink() {
   );
 }
 
-function ArtistSearchLink({
-  artist,
+function creatorHrefForTrack(track: StationTrack | undefined, surface: "ios" | "android" | null, appChrome: boolean) {
+  if (!track) return "";
+  if (appChrome && surface && track.creatorId) {
+    return `/app/${surface}/creator/${encodeURIComponent(track.creatorId)}`;
+  }
+  if (track.creatorUsername) {
+    return `/artist/${encodeURIComponent(track.creatorUsername)}`;
+  }
+  return hrefForAppSurface(`/search?q=${encodeURIComponent(track.artist || "")}`, appChrome ? surface : null)
+    || (surface ? appExplore(surface) : "/search");
+}
+
+function CreatorLink({
+  track,
   className,
   children,
   onClick,
 }: {
-  artist: string;
+  track: StationTrack | undefined;
   className?: string;
   children: React.ReactNode;
   onClick?: () => void;
 }) {
   const { surface, appChrome } = useAppSurface();
-  const href = hrefForAppSurface(`/search?q=${encodeURIComponent(artist)}`, appChrome ? surface : null);
-  return <Link href={href || appExplore(surface || "ios")} className={className} onClick={onClick}>{children}</Link>;
+  const href = creatorHrefForTrack(track, surface, appChrome);
+  return (
+    <Link
+      href={href}
+      className={className}
+      onClick={() => {
+        trackEvent("flow_relationship_open", {
+          relationship: "creator",
+          source: "player",
+          track_id: track?.id || null,
+          creator_id: track?.creatorId || null,
+          direct_profile: Boolean(track?.creatorId && (track?.creatorUsername || surface)),
+        });
+        onClick?.();
+      }}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function CreatorFollowAction({ track }: { track: StationTrack | undefined }) {
+  const { surface, appChrome } = useAppSurface();
+  if (!track?.creatorId) return null;
+  const href = creatorHrefForTrack(track, surface, appChrome);
+  return (
+    <LibraryAction
+      section="follows"
+      compact
+      analyticsSource="now_playing"
+      item={{
+        id: `artist-${track.creatorId}`,
+        kind: "artist",
+        title: track.artist || "BVS creator",
+        subtitle: "Artist",
+        href,
+        image: track.artwork,
+      }}
+    />
+  );
 }
 
 export function PersistentPlayer() {
@@ -1852,14 +1903,19 @@ export function PersistentPlayer() {
               <div className="mx-auto w-full max-w-xl">
                 <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand sm:text-xs">{player.current?.project || "Continuous rotation"}</p>
                 <h2 className="mt-2 text-[1.75rem] font-semibold leading-tight tracking-tight sm:mt-3 sm:text-4xl lg:text-5xl">{player.current?.title || "BVS Radio rotation"}</h2>
-                <ArtistSearchLink artist={player.current?.artist || "BVS Radio"} className="mt-2 inline-block text-base text-white/65 hover:text-brand sm:mt-3 sm:text-lg">{player.current?.artist || "BVS Radio"}</ArtistSearchLink>
+                <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-3">
+                  <CreatorLink track={player.current} className="inline-block text-base text-white/65 hover:text-brand sm:text-lg">
+                    {player.current?.artist || "BVS Radio"}
+                  </CreatorLink>
+                  <CreatorFollowAction track={player.current} />
+                </div>
 
                 <div className="mt-6 flex items-center justify-between gap-2 sm:mt-8 sm:justify-start sm:gap-6">
                   <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-full px-3 text-sm sm:px-4 ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60"}`}>Shuffle</button>
                   <button type="button" onClick={player.previous} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Previous recording">◀</button>
                   <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-14 w-14 place-items-center rounded-full bg-brand text-xl font-bold text-black disabled:opacity-40 sm:h-16 sm:w-16" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
                   <button type="button" onClick={player.next} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Next recording">▶</button>
-                  <button type="button" onClick={player.toggleLike} aria-pressed={player.liked} className={`grid h-11 w-11 place-items-center rounded-full text-2xl ${player.liked ? "bg-brand/15 text-brand" : "text-white/60"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥" : "♡"}</button>
+                  <button type="button" onClick={player.toggleLike} aria-pressed={player.liked} className={`min-h-11 rounded-full px-4 text-sm font-semibold ${player.liked ? "bg-brand/15 text-brand" : "border border-white/12 text-white/70 hover:border-brand/35 hover:text-white"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥ Saved" : "♡ Save"}</button>
                 </div>
 
                 <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2">
@@ -1869,9 +1925,12 @@ export function PersistentPlayer() {
                     className="sm:col-span-2"
                     onAfterAdd={player.closeNowPlaying}
                   />
-                  <ArtistSearchLink artist={player.current?.artist || ""} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
-                    <span className="text-[10px] uppercase tracking-[.18em] text-brand">Go deeper</span><span className="mt-1 block font-medium">Explore artist and credits</span>
-                  </ArtistSearchLink>
+                  <CreatorLink track={player.current} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
+                    <span className="text-[10px] uppercase tracking-[.18em] text-brand">Artist</span>
+                    <span className="mt-1 block font-medium">
+                      {player.current?.creatorId ? `Open ${player.current.artist}` : "Find artist and credits"}
+                    </span>
+                  </CreatorLink>
                   <button type="button" onClick={() => player.setQueueOpen(true)} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-left hover:border-brand/40">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Coming next</span><span className="mt-1 block font-medium">Open queue · {player.upNext.length} tracks</span>
                   </button>
