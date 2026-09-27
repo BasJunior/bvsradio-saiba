@@ -5,6 +5,10 @@
     {
       "path": "/api/cron/participation",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/creator-upload-cleanup",
+      "schedule": "17 3 * * *"
     }
   ]
 }
