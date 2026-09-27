@@ -28,7 +28,7 @@ assert.ok(
   "Explicit correlated attempt IDs must be preserved by analytics.",
 );
 assert.ok(
-  player.includes('proof_version: "v1"') &&
+  player.includes('proof_version: "v2"') &&
     player.includes("previous_attempt_id") &&
     player.includes("startup_ms") &&
     player.includes("surface: attempt.surface"),
@@ -44,7 +44,7 @@ assert.ok(
     dashboardRoute.includes("unrecoveredFailureRate") &&
     dashboardRoute.includes("startupP50Ms") &&
     dashboardRoute.includes("startupP95Ms") &&
-    dashboardRoute.includes("proof_version === 'v1'"),
+    dashboardRoute.includes("proof_version === 'v2'"),
   "Staff analytics must expose the isolated post-fix proof cohort.",
 );
 assert.ok(
