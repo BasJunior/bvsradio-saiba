@@ -43,6 +43,20 @@ export type QueueItem = {
   source: QueueSource;
 };
 
+type PlaybackAttemptState = {
+  id: string;
+  trackKey: string;
+  trackId: string;
+  trigger: string;
+  surface: string;
+  requestedAt: number;
+  firstAudioAt: number | null;
+  listenedSeconds: number;
+  lastMediaTime: number | null;
+  tenSecondSent: boolean;
+  continueSent: boolean;
+};
+
 type PlayerContextValue = {
   tracks: StationTrack[];
   current: StationTrack | undefined;
@@ -168,6 +182,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const countedStarts = useRef(new Set<string>());
   const qualification = useRef<StreamQualificationState | null>(null);
   const qualificationSent = useRef(false);
+  const playbackAttempt = useRef<PlaybackAttemptState | null>(null);
+  const lastPlaybackFailure = useRef<{ at: number; stage: string; trackId: string; attemptId: string | null } | null>(null);
+  const pendingPlaybackTrigger = useRef<{ trigger: string; intent: boolean } | null>(null);
   const failStreak = useRef(0);
   const hydrated = useRef(false);
   const [tracks, setTracks] = useState<StationTrack[]>(initialTracks);
@@ -267,6 +284,71 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, []);
 
   const current = nowPlaying?.track;
+
+  const beginPlaybackAttempt = useCallback(
+    (track: StationTrack, trigger: string, options?: { forceNew?: boolean; intent?: boolean }) => {
+      const key = trackKey(track);
+      const existing = playbackAttempt.current;
+      if (!options?.forceNew && existing?.trackKey === key) return existing;
+      const id = crypto.randomUUID();
+      const nativePlatform = Capacitor.getPlatform();
+      const appSurface = window.location.pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1];
+      const surface = nativePlatform === "ios" || nativePlatform === "android"
+        ? nativePlatform
+        : appSurface || "web";
+      const attempt: PlaybackAttemptState = {
+        id,
+        trackKey: key,
+        trackId: trackLibraryId(track),
+        trigger,
+        surface,
+        requestedAt: Date.now(),
+        firstAudioAt: null,
+        listenedSeconds: 0,
+        lastMediaTime: null,
+        tenSecondSent: false,
+        continueSent: false,
+      };
+      playbackAttempt.current = attempt;
+      const properties = {
+        attempt_id: id,
+        track_id: attempt.trackId,
+        trigger,
+        source: modeRef.current === "ondemand" ? "ondemand" : "station",
+        surface,
+        proof_version: "v1",
+      };
+      if (options?.intent) trackEvent("playback_intent", properties);
+      trackEvent("playback_media_requested", properties);
+      return attempt;
+    },
+    [],
+  );
+
+  const recordPlaybackSkip = useCallback((reason: string) => {
+    const attempt = playbackAttempt.current;
+    const media = audio.current;
+    if (!attempt || media?.ended) return;
+    trackEvent("playback_skip", {
+      attempt_id: attempt.id,
+      track_id: attempt.trackId,
+      reason,
+      proof_version: "v1",
+      listened_seconds: Math.round(attempt.listenedSeconds),
+      media_time: Math.round(media?.currentTime || 0),
+    });
+  }, []);
+
+  const markPlaybackFailure = useCallback((stage: string, track: StationTrack | undefined) => {
+    const attempt = playbackAttempt.current;
+    lastPlaybackFailure.current = {
+      at: Date.now(),
+      stage,
+      trackId: track ? trackLibraryId(track) : attempt?.trackId || "unknown",
+      attemptId: attempt?.id || null,
+    };
+  }, []);
+
   const tracksRef = useRef(tracks);
   const nowRef = useRef(nowPlaying);
   const upNextRef = useRef(upNext);
@@ -589,6 +671,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   useEffect(() => {
     if (!audio.current || !current) return;
     if (isPlaying) {
+      const pending = pendingPlaybackTrigger.current;
+      const attempt = beginPlaybackAttempt(
+        current,
+        pending?.trigger || "track_change",
+        { intent: Boolean(pending?.intent) },
+      );
+      pendingPlaybackTrigger.current = null;
       window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
       audio.current
         .play()
@@ -598,10 +687,12 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
             startedAt.current = Date.now();
             const trackId = current.id || `rotation-${current.src}`;
             trackEvent("player_start", {
+              attempt_id: attempt.id,
               track_id: trackId,
               title: current.title || "",
               collection: current.project || current.genre || "",
               source: modeRef.current === "ondemand" ? "queue" : "station",
+              proof_version: "v1",
             });
             if (current.id && !countedStarts.current.has(current.id)) {
               countedStarts.current.add(current.id);
@@ -619,16 +710,19 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           // A source/pause change can legitimately interrupt an in-flight play() promise.
           // Do not count that browser lifecycle event as a broken recording.
           if (details.error_name === "AbortError") return;
+          markPlaybackFailure("track_change", current);
           trackEvent("playback_error", {
+            attempt_id: attempt.id,
             track_id: trackLibraryId(current),
             stage: "track_change",
+            proof_version: "v1",
             ...details,
           });
           setPlaying(false);
           setError(details.error_name === "NotAllowedError" ? "Tap Play to continue." : "This recording could not be played.");
         });
     }
-  }, [current, isPlaying]);
+  }, [beginPlaybackAttempt, current, isPlaying, markPlaybackFailure]);
 
   useEffect(() => {
     const stop = () => flushListening();
@@ -653,6 +747,69 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setElapsed(elapsedCap);
     if (el.duration && Number.isFinite(el.duration)) {
       setDuration(guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration);
+    }
+
+    const attempt = playbackAttempt.current;
+    if (
+      attempt &&
+      current &&
+      attempt.trackKey === trackKey(current) &&
+      isPlaying &&
+      !el.paused
+    ) {
+      if (attempt.firstAudioAt === null && rawElapsed > 0) {
+        attempt.firstAudioAt = Date.now();
+        trackEvent("playback_first_audio", {
+          attempt_id: attempt.id,
+          track_id: attempt.trackId,
+          startup_ms: Math.max(0, attempt.firstAudioAt - attempt.requestedAt),
+          media_time_ms: Math.round(rawElapsed * 1000),
+          trigger: attempt.trigger,
+          surface: attempt.surface,
+          proof_version: "v1",
+        });
+        const failure = lastPlaybackFailure.current;
+        if (failure && attempt.firstAudioAt - failure.at <= 120_000) {
+          trackEvent("playback_recovered", {
+            attempt_id: attempt.id,
+            track_id: attempt.trackId,
+            previous_track_id: failure.trackId,
+            previous_attempt_id: failure.attemptId,
+            previous_stage: failure.stage,
+            proof_version: "v1",
+            recovery_ms: Math.max(0, attempt.firstAudioAt - failure.at),
+          });
+          lastPlaybackFailure.current = null;
+        }
+      }
+
+      if (!el.seeking) {
+        if (attempt.lastMediaTime !== null) {
+          const delta = rawElapsed - attempt.lastMediaTime;
+          if (delta > 0 && delta <= 5) attempt.listenedSeconds += delta;
+        }
+        attempt.lastMediaTime = rawElapsed;
+      } else {
+        attempt.lastMediaTime = rawElapsed;
+      }
+
+      if (!attempt.tenSecondSent && attempt.listenedSeconds >= 10) {
+        attempt.tenSecondSent = true;
+        trackEvent("playback_10s", {
+          attempt_id: attempt.id,
+          track_id: attempt.trackId,
+          listened_seconds: Math.floor(attempt.listenedSeconds),
+          proof_version: "v1",
+        });
+      }
+      if (!attempt.continueSent && attempt.listenedSeconds >= 60) {
+        attempt.continueSent = true;
+        trackEvent("playback_continue_60s", {
+          attempt_id: attempt.id,
+          track_id: attempt.trackId,
+          listened_seconds: Math.floor(attempt.listenedSeconds),
+        });
+      }
     }
 
     if (guestPreview && rawElapsed >= GUEST_BEAT_PREVIEW_SECONDS) {
@@ -688,9 +845,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     qualificationSent.current = true;
     const source = modeRef.current === "station" ? "station" : "ondemand";
     trackEvent("stream_qualified_30s", {
+      ...(playbackAttempt.current?.trackKey === trackKey(current) ? { attempt_id: playbackAttempt.current.id } : {}),
       track_id: state.trackId,
       listened_seconds: QUALIFIED_STREAM_SECONDS,
       source,
+      proof_version: "v1",
     });
     void fetch("/api/streams/qualified", {
       method: "POST",
@@ -718,7 +877,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, []);
 
   const advance = useCallback(
-    (direction: 1 | -1, opts?: { autoSkip?: boolean }) => {
+    (direction: 1 | -1, opts?: { autoSkip?: boolean; userSkip?: boolean; skipReason?: string }) => {
       const pool = tracksRef.current;
       const inBeat =
         isBeatTrack(nowRef.current?.track) ||
@@ -741,6 +900,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         const prev = history[0];
         if (prev) {
           const item = makeQueueItem(prev, "user");
+          pendingPlaybackTrigger.current = {
+            trigger: opts?.userSkip ? "user_previous" : "history_previous",
+            intent: Boolean(opts?.userSkip),
+          };
           setNowPlaying((cur) => {
             if (cur) setUpNext((q) => [cur, ...q].slice(0, UP_NEXT_TARGET + 5));
             return item;
@@ -758,6 +921,15 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         }
         return;
       }
+
+      if (opts?.userSkip) {
+        recordPlaybackSkip(opts.skipReason || (direction === 1 ? "next" : "previous"));
+      }
+
+      pendingPlaybackTrigger.current = {
+        trigger: opts?.autoSkip ? "error_auto_skip" : opts?.userSkip ? "user_skip" : "autoplay",
+        intent: Boolean(opts?.userSkip),
+      };
 
       setUpNext((queue) => {
         let nextQueue = [...queue];
@@ -785,16 +957,20 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         return queue;
       });
     },
-    [fillUpNext, flushListening, history, pushHistory],
+    [fillUpNext, flushListening, history, pushHistory, recordPlaybackSkip],
   );
 
   const handleMediaError = useCallback(() => {
     flushListening();
     failStreak.current += 1;
     const media = audio.current;
+    const attempt = playbackAttempt.current;
+    markPlaybackFailure("media", current);
     trackEvent("playback_error", {
+      ...(attempt ? { attempt_id: attempt.id } : {}),
       track_id: current ? trackLibraryId(current) : "unknown",
       stage: "media",
+      proof_version: "v1",
       fail_streak: failStreak.current,
       media_error_code: media?.error?.code ?? null,
       media_error_message: media?.error?.message?.slice(0, 160) || null,
@@ -827,7 +1003,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setNotice("Skipping a broken track…");
     setPlaying(true);
     advance(1, { autoSkip: true });
-  }, [advance, current, flushListening, tracks.length]);
+  }, [advance, current, flushListening, markPlaybackFailure, tracks.length]);
 
   const play = useCallback(async () => {
     const el = audio.current;
@@ -841,6 +1017,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     }
     try {
       editorialHoldRef.current = false;
+      const attempt = beginPlaybackAttempt(current, "user_play", { forceNew: true, intent: true });
       window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
       await el.play();
       failStreak.current = 0;
@@ -859,20 +1036,25 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setPlaying(false);
       const details = playbackFailureDetails(playError);
       if (details.error_name === "AbortError") return;
+      const attempt = playbackAttempt.current;
+      markPlaybackFailure("start", current);
       trackEvent("playback_error", {
+        ...(attempt ? { attempt_id: attempt.id } : {}),
         track_id: trackLibraryId(current),
         stage: "start",
+        proof_version: "v1",
         ...details,
       });
       setError(details.error_name === "NotAllowedError" ? "Tap Play to start audio." : "Playback could not start. Please try again.");
     }
-  }, [current, pushHistory]);
+  }, [beginPlaybackAttempt, current, markPlaybackFailure, pushHistory]);
 
   const pause = useCallback(() => {
     const el = audio.current;
     if (!el) return;
     const wasPlaying = !el.paused && !el.ended;
     el.pause();
+    if (playbackAttempt.current) playbackAttempt.current.lastMediaTime = null;
     if (wasPlaying) flushListening();
     setPlaying(false);
   }, [flushListening]);
@@ -952,8 +1134,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setHandler("pause", () => {
       pause();
     });
-    setHandler("previoustrack", () => advance(-1));
-    setHandler("nexttrack", () => advance(1));
+    setHandler("previoustrack", () => advance(-1, { userSkip: true, skipReason: "media_session_previous" }));
+    setHandler("nexttrack", () => advance(1, { userSkip: true, skipReason: "media_session_next" }));
     setHandler("seekto", (details) => {
       if (typeof details.seekTime === "number") seekTo(details.seekTime);
     });
@@ -1078,6 +1260,15 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       if (nowRef.current) pushHistory(nowRef.current.track);
       const source = guestBeat ? "preview" : "user";
       const item = makeQueueItem(tagged, source);
+      if (
+        audio.current &&
+        !audio.current.paused &&
+        nowRef.current &&
+        trackKey(nowRef.current.track) !== trackKey(tagged)
+      ) {
+        recordPlaybackSkip("play_now");
+      }
+      beginPlaybackAttempt(tagged, "play_now", { forceNew: true, intent: true });
       setNowPlaying(item);
       const relatedItems = (opts?.related || [])
         .filter((t) => t.src && trackKey(t) !== trackKey(tagged))
@@ -1104,7 +1295,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setPlaying(true);
       trackEvent("queue_play_now", { track_id: trackLibraryId(tagged), content_type: beat ? "beat" : "track" });
     },
-    [fillUpNext, flushListening, pushHistory],
+    [beginPlaybackAttempt, fillUpNext, flushListening, pushHistory, recordPlaybackSkip],
   );
 
   const playNext = useCallback((track: StationTrack) => {
@@ -1184,10 +1375,14 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setElapsed(0);
     setDuration(0);
     const head = makeQueueItem(pool[0], "station");
+    if (audio.current && !audio.current.paused && nowRef.current && trackKey(nowRef.current.track) !== trackKey(pool[0])) {
+      recordPlaybackSkip("back_to_station");
+    }
+    beginPlaybackAttempt(pool[0], "back_to_station", { forceNew: true, intent: true });
     setNowPlaying(head);
     setUpNext(fillUpNext(pool[0], []));
     setPlaying(true);
-  }, [fillUpNext, flushListening]);
+  }, [beginPlaybackAttempt, fillUpNext, flushListening, recordPlaybackSkip]);
 
   const playHistoryTrack = useCallback(
     (track: StationTrack) => {
@@ -1271,8 +1466,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       play,
       pause,
       toggle,
-      next: () => advance(1),
-      previous: () => advance(-1),
+      next: () => advance(1, { userSkip: true, skipReason: "player_next" }),
+      previous: () => advance(-1, { userSkip: true, skipReason: "player_previous" }),
       setVolume,
       seek,
       seekTo,

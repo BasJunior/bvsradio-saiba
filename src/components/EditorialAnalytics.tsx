@@ -48,6 +48,27 @@ type Analytics = {
     recoveryRate: number
     returnSessions: number
     playbackFailureBreakdown: Array<{ label: string; count: number }>
+    proof: {
+      sampleTarget: number
+      sampleStatus: 'collecting' | 'enough_sample'
+      attempts: number
+      firstAudioAttempts: number
+      firstAudioRate: number
+      tenSecondAttempts: number
+      tenSecondRate: number
+      qualifiedAttempts: number
+      qualifiedRate: number
+      continuedAttempts: number
+      continuedRate: number
+      skips: number
+      errorAttempts: number
+      recoveredFailures: number
+      unrecoveredFailures: number
+      unrecoveredFailureRate: number
+      startupP50Ms: number
+      startupP95Ms: number
+      surfaces: Array<{ surface: string; attempts: number }>
+    }
     checkoutStarts?: number
     checkoutCompletions?: number
     paymentErrors?: number
@@ -303,6 +324,43 @@ export default function EditorialAnalytics({ token }: { token: string }) {
                 Use this before feature work: successful starts, qualified listening, browser/media failures, and creator recovery events.
               </p>
             </div>
+
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,.6fr)]">
+                <div>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Post-fix proof cohort</p>
+                      <h4 className="mt-1 font-semibold">Intent → first audio → 10s → 30s → continue</h4>
+                    </div>
+                    <ControlSignal
+                      label="Reliability sample"
+                      ok={data.reliability.proof.sampleStatus === 'enough_sample'}
+                      note={
+                        data.reliability.proof.sampleStatus === 'enough_sample'
+                          ? `${data.reliability.proof.attempts} correlated attempts collected — enough to assess the new build.`
+                          : `${data.reliability.proof.attempts} / ${data.reliability.proof.sampleTarget} correlated attempts collected. Keep observing before declaring playback solved.`
+                      }
+                    />
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <Metric label="First audio" value={`${data.reliability.proof.firstAudioRate}%`} note={`${data.reliability.proof.firstAudioAttempts} attempts`} />
+                    <Metric label="Reached 10s" value={`${data.reliability.proof.tenSecondRate}%`} note={`${data.reliability.proof.tenSecondAttempts} attempts`} />
+                    <Metric label="Qualified 30s" value={`${data.reliability.proof.qualifiedRate}%`} note={`${data.reliability.proof.qualifiedAttempts} attempts`} />
+                    <Metric label="Continued 60s" value={`${data.reliability.proof.continuedRate}%`} note={`${data.reliability.proof.continuedAttempts} attempts`} />
+                    <Metric label="Unrecovered failures" value={data.reliability.proof.unrecoveredFailures} note={`${data.reliability.proof.unrecoveredFailureRate}% of attempts`} />
+                    <Metric label="Recovered failures" value={data.reliability.proof.recoveredFailures} />
+                    <Metric label="Startup p50" value={data.reliability.proof.startupP50Ms ? `${data.reliability.proof.startupP50Ms} ms` : '—'} />
+                    <Metric label="Startup p95" value={data.reliability.proof.startupP95Ms ? `${data.reliability.proof.startupP95Ms} ms` : '—'} />
+                  </div>
+                </div>
+                <RankedList
+                  title="Proof attempts by surface"
+                  rows={data.reliability.proof.surfaces.map((item) => ({ label: item.surface, value: item.attempts }))}
+                />
+              </div>
+            </div>
+
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <Metric
                 label="Qualified 30s listens"

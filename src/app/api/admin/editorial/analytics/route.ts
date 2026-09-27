@@ -33,6 +33,13 @@ function percentChange(current: number, previous: number) {
   return Math.round(((current - previous) / previous) * 1000) / 10
 }
 
+function percentile(values: number[], ratio: number) {
+  const sorted = values.filter(Number.isFinite).sort((a, b) => a - b)
+  if (!sorted.length) return 0
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * ratio) - 1))
+  return Math.round(sorted[index])
+}
+
 export async function GET(request: Request) {
   const identity = await editorialIdentity(request)
   if (!identity) return NextResponse.json({ error: 'Editorial access required' }, { status: 403 })
@@ -107,6 +114,46 @@ export async function GET(request: Request) {
     const failedTrackChanges = playbackErrorEvents.filter((event) => String(event.properties?.stage || '') === 'track_change').length
     const mediaFailures = playbackErrorEvents.filter((event) => String(event.properties?.stage || '') === 'media').length
     const autoplayBlocks = playbackErrorEvents.filter((event) => String(event.properties?.error_name || '') === 'NotAllowedError').length
+
+    // Proof cohort: only lifecycle events emitted by the new correlated playback
+    // instrumentation. This avoids mixing today's evidence with historical events.
+    const proofEvents = events.filter((event) => event.properties?.proof_version === 'v1')
+    const proofAttemptId = (event: AnalyticsEvent) => String(event.properties?.attempt_id || '')
+    const proofByName = (name: string) => proofEvents.filter((event) => event.event_name === name)
+    const proofRequested = proofByName('playback_media_requested')
+    const proofFirstAudio = proofByName('playback_first_audio')
+    const proofTenSecond = proofByName('playback_10s')
+    const proofQualified = proofByName('stream_qualified_30s')
+    const proofContinued = proofByName('playback_continue_60s')
+    const proofSkips = proofByName('playback_skip')
+    const proofRecoveries = proofByName('playback_recovered')
+    const proofErrors = playbackErrorEvents.filter((event) => event.properties?.proof_version === 'v1')
+    const proofAttempts = new Set(proofRequested.map(proofAttemptId).filter(Boolean))
+    const proofFirstAudioAttempts = new Set(proofFirstAudio.map(proofAttemptId).filter(Boolean))
+    const proofTenSecondAttempts = new Set(proofTenSecond.map(proofAttemptId).filter(Boolean))
+    const proofQualifiedAttempts = new Set(proofQualified.map(proofAttemptId).filter(Boolean))
+    const proofContinuedAttempts = new Set(proofContinued.map(proofAttemptId).filter(Boolean))
+    const proofFailedAttempts = new Set(proofErrors.map(proofAttemptId).filter(Boolean))
+    const proofRecoveredFailures = new Set(
+      proofRecoveries.map((event) => String(event.properties?.previous_attempt_id || '')).filter(Boolean),
+    )
+    const unrecoveredFailureAttempts = [...proofFailedAttempts].filter((id) => !proofRecoveredFailures.has(id)).length
+    const startupTimes = proofFirstAudio
+      .map((event) => numberProperty(event, 'startup_ms'))
+      .filter((value) => value > 0)
+    const proofSurfaces = Object.entries(
+      proofRequested.reduce<Record<string, number>>((acc, event) => {
+        const surface = String(event.properties?.surface || 'unknown')
+        acc[surface] = (acc[surface] || 0) + 1
+        return acc
+      }, {}),
+    )
+      .sort(([, a], [, b]) => b - a)
+      .map(([surface, attempts]) => ({ surface, attempts }))
+    const proofAttemptCount = proofAttempts.size
+    const proofRate = (count: number) => proofAttemptCount ? Math.round((count / proofAttemptCount) * 1000) / 10 : 0
+    const proofSampleTarget = 200
+
     // Use server-side playback truth for the qualification KPI. Client analytics can
     // straddle the reporting boundary (a start just before midnight can qualify just
     // after it), which can otherwise produce impossible >100% conversion rates.
@@ -238,6 +285,27 @@ export async function GET(request: Request) {
         recoveryRate: completedUploads ? Math.round((recoveredFinalizations / completedUploads) * 1000) / 10 : 0,
         returnSessions,
         playbackFailureBreakdown,
+        proof: {
+          sampleTarget: proofSampleTarget,
+          sampleStatus: proofAttemptCount >= proofSampleTarget ? 'enough_sample' : 'collecting',
+          attempts: proofAttemptCount,
+          firstAudioAttempts: proofFirstAudioAttempts.size,
+          firstAudioRate: proofRate(proofFirstAudioAttempts.size),
+          tenSecondAttempts: proofTenSecondAttempts.size,
+          tenSecondRate: proofRate(proofTenSecondAttempts.size),
+          qualifiedAttempts: proofQualifiedAttempts.size,
+          qualifiedRate: proofRate(proofQualifiedAttempts.size),
+          continuedAttempts: proofContinuedAttempts.size,
+          continuedRate: proofRate(proofContinuedAttempts.size),
+          skips: proofSkips.length,
+          errorAttempts: proofFailedAttempts.size,
+          recoveredFailures: proofRecoveredFailures.size,
+          unrecoveredFailures: unrecoveredFailureAttempts,
+          unrecoveredFailureRate: proofRate(unrecoveredFailureAttempts),
+          startupP50Ms: percentile(startupTimes, 0.5),
+          startupP95Ms: percentile(startupTimes, 0.95),
+          surfaces: proofSurfaces,
+        },
         ...(canSeeCommerce ? {
           checkoutStarts,
           checkoutCompletions,
