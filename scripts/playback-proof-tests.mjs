@@ -5,6 +5,10 @@ const analytics = await readFile(new URL("../src/lib/analytics.ts", import.meta.
 const player = await readFile(new URL("../src/components/StationPlayer.tsx", import.meta.url), "utf8");
 const dashboardRoute = await readFile(new URL("../src/app/api/admin/editorial/analytics/route.ts", import.meta.url), "utf8");
 const dashboard = await readFile(new URL("../src/components/EditorialAnalytics.tsx", import.meta.url), "utf8");
+const eventContract = await readFile(
+  new URL("../supabase/migrations/20260927234500_analytics_event_name_contract.sql", import.meta.url),
+  "utf8",
+);
 
 for (const event of [
   "playback_intent",
@@ -51,3 +55,23 @@ assert.ok(
 );
 
 console.log("playback proof gates passed");
+
+assert.ok(
+  eventContract.includes("drop constraint if exists analytics_events_event_name_check") &&
+    eventContract.includes("event_name ~ '^[a-z][a-z0-9_]{1,63}$'"),
+  "Database analytics contract must validate event shape without duplicating the application allowlist.",
+);
+for (const lifecycleEvent of [
+  "playback_intent",
+  "playback_media_requested",
+  "playback_first_audio",
+  "playback_10s",
+  "playback_continue_60s",
+  "playback_skip",
+  "playback_recovered",
+]) {
+  assert.ok(
+    analytics.includes(`"${lifecycleEvent}"`),
+    `Application analytics allowlist must retain ${lifecycleEvent}.`,
+  );
+}
