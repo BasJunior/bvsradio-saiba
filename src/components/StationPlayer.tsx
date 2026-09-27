@@ -914,6 +914,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
         if (nextItem) {
           if (nowRef.current) pushHistory(nowRef.current.track);
+          beginPlaybackAttempt(
+            nextItem.track,
+            opts?.autoSkip ? "error_auto_skip" : opts?.userSkip ? "user_skip" : "autoplay",
+            { forceNew: true, intent: Boolean(opts?.userSkip) },
+          );
           setNowPlaying(nextItem);
           const filled = autoplayRef.current ? fillUpNext(nextItem.track, nextQueue) : nextQueue;
           return filled;
@@ -922,7 +927,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         return queue;
       });
     },
-    [fillUpNext, flushListening, history, pushHistory, recordPlaybackSkip],
+    [beginPlaybackAttempt, fillUpNext, flushListening, history, pushHistory, recordPlaybackSkip],
   );
 
   const handleMediaError = useCallback(() => {
@@ -1223,6 +1228,15 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       if (nowRef.current) pushHistory(nowRef.current.track);
       const source = guestBeat ? "preview" : "user";
       const item = makeQueueItem(tagged, source);
+      if (
+        audio.current &&
+        !audio.current.paused &&
+        nowRef.current &&
+        trackKey(nowRef.current.track) !== trackKey(tagged)
+      ) {
+        recordPlaybackSkip("play_now");
+      }
+      beginPlaybackAttempt(tagged, "play_now", { forceNew: true, intent: true });
       setNowPlaying(item);
       const relatedItems = (opts?.related || [])
         .filter((t) => t.src && trackKey(t) !== trackKey(tagged))
@@ -1249,7 +1263,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setPlaying(true);
       trackEvent("queue_play_now", { track_id: trackLibraryId(tagged), content_type: beat ? "beat" : "track" });
     },
-    [fillUpNext, flushListening, pushHistory],
+    [beginPlaybackAttempt, fillUpNext, flushListening, pushHistory, recordPlaybackSkip],
   );
 
   const playNext = useCallback((track: StationTrack) => {
@@ -1329,10 +1343,14 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setElapsed(0);
     setDuration(0);
     const head = makeQueueItem(pool[0], "station");
+    if (audio.current && !audio.current.paused && nowRef.current && trackKey(nowRef.current.track) !== trackKey(pool[0])) {
+      recordPlaybackSkip("back_to_station");
+    }
+    beginPlaybackAttempt(pool[0], "back_to_station", { forceNew: true, intent: true });
     setNowPlaying(head);
     setUpNext(fillUpNext(pool[0], []));
     setPlaying(true);
-  }, [fillUpNext, flushListening]);
+  }, [beginPlaybackAttempt, fillUpNext, flushListening, recordPlaybackSkip]);
 
   const playHistoryTrack = useCallback(
     (track: StationTrack) => {
