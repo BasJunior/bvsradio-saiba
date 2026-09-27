@@ -308,6 +308,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         track_id: attempt.trackId,
         trigger,
         source: modeRef.current === "ondemand" ? "ondemand" : "station",
+        proof_version: "v1",
       };
       if (options?.intent) trackEvent("playback_intent", properties);
       trackEvent("playback_media_requested", properties);
@@ -324,6 +325,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       attempt_id: attempt.id,
       track_id: attempt.trackId,
       reason,
+      proof_version: "v1",
       listened_seconds: Math.round(attempt.listenedSeconds),
       media_time: Math.round(media?.currentTime || 0),
     });
@@ -682,6 +684,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
               title: current.title || "",
               collection: current.project || current.genre || "",
               source: modeRef.current === "ondemand" ? "queue" : "station",
+              proof_version: "v1",
             });
             if (current.id && !countedStarts.current.has(current.id)) {
               countedStarts.current.add(current.id);
@@ -704,6 +707,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
             attempt_id: attempt.id,
             track_id: trackLibraryId(current),
             stage: "track_change",
+            proof_version: "v1",
             ...details,
           });
           setPlaying(false);
@@ -753,6 +757,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           startup_ms: Math.max(0, attempt.firstAudioAt - attempt.requestedAt),
           media_time_ms: Math.round(rawElapsed * 1000),
           trigger: attempt.trigger,
+          proof_version: "v1",
         });
         const failure = lastPlaybackFailure.current;
         if (failure && attempt.firstAudioAt - failure.at <= 120_000) {
@@ -762,6 +767,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
             previous_track_id: failure.trackId,
             previous_attempt_id: failure.attemptId,
             previous_stage: failure.stage,
+            proof_version: "v1",
             recovery_ms: Math.max(0, attempt.firstAudioAt - failure.at),
           });
           lastPlaybackFailure.current = null;
@@ -784,6 +790,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           attempt_id: attempt.id,
           track_id: attempt.trackId,
           listened_seconds: Math.floor(attempt.listenedSeconds),
+          proof_version: "v1",
         });
       }
       if (!attempt.continueSent && attempt.listenedSeconds >= 60) {
@@ -833,6 +840,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       track_id: state.trackId,
       listened_seconds: QUALIFIED_STREAM_SECONDS,
       source,
+      proof_version: "v1",
     });
     void fetch("/api/streams/qualified", {
       method: "POST",
@@ -953,6 +961,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       ...(attempt ? { attempt_id: attempt.id } : {}),
       track_id: current ? trackLibraryId(current) : "unknown",
       stage: "media",
+      proof_version: "v1",
       fail_streak: failStreak.current,
       media_error_code: media?.error?.code ?? null,
       media_error_message: media?.error?.message?.slice(0, 160) || null,
@@ -1024,6 +1033,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         ...(attempt ? { attempt_id: attempt.id } : {}),
         track_id: trackLibraryId(current),
         stage: "start",
+        proof_version: "v1",
         ...details,
       });
       setError(details.error_name === "NotAllowedError" ? "Tap Play to start audio." : "Playback could not start. Please try again.");
