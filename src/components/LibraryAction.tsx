@@ -6,7 +6,17 @@ import { hasLibraryItem, toggleLibraryItem, type LibrarySection } from '@/lib/li
 import { trackEvent } from '@/lib/analytics'
 import PlaylistQuickAdd from '@/components/library/PlaylistQuickAdd'
 
-export default function LibraryAction({ item, section = 'favourites', compact = false }: { item: DiscoveryItem; section?: Extract<LibrarySection, 'favourites' | 'follows'>; compact?: boolean }) {
+export default function LibraryAction({
+  item,
+  section = 'favourites',
+  compact = false,
+  analyticsSource,
+}: {
+  item: DiscoveryItem
+  section?: Extract<LibrarySection, 'favourites' | 'follows'>
+  compact?: boolean
+  analyticsSource?: string
+}) {
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
@@ -25,9 +35,10 @@ export default function LibraryAction({ item, section = 'favourites', compact = 
     onClick={() => {
       const next = toggleLibraryItem(section, item)
       setSaved(next)
-      if (section === 'favourites' && item.kind === 'track' && next) trackEvent('track_save', { track_id: item.id })
-      if (section === 'favourites' && item.kind === 'beat' && next) trackEvent('beat_save', { beat_id: item.id })
-      if (section === 'follows') trackEvent(next ? 'creator_follow' : 'creator_unfollow', { creator_id: item.id, kind: item.kind })
+      const source = analyticsSource || undefined
+      if (section === 'favourites' && item.kind === 'track' && next) trackEvent('track_save', { track_id: item.id, source: source || null })
+      if (section === 'favourites' && item.kind === 'beat' && next) trackEvent('beat_save', { beat_id: item.id, source: source || null })
+      if (section === 'follows') trackEvent(next ? 'creator_follow' : 'creator_unfollow', { creator_id: item.id, kind: item.kind, source: source || null })
     }}
     className={`rounded-full border transition ${saved ? 'border-brand bg-brand/15 text-brand' : 'border-white/20 text-text-secondary hover:border-brand hover:text-white'} ${compact ? 'px-3 py-1 text-xs' : 'px-5 py-2 text-sm'}`}
   >
