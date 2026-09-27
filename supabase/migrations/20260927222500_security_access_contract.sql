@@ -9,13 +9,9 @@ alter default privileges for role postgres in schema public
 alter default privileges for role postgres in schema public
   revoke execute on functions from public, anon, authenticated;
 
-alter default privileges for role supabase_admin in schema public
-  revoke select, insert, update, delete on tables from anon, authenticated;
-alter default privileges for role supabase_admin in schema public
-  revoke usage, select on sequences from anon, authenticated;
-alter default privileges for role supabase_admin in schema public
-  revoke execute on functions from public, anon, authenticated;
-
+-- Supabase-managed supabase_admin defaults cannot be changed by project postgres.
+-- Future project-owned objects are therefore guarded by the postgres defaults above
+-- plus the repository security-access build gate.
 -- These tables are reached only through authenticated/server-owned BVS routes.
 revoke all on table public.orders from anon, authenticated;
 revoke all on table public.analytics_events from anon, authenticated;
