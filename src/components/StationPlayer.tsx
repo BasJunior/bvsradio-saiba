@@ -659,6 +659,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   useEffect(() => {
     if (!audio.current || !current) return;
     if (isPlaying) {
+      const attempt = beginPlaybackAttempt(current, "track_change");
       window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
       audio.current
         .play()
@@ -668,6 +669,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
             startedAt.current = Date.now();
             const trackId = current.id || `rotation-${current.src}`;
             trackEvent("player_start", {
+              attempt_id: attempt.id,
               track_id: trackId,
               title: current.title || "",
               collection: current.project || current.genre || "",
@@ -689,7 +691,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           // A source/pause change can legitimately interrupt an in-flight play() promise.
           // Do not count that browser lifecycle event as a broken recording.
           if (details.error_name === "AbortError") return;
+          markPlaybackFailure("track_change", current);
           trackEvent("playback_error", {
+            attempt_id: attempt.id,
             track_id: trackLibraryId(current),
             stage: "track_change",
             ...details,
@@ -698,7 +702,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           setError(details.error_name === "NotAllowedError" ? "Tap Play to continue." : "This recording could not be played.");
         });
     }
-  }, [current, isPlaying]);
+  }, [beginPlaybackAttempt, current, isPlaying, markPlaybackFailure]);
 
   useEffect(() => {
     const stop = () => flushListening();
@@ -723,6 +727,64 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setElapsed(elapsedCap);
     if (el.duration && Number.isFinite(el.duration)) {
       setDuration(guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration);
+    }
+
+    const attempt = playbackAttempt.current;
+    if (
+      attempt &&
+      current &&
+      attempt.trackKey === trackKey(current) &&
+      isPlaying &&
+      !el.paused
+    ) {
+      if (attempt.firstAudioAt === null && rawElapsed > 0) {
+        attempt.firstAudioAt = Date.now();
+        trackEvent("playback_first_audio", {
+          attempt_id: attempt.id,
+          track_id: attempt.trackId,
+          startup_ms: Math.max(0, attempt.firstAudioAt - attempt.requestedAt),
+          media_time_ms: Math.round(rawElapsed * 1000),
+          trigger: attempt.trigger,
+        });
+        const failure = lastPlaybackFailure.current;
+        if (failure && attempt.firstAudioAt - failure.at <= 120_000) {
+          trackEvent("playback_recovered", {
+            attempt_id: attempt.id,
+            track_id: attempt.trackId,
+            previous_track_id: failure.trackId,
+            previous_stage: failure.stage,
+            recovery_ms: Math.max(0, attempt.firstAudioAt - failure.at),
+          });
+          lastPlaybackFailure.current = null;
+        }
+      }
+
+      if (!el.seeking) {
+        if (attempt.lastMediaTime !== null) {
+          const delta = rawElapsed - attempt.lastMediaTime;
+          if (delta > 0 && delta <= 5) attempt.listenedSeconds += delta;
+        }
+        attempt.lastMediaTime = rawElapsed;
+      } else {
+        attempt.lastMediaTime = rawElapsed;
+      }
+
+      if (!attempt.tenSecondSent && attempt.listenedSeconds >= 10) {
+        attempt.tenSecondSent = true;
+        trackEvent("playback_10s", {
+          attempt_id: attempt.id,
+          track_id: attempt.trackId,
+          listened_seconds: Math.floor(attempt.listenedSeconds),
+        });
+      }
+      if (!attempt.continueSent && attempt.listenedSeconds >= 60) {
+        attempt.continueSent = true;
+        trackEvent("playback_continue_60s", {
+          attempt_id: attempt.id,
+          track_id: attempt.trackId,
+          listened_seconds: Math.floor(attempt.listenedSeconds),
+        });
+      }
     }
 
     if (guestPreview && rawElapsed >= GUEST_BEAT_PREVIEW_SECONDS) {
@@ -758,6 +820,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     qualificationSent.current = true;
     const source = modeRef.current === "station" ? "station" : "ondemand";
     trackEvent("stream_qualified_30s", {
+      ...(playbackAttempt.current?.trackKey === trackKey(current) ? { attempt_id: playbackAttempt.current.id } : {}),
       track_id: state.trackId,
       listened_seconds: QUALIFIED_STREAM_SECONDS,
       source,
