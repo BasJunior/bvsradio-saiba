@@ -149,7 +149,7 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       ? `,mobile_distribution_clearances!inner(surface,status)&mobile_distribution_clearances.surface=eq.${surface}&mobile_distribution_clearances.status=eq.cleared`
       : "";
     const rotationRes = await fetch(
-      `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre,is_downloadable,download_price,licence_type${mobileJoin}&order=rotation_added_at.desc&limit=500`,
+      `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre,is_downloadable,download_price,licence_type,profiles!tracks_user_id_fkey(id,username,is_published)${mobileJoin}&order=rotation_added_at.desc&limit=500`,
       { headers, cache: "no-store" },
     );
 
@@ -170,6 +170,11 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       is_downloadable?: boolean | null;
       download_price?: number | string | null;
       licence_type?: string | null;
+      profiles?: {
+        id?: string | null;
+        username?: string | null;
+        is_published?: boolean | null;
+      } | null;
     }>;
 
     // Optional music videos linked to rotation tracks (approved + public only).
@@ -218,6 +223,8 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
           project: track.release_id ? "Artist release" : "BVS Station",
           playCount: Number(track.play_count || 0),
           genre: track.genre || undefined,
+          creatorId: track.profiles?.is_published && track.profiles.id ? String(track.profiles.id) : undefined,
+          creatorUsername: track.profiles?.is_published && track.profiles.username ? String(track.profiles.username) : undefined,
           isDownloadable: downloadable,
           downloadPrice: downloadable ? rawPrice : null,
           licenceType: licence || undefined,
