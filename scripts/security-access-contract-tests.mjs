@@ -9,12 +9,19 @@ const profileMigration = await readFile(
   new URL("../supabase/migrations/20260927224000_profile_privacy_contract.sql", import.meta.url),
   "utf8",
 );
+const catalogueMigration = await readFile(
+  new URL("../supabase/migrations/20260927225500_catalogue_mutation_contract.sql", import.meta.url),
+  "utf8",
+);
 const orders = await readFile(new URL("../src/lib/orders.ts", import.meta.url), "utf8");
 const analytics = await readFile(new URL("../src/app/api/analytics/route.ts", import.meta.url), "utf8");
 const trackPlay = await readFile(new URL("../src/app/api/tracks/play/route.ts", import.meta.url), "utf8");
 const accountPage = await readFile(new URL("../src/app/account/page.tsx", import.meta.url), "utf8");
 const accountRoute = await readFile(new URL("../src/app/api/account/route.ts", import.meta.url), "utf8");
 const publicArtists = await readFile(new URL("../src/lib/artist-content.ts", import.meta.url), "utf8");
+const beatServer = await readFile(new URL("../src/lib/beatstore-server.ts", import.meta.url), "utf8");
+const releaseRoute = await readFile(new URL("../src/app/api/releases/route.ts", import.meta.url), "utf8");
+const trackUploadRoute = await readFile(new URL("../src/app/api/tracks/upload/route.ts", import.meta.url), "utf8");
 
 for (const kind of ["tables", "sequences", "functions"]) {
   assert.ok(
@@ -138,3 +145,46 @@ assert.ok(
 );
 
 console.log("security access contract gates passed");
+
+for (const table of ["tracks", "releases", "release_tracks", "beats"]) {
+  assert.ok(
+    catalogueMigration.includes(`revoke insert, update, delete on table public.${table} from anon, authenticated`),
+    `${table} browser mutation must remain revoked.`,
+  );
+  assert.ok(
+    catalogueMigration.includes(`grant select on table public.${table} to anon, authenticated`),
+    `${table} intended browser read path must remain available under RLS.`,
+  );
+  assert.ok(
+    catalogueMigration.includes(`grant select, insert, update, delete on table public.${table} to service_role`),
+    `${table} mutation must remain available to trusted BVS routes.`,
+  );
+}
+
+for (const legacyMutationPolicy of [
+  "Users can insert own tracks",
+  "Users can update own tracks",
+  "Users can delete own tracks",
+  "artists manage own releases",
+  "artists manage own release_tracks via release",
+  "beats producer all",
+]) {
+  assert.ok(
+    catalogueMigration.includes(`drop policy if exists "${legacyMutationPolicy}"`),
+    `Legacy direct catalogue mutation policy ${legacyMutationPolicy} must stay removed.`,
+  );
+}
+
+assert.ok(
+  catalogueMigration.includes('create policy "artists can read own releases"') &&
+    catalogueMigration.includes('create policy "artists can read own release_tracks via release"') &&
+    catalogueMigration.includes('create policy "producers can read own beats"'),
+  "Creator-owned catalogue reads must remain available after mutation hardening.",
+);
+
+assert.ok(
+  beatServer.includes("SUPABASE_SERVICE_ROLE_KEY") &&
+    releaseRoute.includes("SUPABASE_SERVICE_ROLE_KEY") &&
+    trackUploadRoute.includes("SUPABASE_SERVICE_ROLE_KEY"),
+  "Beat, release and track mutation paths must remain server-mediated.",
+);
