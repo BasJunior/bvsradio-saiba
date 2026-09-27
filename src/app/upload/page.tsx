@@ -20,6 +20,7 @@ type SignedSlot = {
 }
 
 type TrackFinalizePayload = {
+  submissionId?: string
   title: string
   genre: string
   description: string
@@ -32,6 +33,42 @@ type TrackFinalizePayload = {
 type PendingTrackFinalize = {
   createdAt: number
   payload: TrackFinalizePayload
+}
+
+type ServerTrackUploadDraft = {
+  id: string
+  state: string
+  title: string
+  audioUploaded: boolean
+  artworkUploaded: boolean
+  readyToFinalize: boolean
+  expiresAt: string
+  lastError: string | null
+}
+
+type RecoverableTrackSessionResponse = {
+  error?: string
+  session?: {
+    id: string
+    state: string
+    payload?: {
+      title?: unknown
+      genre?: unknown
+      description?: unknown
+      rightsConfirmed?: unknown
+      explicit?: unknown
+    }
+    mediaManifest?: {
+      audio?: { path?: unknown }
+      artwork?: { path?: unknown }
+    }
+    createdAt?: string
+    expiresAt?: string
+    lastError?: string | null
+  } | null
+  audioUploaded?: boolean
+  artworkUploaded?: boolean
+  readyToFinalize?: boolean
 }
 
 const PENDING_TRACK_FINALIZE_KEY = 'bvs.creator.pending-track-finalize.v1'
@@ -70,7 +107,7 @@ function forgetPendingTrackFinalize() {
 }
 
 async function registerTrackSubmission(accessToken: string, payload: TrackFinalizePayload) {
-  return fetchJson<{ error?: string; message?: string; track?: { id?: string }; resumed?: boolean }>(
+  return fetchJson<{ error?: string; message?: string; track?: { id?: string }; resumed?: boolean; submissionId?: string | null; state?: string }>(
     '/api/tracks/upload',
     {
       method: 'POST',
@@ -102,6 +139,7 @@ function UploadPageInner() {
   const [mode, setMode] = useState<'single' | 'release'>('release')
   const [beatMode, setBeatMode] = useState<'single' | 'pack'>('single')
   const [pendingTrackFinalize, setPendingTrackFinalize] = useState<PendingTrackFinalize | null>(null)
+  const [serverTrackDraft, setServerTrackDraft] = useState<ServerTrackUploadDraft | null>(null)
 
   const genres = [
     'Hip-Hop', 'Trap', 'Afrobeats', 'Amapiano', 'R&B',
@@ -136,8 +174,105 @@ function UploadPageInner() {
   }, [])
 
   useEffect(() => {
-    setPendingTrackFinalize(readPendingTrackFinalize())
+    const localPending = readPendingTrackFinalize()
+    setPendingTrackFinalize(localPending)
+
+    if (!isSupabaseConfigured()) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const supabase = createClient()
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) return
+        const result = await fetchJson<RecoverableTrackSessionResponse>(
+          '/api/tracks/upload/prepare',
+          {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            cache: 'no-store',
+          },
+          'checking unfinished upload',
+        )
+        if (cancelled || !result.ok || !result.data.session) return
+
+        const recovered = result.data
+        const recoveredSession = recovered.session!
+        const recoveredPayload = recoveredSession.payload || {}
+        const recoveredManifest = recoveredSession.mediaManifest || {}
+        setServerTrackDraft({
+          id: recoveredSession.id,
+          state: recoveredSession.state,
+          title: String(recoveredPayload.title || 'Untitled submission'),
+          audioUploaded: Boolean(recovered.audioUploaded),
+          artworkUploaded: Boolean(recovered.artworkUploaded),
+          readyToFinalize: Boolean(recovered.readyToFinalize),
+          expiresAt: String(recoveredSession.expiresAt || ''),
+          lastError: recoveredSession.lastError || null,
+        })
+
+        if (recovered.readyToFinalize) {
+          const audioPath = String(recoveredManifest.audio?.path || '')
+          const artworkPath = String(recoveredManifest.artwork?.path || '')
+          const recoveredTitle = String(recoveredPayload.title || '').trim()
+          const recoveredGenre = String(recoveredPayload.genre || '').trim()
+          if (audioPath && artworkPath && recoveredTitle && recoveredGenre) {
+            const pending: PendingTrackFinalize = {
+              createdAt: recoveredSession.createdAt ? Date.parse(recoveredSession.createdAt) || Date.now() : Date.now(),
+              payload: {
+                submissionId: recoveredSession.id,
+                title: recoveredTitle,
+                genre: recoveredGenre,
+                description: String(recoveredPayload.description || ''),
+                rightsConfirmed: true,
+                explicit: recoveredPayload.explicit === true,
+                audioPath,
+                artworkPath,
+              },
+            }
+            rememberPendingTrackFinalize(pending)
+            setPendingTrackFinalize(pending)
+          }
+        }
+      } catch (draftError) {
+        console.info('[bvs upload] no recoverable server draft', draftError)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
+
+  const dismissServerTrackDraft = async () => {
+    if (!serverTrackDraft || !isSupabaseConfigured()) return
+    setLoading(true)
+    setError(null)
+    setProgress('Dismissing unfinished upload…')
+    try {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.access_token) throw new Error('Sign in again, then try once more.')
+      const result = await fetchJson<{ error?: string; ok?: boolean }>(
+        `/api/tracks/upload/prepare?submissionId=${encodeURIComponent(serverTrackDraft.id)}`,
+        {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        },
+        'dismissing upload draft',
+      )
+      if (!result.ok) throw new Error(result.data.error || 'Could not dismiss upload draft.')
+      if (pendingTrackFinalize?.payload.submissionId === serverTrackDraft.id) {
+        forgetPendingTrackFinalize()
+        setPendingTrackFinalize(null)
+      }
+      setServerTrackDraft(null)
+    } catch (err) {
+      setError(humanizeUploadError(err))
+    } finally {
+      setLoading(false)
+      setProgress('')
+    }
+  }
 
   const retryPendingTrackFinalize = async () => {
     if (!pendingTrackFinalize || !isSupabaseConfigured()) return
@@ -152,6 +287,7 @@ function UploadPageInner() {
       if (!result.ok) throw new Error(result.data.error || `Could not recover submission (${result.status})`)
       forgetPendingTrackFinalize()
       setPendingTrackFinalize(null)
+      setServerTrackDraft(null)
       trackEvent('upload_complete', {
         genre: pendingTrackFinalize.payload.genre,
         has_artwork: true,
@@ -249,6 +385,8 @@ function UploadPageInner() {
       setProgress('Preparing secure upload…')
       const prepResult = await fetchJson<{
         error?: string
+        submissionId?: string
+        state?: string
         audio?: SignedSlot
         artwork?: SignedSlot | null
       }>(
@@ -257,6 +395,11 @@ function UploadPageInner() {
           method: 'POST',
           headers: authHeaders,
           body: JSON.stringify({
+            title: title.trim(),
+            genre,
+            description: description.trim(),
+            rightsConfirmed: true,
+            explicit,
             audio: {
               name: audioFile.name,
               type: audioFile.type,
@@ -274,9 +417,20 @@ function UploadPageInner() {
         'preparing upload',
       )
       const prep = prepResult.data
-      if (!prepResult.ok || !prep.audio) {
+      if (!prepResult.ok || !prep.audio || !prep.artwork || !prep.submissionId) {
         throw new Error(prep.error || `Could not prepare upload (${prepResult.status})`)
       }
+
+      setServerTrackDraft({
+        id: prep.submissionId,
+        state: prep.state || 'uploading',
+        title: title.trim(),
+        audioUploaded: false,
+        artworkUploaded: false,
+        readyToFinalize: false,
+        expiresAt: '',
+        lastError: null,
+      })
 
       // 2) Upload audio (and artwork) straight to storage — bypasses Vercel 4.5MB limit
       const mb = (audioFile.size / (1024 * 1024)).toFixed(1)
@@ -289,9 +443,56 @@ function UploadPageInner() {
         await putToSignedSlot(prep.artwork, artworkFile, { label: 'cover art' })
       }
 
-      // 3) Files are safely uploaded. Persist the finalize payload before the DB request
-      // so a refresh/network failure can recover without re-uploading large media.
+      // 3) Ask BVS to HEAD both objects and commit durable "uploaded" state before
+      // finalization. A reload can now recover from the server even without this browser.
+      setProgress('Verifying files reached BVS…')
+      const verified = await fetchJson<{
+        error?: string
+        session?: { id?: string; state?: string }
+        audioUploaded?: boolean
+        artworkUploaded?: boolean
+        readyToFinalize?: boolean
+      }>(
+        '/api/tracks/upload/prepare',
+        {
+          method: 'PATCH',
+          headers: authHeaders,
+          body: JSON.stringify({ submissionId: prep.submissionId }),
+        },
+        'verifying uploaded files',
+      )
+      if (!verified.ok || !verified.data.readyToFinalize) {
+        setServerTrackDraft((current) => current && current.id === prep.submissionId
+          ? {
+              ...current,
+              state: verified.data.session?.state || 'uploading',
+              audioUploaded: Boolean(verified.data.audioUploaded),
+              artworkUploaded: Boolean(verified.data.artworkUploaded),
+              readyToFinalize: false,
+              lastError: verified.data.error || 'BVS could not verify both files yet.',
+            }
+          : current)
+        throw new Error(
+          verified.data.error ||
+          'BVS created your submission draft, but both files are not verified yet. Do not guess — return here to check or retry.',
+        )
+      }
+
+      setServerTrackDraft((current) => current && current.id === prep.submissionId
+        ? {
+            ...current,
+            state: verified.data.session?.state || 'uploaded',
+            audioUploaded: true,
+            artworkUploaded: true,
+            readyToFinalize: true,
+            lastError: null,
+          }
+        : current)
+
+      // 4) Files are durably verified. Keep a local fallback too, but the server-side
+      // submission ID is now the authority for metadata, media paths and ownership.
       const finalizePayload: TrackFinalizePayload = {
+        submissionId: prep.submissionId,
         title: title.trim(),
         genre,
         description: description.trim(),
@@ -314,7 +515,8 @@ function UploadPageInner() {
 
       forgetPendingTrackFinalize()
       setPendingTrackFinalize(null)
-      trackEvent('upload_complete', { genre, has_artwork: Boolean(artworkFile), recovered_finalize: Boolean(data.resumed) })
+      setServerTrackDraft(null)
+      trackEvent('upload_complete', { genre, has_artwork: Boolean(artworkFile), recovered_finalize: Boolean(data.resumed), durable_submission: true })
       setSuccess(true)
     } catch (err: unknown) {
       console.error('[bvs upload] failed', err)
@@ -546,7 +748,7 @@ function UploadPageInner() {
           <form onSubmit={handleSubmit} noValidate className="space-y-6 rounded-2xl border border-white/10 bg-bg-card/30 p-8">
             {pendingTrackFinalize && (
               <div className="rounded-xl border border-amber-300/30 bg-amber-300/[.07] p-4 text-sm">
-                <p className="font-semibold text-amber-100">Your previous files are already safely uploaded.</p>
+                <p className="font-semibold text-amber-100">BVS has your previous files safely uploaded.</p>
                 <p className="mt-1 text-text-secondary">
                   BVS still needs to finish registering <strong className="text-text-primary">{pendingTrackFinalize.payload.title}</strong> for editorial review.
                   Do not upload the files again.
@@ -561,10 +763,32 @@ function UploadPageInner() {
                 </button>
               </div>
             )}
+            {serverTrackDraft && !serverTrackDraft.readyToFinalize && !pendingTrackFinalize && (
+              <div className="rounded-xl border border-sky-300/25 bg-sky-300/[.06] p-4 text-sm">
+                <p className="font-semibold text-sky-100">BVS kept an unfinished upload draft.</p>
+                <p className="mt-1 text-text-secondary">
+                  <strong className="text-text-primary">{serverTrackDraft.title}</strong> ·
+                  {' '}audio {serverTrackDraft.audioUploaded ? 'received' : 'not verified'} ·
+                  {' '}artwork {serverTrackDraft.artworkUploaded ? 'received' : 'not verified'}.
+                  {serverTrackDraft.lastError ? ` ${serverTrackDraft.lastError}` : ''}
+                </p>
+                <p className="mt-2 text-xs text-text-secondary">
+                  Nothing has been published. You can start this upload again safely, or dismiss the unfinished draft.
+                </p>
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => void dismissServerTrackDraft()}
+                  className="mt-3 rounded-full border border-sky-200/30 px-4 py-2 font-medium text-sky-100 hover:bg-sky-200/10 disabled:opacity-60"
+                >
+                  Dismiss draft
+                </button>
+              </div>
+            )}
             <p className="rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-text-secondary">
-              <strong className="text-text-primary">Where it goes:</strong> Browser → Supabase bucket{' '}
-              <code className="text-brand">bvsradio-audio</code> under{' '}
-              <code className="text-brand">tracks/…</code>, then a <em>submitted</em> row for staff at{' '}
+              <strong className="text-text-primary">Where it goes:</strong> BVS creates a private submission record first,
+              then your browser sends media directly to protected storage under <code className="text-brand">tracks/…</code>.
+              BVS verifies both files before creating the <em>submitted</em> editorial row at{' '}
               <Link href="/editorial" className="text-brand hover:underline">
                 Admin → Editorial
               </Link>
