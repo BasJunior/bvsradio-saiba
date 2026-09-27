@@ -43,6 +43,19 @@ export type QueueItem = {
   source: QueueSource;
 };
 
+type PlaybackAttemptState = {
+  id: string;
+  trackKey: string;
+  trackId: string;
+  trigger: string;
+  requestedAt: number;
+  firstAudioAt: number | null;
+  listenedSeconds: number;
+  lastMediaTime: number | null;
+  tenSecondSent: boolean;
+  continueSent: boolean;
+};
+
 type PlayerContextValue = {
   tracks: StationTrack[];
   current: StationTrack | undefined;
@@ -168,6 +181,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const countedStarts = useRef(new Set<string>());
   const qualification = useRef<StreamQualificationState | null>(null);
   const qualificationSent = useRef(false);
+  const playbackAttempt = useRef<PlaybackAttemptState | null>(null);
+  const lastPlaybackFailure = useRef<{ at: number; stage: string; trackId: string } | null>(null);
   const failStreak = useRef(0);
   const hydrated = useRef(false);
   const [tracks, setTracks] = useState<StationTrack[]>(initialTracks);
@@ -267,6 +282,61 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, []);
 
   const current = nowPlaying?.track;
+
+  const beginPlaybackAttempt = useCallback(
+    (track: StationTrack, trigger: string, options?: { forceNew?: boolean; intent?: boolean }) => {
+      const key = trackKey(track);
+      const existing = playbackAttempt.current;
+      if (!options?.forceNew && existing?.trackKey === key) return existing;
+      const id = crypto.randomUUID();
+      const attempt: PlaybackAttemptState = {
+        id,
+        trackKey: key,
+        trackId: trackLibraryId(track),
+        trigger,
+        requestedAt: Date.now(),
+        firstAudioAt: null,
+        listenedSeconds: 0,
+        lastMediaTime: null,
+        tenSecondSent: false,
+        continueSent: false,
+      };
+      playbackAttempt.current = attempt;
+      const properties = {
+        attempt_id: id,
+        track_id: attempt.trackId,
+        trigger,
+        source: modeRef.current === "ondemand" ? "ondemand" : "station",
+      };
+      if (options?.intent) trackEvent("playback_intent", properties);
+      trackEvent("playback_media_requested", properties);
+      return attempt;
+    },
+    [],
+  );
+
+  const recordPlaybackSkip = useCallback((reason: string) => {
+    const attempt = playbackAttempt.current;
+    const media = audio.current;
+    if (!attempt || media?.ended) return;
+    trackEvent("playback_skip", {
+      attempt_id: attempt.id,
+      track_id: attempt.trackId,
+      reason,
+      listened_seconds: Math.round(attempt.listenedSeconds),
+      media_time: Math.round(media?.currentTime || 0),
+    });
+  }, []);
+
+  const markPlaybackFailure = useCallback((stage: string, track: StationTrack | undefined) => {
+    const attempt = playbackAttempt.current;
+    lastPlaybackFailure.current = {
+      at: Date.now(),
+      stage,
+      trackId: track ? trackLibraryId(track) : attempt?.trackId || "unknown",
+    };
+  }, []);
+
   const tracksRef = useRef(tracks);
   const nowRef = useRef(nowPlaying);
   const upNextRef = useRef(upNext);
