@@ -6,6 +6,7 @@ import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import HomeBeatRail from "@/components/flow/HomeBeatRail";
 import HomeEngagementHub from "@/components/home/HomeEngagementHub";
 import HomePublicPlaylistRail from "@/components/home/HomePublicPlaylistRail";
+import HomeContinueListening from "@/components/home/HomeContinueListening";
 import { getPublicProgrammes } from "@/lib/station-content";
 
 const paths = [
@@ -82,6 +83,8 @@ export default async function HomePage() {
             <HomeListenPanel />
           </div>
         </div>
+
+        <HomeContinueListening />
 
         <div className="mt-8 grid gap-3 sm:mt-10 md:grid-cols-3">
           {paths.map((item) => (
