@@ -48,6 +48,7 @@ type PlaybackAttemptState = {
   trackKey: string;
   trackId: string;
   trigger: string;
+  surface: string;
   requestedAt: number;
   firstAudioAt: number | null;
   listenedSeconds: number;
@@ -290,11 +291,17 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       const existing = playbackAttempt.current;
       if (!options?.forceNew && existing?.trackKey === key) return existing;
       const id = crypto.randomUUID();
+      const nativePlatform = Capacitor.getPlatform();
+      const appSurface = window.location.pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1];
+      const surface = nativePlatform === "ios" || nativePlatform === "android"
+        ? nativePlatform
+        : appSurface || "web";
       const attempt: PlaybackAttemptState = {
         id,
         trackKey: key,
         trackId: trackLibraryId(track),
         trigger,
+        surface,
         requestedAt: Date.now(),
         firstAudioAt: null,
         listenedSeconds: 0,
@@ -308,6 +315,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         track_id: attempt.trackId,
         trigger,
         source: modeRef.current === "ondemand" ? "ondemand" : "station",
+        surface,
         proof_version: "v1",
       };
       if (options?.intent) trackEvent("playback_intent", properties);
@@ -757,6 +765,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           startup_ms: Math.max(0, attempt.firstAudioAt - attempt.requestedAt),
           media_time_ms: Math.round(rawElapsed * 1000),
           trigger: attempt.trigger,
+          surface: attempt.surface,
           proof_version: "v1",
         });
         const failure = lastPlaybackFailure.current;
