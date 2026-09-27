@@ -851,7 +851,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, []);
 
   const advance = useCallback(
-    (direction: 1 | -1, opts?: { autoSkip?: boolean }) => {
+    (direction: 1 | -1, opts?: { autoSkip?: boolean; userSkip?: boolean; skipReason?: string }) => {
       const pool = tracksRef.current;
       const inBeat =
         isBeatTrack(nowRef.current?.track) ||
@@ -892,6 +892,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         return;
       }
 
+      if (opts?.userSkip) {
+        recordPlaybackSkip(opts.skipReason || (direction === 1 ? "next" : "previous"));
+      }
+
       setUpNext((queue) => {
         let nextQueue = [...queue];
         let nextItem = nextQueue.shift();
@@ -918,14 +922,17 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         return queue;
       });
     },
-    [fillUpNext, flushListening, history, pushHistory],
+    [fillUpNext, flushListening, history, pushHistory, recordPlaybackSkip],
   );
 
   const handleMediaError = useCallback(() => {
     flushListening();
     failStreak.current += 1;
     const media = audio.current;
+    const attempt = playbackAttempt.current;
+    markPlaybackFailure("media", current);
     trackEvent("playback_error", {
+      ...(attempt ? { attempt_id: attempt.id } : {}),
       track_id: current ? trackLibraryId(current) : "unknown",
       stage: "media",
       fail_streak: failStreak.current,
@@ -960,7 +967,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setNotice("Skipping a broken track…");
     setPlaying(true);
     advance(1, { autoSkip: true });
-  }, [advance, current, flushListening, tracks.length]);
+  }, [advance, current, flushListening, markPlaybackFailure, tracks.length]);
 
   const play = useCallback(async () => {
     const el = audio.current;
@@ -974,6 +981,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     }
     try {
       editorialHoldRef.current = false;
+      const attempt = beginPlaybackAttempt(current, "user_play", { forceNew: true, intent: true });
       window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
       await el.play();
       failStreak.current = 0;
@@ -992,20 +1000,24 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setPlaying(false);
       const details = playbackFailureDetails(playError);
       if (details.error_name === "AbortError") return;
+      const attempt = playbackAttempt.current;
+      markPlaybackFailure("start", current);
       trackEvent("playback_error", {
+        ...(attempt ? { attempt_id: attempt.id } : {}),
         track_id: trackLibraryId(current),
         stage: "start",
         ...details,
       });
       setError(details.error_name === "NotAllowedError" ? "Tap Play to start audio." : "Playback could not start. Please try again.");
     }
-  }, [current, pushHistory]);
+  }, [beginPlaybackAttempt, current, markPlaybackFailure, pushHistory]);
 
   const pause = useCallback(() => {
     const el = audio.current;
     if (!el) return;
     const wasPlaying = !el.paused && !el.ended;
     el.pause();
+    if (playbackAttempt.current) playbackAttempt.current.lastMediaTime = null;
     if (wasPlaying) flushListening();
     setPlaying(false);
   }, [flushListening]);
@@ -1085,8 +1097,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setHandler("pause", () => {
       pause();
     });
-    setHandler("previoustrack", () => advance(-1));
-    setHandler("nexttrack", () => advance(1));
+    setHandler("previoustrack", () => advance(-1, { userSkip: true, skipReason: "media_session_previous" }));
+    setHandler("nexttrack", () => advance(1, { userSkip: true, skipReason: "media_session_next" }));
     setHandler("seekto", (details) => {
       if (typeof details.seekTime === "number") seekTo(details.seekTime);
     });
@@ -1404,8 +1416,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       play,
       pause,
       toggle,
-      next: () => advance(1),
-      previous: () => advance(-1),
+      next: () => advance(1, { userSkip: true, skipReason: "player_next" }),
+      previous: () => advance(-1, { userSkip: true, skipReason: "player_previous" }),
       setVolume,
       seek,
       seekTo,
