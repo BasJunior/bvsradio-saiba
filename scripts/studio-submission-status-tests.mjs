@@ -10,7 +10,7 @@ assert.ok(
   "Creator workspace must include safe server-side upload-session status.",
 );
 assert.ok(
-  !(workspace.includes("creator_upload_sessions?user_id=eq.") && workspace.includes("creator_upload_sessions?user_id=eq.") && workspace.includes("&select=*")),
+  !/creator_upload_sessions\?[^\`]*select=\*/.test(workspace),
   "Creator workspace must not query upload sessions with a wildcard.",
 );
 for (const field of [
