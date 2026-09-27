@@ -13,6 +13,10 @@ const catalogueMigration = await readFile(
   new URL("../supabase/migrations/20260927225500_catalogue_mutation_contract.sql", import.meta.url),
   "utf8",
 );
+const nonApiMigration = await readFile(
+  new URL("../supabase/migrations/20260927231000_browser_non_api_privileges.sql", import.meta.url),
+  "utf8",
+);
 const orders = await readFile(new URL("../src/lib/orders.ts", import.meta.url), "utf8");
 const analytics = await readFile(new URL("../src/app/api/analytics/route.ts", import.meta.url), "utf8");
 const trackPlay = await readFile(new URL("../src/app/api/tracks/play/route.ts", import.meta.url), "utf8");
@@ -188,3 +192,17 @@ assert.ok(
     trackUploadRoute.includes("SUPABASE_SERVICE_ROLE_KEY"),
   "Beat, release and track mutation paths must remain server-mediated.",
 );
+
+assert.ok(
+  nonApiMigration.includes("revoke truncate, references, trigger, maintain") &&
+    nonApiMigration.includes("on all tables in schema public") &&
+    nonApiMigration.includes("from anon, authenticated"),
+  "Browser roles must not retain non-API table capabilities outside RLS.",
+);
+for (const kind of ["tables", "sequences", "functions"]) {
+  assert.ok(
+    nonApiMigration.includes("alter default privileges for role postgres in schema public") &&
+      nonApiMigration.includes(`revoke all on ${kind}`),
+    `Project-postgres future ${kind} must default to browser-denied.`,
+  );
+}
