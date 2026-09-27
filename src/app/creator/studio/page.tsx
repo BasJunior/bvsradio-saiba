@@ -28,6 +28,19 @@ type WorkspaceData = {
     in_rotation?: boolean;
   }>;
   distributionJobs?: Array<{ id: string; status?: string }>;
+  uploadSessions?: Array<{
+    id: string;
+    submissionType: "track" | "release";
+    state: string;
+    title: string;
+    resultType?: string | null;
+    resultId?: string | null;
+    lastError?: string | null;
+    expiresAt?: string | null;
+    submittedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }>;
 };
 
 const legacyStudioAnchors = new Set([
@@ -87,6 +100,16 @@ export default function CreatorStudioHome() {
       })
       .catch(() => setError("Could not open Studio."));
   }, []);
+
+  const uploadStatus = useMemo(() => {
+    const sessions = data?.uploadSessions || [];
+    const active = sessions
+      .filter((session) => ["preparing", "uploading", "uploaded", "finalizing", "failed"].includes(session.state))
+      .slice(0, 4);
+    const ready = active.filter((session) => ["uploaded", "finalizing"].includes(session.state)).length;
+    const incomplete = active.filter((session) => ["preparing", "uploading", "failed"].includes(session.state)).length;
+    return { active, ready, incomplete };
+  }, [data]);
 
   const activity = useMemo(() => {
     const tracks = data?.tracks || [];
@@ -167,6 +190,7 @@ export default function CreatorStudioHome() {
         Start with the job. BVS will bring in rights, marketplace, distribution and money tools only when they are needed.
       </p>
 
+      {artist && uploadStatus.active.length > 0 && <SubmissionStatusPanel sessions={uploadStatus.active} />}
       {artist && <ArtistActivationPanel activity={activity} />}
 
       <section className="mt-8 grid gap-3 md:grid-cols-3" aria-label="Create in BVS">
@@ -212,6 +236,95 @@ export default function CreatorStudioHome() {
         </section>
       )}
     </main>
+  );
+}
+
+function SubmissionStatusPanel({
+  sessions,
+}: {
+  sessions: NonNullable<WorkspaceData["uploadSessions"]>;
+}) {
+  const presentation = (state: string) => {
+    if (state === "uploaded") return {
+      label: "Files verified",
+      detail: "BVS has every required file. Finish registration without uploading again.",
+      tone: "text-emerald-200",
+    };
+    if (state === "finalizing") return {
+      label: "Finishing submission",
+      detail: "The files are safe. You can retry registration without creating a duplicate.",
+      tone: "text-amber-200",
+    };
+    if (state === "failed") return {
+      label: "Needs attention",
+      detail: "BVS kept the draft. Open the submission to see what needs another try.",
+      tone: "text-amber-200",
+    };
+    if (state === "preparing") return {
+      label: "Preparing upload",
+      detail: "BVS created the submission record before media transfer began.",
+      tone: "text-sky-200",
+    };
+    return {
+      label: "Upload incomplete",
+      detail: "BVS kept the submission record even though every file is not verified yet.",
+      tone: "text-sky-200",
+    };
+  };
+
+  return (
+    <section
+      data-studio-accent="core"
+      className="mt-8 rounded-3xl border border-amber-300/20 bg-amber-300/[.035] p-5 sm:p-6"
+      aria-label="Submission status"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[.18em] text-amber-200">Needs your attention</p>
+          <h2 className="mt-2 text-2xl font-semibold">Unfinished submissions</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
+            These are server-side BVS records, not browser guesses. Your upload state survives a reload or lost connection.
+          </p>
+        </div>
+        <span className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary">
+          {sessions.length} active
+        </span>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {sessions.map((session) => {
+          const status = presentation(session.state);
+          const href = session.submissionType === "release"
+            ? "/creator/studio/create/release"
+            : "/upload";
+          return (
+            <div key={session.id} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate font-semibold">{session.title}</p>
+                  <span className={`text-xs font-semibold ${status.tone}`}>{status.label}</span>
+                </div>
+                <p className="mt-1 text-xs leading-5 text-text-secondary">
+                  {status.detail}
+                  {session.lastError ? ` ${session.lastError}` : ""}
+                </p>
+              </div>
+              <Link
+                href={href}
+                onClick={() => trackEvent("create_intent_selected", {
+                  intent: "resume_submission",
+                  submission_type: session.submissionType,
+                  state: session.state,
+                })}
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-amber-200/30 px-4 py-2 text-sm font-semibold text-amber-100 hover:bg-amber-200/10"
+              >
+                {["uploaded", "finalizing"].includes(session.state) ? "Finish submission" : "Open submission"} →
+              </Link>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
