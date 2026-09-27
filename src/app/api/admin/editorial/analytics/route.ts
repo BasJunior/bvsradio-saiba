@@ -117,7 +117,7 @@ export async function GET(request: Request) {
 
     // Proof cohort: only lifecycle events emitted by the new correlated playback
     // instrumentation. This avoids mixing today's evidence with historical events.
-    const proofEvents = events.filter((event) => event.properties?.proof_version === 'v1')
+    const proofEvents = events.filter((event) => event.properties?.proof_version === 'v2')
     const proofAttemptId = (event: AnalyticsEvent) => String(event.properties?.attempt_id || '')
     const proofByName = (name: string) => proofEvents.filter((event) => event.event_name === name)
     const proofRequested = proofByName('playback_media_requested')
