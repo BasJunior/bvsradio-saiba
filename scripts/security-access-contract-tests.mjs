@@ -24,6 +24,7 @@ const accountPage = await readFile(new URL("../src/app/account/page.tsx", import
 const accountRoute = await readFile(new URL("../src/app/api/account/route.ts", import.meta.url), "utf8");
 const publicArtists = await readFile(new URL("../src/lib/artist-content.ts", import.meta.url), "utf8");
 const beatServer = await readFile(new URL("../src/lib/beatstore-server.ts", import.meta.url), "utf8");
+const creatorServer = await readFile(new URL("../src/lib/creator-server.ts", import.meta.url), "utf8");
 const releaseRoute = await readFile(new URL("../src/app/api/releases/route.ts", import.meta.url), "utf8");
 const trackUploadRoute = await readFile(new URL("../src/app/api/tracks/upload/route.ts", import.meta.url), "utf8");
 
@@ -187,7 +188,8 @@ assert.ok(
 );
 
 assert.ok(
-  beatServer.includes("SUPABASE_SERVICE_ROLE_KEY") &&
+  beatServer.includes('import { creatorHeaders, creatorIdentity, creatorUrl } from "@/lib/creator-server"'.replaceAll('"', "'")) &&
+    creatorServer.includes("SUPABASE_SERVICE_ROLE_KEY") &&
     releaseRoute.includes("SUPABASE_SERVICE_ROLE_KEY") &&
     trackUploadRoute.includes("SUPABASE_SERVICE_ROLE_KEY"),
   "Beat, release and track mutation paths must remain server-mediated.",
