@@ -196,7 +196,7 @@ function UploadPageInner() {
         if (cancelled || !result.ok || !result.data.session) return
 
         const recovered = result.data
-        const recoveredSession = recovered.session
+        const recoveredSession = recovered.session!
         const recoveredPayload = recoveredSession.payload || {}
         const recoveredManifest = recoveredSession.mediaManifest || {}
         setServerTrackDraft({
