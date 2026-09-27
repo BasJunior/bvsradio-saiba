@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import AppJoinCard from "@/components/app-vnext/AppJoinCard";
 import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
 import AppHomeDiscoverySections from "@/components/app-vnext/AppHomeDiscoverySections";
+import HomeContinueListening from "@/components/home/HomeContinueListening";
 import type { MobileSurface } from "@/lib/station-library";
 
 export const dynamic = "force-dynamic";
@@ -75,6 +76,8 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
       <div className="mt-5">
         <AppHomeStationCard />
       </div>
+
+      <HomeContinueListening />
 
       <Link
         href={`${base}/feed`}
