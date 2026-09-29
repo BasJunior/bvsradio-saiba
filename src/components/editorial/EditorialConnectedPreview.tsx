@@ -2,7 +2,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useStationPlayer } from '@/components/StationPlayer'
+import { useStationPlayer, useStationPlayerProgress } from '@/components/StationPlayer'
 import { createClient } from '@/lib/supabase'
 
 function formatTime(seconds: number) {
@@ -55,6 +55,7 @@ export default function EditorialConnectedPreview({
   compact?: boolean
 }) {
   const player = useStationPlayer()
+  const progress = useStationPlayerProgress();
   const target = useMemo(() => reviewTarget(previewId), [previewId])
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null)
   const [resolvedAudioSource, setResolvedAudioSource] = useState<ReviewAudioSource | null>(null)
@@ -76,8 +77,8 @@ export default function EditorialConnectedPreview({
     ? 'Editorial · uploaded preview'
     : project
   const active = Boolean(playableSrc) && player.current?.src === playableSrc && player.playingFrom === playbackProject
-  const elapsed = active ? player.elapsed : 0
-  const duration = active ? player.duration : 0
+  const elapsed = active ? progress.elapsed : 0
+  const duration = active ? progress.duration : 0
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0
 
   const playSource = (audioSrc: string, audioSource: ReviewAudioSource | null = resolvedAudioSource) => {
