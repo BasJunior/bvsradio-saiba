@@ -9,7 +9,7 @@ export default function PublishedAlbumsShelf() {
   const [releases, setReleases] = useState<PublicRelease[]>([])
 
   useEffect(() => {
-    fetch('/api/releases/public', { cache: 'no-store' })
+    fetch('/api/releases/public?limit=6')
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((payload: { releases?: PublicRelease[] }) => setReleases(payload.releases || []))
       .catch(() => undefined)

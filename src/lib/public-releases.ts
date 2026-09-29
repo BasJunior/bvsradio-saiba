@@ -27,13 +27,14 @@ function config() {
   return url && key ? { url, headers: { apikey: key, Authorization: `Bearer ${key}` } } : null
 }
 
-export async function getPublicReleases(releaseId?: string): Promise<PublicRelease[]> {
+export async function getPublicReleases(releaseId?: string, limit = 100): Promise<PublicRelease[]> {
   const setup = config()
   if (!setup) return []
+  const safeLimit = releaseId ? 1 : Math.max(1, Math.min(100, Math.floor(limit || 100)))
   const releaseFilter = releaseId ? `&id=eq.${encodeURIComponent(releaseId)}` : ''
   const releasesResponse = await fetch(
-    `${setup.url}/rest/v1/releases?is_public=eq.true&editorial_status=eq.approved${releaseFilter}&select=id,title,artist_name,genre,description,cover_url,release_type,copyright_year&order=published_at.desc&limit=100`,
-    { headers: setup.headers, cache: 'no-store' },
+    `${setup.url}/rest/v1/releases?is_public=eq.true&editorial_status=eq.approved${releaseFilter}&select=id,title,artist_name,genre,description,cover_url,release_type,copyright_year&order=published_at.desc&limit=${safeLimit}`,
+    { headers: setup.headers, next: { revalidate: 60 } },
   )
   if (!releasesResponse.ok) return []
   const releases = await releasesResponse.json() as Array<Record<string, unknown>>
@@ -41,7 +42,7 @@ export async function getPublicReleases(releaseId?: string): Promise<PublicRelea
   const ids = releases.map((release) => String(release.id))
   const tracksResponse = await fetch(
     `${setup.url}/rest/v1/release_tracks?release_id=in.(${ids.join(',')})&select=id,release_id,position,title,track_id,file_url,audio_path&order=position.asc`,
-    { headers: setup.headers, cache: 'no-store' },
+    { headers: setup.headers, next: { revalidate: 60 } },
   )
   if (!tracksResponse.ok) return []
   const members = await tracksResponse.json() as Array<Record<string, unknown>>
@@ -49,7 +50,7 @@ export async function getPublicReleases(releaseId?: string): Promise<PublicRelea
   const creditsResponse = trackIds.length
     ? await fetch(
         `${setup.url}/rest/v1/track_credits?track_id=in.(${trackIds.join(',')})&is_verified=eq.true&select=track_id,person_name,credit_role&order=credit_role.asc`,
-        { headers: setup.headers, cache: 'no-store' },
+        { headers: setup.headers, next: { revalidate: 60 } },
       )
     : null
   const credits = creditsResponse?.ok

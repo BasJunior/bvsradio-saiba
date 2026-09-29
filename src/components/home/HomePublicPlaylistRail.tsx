@@ -18,10 +18,10 @@ export default function HomePublicPlaylistRail() {
 
   useEffect(() => {
     let active = true
-    fetch('/api/playlists/public', { cache: 'no-store' })
+    fetch('/api/playlists/public?limit=6')
       .then(response => response.ok ? response.json() : Promise.reject())
       .then((payload: { playlists?: PublicPlaylist[] }) => {
-        if (active) setPlaylists((payload.playlists || []).filter(item => item.trackCount > 0).slice(0, 6))
+        if (active) setPlaylists(payload.playlists || [])
       })
       .catch(() => undefined)
     return () => { active = false }
@@ -43,7 +43,7 @@ export default function HomePublicPlaylistRail() {
       <div className="mt-6 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3">
         {playlists.map(playlist => <Link key={playlist.id} href={`/playlist/${playlist.id}`} className="bvs-home-accent-card group w-[15.5rem] shrink-0 snap-start overflow-hidden rounded-[1.45rem] border border-white/10 bg-white/[.025] hover:-translate-y-0.5">
           <div className="relative aspect-square bg-gradient-to-br from-brand/20 via-white/[.04] to-black">
-            {playlist.coverUrl ? <img src={playlist.coverUrl} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-5xl font-semibold text-brand/65">BVS</div>}
+            {playlist.coverUrl ? <img src={playlist.coverUrl} alt="" loading="lazy" decoding="async" fetchPriority="low" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-5xl font-semibold text-brand/65">BVS</div>}
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
             <span className="absolute bottom-3 left-3 rounded-full bg-black/65 px-2.5 py-1 text-[11px] text-white/80 backdrop-blur">{playlist.trackCount} track{playlist.trackCount === 1 ? '' : 's'}</span>
           </div>

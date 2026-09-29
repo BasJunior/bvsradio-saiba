@@ -23,6 +23,8 @@ import { ensureBeatArtworkPath } from '@/lib/beat-cover-autogen'
 
 export const runtime = 'nodejs'
 
+const PUBLIC_CACHE = 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
+
 async function privateMediaUrl(value?: string | null) {
   if (!value) return value
   const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
@@ -32,6 +34,8 @@ async function privateMediaUrl(value?: string | null) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const scope = searchParams.get('scope') || 'public'
+  const rawLimit = Number(searchParams.get('limit') || 120)
+  const publicLimit = Number.isFinite(rawLimit) ? Math.min(120, Math.max(1, Math.floor(rawLimit))) : 120
 
   if (scope === 'mine') {
     const identity = await beatIdentity(request)
@@ -58,14 +62,17 @@ export async function GET(request: Request) {
       stems_path: await privateMediaUrl(beat.stems_path),
     })))
     const entitlements = await resolveProducerBeatEntitlements(identity.user.id)
-    return NextResponse.json({ beats, profile, entitlements })
+    return NextResponse.json(
+      { beats, profile, entitlements },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    )
   }
 
   // public published beats for catalogue / BeatStore
-  const beats = await listPublishedBeats(120)
+  const beats = await listPublishedBeats(publicLimit)
   const producerIds = [...new Set(beats.map(beat => beat.producer_user_id))]
   const producerResponse = producerIds.length
-    ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status`), { headers: beatHeaders, cache: 'no-store' })
+    ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status`), { headers: beatHeaders, next: { revalidate: 60 } })
     : null
   const producers = producerResponse?.ok ? await producerResponse.json() as Array<{ id: string; username: string; creator_public_name?: string; creator_name_status?: string }> : []
   const shaped = beats.map((b) => {
@@ -110,7 +117,10 @@ export async function GET(request: Request) {
     minPrice: startingPrices.length ? Math.min(...startingPrices) : null,
     updatedAt: new Date().toISOString(),
   }
-  return NextResponse.json({ beats: shaped, count: shaped.length, summary })
+  return NextResponse.json(
+    { beats: shaped, count: shaped.length, summary },
+    { headers: { 'Cache-Control': PUBLIC_CACHE } },
+  )
 }
 
 export async function POST(request: Request) {

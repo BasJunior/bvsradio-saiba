@@ -25,9 +25,9 @@ export default function HomeBeatRail() {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/beats", { cache: "no-store" })
+    fetch("/api/beats?limit=8")
       .then((response) => response.ok ? response.json() : Promise.reject())
-      .then((payload: { beats?: PublicBeat[] }) => { if (active) setBeats((payload.beats || []).slice(0, 8)); })
+      .then((payload: { beats?: PublicBeat[] }) => { if (active) setBeats(payload.beats || []); })
       .catch(() => undefined);
     return () => { active = false; };
   }, []);
