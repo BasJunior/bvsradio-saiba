@@ -68,7 +68,8 @@ assert.ok(
     deferredHome.includes('dynamic(() => import("@/components/flow/HomeBeatRail"), { ssr: false })') &&
     deferredHome.includes('dynamic(() => import("@/components/home/HomePublicPlaylistRail"), { ssr: false })') &&
     deferredHome.includes('new IntersectionObserver') &&
-    deferredHome.includes('rootMargin: "900px 0px"'),
+    deferredHome.includes('rootMargin: "320px 0px"') &&
+    deferredHome.includes('placeholderClassName="min-h-[28rem]"'),
   "Below-fold Home client sections must stay code-split and mount only near the viewport.",
 );
 assert.ok(
