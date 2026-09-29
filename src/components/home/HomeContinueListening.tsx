@@ -59,6 +59,7 @@ export default function HomeContinueListening() {
       source: "home",
       track_id: selected.track.id || null,
       position: index + 1,
+      variant: index === 0 ? "primary_resume" : "recent_item",
     });
   };
 
@@ -85,33 +86,64 @@ export default function HomeContinueListening() {
         </Link>
       </div>
 
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
-        {playable.map(({ item, track }, index) => (
-          <button
-            key={item.id}
-            type="button"
-            onClick={() => resume(index)}
-            className="group flex min-w-0 items-center gap-3 rounded-[1.15rem] border border-white/[.08] bg-black/10 p-3 text-left transition hover:border-brand/30 hover:bg-white/[.04]"
-            aria-label={`Continue listening to ${track.title} by ${track.artist}`}
-          >
-            <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/[.06] bg-white/[.04]">
-              {track.artwork ? (
-                // eslint-disable-next-line @next/next/no-img-element -- live editorial artwork
-                <img src={track.artwork} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
-              ) : (
-                <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold text-brand">BVS</span>
-              )}
-              <span className="absolute inset-0 grid place-items-center bg-black/25 text-sm text-white opacity-0 transition group-hover:opacity-100" aria-hidden="true">
-                ▶
-              </span>
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => resume(0)}
+          className="group flex w-full min-w-0 items-center gap-4 rounded-[1.3rem] border border-brand/25 bg-brand/[.07] p-3 text-left transition hover:border-brand/45 hover:bg-brand/[.1] sm:p-4"
+          aria-label={`Resume ${playable[0].track.title} by ${playable[0].track.artist}`}
+        >
+          <span className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-white/[.08] bg-white/[.04] sm:h-20 sm:w-20">
+            {playable[0].track.artwork ? (
+              // eslint-disable-next-line @next/next/no-img-element -- live editorial artwork
+              <img src={playable[0].track.artwork} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold text-brand">BVS</span>
+            )}
+            <span className="absolute inset-0 grid place-items-center bg-black/25 text-lg text-white opacity-0 transition group-hover:opacity-100" aria-hidden="true">
+              ▶
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-semibold">{track.title}</span>
-              <span className="mt-0.5 block truncate text-xs text-text-secondary">{track.artist}</span>
-            </span>
-            <span className="shrink-0 text-brand" aria-hidden="true">▶</span>
-          </button>
-        ))}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Resume</span>
+            <span className="mt-1 block truncate text-base font-semibold sm:text-lg">{playable[0].track.title}</span>
+            <span className="mt-0.5 block truncate text-sm text-text-secondary">{playable[0].track.artist}</span>
+          </span>
+          <span className="shrink-0 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black sm:px-4 sm:text-sm">
+            Continue ▶
+          </span>
+        </button>
+
+        {playable.length > 1 ? (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {playable.slice(1).map(({ item, track }, offset) => {
+              const index = offset + 1;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => resume(index)}
+                  className="group flex min-w-0 items-center gap-3 rounded-[1.05rem] border border-white/[.08] bg-black/10 p-3 text-left transition hover:border-brand/30 hover:bg-white/[.04]"
+                  aria-label={`Continue listening to ${track.title} by ${track.artist}`}
+                >
+                  <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-white/[.06] bg-white/[.04]">
+                    {track.artwork ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- live editorial artwork
+                      <img src={track.artwork} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : (
+                      <span className="absolute inset-0 grid place-items-center text-[9px] font-semibold text-brand">BVS</span>
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-semibold">{track.title}</span>
+                    <span className="mt-0.5 block truncate text-xs text-text-secondary">{track.artist}</span>
+                  </span>
+                  <span className="shrink-0 text-xs font-semibold text-brand">Play ▶</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
     </section>
   );
