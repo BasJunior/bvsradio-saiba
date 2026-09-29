@@ -1,12 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
-import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
-import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
-import HomeBeatRail from "@/components/flow/HomeBeatRail";
-import HomeEngagementHub from "@/components/home/HomeEngagementHub";
-import HomePublicPlaylistRail from "@/components/home/HomePublicPlaylistRail";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
+import { DeferredHomeBeatRail, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf, DeferredPublishedArtistsShelf } from "@/components/home/DeferredHomeSections";
 import { getPublicProgrammes } from "@/lib/station-content";
 
 const paths = [
@@ -103,7 +99,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <HomeEngagementHub />
+      <DeferredHomeEngagementHub />
 
       <section data-home-accent="discover" className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16" aria-label="Discover BVS music">
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
@@ -116,13 +112,13 @@ export default async function HomePage() {
           </div>
           <Link href="/search" data-home-accent="discover" className="bvs-home-accent-button rounded-full border px-4 py-2 text-sm font-semibold">Explore everything →</Link>
         </div>
-        <PublishedArtistsShelf limit={6} />
-        <div className="mt-8 sm:mt-10"><PublishedAlbumsShelf /></div>
+        <DeferredPublishedArtistsShelf limit={6} />
+        <div className="mt-8 sm:mt-10"><DeferredPublishedAlbumsShelf /></div>
       </section>
 
-      <HomeBeatRail />
+      <DeferredHomeBeatRail />
 
-      <HomePublicPlaylistRail />
+      <DeferredHomePublicPlaylistRail />
 
       <section data-home-accent="shows" className="border-y border-white/10 bg-bg-secondary/65 py-10 sm:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
