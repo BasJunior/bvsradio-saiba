@@ -42,7 +42,7 @@ export default function AppBeatPreviewPlayer({
   surface?: "ios" | "android";
 }) {
   const player = useStationPlayer();
-  const progress = useStationPlayerProgress();
+  const timeline = useStationPlayerProgress();
   const { signedIn, token, loading: sessionLoading } = useAppSession();
   const [access, setAccess] = useState<MemberAccess | null>(null);
   const [accessLoading, setAccessLoading] = useState(false);
@@ -72,8 +72,8 @@ export default function AppBeatPreviewPlayer({
   const memberListening = Boolean(signedIn);
   const isCurrent = player.current?.src === preview;
   const isPlaying = isCurrent && player.isPlaying;
-  const duration = isCurrent ? progress.duration : 0;
-  const elapsed = isCurrent ? progress.elapsed : 0;
+  const duration = isCurrent ? timeline.duration : 0;
+  const elapsed = isCurrent ? timeline.elapsed : 0;
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0;
 
   const previewTrack = useMemo(
