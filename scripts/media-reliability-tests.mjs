@@ -22,6 +22,32 @@ assert.ok(
   "/api/media must continue redirecting authorized public media to a signed R2 URL.",
 );
 
+assert.ok(
+  mediaRoute.includes("RASTER_IMAGE_KEY") &&
+    mediaRoute.includes('"CDN-Cache-Control"') &&
+    mediaRoute.includes("max-age=300, stale-while-revalidate=300"),
+  "Authorized public raster artwork redirects should be reusable at the Vercel edge.",
+);
+assert.ok(
+  mediaRoute.includes('"Cache-Control": "private, no-store"'),
+  "Browser-facing signed media redirects must remain private/no-store.",
+);
+assert.ok(
+  !mediaRoute.includes("audio/mpeg") && !mediaRoute.includes("audio/"),
+  "Media redirect caching must be extension-scoped to raster images, never audio content types.",
+);
+assert.ok(
+  mediaRoute.includes('const RASTER_IMAGE_KEY = /\\.(?:jpe?g|png|webp|avif|gif)$/i;'),
+  "Raster cache allowlist must remain limited to common non-SVG image extensions.",
+);
+
+assert.ok(
+  nextConfig.includes('source: "/branding/:path*"') &&
+    nextConfig.includes('max-age=3600, stale-while-revalidate=86400') &&
+    nextConfig.includes('max-age=86400, stale-while-revalidate=604800'),
+  "Static BVS branding must keep browser and CDN reuse headers.",
+);
+
 
 const playerSource = await readFile(new URL("../src/components/StationPlayer.tsx", import.meta.url), "utf8");
 
