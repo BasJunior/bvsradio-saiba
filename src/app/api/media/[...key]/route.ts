@@ -16,9 +16,9 @@ function redirectHeaders(key: string) {
     "Referrer-Policy": "no-referrer",
   };
   if (RASTER_IMAGE_KEY.test(key)) {
-    // Signed media URLs live for 15 minutes. Cache only the already-authorized
-    // redirect at Vercel's edge for 5 minutes; browsers still do not persist it.
-    headers["CDN-Cache-Control"] = "public, max-age=300, stale-while-revalidate=300";
+    // Signed media URLs live for 15 minutes. max-age=0 keeps browser copies stale,
+    // while s-maxage gives Vercel's shared cache five minutes of safe reuse.
+    headers["Cache-Control"] = "public, max-age=0, s-maxage=300, stale-while-revalidate=300";
     headers["Vercel-Cache-Tag"] = "public-media-image";
   }
   return headers;
