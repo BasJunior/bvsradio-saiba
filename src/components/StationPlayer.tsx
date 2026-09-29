@@ -67,8 +67,6 @@ type PlayerContextValue = {
   error: string | null;
   notice: string | null;
   history: StationTrack[];
-  elapsed: number;
-  duration: number;
   shuffle: boolean;
   repeat: RepeatMode;
   liked: boolean;
@@ -104,7 +102,13 @@ type PlayerContextValue = {
   playHistoryTrack: (track: StationTrack) => void;
 };
 
+type PlayerProgressContextValue = {
+  elapsed: number;
+  duration: number;
+};
+
 const PlayerContext = createContext<PlayerContextValue | null>(null);
+const PlayerProgressContext = createContext<PlayerProgressContextValue | null>(null);
 /** v2: drop stale house-archive queues from pre-editorial rotation. */
 const QUEUE_STORAGE_KEY = "bvs.player.queue.v2";
 const UP_NEXT_TARGET = 18;
@@ -1456,8 +1460,6 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       error,
       notice,
       history,
-      elapsed,
-      duration,
       shuffle,
       repeat,
       liked,
@@ -1501,8 +1503,6 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       error,
       notice,
       history,
-      elapsed,
-      duration,
       shuffle,
       repeat,
       liked,
@@ -1537,9 +1537,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     ],
   );
 
+  const progressValue = useMemo<PlayerProgressContextValue>(() => ({ elapsed, duration }), [elapsed, duration]);
+
   return (
     <PlayerContext.Provider value={value}>
-      {children}
+      <PlayerProgressContext.Provider value={progressValue}>{children}</PlayerProgressContext.Provider>
       <audio
         ref={audio}
         src={current?.src}
@@ -1557,6 +1559,12 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 export function useStationPlayer() {
   const context = useContext(PlayerContext);
   if (!context) throw new Error("useStationPlayer must be used inside StationPlayerProvider");
+  return context;
+}
+
+export function useStationPlayerProgress() {
+  const context = useContext(PlayerProgressContext);
+  if (!context) throw new Error("useStationPlayerProgress must be used inside StationPlayerProvider");
   return context;
 }
 
@@ -1856,6 +1864,7 @@ function CreatorFollowAction({
 
 export function PersistentPlayer() {
   const player = useStationPlayer();
+  const progress = useStationPlayerProgress();
   const { appChrome } = useAppSurface();
   const playerRef = useAppShellMeasurement<HTMLElement>("--bvs-app-player-height-measured", appChrome);
   const { nowPlayingOpen, closeNowPlaying } = player;
@@ -1911,8 +1920,8 @@ export function PersistentPlayer() {
             <div className="grid flex-1 content-center gap-5 py-4 sm:gap-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:items-center lg:gap-16">
               <div data-np-swipe-track="true" className="mx-auto w-full max-w-[18rem] sm:max-w-[28rem] lg:max-w-[34rem]">
                 <NowPlayingVisual track={player.current} art={art} />
-                <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} className="mt-5 overflow-hidden rounded-full sm:mt-7" />
-                <div className="mt-2 flex justify-between text-xs tabular-nums text-white/50"><span>{formatTime(player.elapsed)}</span><span>{formatTime(player.duration)}</span></div>
+                <ProgressLine elapsed={progress.elapsed} duration={progress.duration} onSeek={player.seek} className="mt-5 overflow-hidden rounded-full sm:mt-7" />
+                <div className="mt-2 flex justify-between text-xs tabular-nums text-white/50"><span>{formatTime(progress.elapsed)}</span><span>{formatTime(progress.duration)}</span></div>
               </div>
 
               <div className="mx-auto w-full max-w-xl">
@@ -1957,7 +1966,7 @@ export function PersistentPlayer() {
         </section>
       )}
       <section ref={playerRef} className="bvs-persistent-player fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
-        <ProgressLine elapsed={player.elapsed} duration={player.duration} onSeek={player.seek} />
+        <ProgressLine elapsed={progress.elapsed} duration={progress.duration} onSeek={player.seek} />
         {(player.error || player.notice) && (
           <p className={`px-4 py-1 text-center text-xs ${player.error ? "bg-red-500/15 text-red-200" : "bg-brand/10 text-brand"}`} role="status">
             {player.error || player.notice}
@@ -1989,9 +1998,9 @@ export function PersistentPlayer() {
                   {player.current?.artist || "BVS Radio"}
                 </CreatorLink>
                 <CreatorFollowAction track={player.current} analyticsSource="persistent_player" />
-                {player.duration > 0 && (
+                {progress.duration > 0 && (
                   <span className="hidden shrink-0 tabular-nums text-white/50 sm:inline">
-                    {formatTime(player.elapsed)} / {formatTime(player.duration)}
+                    {formatTime(progress.elapsed)} / {formatTime(progress.duration)}
                   </span>
                 )}
                 <span className="hidden shrink-0 text-white/40 sm:inline">· Queue {player.upNext.length}</span>
