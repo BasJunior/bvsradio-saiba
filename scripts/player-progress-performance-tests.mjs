@@ -5,7 +5,7 @@ const playerPath = new URL("../src/components/StationPlayer.tsx", import.meta.ur
 const player = await readFile(playerPath, "utf8");
 
 const contextStart = player.indexOf("type PlayerContextValue = {");
-const contextEnd = player.indexOf("const PlayerContext =", contextStart);
+const contextEnd = player.indexOf("type PlayerProgressContextValue =", contextStart);
 const mainContext = player.slice(contextStart, contextEnd);
 assert.ok(!mainContext.includes("elapsed: number"), "Main player context must not carry elapsed time.");
 assert.ok(!mainContext.includes("duration: number"), "Main player context must not carry duration.");
