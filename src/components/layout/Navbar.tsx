@@ -80,7 +80,7 @@ export default function Navbar() {
     let accessVersion = 0
     let cancelAccessIdle: (() => void) | null = null
 
-    const loadAccess = async (nextUser: User, token: string, version: number) => {
+    const loadAccess = async (token: string, version: number) => {
       const response = await fetch('/api/auth/access', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).catch(() => null)
       if (!alive || version !== accessVersion) return
       if (!response?.ok) {
@@ -116,7 +116,7 @@ export default function Navbar() {
         setNotificationCount(0)
         return
       }
-      const run = () => void loadAccess(nextUser, token, version)
+      const run = () => void loadAccess(token, version)
       if (deferAccess) {
         cancelAccessIdle = scheduleHeaderIdleWork(run)
       } else {
