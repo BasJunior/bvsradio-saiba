@@ -17,8 +17,9 @@ assert.ok(
 );
 assert.ok(
   component.includes('activity: "continue_listening"') &&
-    component.includes('source: "home"'),
-  "Home resume must remain measurable as a listener-loop action.",
+    component.includes('source: "home"') &&
+    component.includes('variant: index === 0 ? "primary_resume" : "recent_item"'),
+  "Home resume must remain measurable and distinguish the primary resume CTA.",
 );
 assert.ok(
   component.includes("player.tracks") &&
@@ -37,6 +38,13 @@ assert.ok(
 assert.ok(
   component.includes("if (!playable.length) return null"),
   "New listeners must not see an empty continue-listening module.",
+);
+assert.ok(
+  component.includes("playable[0].track.title") &&
+    component.includes(">Resume<") &&
+    component.includes("Continue ▶") &&
+    component.includes("playable.slice(1)"),
+  "Returning listeners must get one obvious primary Resume action before secondary recent items.",
 );
 
 console.log("home continue-listening gates passed");
