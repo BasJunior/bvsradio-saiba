@@ -132,7 +132,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
   try {
     const profileResponse = await fetch(
       `${url}/rest/v1/profiles?is_published=eq.true&is_verified=eq.true&select=id,username,display_name,bio,avatar_url,role,is_producer,creator_public_name,creator_name_status&order=username.asc`,
-      { headers, cache: 'no-store' },
+      { headers, next: { revalidate: 60 } },
     )
     if (!profileResponse.ok) return fallbackSummaries
     const profiles = (await profileResponse.json() as Array<{
@@ -151,7 +151,7 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
     const ids = profiles.map((profile) => profile.id)
     const tracksResponse = await fetch(
       `${url}/rest/v1/tracks?user_id=in.(${ids.join(',')})&is_public=eq.true&editorial_status=eq.approved&select=user_id,genre,artwork_url`,
-      { headers, cache: 'no-store' },
+      { headers, next: { revalidate: 60 } },
     )
     const tracks = tracksResponse.ok
       ? await tracksResponse.json() as Array<{ user_id: string; genre?: string; artwork_url?: string }>
@@ -339,12 +339,12 @@ export async function getPublishedProducers(): Promise<PublishedProducerSummary[
   try {
     // A published beat is the canonical eligibility signal for this shelf.
     // Starting from profile flags can hide a producer whose beat editorial already published.
-    const beatsResponse = await fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&select=producer_user_id,genre,artwork_path`, { headers, cache: 'no-store' })
+    const beatsResponse = await fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&select=producer_user_id,genre,artwork_path`, { headers, next: { revalidate: 60 } })
     if (!beatsResponse.ok) return []
     const beats = await beatsResponse.json() as Array<{ producer_user_id: string; genre?: string; artwork_path?: string }>
     const producerIds = [...new Set(beats.map(beat => beat.producer_user_id).filter(Boolean))]
     if (!producerIds.length) return []
-    const profilesResponse = await fetch(`${url}/rest/v1/profiles?id=in.(${producerIds.join(',')})&select=id,username,display_name,avatar_url,creator_public_name,creator_name_status&order=username.asc`, { headers, cache: 'no-store' })
+    const profilesResponse = await fetch(`${url}/rest/v1/profiles?id=in.(${producerIds.join(',')})&select=id,username,display_name,avatar_url,creator_public_name,creator_name_status&order=username.asc`, { headers, next: { revalidate: 60 } })
     if (!profilesResponse.ok) return []
     const profiles = await profilesResponse.json() as Array<{ id: string; username: string; display_name?: string; avatar_url?: string; creator_public_name?: string; creator_name_status?: string }>
     return profiles.map(profile => {
