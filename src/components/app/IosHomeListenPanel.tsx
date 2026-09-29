@@ -21,8 +21,8 @@ function formatTime(seconds: number) {
 
 export default function IosHomeListenPanel() {
   const player = useStationPlayer();
-  const progress = useStationPlayerProgress();
-  const pct = progress.duration > 0 ? Math.min(100, (progress.elapsed / progress.duration) * 100) : 0;
+  const timeline = useStationPlayerProgress();
+  const pct = timeline.duration > 0 ? Math.min(100, (timeline.elapsed / timeline.duration) * 100) : 0;
   const art = player.current?.artwork;
 
   return (
@@ -31,11 +31,11 @@ export default function IosHomeListenPanel() {
         className="h-1 w-full cursor-pointer bg-white/15"
         role="progressbar"
         aria-valuemin={0}
-        aria-valuemax={Math.round(progress.duration || 0)}
-        aria-valuenow={Math.round(progress.elapsed)}
+        aria-valuemax={Math.round(timeline.duration || 0)}
+        aria-valuenow={Math.round(timeline.elapsed)}
         aria-label="Playback progress"
         onClick={(event) => {
-          if (progress.duration <= 0) return;
+          if (timeline.duration <= 0) return;
           const rect = event.currentTarget.getBoundingClientRect();
           player.seek((event.clientX - rect.left) / rect.width);
         }}
@@ -66,9 +66,9 @@ export default function IosHomeListenPanel() {
               {player.current?.title || "Start the BVS rotation"}
             </h2>
             <p className="mt-0.5 truncate text-sm text-white/70">{player.current?.artist || "BVS Radio"}</p>
-            {progress.duration > 0 && (
+            {timeline.duration > 0 && (
               <p className="mt-1.5 tabular-nums text-xs text-white/65">
-                {formatTime(progress.elapsed)} / {formatTime(progress.duration)}
+                {formatTime(timeline.elapsed)} / {formatTime(timeline.duration)}
               </p>
             )}
           </div>
