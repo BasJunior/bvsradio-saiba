@@ -2,22 +2,18 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { RootNavbar, RootMobileFlowNav } from "@/components/layout/RootChrome";
 import Footer from "@/components/layout/Footer";
-import VisitorAssistant from "@/components/VisitorAssistant";
-import PwaRegister from "@/components/PwaRegister";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
-import ClientErrorBeacon from "@/components/ClientErrorBeacon";
 import AnalyticsBootstrap from "@/components/AnalyticsBootstrap";
 import MobileIosBoundary from "@/components/MobileIosBoundary";
 import PremiumInstantPromoBanner from "@/components/PremiumInstantPromoBanner";
-import EditorialCommandCenter from "@/components/EditorialCommandCenter";
-import EditorialWorkBridge from "@/components/EditorialWorkBridge";
-import EditorialWorkspaceNav from "@/components/EditorialWorkspaceNav";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
 import NowPlayingSwipeGestures from "@/components/NowPlayingSwipeGestures";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
 import AppSurfaceProvider from "@/components/app/AppSurfaceProvider";
 import BvsSectionScope from "@/components/layout/BvsSectionScope";
+import DeferredEditorialTools from "@/components/layout/DeferredEditorialTools";
+import DeferredGlobalTools from "@/components/layout/DeferredGlobalTools";
 import "./globals.css";
 import "./section-accents.css";
 
@@ -100,16 +96,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <AuthLinkRescue />
                 <main className="bvs-page-main pt-16 pb-44 md:pb-28">
                   <PremiumInstantPromoBanner />
-                  <EditorialCommandCenter />
-                  <EditorialWorkBridge />
-                  <EditorialWorkspaceNav />
+                  <DeferredEditorialTools />
                   <BvsSectionScope>{children}</BvsSectionScope>
                 </main>
                 <Footer />
                 <div className="bvs-app-bottom-spacer" aria-hidden="true" />
-                <VisitorAssistant />
-                <PwaRegister />
-                <ClientErrorBeacon />
+                <DeferredGlobalTools />
                 <AnalyticsBootstrap />
                 <Suspense fallback={null}>
                   <RootMobileFlowNav />

@@ -13,6 +13,7 @@ const client = read('src/components/editorial/EditorialCatalogueNormalizer.tsx')
 const player = read('src/components/editorial/EditorialConnectedPreview.tsx')
 const nav = read('src/components/EditorialWorkspaceNav.tsx')
 const layout = read('src/app/layout.tsx')
+const deferredEditorial = read('src/components/layout/DeferredEditorialTools.tsx')
 const page = read('src/app/editorial/catalogue/page.tsx')
 
 assert(api.includes("creatorPublicName"), 'metadata API must derive linked creator names from the approved BVS profile')
@@ -41,6 +42,8 @@ assert(client.includes("['rotation', 'Rotation']"), 'Editors need a direct view 
 
 assert(page.includes('EditorialCatalogueNormalizer'), 'Editorial catalogue route must mount the normalization workspace')
 assert(nav.includes('/editorial/catalogue'), 'Editorial navigation must expose catalogue normalization')
-assert(layout.includes('<EditorialWorkspaceNav />'), 'Root editorial shell must mount workspace navigation')
+assert(layout.includes('<DeferredEditorialTools />'), 'Root layout must mount the deferred editorial shell')
+assert(deferredEditorial.includes('EditorialWorkspaceNav'), 'Deferred editorial shell must mount workspace navigation')
+assert(deferredEditorial.includes('isEditorialPath'), 'Editorial tooling must remain scoped to editorial routes')
 
 console.log('Editorial catalogue normalization assertions passed.')
