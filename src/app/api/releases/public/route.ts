@@ -1,11 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getPublicReleases } from '@/lib/public-releases'
 
-export const dynamic = 'force-dynamic'
+const PUBLIC_CACHE = 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
 
-export async function GET() {
+function requestedLimit(request: Request) {
+  const raw = Number(new URL(request.url).searchParams.get('limit') || 0)
+  if (!Number.isFinite(raw) || raw <= 0) return 100
+  return Math.min(100, Math.max(1, Math.floor(raw)))
+}
+
+export async function GET(request: Request) {
   return NextResponse.json(
-    { releases: await getPublicReleases() },
-    { headers: { 'Cache-Control': 'no-store, max-age=0' } },
+    { releases: await getPublicReleases(undefined, requestedLimit(request)) },
+    { headers: { 'Cache-Control': PUBLIC_CACHE } },
   )
 }
