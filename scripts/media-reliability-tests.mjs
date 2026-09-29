@@ -24,13 +24,13 @@ assert.ok(
 
 assert.ok(
   mediaRoute.includes("RASTER_IMAGE_KEY") &&
-    mediaRoute.includes('"CDN-Cache-Control"') &&
-    mediaRoute.includes("max-age=300, stale-while-revalidate=300"),
+    mediaRoute.includes("max-age=0, s-maxage=300, stale-while-revalidate=300"),
   "Authorized public raster artwork redirects should be reusable at the Vercel edge.",
 );
 assert.ok(
-  mediaRoute.includes('"Cache-Control": "private, no-store"'),
-  "Browser-facing signed media redirects must remain private/no-store.",
+  mediaRoute.includes('"Cache-Control": "private, no-store"') &&
+    mediaRoute.includes('headers["Cache-Control"] = "public, max-age=0, s-maxage=300, stale-while-revalidate=300"'),
+  "Non-image media must remain private/no-store while raster images opt into shared edge reuse.",
 );
 assert.ok(
   !mediaRoute.includes("audio/mpeg") && !mediaRoute.includes("audio/"),
