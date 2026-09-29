@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
 type Profile = {
@@ -298,7 +299,7 @@ export default function AccountPage() {
           <p className="mt-2 text-sm text-text-secondary">Account, member and creator names are kept separate so a private name is never used as an artist name by accident.</p>
           <div className="mt-6 flex flex-wrap items-center gap-5 rounded-2xl border border-white/10 bg-black/20 p-4">
             <div className="relative h-28 w-28 overflow-hidden rounded-full border border-white/15 bg-white/5">
-              <Image src={currentPhoto} alt={`${form.displayName || form.username} profile`} fill unoptimized={/^https?:\/\//i.test(currentPhoto)} className="object-cover" />
+              <Image src={currentPhoto} alt={`${form.displayName || form.username} profile`} fill unoptimized={shouldBypassImageOptimizer(currentPhoto)} className="object-cover" />
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-medium">Profile picture</p>
