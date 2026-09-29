@@ -12,9 +12,11 @@ const HomePublicPlaylistRail = dynamic(() => import("@/components/home/HomePubli
 function DeferredMount({
   children,
   name,
+  placeholderClassName = "",
 }: {
   children: ReactNode;
   name: string;
+  placeholderClassName?: string;
 }) {
   const markerRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
@@ -35,14 +37,18 @@ function DeferredMount({
         setReady(true);
         observer.disconnect();
       },
-      { rootMargin: "900px 0px" },
+      { rootMargin: "320px 0px" },
     );
     observer.observe(marker);
     return () => observer.disconnect();
   }, [ready]);
 
   return (
-    <div ref={markerRef} data-home-deferred={name} className="min-h-px">
+    <div
+      ref={markerRef}
+      data-home-deferred={name}
+      className={ready ? "min-h-px" : `min-h-px ${placeholderClassName}`}
+    >
       {ready ? children : null}
     </div>
   );
@@ -50,7 +56,7 @@ function DeferredMount({
 
 export function DeferredHomeEngagementHub() {
   return (
-    <DeferredMount name="engagement">
+    <DeferredMount name="engagement" placeholderClassName="min-h-[24rem]">
       <HomeEngagementHub />
     </DeferredMount>
   );
@@ -58,7 +64,7 @@ export function DeferredHomeEngagementHub() {
 
 export function DeferredPublishedArtistsShelf({ limit = 6 }: { limit?: number }) {
   return (
-    <DeferredMount name="artists">
+    <DeferredMount name="artists" placeholderClassName="min-h-[18rem]">
       <PublishedArtistsShelf limit={limit} />
     </DeferredMount>
   );
@@ -66,7 +72,7 @@ export function DeferredPublishedArtistsShelf({ limit = 6 }: { limit?: number })
 
 export function DeferredPublishedAlbumsShelf() {
   return (
-    <DeferredMount name="releases">
+    <DeferredMount name="releases" placeholderClassName="min-h-[20rem]">
       <PublishedAlbumsShelf />
     </DeferredMount>
   );
@@ -74,7 +80,7 @@ export function DeferredPublishedAlbumsShelf() {
 
 export function DeferredHomeBeatRail() {
   return (
-    <DeferredMount name="beats">
+    <DeferredMount name="beats" placeholderClassName="min-h-[28rem]">
       <HomeBeatRail />
     </DeferredMount>
   );
@@ -82,7 +88,7 @@ export function DeferredHomeBeatRail() {
 
 export function DeferredHomePublicPlaylistRail() {
   return (
-    <DeferredMount name="playlists">
+    <DeferredMount name="playlists" placeholderClassName="min-h-[28rem]">
       <HomePublicPlaylistRail />
     </DeferredMount>
   );
