@@ -83,8 +83,21 @@ assert.ok(
 );
 
 assert.ok(
-  search.includes("if (!open || loadedSurface === surfaceKey) return"),
-  "Header search catalogue requests must remain interaction-gated.",
+  search.includes("if (!open || !hasSearchIntent || loadedSurface === surfaceKey) return"),
+  "Header search catalogue requests must wait for real search intent.",
+);
+assert.ok(
+  search.includes("if (iconOnly) return") &&
+    search.includes("if (!open) return") &&
+    search.includes('document.addEventListener("pointerdown", outside)'),
+  "Closed mobile search must not install unnecessary global keyboard/outside-click listeners.",
+);
+
+assert.ok(
+  navbar.includes("scheduleHeaderIdleWork(run)") &&
+    navbar.includes("event === 'INITIAL_SESSION'") &&
+    navbar.includes("scheduleHeaderIdleWork(startCartSync)"),
+  "Initial access enrichment and cart bookkeeping must stay off the critical header frame.",
 );
 
 assert.ok(

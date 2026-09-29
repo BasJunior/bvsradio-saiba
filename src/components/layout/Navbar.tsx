@@ -27,6 +27,32 @@ type PremiumInfo = {
   premiumPlanLabel: string | null
 }
 
+type HeaderIdleWindow = Window & {
+  requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
+  cancelIdleCallback?: (handle: number) => void
+}
+
+function scheduleHeaderIdleWork(callback: () => void, timeout = 1800, fallback = 900) {
+  const idleWindow = window as HeaderIdleWindow
+  let idleId: number | null = null
+  let timerId: number | null = null
+  let cancelled = false
+  const run = () => {
+    if (cancelled) return
+    callback()
+  }
+  if (idleWindow.requestIdleCallback) {
+    idleId = idleWindow.requestIdleCallback(run, { timeout })
+  } else {
+    timerId = window.setTimeout(run, fallback)
+  }
+  return () => {
+    cancelled = true
+    if (idleId !== null) idleWindow.cancelIdleCallback?.(idleId)
+    if (timerId !== null) window.clearTimeout(timerId)
+  }
+}
+
 function formatPremiumUntil(iso: string | null): string | null {
   if (!iso) return null
   const d = new Date(iso)
@@ -50,17 +76,14 @@ export default function Navbar() {
   useEffect(() => {
     if (!isSupabaseConfigured()) return
     const supabase = createClient()
-    const syncAccess = async (nextUser: User | null, token?: string) => {
-      setUser(nextUser)
-      setAuthToken(token || null)
-      if (!nextUser || !token) {
-        setAccess(null)
-        setPremium(null)
-        setNotificationCount(0)
-        return
-      }
-      const response = await fetch('/api/auth/access', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-      if (!response.ok) {
+    let alive = true
+    let accessVersion = 0
+    let cancelAccessIdle: (() => void) | null = null
+
+    const loadAccess = async (token: string, version: number) => {
+      const response = await fetch('/api/auth/access', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' }).catch(() => null)
+      if (!alive || version !== accessVersion) return
+      if (!response?.ok) {
         setAccess(null)
         setPremium(null)
         return
@@ -71,19 +94,48 @@ export default function Navbar() {
         premiumUntil?: string | null
         premiumPlanLabel?: string | null
       }
+      if (!alive || version !== accessVersion) return
       setAccess(payload.access ?? null)
       setPremium({
         premiumActive: Boolean(payload.premiumActive),
         premiumUntil: payload.premiumUntil ?? null,
         premiumPlanLabel: payload.premiumPlanLabel ?? null,
       })
-
     }
-    supabase.auth.getSession().then(({ data }) => void syncAccess(data.session?.user ?? null, data.session?.access_token))
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      void syncAccess(session?.user ?? null, session?.access_token)
+
+    const syncSession = (nextUser: User | null, token?: string, deferAccess = false) => {
+      if (!alive) return
+      const version = ++accessVersion
+      cancelAccessIdle?.()
+      cancelAccessIdle = null
+      setUser(nextUser)
+      setAuthToken(token || null)
+      if (!nextUser || !token) {
+        setAccess(null)
+        setPremium(null)
+        setNotificationCount(0)
+        return
+      }
+      const run = () => void loadAccess(token, version)
+      if (deferAccess) {
+        cancelAccessIdle = scheduleHeaderIdleWork(run)
+      } else {
+        run()
+      }
+    }
+
+    void supabase.auth.getSession().then(({ data }) => {
+      syncSession(data.session?.user ?? null, data.session?.access_token, true)
     })
-    return () => sub.subscription.unsubscribe()
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      syncSession(session?.user ?? null, session?.access_token, event === 'INITIAL_SESSION')
+    })
+    return () => {
+      alive = false
+      accessVersion += 1
+      cancelAccessIdle?.()
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
   useEffect(() => {
@@ -135,6 +187,7 @@ export default function Navbar() {
   }, [authToken, user?.id])
 
   useEffect(() => {
+    let cartSyncStarted = false
     const syncCart = (detailCount?: number) => {
       if (typeof detailCount === 'number' && Number.isFinite(detailCount)) {
         setCartCount(Math.max(0, Math.floor(detailCount)))
@@ -142,7 +195,6 @@ export default function Navbar() {
       }
       setCartCount(cartItemCount())
     }
-    syncCart()
     const onCartEvent = (event: Event) => {
       const custom = event as CustomEvent<{ count?: number }>
       syncCart(custom.detail?.count)
@@ -151,15 +203,28 @@ export default function Navbar() {
       if (event.key === BVS_CART_KEY || event.key === null) syncCart()
     }
     const onFocus = () => syncCart()
+    const startCartSync = () => {
+      if (cartSyncStarted) return
+      cartSyncStarted = true
+      syncCart()
+      window.addEventListener('storage', onStorage)
+      window.addEventListener('focus', onFocus)
+      document.addEventListener('visibilitychange', onFocus)
+    }
+
+    // Cart mutations dispatch this event, so user actions still update the badge
+    // immediately even if browser idle has not happened yet.
     window.addEventListener(BVS_CART_EVENT, onCartEvent as EventListener)
-    window.addEventListener('storage', onStorage)
-    window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onFocus)
+    const cancelCartIdle = scheduleHeaderIdleWork(startCartSync)
+
     return () => {
+      cancelCartIdle()
       window.removeEventListener(BVS_CART_EVENT, onCartEvent as EventListener)
-      window.removeEventListener('storage', onStorage)
-      window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onFocus)
+      if (cartSyncStarted) {
+        window.removeEventListener('storage', onStorage)
+        window.removeEventListener('focus', onFocus)
+        document.removeEventListener('visibilitychange', onFocus)
+      }
     }
   }, [])
 
