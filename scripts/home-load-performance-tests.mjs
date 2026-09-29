@@ -12,6 +12,9 @@ const releaseShelf = await readFile(new URL("../src/components/PublishedAlbumsSh
 const beatShelf = await readFile(new URL("../src/components/flow/HomeBeatRail.tsx", import.meta.url), "utf8");
 const playlistShelf = await readFile(new URL("../src/components/home/HomePublicPlaylistRail.tsx", import.meta.url), "utf8");
 const nextConfig = await readFile(new URL("../next.config.ts", import.meta.url), "utf8");
+const homePage = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
+const deferredHome = await readFile(new URL("../src/components/home/DeferredHomeSections.tsx", import.meta.url), "utf8");
+const homeShows = await readFile(new URL("../src/components/home/HomeShowsSection.tsx", import.meta.url), "utf8");
 
 for (const route of [releasesRoute, beatsRoute, playlistsRoute]) {
   assert.ok(
@@ -59,6 +62,34 @@ assert.ok(
   releasesLib.includes("safeLimit") &&
     playlistsRoute.includes("candidateLimit"),
   "Server work must be bounded by requested public shelf sizes.",
+);
+
+assert.ok(
+  deferredHome.includes('dynamic(() => import("@/components/home/HomeEngagementHub"), { ssr: false })') &&
+    deferredHome.includes('dynamic(() => import("@/components/flow/HomeBeatRail"), { ssr: false })') &&
+    deferredHome.includes('dynamic(() => import("@/components/home/HomePublicPlaylistRail"), { ssr: false })') &&
+    deferredHome.includes('new IntersectionObserver') &&
+    deferredHome.includes('rootMargin: "320px 0px"') &&
+    deferredHome.includes('placeholderClassName="min-h-[28rem]"'),
+  "Below-fold Home client sections must stay code-split and mount only near the viewport.",
+);
+assert.ok(
+  homePage.includes("<DeferredHomeEngagementHub />") &&
+    homePage.includes("<DeferredPublishedArtistsShelf limit={6} />") &&
+    homePage.includes("<DeferredPublishedAlbumsShelf />") &&
+    homePage.includes("<DeferredHomeBeatRail />") &&
+    homePage.includes("<DeferredHomePublicPlaylistRail />") &&
+    !homePage.includes("<HomeEngagementHub />") &&
+    !homePage.includes("<HomeBeatRail />"),
+  "Home must keep the first listening screen eager while deferring lower discovery/engagement work.",
+);
+
+assert.ok(
+  homePage.includes("<Suspense") &&
+    homePage.includes("<HomeShowsSection />") &&
+    !homePage.includes("await getPublicProgrammes()") &&
+    homeShows.includes("const shows = await getPublicProgrammes()"),
+  "Remote programme loading must stream below the first Home screen instead of blocking the hero response.",
 );
 
 // Image optimization is intentionally still disabled globally because the prior
