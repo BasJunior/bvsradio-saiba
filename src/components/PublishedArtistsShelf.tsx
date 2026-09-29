@@ -10,14 +10,14 @@ export default function PublishedArtistsShelf({ limit = 6 }: { limit?: number })
 
   useEffect(() => {
     let active = true
-    fetch('/api/artists')
+    fetch(`/api/artists?limit=${limit}`)
       .then((response) => response.ok ? response.json() : Promise.reject())
       .then((payload: { artists?: PublishedArtistSummary[] }) => {
         if (active) setArtists(payload.artists || [])
       })
       .catch(() => undefined)
     return () => { active = false }
-  }, [])
+  }, [limit])
 
   if (!artists.length) return null
 
