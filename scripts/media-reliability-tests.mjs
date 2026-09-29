@@ -36,9 +36,8 @@ assert.ok(
   !mediaRoute.includes("audio/mpeg") && !mediaRoute.includes("audio/"),
   "Media redirect caching must be extension-scoped to raster images, never audio content types.",
 );
-assert.match(
-  mediaRoute,
-  /RASTER_IMAGE_KEY = \/\\\.\(\?:jpe\?g\|png\|webp\|avif\|gif\)\$\/i/,
+assert.ok(
+  mediaRoute.includes('const RASTER_IMAGE_KEY = /\\.(?:jpe?g|png|webp|avif|gif)$/i;'),
   "Raster cache allowlist must remain limited to common non-SVG image extensions.",
 );
 
