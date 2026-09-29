@@ -13,12 +13,16 @@ const beatShelf = await readFile(new URL("../src/components/flow/HomeBeatRail.ts
 const playlistShelf = await readFile(new URL("../src/components/home/HomePublicPlaylistRail.tsx", import.meta.url), "utf8");
 const nextConfig = await readFile(new URL("../next.config.ts", import.meta.url), "utf8");
 
-for (const route of [artistsRoute, releasesRoute, beatsRoute, playlistsRoute]) {
+for (const route of [releasesRoute, beatsRoute, playlistsRoute]) {
   assert.ok(
     route.includes("s-maxage=60") && route.includes("stale-while-revalidate=300"),
-    "Public Home discovery APIs must retain short CDN caching.",
+    "Cache-safe public Home discovery APIs must retain short CDN caching.",
   );
 }
+assert.ok(
+  artistsRoute.includes("'Cache-Control': 'no-store'"),
+  "Artist route must preserve fresh daily fair ordering rather than freezing an old order at the CDN.",
+);
 
 assert.ok(
   artistShelf.includes("/api/artists?limit=${limit}"),
