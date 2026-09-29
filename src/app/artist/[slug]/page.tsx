@@ -101,7 +101,7 @@ export default async function ArtistPage({
             </div>
           ) : null}
           <div className="mt-5 flex flex-wrap gap-3">
-            <LibraryAction item={item} section="follows" />
+            <LibraryAction item={item} section="follows" analyticsSource="artist_profile" />
             {profile.beats && profile.beats.length > 0 && (
               <Link
                 href={`/catalogue?type=beat&producer=${encodeURIComponent(profile.username)}#browse`}

@@ -91,7 +91,7 @@ type PlayerContextValue = {
   seekTo: (seconds: number) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
-  toggleLike: () => void;
+  toggleLike: (entryPoint?: string) => void;
   toggleAutoplay: () => void;
   playNow: (track: StationTrack, opts?: { from?: string; related?: StationTrack[]; review?: boolean }) => void;
   playNext: (track: StationTrack) => void;
@@ -1216,7 +1216,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setRepeat((m) => (m === "off" ? "all" : m === "all" ? "one" : "off"));
   }, []);
 
-  const toggleLike = useCallback(() => {
+  const toggleLike = useCallback((entryPoint = "player") => {
     if (!current) return;
     const item = {
       id: trackLibraryId(current),
@@ -1228,7 +1228,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     };
     const next = toggleLibraryItem("favourites", item);
     setLiked(next);
-    if (next) trackEvent("track_save", { track_id: item.id, source: "player" });
+    if (next) {
+      trackEvent("track_save", {
+        track_id: item.id,
+        source: "player",
+        entry_point: entryPoint,
+      });
+    }
   }, [current]);
 
   const toggleAutoplay = useCallback(() => {
@@ -1790,11 +1796,13 @@ function CreatorLink({
   className,
   children,
   onClick,
+  entryPoint = "now_playing",
 }: {
   track: StationTrack | undefined;
   className?: string;
   children: React.ReactNode;
   onClick?: () => void;
+  entryPoint?: string;
 }) {
   const { surface, appChrome } = useAppSurface();
   const href = creatorHrefForTrack(track, surface, appChrome);
@@ -1806,6 +1814,7 @@ function CreatorLink({
         trackEvent("flow_relationship_open", {
           relationship: "creator",
           source: "player",
+          entry_point: entryPoint,
           track_id: track?.id || null,
           creator_id: track?.creatorId || null,
           direct_profile: Boolean(track?.creatorId && (track?.creatorUsername || surface)),
@@ -1818,7 +1827,13 @@ function CreatorLink({
   );
 }
 
-function CreatorFollowAction({ track }: { track: StationTrack | undefined }) {
+function CreatorFollowAction({
+  track,
+  analyticsSource = "now_playing",
+}: {
+  track: StationTrack | undefined;
+  analyticsSource?: string;
+}) {
   const { surface, appChrome } = useAppSurface();
   if (!track?.creatorId) return null;
   const href = creatorHrefForTrack(track, surface, appChrome);
@@ -1826,7 +1841,7 @@ function CreatorFollowAction({ track }: { track: StationTrack | undefined }) {
     <LibraryAction
       section="follows"
       compact
-      analyticsSource="now_playing"
+      analyticsSource={analyticsSource}
       item={{
         id: `artist-${track.creatorId}`,
         kind: "artist",
@@ -1904,10 +1919,10 @@ export function PersistentPlayer() {
                 <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand sm:text-xs">{player.current?.project || "Continuous rotation"}</p>
                 <h2 className="mt-2 text-[1.75rem] font-semibold leading-tight tracking-tight sm:mt-3 sm:text-4xl lg:text-5xl">{player.current?.title || "BVS Radio rotation"}</h2>
                 <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-3">
-                  <CreatorLink track={player.current} className="inline-block text-base text-white/65 hover:text-brand sm:text-lg">
+                  <CreatorLink track={player.current} entryPoint="now_playing" className="inline-block text-base text-white/65 hover:text-brand sm:text-lg">
                     {player.current?.artist || "BVS Radio"}
                   </CreatorLink>
-                  <CreatorFollowAction track={player.current} />
+                  <CreatorFollowAction track={player.current} analyticsSource="now_playing" />
                 </div>
 
                 <div className="mt-6 flex items-center justify-between gap-2 sm:mt-8 sm:justify-start sm:gap-6">
@@ -1915,7 +1930,7 @@ export function PersistentPlayer() {
                   <button type="button" onClick={player.previous} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Previous recording">◀</button>
                   <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-14 w-14 place-items-center rounded-full bg-brand text-xl font-bold text-black disabled:opacity-40 sm:h-16 sm:w-16" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
                   <button type="button" onClick={player.next} className="grid h-12 w-12 place-items-center rounded-full text-xl hover:bg-white/10" aria-label="Next recording">▶</button>
-                  <button type="button" onClick={player.toggleLike} aria-pressed={player.liked} className={`min-h-11 rounded-full px-4 text-sm font-semibold ${player.liked ? "bg-brand/15 text-brand" : "border border-white/12 text-white/70 hover:border-brand/35 hover:text-white"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥ Saved" : "♡ Save"}</button>
+                  <button type="button" onClick={() => player.toggleLike("now_playing")} aria-pressed={player.liked} className={`min-h-11 rounded-full px-4 text-sm font-semibold ${player.liked ? "bg-brand/15 text-brand" : "border border-white/12 text-white/70 hover:border-brand/35 hover:text-white"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥ Saved" : "♡ Save"}</button>
                 </div>
 
                 <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2">
@@ -1925,7 +1940,7 @@ export function PersistentPlayer() {
                     className="sm:col-span-2"
                     onAfterAdd={player.closeNowPlaying}
                   />
-                  <CreatorLink track={player.current} onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
+                  <CreatorLink track={player.current} entryPoint="now_playing_card" onClick={player.closeNowPlaying} className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:border-brand/40">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Artist</span>
                     <span className="mt-1 block font-medium">
                       {player.current?.creatorId ? `Open ${player.current.artist}` : "Find artist and credits"}
@@ -1949,19 +1964,31 @@ export function PersistentPlayer() {
           </p>
         )}
         <div className="bvs-persistent-player-inner mx-auto flex h-[4.5rem] max-w-7xl items-center gap-2 sm:h-20 sm:gap-4">
-          <button
-            type="button"
-            onClick={player.openNowPlaying}
-            className="flex min-w-0 flex-1 items-center gap-2.5 text-left sm:gap-3"
-          >
-            <CoverArt src={art} sizeClass="h-11 w-11 sm:h-12 sm:w-12" rounded="rounded-md sm:rounded-lg" />
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+            <button
+              type="button"
+              onClick={player.openNowPlaying}
+              className="shrink-0"
+              aria-label={`Open Now Playing for ${player.current?.title || "BVS Radio"}`}
+            >
+              <CoverArt src={art} sizeClass="h-11 w-11 sm:h-12 sm:w-12" rounded="rounded-md sm:rounded-lg" />
+            </button>
             <span className="min-w-0 flex-1 leading-tight">
-              <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-brand sm:text-[10px] sm:tracking-[0.18em]">
-                {player.playingFrom || player.current?.project || "Continuous rotation"}
-              </span>
-              <span className="mt-0.5 block truncate text-sm font-medium sm:text-base">{player.current?.title || "BVS Radio rotation"}</span>
+              <button type="button" onClick={player.openNowPlaying} className="block w-full min-w-0 text-left">
+                <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-brand sm:text-[10px] sm:tracking-[0.18em]">
+                  {player.playingFrom || player.current?.project || "Continuous rotation"}
+                </span>
+                <span className="mt-0.5 block truncate text-sm font-medium sm:text-base">{player.current?.title || "BVS Radio rotation"}</span>
+              </button>
               <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-text-secondary sm:text-xs">
-                <span className="truncate">{player.current?.artist || "BVS Radio"}</span>
+                <CreatorLink
+                  track={player.current}
+                  entryPoint="persistent_player"
+                  className="min-w-0 truncate hover:text-brand"
+                >
+                  {player.current?.artist || "BVS Radio"}
+                </CreatorLink>
+                <CreatorFollowAction track={player.current} analyticsSource="persistent_player" />
                 {player.duration > 0 && (
                   <span className="hidden shrink-0 tabular-nums text-white/50 sm:inline">
                     {formatTime(player.elapsed)} / {formatTime(player.duration)}
@@ -1970,7 +1997,7 @@ export function PersistentPlayer() {
                 <span className="hidden shrink-0 text-white/40 sm:inline">· Queue {player.upNext.length}</span>
               </span>
             </span>
-          </button>
+          </div>
           {player.current?.musicVideoUrl ? (
             <button
               type="button"
@@ -1987,13 +2014,13 @@ export function PersistentPlayer() {
           <BuyTrackButton track={player.current} variant="compact" />
           <button
             type="button"
-            onClick={player.toggleLike}
+            onClick={() => player.toggleLike("persistent_player")}
             disabled={!player.current}
-            className={`rounded-full p-2 text-sm disabled:opacity-40 ${player.liked ? "text-brand" : "text-text-secondary hover:text-white"}`}
+            className={`shrink-0 rounded-full px-2.5 py-2 text-[11px] font-semibold disabled:opacity-40 sm:px-3 sm:text-xs ${player.liked ? "bg-brand/15 text-brand" : "text-text-secondary hover:bg-white/5 hover:text-white"}`}
             aria-pressed={player.liked}
             aria-label={player.liked ? "Remove from library" : "Save to library"}
           >
-            {player.liked ? "♥" : "♡"}
+            {player.liked ? "♥ Saved" : "♡ Save"}
           </button>
           <button type="button" onClick={() => player.setQueueOpen(!player.queueOpen)} className="hidden rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 sm:block" aria-label="Open queue">Queue</button>
           <button
