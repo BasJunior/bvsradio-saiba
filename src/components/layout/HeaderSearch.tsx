@@ -25,6 +25,9 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
 
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
   useEffect(() => {
+    // Mobile/icon-only search already has an explicit visible trigger. Avoid a
+    // global keyboard listener on that first-frame path.
+    if (iconOnly) return;
     const shortcut = (event: KeyboardEvent) => {
       if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
       if ((event.target as HTMLElement)?.closest('input, textarea, select, [contenteditable="true"]')) return;
@@ -33,19 +36,21 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
       flushSync(() => setOpen(true));
       inputRef.current?.focus();
     };
+    document.addEventListener("keydown", shortcut);
+    return () => document.removeEventListener("keydown", shortcut);
+  }, [iconOnly]);
+
+  useEffect(() => {
+    if (!open) return;
     const outside = (event: PointerEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
-    document.addEventListener("keydown", shortcut);
     document.addEventListener("pointerdown", outside);
-    return () => {
-      document.removeEventListener("keydown", shortcut);
-      document.removeEventListener("pointerdown", outside);
-    };
-  }, []);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [open]);
 
   useEffect(() => {
-    if (!open || loadedSurface === surfaceKey) return;
+    if (!open || query.trim().length < 2 || loadedSurface === surfaceKey) return;
     const controller = new AbortController();
     let partialFailure = false;
     const read = async (path: string) => {
@@ -68,7 +73,7 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
       setLoadedSurface(surfaceKey);
     });
     return () => controller.abort();
-  }, [open, loadedSurface, surface, surfaceKey]);
+  }, [open, query, loadedSurface, surface, surfaceKey]);
 
   const suggestions = useMemo(() => loadedSurface === surfaceKey ? filterSearchSuggestions(buildSearchSuggestions(catalogue, surface), query) : [], [catalogue, query, surface, loadedSurface, surfaceKey]);
   const close = () => { setOpen(false); if (iconOnly) triggerRef.current?.focus(); };
