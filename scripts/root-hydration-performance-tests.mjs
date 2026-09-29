@@ -83,7 +83,7 @@ assert.ok(
 );
 
 assert.ok(
-  search.includes("if (!open || query.trim().length < 2 || loadedSurface === surfaceKey) return"),
+  search.includes("if (!open || !hasSearchIntent || loadedSurface === surfaceKey) return"),
   "Header search catalogue requests must wait for real search intent.",
 );
 assert.ok(
