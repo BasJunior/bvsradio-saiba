@@ -8,6 +8,22 @@ import {
 
 export const dynamic = "force-dynamic";
 
+const RASTER_IMAGE_KEY = /\.(?:jpe?g|png|webp|avif|gif)$/i;
+
+function redirectHeaders(key: string) {
+  const headers: Record<string, string> = {
+    "Cache-Control": "private, no-store",
+    "Referrer-Policy": "no-referrer",
+  };
+  if (RASTER_IMAGE_KEY.test(key)) {
+    // Signed media URLs live for 15 minutes. Cache only the already-authorized
+    // redirect at Vercel's edge for 5 minutes; browsers still do not persist it.
+    headers["CDN-Cache-Control"] = "public, max-age=300, stale-while-revalidate=300";
+    headers["Vercel-Cache-Tag"] = "public-media-image";
+  }
+  return headers;
+}
+
 export async function GET(
   _req: Request,
   context: { params: Promise<{ key: string[] }> },
@@ -29,10 +45,7 @@ export async function GET(
     const url = await signedR2DownloadUrl(key);
     return NextResponse.redirect(url, {
       status: 307,
-      headers: {
-        "Cache-Control": "private, no-store",
-        "Referrer-Policy": "no-referrer",
-      },
+      headers: redirectHeaders(key),
     });
   } catch (error) {
     console.error("R2 media redirect failed", { key, error });
