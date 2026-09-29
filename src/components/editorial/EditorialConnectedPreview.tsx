@@ -55,7 +55,7 @@ export default function EditorialConnectedPreview({
   compact?: boolean
 }) {
   const player = useStationPlayer()
-  const progress = useStationPlayerProgress();
+  const timeline = useStationPlayerProgress();
   const target = useMemo(() => reviewTarget(previewId), [previewId])
   const [resolvedSrc, setResolvedSrc] = useState<string | null>(null)
   const [resolvedAudioSource, setResolvedAudioSource] = useState<ReviewAudioSource | null>(null)
@@ -77,8 +77,8 @@ export default function EditorialConnectedPreview({
     ? 'Editorial · uploaded preview'
     : project
   const active = Boolean(playableSrc) && player.current?.src === playableSrc && player.playingFrom === playbackProject
-  const elapsed = active ? progress.elapsed : 0
-  const duration = active ? progress.duration : 0
+  const elapsed = active ? timeline.elapsed : 0
+  const duration = active ? timeline.duration : 0
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0
 
   const playSource = (audioSrc: string, audioSource: ReviewAudioSource | null = resolvedAudioSource) => {
