@@ -4,6 +4,7 @@ import { RootNavbar, RootMobileFlowNav } from "@/components/layout/RootChrome";
 import Footer from "@/components/layout/Footer";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import AnalyticsBootstrap from "@/components/AnalyticsBootstrap";
+import WebVitalsReporter from "@/components/WebVitalsReporter";
 import MobileIosBoundary from "@/components/MobileIosBoundary";
 import PremiumInstantPromoBanner from "@/components/PremiumInstantPromoBanner";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
@@ -103,6 +104,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <div className="bvs-app-bottom-spacer" aria-hidden="true" />
                 <DeferredGlobalTools />
                 <AnalyticsBootstrap />
+                <WebVitalsReporter />
                 <Suspense fallback={null}>
                   <RootMobileFlowNav />
                 </Suspense>
