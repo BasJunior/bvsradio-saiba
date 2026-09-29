@@ -47,11 +47,11 @@ function absoluteArtwork(src?: string) {
  */
 export default function AppNowPlayingBridge() {
   const player = useStationPlayer();
-  const progress = useStationPlayerProgress();
+  const timeline = useStationPlayerProgress();
   const lastNativeSecond = useRef(-1);
   const commandState = useRef({
     isPlaying: player.isPlaying,
-    elapsed: progress.elapsed,
+    elapsed: timeline.elapsed,
     play: player.play,
     pause: player.pause,
     next: player.next,
@@ -64,20 +64,20 @@ export default function AppNowPlayingBridge() {
     current &&
     (player.upNext.length > 0 || (!constrainedNext && (player.mode === "station" || player.autoplay)))
   );
-  const canPrevious = Boolean(current && (progress.elapsed > 3 || player.history.length > 0));
-  const canSeek = Boolean(current && progress.duration > 0 && Number.isFinite(progress.duration));
+  const canPrevious = Boolean(current && (timeline.elapsed > 3 || player.history.length > 0));
+  const canSeek = Boolean(current && timeline.duration > 0 && Number.isFinite(timeline.duration));
 
   useEffect(() => {
     commandState.current = {
       isPlaying: player.isPlaying,
-      elapsed: progress.elapsed,
+      elapsed: timeline.elapsed,
       play: player.play,
       pause: player.pause,
       next: player.next,
       previous: player.previous,
       seekTo: player.seekTo,
     };
-  }, [progress.elapsed, player.isPlaying, player.next, player.pause, player.play, player.previous, player.seekTo]);
+  }, [timeline.elapsed, player.isPlaying, player.next, player.pause, player.play, player.previous, player.seekTo]);
 
   // Older installed iOS binaries still rely on Web Media Session for remote
   // controls. Keep those controls music-first: previous / play-pause / next.
@@ -122,15 +122,15 @@ export default function AppNowPlayingBridge() {
     if (!("mediaSession" in navigator)) return;
     try {
       navigator.mediaSession.playbackState = player.isPlaying ? "playing" : "paused";
-      if (progress.duration > 0 && Number.isFinite(progress.duration)) {
+      if (timeline.duration > 0 && Number.isFinite(timeline.duration)) {
         navigator.mediaSession.setPositionState({
-          duration: progress.duration,
+          duration: timeline.duration,
           playbackRate: 1,
-          position: Math.max(0, Math.min(progress.elapsed, progress.duration)),
+          position: Math.max(0, Math.min(timeline.elapsed, timeline.duration)),
         });
       }
     } catch {}
-  }, [progress.duration, progress.elapsed, player.isPlaying]);
+  }, [timeline.duration, timeline.elapsed, player.isPlaying]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !current) return;
@@ -145,28 +145,28 @@ export default function AppNowPlayingBridge() {
       album: current.project || player.playingFrom || "BVS Radio",
       artwork: absoluteArtwork(current.artwork),
       playing: player.isPlaying,
-      elapsed: Math.max(0, progress.elapsed || 0),
-      duration: Math.max(0, progress.duration || 0),
+      elapsed: Math.max(0, timeline.elapsed || 0),
+      duration: Math.max(0, timeline.duration || 0),
       canNext,
       canPrevious,
       canSeek,
     });
-  }, [canNext, canPrevious, canSeek, current, progress.duration, player.isPlaying, player.playingFrom]);
+  }, [canNext, canPrevious, canSeek, current, timeline.duration, player.isPlaying, player.playingFrom]);
 
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !current) return;
     const handler = nativeHandler();
     if (!handler) return;
-    const second = Math.floor(progress.elapsed || 0);
+    const second = Math.floor(timeline.elapsed || 0);
     if (second === lastNativeSecond.current) return;
     lastNativeSecond.current = second;
     handler.postMessage({
       action: "position",
       playing: player.isPlaying,
-      elapsed: Math.max(0, progress.elapsed || 0),
-      duration: Math.max(0, progress.duration || 0),
+      elapsed: Math.max(0, timeline.elapsed || 0),
+      duration: Math.max(0, timeline.duration || 0),
     });
-  }, [current, progress.duration, progress.elapsed, player.isPlaying]);
+  }, [current, timeline.duration, timeline.elapsed, player.isPlaying]);
 
   useEffect(() => {
     const win = window as BvsWebkitWindow;
