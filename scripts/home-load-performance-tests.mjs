@@ -14,6 +14,7 @@ const playlistShelf = await readFile(new URL("../src/components/home/HomePublicP
 const nextConfig = await readFile(new URL("../next.config.ts", import.meta.url), "utf8");
 const homePage = await readFile(new URL("../src/app/page.tsx", import.meta.url), "utf8");
 const deferredHome = await readFile(new URL("../src/components/home/DeferredHomeSections.tsx", import.meta.url), "utf8");
+const homeShows = await readFile(new URL("../src/components/home/HomeShowsSection.tsx", import.meta.url), "utf8");
 
 for (const route of [releasesRoute, beatsRoute, playlistsRoute]) {
   assert.ok(
@@ -81,6 +82,14 @@ assert.ok(
     !homePage.includes("<HomeEngagementHub />") &&
     !homePage.includes("<HomeBeatRail />"),
   "Home must keep the first listening screen eager while deferring lower discovery/engagement work.",
+);
+
+assert.ok(
+  homePage.includes("<Suspense") &&
+    homePage.includes("<HomeShowsSection />") &&
+    !homePage.includes("await getPublicProgrammes()") &&
+    homeShows.includes("const shows = await getPublicProgrammes()"),
+  "Remote programme loading must stream below the first Home screen instead of blocking the hero response.",
 );
 
 // Image optimization is intentionally still disabled globally because the prior
