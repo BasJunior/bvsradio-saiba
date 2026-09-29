@@ -28,10 +28,10 @@ export default function FullAccessAudioPlayer({
   compact?: boolean
 }) {
   const player = useStationPlayer()
-  const progress = useStationPlayerProgress();
+  const timeline = useStationPlayerProgress();
   const active = Boolean(src) && player.current?.src === src && player.playingFrom === sourceLabel
-  const elapsed = active ? progress.elapsed : 0
-  const duration = active ? progress.duration : 0
+  const elapsed = active ? timeline.elapsed : 0
+  const duration = active ? timeline.duration : 0
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0
 
   if (!src) {
