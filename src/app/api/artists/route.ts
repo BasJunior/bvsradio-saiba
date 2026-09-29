@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { getPublishedArtists } from '@/lib/artist-content'
 import { fairDailyOrder } from '@/lib/fair-discovery-order'
 
-const PUBLIC_CACHE = 'public, max-age=0, s-maxage=60, stale-while-revalidate=300'
-
 function requestedLimit(request: Request) {
   const raw = Number(new URL(request.url).searchParams.get('limit') || 0)
   if (!Number.isFinite(raw) || raw <= 0) return null
@@ -16,6 +14,6 @@ export async function GET(request: Request) {
   const artists = limit ? ordered.slice(0, limit) : ordered
   return NextResponse.json(
     { artists },
-    { headers: { 'Cache-Control': PUBLIC_CACHE } },
+    { headers: { 'Cache-Control': 'no-store' } },
   )
 }
