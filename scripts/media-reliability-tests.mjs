@@ -3,17 +3,32 @@ import { readFile } from "node:fs/promises";
 
 const nextConfig = await readFile(new URL("../next.config.ts", import.meta.url), "utf8");
 const mediaRoute = await readFile(new URL("../src/app/api/media/[...key]/route.ts", import.meta.url), "utf8");
+const imageBoundary = await readFile(new URL("../src/lib/image-optimization.ts", import.meta.url), "utf8");
+const checkout = await readFile(new URL("../src/app/checkout/page.tsx", import.meta.url), "utf8");
+const account = await readFile(new URL("../src/app/account/page.tsx", import.meta.url), "utf8");
+const homeShows = await readFile(new URL("../src/components/home/HomeShowsSection.tsx", import.meta.url), "utf8");
+const showPage = await readFile(new URL("../src/app/shows/[slug]/page.tsx", import.meta.url), "utf8");
 
-assert.match(
-  nextConfig,
-  /images:\s*\{[\s\S]*?unoptimized:\s*true/,
-  "BVS media reliability gate must keep Next image optimization disabled while /api/media is proxied through signed R2 redirects.",
+assert.ok(
+  nextConfig.includes("images: {") && !nextConfig.includes("unoptimized: true"),
+  "Next image optimization must stay enabled globally now that the public media redirect path is proven.",
+);
+assert.ok(
+  imageBoundary.includes("https?:|blob:|data:"),
+  "Arbitrary absolute, blob and data image sources must remain browser-direct.",
+);
+assert.ok(
+  checkout.includes("unoptimized={shouldBypassImageOptimizer(item.artwork)}") &&
+    account.includes("unoptimized={shouldBypassImageOptimizer(currentPhoto)}") &&
+    homeShows.includes("unoptimized={shouldBypassImageOptimizer(show.image)}") &&
+    showPage.includes("unoptimized={shouldBypassImageOptimizer(show.image)}"),
+  "Dynamic checkout, preview and programme artwork must retain per-image optimizer bypass guards.",
 );
 
 for (const requiredGuard of ["safeR2Key", "isPublicR2MediaKey", "signedR2DownloadUrl"]) {
   assert.ok(
     mediaRoute.includes(requiredGuard),
-    `/api/media must retain ${requiredGuard} before browser-direct media delivery is allowed.`,
+    `/api/media must retain ${requiredGuard} before optimized public media delivery is allowed.`,
   );
 }
 

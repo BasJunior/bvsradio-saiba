@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import Link from "next/link";
 import { getPublishedArtists } from "@/lib/artist-content";
 import { fairDailyOrder } from "@/lib/fair-discovery-order";
@@ -75,7 +76,7 @@ export default async function AppHomeDiscoverySections({ surface }: { surface: M
                 className="group overflow-hidden rounded-[1.65rem] border border-white/[.07] bg-white/[.025] transition hover:border-white/15 hover:bg-white/[.04]"
               >
                 <div className="relative aspect-[16/9] bg-white/[.04]">
-                  <Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-[1.015]" />
+                  <Image src={show.image} alt="" fill unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover transition duration-500 group-hover:scale-[1.015]" />
                   <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/55 to-transparent" />
                 </div>
                 <div className="p-4">

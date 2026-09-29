@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import Link from "next/link";
 import RadioPlayer from "@/components/RadioPlayer";
 import RadioSessionHome from "@/components/RadioSessionHome";
@@ -132,7 +133,7 @@ export default async function RadioPage() {
             {shows.slice(0, 3).map((show) => (
               <Link key={show.slug} href={`/shows/${show.slug}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-card/35">
                 <div className="relative aspect-[16/9] overflow-hidden">
-                  <Image src={show.image} alt="" fill className="object-cover transition duration-500 group-hover:scale-105" />
+                  <Image src={show.image} alt="" fill unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover transition duration-500 group-hover:scale-105" />
                   {show.status === "active" ? <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black">Live</span> : null}
                 </div>
                 <div className="p-5">

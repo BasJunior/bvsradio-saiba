@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { trackEvent } from "@/lib/analytics";
@@ -415,6 +416,7 @@ export default function CheckoutPage() {
                             src={item.artwork}
                             alt=""
                             fill
+                            unoptimized={shouldBypassImageOptimizer(item.artwork)}
                             className="object-cover"
                           />
                         ) : (
