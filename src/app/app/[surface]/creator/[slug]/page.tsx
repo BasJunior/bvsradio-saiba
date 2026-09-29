@@ -83,7 +83,7 @@ export default async function AppCreatorPage({
             </div>
           ) : null}
           <div className="mt-4 flex flex-wrap gap-2">
-            <LibraryAction item={item} section="follows" />
+            <LibraryAction item={item} section="follows" analyticsSource="artist_profile" />
             <AppShareButton
               title={displayName}
               text={`Follow ${displayName} on BVS`}
