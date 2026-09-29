@@ -4,12 +4,10 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  // Reliability gate: BVS artwork/media can be served through /api/media, which validates
-  // public R2 keys and redirects to short-lived signed URLs. Production currently shows
-  // repeated /_next/image runtime failures for that proxied path, so keep image delivery
-  // browser-direct until the optimizer path is proven stable again.
+  // Public BVS artwork under /api/media is validated before redirecting to signed R2.
+  // The production optimizer path is smoke-tested for WebP, PNG and JPEG; arbitrary
+  // absolute/blob/data sources stay browser-direct at the component boundary.
   images: {
-    unoptimized: true,
     remotePatterns: [
       {
         protocol: "https",
