@@ -92,12 +92,9 @@ assert.ok(
   "Remote programme loading must stream below the first Home screen instead of blocking the hero response.",
 );
 
-// Image optimization is intentionally still disabled globally because the prior
-// /api/media -> /_next/image runtime failure is a reliability constraint.
-// Performance work must not silently re-enable that failure path.
 assert.ok(
-  nextConfig.includes("unoptimized: true"),
-  "Keep global Next image optimization disabled until its media route is separately proven reliable.",
+  nextConfig.includes("images: {") && !nextConfig.includes("unoptimized: true"),
+  "Home thumbnails should use the proven Next image optimizer instead of the old global browser-direct fallback.",
 );
 
 console.log("home load performance gates passed");
