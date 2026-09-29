@@ -12,18 +12,18 @@ function isBeatStorePreview(project?: string) {
 export default function AppBeatPreviewGuard() {
   const { signedIn, loading } = useAppSession();
   const player = useStationPlayer();
-  const progress = useStationPlayerProgress();
+  const timeline = useStationPlayerProgress();
 
   useEffect(() => {
     if (loading || signedIn || !isBeatStorePreview(player.current?.project)) return;
-    if (!Number.isFinite(progress.duration) || progress.duration <= GUEST_BEAT_PREVIEW_SECONDS) return;
-    if (progress.elapsed < GUEST_BEAT_PREVIEW_SECONDS - 0.15) return;
+    if (!Number.isFinite(timeline.duration) || timeline.duration <= GUEST_BEAT_PREVIEW_SECONDS) return;
+    if (timeline.elapsed < GUEST_BEAT_PREVIEW_SECONDS - 0.15) return;
 
-    if (progress.elapsed > GUEST_BEAT_PREVIEW_SECONDS + 0.15) {
-      player.seek(GUEST_BEAT_PREVIEW_SECONDS / progress.duration);
+    if (timeline.elapsed > GUEST_BEAT_PREVIEW_SECONDS + 0.15) {
+      player.seek(GUEST_BEAT_PREVIEW_SECONDS / timeline.duration);
     }
     if (player.isPlaying) player.toggle();
-  }, [loading, player, player.current?.project, progress.duration, progress.elapsed, player.isPlaying, signedIn]);
+  }, [loading, player, player.current?.project, timeline.duration, timeline.elapsed, player.isPlaying, signedIn]);
 
   return null;
 }
