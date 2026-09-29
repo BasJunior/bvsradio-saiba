@@ -28,8 +28,8 @@ function Cover({ src, className }: { src?: string | null; className?: string }) 
 
 export default function RadioPlayer() {
   const player = useStationPlayer();
-  const progress = useStationPlayerProgress();
-  const pct = progress.duration > 0 ? Math.min(100, (progress.elapsed / progress.duration) * 100) : 0;
+  const timeline = useStationPlayerProgress();
+  const pct = timeline.duration > 0 ? Math.min(100, (timeline.elapsed / timeline.duration) * 100) : 0;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-bg-card/70 backdrop-blur-xl">
@@ -37,11 +37,11 @@ export default function RadioPlayer() {
         className="h-1.5 w-full cursor-pointer bg-white/15"
         role="progressbar"
         aria-valuemin={0}
-        aria-valuemax={Math.round(progress.duration || 0)}
-        aria-valuenow={Math.round(progress.elapsed)}
+        aria-valuemax={Math.round(timeline.duration || 0)}
+        aria-valuenow={Math.round(timeline.elapsed)}
         aria-label="Playback progress"
         onClick={(event) => {
-          if (progress.duration <= 0) return;
+          if (timeline.duration <= 0) return;
           const rect = event.currentTarget.getBoundingClientRect();
           player.seek((event.clientX - rect.left) / rect.width);
         }}
@@ -70,8 +70,8 @@ export default function RadioPlayer() {
                 {player.current?.artist || "BVS Radio"}
               </p>
               <p className="mt-2 tabular-nums text-xs text-white/70 sm:text-sm" aria-live="polite">
-                {progress.duration > 0
-                  ? `${formatTime(progress.elapsed)} / ${formatTime(progress.duration)}`
+                {timeline.duration > 0
+                  ? `${formatTime(timeline.elapsed)} / ${formatTime(timeline.duration)}`
                   : player.isPlaying
                     ? "Loading…"
                     : "— / —"}
