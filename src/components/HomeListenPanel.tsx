@@ -1,6 +1,6 @@
 "use client";
 
-import { useStationPlayer } from "@/components/StationPlayer";
+import { useStationPlayer, useStationPlayerProgress } from "@/components/StationPlayer";
 import FlowRelationships from "@/components/flow/FlowRelationships";
 
 function formatTime(seconds: number) {
@@ -13,7 +13,8 @@ function formatTime(seconds: number) {
 
 export default function HomeListenPanel() {
   const player = useStationPlayer();
-  const pct = player.duration > 0 ? Math.min(100, (player.elapsed / player.duration) * 100) : 0;
+  const timeline = useStationPlayerProgress();
+  const pct = timeline.duration > 0 ? Math.min(100, (timeline.elapsed / timeline.duration) * 100) : 0;
   const art = player.current?.artwork;
 
   return (
@@ -22,11 +23,11 @@ export default function HomeListenPanel() {
         className="h-1 w-full cursor-pointer bg-white/15"
         role="progressbar"
         aria-valuemin={0}
-        aria-valuemax={Math.round(player.duration || 0)}
-        aria-valuenow={Math.round(player.elapsed)}
+        aria-valuemax={Math.round(timeline.duration || 0)}
+        aria-valuenow={Math.round(timeline.elapsed)}
         aria-label="Playback progress"
         onClick={(event) => {
-          if (player.duration <= 0) return;
+          if (timeline.duration <= 0) return;
           const rect = event.currentTarget.getBoundingClientRect();
           player.seek((event.clientX - rect.left) / rect.width);
         }}
@@ -54,9 +55,9 @@ export default function HomeListenPanel() {
             <p className="mt-0.5 truncate text-sm text-white/70">
               {player.current?.artist || "BVS Radio"}
             </p>
-            {player.duration > 0 && (
+            {timeline.duration > 0 && (
               <p className="mt-1.5 tabular-nums text-xs text-white/65">
-                {formatTime(player.elapsed)} / {formatTime(player.duration)}
+                {formatTime(timeline.elapsed)} / {formatTime(timeline.duration)}
               </p>
             )}
           </div>

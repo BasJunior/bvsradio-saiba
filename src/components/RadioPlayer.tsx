@@ -1,6 +1,6 @@
 "use client";
 
-import { useStationPlayer } from "./StationPlayer";
+import { useStationPlayer, useStationPlayerProgress } from "./StationPlayer";
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
@@ -28,7 +28,8 @@ function Cover({ src, className }: { src?: string | null; className?: string }) 
 
 export default function RadioPlayer() {
   const player = useStationPlayer();
-  const pct = player.duration > 0 ? Math.min(100, (player.elapsed / player.duration) * 100) : 0;
+  const timeline = useStationPlayerProgress();
+  const pct = timeline.duration > 0 ? Math.min(100, (timeline.elapsed / timeline.duration) * 100) : 0;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/10 bg-bg-card/70 backdrop-blur-xl">
@@ -36,11 +37,11 @@ export default function RadioPlayer() {
         className="h-1.5 w-full cursor-pointer bg-white/15"
         role="progressbar"
         aria-valuemin={0}
-        aria-valuemax={Math.round(player.duration || 0)}
-        aria-valuenow={Math.round(player.elapsed)}
+        aria-valuemax={Math.round(timeline.duration || 0)}
+        aria-valuenow={Math.round(timeline.elapsed)}
         aria-label="Playback progress"
         onClick={(event) => {
-          if (player.duration <= 0) return;
+          if (timeline.duration <= 0) return;
           const rect = event.currentTarget.getBoundingClientRect();
           player.seek((event.clientX - rect.left) / rect.width);
         }}
@@ -69,8 +70,8 @@ export default function RadioPlayer() {
                 {player.current?.artist || "BVS Radio"}
               </p>
               <p className="mt-2 tabular-nums text-xs text-white/70 sm:text-sm" aria-live="polite">
-                {player.duration > 0
-                  ? `${formatTime(player.elapsed)} / ${formatTime(player.duration)}`
+                {timeline.duration > 0
+                  ? `${formatTime(timeline.elapsed)} / ${formatTime(timeline.duration)}`
                   : player.isPlaying
                     ? "Loading…"
                     : "— / —"}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useStationPlayer } from '@/components/StationPlayer'
+import { useStationPlayer, useStationPlayerProgress } from '@/components/StationPlayer'
 
 function formatTime(seconds: number) {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00'
@@ -28,9 +28,10 @@ export default function FullAccessAudioPlayer({
   compact?: boolean
 }) {
   const player = useStationPlayer()
+  const timeline = useStationPlayerProgress();
   const active = Boolean(src) && player.current?.src === src && player.playingFrom === sourceLabel
-  const elapsed = active ? player.elapsed : 0
-  const duration = active ? player.duration : 0
+  const elapsed = active ? timeline.elapsed : 0
+  const duration = active ? timeline.duration : 0
   const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0
 
   if (!src) {
