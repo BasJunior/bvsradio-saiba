@@ -26,9 +26,9 @@ function DeferredMount({
     const marker = markerRef.current;
     if (!marker) return;
 
-    if (!("IntersectionObserver" in window)) {
-      const timer = window.setTimeout(() => setReady(true), 1200);
-      return () => window.clearTimeout(timer);
+    if (typeof IntersectionObserver === "undefined") {
+      const timer = globalThis.setTimeout(() => setReady(true), 1200);
+      return () => globalThis.clearTimeout(timer);
     }
 
     const observer = new IntersectionObserver(
