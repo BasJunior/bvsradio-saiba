@@ -21,7 +21,8 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
   const [loadedSurface, setLoadedSurface] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const surfaceKey = surface || "web";
-  const loading = open && loadedSurface !== surfaceKey;
+  const hasSearchIntent = query.trim().length >= 2;
+  const loading = open && hasSearchIntent && loadedSurface !== surfaceKey;
 
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
   }, [open]);
 
   useEffect(() => {
-    if (!open || query.trim().length < 2 || loadedSurface === surfaceKey) return;
+    if (!open || !hasSearchIntent || loadedSurface === surfaceKey) return;
     const controller = new AbortController();
     let partialFailure = false;
     const read = async (path: string) => {
@@ -73,7 +74,7 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
       setLoadedSurface(surfaceKey);
     });
     return () => controller.abort();
-  }, [open, query, loadedSurface, surface, surfaceKey]);
+  }, [open, hasSearchIntent, loadedSurface, surface, surfaceKey]);
 
   const suggestions = useMemo(() => loadedSurface === surfaceKey ? filterSearchSuggestions(buildSearchSuggestions(catalogue, surface), query) : [], [catalogue, query, surface, loadedSurface, surfaceKey]);
   const close = () => { setOpen(false); if (iconOnly) triggerRef.current?.focus(); };
