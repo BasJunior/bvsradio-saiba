@@ -44,6 +44,7 @@ export default function Navbar() {
   const [access, setAccess] = useState<Access | null>(null)
   const [premium, setPremium] = useState<PremiumInfo | null>(null)
   const [notificationCount, setNotificationCount] = useState(0)
+  const [authToken, setAuthToken] = useState<string | null>(null)
   const [cartCount, setCartCount] = useState(0)
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function Navbar() {
     const supabase = createClient()
     const syncAccess = async (nextUser: User | null, token?: string) => {
       setUser(nextUser)
+      setAuthToken(token || null)
       if (!nextUser || !token) {
         setAccess(null)
         setPremium(null)
@@ -85,24 +87,52 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
+    if (!isSupabaseConfigured() || !user?.id || !authToken) {
+      setNotificationCount(0)
+      return
+    }
+
     let alive = true
+    let pollTimer: number | null = null
+    let startTimer: number | null = null
+    let idleId: number | null = null
+
     const seen = async () => {
-      const { data } = await createClient().auth.getSession()
-      if (!data.session) { if (alive) setNotificationCount(0); return }
-      const operations = await fetch('/api/notifications', { headers: {Authorization: `Bearer ${data.session.access_token}`}, cache:'no-store' }).catch(() => null)
+      const operations = await fetch('/api/notifications', { headers: {Authorization: `Bearer ${authToken}`}, cache:'no-store' }).catch(() => null)
       const operationPayload = operations?.ok ? await operations.json() : {events:[]}
-      const seenAt = window.localStorage.getItem(`bvs_notifications_seen_at:${data.session.user.id}`) || ''
+      const seenAt = window.localStorage.getItem(`bvs_notifications_seen_at:${user.id}`) || ''
       const operationalUnread = (operationPayload.events || []).filter((event: {created_at:string}) => !seenAt || event.created_at > seenAt).length
-      const response = await fetch('/api/app/participation/notifications?limit=1', { headers: {Authorization: `Bearer ${data.session.access_token}`}, cache:'no-store' }).catch(() => null)
+      const response = await fetch('/api/app/participation/notifications?limit=1', { headers: {Authorization: `Bearer ${authToken}`}, cache:'no-store' }).catch(() => null)
       const payload = response?.ok ? await response.json() as { unreadCount?: number } : {}
       if (alive) setNotificationCount(operationalUnread + (Number(payload.unreadCount) || 0))
     }
-    if (!isSupabaseConfigured()) return
-    void seen()
-    const timer = window.setInterval(() => void seen(), 60000)
+
+    const startPolling = () => {
+      if (!alive) return
+      void seen()
+      pollTimer = window.setInterval(() => void seen(), 60000)
+    }
+
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+
+    if (idleWindow.requestIdleCallback) {
+      idleId = idleWindow.requestIdleCallback(startPolling, { timeout: 2000 })
+    } else {
+      startTimer = window.setTimeout(startPolling, 1200)
+    }
+
     window.addEventListener('bvs:notifications-seen', seen)
-    return () => { alive=false; window.clearInterval(timer); window.removeEventListener('bvs:notifications-seen', seen) }
-  }, [user?.id])
+    return () => {
+      alive = false
+      if (pollTimer !== null) window.clearInterval(pollTimer)
+      if (startTimer !== null) window.clearTimeout(startTimer)
+      if (idleId !== null) idleWindow.cancelIdleCallback?.(idleId)
+      window.removeEventListener('bvs:notifications-seen', seen)
+    }
+  }, [authToken, user?.id])
 
   useEffect(() => {
     const syncCart = (detailCount?: number) => {
@@ -137,6 +167,7 @@ export default function Navbar() {
     if (!isSupabaseConfigured()) return
     await createClient().auth.signOut()
     setUser(null)
+    setAuthToken(null)
     setAccess(null)
     setPremium(null)
     setIsMenuOpen(false)
