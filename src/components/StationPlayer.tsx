@@ -1972,7 +1972,7 @@ export function PersistentPlayer() {
             {player.error || player.notice}
           </p>
         )}
-        <div className="bvs-persistent-player-inner mx-auto flex h-[4.5rem] max-w-7xl items-center gap-2 sm:h-20 sm:gap-4">
+        <div className="bvs-persistent-player-inner mx-auto flex h-[4.5rem] max-w-7xl items-center gap-1.5 sm:h-20 sm:gap-4">
           <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <button
               type="button"
@@ -1997,7 +1997,9 @@ export function PersistentPlayer() {
                 >
                   {player.current?.artist || "BVS Radio"}
                 </CreatorLink>
-                <CreatorFollowAction track={player.current} analyticsSource="persistent_player" />
+                <span className="hidden sm:inline-flex">
+                  <CreatorFollowAction track={player.current} analyticsSource="persistent_player" />
+                </span>
                 {progress.duration > 0 && (
                   <span className="hidden shrink-0 tabular-nums text-white/50 sm:inline">
                     {formatTime(progress.elapsed)} / {formatTime(progress.duration)}
@@ -2020,16 +2022,17 @@ export function PersistentPlayer() {
               Watch
             </button>
           ) : null}
-          <BuyTrackButton track={player.current} variant="compact" />
+          <BuyTrackButton track={player.current} variant="compact" className="hidden sm:inline-flex" />
           <button
             type="button"
             onClick={() => player.toggleLike("persistent_player")}
             disabled={!player.current}
-            className={`shrink-0 rounded-full px-2.5 py-2 text-[11px] font-semibold disabled:opacity-40 sm:px-3 sm:text-xs ${player.liked ? "bg-brand/15 text-brand" : "text-text-secondary hover:bg-white/5 hover:text-white"}`}
+            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full p-0 text-lg font-semibold disabled:opacity-40 sm:h-auto sm:w-auto sm:px-3 sm:py-2 sm:text-xs ${player.liked ? "bg-brand/15 text-brand" : "text-text-secondary hover:bg-white/5 hover:text-white"}`}
             aria-pressed={player.liked}
             aria-label={player.liked ? "Remove from library" : "Save to library"}
           >
-            {player.liked ? "♥ Saved" : "♡ Save"}
+            <span className="sm:hidden" aria-hidden="true">{player.liked ? "♥" : "♡"}</span>
+            <span className="hidden sm:inline">{player.liked ? "♥ Saved" : "♡ Save"}</span>
           </button>
           <button type="button" onClick={() => player.setQueueOpen(!player.queueOpen)} className="hidden rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 sm:block" aria-label="Open queue">Queue</button>
           <button
