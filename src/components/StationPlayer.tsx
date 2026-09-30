@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Capacitor } from "@capacitor/core";
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { StationTrack } from "@/lib/station";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -182,7 +183,9 @@ function shuffleArray<T>(items: T[]) {
 }
 
 export function StationPlayerProvider({ tracks: initialTracks, children }: { tracks: StationTrack[]; children: React.ReactNode }) {
+  const pathname = usePathname();
   const audio = useRef<HTMLAudioElement>(null);
+  const playRequest = useRef(0);
   const startedAt = useRef<number | null>(null);
   const countedStarts = useRef(new Set<string>());
   const qualification = useRef<StreamQualificationState | null>(null);
@@ -290,6 +293,18 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const current = nowPlaying?.track;
 
+  const tracksRef = useRef(tracks);
+  const nowRef = useRef(nowPlaying);
+  const upNextRef = useRef(upNext);
+  const modeRef = useRef(mode);
+  const autoplayRef = useRef(autoplay);
+  const shuffleRef = useRef(shuffle);
+  const repeatRef = useRef(repeat);
+  const signedInRef = useRef(false);
+  const [signedIn, setSignedIn] = useState(false);
+  const editorialPageRef = useRef(false);
+  const editorialHoldRef = useRef(false);
+
   const beginPlaybackAttempt = useCallback(
     (track: StationTrack, trigger: string, options?: { forceNew?: boolean; intent?: boolean }) => {
       const key = trackKey(track);
@@ -354,18 +369,6 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     };
   }, []);
 
-  const tracksRef = useRef(tracks);
-  const nowRef = useRef(nowPlaying);
-  const upNextRef = useRef(upNext);
-  const modeRef = useRef(mode);
-  const autoplayRef = useRef(autoplay);
-  const shuffleRef = useRef(shuffle);
-  const repeatRef = useRef(repeat);
-  const signedInRef = useRef(false);
-  const [signedIn, setSignedIn] = useState(false);
-  const editorialPageRef = useRef(false);
-  const editorialHoldRef = useRef(false);
-
   useEffect(() => {
     tracksRef.current = tracks;
     nowRef.current = nowPlaying;
@@ -411,17 +414,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, [signedIn]);
 
   useEffect(() => {
-    const syncEditorialPage = () => {
-      const path = window.location.pathname;
-      editorialPageRef.current =
-        path === "/editorial" ||
-        path.startsWith("/editorial/") ||
-        path.startsWith("/admin/editorial");
-    };
-    syncEditorialPage();
-    window.addEventListener("popstate", syncEditorialPage);
-    return () => window.removeEventListener("popstate", syncEditorialPage);
-  }, []);
+    editorialPageRef.current = pathname === "/editorial" || pathname.startsWith("/editorial/") || pathname.startsWith("/admin/editorial");
+  }, [pathname]);
 
   const index = useMemo(() => {
     if (!current) return 0;
@@ -449,17 +443,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     setHistory((items) => [track, ...items.filter((item) => trackKey(item) !== trackKey(track))].slice(0, 40));
   }, []);
 
-  const excludeKeys = useCallback((extra: StationTrack[] = []) => {
-    const set = new Set<string>();
-    if (nowRef.current) set.add(trackKey(nowRef.current.track));
-    for (const item of upNextRef.current) set.add(trackKey(item.track));
-    for (const t of extra) set.add(trackKey(t));
-    return set;
-  }, []);
-
   const fillUpNext = useCallback(
     (seed: StationTrack | undefined, existing: QueueItem[], preferUserKeep = true) => {
-      if (editorialPageRef.current || editorialHoldRef.current || isEditorialPlay(seed)) {
+      if (editorialHoldRef.current || isEditorialPlay(seed)) {
         return existing.filter((item) => item.source !== "station");
       }
       if (isBeatTrack(seed) || existing.some((item) => isBeatTrack(item.track))) {
@@ -654,6 +640,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       const owner = (event as CustomEvent<{ owner?: string }>).detail?.owner;
       if (!owner || owner === "station" || !audio.current) return;
       if (owner === "editorial") editorialHoldRef.current = true;
+      playRequest.current += 1;
       audio.current.pause();
       if (isPlaying) flushListening();
       setPlaying(false);
@@ -675,6 +662,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   useEffect(() => {
     if (!audio.current || !current) return;
+    const request = ++playRequest.current;
+    let cancelled = false;
     if (isPlaying) {
       const pending = pendingPlaybackTrigger.current;
       const attempt = beginPlaybackAttempt(
@@ -687,6 +676,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       audio.current
         .play()
         .then(() => {
+          if (cancelled || request !== playRequest.current || audio.current?.paused) return;
           failStreak.current = 0;
           if (startedAt.current === null) {
             startedAt.current = Date.now();
@@ -711,6 +701,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           }
         })
         .catch((playError: unknown) => {
+          if (cancelled || request !== playRequest.current) return;
           const details = playbackFailureDetails(playError);
           // A source/pause change can legitimately interrupt an in-flight play() promise.
           // Do not count that browser lifecycle event as a broken recording.
@@ -727,6 +718,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           setError(details.error_name === "NotAllowedError" ? "Tap Play to continue." : "This recording could not be played.");
         });
     }
+    return () => { cancelled = true; };
   }, [beginPlaybackAttempt, current, isPlaying, markPlaybackFailure]);
 
   useEffect(() => {
@@ -810,6 +802,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       if (!attempt.continueSent && attempt.listenedSeconds >= 60) {
         attempt.continueSent = true;
         trackEvent("playback_continue_60s", {
+          proof_version: "v2",
           attempt_id: attempt.id,
           track_id: attempt.trackId,
           listened_seconds: Math.floor(attempt.listenedSeconds),
@@ -940,13 +933,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         let nextQueue = [...queue];
         let nextItem = nextQueue.shift();
 
-        if (!nextItem && autoplayRef.current && !editorialPageRef.current && !editorialHoldRef.current) {
+        if (!nextItem && autoplayRef.current && !editorialHoldRef.current) {
           const seed = nowRef.current?.track;
           nextQueue = fillUpNext(seed, []);
           nextItem = nextQueue.shift();
         }
 
-        if (!nextItem && pool.length && !inBeat && !editorialPageRef.current && !editorialHoldRef.current) {
+        if (!nextItem && pool.length && !inBeat && !editorialHoldRef.current) {
           const i = nowRef.current ? pool.findIndex((t) => trackKey(t) === trackKey(nowRef.current!.track)) : 0;
           const t = pool[(Math.max(0, i) + 1) % pool.length];
           nextItem = makeQueueItem(t, "station");
@@ -1020,11 +1013,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setPlaying(true);
       return;
     }
+    const request = ++playRequest.current;
     try {
       editorialHoldRef.current = false;
-      const attempt = beginPlaybackAttempt(current, "user_play", { forceNew: true, intent: true });
+      beginPlaybackAttempt(current, "user_play", { forceNew: true, intent: true });
       window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
       await el.play();
+      if (request !== playRequest.current || el.paused) return;
       failStreak.current = 0;
       setPlaying(true);
       setError(null);
@@ -1038,9 +1033,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         href: "/radio",
       });
     } catch (playError: unknown) {
-      setPlaying(false);
+      if (request !== playRequest.current) return;
       const details = playbackFailureDetails(playError);
       if (details.error_name === "AbortError") return;
+      setPlaying(false);
       const attempt = playbackAttempt.current;
       markPlaybackFailure("start", current);
       trackEvent("playback_error", {
@@ -1057,6 +1053,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const pause = useCallback(() => {
     const el = audio.current;
     if (!el) return;
+    playRequest.current += 1;
     const wasPlaying = !el.paused && !el.ended;
     el.pause();
     if (playbackAttempt.current) playbackAttempt.current.lastMediaTime = null;

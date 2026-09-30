@@ -127,7 +127,7 @@ export async function GET(request: Request) {
     const proofContinued = proofByName('playback_continue_60s')
     const proofSkips = proofByName('playback_skip')
     const proofRecoveries = proofByName('playback_recovered')
-    const proofErrors = playbackErrorEvents.filter((event) => event.properties?.proof_version === 'v1')
+    const proofErrors = proofByName('playback_error')
     const proofAttempts = new Set(proofRequested.map(proofAttemptId).filter(Boolean))
     const proofFirstAudioAttempts = new Set(proofFirstAudio.map(proofAttemptId).filter(Boolean))
     const proofTenSecondAttempts = new Set(proofTenSecond.map(proofAttemptId).filter(Boolean))

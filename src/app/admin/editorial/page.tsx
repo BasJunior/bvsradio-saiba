@@ -13,6 +13,7 @@ import EditorialAnalytics from '@/components/EditorialAnalytics'
 import EditorialSectionCarousel, { EditorialArtistGroupCard, groupEditorialByArtist, matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
 import EditorialConnectedPreview from '@/components/editorial/EditorialConnectedPreview'
 import EditorialEditableIdentity from '@/components/editorial/EditorialEditableIdentity'
+import { EDITORIAL_METADATA_SAVED_EVENT } from '@/lib/editorial-events'
 
 type MobileClearance = { id?: string; track_id: string; surface: 'ios' | 'android'; status: 'not_reviewed' | 'cleared' | 'blocked'; rights_basis?: string; evidence_reference?: string; review_notes?: string; reviewed_at?: string }
 type Track = { id: string; user_id: string; title: string; artist_name: string; genre: string; file_url: string; artwork_url?: string; editorial_status: string; editorial_notes?: string; is_public: boolean; in_rotation: boolean; is_downloadable: boolean; download_price: number; licence_type: string; licence_summary?: string; created_at: string; mobile_clearances?: MobileClearance[] }
@@ -178,6 +179,19 @@ export default function EditorialDashboard() {
     const timer = window.setTimeout(() => void boot(), 0)
     return () => window.clearTimeout(timer)
   }, [boot])
+
+  useEffect(() => {
+    if (!token) return;
+    const refreshMetadata = (event: Event) => {
+      const kind = (event as CustomEvent<{ kind?: string }>).detail?.kind;
+      const section = kind === 'beat' ? 'beats' : kind === 'release' ? 'releases' : 'tracks';
+      void load(token, [section, 'profiles', 'bootstrap']).catch((caught: unknown) => {
+        setError(caught instanceof Error ? caught.message : 'Metadata was saved, but the dashboard could not refresh.');
+      });
+    };
+    window.addEventListener(EDITORIAL_METADATA_SAVED_EVENT, refreshMetadata);
+    return () => window.removeEventListener(EDITORIAL_METADATA_SAVED_EVENT, refreshMetadata);
+  }, [load, token]);
 
   const allowed = (permission: EditorialPermission) => Boolean(data?.identity.permissions.includes(permission))
 

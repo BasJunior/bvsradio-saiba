@@ -28,7 +28,7 @@ export default async function HomeShowsSection() {
                 className={`group relative overflow-hidden rounded-[1.55rem] border border-white/10 bg-black ${featured ? "md:col-span-2 lg:col-span-2" : ""}`}
               >
                 <div className={`relative ${featured ? "aspect-[16/9]" : "aspect-[4/3]"}`}>
-                  <Image src={show.image} alt="" fill unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover transition duration-500 group-hover:scale-[1.025]" />
+                  <Image src={show.image} alt="" fill sizes={featured ? "(min-width: 1024px) 50vw, 100vw" : "(min-width: 1024px) 25vw, (min-width: 768px) 50vw, 100vw"} unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover transition duration-500 group-hover:scale-[1.025]" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
                     <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.17em]">{show.schedule}</p>

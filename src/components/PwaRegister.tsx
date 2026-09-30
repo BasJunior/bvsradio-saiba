@@ -13,9 +13,13 @@ export default function PwaRegister() {
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
   const [engaged, setEngaged] = useState(false);
-  const [dismissed, setDismissed] = useState(
-    () => typeof window === "undefined" || localStorage.getItem("bvs-install-dismissed") === "1",
-  );
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return typeof window === "undefined" || localStorage.getItem("bvs-install-dismissed") === "1";
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -28,7 +32,9 @@ export default function PwaRegister() {
     }
 
     const dismissedKey = "bvs-install-dismissed";
-    const wasDismissed = localStorage.getItem(dismissedKey) === "1";
+    let wasDismissed = false;
+    try { wasDismissed = localStorage.getItem(dismissedKey) === "1"; } catch { /* storage is optional */ }
+    let iosHintTimer: number | undefined;
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       // iOS Safari
@@ -56,7 +62,8 @@ export default function PwaRegister() {
     if (isIos && isSafari) {
       window.dispatchEvent(new CustomEvent("bvs:pwa-install-available"));
       if (!wasDismissed) {
-        window.setTimeout(() => {
+        iosHintTimer = window.setTimeout(() => {
+          try { if (localStorage.getItem(dismissedKey) === "1") return; } catch { /* storage is optional */ }
           setShowIosHint(true);
           setDismissed(false);
         }, 60_000);
@@ -72,6 +79,7 @@ export default function PwaRegister() {
 
     return () => {
       window.clearTimeout(engagementTimer);
+      if (iosHintTimer !== undefined) window.clearTimeout(iosHintTimer);
       window.removeEventListener("beforeinstallprompt", onBip);
       window.removeEventListener("bvs:player-open", onEngagement);
       window.removeEventListener("bvs:library-change", onEngagement);
@@ -109,7 +117,7 @@ export default function PwaRegister() {
 
   return (
     <div
-      className="fixed bottom-24 left-4 right-4 z-[70] mx-auto max-w-md rounded-2xl border border-white/10 bg-[#1C1C1C]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6"
+      className="fixed bottom-[calc(var(--bvs-app-bottom-stack-height)+1rem)] left-4 right-4 z-[70] mx-auto max-h-[calc(100dvh-var(--bvs-app-bottom-stack-height)-5rem)] max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-[#1C1C1C]/95 p-4 shadow-2xl backdrop-blur-md sm:left-auto sm:right-6"
       role="dialog"
       aria-label="Install BVS Radio"
     >
