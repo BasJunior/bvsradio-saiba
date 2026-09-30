@@ -27,6 +27,25 @@ assert.ok(
   "Vitals must use existing BVS analytics with rating and navigation context.",
 );
 assert.ok(
+  reporter.includes("surfaceForPath") &&
+    reporter.includes("viewportBucket") &&
+    reporter.includes("display_mode") &&
+    reporter.includes("effective_type") &&
+    reporter.includes("save_data") &&
+    reporter.includes("visibility"),
+  "Vitals must include coarse surface, viewport, display-mode and network context for mobile diagnosis.",
+);
+assert.ok(
+  reporter.includes('return "ios"') &&
+    reporter.includes('return "android"') &&
+    reporter.includes('return "web"') &&
+    reporter.includes('return "phone-small"') &&
+    reporter.includes('return "phone"') &&
+    reporter.includes('return "tablet"') &&
+    reporter.includes('return "desktop"'),
+  "Vitals context must use coarse buckets rather than exact device identifiers.",
+);
+assert.ok(
   analytics.includes('"web_vital"'),
   "web_vital must remain in the central analytics event contract.",
 );
