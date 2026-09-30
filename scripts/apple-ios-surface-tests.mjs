@@ -72,6 +72,9 @@ assert(nav.includes('label: "Studio"'), 'creator vNext bottom nav must use Studi
 assert(nav.includes('data-bvs-role-tab={isCreator ? "studio" : "beats"}'), 'fourth tab must switch using existing creator access')
 assert(nav.includes('bvs-app-bottom-nav'), 'bottom nav must use the base-anchored safe-area shell')
 assert(nav.includes('bvs-app-bottom-nav-inner'), 'bottom nav controls must stay inside the safe-area inner rail')
+assert(nav.includes('router.push(item.href)'), 'hydrated vNext tabs must use client routing so persistent playback survives tab changes')
+assert(nav.includes('event.preventDefault()'), 'hydrated vNext tab taps must prevent document navigation')
+assert(nav.includes('href={item.href}'), 'vNext tabs must retain real href fallbacks for progressive enhancement')
 
 // Mobile chrome refinements should stay consistent and useful across the app.
 assert(appTopBar.includes('function MarketplaceIcon()'), 'marketplace must use a recognisable storefront icon')
