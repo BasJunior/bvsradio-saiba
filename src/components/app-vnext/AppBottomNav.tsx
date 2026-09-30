@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { measureBottomNav } from "@/lib/chrome-layout";
@@ -29,6 +29,7 @@ function NavIcon({ name }: { name: NavIconName }) {
 
 export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { isCreator } = useAppSession();
   const base = `/app/${surface}`;
@@ -57,6 +58,18 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
           <Link
             key={item.href}
             href={item.href}
+            onClick={(event) => {
+              if (
+                event.defaultPrevented ||
+                event.button !== 0 ||
+                event.metaKey ||
+                event.ctrlKey ||
+                event.shiftKey ||
+                event.altKey
+              ) return;
+              event.preventDefault();
+              router.push(item.href);
+            }}
             aria-current={item.active ? "page" : undefined}
             className={`relative flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all sm:text-[11px] ${item.active ? "text-white" : "text-white/46 hover:text-white/82"}`}
           >

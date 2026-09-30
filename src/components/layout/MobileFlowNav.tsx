@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 import { useAppShellMeasurement } from "@/components/app/useAppShellMeasurement";
 import { matchPrimaryDestination, primaryAppDestinations } from "@/lib/app-surface";
@@ -47,6 +47,7 @@ function FeedIcon() {
 
 export default function MobileFlowNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { surface, appChrome } = useAppSurface();
   const navRef = useAppShellMeasurement<HTMLElement>("--bvs-app-bottom-nav-height-measured", appChrome);
@@ -65,6 +66,18 @@ export default function MobileFlowNav() {
               key={item.id}
               href={item.href}
               replace
+              onClick={(event) => {
+                if (
+                  event.defaultPrevented ||
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) return;
+                event.preventDefault();
+                router.replace(item.href);
+              }}
               aria-current={active ? "page" : undefined}
               className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${active ? "text-brand" : "text-text-secondary hover:text-white"}`}
             >
@@ -80,6 +93,18 @@ export default function MobileFlowNav() {
             <Link
               key="feed"
               href={feedHref}
+              onClick={(event) => {
+                if (
+                  event.defaultPrevented ||
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) return;
+                event.preventDefault();
+                router.push(feedHref);
+              }}
               aria-current={feedActive ? "page" : undefined}
               className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${feedActive ? "text-brand" : "text-text-secondary hover:text-white"}`}
             >
