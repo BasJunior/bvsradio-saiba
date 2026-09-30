@@ -46,6 +46,17 @@ assert.ok(
   "The persistent player must expose measurable Artist, Follow and Save actions without opening Now Playing first.",
 );
 assert.ok(
+  player.includes('<span className="hidden sm:inline-flex">') &&
+    player.includes('variant="compact" className="hidden sm:inline-flex"'),
+  "Narrow mobile persistent players must move Follow and Buy out of the primary control strip.",
+);
+assert.ok(
+  player.includes('grid h-10 w-10 shrink-0 place-items-center') &&
+    player.includes('<span className="sm:hidden" aria-hidden="true">{player.liked ? "♥" : "♡"}</span>') &&
+    player.includes('<span className="hidden sm:inline">{player.liked ? "♥ Saved" : "♡ Save"}</span>'),
+  "Mobile Save must stay visible as a compact touch target while wider players retain the labelled control.",
+);
+assert.ok(
   player.includes('entry_point: entryPoint') &&
     player.includes('entry_point: entryPoint,'),
   "Player relationship/save analytics must preserve their entry point.",
