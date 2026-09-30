@@ -1,21 +1,37 @@
 "use client";
 
 import Link from "next/link";
+import { readLibrary } from "@/lib/library";
+import type { AskBvsObject } from "@/lib/ask-bvs-flow";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 
-type Answer = { reply: string; links?: Array<{ label: string; href: string }> };
+type Answer = { reply: string; objects?: AskBvsObject[]; links?: Array<{ label: string; href: string }> };
 type Message = Answer & { role: "user" | "assistant" };
 
 const HINT_STORAGE_KEY = "bvs_ask_hint_dismissed_v1";
 
 const starterPrompts = [
-  "Find music for me",
+  "What’s new on BVS?",
+  "Find beats by Wolf Bridges",
   "Open Lyrics Pad",
   "Where are my playlists?",
-  "How does Creator Studio work?",
+  "What have I been listening to?",
 ];
+
+function deviceContext(message: string) {
+  const history = /what.*(been listening|listened|played)|my listening|listening history|what did i play/i.test(message);
+  const follows = /(new|latest|happening|recent).*(follow|following)|(?:follow|following).*(new|latest|happening|recent)|creators i follow|people i follow/i.test(message);
+  try {
+    return {
+      history: history ? readLibrary("history").slice(0, 8) : [],
+      follows: follows ? readLibrary("follows").slice(0, 8) : [],
+    };
+  } catch {
+    return {};
+  }
+}
 
 export default function VisitorAssistant() {
   const { appChrome } = useAppSurface();
@@ -28,11 +44,12 @@ export default function VisitorAssistant() {
     {
       role: "assistant",
       reply:
-        "Hi — I’m Ask BVS. I can help you find what to listen to, where your Library and Lyrics Pad live, how Creator Studio or BeatStore work, and where to go when you need BVS support.",
+        "Ask me about published BVS music, creators, beats, verified credits, or your recent listening. I can also help you find Library, Lyrics Pad and Creator Studio.",
     },
   ]);
   const endRef = useRef<HTMLDivElement | null>(null);
   const launcherRef = useRef<HTMLButtonElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -46,8 +63,21 @@ export default function VisitorAssistant() {
   }, []);
 
   useEffect(() => {
-    if (open) endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    if (open) endRef.current?.scrollIntoView({ block: "nearest" });
   }, [busy, messages, open]);
+
+  useEffect(() => {
+    if (!open) return;
+    inputRef.current?.focus({ preventScroll: true });
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      setOpen(false);
+      launcherRef.current?.focus({ preventScroll: true });
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open]);
 
   if (appChrome) return null;
 
@@ -81,7 +111,8 @@ export default function VisitorAssistant() {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message, path: pathname }),
+        body: JSON.stringify({ message, path: pathname, context: deviceContext(message) }),
+        signal: AbortSignal.timeout(15_000),
       });
       if (!response.ok) throw new Error();
       const answer = (await response.json()) as Answer;
@@ -107,8 +138,10 @@ export default function VisitorAssistant() {
     >
       {open ? (
         <section
+          id="bvs-assistant-panel"
+          role="dialog"
           aria-label="Ask BVS"
-          className="mb-3 flex h-[min(36rem,calc(100dvh-12rem-env(safe-area-inset-bottom)))] min-h-72 w-[calc(100vw-1.5rem)] max-w-[390px] flex-col overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#151517]/95 shadow-2xl backdrop-blur-2xl md:h-[min(620px,72vh)] md:w-[calc(100vw-3rem)]"
+          className="mb-3 flex h-[min(36rem,calc(100dvh-12rem-env(safe-area-inset-bottom)))] min-h-0 w-[calc(100vw-1.5rem)] max-w-[390px] flex-col overflow-hidden rounded-[1.65rem] border border-white/10 bg-[#151517]/95 shadow-2xl backdrop-blur-2xl md:h-[min(620px,72vh)] md:w-[calc(100vw-3rem)]"
         >
           <header className="flex items-center justify-between border-b border-white/10 bg-white/[.025] px-5 py-4">
             <div>
@@ -125,7 +158,7 @@ export default function VisitorAssistant() {
               ×
             </button>
           </header>
-          <div className="flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
+          <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4" aria-live="polite">
             {messages.map((message, index) => (
               <div key={index} className={message.role === "user" ? "ml-10" : "mr-6"}>
                 <p
@@ -137,6 +170,20 @@ export default function VisitorAssistant() {
                 >
                   {message.reply}
                 </p>
+                {message.objects?.length ? (
+                  <div className="mt-2 space-y-2">
+                    {message.objects.map((object) => (
+                      <Link key={`${object.kind}:${object.id}`} href={object.route} onClick={closeAssistant} className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[.035] p-3 hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[10px] uppercase tracking-wider text-brand">{object.kind}</span>
+                          <span className="block truncate text-sm font-semibold">{object.title}</span>
+                          {object.subtitle ? <span className="block truncate text-xs text-text-secondary">{object.subtitle}</span> : null}
+                        </span>
+                        <span className="shrink-0 text-xs text-brand">Open →</span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : null}
                 {message.links ? (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {message.links.map((link) => (
@@ -179,6 +226,7 @@ export default function VisitorAssistant() {
           ) : null}
           <form onSubmit={(event) => void send(event)} className="flex gap-2 border-t border-white/10 p-3">
             <input
+              ref={inputRef}
               value={input}
               onChange={(event) => setInput(event.target.value)}
               maxLength={500}
@@ -226,6 +274,7 @@ export default function VisitorAssistant() {
         type="button"
         onClick={toggleAssistant}
         aria-expanded={open}
+        aria-controls={open ? "bvs-assistant-panel" : undefined}
         aria-label={open ? "Close Ask BVS" : "Open Ask BVS"}
         title={open ? "Close Ask BVS" : "Ask BVS"}
         className="grid h-12 w-12 place-items-center rounded-full border border-brand/25 bg-white text-xl font-semibold text-black shadow-xl transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-black motion-reduce:transition-none motion-reduce:hover:scale-100"

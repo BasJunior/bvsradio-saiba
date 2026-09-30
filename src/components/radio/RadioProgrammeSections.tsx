@@ -95,7 +95,7 @@ export default async function RadioProgrammeSections() {
             {shows.slice(0, 3).map((show) => (
               <Link key={show.slug} href={`/shows/${show.slug}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-card/35">
                 <div className="relative aspect-[16/9] overflow-hidden">
-                  <Image src={show.image} alt="" fill unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover transition duration-500 group-hover:scale-105" />
+                  <Image src={show.image} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover transition duration-500 group-hover:scale-105" />
                   {show.status === "active" ? <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black">Live</span> : null}
                 </div>
                 <div className="p-5">

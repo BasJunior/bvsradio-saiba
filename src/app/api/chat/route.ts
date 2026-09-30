@@ -1,4 +1,5 @@
 import { generateText } from "ai";
+import { answerAskBvs, type AskBvsClientContext, type AskBvsClientItem } from "@/lib/ask-bvs-flow";
 import { NextResponse } from "next/server";
 
 type Link = { label: string; href: string };
@@ -138,18 +139,58 @@ function relevantLinks(message: string): Link[] {
   return unique.length > 0 ? unique.slice(0, 3) : defaultAnswer.links.slice(0, 3);
 }
 
+function cleanContext(value: unknown): AskBvsClientContext {
+  if (!value || typeof value !== "object") return {};
+  const input = value as Record<string, unknown>;
+  const cleanList = (key: "history" | "follows"): AskBvsClientItem[] => {
+    const rows = Array.isArray(input[key]) ? input[key] : [];
+    return rows.slice(0, 8).flatMap((value: unknown) => {
+      if (!value || typeof value !== "object") return [];
+      const row = value as Record<string, unknown>;
+      if (typeof row.title !== "string" || !row.title.trim()) return [];
+      return [{
+        title: row.title.trim().slice(0, 160),
+        id: typeof row.id === "string" ? row.id.slice(0, 160) : undefined,
+        kind: typeof row.kind === "string" ? row.kind.slice(0, 32) : undefined,
+        subtitle: typeof row.subtitle === "string" ? row.subtitle.slice(0, 180) : undefined,
+        href: typeof row.href === "string" ? row.href.slice(0, 500) : undefined,
+      }];
+    });
+  };
+  return { history: cleanList("history"), follows: cleanList("follows") };
+}
+
 export async function POST(request: Request) {
   let message = "";
   let path = "";
+  let context: AskBvsClientContext = {};
   try {
-    const body = (await request.json()) as { message?: unknown; path?: unknown };
+    const body = (await request.json()) as { message?: unknown; path?: unknown; context?: unknown };
     message = typeof body.message === "string" ? body.message.trim().slice(0, 500) : "";
+    context = cleanContext(body.context);
     path = typeof body.path === "string" && body.path.startsWith("/") ? body.path.slice(0, 180) : "";
   } catch {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
+
+  try {
+    const followUpdates = /(new|latest|happening|recent).*(follow|following)|(?:follow|following).*(new|latest|happening|recent)|creators i follow|people i follow/i.test(message);
+    if (followUpdates) {
+      const follows = (context.follows || []).slice(0, 5);
+      const answers = await Promise.all(follows.map((follow) => answerAskBvs(`What's new from ${follow.title}?`)));
+      const objects = answers.flatMap((answer) => answer.objects).filter((object, index, rows) => rows.findIndex((item) => item.id === object.id && item.kind === object.kind) === index).slice(0, 6);
+      return NextResponse.json({
+        reply: objects.length ? "Here’s the newest published BVS activity I could match from creators you follow." : follows.length ? "I couldn’t find recent published activity for the creators you follow." : "Follow a creator and I can bring their published activity back to you.",
+        objects, links: [{ label: "Your Library", href: "/library" }], mode: "flow",
+      }, { headers: { "Cache-Control": "no-store" } });
+    }
+    const answer = await answerAskBvs(message, context);
+    if (answer.mode === "flow") return NextResponse.json(answer, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    console.error("Ask BVS discovery unavailable", error instanceof Error ? error.message : error);
+  }
 
   const fallback = guideAnswer(message);
   if (!process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) return NextResponse.json(fallback);
