@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { trackEvent } from "@/lib/analytics";
@@ -65,19 +66,17 @@ const legacyStudioAnchors = new Set([
 ]);
 
 export default function CreatorStudioHome() {
+  const router = useRouter();
   const [data, setData] = useState<WorkspaceData | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => isSupabaseConfigured() ? "" : "Account service is not configured.");
 
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, "");
     if (hash && legacyStudioAnchors.has(hash)) {
-      window.location.replace(`/creator/studio/manage#${hash}`);
+      router.replace(`/creator/studio/manage#${hash}`);
       return;
     }
-    if (!isSupabaseConfigured()) {
-      setError("Account service is not configured.");
-      return;
-    }
+    if (!isSupabaseConfigured()) return;
     void createClient()
       .auth.getSession()
       .then(async ({ data: sessionData }) => {
@@ -99,7 +98,7 @@ export default function CreatorStudioHome() {
         trackEvent("studio_open", { role: payload.profile?.role || "unknown" });
       })
       .catch(() => setError("Could not open Studio."));
-  }, []);
+  }, [router]);
 
   const uploadStatus = useMemo(() => {
     const sessions = data?.uploadSessions || [];

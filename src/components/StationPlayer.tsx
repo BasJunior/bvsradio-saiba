@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Capacitor } from "@capacitor/core";
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { StationTrack } from "@/lib/station";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
@@ -182,6 +183,7 @@ function shuffleArray<T>(items: T[]) {
 }
 
 export function StationPlayerProvider({ tracks: initialTracks, children }: { tracks: StationTrack[]; children: React.ReactNode }) {
+  const pathname = usePathname();
   const audio = useRef<HTMLAudioElement>(null);
   const playRequest = useRef(0);
   const startedAt = useRef<number | null>(null);
@@ -412,17 +414,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, [signedIn]);
 
   useEffect(() => {
-    const syncEditorialPage = () => {
-      const path = window.location.pathname;
-      editorialPageRef.current =
-        path === "/editorial" ||
-        path.startsWith("/editorial/") ||
-        path.startsWith("/admin/editorial");
-    };
-    syncEditorialPage();
-    window.addEventListener("popstate", syncEditorialPage);
-    return () => window.removeEventListener("popstate", syncEditorialPage);
-  }, []);
+    editorialPageRef.current = pathname === "/editorial" || pathname.startsWith("/editorial/") || pathname.startsWith("/admin/editorial");
+  }, [pathname]);
 
   const index = useMemo(() => {
     if (!current) return 0;
@@ -452,7 +445,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const fillUpNext = useCallback(
     (seed: StationTrack | undefined, existing: QueueItem[], preferUserKeep = true) => {
-      if (editorialPageRef.current || editorialHoldRef.current || isEditorialPlay(seed)) {
+      if (editorialHoldRef.current || isEditorialPlay(seed)) {
         return existing.filter((item) => item.source !== "station");
       }
       if (isBeatTrack(seed) || existing.some((item) => isBeatTrack(item.track))) {
@@ -940,13 +933,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         let nextQueue = [...queue];
         let nextItem = nextQueue.shift();
 
-        if (!nextItem && autoplayRef.current && !editorialPageRef.current && !editorialHoldRef.current) {
+        if (!nextItem && autoplayRef.current && !editorialHoldRef.current) {
           const seed = nowRef.current?.track;
           nextQueue = fillUpNext(seed, []);
           nextItem = nextQueue.shift();
         }
 
-        if (!nextItem && pool.length && !inBeat && !editorialPageRef.current && !editorialHoldRef.current) {
+        if (!nextItem && pool.length && !inBeat && !editorialHoldRef.current) {
           const i = nowRef.current ? pool.findIndex((t) => trackKey(t) === trackKey(nowRef.current!.track)) : 0;
           const t = pool[(Math.max(0, i) + 1) % pool.length];
           nextItem = makeQueueItem(t, "station");

@@ -35,3 +35,11 @@ Scope: main changes since the dark-only change `a204784`, through `6e20bcf` (36 
 ## Release boundary
 
 Changes are prepared on `saiba/recent-change-audit-2026-09-30` for review. No production database writes, migration execution, merge or alias promotion was performed by this audit. Native lock-screen and real backend upload/payment acceptance remain outside the local test evidence.
+
+## Studio / Editorial continuous-playback follow-up
+
+The Studio legacy-anchor shortcut used `window.location.replace`, and Editorial title/identity saves used `window.location.reload`. Both destroyed the root audio element. Studio now uses the Next router; Editorial now reloads only the affected data sections after a successful authenticated metadata save. Editorial preview playback already uses the shared root player and is requested explicitly by Play; merely entering the workspace does not claim or stop audio.
+
+Station queue refill and advancement no longer stop because the listener visits Editorial; explicitly playing an Editorial review still retains its review boundary. The route classification now follows App Router pathname changes.
+
+Verification: final typecheck and all production build gates passed. Chrome navigation with a local silent audio fixture preserved the same document/audio element and active advancing playback across Studio, the legacy #insights redirect to Manage, Editorial, and Editorial catalogue. Metadata save handlers were exercised with successful mocked API responses; authenticated production editing was not performed. Temporary browser fixture route was removed before release.

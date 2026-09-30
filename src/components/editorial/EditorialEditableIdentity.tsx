@@ -2,6 +2,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { EDITORIAL_METADATA_SAVED_EVENT } from '@/lib/editorial-events'
 import { createClient } from '@/lib/supabase'
 import { creatorPublicName, producerPublicName } from '@/lib/public-name'
 
@@ -103,7 +104,7 @@ export default function EditorialEditableIdentity({
       const body = await response.json().catch(() => ({})) as { error?: string }
       if (!response.ok) throw new Error(body.error || 'Could not save public metadata.')
       setEditing(false)
-      window.location.reload()
+      window.dispatchEvent(new CustomEvent(EDITORIAL_METADATA_SAVED_EVENT, { detail: { kind } }))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save public metadata.')
     } finally {
@@ -210,7 +211,7 @@ export function EditorialReleaseTrackTitleEditor({
       const body = await response.json().catch(() => ({})) as { error?: string }
       if (!response.ok) throw new Error(body.error || 'Could not save track title.')
       setEditing(false)
-      window.location.reload()
+      window.dispatchEvent(new CustomEvent(EDITORIAL_METADATA_SAVED_EVENT, { detail: { kind: 'release' } }))
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not save track title.')
     } finally {
