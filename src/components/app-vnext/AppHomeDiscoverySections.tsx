@@ -1,7 +1,8 @@
 import Image from "next/image";
 import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import Link from "next/link";
-import { getPublishedArtists } from "@/lib/artist-content";
+import { getPublishedArtists, getPublishedProducers } from "@/lib/artist-content";
+import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import { fairDailyOrder } from "@/lib/fair-discovery-order";
 import { getPublicProgrammes } from "@/lib/station-content";
 import type { MobileSurface } from "@/lib/station-library";
@@ -18,46 +19,21 @@ async function withTimeout<T>(work: Promise<T>, fallback: T): Promise<T> {
 }
 
 export default async function AppHomeDiscoverySections({ surface }: { surface: MobileSurface }) {
-  const [artistRows, shows] = await Promise.all([
+  const [artistRows, producerRows, shows] = await Promise.all([
     withTimeout(getPublishedArtists(), []),
+    withTimeout(getPublishedProducers(), []),
     withTimeout(getPublicProgrammes(), []),
   ]);
   const artists = fairDailyOrder(artistRows, "artists");
+  const producers = fairDailyOrder(producerRows, "producers");
   const base = `/app/${surface}`;
 
   return (
     <>
-      {artists.length ? (
-        <section data-home-accent="discover" className="mt-11">
-          <div className="flex items-end justify-between gap-4">
-            <div>
-              <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">On our radar</p>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Artists worth knowing.</h2>
-            </div>
-            <Link href={`${base}/explore`} className="shrink-0 text-sm font-semibold text-white/58 transition hover:text-brand">See all →</Link>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
-            {artists.slice(0, 6).map((artist) => (
-              <Link
-                key={artist.id}
-                href={`${base}/creator/${encodeURIComponent(artist.id)}`}
-                className="group min-w-0 rounded-[1.4rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.045]"
-              >
-                <div className="relative aspect-square overflow-hidden rounded-[1.05rem] bg-white/[.04]">
-                  {artist.image ? (
-                    <Image src={artist.image} alt="" fill unoptimized className="object-cover transition duration-500 group-hover:scale-[1.025]" />
-                  ) : (
-                    <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Artist</span>
-                  )}
-                </div>
-                <h3 className="mt-3 truncate px-1 font-semibold">{artist.name}</h3>
-                <p className="truncate px-1 pb-1 text-xs text-white/38">{artist.role}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <div data-home-accent="discover" className="bvs-app-creator-bands">
+        <CreatorPortraitRail title="Artists" tone="paper" allHref={`${base}/explore?kind=artists`} items={artists.slice(0, 18).map(artist => ({ id: artist.id, name: artist.name, image: artist.image, href: `${base}/creator/${encodeURIComponent(artist.id)}`, detail: `${artist.trackCount} published ${artist.trackCount === 1 ? "track" : "tracks"}` }))} />
+        <CreatorPortraitRail title="Producers" tone="ink" allHref={`${base}/explore?kind=producers`} items={producers.slice(0, 18).map(producer => ({ id: producer.id, name: producer.name, image: producer.image, href: `${base}/creator/${encodeURIComponent(producer.id)}`, detail: `${producer.beatCount} ${producer.beatCount === 1 ? "beat" : "beats"} · BeatStore` }))} />
+      </div>
 
       {shows.length ? (
         <section data-home-accent="shows" className="mt-12">

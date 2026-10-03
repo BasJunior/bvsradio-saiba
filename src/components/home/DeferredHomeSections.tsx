@@ -8,6 +8,7 @@ const PublishedArtistsShelf = dynamic(() => import("@/components/PublishedArtist
 const PublishedAlbumsShelf = dynamic(() => import("@/components/PublishedAlbumsShelf"), { ssr: false });
 const HomeBeatRail = dynamic(() => import("@/components/flow/HomeBeatRail"), { ssr: false });
 const HomePublicPlaylistRail = dynamic(() => import("@/components/home/HomePublicPlaylistRail"), { ssr: false });
+const HomeCreatorBands = dynamic(() => import("@/components/home/HomeCreatorBands"), { ssr: false });
 
 function DeferredMount({
   children,
@@ -60,6 +61,10 @@ export function DeferredHomeEngagementHub() {
       <HomeEngagementHub />
     </DeferredMount>
   );
+}
+
+export function DeferredHomeCreatorBands() {
+  return <DeferredMount name="creator-bands" placeholderClassName="min-h-[36rem]"><HomeCreatorBands /></DeferredMount>;
 }
 
 export function DeferredPublishedArtistsShelf({ limit = 6 }: { limit?: number }) {

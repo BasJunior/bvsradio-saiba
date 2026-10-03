@@ -35,7 +35,7 @@
     "test:marketplace-experience": "node scripts/marketplace-seller-api-tests.mjs && node scripts/marketplace-availability-tests.mjs && node scripts/marketplace-storefront-media-tests.mjs && node scripts/marketplace-message-tests.mjs",
     "test:growth-activation": "node scripts/growth-activation-tests.mjs",
     "test:creator-next-move": "node --experimental-strip-types scripts/creator-next-move-tests.mjs",
-    "test:home-accents": "node scripts/home-accent-tests.mjs",
+    "test:home-accents": "node scripts/home-accent-tests.mjs && node scripts/creator-portrait-rail-tests.mjs",
     "test:studio-ui": "node scripts/studio-ui-tests.mjs",
     "test:cross-surface-ui": "node scripts/cross-surface-ui-tests.mjs",
     "test:order-receipt-pdf": "node scripts/order-receipt-pdf-tests.mjs",

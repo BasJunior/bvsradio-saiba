@@ -75,7 +75,7 @@ assert.ok(
 );
 assert.ok(
   homePage.includes("<DeferredHomeEngagementHub />") &&
-    homePage.includes("<DeferredPublishedArtistsShelf limit={6} />") &&
+    homePage.includes("<DeferredHomeCreatorBands />") &&
     homePage.includes("<DeferredPublishedAlbumsShelf />") &&
     homePage.includes("<DeferredHomeBeatRail />") &&
     homePage.includes("<DeferredHomePublicPlaylistRail />") &&
