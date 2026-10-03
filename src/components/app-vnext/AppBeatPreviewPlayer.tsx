@@ -1,5 +1,6 @@
 "use client";
 
+import DiscoverMoreActions from "@/components/DiscoverMoreActions";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
@@ -32,6 +33,7 @@ export default function AppBeatPreviewPlayer({
   genre,
   beatId,
   surface,
+  compact = false,
 }: {
   title: string;
   artist: string;
@@ -40,6 +42,7 @@ export default function AppBeatPreviewPlayer({
   genre?: string;
   beatId?: string;
   surface?: "ios" | "android";
+  compact?: boolean;
 }) {
   const player = useStationPlayer();
   const timeline = useStationPlayerProgress();
@@ -109,6 +112,36 @@ export default function AppBeatPreviewPlayer({
 
   const detailPath = beatId && surface ? `/app/${surface}/beat/${encodeURIComponent(beatId)}` : "";
 
+  const extras = <>
+      {beatId ? <div className="mt-3 flex flex-wrap items-center gap-2"><AppPlaylistPicker beatId={beatId} compact /></div> : null}
+
+      {!sessionLoading && beatId && surface && !signedIn ? (
+        <div className="mt-3 rounded-xl border border-brand/20 bg-brand/[.055] p-3">
+          <p className="text-xs leading-5 text-white/58">Hear a {GUEST_BEAT_PREVIEW_SECONDS}-second tagged preview now. Sign in or join BVS to hear the full tagged beat preview before choosing a licence.</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Link href={`/app/${surface}/login?next=${encodeURIComponent(detailPath)}`} className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-xs font-semibold text-black">Sign in for full preview</Link>
+            <Link href={`/app/${surface}/join?next=${encodeURIComponent(detailPath)}`} className="inline-flex min-h-9 items-center rounded-full border border-brand/30 px-3 text-xs font-semibold text-brand">Join BVS</Link>
+          </div>
+        </div>
+      ) : null}
+
+      {!sessionLoading && signedIn && beatId ? (
+        <div className="mt-3 text-xs leading-5 text-white/45">
+          {accessLoading
+            ? "Full tagged preview unlocked with your BVS account. Checking your licence…"
+            : access?.owned
+              ? "Full tagged preview unlocked. Your purchased licence also unlocks the Lyrics Pad and licensed workflow."
+              : "Full tagged preview unlocked with your BVS membership. Listening access is not a beat licence — choose a licence before using or releasing it."}
+          {access?.owned ? (
+            <a href={`https://bvsradio.com/beat/${encodeURIComponent(beatId)}#beat-writing`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex font-semibold text-brand">Open your licensed Lyrics Pad on BVS web →</a>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-2 text-xs text-white/38">Plays through the persistent BVS player so another recording is paused automatically.</p>
+      )}
+      {compact && detailPath ? <Link href={detailPath} className="inline-flex min-h-11 items-center text-sm text-brand">View beat and licences →</Link> : null}
+  </>;
+
   return (
     <div className="mt-3 rounded-2xl border border-white/[.08] bg-black/20 px-4 py-3" data-bvs-beat-preview-player data-bvs-member-full-preview={memberListening ? "true" : "false"}>
       <div className="flex items-center gap-3">
@@ -139,32 +172,8 @@ export default function AppBeatPreviewPlayer({
         </div>
       </div>
 
-      {beatId ? <div className="mt-3 flex flex-wrap items-center gap-2"><AppPlaylistPicker beatId={beatId} compact /></div> : null}
+      {compact ? <DiscoverMoreActions title={title}>{extras}</DiscoverMoreActions> : extras}
 
-      {!sessionLoading && beatId && surface && !signedIn ? (
-        <div className="mt-3 rounded-xl border border-brand/20 bg-brand/[.055] p-3">
-          <p className="text-xs leading-5 text-white/58">Hear a {GUEST_BEAT_PREVIEW_SECONDS}-second tagged preview now. Sign in or join BVS to hear the full tagged beat preview before choosing a licence.</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Link href={`/app/${surface}/login?next=${encodeURIComponent(detailPath)}`} className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-xs font-semibold text-black">Sign in for full preview</Link>
-            <Link href={`/app/${surface}/join?next=${encodeURIComponent(detailPath)}`} className="inline-flex min-h-9 items-center rounded-full border border-brand/30 px-3 text-xs font-semibold text-brand">Join BVS</Link>
-          </div>
-        </div>
-      ) : null}
-
-      {!sessionLoading && signedIn && beatId ? (
-        <div className="mt-3 text-xs leading-5 text-white/45">
-          {accessLoading
-            ? "Full tagged preview unlocked with your BVS account. Checking your licence…"
-            : access?.owned
-              ? "Full tagged preview unlocked. Your purchased licence also unlocks the Lyrics Pad and licensed workflow."
-              : "Full tagged preview unlocked with your BVS membership. Listening access is not a beat licence — choose a licence before using or releasing it."}
-          {access?.owned ? (
-            <a href={`https://bvsradio.com/beat/${encodeURIComponent(beatId)}#beat-writing`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex font-semibold text-brand">Open your licensed Lyrics Pad on BVS web →</a>
-          ) : null}
-        </div>
-      ) : (
-        <p className="mt-2 text-xs text-white/38">Plays through the persistent BVS player so another recording is paused automatically.</p>
-      )}
     </div>
   );
 }

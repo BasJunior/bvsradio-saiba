@@ -10,6 +10,7 @@ import { trackEvent } from '@/lib/analytics'
 import type { PublishedArtistSummary, PublishedProducerSummary } from '@/lib/artist-content'
 import { blogPosts } from '@/lib/blog'
 import { officialBvsServices } from '@/lib/official-services'
+import DiscoverMoreActions from '@/components/DiscoverMoreActions'
 import DiscoverShelves from '@/components/DiscoverShelves'
 import { buildDiscoveryShelves, discoverySounds, matchesSound, soundKey, toDiscoveryTrack, type SearchItem, type SearchKind } from '@/lib/discovery-experience'
 import { useStationPlayer } from '@/components/StationPlayer'
@@ -361,7 +362,7 @@ export default function SearchPage() {
   }
   const activeMode = exploreModes.find(item => item.value === mode) || exploreModes[0]
 
-  return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 pb-12 pt-8 sm:px-6">
+  return <main className="bvs-square-discover mx-auto min-h-[70vh] max-w-7xl px-4 pb-12 pt-8 sm:px-6">
     <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Discover BVS</p>
     <h1 className="text-3xl md:text-4xl">Find your next favourite</h1>
     <p className="mt-3 max-w-2xl text-text-secondary">Press play on a new sound. Meet the artist. Follow what moves you.</p>
@@ -370,7 +371,7 @@ export default function SearchPage() {
     {flowV2Flags.exploreModes && !query.trim() ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${mode === item.value ? 'bg-brand text-black' : 'border border-white/10 bg-white/[.03] text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
     {query.trim() || filter !== 'all' ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter results">{filters.map(item => <button key={item.value} onClick={() => { setFilter(item.value); setResultLimit(40) }} aria-pressed={filter === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${filter === item.value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
 
-    {sounds.length ? <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Browse by sound"><span className="mr-1 text-xs text-text-secondary">Browse by sound</span><button type="button" aria-pressed={!genre} onClick={() => setGenre('')} className={`min-h-10 rounded-full border px-3 text-xs ${!genre ? 'border-brand/50 text-brand' : 'border-white/15 text-text-secondary'}`}>All sounds</button>{sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(sound.key); setRound(0) }} className={`min-h-10 rounded-full border px-3 text-xs ${genre === sound.key ? 'border-brand/50 bg-brand/10 text-brand' : 'border-white/15 text-text-secondary hover:text-white'}`}>{sound.label}</button>)}</div> : null}
+    {sounds.length ? <details className="bvs-discover-filters mt-4"><summary className="min-h-11 cursor-pointer text-sm text-text-secondary">Filter by sound{genre ? ` · ${genre}` : ''}</summary><div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Browse by sound"><span className="mr-1 text-xs text-text-secondary">Browse by sound</span><button type="button" aria-pressed={!genre} onClick={() => setGenre('')} className={`min-h-10 rounded-full border px-3 text-xs ${!genre ? 'border-brand/50 text-brand' : 'border-white/15 text-text-secondary'}`}>All sounds</button>{sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(sound.key); setRound(0) }} className={`min-h-10 rounded-full border px-3 text-xs ${genre === sound.key ? 'border-brand/50 bg-brand/10 text-brand' : 'border-white/15 text-text-secondary hover:text-white'}`}>{sound.label}</button>)}</div></details> : null}
     {genre && !sounds.some(sound => sound.key === genre) ? <button type="button" onClick={() => setGenre('')} className="mt-3 min-h-10 text-sm text-brand">Clear sound filter: {genre}</button> : null}
     {unavailable ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/15 p-3 text-sm text-text-secondary"><span>Some discoveries could not be loaded. You can still explore what is here.</span><button type="button" onClick={() => { setLoaded(false); setUnavailable(false); setLoadAttempt(value => value + 1) }} className="min-h-10 rounded-full border border-white/20 px-4 text-white">Retry loading</button></div> : null}
     {discoveryHome && shelves.length ? <DiscoverShelves shelves={shelves} round={round} onMore={() => { setRound(value => value + 1); trackEvent('explore_rail_open', { genre: genre || 'all' }) }} onBrowse={browseShelf} onDetails={openResult} /> : null}
@@ -383,7 +384,10 @@ export default function SearchPage() {
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           {group.items.map(item => <article key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-3 transition hover:border-brand/35">
-            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</div>
+            {toDiscoveryTrack(item) ? <button type="button" onClick={() => playResult(item)} aria-label={`${player.current?.id === toDiscoveryTrack(item)?.id && player.isPlaying ? 'Pause' : item.kind === 'beat' ? 'Preview' : 'Play'} ${item.title}`} className="relative shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
+<span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/25 text-white">{player.current?.id === toDiscoveryTrack(item)?.id && player.isPlaying ? 'Ⅱ' : '▶'}</span></button> : item.detail ? <button type="button" onClick={() => openResult(item)} aria-label={`Details for ${item.title}`} className="shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
+</button> : <Link href={item.href} aria-label={`Open ${item.title}`} className="shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
+</Link>}
             {item.detail ? (
               <button type="button" onClick={() => openResult(item)} className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || item.kind}</span>
@@ -397,21 +401,10 @@ export default function SearchPage() {
                 <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
               </Link>
             )}
-            {['track','artist','producer'].includes(item.kind) ? (
-              <div className="flex flex-wrap items-center gap-2">
-                {toDiscoveryTrack(item) ? <button type="button" onClick={() => playResult(item)} aria-label={`Play ${item.title}`} className="min-h-11 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black">{player.current?.id === item.detail?.id && player.isPlaying ? 'Pause' : 'Play'}</button> : null}
-                <div data-flow-detail-skip="true"><LibraryAction item={{ ...item, kind: item.kind === 'track' ? 'track' : 'artist' }} section={item.kind === 'track' ? 'favourites' : 'follows'} compact /></div>
-                {item.detail ? <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-brand hover:border-brand">Details</button> : item.kind === 'track' ? <Link {...flowDetailProps(item)} href={item.href} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-brand hover:border-brand">Details</Link> : null}
-              </div>
-            ) : item.kind === 'beat' && toDiscoveryTrack(item) ? (
-              <div className="flex flex-wrap gap-2"><button type="button" onClick={() => playResult(item)} aria-label={`Preview ${item.title}`} className="min-h-11 rounded-full bg-brand px-3 text-xs font-semibold text-black">Preview</button><button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-3 text-xs text-brand">Details</button></div>
-            ) : item.detail ? (
-              <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">Details</button>
-            ) : supportsContextDetails(item.kind) ? (
-              <Link {...flowDetailProps(item)} href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">Details</Link>
-            ) : (
-              <Link href={item.href} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">{item.kind === 'story' ? 'Read' : item.kind === 'playlist' ? 'Open playlist' : 'Open'}</Link>
-            )}
+            {['track','artist','producer','beat'].includes(item.kind) ? <DiscoverMoreActions title={item.title}>
+              <LibraryAction item={{ ...item, kind: item.kind === 'beat' ? 'beat' : item.kind === 'track' ? 'track' : 'artist' }} section={item.kind === 'artist' || item.kind === 'producer' ? 'follows' : 'favourites'} compact />
+              {item.detail ? <button type="button" onClick={() => openResult(item)} className="min-h-11 text-left text-sm text-brand">View details</button> : <Link {...flowDetailProps(item)} href={item.href} className="inline-flex min-h-11 items-center text-sm text-brand">View details →</Link>}
+            </DiscoverMoreActions> : null}
           </article>)}
         </div>
         {filter !== 'all' && results.filter(item => item.kind === group.kind).length > group.items.length ? <button type="button" onClick={() => setResultLimit(value => value + 40)} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more {headings[group.kind].toLowerCase()} →</button> : null}
