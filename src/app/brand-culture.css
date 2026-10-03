@@ -1,0 +1,70 @@
+/* BVS poster language: acid green, lilac and ice blue, shared by web and native surfaces. */
+:root {
+  --bvs-culture-lilac: #c1a7ff;
+  --bvs-culture-ice: #a3dbff;
+}
+.bvs-page-main h1 {
+  font-weight: 800;
+  letter-spacing: -.045em;
+}
+.bvs-poster-title.bvs-poster-title {
+  max-width: 11ch;
+  font-size: clamp(3rem, 7vw, 5.8rem);
+  font-weight: 900;
+  line-height: .94;
+  letter-spacing: -.055em;
+  text-transform: uppercase;
+  color: var(--bvs-culture-ice);
+}
+.bvs-culture-sticker {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem .75rem;
+  border-radius: .35rem;
+  background: var(--color-brand);
+  color: #101207;
+  font-size: .7rem;
+  font-weight: 800;
+  line-height: 1.4;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  transform: rotate(-2deg);
+}
+.bvs-culture-sticker svg { width: 1rem; height: 1rem; flex-shrink: 0; }
+.bvs-culture-listen {
+  border-color: rgb(193 167 255 / .35);
+  background: rgb(193 167 255 / .09);
+  box-shadow: 10px 10px 0 rgb(193 167 255 / .12);
+}
+.bvs-culture-station,
+[data-bvs-culture="station"] {
+  border-color: rgb(193 167 255 / .32);
+  background-color: #1e1929;
+}
+.bvs-app-home-hero { border-color: rgb(163 219 255 / .25); }
+.bvs-home-accent-card {
+  border-color: rgb(var(--bvs-home-rgb) / .25);
+  background: rgb(var(--bvs-home-rgb) / .055);
+}
+.bvs-home-accent-card:hover { background: rgb(var(--bvs-home-rgb) / .1); }
+.bvs-home-accent-label { font-weight: 800; }
+.bvs-feed-lane[aria-pressed="true"] { background: rgb(var(--bvs-section-rgb) / .18); }
+.bvs-participation-composer { background-image: linear-gradient(135deg, rgb(193 167 255 / .07), transparent); }
+.bvs-page-main :is(a, button, input, textarea, select):focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 4px;
+}
+@media (max-width: 639px) {
+  .bvs-poster-title.bvs-poster-title { font-size: clamp(2.7rem, 11.5vw, 4.3rem); }
+  .bvs-culture-listen { box-shadow: 5px 5px 0 rgb(193 167 255 / .12); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bvs-home-accent-card { transition: none; }
+}
+@media (forced-colors: active) {
+  .bvs-poster-title.bvs-poster-title { color: CanvasText; }
+  .bvs-culture-sticker { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+  .bvs-culture-listen, .bvs-culture-station, [data-bvs-culture="station"] { border-color: CanvasText; box-shadow: none; }
+  .bvs-page-main :is(a, button, input, textarea, select):focus-visible { outline-color: Highlight; }
+}

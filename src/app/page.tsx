@@ -1,3 +1,4 @@
+import BvsStar from "@/components/branding/BvsStar";
 import Image from "next/image";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -41,7 +42,7 @@ export default function HomePage() {
         aria-hidden="true"
         style={{
           background:
-            "radial-gradient(circle at 20% 4%, rgba(212,175,55,.15), transparent 30%), radial-gradient(circle at 82% 12%, rgba(104,86,255,.10), transparent 28%)",
+            "radial-gradient(circle at 20% 4%, rgba(196,243,67,.09), transparent 30%), radial-gradient(circle at 82% 12%, rgba(193,167,255,.12), transparent 28%)",
         }}
       />
 
@@ -54,11 +55,12 @@ export default function HomePage() {
               <span className="text-text-secondary">Built in Zimbabwe · Open to the world</span>
             </div>
 
-            <h1 className="mt-5 max-w-3xl text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl lg:text-[3.65rem]">
+            <div className="bvs-culture-sticker mt-5"><BvsStar /> Your next obsession</div>
+            <h1 className="bvs-poster-title mt-5 max-w-3xl text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl lg:text-[3.65rem]">
               Music moves differently here.
             </h1>
             <p className="mt-4 max-w-xl text-pretty text-base leading-relaxed text-text-secondary sm:text-lg">
-              Live radio, new music and creator tools in one connected BVS experience — built for listeners finding what is next and artists ready to move.
+              New sounds. Real people. Your next favourite. Tap into the rotation, discover artists and make your own noise.
             </p>
 
             <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
@@ -74,7 +76,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div id="listen" className="min-w-0 scroll-mt-24 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-2 shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur-sm sm:p-3">
+          <div id="listen" className="bvs-culture-listen min-w-0 scroll-mt-24 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-2 shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur-sm sm:p-3">
             <HomeListenPanel />
           </div>
         </div>

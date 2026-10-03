@@ -11,7 +11,7 @@ export default function AppHomeStationCard() {
   };
 
   return (
-    <section id="listen" className="scroll-mt-24 rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 sm:p-6" aria-labelledby="app-station-heading">
+    <section id="listen" data-bvs-culture="station" className="scroll-mt-24 rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5 sm:p-6" aria-labelledby="app-station-heading">
       <div className="flex flex-wrap items-center gap-4">
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">BVS rotation</p>
