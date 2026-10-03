@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase";
+import { useBrowserSession } from "@/lib/use-browser-session";
 import StudioMoneySummary from "@/components/StudioMoneySummary";
 
 const sectionLinks = [
@@ -41,25 +41,9 @@ const workspaceLinks: WorkspaceLink[] = [
 
 export default function StudioProductionShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const [token, setToken] = useState("");
+  const { session } = useBrowserSession();
+  const token = session?.access_token || "";
   const [availableSections, setAvailableSections] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-    let active = true;
-    createClient()
-      .auth.getSession()
-      .then(({ data }) => {
-        if (!active) return;
-        setToken(data.session?.access_token || "");
-      })
-      .catch(() => {
-        if (active) setToken("");
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     const refreshSections = () => {
@@ -83,13 +67,13 @@ export default function StudioProductionShell({ children }: { children: ReactNod
   );
 
   return (
-    <>
+    <div className="bvs-square-studio">
       <div className="sticky top-16 z-40 border-b border-white/10 bg-bg-primary/90 backdrop-blur-xl supports-[backdrop-filter]:bg-bg-primary/80">
         <div className="mx-auto max-w-6xl px-5 py-3 sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p data-studio-accent="core" className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.22em]">Creator Studio</p>
-              <p className="mt-0.5 truncate text-xs text-text-secondary">Create, manage, sell and get paid without hunting through the workspace.</p>
+              <p className="mt-0.5 truncate text-xs text-text-secondary">Create. Publish. Get paid.</p>
             </div>
             <Link href="/marketplace" data-studio-accent="marketplace" className="bvs-studio-accent-button hidden shrink-0 rounded-full border px-4 py-2 text-xs font-semibold sm:inline-flex">Public Marketplace</Link>
           </div>
@@ -137,10 +121,10 @@ export default function StudioProductionShell({ children }: { children: ReactNod
               </div>
               <Link href="/creator/studio/earnings" className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm font-semibold">Open full wallet →</Link>
             </div>
-            <div className="mt-5 border-t border-white/10 pt-4"><StudioMoneySummary token={token} /></div>
+            <div className="mt-5 border-t border-white/10 pt-4"><StudioMoneySummary key={session?.user.id} token={token} /></div>
           </div>
         </section>
       )}
-    </>
+    </div>
   );
 }

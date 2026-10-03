@@ -39,3 +39,12 @@ This was a repository-wide inventory and checks run, with focused code review of
 5. **Maintainability:** Large player/catalogue/marketplace components combine fetching, account state, navigation and rendering. Incremental extraction into stable domain components/hooks will make future design changes easier to review and less likely to regress playback or purchases. Avoid a broad rewrite during this reliability release.
 
 The corrected flows are stronger, but these remaining limits prevent an honest “10/10, no mistakes” claim.
+
+## Library and Creator Studio follow-up
+
+- Web and native Library now use square corners, charcoal metric cells, section divider lines, and a disclosure for secondary collections. Native duplicated activity/download callouts are replaced by playable recent rows; each track has one play control. Web track rows play cleared station tracks directly and keep playlist/removal actions in an inline More menu.
+- Creator Studio uses the square system across web shell and native nested routes, retaining semantic accents including purple BeatStore. Native tool cards use one navigation indicator and clearer section dividers; creator-facing copy is shorter.
+- Account JSON reads now immediately hide a previous owner's data, abort superseded requests, and have a 12-second deadline. This covers Library metadata, web/native Studio dashboards and native release workspace. Web session listeners consume supplied auth sessions and reject late initial-session results. Library caches expose stable external-store snapshots and notify on owner changes. Lyrics Pad creation has a deadline and cannot navigate after its account view unmounts.
+- Behavioral tests execute the actual hooks/cache functions for account isolation, late responses, revoked access, request deadlines, malformed cache, owner-change notifications and the initial-auth race. Existing entitlement, iOS, submission-state and workspace-playback checks remain in the build.
+- Validation: full production build, TypeScript and changed-component ESLint passed. Whole `src` ESLint: 63 errors / 44 warnings, down from 71 / 44 before this follow-up. Existing remaining findings are not suppressed.
+- Live guest-page and iOS web-surface checks are performed after deployment. Authenticated creator uploads, purchases and physical iPhone/APNs tests remain outside the verified evidence; no production content or payment mutation is used for testing.

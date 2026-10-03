@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useAccountJson } from "@/lib/use-account-json";
 import ReleaseSubmitForm from "@/components/ReleaseSubmitForm";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
@@ -103,29 +104,16 @@ function ReleaseCard({ release, tracks, job, surface }: { release: Release; trac
 }
 
 export default function AppStudioReleaseClient({ surface }: { surface: AppSurface }) {
-  const { token, signedIn, loading: sessionLoading, access } = useAppSession();
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { user } = useAppSession();
+  return <AccountReleaseStudio key={user?.id || "guest"} surface={surface} />;
+}
+
+function AccountReleaseStudio({ surface }: { surface: AppSurface }) {
+  const { token, signedIn, loading: sessionLoading, access, user } = useAppSession();
+  const { data: workspace, loading, error, reload: load } = useAccountJson<Workspace>({ owner: user?.id || "", token, url: "/api/creator/workspace", enabled: Boolean(access?.artist) && !sessionLoading, errorMessage: "Could not load your release workspace." });
   const [success, setSuccess] = useState("");
 
-  const load = useCallback(async () => {
-    if (!token || !access?.artist) { setLoading(false); return; }
-    setLoading(true);
-    try {
-      const response = await fetch("/api/creator/workspace", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || "Could not load your release workspace.");
-      setWorkspace(payload as Workspace);
-      setError("");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Could not load your release workspace.");
-    } finally {
-      setLoading(false);
-    }
-  }, [access?.artist, token]);
 
-  useEffect(() => { if (!sessionLoading) void load(); }, [load, sessionLoading]);
 
   const jobsByRelease = useMemo(() => {
     const map = new Map<string, DistributionJob>();

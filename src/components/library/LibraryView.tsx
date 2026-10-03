@@ -1,16 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import { useStationPlayer } from "@/components/StationPlayer";
 import { useRouter } from "next/navigation";
-import { readLibrary, toggleLibraryItem } from "@/lib/library";
+import { toggleLibraryItem } from "@/lib/library";
 import type { DiscoveryItem } from "@/lib/discovery";
 import { useLibrarySync } from "@/components/LibrarySyncProvider";
 import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 import { appExplore } from "@/lib/app-surface";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase";
+import { isSupabaseConfigured } from "@/lib/supabase";
 import PlaylistQuickAdd from "@/components/library/PlaylistQuickAdd";
 import WebPlaylists from "@/components/library/WebPlaylists";
+import type { Session } from "@supabase/supabase-js";
+import { useBrowserSession } from "@/lib/use-browser-session";
+import { useLocalLibrary } from "@/lib/use-local-library";
+import { useAccountJson } from "@/lib/use-account-json";
 
 type ActiveSection = "all" | "liked" | "playlists" | "downloads" | "following" | "recent" | "saved-beats" | "licensed-beats";
 type OwnedBeat = {
@@ -57,10 +63,10 @@ function metaFor(section: ActiveSection) {
   return sectionMeta.find((item) => item.id === section) || sectionMeta[0];
 }
 
-function initialSection(): ActiveSection {
-  if (typeof window === "undefined") return "all";
-  const params = new URLSearchParams(window.location.search);
-  const requested = params.get("section") || window.location.hash.replace(/^#/, "");
+function initialSection(location: string): ActiveSection {
+  const [search, hash = ""] = location.split("#");
+  const params = new URLSearchParams(search);
+  const requested = params.get("section") || hash;
   const allowed = sectionMeta.map((item) => item.id);
   return allowed.includes(requested as ActiveSection) ? requested as ActiveSection : "all";
 }
@@ -76,141 +82,67 @@ function libraryAccent(section: ActiveSection) {
   return "library";
 }
 
+function subscribeLibraryLocation(callback: () => void) {
+  const events = ["popstate", "hashchange", "bvs:library-section-change"];
+  events.forEach(event => window.addEventListener(event, callback));
+  return () => events.forEach(event => window.removeEventListener(event, callback));
+}
+
 export default function LibraryView() {
+  const { session } = useBrowserSession();
+  return <AccountLibraryView key={session?.user.id || "guest"} session={session} />;
+}
+
+function AccountLibraryView({ session }: { session: Session | null }) {
   const router = useRouter();
-  const [active, setActive] = useState<ActiveSection>("all");
-  const [favourites, setFavourites] = useState<DiscoveryItem[]>([]);
-  const [following, setFollowing] = useState<DiscoveryItem[]>([]);
-  const [history, setHistory] = useState<DiscoveryItem[]>([]);
-  const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
-  const [downloads, setDownloads] = useState<LibraryDownload[]>([]);
-  const [libraryMetaLoading, setLibraryMetaLoading] = useState(false);
-  const [downloadsError, setDownloadsError] = useState("");
-  const [ownedBeats, setOwnedBeats] = useState<OwnedBeat[]>([]);
-  const [ownedLoading, setOwnedLoading] = useState(false);
-  const [ownedError, setOwnedError] = useState("");
+  const player = useStationPlayer();
+  const playableById = useMemo(() => new Map(player.tracks.filter(track => track.id).map(track => [track.id as string, track])), [player.tracks]);
+  const location = useSyncExternalStore(subscribeLibraryLocation, () => `${window.location.search}${window.location.hash}`, () => "");
+  const selected = initialSection(location);
+  const alive = useRef(true);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const [openingBeat, setOpeningBeat] = useState("");
-  const { state, signedIn, syncNow } = useLibrarySync();
+  const [actionError, setOwnedError] = useState("");
+  const { state, syncNow } = useLibrarySync();
+  const owner = session?.user.id || "";
+  const token = session?.access_token || "";
+  const signedIn = Boolean(session);
+  const favourites = useLocalLibrary("favourites", owner);
+  const following = useLocalLibrary("follows", owner);
+  const history = useLocalLibrary("history", owner);
+  const playlistRequest = useAccountJson<{ playlists?: PlaylistSummary[] }>({ owner, token, url: "/api/playlists" });
+  const downloadRequest = useAccountJson<{ downloads?: LibraryDownload[] }>({ owner, token, url: "/api/library/downloads", errorMessage: "Could not load downloads." });
+  const ownedRequest = useAccountJson<{ beats?: OwnedBeat[] }>({ owner, token, url: "/api/library/owned", errorMessage: "Could not load licences." });
+  const playlists = playlistRequest.data?.playlists || [];
+  const downloads = downloadRequest.data?.downloads || [];
+  const ownedBeats = ownedRequest.data?.beats || [];
+  const libraryMetaLoading = playlistRequest.loading || downloadRequest.loading;
+  const downloadsError = downloadRequest.error;
+  const ownedLoading = ownedRequest.loading;
+  const ownedError = actionError || ownedRequest.error;
   const { surface } = useAppSurface();
   const discoverHref = surface ? appExplore(surface) : "/search";
   const webOnly = !surface;
 
-  useEffect(() => { setActive(initialSection()); }, []);
-  useEffect(() => {
-    if (!webOnly && (active === "saved-beats" || active === "licensed-beats")) setActive("all");
-  }, [active, webOnly]);
+  const active = !webOnly && creatorSections.includes(selected) ? "all" : selected;
+  const reloadPlaylists = playlistRequest.reload;
 
   useEffect(() => {
-    const sync = () => {
-      setFavourites(readLibrary("favourites"));
-      setFollowing(readLibrary("follows"));
-      setHistory(readLibrary("history"));
-    };
-    sync();
-    window.addEventListener("bvs:library-change", sync);
-    window.addEventListener("storage", sync);
-    return () => {
-      window.removeEventListener("bvs:library-change", sync);
-      window.removeEventListener("storage", sync);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!signedIn || !isSupabaseConfigured()) {
-      setPlaylists([]);
-      setDownloads([]);
-      setLibraryMetaLoading(false);
-      setDownloadsError("");
-      return;
-    }
-    let cancelled = false;
-    setLibraryMetaLoading(true);
-    setDownloadsError("");
-    createClient().auth.getSession().then(async ({ data }) => {
-      const token = data.session?.access_token;
-      if (!token) return;
-      const headers = { Authorization: `Bearer ${token}` };
-      const [playlistResponse, downloadsResponse] = await Promise.all([
-        fetch("/api/playlists", { headers, cache: "no-store" }).catch(() => null),
-        fetch("/api/library/downloads", { headers, cache: "no-store" }).catch(() => null),
-      ]);
-      if (cancelled) return;
-      if (playlistResponse?.ok) {
-        const payload = await playlistResponse.json().catch(() => ({}));
-        setPlaylists(Array.isArray(payload.playlists) ? payload.playlists : []);
-      }
-      if (downloadsResponse?.ok) {
-        const payload = await downloadsResponse.json().catch(() => ({}));
-        setDownloads(Array.isArray(payload.downloads) ? payload.downloads : []);
-      } else if (downloadsResponse) {
-        const payload = await downloadsResponse.json().catch(() => ({}));
-        setDownloadsError(payload.error || "Could not load downloads.");
-      }
-    }).catch(() => {
-      if (!cancelled) setDownloadsError("Could not load downloads.");
-    }).finally(() => {
-      if (!cancelled) setLibraryMetaLoading(false);
-    });
-    return () => { cancelled = true; };
-  }, [signedIn]);
-
-  useEffect(() => {
-    const refresh = () => {
-      if (!signedIn || !isSupabaseConfigured()) return;
-      createClient().auth.getSession().then(async ({ data }) => {
-        const token = data.session?.access_token;
-        if (!token) return;
-        const response = await fetch("/api/playlists", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
-        if (!response?.ok) return;
-        const payload = await response.json().catch(() => ({}));
-        setPlaylists(Array.isArray(payload.playlists) ? payload.playlists : []);
-      });
-    };
-    window.addEventListener("bvs:playlists-change", refresh);
-    return () => window.removeEventListener("bvs:playlists-change", refresh);
-  }, [signedIn]);
-
-  useEffect(() => {
-    if (!webOnly || active !== "licensed-beats" || !signedIn || !isSupabaseConfigured()) {
-      if (!signedIn) setOwnedBeats([]);
-      return;
-    }
-    let cancelled = false;
-    setOwnedLoading(true);
-    setOwnedError("");
-    createClient()
-      .auth.getSession()
-      .then(async ({ data }) => {
-        const token = data.session?.access_token;
-        if (!token) throw new Error("Sign in to see your licences.");
-        const response = await fetch("/api/library/owned", {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload.error || "Could not load licences.");
-        if (!cancelled) setOwnedBeats(Array.isArray(payload.beats) ? payload.beats : []);
-      })
-      .catch((caught) => {
-        if (!cancelled) setOwnedError(caught instanceof Error ? caught.message : "Could not load licences.");
-      })
-      .finally(() => {
-        if (!cancelled) setOwnedLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [active, signedIn, webOnly]);
+    window.addEventListener("bvs:playlists-change", reloadPlaylists);
+    return () => window.removeEventListener("bvs:playlists-change", reloadPlaylists);
+  }, [reloadPlaylists]);
 
   const likedMusic = useMemo(() => favourites.filter(item => item.kind !== "beat"), [favourites]);
   const savedBeats = useMemo(() => favourites.filter(item => item.kind === "beat"), [favourites]);
 
   const changeSection = (section: ActiveSection) => {
-    setActive(section);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("section", section);
       url.hash = "";
       window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}`);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.dispatchEvent(new Event("bvs:library-section-change"));
+      window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
     }
   };
 
@@ -227,18 +159,19 @@ export default function LibraryView() {
     setOpeningBeat(beat.beatId);
     setOwnedError("");
     try {
-      const { data } = await createClient().auth.getSession();
-      const token = data.session?.access_token;
       if (!token) throw new Error("Sign in before opening Lyrics Pad.");
       const response = await fetch("/api/creator/song-workspaces", {
         method: "POST",
+        signal: AbortSignal.timeout(15000),
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ orderReference: beat.orderReference, beatId: beat.beatId }),
       });
       const payload = await response.json().catch(() => ({}));
+      if (!alive.current) return;
       if (!response.ok) throw new Error(payload.error || "Could not open Lyrics Pad.");
       router.push(`/creator/studio/songs/${payload.workspace.id}`);
     } catch (caught) {
+      if (!alive.current) return;
       setOwnedError(caught instanceof Error ? caught.message : "Could not open Lyrics Pad.");
       setOpeningBeat("");
     }
@@ -249,17 +182,21 @@ export default function LibraryView() {
     return <div className="space-y-3">
       {items.map(item => {
         const trackId = rawTrackId(item);
+        const track = item.kind === "track" ? playableById.get(item.id) || playableById.get(trackId) : undefined;
         return <div key={item.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-4">
+          {track ? <button type="button" aria-label={`Play ${item.title}`} onClick={() => player.playNow(track, { from: "Library" })} className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden border border-white/20 bg-white/5 text-brand">
+            {item.image ? <Image src={item.image} alt="" fill unoptimized className="object-cover" /> : null}<span className="relative grid h-full w-full place-items-center bg-black/25">▶</span>
+          </button> : null}
           <Link href={item.href} className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-brand">{item.kind === "beat" ? "Beat" : item.kind}</p>
             <h2 className="truncate font-medium">{item.title}</h2>
             <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
           </Link>
-          <div className="flex flex-wrap items-center gap-2">
+          {kind !== "recent" ? <details className="bvs-library-item-actions"><summary className="cursor-pointer px-3 py-3 text-sm text-text-secondary" aria-label={`More actions for ${item.title}`}>•••</summary><div className="flex flex-wrap items-center gap-2 border-t border-white/15 p-3">
             {kind === "liked" && trackId ? <PlaylistQuickAdd trackId={trackId} compact /> : null}
             {kind === "saved-beats" ? <Link href={item.href} className="min-h-10 rounded-full border border-brand/25 px-3 py-2 text-xs font-semibold text-brand">View beat</Link> : null}
-            {kind !== "recent" ? <button type="button" onClick={() => remove(kind === "following" ? "follows" : "favourites", item)} className="min-h-10 rounded-full border border-white/15 px-3 py-2 text-xs text-text-secondary hover:border-red-300/40 hover:text-red-200">{kind === "following" ? "Unfollow" : "Remove"}</button> : null}
-          </div>
+            <button type="button" onClick={() => remove(kind === "following" ? "follows" : "favourites", item)} className="min-h-10 rounded-full border border-white/15 px-3 py-2 text-xs text-text-secondary hover:border-red-300/40 hover:text-red-200">{kind === "following" ? "Unfollow" : "Remove"}</button>
+          </div></details> : <Link href={item.href} aria-label={`Open ${item.title}`} className="grid h-11 w-11 place-items-center text-text-secondary">→</Link>}
         </div>;
       })}
     </div>;
@@ -280,12 +217,12 @@ export default function LibraryView() {
   };
 
   return (
-    <div className="mx-auto min-h-[60vh] max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <div className="bvs-square-library mx-auto min-h-[60vh] max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <p data-library-accent="library" className="bvs-library-accent-label mb-3 text-xs uppercase tracking-[0.25em]">Your BVS</p>
           <h1 className="text-3xl font-semibold tracking-tight sm:text-5xl">Library</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">Everything you keep is one tap away. Liked music no longer pushes playlists, downloads or recent listening down the page.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">Your music. Your mixes. Your next listen.</p>
         </div>
         <Link href={discoverHref} data-library-accent="discover" className="bvs-library-accent-button rounded-full border px-4 py-2.5 text-sm font-semibold">Explore BVS →</Link>
       </div>
@@ -314,19 +251,19 @@ export default function LibraryView() {
             </button>;
           })}
         </nav>
-        <nav className="mt-2 flex gap-2 overflow-x-auto" aria-label="More library sections">
+        <details className="mt-2"><summary className="min-h-11 cursor-pointer py-3 text-sm text-text-secondary">More collections{!primarySections.includes(active) ? ` · ${metaFor(active).label}` : ""}</summary><nav className="flex flex-wrap gap-2 pb-2" aria-label="More library sections">
           {secondarySections.map(section => <button key={section} type="button" onClick={() => changeSection(section)} className="bvs-library-accent-button shrink-0 rounded-full border px-3 py-1.5 text-xs" data-library-accent={libraryAccent(section)} aria-pressed={active === section}>{metaFor(section).label}{typeof countFor(section) === "number" ? ` · ${countFor(section)}` : ""}</button>)}
           {webOnly ? creatorSections.map(section => <button key={section} type="button" onClick={() => changeSection(section)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs transition ${active === section ? "bg-white/10 text-brand" : "text-text-secondary hover:text-text-primary"}`}>{metaFor(section).label}{typeof countFor(section) === "number" ? ` · ${countFor(section)}` : ""}</button>) : null}
-        </nav>
+        </nav></details>
       </div>
 
       {active === "all" ? <section className="mt-6" aria-labelledby="library-all-heading">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div data-library-accent="library"><p className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Library hub</p><h2 id="library-all-heading" className="mt-2 text-2xl font-semibold sm:text-3xl">Your library now</h2></div>
+          <div data-library-accent="library"><p className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Your collection</p><h2 id="library-all-heading" className="mt-2 text-2xl font-semibold sm:text-3xl">Made yours.</h2></div>
           {libraryMetaLoading ? <span className="text-xs text-text-secondary">Refreshing account items…</span> : null}
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="bvs-library-metrics mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
           <QuickAccessCard accent="library" label="Liked Music" count={likedMusic.length} detail="Saved songs & releases" symbol="♥" onClick={() => changeSection("liked")} />
           <QuickAccessCard accent="library" label="Playlists" count={playlists.length} detail="Your listening sessions" symbol="▶" onClick={() => changeSection("playlists")} />
           <QuickAccessCard accent="downloads" label="Downloads" count={downloads.length} detail={signedIn ? "Purchased files ready" : "Sign in for purchases"} symbol="↓" onClick={() => changeSection("downloads")} />
@@ -355,7 +292,7 @@ export default function LibraryView() {
               <h2 id="library-section-title" className="mt-2 text-2xl font-semibold sm:text-3xl">{activeMeta.label}</h2>
               <p className="mt-2 text-sm text-text-secondary">{activeMeta.copy}</p>
             </div>
-            <button type="button" onClick={() => changeSection("all")} className="rounded-full border border-white/15 px-4 py-2 text-xs text-text-secondary hover:border-brand/40 hover:text-brand">Back to hub</button>
+            <button type="button" onClick={() => changeSection("all")} className="rounded-full border border-white/15 px-4 py-2 text-xs text-text-secondary hover:border-brand/40 hover:text-brand">All collections</button>
           </div>
 
           {active === "downloads" ? <DownloadsPanel signedIn={signedIn} loading={libraryMetaLoading} error={downloadsError} downloads={downloads} /> : null}

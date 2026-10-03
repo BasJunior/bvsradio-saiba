@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import BvsStar from "@/components/branding/BvsStar";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useAccountJson } from "@/lib/use-account-json";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 
@@ -36,27 +37,11 @@ const needsCreatorAction = (status?: string) => ["changes_requested", "informati
 const normalize = (status?: string) => String(status || "").toLowerCase();
 
 export default function AppStudioClient({ surface }: { surface: AppSurface }) {
-  const { loading, signedIn, isCreator, access, premiumActive, premiumPlanLabel, token } = useAppSession();
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
-  const [workspaceLoading, setWorkspaceLoading] = useState(false);
-  const [workspaceError, setWorkspaceError] = useState("");
-
-  useEffect(() => {
-    if (!isCreator || !token) { setWorkspace(null); return; }
-    let alive = true;
-    setWorkspaceLoading(true);
-    fetch("/api/creator/workspace", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => ({}));
-        if (!alive) return;
-        if (!response.ok) throw new Error(payload?.error || "Studio workspace is unavailable.");
-        setWorkspace(payload as Workspace);
-        setWorkspaceError("");
-      })
-      .catch((error) => alive && setWorkspaceError(error instanceof Error ? error.message : "Studio workspace is unavailable."))
-      .finally(() => alive && setWorkspaceLoading(false));
-    return () => { alive = false; };
-  }, [isCreator, token]);
+  const { loading, signedIn, isCreator, access, premiumActive, premiumPlanLabel, token, user } = useAppSession();
+  const { data: workspace, loading: workspaceLoading, error: workspaceError, reload } = useAccountJson<Workspace>({
+    owner: user?.id || "", token, url: "/api/creator/workspace", enabled: isCreator,
+    errorMessage: "Studio workspace is unavailable.",
+  });
 
   const tasks = useMemo<Task[]>(() => {
     if (!workspace) return [];
@@ -183,7 +168,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
       <div className="bvs-studio-intro mt-5 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
           <h1 className="bvs-studio-title max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Make your next move.</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">Create, respond, publish, deliver and understand the business around your work from one place.</p>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">Create. Publish. Build your next chapter.</p>
         </div>
         {premiumActive ? <span data-studio-accent="money" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-xs font-semibold">Premium · {premiumPlanLabel || "Active"}</span> : null}
       </div>
@@ -225,7 +210,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
           </div>
           {workspace ? <span className="rounded-full border border-white/[.07] px-3 py-1.5 text-xs text-white/60">{(workspace.releases || []).length} releases · {(workspace.tracks || []).length} tracks</span> : null}
         </div>
-        {workspaceError ? <p className="mt-3 text-sm text-red-300">{workspaceError}</p> : null}
+        {workspaceError ? <p role="alert" className="mt-3 text-sm text-red-300">{workspaceError} <button type="button" onClick={reload} className="min-h-11 px-3 underline">Try again</button></p> : null}
         <div className="mt-4 space-y-2">
           {tasks.map((task) => (
             <Link key={task.id} href={task.href} className={`block rounded-[1.2rem] border p-4 transition hover:bg-white/[.035] ${task.tone === "urgent" ? "border-amber-300/18 bg-amber-300/[.035]" : "border-white/[.07] bg-black/10"}`}>
@@ -246,7 +231,6 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
               <div className="mb-5 flex items-center justify-between"><span className="bvs-studio-accent-label text-xs font-bold tabular-nums">0{index + 1}</span><span className="bvs-studio-accent-label text-xl" aria-hidden="true">↗</span></div>
               <h2 className="text-xl font-semibold">{item.title}</h2>
               <p className="mt-2 text-sm leading-6 text-white/60">{item.copy}</p>
-              <span className="bvs-studio-accent-arrow mt-5 inline-block text-sm font-semibold">Open →</span>
             </Link>
           ))}
         </div>

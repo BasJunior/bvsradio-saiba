@@ -18,6 +18,8 @@ let effects = [], destinations = [], events = []
 const react = { useState: value => [typeof value === 'function' ? value() : value, () => {}], useEffect: fn => effects.push(fn), useMemo: fn => fn() }
 const studio = load('src/app/creator/studio/page.tsx', {
   react, 'next/link': { default: 'link' }, 'next/navigation': { useRouter: () => ({ replace: href => destinations.push(href) }) },
+  '@/lib/use-browser-session': { useBrowserSession: () => ({ session: null, loading: false }) },
+  '@/lib/use-account-json': { useAccountJson: () => ({ data: null, error: '', reload() {} }) },
   '@/lib/supabase': { isSupabaseConfigured: () => false }, '@/lib/analytics': { trackEvent: () => {} },
 }, { window: { location: { hash: '#insights' } } })
 studio.default(); effects.forEach(fn => fn())

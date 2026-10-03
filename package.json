@@ -55,7 +55,7 @@
     "test:web-vitals": "node scripts/web-vitals-tests.mjs",
     "test:player-progress-performance": "node scripts/player-progress-performance-tests.mjs",
     "test:radio-load-performance": "node scripts/radio-load-performance-tests.mjs",
-    "test:recent-changes": "node scripts/recent-change-behavior-tests.mjs && node scripts/notification-reliability-tests.mjs && node scripts/auth-session-hotfix-tests.mjs && node scripts/audit-regression-tests.mjs",
+    "test:recent-changes": "node scripts/recent-change-behavior-tests.mjs && node scripts/notification-reliability-tests.mjs && node scripts/auth-session-hotfix-tests.mjs && node scripts/audit-regression-tests.mjs && node scripts/account-collection-tests.mjs",
     "test:workspace-playback": "node scripts/workspace-playback-tests.mjs"
   },
   "dependencies": {

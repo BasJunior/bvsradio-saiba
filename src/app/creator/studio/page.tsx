@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase";
+import { useEffect, useMemo } from "react";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { useBrowserSession } from "@/lib/use-browser-session";
+import { useAccountJson } from "@/lib/use-account-json";
 import { trackEvent } from "@/lib/analytics";
 
 type WorkspaceData = {
@@ -67,8 +69,9 @@ const legacyStudioAnchors = new Set([
 
 export default function CreatorStudioHome() {
   const router = useRouter();
-  const [data, setData] = useState<WorkspaceData | null>(null);
-  const [error, setError] = useState(() => isSupabaseConfigured() ? "" : "Account service is not configured.");
+  const { session, loading: sessionLoading } = useBrowserSession();
+  const { data, error: requestError, reload } = useAccountJson<WorkspaceData>({ owner: session?.user.id || "", token: session?.access_token || "", url: "/api/creator/workspace", errorMessage: "Could not open Studio." });
+  const error = !isSupabaseConfigured() ? "Account service is not configured." : requestError || (!sessionLoading && !session ? "Sign in with a creator account." : "");
 
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, "");
@@ -76,29 +79,11 @@ export default function CreatorStudioHome() {
       router.replace(`/creator/studio/manage#${hash}`);
       return;
     }
-    if (!isSupabaseConfigured()) return;
-    void createClient()
-      .auth.getSession()
-      .then(async ({ data: sessionData }) => {
-        const token = sessionData.session?.access_token;
-        if (!token) {
-          setError("Sign in with a creator account.");
-          return;
-        }
-        const response = await fetch("/api/creator/workspace", {
-          headers: { Authorization: `Bearer ${token}` },
-          cache: "no-store",
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok) {
-          setError(payload.error || "Could not open Studio.");
-          return;
-        }
-        setData(payload);
-        trackEvent("studio_open", { role: payload.profile?.role || "unknown" });
-      })
-      .catch(() => setError("Could not open Studio."));
   }, [router]);
+
+  useEffect(() => {
+    if (data) trackEvent("studio_open", { role: data.profile?.role || "unknown" });
+  }, [data]);
 
   const uploadStatus = useMemo(() => {
     const sessions = data?.uploadSessions || [];
@@ -132,7 +117,7 @@ export default function CreatorStudioHome() {
       <main className="mx-auto min-h-[65vh] max-w-2xl px-5 py-20 text-center sm:px-6">
         <p data-studio-accent="core" className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">BVS Studio</p>
         <h1 className="mt-3 text-3xl font-semibold">Studio needs your creator account</h1>
-        <p className="mt-4 text-text-secondary">{error}</p>
+        <p role="alert" className="mt-4 text-text-secondary">{error}</p>{session ? <button type="button" onClick={reload} className="mt-4 min-h-11 border border-white/20 px-5">Try again</button> : null}
         <Link href="/auth/login?next=/creator/studio" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-full bg-brand px-6 py-3 font-semibold text-black">Sign in</Link>
       </main>
     );
@@ -184,7 +169,7 @@ export default function CreatorStudioHome() {
   return (
     <main className="mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-6 sm:pt-12">
       <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">BVS Studio</p>
-      <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">What are you trying to do, {displayName}?</h1>
+      <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Make your next move, {displayName}.</h1>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
         Start with the job. BVS will bring in rights, marketplace, distribution and money tools only when they are needed.
       </p>
@@ -282,7 +267,7 @@ function SubmissionStatusPanel({
           <p className="text-xs font-semibold uppercase tracking-[.18em] text-amber-200">Needs your attention</p>
           <h2 className="mt-2 text-2xl font-semibold">Unfinished submissions</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-            These are server-side BVS records, not browser guesses. Your upload state survives a reload or lost connection.
+            Your upload progress is saved. Pick up after a reload or lost connection.
           </p>
         </div>
         <span className="rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary">
