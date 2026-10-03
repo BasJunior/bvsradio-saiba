@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import BvsStar from "@/components/branding/BvsStar";
 import { useEffect, useMemo, useState } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 
 const roles = [
-  ["Artist", "Release music, follow review, see what is live and understand what happens next."],
-  ["Producer", "Publish beats, manage packs and build your BeatStore catalogue."],
-  ["Writer", "Work on stories, research and editorial assignments."],
-  ["Show creator", "Build programmes, episodes and live-show workflows."],
+  ["Artist", "Release music, follow review, see what is live and understand what happens next.", "core"],
+  ["Producer", "Publish beats, manage packs and build your BeatStore catalogue.", "beats"],
+  ["Writer", "Work on stories, research and editorial assignments.", "insights"],
+  ["Show creator", "Build programmes, episodes and live-show workflows.", "shows"],
 ];
 
 type WorkspaceTrack = { id: string; title: string; editorial_status?: string; editorial_notes?: string; in_rotation?: boolean; is_public?: boolean; release_id?: string | null };
@@ -148,21 +149,21 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
   if (loading) return <div className="mx-auto max-w-5xl px-4 pt-8"><div className="h-48 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
 
   if (!signedIn) return (
-    <div className="mx-auto max-w-4xl px-4 pb-12 pt-8 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Studio</p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-semibold sm:text-6xl">Make something. Build from there.</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/44 sm:text-base">One BVS identity can grow into the creator workspace you need — artist, producer, writer or show creator.</p>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy]) => <div key={title} className="rounded-[1.4rem] border border-white/[.07] bg-white/[.025] p-5"><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-white/38">{copy}</p></div>)}</div>
-      <div className="mt-7 flex flex-wrap gap-2.5"><Link href={`/app/${surface}/join`} className="inline-flex min-h-11 items-center rounded-full bg-white px-5 font-semibold text-black transition hover:bg-brand">Create account</Link><Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/studio`)}`} className="inline-flex min-h-11 items-center rounded-full border border-white/12 px-5 text-white/64">Sign in</Link></div>
+    <div className="bvs-native-studio mx-auto max-w-4xl px-4 pb-12 pt-8 sm:px-6">
+      <div className="bvs-culture-sticker"><BvsStar /> BVS Studio</div>
+      <h1 className="bvs-studio-title mt-5 max-w-3xl text-4xl font-semibold sm:text-6xl">Make something. Build from there.</h1>
+      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">One BVS identity can grow into the creator workspace you need — artist, producer, writer or show creator.</p>
+      <div className="mt-8 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy, accent]) => <div key={title} data-studio-accent={accent} className="bvs-studio-role rounded-[1.4rem] border p-5"><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-white/60">{copy}</p></div>)}</div>
+      <div className="mt-7 flex flex-wrap gap-2.5"><Link href={`/app/${surface}/join`} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black transition hover:bg-brand-dark">Create account</Link><Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/studio`)}`} className="inline-flex min-h-11 items-center rounded-full border border-white/12 px-5 text-white/64">Sign in</Link></div>
     </div>
   );
 
   if (!isCreator) return (
-    <div className="mx-auto max-w-4xl px-4 pb-12 pt-8 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Studio</p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-semibold sm:text-6xl">Ready when you are.</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/44 sm:text-base">Your listening account stays exactly as it is. Creator access adds the tools for the work you want to do.</p>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy]) => <div key={title} className="rounded-[1.4rem] border border-white/[.07] bg-white/[.025] p-5"><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-white/38">{copy}</p></div>)}</div>
+    <div className="bvs-native-studio mx-auto max-w-4xl px-4 pb-12 pt-8 sm:px-6">
+      <div className="bvs-culture-sticker"><BvsStar /> BVS Studio</div>
+      <h1 className="bvs-studio-title mt-5 max-w-3xl text-4xl font-semibold sm:text-6xl">Ready when you are.</h1>
+      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">Your listening account stays exactly as it is. Creator access adds the tools for the work you want to do.</p>
+      <div className="mt-8 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy, accent]) => <div key={title} data-studio-accent={accent} className="bvs-studio-role rounded-[1.4rem] border p-5"><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-white/60">{copy}</p></div>)}</div>
       <Link href={`/app/${surface}/account#creator-role`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black">Choose creator access</Link>
     </div>
   );
@@ -177,25 +178,25 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
   ];
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
-      <p data-studio-accent="core" className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.22em]">BVS Studio</p>
-      <div className="mt-3 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+    <div className="bvs-native-studio mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
+      <div className="bvs-culture-sticker"><BvsStar /> BVS Studio</div>
+      <div className="bvs-studio-intro mt-5 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
         <div>
-          <h1 className="max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">What moves your work forward today?</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/43 sm:text-base">Create, respond, publish, deliver and understand the business around your work from one place.</p>
+          <h1 className="bvs-studio-title max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Make your next move.</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">Create, respond, publish, deliver and understand the business around your work from one place.</p>
         </div>
         {premiumActive ? <span data-studio-accent="money" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-xs font-semibold">Premium · {premiumPlanLabel || "Active"}</span> : null}
       </div>
 
       {artistPath ? (
-        <section data-studio-accent="core" className="mt-8 rounded-[1.8rem] border border-[#7ba9d0]/16 bg-gradient-to-br from-[#7ba9d0]/[.06] via-white/[.02] to-transparent p-5 sm:p-6">
+        <section data-studio-accent="core" className="bvs-studio-release-path mt-8 rounded-[1.8rem] border p-5 sm:p-6">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Current release</p>
               <h2 className="mt-2 text-3xl font-semibold">From upload to audience.</h2>
-              <p className="mt-2 text-xs text-white/35">Following: {artistPath.focusTitle}</p>
+              <p className="mt-2 text-xs text-white/60">Following: {artistPath.focusTitle}</p>
             </div>
-            <Link href={artistPath.next.href} className="min-h-10 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand">{artistPath.next.cta}</Link>
+            <Link href={artistPath.next.href} className="min-h-11 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-dark">{artistPath.next.cta}</Link>
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -203,7 +204,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
               <Link key={step.label} href={step.href} className={`rounded-[1.2rem] border p-3 transition ${step.state === "done" ? "border-brand/22 bg-brand/[.07]" : step.state === "current" ? "border-white/18 bg-white/[.055]" : "border-white/[.06] bg-black/10"}`}>
                 <div className="flex items-center justify-between gap-2"><span className="text-xs text-white/26">{index + 1}</span><span className="text-[10px] font-semibold uppercase tracking-[.12em] text-brand">{step.state === "done" ? "Done" : step.state === "current" ? "Now" : ""}</span></div>
                 <h3 className="mt-2 font-semibold">{step.label}</h3>
-                <p className="mt-1 text-xs leading-5 text-white/34">{step.note}</p>
+                <p className="mt-1 text-xs leading-5 text-white/60">{step.note}</p>
               </Link>
             ))}
           </div>
@@ -211,7 +212,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
           <div className="mt-4 rounded-[1.25rem] border border-white/[.07] bg-black/15 p-4">
             <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Next</p>
             <h3 className="mt-2 text-lg font-semibold">{artistPath.next.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-white/40">{artistPath.next.copy}</p>
+            <p className="mt-2 text-sm leading-6 text-white/65">{artistPath.next.copy}</p>
           </div>
         </section>
       ) : null}
@@ -222,7 +223,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
             <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Action inbox</p>
             <h2 className="mt-2 text-2xl font-semibold">{workspaceLoading ? "Checking your work…" : tasks.length ? `${tasks.length} item${tasks.length === 1 ? "" : "s"} need attention` : "Nothing needs you right now"}</h2>
           </div>
-          {workspace ? <span className="rounded-full border border-white/[.07] px-3 py-1.5 text-xs text-white/34">{(workspace.releases || []).length} releases · {(workspace.tracks || []).length} tracks</span> : null}
+          {workspace ? <span className="rounded-full border border-white/[.07] px-3 py-1.5 text-xs text-white/60">{(workspace.releases || []).length} releases · {(workspace.tracks || []).length} tracks</span> : null}
         </div>
         {workspaceError ? <p className="mt-3 text-sm text-red-300">{workspaceError}</p> : null}
         <div className="mt-4 space-y-2">
@@ -230,27 +231,28 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
             <Link key={task.id} href={task.href} className={`block rounded-[1.2rem] border p-4 transition hover:bg-white/[.035] ${task.tone === "urgent" ? "border-amber-300/18 bg-amber-300/[.035]" : "border-white/[.07] bg-black/10"}`}>
               <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-brand">{task.eyebrow}</p>
               <div className="mt-1 flex items-center justify-between gap-3"><h3 className="font-semibold capitalize">{task.title}</h3><span className="text-white/46">→</span></div>
-              <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/38">{task.note}</p>
+              <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/60">{task.note}</p>
             </Link>
           ))}
         </div>
-        {!workspaceLoading && !workspaceError && !tasks.length ? <p className="mt-4 text-sm text-white/36">You’re up to date. New review requests, delivery issues and assigned work will appear here.</p> : null}
+        {!workspaceLoading && !workspaceError && !tasks.length ? <p className="mt-4 text-sm text-white/60">You’re up to date. New review requests, delivery issues and assigned work will appear here.</p> : null}
       </section>
 
       <section className="mt-9">
         <p data-studio-accent="core" className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Workspace</p>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {work.map((item) => (
-            <Link key={item.href} href={item.href} data-studio-accent={item.accent} className="bvs-studio-accent-card group rounded-[1.45rem] border border-white/[.07] bg-white/[.022] p-5 hover:-translate-y-0.5">
+          {work.map((item, index) => (
+            <Link key={item.href} href={item.href} data-studio-accent={item.accent} className="bvs-studio-work-card bvs-studio-accent-card group rounded-[1.45rem] border border-white/[.07] bg-white/[.022] p-5 hover:-translate-y-0.5">
+              <div className="mb-5 flex items-center justify-between"><span className="bvs-studio-accent-label text-xs font-bold tabular-nums">0{index + 1}</span><span className="bvs-studio-accent-label text-xl" aria-hidden="true">↗</span></div>
               <h2 className="text-xl font-semibold">{item.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-white/38">{item.copy}</p>
+              <p className="mt-2 text-sm leading-6 text-white/60">{item.copy}</p>
               <span className="bvs-studio-accent-arrow mt-5 inline-block text-sm font-semibold">Open →</span>
             </Link>
           ))}
         </div>
       </section>
 
-      <div className="mt-8 flex flex-wrap gap-2 text-xs text-white/34">
+      <div className="mt-8 flex flex-wrap gap-2 text-xs text-white/60">
         <span className="rounded-full border border-white/[.07] px-3 py-1.5">Artist {access?.artist ? "✓" : ""}</span>
         <span className="rounded-full border border-white/[.07] px-3 py-1.5">Producer {access?.producer ? "✓" : ""}</span>
         <span className="rounded-full border border-white/[.07] px-3 py-1.5">Writer {access?.writer ? "✓" : ""}</span>
