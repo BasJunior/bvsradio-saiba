@@ -43,7 +43,7 @@ const imports = {
 };
 for (const [path, type] of Object.entries({
   '@/components/flow/BvsObjectCard':'object', '@/components/LibraryAction':'library', '@/components/feed/FeedComposer':'composer',
-  '@/components/feed/FeedParticipation':'participation', '@/components/feed/ParticipationPostCard':'post',
+  '@/components/feed/FeedParticipation':'participation', '@/components/feed/ParticipationPostCard':'post', '@/components/feed/FeedMoreActions':'more-actions',
 })) imports[path] = {default:type};
 const render = harness('src/components/feed/BvsFeedList.tsx', imports, {
   CustomEvent:class {}, window:{addEventListener(){},removeEventListener(){},dispatchEvent(){},setTimeout:fn=>fn(),scrollY:0},

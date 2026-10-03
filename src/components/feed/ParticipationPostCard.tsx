@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import FeedMoreActions from "@/components/feed/FeedMoreActions";
 import { useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { AppSurface } from "@/lib/app-surface";
@@ -172,12 +173,14 @@ export default function ParticipationPostCard({
             {intentLabel[current.intent]}
           </span>
         </div>
-        {own ? (
-          <div className="flex shrink-0 gap-1">
+        <FeedMoreActions title={`${current.author.displayName}'s post`}>
+          <button type="button" disabled={busy} aria-pressed={current.viewerReposted} onClick={() => void toggle("repost")} className="min-h-11 rounded-xl px-3 text-left text-sm text-white/70 hover:bg-white/5 disabled:opacity-40">{current.viewerReposted ? "Undo repost" : "Repost"}{current.repostCount ? ` · ${current.repostCount}` : ""}</button>
+          <button type="button" onClick={() => void share()} className="min-h-11 rounded-xl px-3 text-left text-sm text-white/70 hover:bg-white/5">Share</button>
+          {own ? <>
             <button type="button" onClick={() => { setEditing((value) => !value); setEditBody(current.body); }} className="min-h-9 rounded-full px-2 text-xs text-white/38 hover:text-white">Edit</button>
             <button type="button" disabled={busy} onClick={() => void removePost()} className="min-h-9 rounded-full px-2 text-xs text-white/38 hover:text-[#ff9a92] disabled:opacity-40">Delete</button>
-          </div>
-        ) : null}
+          </> : null}
+        </FeedMoreActions>
       </div>
 
       {editing ? (
@@ -206,16 +209,12 @@ export default function ParticipationPostCard({
       {error ? <p role="status" className="mt-3 text-xs text-[#ff9a92]">{error}</p> : null}
 
       <div className="mt-4 flex min-h-10 flex-wrap items-center gap-1.5 border-t border-white/[.055] pt-3">
-        <button type="button" disabled={busy} aria-pressed={current.viewerLiked} onClick={() => void toggle("like")} className={`min-h-9 rounded-full border px-3 text-xs font-semibold transition ${current.viewerLiked ? "border-[#ff7a70]/45 bg-[#ff7a70]/12 text-[#ff9a92]" : "border-white/10 text-white/50 hover:border-[#ff7a70]/35 hover:text-[#ff9a92]"}`}>
+        <button type="button" disabled={busy} aria-label={`${current.viewerLiked ? "Unlike" : "Like"} post by ${current.author.displayName}`} aria-pressed={current.viewerLiked} onClick={() => void toggle("like")} className={`min-h-11 rounded-full px-3 text-xs font-semibold transition active:scale-95 motion-reduce:transform-none ${current.viewerLiked ? "text-[#ff9a92]" : "text-white/50 hover:bg-white/5 hover:text-[#ff9a92]"}`}>
           {current.viewerLiked ? "♥" : "♡"} {current.likeCount || "Like"}
         </button>
-        <button type="button" disabled={busy} aria-pressed={current.viewerReposted} onClick={() => void toggle("repost")} className={`min-h-9 rounded-full border px-3 text-xs font-semibold transition ${current.viewerReposted ? "border-[#7db6ff]/45 bg-[#7db6ff]/12 text-[#9bc6ff]" : "border-white/10 text-white/50 hover:border-[#7db6ff]/35 hover:text-[#9bc6ff]"}`}>
-          ↻ {current.repostCount || "Repost"}
-        </button>
-        <Link href={permalink} className="min-h-9 rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-white/50 transition hover:border-[#929DE0]/35 hover:text-[#c2c9ff]">
+        <Link href={permalink} aria-label={`Reply to ${current.author.displayName}'s post`} className="flex min-h-11 items-center rounded-full px-3 text-xs font-semibold text-white/50 transition hover:bg-white/5 hover:text-[#c2c9ff]">
           ◌ {current.replyCount || "Reply"}
         </Link>
-        <button type="button" onClick={() => void share()} className="min-h-9 rounded-full border border-white/10 px-3 text-xs font-medium text-white/42 transition hover:border-[#58d6a7]/35 hover:text-[#78e6bb]">Share</button>
       </div>
     </article>
   );
