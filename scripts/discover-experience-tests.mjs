@@ -72,13 +72,21 @@ assert.equal(discovery.toDiscoveryTrack({...sellable,kind:'beat'}).isDownloadabl
 const boundary = pure('src/lib/app-external-boundary.ts');
 assert.equal(boundary.isExternalLegalOrLicenceUrl(new URL('https://bvsradio.com/buy?track=track-1')),true,'Native query-style Buy links must open web checkout externally');
 assert.equal(boundary.isExternalLegalOrLicenceUrl(new URL('https://bvsradio.com/app/ios/explore')),false);
+const beatPlayback = pure('src/lib/beat-playback.ts');
 const renderBuy = harness('src/components/BuyTrackButton.tsx',{
+  '@/lib/beat-playback':beatPlayback,
   '@/lib/analytics':{trackEvent(){}}, '@/lib/cart-client':{upsertTrackCartLine(){}},
 });
 const buyTree = renderBuy({track:{id:'track-1',title:'Song',artist:'Artist',src:'/media.mp3',isDownloadable:true,downloadPrice:2},variant:'compact'});
 assert.equal(buyTree.props.href,'https://bvsradio.com/buy?track=track-1');
 assert.ok(nodes(buyTree).some(n=>n.type==='span' && n.props.children==='Buy' && n.props.className==='sm:hidden'),'Compact player must have a visible mobile Buy label');
 assert.equal(renderBuy({track:{id:'off-sale',isDownloadable:false,downloadPrice:2},variant:'compact'}),null);
+const beatBuy = renderBuy({track:{id:'beat-1',kind:'beat',title:'Beat',artist:'Producer',src:'/beat.mp3'},variant:'compact'});
+assert.equal(beatBuy.props.href,'https://bvsradio.com/beat/beat-1#beat-licences');
+assert.equal(beatBuy.props.children,'Buy');
+assert.equal(boundary.isExternalLegalOrLicenceUrl(new URL(beatBuy.props.href)),true,'Native beat buying must open canonical web licensing');
+assert.equal(renderBuy({track:{id:'private-beat',kind:'beat',project:'Editorial · BeatStore'},variant:'compact'}),null,'Editorial previews must not advertise a public purchase');
+assert.equal(renderBuy({track:{kind:'beat',title:'No listing'},variant:'compact'}),null);
 const playerSource=readFileSync('src/components/StationPlayer.tsx','utf8');
 assert.match(playerSource, /variant="compact" className="inline-flex min-h-10/,'Compact Buy must not be hidden on mobile');
 assert.equal(discovery.buildDiscoveryShelves(pool,0,'missing',now).length,0,'An empty genre must not show unrelated picks');

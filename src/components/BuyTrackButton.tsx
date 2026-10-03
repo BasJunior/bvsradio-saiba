@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { isBeatTrack, isEditorialPlay } from "@/lib/beat-playback";
 import { trackEvent } from "@/lib/analytics";
 import { upsertTrackCartLine } from "@/lib/cart-client";
 import type { StationTrack } from "@/lib/station";
@@ -38,6 +39,27 @@ export default function BuyTrackButton({
 }: Props) {
   const [busy, setBusy] = useState(false);
   const price = sellablePrice(track);
+
+  if (track?.id && isBeatTrack(track)) {
+    if (isEditorialPlay(track)) return null;
+    const beatId = track.id;
+    const beatHref = `https://bvsradio.com/beat/${encodeURIComponent(beatId)}#beat-licences`;
+    return (
+      <a
+        href={beatHref}
+        onClick={(event) => {
+          event.stopPropagation();
+          trackEvent("beat_licence_view", { beat_id: beatId, source: "player_buy_cta", variant });
+        }}
+        className={variant === "compact"
+          ? `shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`
+          : `block rounded-2xl border border-brand/50 bg-brand px-4 py-4 text-left text-black transition hover:brightness-110 ${className}`}
+        aria-label={`Buy a licence for ${track.title} on BVS web`}
+      >
+        {variant === "compact" ? "Buy" : <><span className="block text-base font-semibold">Buy beat licence</span><span className="mt-1 block text-xs text-black/65">Choose the licence and usage rights for your release.</span></>}
+      </a>
+    );
+  }
 
   if (!track || price === null) return null;
 
