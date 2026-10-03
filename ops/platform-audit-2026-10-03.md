@@ -17,6 +17,7 @@ This was a repository-wide inventory and checks run, with focused code review of
 | Notifications | Settings could retain a previous account's form values or accept stale fetch results. | Remount settings per account and ignore superseded results, with bounded fetches. |
 | Offline privacy | The service worker retained navigation responses that could include private account pages. | Purge old BVS caches and cache only explicit public shell/build assets. Provide a branded static offline page instead of replaying account HTML. |
 | Design/accessibility | Square editorial surfaces needed consistent keyboard focus; unavailable creator rails could wait forever. | Add visible purple focus outlines, bound portrait fetches and retain client navigation in the directory fallback. Preserve charcoal sections, square artwork, divider lines, purple producer/Join accents and calmer secondary controls. |
+| Native tablet layout | Live browser measurement showed a 77px tab bar but a zero player offset at tablet widths. The player covered the tabs and intercepted navigation. | Map the contained-nav measurement into the shared layout token at every width, explicitly dock the player above it and reserve the full bottom stack in page content. |
 
 ## Verification
 
