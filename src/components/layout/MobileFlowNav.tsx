@@ -7,7 +7,7 @@ import { useAppShellMeasurement } from "@/components/app/useAppShellMeasurement"
 import { webDestinations, isWebDestinationActive } from "@/lib/web-navigation";
 import { matchPrimaryDestination, primaryAppDestinations } from "@/lib/app-surface";
 
-function Icon({ id, active }: { id: "home" | "explore" | "beats" | "library" | "studio"; active: boolean }) {
+function Icon({ id, active }: { id: "home" | "explore" | "beats" | "library" | "studio" | "feed"; active: boolean }) {
   const stroke = active ? "currentColor" : "currentColor";
   if (id === "home") {
     return (
@@ -24,6 +24,7 @@ function Icon({ id, active }: { id: "home" | "explore" | "beats" | "library" | "
       </svg>
     );
   }
+  if (id === "feed") return <FeedIcon />;
   if (id === "studio") {
     return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke={stroke} strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M5 5h14v14H5zM8 9h8M8 13h3m3 0h2M8 16h8" /></svg>;
   }
@@ -62,7 +63,7 @@ export default function MobileFlowNav() {
 
   if (!appChrome) {
     return <nav ref={navRef} className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 backdrop-blur-2xl md:hidden" aria-label="Primary">
-      <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-4">
+      <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-5">
         {webDestinations.map(item => {
           const active = isWebDestinationActive(item.id, pathname);
           return <Link key={item.id} href={item.href} replace onClick={event => {

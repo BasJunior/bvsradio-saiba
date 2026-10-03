@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import LibraryAction from "@/components/LibraryAction";
@@ -16,7 +17,7 @@ import { canonicalBvsShareUrl } from "@/lib/share-url";
 import { readLibrary } from "@/lib/library";
 
 const filters: Array<{ id: BvsFeedFilter; label: string }> = [
-  { id: "all", label: "Latest" },
+  { id: "all", label: "All updates" },
   { id: "music", label: "Music" },
   { id: "creator", label: "Creators" },
   { id: "beat", label: "Beats" },
@@ -26,7 +27,7 @@ const filters: Array<{ id: BvsFeedFilter; label: string }> = [
 
 type FeedLane = "focus" | "following" | "activity";
 const lanes: Array<{ id: FeedLane; label: string; accent: string }> = [
-  { id: "focus", label: "Focus", accent: "#e3bd58" },
+  { id: "focus", label: "Latest", accent: "#e3bd58" },
   { id: "following", label: "Following", accent: "#7db6ff" },
   { id: "activity", label: "My Activity", accent: "#a88cff" },
 ];
@@ -83,6 +84,7 @@ export default function BvsFeedList({
   const router = useRouter();
   const session = useAppSession();
   const [filter, setFilter] = useState<BvsFeedFilter>("all");
+  const [query, setQuery] = useState("");
   const [lane, setLane] = useState<FeedLane>("focus");
   const [summaries, setSummaries] = useState<Record<string, ParticipationSummary>>({});
   const [myActivity, setMyActivity] = useState<Set<string>>(new Set());
@@ -134,10 +136,10 @@ export default function BvsFeedList({
     return () => { active = false; };
   }, [items, participationEnabled, session.token]);
 
-  const loadPosts = useCallback(async (cursor?: string | null, append = false) => {
+  const loadPosts = useCallback(async (cursor?: string | null, append = false, reset = false) => {
     if (!participationEnabled) return;
     const requestId = ++postsRequest.current;
-    if (!append) setPosts([]);
+    if (reset) { setPosts([]); setNextCursor(null); }
     setPostsLoading(true);
     setPostsError("");
     const params = new URLSearchParams({ limit: "20", lane, ...(surface ? { surface } : {}) });
@@ -163,7 +165,11 @@ export default function BvsFeedList({
     setPostsLoading(false);
   }, [participationEnabled, session.token, lane, surface]);
 
-  useEffect(() => { void loadPosts(null, false); return () => { postsRequest.current += 1; }; }, [loadPosts]);
+  useEffect(() => {
+    let active = true;
+    queueMicrotask(() => { if (active) void loadPosts(null, false, true); });
+    return () => { active = false; postsRequest.current += 1; };
+  }, [loadPosts]);
 
   const refreshFeed = useCallback(async () => {
     if (refreshing) return;
@@ -208,7 +214,8 @@ export default function BvsFeedList({
   }, [pullDistance, refreshFeed, refreshing]);
 
   const visibleSystem = useMemo(() => {
-    const categoryItems = filter === "all" ? items : items.filter((item) => item.category === filter);
+    const needle = query.trim().toLocaleLowerCase();
+    const categoryItems = items.filter(item => (filter === "all" || item.category === filter) && (!needle || [item.object.title, item.object.subtitle, item.verb, ...(item.object.metadata || [])].join(" ").toLocaleLowerCase().includes(needle)));
     if (lane === "focus") return categoryItems;
     if (lane === "activity") return categoryItems.filter((item) => myActivity.has(targetKey(item)));
     return categoryItems.filter((item) => {
@@ -217,12 +224,13 @@ export default function BvsFeedList({
       const subtitle = normalized(item.object.subtitle);
       return Boolean((title && followNames.has(title)) || (subtitle && followNames.has(subtitle)));
     });
-  }, [filter, followIds, followNames, items, lane, myActivity]);
+  }, [filter, followIds, followNames, items, lane, myActivity, query]);
 
   const visiblePosts = useMemo(() => {
     if (filter !== "all") return [];
-    return posts;
-  }, [filter, posts]);
+    const needle = query.trim().toLocaleLowerCase();
+    return posts.filter(post => !needle || [post.body, post.author.displayName, post.author.username, post.attachment?.title].filter(Boolean).join(" ").toLocaleLowerCase().includes(needle));
+  }, [filter, posts, query]);
 
   const timeline = useMemo<TimelineEntry[]>(() => [
     ...visiblePosts.map((post) => ({ type: "post" as const, at: post.createdAt, id: `post:${post.threadId}`, post })),
@@ -250,6 +258,7 @@ export default function BvsFeedList({
     setPosts((current) => [post, ...current.filter((item) => item.threadId !== post.threadId)]);
     recordActivity(`post:${post.threadId}`, true);
     setFilter("all");
+    setQuery("");
     setLane("focus");
   }
 
@@ -271,7 +280,7 @@ export default function BvsFeedList({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={finishPull}
-      onTouchCancel={finishPull}
+      onTouchCancel={() => { pullStart.current = null; setPullDistance(0); }}
     >
       <div
         aria-live="polite"
@@ -295,9 +304,10 @@ export default function BvsFeedList({
       <FeedComposer key={session.user?.id || "guest"} surface={surface} enabled={participationEnabled} onCreated={addPost} />
 
       <div className="sticky top-[var(--bvs-app-header-height,4rem)] z-20 -mx-4 mt-4 border-y border-white/[.06] bg-[#08080a]/92 px-4 py-3 backdrop-blur-2xl sm:static sm:mx-0 sm:rounded-2xl sm:border sm:bg-white/[.015]" aria-label="Feed controls">
-        <div className="overflow-x-auto">
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1 overflow-x-auto">
           <div className="flex min-w-max gap-2" aria-label="Feed lanes">
-            {lanes.map((item) => {
+            {lanes.filter(item => participationEnabled || item.id !== 'activity').map((item) => {
               const active = lane === item.id;
               return (
                 <button
@@ -311,8 +321,10 @@ export default function BvsFeedList({
                 </button>
               );
             })}
-          </div>
+          </div></div>
+          <button type="button" disabled={refreshing} onClick={() => void refreshFeed()} className="min-h-11 shrink-0 rounded-full border border-white/15 px-3 text-xs font-semibold text-white/70 hover:text-white disabled:opacity-50" aria-label="Refresh feed">{refreshing ? 'Refreshing…' : 'Refresh'}</button>
         </div>
+        <label className="mt-3 block"><span className="sr-only">Search this feed</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search updates, artists or music" className="min-h-11 w-full rounded-xl border border-white/10 bg-black/15 px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-brand/50" /></label>
         <div className="mt-2 overflow-x-auto">
           <div className="flex min-w-max gap-1.5 sm:flex-wrap" aria-label="Feed categories">
             {filters.map((item) => {
@@ -333,7 +345,7 @@ export default function BvsFeedList({
         </div>
       </div>
 
-      {postsError && filter === "all" ? <p role="status" className="mt-4 rounded-xl border border-[#ff7a70]/20 bg-[#ff7a70]/[.055] px-3 py-2 text-xs text-[#ff9a92]">{postsError}</p> : null}
+      {postsError && filter === "all" ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ff7a70]/20 bg-[#ff7a70]/[.055] px-3 py-2 text-xs text-[#ff9a92]"><span>{postsError}</span><button type="button" onClick={() => void loadPosts(null, false)} className="min-h-9 rounded-full border border-white/15 px-3 text-white">Try again</button></div> : null}
 
       <div className="mt-5 space-y-4 sm:mt-7">
         {timeline.map((entry) => {
@@ -389,13 +401,18 @@ export default function BvsFeedList({
         {!timeline.length && !postsLoading ? (
           <div className="rounded-[1.65rem] border border-white/[.07] bg-white/[.02] px-5 py-12 text-center">
             <p className="text-sm font-medium text-white/70">
-              {lane === "following" ? "Nothing from people you follow in this lane yet." : lane === "activity" ? "You have not participated in this lane yet." : "Nothing new in this lane yet."}
+              {query.trim() ? `No updates match “${query.trim()}”.` : lane === "following" ? "Your followed creators will appear here." : lane === "activity" ? "Your likes, reposts and conversations belong here." : "No updates in this category yet."}
             </p>
             <p className="mt-2 text-xs text-white/38">
               {lane === "activity" && !session.signedIn
                 ? "Sign in to keep your BVS activity connected across the app."
                 : "When something relevant moves across BVS, it will appear here."}
             </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              {query.trim() ? <button type="button" onClick={() => setQuery('')} className="min-h-11 rounded-full border border-white/15 px-4 text-sm text-white">Clear search</button> : null}
+              {lane === 'activity' && !session.signedIn ? <Link href={surface ? `/app/${surface}/join` : '/auth/login?next=/feed'} className="min-h-11 rounded-full bg-brand px-4 py-3 text-sm font-semibold text-black">Sign in</Link> : <Link href={surface ? `/app/${surface}/explore` : '/search?mode=creators'} className="min-h-11 rounded-full border border-white/15 px-4 py-3 text-sm text-white">Discover creators</Link>}
+              <button type="button" onClick={() => { setLane('focus'); setFilter('all'); setQuery(''); }} className="min-h-11 rounded-full border border-white/15 px-4 text-sm text-white">Show latest</button>
+            </div>
           </div>
         ) : null}
 

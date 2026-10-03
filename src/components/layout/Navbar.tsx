@@ -329,7 +329,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-7 text-sm font-medium tracking-wide">
+        <div className="hidden md:flex items-center gap-5 text-sm font-medium tracking-wide">
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href} data-bvs-web-studio={link.id === 'studio' ? 'desktop' : undefined} aria-current={isWebDestinationActive(link.id, pathname) ? 'page' : undefined} className={`transition-colors ${isWebDestinationActive(link.id, pathname) ? 'text-brand' : 'text-text-secondary hover:text-brand'}`}>
               {link.label}
@@ -436,7 +436,6 @@ export default function Navbar() {
                 </Link>
               ))}
             </div>
-            <Link href="/feed" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Community Feed</Link>
             <Link href="/premium" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Premium</Link>
             <Link href="/checkout" className="flex items-center justify-between py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
               <span>Cart</span>

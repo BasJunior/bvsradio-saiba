@@ -125,9 +125,14 @@ assert.match(stationPlayer, /bvs-persistent-player/);
 
 console.log("App flow navigation checks passed");
 
-assert.deepEqual(webDestinations.map(item => item.label), ['Home', 'Discover', 'Library', 'Studio']);
-for (const path of ['/search', '/catalogue', '/catalogue/beat', '/artist/wolf-bridges', '/shows', '/feed']) assert.equal(isWebDestinationActive('explore', path), true);
+assert.deepEqual(webDestinations.map(item => item.label), ['Home', 'Feed', 'Discover', 'Library', 'Studio']);
+for (const path of ['/search', '/catalogue', '/catalogue/beat', '/artist/wolf-bridges', '/shows']) assert.equal(isWebDestinationActive('explore', path), true);
 for (const path of ['/creator/studio', '/creator/studio/create/beat', '/creator/studio/services', '/creator/studio/earnings']) assert.equal(isWebDestinationActive('studio', path), true);
 assert.equal(isWebDestinationActive('studio', '/creator/studio-other'), false);
 assert.equal(isWebDestinationActive('library', '/library-other'), false);
 assert.equal(isWebDestinationActive('explore', '/artist-access'), false);
+
+assert.equal(isWebDestinationActive('feed', '/feed'), true);
+assert.equal(isWebDestinationActive('feed', '/feed/thread-1'), true);
+assert.equal(isWebDestinationActive('explore', '/feed'), false);
+assert.equal(isWebDestinationActive('feed', '/feedback'), false);
