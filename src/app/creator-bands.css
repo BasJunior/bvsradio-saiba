@@ -1,0 +1,51 @@
+/* The sketch's paper/ink bands, within BVS's existing dark + accent system. */
+.bvs-creator-band { padding: clamp(2rem, 5vw, 4rem) 0; border-block: 1px solid currentColor; }
+.bvs-creator-band--paper { --portrait-line: #161616; background: #cacaca; color: #101010; }
+.bvs-creator-band--ink { --portrait-line: #e8e8e8; background: #0a0a0a; color: #f5f5f5; }
+.bvs-creator-band-inner { max-width: 80rem; margin-inline: auto; padding-inline: 1rem; }
+.bvs-creator-band-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.bvs-creator-kicker { font-size: .65rem; text-transform: uppercase; letter-spacing: .16em; font-weight: 700; opacity: .7; }
+.bvs-creator-band h2 { font-size: clamp(2.1rem, 5vw, 4rem); line-height: 1; text-transform: uppercase; font-weight: 850; letter-spacing: -.055em; margin-top: .5rem; }
+.bvs-creator-directory { display: inline-flex; align-items: center; min-height: 44px; gap: .5rem; font-size: .8rem; font-weight: 700; text-decoration: underline; text-underline-offset: .3rem; }
+.bvs-creator-band--ink .bvs-creator-directory { color: var(--color-brand); }
+.bvs-creator-scroll-guide { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-block: 1rem .75rem; }
+.bvs-creator-scroll-guide p { font-size: .75rem; font-weight: 600; opacity: .75; }
+.bvs-creator-scroll-guide p span { margin-left: .6rem; }
+.bvs-creator-scroll-controls { display: flex; gap: .5rem; }
+.bvs-creator-scroll-controls button { border: 1px solid currentColor; border-radius: 0; width: 44px; height: 44px; font-size: 1.4rem; transition: background .16s, color .16s; }
+.bvs-creator-scroll-controls button:disabled { opacity: .25; cursor: default; }
+.bvs-creator-scroll-controls button:not(:disabled):hover { background: var(--color-brand); color: #0a0a0a; }
+.bvs-creator-portrait-rail { display: flex; gap: 1rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--portrait-line) transparent; padding-block: .25rem 1rem; }
+.bvs-creator-portrait { flex: 0 0 160px; min-width: 0; border: 1px solid var(--portrait-line); border-radius: 0; scroll-snap-align: start; color: inherit; background: transparent; }
+.bvs-creator-photo { position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 0; background: #767676; }
+.bvs-creator-photo img { border-radius: 0; }
+.bvs-creator-caption { border-top: 1px solid var(--portrait-line); padding: .85rem .75rem; }
+.bvs-creator-caption h3 { font-size: 1rem; font-weight: 800; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bvs-creator-caption p { margin-top: .35rem; font-size: .7rem; line-height: 1.4; opacity: .75; }
+.bvs-creator-portrait:hover .bvs-creator-caption { background: var(--color-brand); color: #101010; }
+.bvs-creator-portrait:focus-visible, .bvs-creator-portrait-rail:focus-visible, .bvs-creator-scroll-controls button:focus-visible, .bvs-creator-directory:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
+.bvs-app-creator-bands { margin-inline: -1rem; margin-top: 2.5rem; }
+.bvs-home-release-band { background: #cacaca; color: #101010; border-block: 1px solid #161616; }
+.bvs-home-release-band > div { max-width: 80rem; margin-inline: auto; padding: 2.5rem 1rem; }
+.bvs-home-release-band .bvs-home-accent-label { color: #315d80; }
+.bvs-home-release-band .bvs-home-accent-button { color: #315d80; border-color: #315d80; }
+.bvs-home-release-band > div > div > div > p:not(.bvs-home-accent-label) { color: #404040; }
+.bvs-home-release-band .bvs-release-directory { background: transparent; border: 0; border-radius: 0; padding: 0; }
+.bvs-home-release-band .bvs-release-directory > p { color: #404040; }
+.bvs-home-release-band .bvs-release-row { border-color: #777; border-radius: 0; background: transparent; }
+.bvs-home-release-band .bvs-release-row:hover { background: #bcbcbc; }
+.bvs-home-release-band .bvs-release-row p, .bvs-home-release-band .bvs-release-row span { color: #404040; }
+.bvs-home-release-band .bvs-release-row h3 { color: #101010; }
+.bvs-home-release-band .bvs-release-photo { border-radius: 0; }
+@media (min-width: 640px) {
+  .bvs-creator-band-inner, .bvs-home-release-band > div { padding-inline: 1.5rem; }
+  .bvs-creator-portrait { flex-basis: 200px; }
+  .bvs-creator-portrait-rail { gap: 1.5rem; }
+  .bvs-app-creator-bands { margin-inline: -1.5rem; }
+}
+@media (min-width: 1024px) { .bvs-creator-portrait { flex-basis: 240px; } }
+@media (prefers-reduced-motion: reduce) { .bvs-creator-scroll-controls button { transition: none; } }
+@media (forced-colors: active) {
+  .bvs-creator-band, .bvs-home-release-band { background: Canvas; color: CanvasText; --portrait-line: CanvasText; }
+  .bvs-creator-band--ink .bvs-creator-directory { color: LinkText; }
+}

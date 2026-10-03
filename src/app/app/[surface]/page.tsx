@@ -20,9 +20,9 @@ function HomeDiscoveryFallback() {
     <div className="mt-11 space-y-10" aria-label="Loading BVS discovery">
       <section>
         <div className="h-7 w-48 animate-pulse rounded-full bg-white/[.05]" />
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
+        <div className="mt-5 flex gap-4 overflow-hidden">
           {Array.from({ length: 6 }).map((_, index) => (
-            <div key={index} className="aspect-[.82] animate-pulse rounded-[1.4rem] bg-white/[.035]" />
+            <div key={index} className="aspect-[.82] w-40 shrink-0 animate-pulse bg-white/[.035]" />
           ))}
         </div>
       </section>

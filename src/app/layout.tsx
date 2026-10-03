@@ -19,6 +19,7 @@ import DeferredGlobalTools from "@/components/layout/DeferredGlobalTools";
 import "./globals.css";
 import "./section-accents.css";
 import "./brand-culture.css";
+import "./creator-bands.css";
 
 const defaultSiteUrl = "https://bvsradio.com";
 const siteUrl = (() => {

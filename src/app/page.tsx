@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
-import { DeferredHomeBeatRail, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf, DeferredPublishedArtistsShelf } from "@/components/home/DeferredHomeSections";
+import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
 
 const paths = [
@@ -100,9 +100,9 @@ export default function HomePage() {
         </div>
       </section>
 
-      <DeferredHomeEngagementHub />
+      <DeferredHomeCreatorBands />
 
-      <section data-home-accent="discover" className="relative mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16" aria-label="Discover BVS music">
+      <section data-home-accent="discover" className="bvs-home-release-band relative" aria-label="Discover BVS music"><div>
         <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div className="max-w-3xl">
             <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Discover</p>
@@ -113,9 +113,10 @@ export default function HomePage() {
           </div>
           <Link href="/search" data-home-accent="discover" className="bvs-home-accent-button rounded-full border px-4 py-2 text-sm font-semibold">Explore everything →</Link>
         </div>
-        <DeferredPublishedArtistsShelf limit={6} />
         <div className="mt-8 sm:mt-10"><DeferredPublishedAlbumsShelf /></div>
-      </section>
+      </div></section>
+
+      <DeferredHomeEngagementHub />
 
       <DeferredHomeBeatRail />
 

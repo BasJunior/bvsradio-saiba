@@ -18,7 +18,7 @@ export default function PublishedAlbumsShelf() {
   if (!releases.length) return null
 
   return (
-    <section className="mb-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+    <section className="bvs-release-directory mb-6 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
       <p className="text-xs uppercase tracking-[3px] text-brand">Release directory</p>
       <h2 className="mt-1 text-2xl font-semibold tracking-tight">Albums &amp; EPs</h2>
       <p className="mt-1 text-sm text-text-secondary">Open a release directly instead of browsing another row of cover cards.</p>
@@ -28,9 +28,9 @@ export default function PublishedAlbumsShelf() {
           <Link
             key={release.id}
             href={`/album/${release.id}`}
-            className="group flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-2.5 transition hover:border-brand/40 hover:bg-white/[0.035]"
+            className="bvs-release-row group flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-2.5 transition hover:border-brand/40 hover:bg-white/[0.035]"
           >
-            <div className="relative h-14 w-14 flex-none overflow-hidden rounded-lg border border-white/10 bg-black/40">
+            <div className="bvs-release-photo relative h-14 w-14 flex-none overflow-hidden rounded-lg border border-white/10 bg-black/40">
               <Image
                 src={release.cover}
                 alt={`${release.title} cover`}
