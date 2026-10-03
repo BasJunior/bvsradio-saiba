@@ -16,6 +16,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     private var remoteCommandsConfigured = false
     private var currentArtworkURL = ""
     private var pendingPushHref: String?
+    private var pushActionBridgeReady = false
     private var pendingNativeMediaPayloads: [[String: Any]] = []
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -390,6 +391,23 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     private func handlePushRegistrationMessage(_ body: Any) {
         guard let payload = body as? [String: Any], let action = payload["action"] as? String else { return }
         let center = UNUserNotificationCenter.current()
+        if action == "ack" {
+            if let href = payload["href"] as? String, href == pendingPushHref { pendingPushHref = nil }
+            return
+        }
+        if action == "ready" {
+            pushActionBridgeReady = true
+            flushPendingPushAction()
+            return
+        }
+        if action == "settings" {
+            DispatchQueue.main.async {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            return
+        }
         if action == "status" {
             center.getNotificationSettings { [weak self] settings in
                 self?.emitPushPermission(settings.authorizationStatus)
@@ -444,15 +462,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
 
     private func emitPushAction(_ href: String) {
         guard !href.isEmpty else { return }
-        guard let bridge = window?.rootViewController as? CAPBridgeViewController,
-              let webView = bridge.webView,
-              let data = try? JSONSerialization.data(withJSONObject: ["href": href]),
-              let json = String(data: data, encoding: .utf8) else {
-            pendingPushHref = href
-            return
-        }
-        pendingPushHref = nil
-        DispatchQueue.main.async {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            // Keep the tap until the web listener acknowledges it, including cold starts.
+            self.pendingPushHref = href
+            guard self.pushActionBridgeReady,
+                  let bridge = self.window?.rootViewController as? CAPBridgeViewController,
+                  let webView = bridge.webView,
+                  let data = try? JSONSerialization.data(withJSONObject: ["href": href]),
+                  let json = String(data: data, encoding: .utf8) else { return }
             webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('bvs:native-push-action',{detail:\(json)}));")
         }
     }
@@ -463,13 +481,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        emitPushEvent("bvs:native-push-received", payload: [:])
         completionHandler([.banner, .list, .sound, .badge])
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let info = response.notification.request.content.userInfo
         if let href = info["href"] as? String, !href.isEmpty {
-            pendingPushHref = href
             emitPushAction(href)
         }
         completionHandler()

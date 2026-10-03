@@ -43,20 +43,21 @@ function iosPushBridge() {
   return (window as NativeBridgeWindow).webkit?.messageHandlers?.bvsPushRegistration || null;
 }
 
-function waitForWindowEvent<T>(name: string, timeoutMs = 12000) {
-  return new Promise<T>((resolve, reject) => {
-    let timer = 0;
-    const handler = (event: Event) => {
-      window.clearTimeout(timer);
-      window.removeEventListener(name, handler);
-      resolve((event as CustomEvent<T>).detail);
-    };
+function windowEventWait<T>(name: string, timeoutMs = 12000) {
+  let timer = 0;
+  let handler: (event: Event) => void;
+  const cancel = () => {
+    window.clearTimeout(timer);
+    window.removeEventListener(name, handler);
+  };
+  const promise = new Promise<T>((resolve, reject) => {
+    handler = (event: Event) => { cancel(); resolve((event as CustomEvent<T>).detail); };
     window.addEventListener(name, handler);
-    timer = window.setTimeout(() => {
-      window.removeEventListener(name, handler);
-      reject(new Error("Native notification bridge timed out."));
-    }, timeoutMs);
+    timer = window.setTimeout(() => { cancel(); reject(new Error("Native notification bridge timed out. Try again when you’re online.")); }, timeoutMs);
   });
+  // Permission dialogs can outlast registration callbacks. Attach rejection handling immediately.
+  void promise.catch(() => undefined);
+  return { promise, cancel };
 }
 
 async function savePushDevice(accessToken: string, platform: NativePlatform, deviceToken: string) {
@@ -69,6 +70,19 @@ async function savePushDevice(accessToken: string, platform: NativePlatform, dev
     const payload = await response.json().catch(() => ({})) as { error?: string };
     throw new Error(payload.error || "BVS could not save this device for notifications.");
   }
+  await setAppPreference("bvs_push_device_token", deviceToken);
+  window.dispatchEvent(new CustomEvent("bvs:push-registration", { detail: { ok: true } }));
+}
+
+export async function unregisterPushDevice(accessToken: string) {
+  const deviceToken = await getAppPreference("bvs_push_device_token");
+  if (!deviceToken) return;
+  const response = await fetch("/api/app/push/unregister", {
+    method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ deviceToken }),
+  });
+  if (!response.ok) throw new Error("Could not disconnect notifications. Please try signing out again.");
+  await setAppPreference("bvs_push_device_token", "");
 }
 
 export function isNativeRuntime() {
@@ -163,8 +177,10 @@ export async function listenPushNotificationActions(listener: (action: AppPushAc
     const onAction = (event: Event) => {
       const detail = (event as CustomEvent<Record<string, unknown>>).detail || {};
       listener({ notification: { data: detail } });
+      iosPushBridge()?.postMessage({ action: "ack", href: detail.href });
     };
     window.addEventListener("bvs:native-push-action", onAction);
+    iosPushBridge()?.postMessage({ action: "ready" });
     return async () => window.removeEventListener("bvs:native-push-action", onAction);
   }
 
@@ -176,15 +192,22 @@ export async function listenPushNotificationActions(listener: (action: AppPushAc
   }
 }
 
+export function openNotificationSettings() {
+  const bridge = iosPushBridge();
+  if (!bridge) return false;
+  bridge.postMessage({ action: "settings" });
+  return true;
+}
+
 export async function getPushPermission(): Promise<PushPermissionState> {
   if (!isNativeRuntime()) return "unavailable";
 
   const bridge = iosPushBridge();
   if (bridge) {
     try {
-      const state = waitForWindowEvent<{ state?: PushPermissionState }>("bvs:native-push-permission", 3500);
+      const state = windowEventWait<{ state?: PushPermissionState }>("bvs:native-push-permission", 3500);
       bridge.postMessage({ action: "status" });
-      return (await state).state || "unavailable";
+      return (await state.promise).state || "unavailable";
     } catch {
       return "unavailable";
     }
@@ -202,21 +225,22 @@ export async function registerPushDevice(accessToken: string, platform: NativePl
 
   const bridge = iosPushBridge();
   if (platform === "ios" && bridge) {
+    let permission: PushPermissionState = "unavailable";
+    const permissionWait = windowEventWait<{ state?: PushPermissionState }>("bvs:native-push-permission", 60000);
+    const registrationWait = windowEventWait<{ token?: string; error?: string }>("bvs:native-push-registration", 70000);
     try {
-      const permissionPromise = waitForWindowEvent<{ state?: PushPermissionState }>("bvs:native-push-permission");
-      const registrationPromise = waitForWindowEvent<{ token?: string; error?: string }>("bvs:native-push-registration");
       bridge.postMessage({ action: "register" });
-      const permission = (await permissionPromise).state || "unavailable";
-      if (permission !== "granted") {
-        void registrationPromise.catch(() => undefined);
-        return { ok: false, permission };
-      }
-      const registration = await registrationPromise;
+      permission = (await permissionWait.promise).state || "unavailable";
+      if (permission !== "granted") return { ok: false, permission };
+      const registration = await registrationWait.promise;
       if (!registration.token) throw new Error(registration.error || "Apple Push registration failed.");
       await savePushDevice(accessToken, platform, registration.token);
       return { ok: true, permission: "granted" };
     } catch (error) {
-      return { ok: false, permission: "unavailable", error: error instanceof Error ? error.message : "Push registration failed." };
+      return { ok: false, permission, error: error instanceof Error ? error.message : "Push registration failed." };
+    } finally {
+      permissionWait.cancel();
+      registrationWait.cancel();
     }
   }
 

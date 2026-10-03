@@ -98,7 +98,7 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   useEffect(() => {
-    void hydrate();
+    queueMicrotask(() => void hydrate());
     if (!isSupabaseConfigured()) return;
     const supabase = createClient();
     const { data } = supabase.auth.onAuthStateChange(() => {
@@ -111,13 +111,29 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   useEffect(() => {
     if (!token || !isNativeRuntime()) return;
     let alive = true;
-    void (async () => {
-      const permission = await getPushPermission();
-      if (!alive || permission !== "granted") return;
-      const platform = Capacitor.getPlatform() === "android" ? "android" : "ios";
-      await registerPushDevice(token, platform).catch(() => undefined);
-    })();
-    return () => { alive = false; };
+    let registering = false;
+    const refreshPush = async () => {
+      if (!alive || registering) return;
+      registering = true;
+      try {
+        const permission = await getPushPermission();
+        if (!alive || permission !== "granted") return;
+        const platform = Capacitor.getPlatform() === "android" ? "android" : "ios";
+        const result = await registerPushDevice(token, platform);
+        if (alive && !result.ok) window.dispatchEvent(new CustomEvent("bvs:push-registration", { detail: result }));
+      } finally { registering = false; }
+    };
+    void refreshPush();
+    // Retry once the native bridge is ready and after returning from iPhone Settings/offline.
+    const readyTimer = window.setTimeout(() => void refreshPush(), 4000);
+    const onResume = () => void refreshPush();
+    window.addEventListener("bvs:app-resume", onResume);
+    window.addEventListener("online", onResume);
+    return () => {
+      alive = false; window.clearTimeout(readyTimer);
+      window.removeEventListener("bvs:app-resume", onResume);
+      window.removeEventListener("online", onResume);
+    };
   }, [token]);
 
   const isCreator = Boolean(

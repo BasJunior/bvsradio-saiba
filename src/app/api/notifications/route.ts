@@ -1,3 +1,4 @@
+import { operationNotificationEnabled } from '@/lib/notification-categories'
 import { NextResponse } from 'next/server'
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -17,9 +18,10 @@ export async function GET(request: Request) {
     const response = await fetch(`${url}/rest/v1/${path}`, { headers, cache: 'no-store' })
     return response.ok ? await response.json() as Array<Record<string, unknown>> : []
   }
-  const [profiles, staff] = await Promise.all([
+  const [profiles, staff, preferences] = await Promise.all([
     rows(`profiles?id=eq.${user.id}&select=role,is_producer&limit=1`),
     rows(`editorial_staff?user_id=eq.${user.id}&active=eq.true&select=role&limit=1`),
+    rows(`app_notification_preferences?user_id=eq.${user.id}&select=shows,creator_work,orders&limit=1`),
   ])
   const profile = profiles[0]
   const editorial = Boolean(staff[0]) || ['admin', 'editor', 'moderator'].includes(String(profile?.role || ''))
@@ -92,7 +94,7 @@ export async function GET(request: Request) {
     ]
   }
 
-  events = events.filter(event => event.created_at && event.created_at !== 'undefined')
+  events = events.filter(event => operationNotificationEnabled(event.kind, preferences[0] || {})).filter(event => event.created_at && event.created_at !== 'undefined')
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
     .slice(0, 100)
   return NextResponse.json({ destination: '/notifications', events })
