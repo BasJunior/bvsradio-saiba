@@ -1,6 +1,7 @@
 "use client";
 
 import { useStationPlayer } from "@/components/StationPlayer";
+import AppShareButton from "@/components/app-vnext/AppShareButton";
 import type { PublishedEpisode } from "@/lib/published-shows";
 
 export default function ShowEpisodeList({ episodes }: { episodes: PublishedEpisode[] }) {
@@ -30,6 +31,7 @@ export default function ShowEpisodeList({ episodes }: { episodes: PublishedEpiso
             if (player.current?.id === `episode-${episode.id}`) player.toggle();
             else player.playNow(recordings.find(track => track.id === `episode-${episode.id}`)!, { from: episode.showTitle, related: recordings.filter(track => track.id !== `episode-${episode.id}`) });
           }}>{player.current?.id === `episode-${episode.id}` && player.isPlaying ? "Pause" : "Play episode"}</button>
+          <span className="ml-2"><AppShareButton title={episode.title} text={episode.showTitle} image={episode.artwork} path={`/shows/${episode.showSlug}#episode-${episode.id}`} kicker="BVS Episode" compact /></span>
         </article>
       ))}
     </div>

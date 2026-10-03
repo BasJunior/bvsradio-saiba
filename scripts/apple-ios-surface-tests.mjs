@@ -103,7 +103,7 @@ for (const section of ['beat', 'creator', 'show', 'playlist', 'marketplace']) {
   assert(shareUrl.includes(`section === "${section}"`), `contained ${section} shares must map to a public web destination`)
 }
 assert(appShare.includes('canvas.width = 1080'), 'app social share must build a 1080-wide story card')
-assert(appShare.includes('canvas.height = 1920'), 'app social share must build a 9:16 story card')
+assert(appShare.includes('canvas.height = format === "story" ? 1920 : 1080'), 'app social share must build a 9:16 story card')
 assert(appShare.includes('navigator.canShare?.({ files: [storyCard] })'), 'app share must send the story card through compatible native social share sheets')
 assert(appShare.includes('bvsradio.com'), 'app share UI must identify the canonical public domain')
 assert(!appShare.includes('window.location.origin'), 'app share button must not derive public links from a preview or WebView origin')

@@ -31,11 +31,11 @@ assert(!postsRoute.includes('message_kind=eq.root&status=in.(published,deleted)'
 assert(postsRoute.includes('raw.startsWith("artist-")'), 'Following lane must normalize creator library keys')
 
 // Story shares should be a designed 9:16 media asset with the actual artwork.
-assert(share.includes('canvas.width = 1080') && share.includes('canvas.height = 1920'), 'Story cards must remain 1080x1920')
+assert(share.includes('canvas.width = 1080') && share.includes('canvas.height = format === "story" ? 1920 : 1080'), 'Story cards must remain 1080x1920')
 assert(share.includes('loadStoryImage(image)'), 'Story card renderer must load the shared artwork')
-assert(share.includes('drawCoverImage(context, loaded.image, 72, 278, 936, 936, 54)'), 'Story artwork must dominate the story card')
-assert(share.includes('OPEN ON BVS'), 'Story card must carry a visible BVS call to action')
-assert(share.includes('new URL(src, "https://bvsradio.com")'), 'Relative share artwork must resolve against canonical BVS')
+assert(share.includes('drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, 24)'), 'Story artwork must dominate the story card')
+assert(share.includes('PRESS PLAY ON BVS'), 'Story card must carry a visible BVS call to action')
+assert(share.includes('new URL(src, base)'), 'Relative share artwork must resolve against canonical BVS')
 assert(!share.includes('window.location.origin'), 'Story media must not inherit preview/deployment origins')
 
 // Artist-level playback uses only public approved catalogue rows and fails closed on mobile rights clearance.

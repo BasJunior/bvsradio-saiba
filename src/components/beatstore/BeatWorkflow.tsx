@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import AppShareButton from '@/components/app-vnext/AppShareButton'
 import LibraryAction from '@/components/LibraryAction'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
@@ -313,6 +314,7 @@ export default function BeatWorkflow({ beat }: { beat: Beat }) {
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
+          <AppShareButton title={beat.title} text={[beat.producerName, beat.genre, beat.bpm ? `${beat.bpm} BPM` : null].filter(Boolean).join(" · ")} path={`/beat/${beat.id}`} image={beat.artworkUrl || undefined} kicker="BVS BeatStore" />
           {access.owned ? <button type="button" onClick={() => void openLyrics()} disabled={openingLyrics} className="min-h-11 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black disabled:opacity-50">{openingLyrics ? 'Opening writing…' : workspaceId ? 'Write lyrics here' : 'Start writing to this beat'}</button> : <Link href={licenceHref} className="min-h-11 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-black">View licence options</Link>}
           {!access.member && sessionReady ? <Link href={`/auth/login?next=${encodeURIComponent(`/beat/${beat.id}`)}`} className="min-h-11 rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-text-secondary hover:text-white">Sign in for full beat</Link> : null}
           {access.owned && access.orderReference ? <Link href={`/account/orders/${encodeURIComponent(access.orderReference)}`} className="min-h-11 rounded-full border border-white/15 px-5 py-3 text-sm font-semibold text-text-secondary hover:text-white">Purchase & licence</Link> : null}

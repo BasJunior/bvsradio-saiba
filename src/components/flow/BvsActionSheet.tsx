@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation";
 import type { BvsAction, BvsObject } from "@/lib/bvs-object";
 import { recordFlowOpen } from "@/lib/flow-session";
 import { trackEvent } from "@/lib/analytics";
-import { shareBvs } from "@/lib/app-native";
 import { canonicalBvsShareUrl } from "@/lib/share-url";
+import { openBvsShareCard } from "@/lib/share-card";
 import { clearCurrentTransientLayer, currentTransientLayer, dismissTransientLayer, openTransientLayer } from "@/lib/transient-navigation";
 
 const IOS_ROOT = "/app/ios";
@@ -45,10 +45,12 @@ function queueAction(action: BvsAction, object: BvsObject) {
 }
 
 async function shareObject(object: BvsObject) {
-  await shareBvs({
+  openBvsShareCard({
     title: object.title,
     text: object.subtitle || object.contextLabel || "BVS Radio",
-    url: canonicalBvsShareUrl(object.route),
+    path: canonicalBvsShareUrl(object.route),
+    image: object.artwork,
+    kicker: object.contextLabel || object.kind,
   });
 }
 

@@ -12,8 +12,8 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { BvsFeedCategory, BvsFeedFilter, BvsFeedItem } from "@/lib/bvs-feed";
 import type { AppSurface } from "@/lib/app-surface";
 import type { ParticipationPost } from "@/lib/participation-server";
-import { shareBvs } from "@/lib/app-native";
 import { canonicalBvsShareUrl } from "@/lib/share-url";
+import { openBvsShareCard } from "@/lib/share-card";
 import { readLibrary } from "@/lib/library";
 
 const filters: Array<{ id: BvsFeedFilter; label: string }> = [
@@ -238,10 +238,12 @@ export default function BvsFeedList({
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [visiblePosts, visibleSystem]);
 
   async function share(item: BvsFeedItem) {
-    await shareBvs({
+    openBvsShareCard({
       title: item.object.title,
       text: `${item.verb} · ${item.object.subtitle || "BVS"}`,
-      url: canonicalBvsShareUrl(exactFeedRoute(item)),
+      path: canonicalBvsShareUrl(exactFeedRoute(item)),
+      image: item.object.artwork,
+      kicker: item.object.kind === "show" ? "BVS Show" : item.object.kind === "beat" ? "BVS BeatStore" : item.object.contextLabel || item.object.kind,
     });
   }
 

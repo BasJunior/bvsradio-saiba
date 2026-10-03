@@ -31,7 +31,7 @@ assert(feed.includes("creator_marketplace_listings?status=eq.published"), "feed 
 assert(!feed.includes("track_review_messages"), "public feed must never expose private track review messages");
 assert(!feed.includes("beat_review_messages"), "public feed must never expose private beat review messages");
 assert(feedList.includes("LibraryAction"), "feed must expose existing save/follow social actions");
-assert(feedList.includes("shareBvs"), "feed must expose sharing");
+assert(feedList.includes("openBvsShareCard"), "feed must expose sharing");
 assert(feedList.includes("canonicalBvsShareUrl"), "feed sharing must use canonical BVS public URLs");
 assert(feedList.includes('`/beat/${encodeURIComponent(item.object.id)}`'), "web feed beat shares and saved items must use the exact beat id route");
 assert(feedList.includes('item.category === "beat" ? "feed-beat" : "feed-row"'), "every Feed event must use a content-first row with actions below copy");

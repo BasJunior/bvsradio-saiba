@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { useStationPlayer } from '@/components/StationPlayer'
 import { trackEvent } from '@/lib/analytics'
+import { openBvsShareCard } from '@/lib/share-card'
 import { canonicalBvsShareUrl } from '@/lib/share-url'
 import { playlistItemKey } from '@/lib/playlist-item'
 import type { StationTrack } from '@/lib/station'
@@ -159,12 +160,8 @@ export default function PlaylistDetailView({ id }: { id: string }) {
 
   const share = async () => {
     const shareUrl = canonicalBvsShareUrl(`/playlist/${id}`)
-    try {
-      if (navigator.share) await navigator.share({ title: playlist?.title || 'BVS Playlist', url: shareUrl })
-      else await navigator.clipboard.writeText(shareUrl)
-      setMessage('Playlist link ready to share.')
-      trackEvent('engagement_action_open', { activity: 'playlist_share', playlist_id: id })
-    } catch {}
+    openBvsShareCard({ title: playlist?.title || 'BVS Playlist', text: playlist?.description || `${items.length} picks on BVS`, path: shareUrl, kicker: 'BVS Playlist' })
+    trackEvent('engagement_action_open', { activity: 'playlist_share', playlist_id: id })
   }
 
   if (loading) return <main className="mx-auto min-h-[60vh] max-w-5xl px-4 py-12 sm:px-6"><p className="text-text-secondary">Loading playlist…</p></main>
