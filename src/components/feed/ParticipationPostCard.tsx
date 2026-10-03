@@ -42,11 +42,11 @@ export default function ParticipationPostCard({
   post: ParticipationPost;
   surface: AppSurface | null;
   enabled: boolean;
-  onChanged?: (post: ParticipationPost) => void;
+  onChanged: (post: ParticipationPost) => void;
   onDeleted?: (threadId: string) => void;
 }) {
   const session = useAppSession();
-  const [current, setCurrent] = useState(post);
+  const current = post;
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(post.body);
   const [busy, setBusy] = useState(false);
@@ -62,8 +62,7 @@ export default function ParticipationPostCard({
   }
 
   function commit(next: ParticipationPost) {
-    setCurrent(next);
-    onChanged?.(next);
+    onChanged(next);
   }
 
   async function toggle(reaction: "like" | "repost") {
@@ -72,6 +71,7 @@ export default function ParticipationPostCard({
       setError("Sign in to react to this post.");
       return;
     }
+    setBusy(true);
     setError("");
     const liked = reaction === "like";
     const wasActive = liked ? current.viewerLiked : current.viewerReposted;
@@ -95,6 +95,7 @@ export default function ParticipationPostCard({
     } : {};
     if (!response?.ok || !payload.summary) {
       commit(previous);
+      setBusy(false);
       setError(payload.error || "Could not save that reaction.");
       return;
     }
@@ -106,6 +107,7 @@ export default function ParticipationPostCard({
       viewerLiked: payload.summary.liked,
       viewerReposted: payload.summary.reposted,
     });
+    setBusy(false);
   }
 
   async function saveEdit() {
@@ -202,10 +204,10 @@ export default function ParticipationPostCard({
       {error ? <p role="status" className="mt-3 text-xs text-[#ff9a92]">{error}</p> : null}
 
       <div className="mt-4 flex min-h-10 flex-wrap items-center gap-1.5 border-t border-white/[.055] pt-3">
-        <button type="button" aria-pressed={current.viewerLiked} onClick={() => void toggle("like")} className={`min-h-9 rounded-full border px-3 text-xs font-semibold transition ${current.viewerLiked ? "border-[#ff7a70]/45 bg-[#ff7a70]/12 text-[#ff9a92]" : "border-white/10 text-white/50 hover:border-[#ff7a70]/35 hover:text-[#ff9a92]"}`}>
+        <button type="button" disabled={busy} aria-pressed={current.viewerLiked} onClick={() => void toggle("like")} className={`min-h-9 rounded-full border px-3 text-xs font-semibold transition ${current.viewerLiked ? "border-[#ff7a70]/45 bg-[#ff7a70]/12 text-[#ff9a92]" : "border-white/10 text-white/50 hover:border-[#ff7a70]/35 hover:text-[#ff9a92]"}`}>
           {current.viewerLiked ? "♥" : "♡"} {current.likeCount || "Like"}
         </button>
-        <button type="button" aria-pressed={current.viewerReposted} onClick={() => void toggle("repost")} className={`min-h-9 rounded-full border px-3 text-xs font-semibold transition ${current.viewerReposted ? "border-[#7db6ff]/45 bg-[#7db6ff]/12 text-[#9bc6ff]" : "border-white/10 text-white/50 hover:border-[#7db6ff]/35 hover:text-[#9bc6ff]"}`}>
+        <button type="button" disabled={busy} aria-pressed={current.viewerReposted} onClick={() => void toggle("repost")} className={`min-h-9 rounded-full border px-3 text-xs font-semibold transition ${current.viewerReposted ? "border-[#7db6ff]/45 bg-[#7db6ff]/12 text-[#9bc6ff]" : "border-white/10 text-white/50 hover:border-[#7db6ff]/35 hover:text-[#9bc6ff]"}`}>
           ↻ {current.repostCount || "Repost"}
         </button>
         <Link href={permalink} className="min-h-9 rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-white/50 transition hover:border-[#929DE0]/35 hover:text-[#c2c9ff]">

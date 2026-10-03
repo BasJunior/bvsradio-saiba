@@ -15,15 +15,15 @@ export default async function BvsFeedPage() {
   const items = await getBvsFeed({ limit: 90 });
 
   return (
-    <main className="mx-auto min-h-screen max-w-4xl px-4 pb-32 pt-24 sm:px-6 sm:pt-28">
+    <main className="mx-auto min-h-screen max-w-4xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10">
       <header className="mb-7 sm:mb-9">
         <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.24em] bvs-section-label">
           <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_18px_rgba(212,175,55,.75)]" aria-hidden="true" />
           BVS Pulse
         </div>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-6xl">What’s moving now.</h1>
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">What’s moving now.</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-text-secondary sm:text-lg">
-          New releases, rotation adds, creators, beats, shows and Marketplace drops — one living view of what is happening across BVS.
+          Hear new drops, follow creators and join the conversation. Your music keeps playing while you explore.
         </p>
       </header>
 
