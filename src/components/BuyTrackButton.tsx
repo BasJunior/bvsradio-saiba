@@ -42,7 +42,8 @@ export default function BuyTrackButton({
 
   if (track?.id && isBeatTrack(track)) {
     if (isEditorialPlay(track)) return null;
-    const beatId = track.id;
+    const beatId = track.id.replace(/^beat-/, "");
+    if (!beatId) return null;
     const beatHref = `https://bvsradio.com/beat/${encodeURIComponent(beatId)}#beat-licences`;
     return (
       <a
