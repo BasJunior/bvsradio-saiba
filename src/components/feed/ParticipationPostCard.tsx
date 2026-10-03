@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { AppSurface } from "@/lib/app-surface";
-import { shareBvs } from "@/lib/app-native";
 import { canonicalBvsShareUrl } from "@/lib/share-url";
+import { openBvsShareCard } from "@/lib/share-card";
 import type { ParticipationPost } from "@/lib/participation-server";
 
 const intentLabel = {
@@ -149,10 +149,12 @@ export default function ParticipationPostCard({
   }
 
   async function share() {
-    await shareBvs({
+    openBvsShareCard({
       title: `${current.author.displayName} on BVS`,
       text: current.body.slice(0, 180),
-      url: canonicalBvsShareUrl(permalink),
+      path: canonicalBvsShareUrl(permalink),
+      image: current.author.avatarUrl || undefined,
+      kicker: "BVS Community",
     });
   }
 

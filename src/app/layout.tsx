@@ -1,3 +1,4 @@
+import ShareCardHost from "@/components/layout/ShareCardHost";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { RootNavbar, RootMobileFlowNav } from "@/components/layout/RootChrome";
@@ -104,6 +105,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Footer />
                 <div className="bvs-app-bottom-spacer" aria-hidden="true" />
                 <DeferredGlobalTools />
+                <ShareCardHost />
                 <AnalyticsBootstrap />
                 <WebVitalsReporter />
                 <Suspense fallback={null}>

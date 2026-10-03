@@ -21,7 +21,7 @@ assert(paths.some(path=>path.includes('status=eq.published&show_id=in.')));
 let played, toggled=0;
 const player={current:null,isPlaying:false,playNow:(track,options)=>{played={track,options}},toggle:()=>toggled++};
 const jsx=(type,props)=>({type,props});
-const list=module('src/components/shows/ShowEpisodeList.tsx',{'@/components/StationPlayer':{useStationPlayer:()=>player},'react/jsx-runtime':{jsx,jsxs:jsx}});
+const list=module('src/components/shows/ShowEpisodeList.tsx',{'@/components/app-vnext/AppShareButton':{default:()=>null},'@/components/StationPlayer':{useStationPlayer:()=>player},'react/jsx-runtime':{jsx,jsxs:jsx}});
 function nodes(tree){return tree && typeof tree==='object'?[tree,...[tree.props?.children].flat(Infinity).flatMap(nodes)]:[]}
 let tree=list.default({episodes:drops});
 assert(!nodes(tree).some(node=>node.type==='audio'),'Episodes must use the persistent player');

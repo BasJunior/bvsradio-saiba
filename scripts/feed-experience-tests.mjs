@@ -39,7 +39,7 @@ const session = { token:'test-only', signedIn:true, user:{id:'u1'} };
 const imports = {
   'next/link':{default:'link'}, 'next/navigation':{useRouter:()=>({refresh:()=>refreshes++})},
   '@/components/app-vnext/AppSessionProvider':{useAppSession:()=>session},
-  '@/lib/app-native':{shareBvs:async()=>{}}, '@/lib/share-url':{canonicalBvsShareUrl:s=>s}, '@/lib/library':{readLibrary:()=>[]},
+  '@/lib/share-card':{openBvsShareCard:()=>{}}, '@/lib/share-url':{canonicalBvsShareUrl:s=>s}, '@/lib/library':{readLibrary:()=>[]},
 };
 for (const [path, type] of Object.entries({
   '@/components/flow/BvsObjectCard':'object', '@/components/LibraryAction':'library', '@/components/feed/FeedComposer':'composer',
