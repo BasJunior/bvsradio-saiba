@@ -11,6 +11,7 @@ import { useAppSurface } from '@/components/app/AppSurfaceProvider'
 import { useAppShellMeasurement } from '@/components/app/useAppShellMeasurement'
 import { appHome, isAppPrimaryRoot, primaryAppDestinations } from '@/lib/app-surface'
 import { readFlowBackTarget } from '@/lib/flow-session'
+import { webDestinations, isWebDestinationActive } from '@/lib/web-navigation'
 import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
 type Access = {
   artist: boolean
@@ -139,10 +140,7 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
-    if (!isSupabaseConfigured() || !user?.id || !authToken) {
-      setNotificationCount(0)
-      return
-    }
+    if (!isSupabaseConfigured() || !user?.id || !authToken) return
 
     let alive = true
     let pollTimer: number | null = null
@@ -242,30 +240,14 @@ export default function Navbar() {
 
   // BVS Flow keeps listener movement short. Creator and operational paths live
   // behind the workspace/account surfaces instead of competing with discovery.
-  const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/search', label: 'Explore' },
-    { href: '/catalogue?type=beat#beatstore', label: 'Beats' },
-    { href: '/library', label: 'Library' },
-  ]
+  const navLinks = webDestinations
 
   const serviceLinks = [
     { href: '/marketplace', label: 'Creator Marketplace', detail: 'Creator products and professional talent' },
     { href: '/shop', label: 'BVS Studio Services', detail: 'Official BVS mixing, mastering and production' },
   ]
 
-  const artistLinks = [
-    { href: '/creator/studio#artist-access', label: 'Artist access in Studio' },
-    { href: '/upload', label: 'Submit music' },
-    { href: '/upload?type=beats', label: 'Submit beat' },
-    { href: '/premium', label: 'Premium' },
-    { href: '/catalogue?type=beat#beatstore', label: 'BeatStore' },
-    { href: '/creator/studio#marketplace-desk', label: 'Manage marketplace' },
-  ]
-
-  const showCreator = Boolean(access?.creator)
   const showEditorial = Boolean(access?.editorial)
-  const studioActive = pathname === '/creator/studio' || pathname.startsWith('/creator/studio/')
   const premiumUntilLabel = formatPremiumUntil(premium?.premiumUntil ?? null)
   const premiumBadge =
     premium?.premiumActive
@@ -349,7 +331,7 @@ export default function Navbar() {
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center gap-7 text-sm font-medium tracking-wide">
           {navLinks.map((link) => (
-            <Link key={link.href} href={link.href} className="text-text-secondary hover:text-brand transition-colors">
+            <Link key={link.href} href={link.href} data-bvs-web-studio={link.id === 'studio' ? 'desktop' : undefined} aria-current={isWebDestinationActive(link.id, pathname) ? 'page' : undefined} className={`transition-colors ${isWebDestinationActive(link.id, pathname) ? 'text-brand' : 'text-text-secondary hover:text-brand'}`}>
               {link.label}
             </Link>
           ))}
@@ -371,38 +353,9 @@ export default function Navbar() {
           </Link>
           {user ? (
             <>
-              {showCreator && (
-                <span className="relative">
-                  <Link
-                    href="/creator/studio"
-                    data-bvs-web-studio="desktop"
-                    aria-current={studioActive ? 'page' : undefined}
-                    className={`inline-flex min-h-10 items-center rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors ${studioActive ? 'border-brand bg-brand text-black' : 'border-brand/35 bg-brand/10 text-brand hover:border-brand/55 hover:bg-brand/15'}`}
-                  >
-                    Studio
-                  </Link>
-                  {!showEditorial && notificationBadge}
-                </span>
-              )}
               {showEditorial && <span className="relative"><Link href="/editorial" className="block px-2.5 py-2 text-sm text-text-secondary hover:text-brand transition-colors">Editorial</Link>{notificationBadge}</span>}
-              {premiumBadge && (
-                <Link
-                  href="/artist/premium"
-                  title={premiumBadge}
-                  className="max-w-[14rem] truncate rounded-full border border-brand/40 bg-brand/10 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-brand hover:bg-brand/20"
-                >
-                  {premiumBadge}
-                </Link>
-              )}
-              <span className="relative"><Link href="/account" className="block px-2.5 py-2 text-sm text-text-primary hover:text-brand transition-colors">Account</Link>{!showCreator && !showEditorial && notificationBadge}</span>
-              <button
-                type="button"
-                onClick={signOut}
-                className="ml-1 px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors"
-                title={user.email || 'Sign out'}
-              >
-                Sign out
-              </button>
+              <span className="relative"><Link href="/account" className="block px-2.5 py-2 text-sm text-text-primary hover:text-brand transition-colors">Account</Link>{!showEditorial && notificationBadge}</span>
+
             </>
           ) : (
             <>
@@ -418,17 +371,6 @@ export default function Navbar() {
 
         {/* Mobile: keep creator Studio / Join one tap away (not only inside the drawer) */}
         <div className="flex items-center gap-1.5 md:hidden">
-          {user && showCreator && (
-            <Link
-              href="/creator/studio"
-              data-bvs-web-studio="mobile"
-              aria-current={studioActive ? 'page' : undefined}
-              className={`inline-flex h-9 items-center rounded-full border px-3 text-xs font-semibold transition-colors ${studioActive ? 'border-brand bg-brand text-black' : 'border-brand/35 bg-brand/10 text-brand active:bg-brand/20'}`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Studio
-            </Link>
-          )}
           <Link
             href="/checkout"
             aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
@@ -494,14 +436,8 @@ export default function Navbar() {
                 </Link>
               ))}
             </div>
-            <div className="pt-2">
-              <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">For Artists</div>
-              {artistLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="block py-2 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
+            <Link href="/feed" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Community Feed</Link>
+            <Link href="/premium" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Premium</Link>
             <Link href="/checkout" className="flex items-center justify-between py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
               <span>Cart</span>
               {cartCount > 0 && (
@@ -521,8 +457,7 @@ export default function Navbar() {
                       {premiumBadge}
                     </Link>
                   )}
-                  <Link href="/account" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Account Centre</span>{!showCreator && !showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
-                  {showCreator && <Link href="/creator/studio" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Creator studio</span>{!showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
+                  <Link href="/account" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Account Centre</span>{!showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
                   {showEditorial && <Link href="/editorial" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Editorial dashboard</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
                   {showEditorial && <Link href="/admin/creator-workflows" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Writing &amp; research review</Link>}
                   <Link href="/notifications" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={openNotifications}><span>Notifications</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>

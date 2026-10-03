@@ -216,9 +216,9 @@ export default function CreatorStudioHome() {
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <ManageLink href="/creator/studio/manage#releases" accent="core" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
           {artist && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" accent="core" />}
-          <ManageLink href="/artists" label="Money" detail="Wallet & earnings" accent="money" />
+          <ManageLink href="/creator/studio/earnings" label="Money" detail="Wallet & earnings" accent="money" />
           <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" accent="marketplace" />
-          <ManageLink href="/creator/marketplace" label="Profile & storefront" detail="Advanced setup" accent="marketplace" />
+          <ManageLink href="/creator/studio/services" label="Profile & storefront" detail="Advanced setup" accent="marketplace" />
         </div>
         {(activity.pending > 0 || activity.distributing > 0) && (
           <div className="mt-5 flex flex-wrap gap-2 text-xs text-text-secondary">

@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 import { useAppShellMeasurement } from "@/components/app/useAppShellMeasurement";
+import { webDestinations, isWebDestinationActive } from "@/lib/web-navigation";
 import { matchPrimaryDestination, primaryAppDestinations } from "@/lib/app-surface";
 
-function Icon({ id, active }: { id: "home" | "explore" | "beats" | "library"; active: boolean }) {
+function Icon({ id, active }: { id: "home" | "explore" | "beats" | "library" | "studio"; active: boolean }) {
   const stroke = active ? "currentColor" : "currentColor";
   if (id === "home") {
     return (
@@ -22,6 +23,9 @@ function Icon({ id, active }: { id: "home" | "explore" | "beats" | "library"; ac
         <path strokeLinecap="round" d="m16 16 4 4" />
       </svg>
     );
+  }
+  if (id === "studio") {
+    return <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke={stroke} strokeWidth="1.8" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" d="M5 5h14v14H5zM8 9h8M8 13h3m3 0h2M8 16h8" /></svg>;
   }
   if (id === "beats") {
     return (
@@ -56,6 +60,22 @@ export default function MobileFlowNav() {
   const feedHref = appChrome && surface ? `/app/${surface}/feed` : "/feed";
   const feedActive = pathname === "/feed" || Boolean(surface && pathname.startsWith(`/app/${surface}/feed`));
 
+  if (!appChrome) {
+    return <nav ref={navRef} className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 backdrop-blur-2xl md:hidden" aria-label="Primary">
+      <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-4">
+        {webDestinations.map(item => {
+          const active = isWebDestinationActive(item.id, pathname);
+          return <Link key={item.id} href={item.href} replace onClick={event => {
+            if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+            event.preventDefault();
+            router.replace(item.href);
+          }} data-bvs-web-studio={item.id === 'studio' ? 'mobile' : undefined} aria-current={active ? 'page' : undefined} className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors ${active ? 'text-brand' : 'text-text-secondary hover:text-white'}`}>
+            <span className={`grid h-7 w-10 place-items-center rounded-full ${active ? 'bg-brand/15' : ''}`}><Icon id={item.id} active={active} /></span><span>{item.label}</span>
+          </Link>;
+        })}
+      </div>
+    </nav>;
+  }
   return (
     <nav ref={navRef} className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 backdrop-blur-2xl md:hidden" aria-label="Primary">
       <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-5">

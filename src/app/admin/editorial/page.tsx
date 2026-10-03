@@ -345,11 +345,9 @@ export default function EditorialDashboard() {
         <MusicVideoEditorialPanel />
       </div>
 
-      <nav
-        aria-label="Editorial sections"
-        className="mt-8 -mx-2 overflow-x-auto rounded-2xl border border-white/10 bg-bg-primary/90 px-2 py-2 md:sticky md:top-16 md:z-30 md:backdrop-blur-md"
-      >
-        <div className="flex min-w-max gap-2">
+      <details className="mt-8 rounded-2xl border border-white/10 bg-bg-primary/90 p-3">
+        <summary className="cursor-pointer text-sm text-text-secondary">Jump to a workflow section</summary>
+        <nav aria-label="Editorial sections" className="mt-3 flex flex-wrap gap-2">
           {jump.map((item) => (
             <a
               key={item.id}
@@ -360,8 +358,8 @@ export default function EditorialDashboard() {
               {item.label}
             </a>
           ))}
-        </div>
-      </nav>
+        </nav>
+      </details>
 
       <section id="ed-overview" className="mt-7 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
