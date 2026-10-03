@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import LibraryAction from '@/components/LibraryAction'
@@ -10,22 +10,11 @@ import { trackEvent } from '@/lib/analytics'
 import type { PublishedArtistSummary, PublishedProducerSummary } from '@/lib/artist-content'
 import { blogPosts } from '@/lib/blog'
 import { officialBvsServices } from '@/lib/official-services'
+import DiscoverShelves from '@/components/DiscoverShelves'
+import { buildDiscoveryShelves, discoverySounds, matchesSound, soundKey, toDiscoveryTrack, type SearchItem, type SearchKind } from '@/lib/discovery-experience'
+import { useStationPlayer } from '@/components/StationPlayer'
 import { flowV2Flags } from '@/lib/feature-flags'
 
-type SearchKind = 'track' | 'release' | 'playlist' | 'artist' | 'producer' | 'beat' | 'show' | 'story' | 'service'
-type SearchItem = {
-  id: string
-  kind: SearchKind
-  title: string
-  subtitle: string
-  href: string
-  image?: string
-  tags?: string[]
-  badge?: string
-  publishedAt?: string
-  onBvs?: boolean
-  detail?: ExploreDetail
-}
 type PublicBeat = {
   id: string
   title: string
@@ -144,6 +133,12 @@ export default function SearchPage() {
   const [catalogueTracks, setCatalogueTracks] = useState<CatalogueTrack[]>([])
   const [selectedDetail, setSelectedDetail] = useState<ExploreDetail | null>(null)
   const [loaded, setLoaded] = useState(false)
+  const [unavailable, setUnavailable] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const [genre, setGenre] = useState('')
+  const [round, setRound] = useState(0)
+  const [resultLimit, setResultLimit] = useState(40)
+  const player = useStationPlayer()
 
   useEffect(() => {
     const sync = () => {
@@ -151,6 +146,7 @@ export default function SearchPage() {
       const nextFilter = params.get('type') as SearchKind | null
       const nextMode = params.get('mode') as ExploreMode | null
       setQuery(params.get('q') || '')
+      setGenre(soundKey(params.get('genre') || ''))
       setFilter(nextFilter && filters.some(item => item.value === nextFilter) ? nextFilter : 'all')
       setMode(nextMode && exploreModes.some(item => item.value === nextMode) ? nextMode : 'all')
     }
@@ -161,28 +157,28 @@ export default function SearchPage() {
 
   useEffect(() => {
     let active = true
-    Promise.all([
-      fetch('/api/artists').then(r => r.ok ? r.json() : { artists: [] }),
-      fetch('/api/producers').then(r => r.ok ? r.json() : { producers: [] }),
-      fetch('/api/beats').then(r => r.ok ? r.json() : { beats: [] }),
-      fetch('/api/releases/public').then(r => r.ok ? r.json() : { releases: [] }),
-      fetch('/api/playlists/public').then(r => r.ok ? r.json() : { playlists: [] }),
-      fetch('/api/marketplace').then(r => r.ok ? r.json() : { listings: [] }),
-      fetch('/api/catalogue/listings').then(r => r.ok ? r.json() : { listings: [] }),
-    ]).then(([a, p, b, r, pl, m, c]) => {
+    const controller = new AbortController()
+    const sources: Array<{ url: string; apply: (data: Record<string, unknown>) => void }> = [
+      { url:'/api/artists', apply:data => setArtists((data.artists || []) as PublishedArtistSummary[]) },
+      { url:'/api/producers', apply:data => setProducers((data.producers || []) as PublishedProducerSummary[]) },
+      { url:'/api/beats', apply:data => setBeats((data.beats || []) as PublicBeat[]) },
+      { url:'/api/releases/public', apply:data => setReleases((data.releases || []) as PublicRelease[]) },
+      { url:'/api/playlists/public', apply:data => setPublicPlaylists(((data.playlists || []) as PublicPlaylist[]).filter(item => item.trackCount > 0)) },
+      { url:'/api/marketplace', apply:data => setServices(((data.listings || []) as MarketplaceListing[]).filter(item => item.listing_type === 'service')) },
+      { url:'/api/catalogue/listings', apply:data => setCatalogueTracks(((data.listings || []) as CatalogueTrack[]).filter(item => item.source === 'track' && item.type !== 'beat')) },
+    ]
+    void Promise.allSettled(sources.map(async source => {
+      const response = await fetch(source.url, { signal: controller.signal })
+      if (!response.ok) throw new Error('Discovery source unavailable')
+      const data = await response.json()
+      if (active) source.apply(data)
+    })).then(outcomes => {
       if (!active) return
-      setArtists(a.artists || [])
-      setProducers(p.producers || [])
-      setBeats(b.beats || [])
-      setReleases(r.releases || [])
-      setPublicPlaylists((pl.playlists || []).filter((item: PublicPlaylist) => item.trackCount > 0))
-      setServices((m.listings || []).filter((item: MarketplaceListing) => item.listing_type === 'service'))
-      const liveTracks = (c.listings || []).filter((item: CatalogueTrack) => item.source === 'track' && item.type !== 'beat')
-      setCatalogueTracks(liveTracks)
+      setUnavailable(outcomes.some(outcome => outcome.status === 'rejected'))
       setLoaded(true)
-    }).catch(() => setLoaded(true))
-    return () => { active = false }
-  }, [])
+    })
+    return () => { active = false; controller.abort() }
+  }, [loadAttempt])
 
   const items = useMemo<SearchItem[]>(() => {
     const producerIds = new Set(producers.map(item => item.id))
@@ -240,7 +236,7 @@ export default function SearchPage() {
       ...artists.filter(item => !producerIds.has(item.id)).map(item => ({ id: `artist-${item.id}`, kind: 'artist' as const, title: item.name, subtitle: `${item.role} · ${item.trackCount} published ${item.trackCount === 1 ? 'track' : 'tracks'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
       ...producers.map(item => ({ id: `producer-${item.id}`, kind: 'producer' as const, title: item.name, subtitle: `Producer · ${item.beatCount} published ${item.beatCount === 1 ? 'beat' : 'beats'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
       ...beats.map(item => {
-        const href = `/catalogue?type=beat${item.producer_username ? `&producer=${encodeURIComponent(item.producer_username)}` : ''}&q=${encodeURIComponent(item.title)}#browse`
+        const href = `/beat/${encodeURIComponent(item.id)}`
         return {
           id: `beat-${item.id}`,
           kind: 'beat' as const,
@@ -306,27 +302,28 @@ export default function SearchPage() {
       const matchesFilter = filter === 'all' || item.kind === filter
       const matchesQuery = !needle || [item.title, item.subtitle, ...(item.tags || [])].join(' ').toLowerCase().includes(needle)
       const matchesMode = !flowV2Flags.exploreModes || needle || filter !== 'all' || modeKinds.includes(item.kind)
-      return matchesFilter && matchesQuery && matchesMode
+      return matchesFilter && matchesQuery && matchesMode && matchesSound(item, genre)
     })
     if (!flowV2Flags.exploreModes || needle || filter !== 'all') return matched
     return orderForExploreMode(matched, mode)
-  }, [filter, items, mode, query])
+  }, [filter, items, mode, query, genre])
 
   const grouped = useMemo(() => filters.slice(1).map(({ value }) => ({
     kind: value as SearchKind,
-    items: results.filter(item => item.kind === value).slice(0, filter === 'all' ? 8 : 40),
-  })).filter(group => group.items.length), [filter, results])
+    items: results.filter(item => item.kind === value).slice(0, filter === 'all' ? 8 : resultLimit),
+  })).filter(group => group.items.length), [filter, results, resultLimit])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams()
       if (query.trim()) params.set('q', query.trim())
       if (filter !== 'all') params.set('type', filter)
+      if (genre) params.set('genre', genre)
       if (flowV2Flags.exploreModes && !query.trim() && filter === 'all') params.set('mode', mode)
       window.history.replaceState(window.history.state, '', `/search${params.size ? `?${params}` : ''}`)
     }, 180)
     return () => window.clearTimeout(timer)
-  }, [filter, mode, query])
+  }, [filter, mode, query, genre])
 
   useEffect(() => {
     const term = query.trim()
@@ -342,23 +339,47 @@ export default function SearchPage() {
     setSelectedDetail(item.detail)
   }
 
+  const sounds = useMemo(() => discoverySounds(items), [items])
+  const shelves = useMemo(() => buildDiscoveryShelves(items, round, genre), [items, round, genre])
+  const discoveryHome = flowV2Flags.exploreModes && mode === 'all' && !query.trim() && filter === 'all'
+  const closeDetails = useCallback(() => setSelectedDetail(null), [])
+  function playResult(item: SearchItem) {
+    const track = toDiscoveryTrack(item)
+    if (!track) return
+    if (player.current?.id === track.id) player.toggle()
+    else player.playNow(track, { from: item.kind === 'beat' ? 'BVS BeatStore' : 'Discover BVS' })
+    trackEvent('flow_object_play', { object_kind: item.kind, object_id: item.id })
+  }
+  function browseShelf(kind: SearchKind) {
+    setQuery(''); setFilter('all'); setResultLimit(40)
+    if (kind === 'release') setMode('fresh')
+    else if (kind === 'artist') setMode('creators')
+    else if (kind === 'beat') setMode('beats')
+    else if (kind === 'playlist') setMode('playlists')
+    else if (kind === 'story') setMode('culture')
+    else { setMode('all'); setFilter(kind) }
+  }
   const activeMode = exploreModes.find(item => item.value === mode) || exploreModes[0]
 
-  return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 py-12 sm:px-6">
+  return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 pb-12 pt-8 sm:px-6">
     <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Discover BVS</p>
-    <h1 className="text-4xl md:text-5xl">Find your next favourite</h1>
-    <p className="mt-3 max-w-2xl text-text-secondary">Music, beats, artists and shows in one place. Browse everything or search for something you love.</p>
+    <h1 className="text-3xl md:text-4xl">Find your next favourite</h1>
+    <p className="mt-3 max-w-2xl text-text-secondary">Press play on a new sound. Meet the artist. Follow what moves you.</p>
     <div className="mt-5 flex flex-wrap gap-3 text-sm"><Link href="/feed" className="text-brand hover:underline">Community Feed →</Link><Link href="/radio" className="text-brand hover:underline">Live radio →</Link></div>
-    <label className="mt-8 block max-w-3xl"><span className="sr-only">Search BVS</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Try “Vibes”, “Wolf Bridges” or “gospel”" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
+    <label className="mt-5 block max-w-3xl"><span className="sr-only">Search BVS</span><input value={query} onChange={event => { setQuery(event.target.value); setResultLimit(40) }} placeholder="Search for an artist, track, beat or sound" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
     {flowV2Flags.exploreModes && !query.trim() ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${mode === item.value ? 'bg-brand text-black' : 'border border-white/10 bg-white/[.03] text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
-    {query.trim() || filter !== 'all' ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter results">{filters.map(item => <button key={item.value} onClick={() => setFilter(item.value)} aria-pressed={filter === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${filter === item.value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
+    {query.trim() || filter !== 'all' ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter results">{filters.map(item => <button key={item.value} onClick={() => { setFilter(item.value); setResultLimit(40) }} aria-pressed={filter === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${filter === item.value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
 
-    {!query.trim() && filter === 'all' ? <section className="mt-10" aria-label="Explore published BVS content"><h2 className="text-3xl font-semibold">{flowV2Flags.exploreModes ? activeMode.label : 'Discover now'}</h2><p className="mt-2 text-text-secondary">{flowV2Flags.exploreModes ? activeMode.description : 'Published and editorially visible BVS content.'}</p></section> : <h2 className="mt-10 text-3xl font-semibold">{query.trim() ? `Results for “${query.trim()}”` : headings[filter as SearchKind]}</h2>}
+    {sounds.length ? <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Browse by sound"><span className="mr-1 text-xs text-text-secondary">Browse by sound</span><button type="button" aria-pressed={!genre} onClick={() => setGenre('')} className={`min-h-10 rounded-full border px-3 text-xs ${!genre ? 'border-brand/50 text-brand' : 'border-white/15 text-text-secondary'}`}>All sounds</button>{sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(sound.key); setRound(0) }} className={`min-h-10 rounded-full border px-3 text-xs ${genre === sound.key ? 'border-brand/50 bg-brand/10 text-brand' : 'border-white/15 text-text-secondary hover:text-white'}`}>{sound.label}</button>)}</div> : null}
+    {genre && !sounds.some(sound => sound.key === genre) ? <button type="button" onClick={() => setGenre('')} className="mt-3 min-h-10 text-sm text-brand">Clear sound filter: {genre}</button> : null}
+    {unavailable ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/15 p-3 text-sm text-text-secondary"><span>Some discoveries could not be loaded. You can still explore what is here.</span><button type="button" onClick={() => { setLoaded(false); setUnavailable(false); setLoadAttempt(value => value + 1) }} className="min-h-10 rounded-full border border-white/20 px-4 text-white">Retry loading</button></div> : null}
+    {discoveryHome && shelves.length ? <DiscoverShelves shelves={shelves} round={round} onMore={() => { setRound(value => value + 1); trackEvent('explore_rail_open', { genre: genre || 'all' }) }} onBrowse={browseShelf} onDetails={openResult} /> : null}
+    {!discoveryHome && (!query.trim() && filter === 'all' ? <section className="mt-10" aria-label="Explore published BVS content"><h2 className="text-3xl font-semibold">{flowV2Flags.exploreModes ? activeMode.label : 'Discover now'}</h2><p className="mt-2 text-text-secondary">{flowV2Flags.exploreModes ? activeMode.description : 'Published and editorially visible BVS content.'}</p></section> : <h2 className="mt-10 text-3xl font-semibold">{query.trim() ? `Results for “${query.trim()}”` : headings[filter as SearchKind]}</h2>)}
     <div className="mt-7 space-y-12">
-      {grouped.map(group => <section key={group.kind} aria-labelledby={`search-${group.kind}`}>
+      {!discoveryHome && grouped.map(group => <section key={group.kind} aria-labelledby={`search-${group.kind}`}>
         <div className="mb-4 flex items-end justify-between">
           <h2 id={`search-${group.kind}`} className="text-2xl font-semibold">{headings[group.kind]}</h2>
-          {filter === 'all' && results.filter(item => item.kind === group.kind).length > 8 ? <button onClick={() => setFilter(group.kind)} className="min-h-11 text-sm text-brand">View all →</button> : null}
+          {filter === 'all' && results.filter(item => item.kind === group.kind).length > 8 ? <button onClick={() => { setFilter(group.kind); setResultLimit(40) }} className="min-h-11 text-sm text-brand">View all →</button> : null}
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           {group.items.map(item => <article key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-3 transition hover:border-brand/35">
@@ -377,10 +398,13 @@ export default function SearchPage() {
               </Link>
             )}
             {['track','artist','producer'].includes(item.kind) ? (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {toDiscoveryTrack(item) ? <button type="button" onClick={() => playResult(item)} aria-label={`Play ${item.title}`} className="min-h-11 rounded-full bg-brand px-3 py-2 text-xs font-semibold text-black">{player.current?.id === item.detail?.id && player.isPlaying ? 'Pause' : 'Play'}</button> : null}
                 <div data-flow-detail-skip="true"><LibraryAction item={{ ...item, kind: item.kind === 'track' ? 'track' : 'artist' }} section={item.kind === 'track' ? 'favourites' : 'follows'} compact /></div>
                 {item.detail ? <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-brand hover:border-brand">Details</button> : item.kind === 'track' ? <Link {...flowDetailProps(item)} href={item.href} className="min-h-11 rounded-full border border-white/15 px-3 py-2 text-xs text-brand hover:border-brand">Details</Link> : null}
               </div>
+            ) : item.kind === 'beat' && toDiscoveryTrack(item) ? (
+              <div className="flex flex-wrap gap-2"><button type="button" onClick={() => playResult(item)} aria-label={`Preview ${item.title}`} className="min-h-11 rounded-full bg-brand px-3 text-xs font-semibold text-black">Preview</button><button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-3 text-xs text-brand">Details</button></div>
             ) : item.detail ? (
               <button type="button" onClick={() => openResult(item)} className="min-h-11 rounded-full border border-white/15 px-4 py-2.5 text-sm text-brand">Details</button>
             ) : supportsContextDetails(item.kind) ? (
@@ -390,10 +414,11 @@ export default function SearchPage() {
             )}
           </article>)}
         </div>
+        {filter !== 'all' && results.filter(item => item.kind === group.kind).length > group.items.length ? <button type="button" onClick={() => setResultLimit(value => value + 40)} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more {headings[group.kind].toLowerCase()} →</button> : null}
       </section>)}
-      {loaded && results.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 px-6 py-14 text-center"><h3 className="text-xl">Nothing published under that view yet</h3><p className="mt-2 text-text-secondary">Try another term, mode or category. BVS will not invent content to fill the space.</p><button onClick={() => { setQuery(''); setFilter('all'); setMode('fresh') }} className="mt-5 min-h-11 rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Explore Fresh</button></div> : null}
+      {loaded && results.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 px-6 py-14 text-center"><h3 className="text-xl">Nothing published under that view yet</h3><p className="mt-2 text-text-secondary">Try another term, mode or category. Explore another sound or clear your filters to find a new direction.</p><button onClick={() => { setQuery(''); setFilter('all'); setResultLimit(40); setGenre(''); setMode('all') }} className="mt-5 min-h-11 rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Start discovering</button></div> : null}
       {!loaded ? <div className="grid gap-3 md:grid-cols-2" aria-label="Loading discovery"><div className="h-24 animate-pulse rounded-2xl bg-white/5"/><div className="h-24 animate-pulse rounded-2xl bg-white/5"/></div> : null}
     </div>
-    {selectedDetail ? <ExploreItemDetails detail={selectedDetail} onClose={() => setSelectedDetail(null)} /> : null}
+    {selectedDetail ? <ExploreItemDetails detail={selectedDetail} onClose={closeDetails} /> : null}
   </main>
 }
