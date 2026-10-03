@@ -76,11 +76,12 @@ export default function BuyTrackButton({
         onClick={(event) => {
           event.stopPropagation();
           prepareWebCart();
+          if (event.defaultPrevented) setBusy(false);
         }}
         className={`shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`}
         aria-label={`Buy ${track.title} for $${price.toFixed(2)} on BVS web checkout`}
       >
-        {busy ? "Opening…" : label}
+        {busy ? "Opening…" : <><span className="sm:hidden">Buy</span><span className="hidden sm:inline">{label}</span></>}
       </a>
     );
   }
@@ -88,7 +89,7 @@ export default function BuyTrackButton({
   return (
     <a
       href={purchaseHref}
-      onClick={prepareWebCart}
+      onClick={(event) => { prepareWebCart(); if (event.defaultPrevented) setBusy(false); }}
       className={`block rounded-2xl border border-brand/50 bg-brand px-4 py-4 text-left text-black shadow-[0_0_0_1px_rgba(0,0,0,.2)] transition hover:brightness-110 ${className}`}
       aria-label={`Buy or support ${track.title} for $${price.toFixed(2)} on BVS web checkout`}
     >

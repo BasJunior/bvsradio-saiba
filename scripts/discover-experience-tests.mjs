@@ -43,6 +43,12 @@ const fair = pure('src/lib/fair-discovery-order.ts');
 const discovery = pure('src/lib/discovery-experience.ts',{'@/lib/fair-discovery-order':fair});
 const now = new Date('2026-10-03T09:00:00Z');
 const music = Array.from({length:18},(_,i)=>({id:`track-${i}`,kind:'track',title:`Song ${i}`,subtitle:`Artist ${i % 9}`,href:`/catalogue?q=Song${i}`,tags:[i%2?'Hip Hop':'Gospel'],publishedAt:`2026-09-${String(10+i).padStart(2,'0')}T00:00:00Z`,detail:{id:`${i}`,kind:'track',title:`Song ${i}`,artist:`Artist ${i%9}`,genre:i%2?'Hip Hop':'Gospel',src:`/api/media/track${i}.mp3`,href:'/catalogue'}}));
+assert.equal(discovery.discoveryCreatorKey('REVO, ft. Nigel, Chesa'),'revo');
+assert.equal(discovery.discoveryCreatorKey('REVO ft. Lavish'),'revo');
+assert.equal(discovery.discoveryCreatorKey('REVO'),'revo');
+const collaborations = music.map((item, i) => ({...item,detail:{...item.detail,artist:i < 8 ? `Lead, ft. Guest ${i}` : `Other ${i}`}}));
+const collaborationPicks = discovery.buildDiscoveryShelves(collaborations,0,'',now)[0].items;
+assert.equal(new Set(collaborationPicks.map(item => discovery.discoveryCreatorKey(item.detail.artist))).size,6,'Collaboration credits must not give one lead artist extra discovery slots');
 const silent = {...music[0],id:'silent',detail:{...music[0].detail,src:undefined},publishedAt:undefined};
 const pool = [...music,silent,{id:'creator-1',kind:'artist',title:'Artist',subtitle:'Artist',href:'/artist/published',tags:['Hip-Hop']}];
 const shelves = discovery.buildDiscoveryShelves(pool,0,'',now);
@@ -58,6 +64,23 @@ assert.equal(discovery.discoverySounds(pool).filter(i=>i.key==='hip-hop').length
 assert.ok(!discovery.discoverySounds(pool).some(i=>i.key.startsWith('artist')),'Artist names must not become genre chips');
 assert.equal(shelves.find(s=>s.id==='fresh').items[0].id,'track-17','Fresh arrivals must sort newest first');
 assert.equal(discovery.toDiscoveryTrack(silent),null);
+const sellable = {...music[0],detail:{...music[0].detail,price:2,streamOnly:false}};
+assert.equal(discovery.toDiscoveryTrack(sellable).isDownloadable,true,'Discover playback must carry the public download offer into the player');
+assert.equal(discovery.toDiscoveryTrack(sellable).downloadPrice,2);
+assert.equal(discovery.toDiscoveryTrack({...sellable,detail:{...sellable.detail,streamOnly:true}}).isDownloadable,false);
+assert.equal(discovery.toDiscoveryTrack({...sellable,kind:'beat'}).isDownloadable,false,'Beat preview must not become a song download');
+const boundary = pure('src/lib/app-external-boundary.ts');
+assert.equal(boundary.isExternalLegalOrLicenceUrl(new URL('https://bvsradio.com/buy?track=track-1')),true,'Native query-style Buy links must open web checkout externally');
+assert.equal(boundary.isExternalLegalOrLicenceUrl(new URL('https://bvsradio.com/app/ios/explore')),false);
+const renderBuy = harness('src/components/BuyTrackButton.tsx',{
+  '@/lib/analytics':{trackEvent(){}}, '@/lib/cart-client':{upsertTrackCartLine(){}},
+});
+const buyTree = renderBuy({track:{id:'track-1',title:'Song',artist:'Artist',src:'/media.mp3',isDownloadable:true,downloadPrice:2},variant:'compact'});
+assert.equal(buyTree.props.href,'https://bvsradio.com/buy?track=track-1');
+assert.ok(nodes(buyTree).some(n=>n.type==='span' && n.props.children==='Buy' && n.props.className==='sm:hidden'),'Compact player must have a visible mobile Buy label');
+assert.equal(renderBuy({track:{id:'off-sale',isDownloadable:false,downloadPrice:2},variant:'compact'}),null);
+const playerSource=readFileSync('src/components/StationPlayer.tsx','utf8');
+assert.match(playerSource, /variant="compact" className="inline-flex min-h-10/,'Compact Buy must not be hidden on mobile');
 assert.equal(discovery.buildDiscoveryShelves(pool,0,'missing',now).length,0,'An empty genre must not show unrelated picks');
 
 let finishBeats, opened = 0, played = [], saved = [];

@@ -42,7 +42,7 @@ export default function DiscoverShelves({ shelves, round, onMore, onBrowse, onDe
     {shelves.map(shelf => <section key={shelf.id} aria-labelledby={`discover-${shelf.id}`}>
       <div className="mb-4 flex items-start justify-between gap-4">
         <div><h2 id={`discover-${shelf.id}`} className="text-xl font-semibold sm:text-2xl">{shelf.title}</h2><p className="mt-1 max-w-xl text-sm text-text-secondary">{shelf.description}</p></div>
-        <button type="button" onClick={() => onBrowse(shelf.kind)} className="min-h-11 shrink-0 text-sm text-brand" aria-label={`Browse all ${shelf.kind === 'artist' ? 'creators' : shelf.kind === 'release' ? 'fresh arrivals' : `${shelf.kind}s`}`}>Browse all →</button>
+        <button type="button" onClick={() => onBrowse(shelf.kind)} className="min-h-11 shrink-0 text-sm text-brand" aria-label={`Browse all ${shelf.kind === 'artist' ? 'creators' : shelf.kind === 'release' ? 'fresh arrivals' : shelf.kind === 'story' ? 'stories' : `${shelf.kind}s`}`}>Browse all →</button>
       </div>
       <div className="discovery-shelf-grid">
         {shelf.items.map(item => {

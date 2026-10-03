@@ -143,6 +143,8 @@ export default function ExploreItemDetails({
         artwork: detail.image,
         project: detail.collection || (detail.kind === 'beat' ? 'BVS BeatStore' : detail.kind === 'release' ? 'BVS Release' : 'Explore BVS'),
         genre: detail.genre,
+        isDownloadable: detail.kind === 'track' && !detail.streamOnly && typeof detail.price === 'number' && detail.price > 0,
+        downloadPrice: detail.kind === 'track' && !detail.streamOnly ? detail.price : null,
       },
       { from: detail.kind === 'beat' ? 'BVS BeatStore' : detail.kind === 'release' ? 'BVS Release' : 'Explore BVS' },
     )

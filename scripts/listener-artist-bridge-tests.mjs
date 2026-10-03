@@ -47,8 +47,8 @@ assert.ok(
 );
 assert.ok(
   player.includes('<span className="hidden sm:inline-flex">') &&
-    player.includes('variant="compact" className="hidden sm:inline-flex"'),
-  "Narrow mobile persistent players must move Follow and Buy out of the primary control strip.",
+    player.includes('variant="compact" className="inline-flex min-h-10'),
+  "Mobile persistent players must keep compact Buy visible while leaving Follow in expanded controls.",
 );
 assert.ok(
   player.includes('grid h-10 w-10 shrink-0 place-items-center') &&

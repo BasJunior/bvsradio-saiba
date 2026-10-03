@@ -32,10 +32,14 @@ export function discoverySounds(items: SearchItem[]) {
 export function matchesSound(item: SearchItem, genre: string) {
   return !genre || itemSounds(item).includes(soundKey(genre))
 }
+export function discoveryCreatorKey(value?: string) {
+  return (value || '').split(/,|\s+(?:ft\.?|feat\.?|featuring|x|&)\s+/i)[0].trim().toLowerCase()
+}
 export function toDiscoveryTrack(item: SearchItem) {
   const detail = item.detail
   if ((item.kind !== 'track' && item.kind !== 'beat') || !detail?.src) return null
-  return { id: detail.id, title: item.title, artist: detail.artist, src: detail.src, artwork: item.image, genre: detail.genre, project: item.kind === 'beat' ? 'BVS BeatStore' : detail.collection || 'Discover BVS' }
+  const downloadPrice = item.kind === 'track' && detail.streamOnly !== true && typeof detail.price === 'number' && Number.isFinite(detail.price) && detail.price > 0 ? detail.price : null
+  return { isDownloadable: downloadPrice !== null, downloadPrice, id: detail.id, title: item.title, artist: detail.artist, src: detail.src, artwork: item.image, genre: detail.genre, project: item.kind === 'beat' ? 'BVS BeatStore' : detail.collection || 'Discover BVS' }
 }
 export type DiscoveryShelf = { id: string; title: string; description: string; kind: SearchKind; items: SearchItem[] }
 const date = (value?: string) => { const parsed = Date.parse(value || ''); return Number.isFinite(parsed) ? parsed : 0 }
@@ -43,7 +47,7 @@ const date = (value?: string) => { const parsed = Date.parse(value || ''); retur
 export function buildDiscoveryShelves(items: SearchItem[], round = 0, genre = '', now = new Date()): DiscoveryShelf[] {
   const unique = [...new Map(items.filter(item => matchesSound(item, genre)).map(item => [`${item.kind}:${item.id}`, item])).values()]
   const pick = (pool: SearchItem[], scope: string, size = 6) => {
-    const ordered = fairCreatorDailyOrder(pool, `discover:${scope}`, item => item.detail?.artist || (item.kind === 'artist' || item.kind === 'producer' ? item.id : item.subtitle.split('·')[0]), now)
+    const ordered = fairCreatorDailyOrder(pool, `discover:${scope}`, item => discoveryCreatorKey(item.detail?.artist) || (item.kind === 'artist' || item.kind === 'producer' ? item.id : item.subtitle.split('·')[0]), now)
     if (!ordered.length) return []
     const offset = (Math.max(0, round) * Math.min(size, Math.max(1, ordered.length - size))) % ordered.length
     return [...ordered.slice(offset), ...ordered.slice(0, offset)].slice(0, size)

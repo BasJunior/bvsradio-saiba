@@ -9,7 +9,7 @@ import AppDownloadButton from "@/components/app-vnext/AppDownloadButton";
 import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
 import { useStationPlayer } from "@/components/StationPlayer";
 import { fairCreatorDailyOrder } from "@/lib/fair-discovery-order";
-import { soundKey } from "@/lib/discovery-experience";
+import { soundKey, discoveryCreatorKey } from "@/lib/discovery-experience";
 import { trackEvent } from "@/lib/analytics";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
 
@@ -138,10 +138,10 @@ export default function AppExploreClient({
       return [...ordered.slice(offset), ...ordered.slice(0, offset)].slice(0, size);
     }
     return {
-      tracks:picks(matched.tracks, "music", item => item.artist, 6),
+      tracks:picks(matched.tracks, "music", item => discoveryCreatorKey(item.artist), 6),
       artists:picks(matched.artists, "artists", item => item.id, 8),
       producers:picks(matched.producers, "producers", item => item.id, 8),
-      beats:picks(matched.beats, "beats", item => item.producer_username || item.producer || item.id, 8),
+      beats:picks(matched.beats, "beats", item => item.producer_username || discoveryCreatorKey(item.producer) || item.id, 8),
     };
   }, [matched, needle, kind, limit, round, surface]);
 
