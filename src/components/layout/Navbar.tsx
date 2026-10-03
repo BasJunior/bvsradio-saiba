@@ -362,7 +362,7 @@ export default function Navbar() {
               <Link href="/auth/login" className="px-3 py-2 text-sm text-text-primary hover:text-brand transition-colors">
                 Sign in
               </Link>
-              <Link href="/auth/signup" className="px-4 py-2 text-sm font-medium bg-brand text-black rounded-full hover:bg-brand-dark transition-colors">
+              <Link href="/auth/signup" className="bvs-join-button px-4 py-2 text-sm font-medium rounded-full transition-colors">
                 Join
               </Link>
             </>
@@ -389,7 +389,7 @@ export default function Navbar() {
           {!user && (
             <Link
               href="/auth/signup"
-              className="rounded-full bg-brand px-3.5 py-1.5 text-xs font-semibold tracking-wide text-black shadow-[0_0_0_1px_rgba(0,0,0,0.08)] transition hover:bg-brand-dark active:scale-[0.98]"
+              className="bvs-join-button rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide transition active:scale-[0.98]"
               onClick={() => setIsMenuOpen(false)}
             >
               Join
@@ -469,7 +469,7 @@ export default function Navbar() {
                   <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
                     Sign in
                   </Link>
-                  <Link href="/auth/signup" className="py-2.5 text-center bg-brand text-black font-medium rounded-full" onClick={() => setIsMenuOpen(false)}>
+                  <Link href="/auth/signup" className="bvs-join-button py-2.5 text-center font-medium rounded-full" onClick={() => setIsMenuOpen(false)}>
                     Join
                   </Link>
                 </>

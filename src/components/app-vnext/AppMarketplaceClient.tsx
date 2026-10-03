@@ -183,12 +183,12 @@ export default function AppMarketplaceClient({
   }
 
   if (state === "loading") {
-    return <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6"><div className="h-56 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
+    return <div className="bvs-square-marketplace mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6"><div className="h-56 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
   }
 
   if (provider) {
     return (
-      <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
+      <div className="bvs-square-marketplace mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
         <Link href={base} className="inline-flex min-h-10 items-center text-sm text-white/42 transition hover:text-white">← Marketplace</Link>
 
         <section className="mt-5 overflow-hidden rounded-[2rem] border border-white/[.07] bg-white/[.025] shadow-[0_24px_70px_rgba(0,0,0,.25)]">
@@ -302,7 +302,7 @@ export default function AppMarketplaceClient({
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
+    <div className="bvs-square-marketplace mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Marketplace</p>
@@ -316,9 +316,9 @@ export default function AppMarketplaceClient({
 
       <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {providers.map((item) => (
-          <article key={item.slug} className="group overflow-hidden rounded-[1.55rem] border border-white/[.07] bg-white/[.025] transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
+          <article key={item.slug} className="bvs-marketplace-provider-card group overflow-hidden rounded-[1.55rem] border border-white/[.07] bg-white/[.025] transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
             {item.heroImage ? <img src={item.heroImage} alt="" data-bvs-data-heavy="true" className="aspect-[16/9] w-full object-cover transition duration-500 group-hover:scale-[1.01]" /> : <div className="grid aspect-[16/9] place-items-center bg-white/[.03] text-[10px] font-semibold uppercase tracking-[.16em] text-brand">BVS provider</div>}
-            <div className="p-4">
+            <div className="bvs-marketplace-caption p-4">
               <div className="flex flex-wrap gap-2"><span className="rounded-full bg-brand/[.08] px-2.5 py-1 text-[10px] uppercase tracking-[.12em] text-brand">{item.kind.replaceAll("_", " ")}</span>{item.verified ? <span className="rounded-full border border-white/[.07] px-2.5 py-1 text-[10px] text-white/45">Verified</span> : null}</div>
               <h2 className="mt-3 text-xl font-semibold">{item.name}</h2>
               <p className="mt-2 text-sm leading-6 text-white/40">{item.headline}</p>

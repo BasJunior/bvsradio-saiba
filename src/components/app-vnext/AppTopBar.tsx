@@ -131,7 +131,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           ) : (
             <Link
               href={`/app/${surface}/join`}
-              className="ml-1 rounded-full bg-white px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand"
+              className="bvs-join-button ml-1 rounded-full px-4 py-2 text-sm font-semibold transition"
             >
               Join
             </Link>

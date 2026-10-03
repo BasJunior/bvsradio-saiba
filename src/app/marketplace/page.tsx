@@ -18,7 +18,7 @@ type MarketplacePayload = {
 function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
   const wolf = provider.slug === "wolfbridges-studio";
   return (
-    <article className="bvs-surface bvs-surface-hover overflow-hidden rounded-[1.65rem] sm:rounded-3xl">
+    <article className="bvs-marketplace-provider-card bvs-surface bvs-surface-hover overflow-hidden rounded-[1.65rem] sm:rounded-3xl">
       <Link href={`/marketplace/${provider.slug}`} className="group block">
         <div className="relative aspect-[16/9] overflow-hidden bg-black/40">
           {provider.heroImage ? (
@@ -30,8 +30,8 @@ function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
           ) : (
             <div className="flex h-full items-center justify-center text-sm text-text-secondary">Provider artwork</div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-5">
+        </div>
+          <div className="bvs-marketplace-caption p-4 sm:p-5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="bvs-chip bvs-chip-brand">{provider.kind.replaceAll("_", " ")}</span>
               {provider.official ? <span className="bvs-chip">Official BVS</span> : provider.verified ? <span className="bvs-chip">Verified</span> : null}
@@ -39,7 +39,6 @@ function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
             <h2 className="mt-2 text-2xl font-semibold text-white">{provider.name}</h2>
             {provider.location ? <p className="mt-1 text-sm text-white/70">{provider.location}</p> : null}
           </div>
-        </div>
       </Link>
       <div className="p-4 sm:p-5">
         <p className="text-sm text-text-secondary">{provider.headline}</p>
