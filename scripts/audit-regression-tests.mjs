@@ -112,5 +112,7 @@ assert.equal(await (await request('/account')).text(), 'account document'); asse
 assert.equal(await request('/api/library'), undefined); assert.equal(await request('/library', 'cors', { RSC: '1' }), undefined); assert.equal(await request('/private-cover.jpg', 'cors'), undefined);
 online=false; assert.equal(await (await request('/account')).text(), 'BVS offline'); assert.equal(puts.length, 0);
 assert.match(read('src/components/app-vnext/AppExperienceStyle.tsx'), /touch-action: manipulation/, 'Native rails must support sideways panning and pinch zoom');
+assert.match(read('src/components/app-vnext/AppExperienceStyle.tsx'), /--bvs-app-bottom-nav-height: var\(--bvs-nav-height,/, 'The player must consume the actual contained-nav measurement at every viewport width');
+assert.match(read('src/components/app-vnext/AppExperienceStyle.tsx'), /bottom: var\(--bvs-app-bottom-nav-height\) !important/, 'Desktop player utilities must not cover the contained tab bar');
 assert.doesNotMatch(read('src/components/app-vnext/AppGestureBridge.tsx'), /player\.(next|previous|closeNowPlaying)\(/, 'One shared bridge must own Now Playing swipes');
 console.log('Audit regressions passed: bounded auth, safe redirects, native links, auth-lock/session isolation and private offline-cache safety.');

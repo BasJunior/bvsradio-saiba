@@ -2,6 +2,7 @@ export default function AppExperienceStyle() {
   return (
     <style>{`
       html[data-bvs-app-shell="true"] {
+        --bvs-app-bottom-nav-height: var(--bvs-nav-height, calc(4.7rem + env(safe-area-inset-bottom, 0px)));
         --bvs-app-accent: #c4f343;
         --bvs-app-accent-soft: rgba(196, 243, 67, .14);
         --bvs-app-line: rgba(255, 255, 255, .085);
@@ -21,6 +22,16 @@ export default function AppExperienceStyle() {
           radial-gradient(circle at -10% 28%, rgba(87, 86, 255, .07), transparent 26rem),
           linear-gradient(180deg, #09090b 0%, #070708 48%, #050506 100%);
         background-attachment: fixed;
+      }
+
+      /* The contained tab bar remains visible at tablet widths. Its callback ref
+       * publishes --bvs-nav-height, rather than the legacy web-nav measurement. */
+      html[data-bvs-app-shell="true"] .bvs-persistent-player {
+        bottom: var(--bvs-app-bottom-nav-height) !important;
+      }
+
+      html[data-bvs-app-shell="true"] .bvs-app-stage {
+        padding-bottom: calc(var(--bvs-app-bottom-stack-height) + 1rem);
       }
 
       /*
