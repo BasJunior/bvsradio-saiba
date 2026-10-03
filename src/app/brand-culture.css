@@ -68,3 +68,35 @@
   .bvs-culture-listen, .bvs-culture-station, [data-bvs-culture="station"] { border-color: CanvasText; box-shadow: none; }
   .bvs-page-main :is(a, button, input, textarea, select):focus-visible { outline-color: Highlight; }
 }
+
+/* Native Studio: poster identity with solid, readable working surfaces. */
+.bvs-native-studio .bvs-studio-title {
+  color: var(--bvs-culture-ice);
+  font-weight: 900;
+  font-size: clamp(2.25rem, 7vw, 4rem);
+  line-height: 1.02;
+  letter-spacing: -.045em;
+  text-transform: uppercase;
+  overflow-wrap: break-word;
+}
+.bvs-native-studio .bvs-studio-role,
+.bvs-native-studio .bvs-studio-work-card {
+  border-color: rgb(var(--bvs-studio-rgb) / .3);
+  background: linear-gradient(140deg, rgb(var(--bvs-studio-rgb) / .09), #141418 75%);
+}
+.bvs-native-studio .bvs-studio-work-card:hover {
+  border-color: rgb(var(--bvs-studio-rgb) / .65);
+  background-color: #1b1b22;
+}
+.bvs-native-studio .bvs-studio-release-path {
+  border-color: rgb(163 219 255 / .3);
+  background: linear-gradient(135deg, rgb(163 219 255 / .09), #131319 70%);
+}
+[data-bvs-section="studio"] .bvs-app-stage h1 { color: var(--bvs-culture-ice); font-weight: 800; }
+@media (forced-colors: active) {
+  .bvs-native-studio .bvs-studio-title,
+  [data-bvs-section="studio"] .bvs-app-stage h1 { color: CanvasText; }
+  .bvs-native-studio .bvs-studio-role,
+  .bvs-native-studio .bvs-studio-work-card,
+  .bvs-native-studio .bvs-studio-release-path { background: Canvas; border-color: CanvasText; }
+}
