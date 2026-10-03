@@ -31,7 +31,7 @@ export default async function AppHomeDiscoverySections({ surface }: { surface: M
   return (
     <>
       <div data-home-accent="discover" className="bvs-app-creator-bands">
-        <CreatorPortraitRail title="Artists" tone="ink" allHref={`${base}/explore?kind=artists`} items={artists.slice(0, 18).map(artist => ({ id: artist.id, name: artist.name, image: artist.image, href: `${base}/creator/${encodeURIComponent(artist.id)}`, detail: `${artist.trackCount} published ${artist.trackCount === 1 ? "track" : "tracks"}` }))} />
+        <CreatorPortraitRail title="Artists" tone="charcoal" allHref={`${base}/explore?kind=artists`} items={artists.slice(0, 18).map(artist => ({ id: artist.id, name: artist.name, image: artist.image, href: `${base}/creator/${encodeURIComponent(artist.id)}`, detail: `${artist.trackCount} published ${artist.trackCount === 1 ? "track" : "tracks"}` }))} />
         <CreatorPortraitRail title="Producers" tone="ink" allHref={`${base}/explore?kind=producers`} items={producers.slice(0, 18).map(producer => ({ id: producer.id, name: producer.name, image: producer.image, href: `${base}/creator/${encodeURIComponent(producer.id)}`, detail: `${producer.beatCount} ${producer.beatCount === 1 ? "beat" : "beats"} · BeatStore` }))} />
       </div>
 
