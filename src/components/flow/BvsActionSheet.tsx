@@ -71,7 +71,10 @@ export default function BvsActionSheet({
   const panelRef = useRef<HTMLDivElement>(null);
 
   const dismiss = useCallback(() => {
-    if (!dismissTransientLayer("action-sheet")) onClose();
+    // Close immediately, including in WebViews where history traversal can be
+    // delayed or unavailable. Back still consumes the transient history entry.
+    dismissTransientLayer("action-sheet");
+    onClose();
   }, [onClose]);
 
   useEffect(() => {
