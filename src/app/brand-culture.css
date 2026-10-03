@@ -8,8 +8,8 @@
   letter-spacing: -.045em;
 }
 .bvs-poster-title.bvs-poster-title {
-  max-width: 11ch;
-  font-size: clamp(3rem, 7vw, 5.8rem);
+  max-width: min(11ch, 100%);
+  font-size: clamp(3rem, 5.6vw, 4.7rem);
   font-weight: 900;
   line-height: .94;
   letter-spacing: -.055em;
@@ -56,7 +56,7 @@
   outline-offset: 4px;
 }
 @media (max-width: 639px) {
-  .bvs-poster-title.bvs-poster-title { font-size: clamp(2.7rem, 11.5vw, 4.3rem); }
+  .bvs-poster-title.bvs-poster-title { font-size: clamp(2.1rem, 9.3vw, 3.5rem); }
   .bvs-culture-listen { box-shadow: 5px 5px 0 rgb(193 167 255 / .12); }
 }
 @media (prefers-reduced-motion: reduce) {
