@@ -85,6 +85,11 @@ export default function MarketplaceAvailabilityDesk() {
   const mutationBusy = useRef(false);
   const loadVersion = useRef(0);
   const activeToken = useRef("");
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [showHistory, setShowHistory] = useState(false);
   const [form, setForm] = useState({ date: "", start: "", end: "", timezone: "Africa/Harare", note: "" });
 
@@ -132,10 +137,10 @@ export default function MarketplaceAvailabilityDesk() {
     return () => { active = false; activeToken.current = ""; ++loadVersion.current; subscription.unsubscribe(); };
   }, []);
 
-  const available = slots.filter((slot) => slot.status === "available" && Date.parse(slot.starts_at) > Date.now()).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  const history = slots.filter((slot) => slot.status === "blocked" || Date.parse(slot.ends_at) <= Date.now()).sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at));
+  const available = slots.filter((slot) => slot.status === "available" && Date.parse(slot.starts_at) > now).sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  const history = slots.filter((slot) => slot.status === "blocked" || Date.parse(slot.ends_at) <= now).sort((a, b) => Date.parse(b.starts_at) - Date.parse(a.starts_at));
   const pendingBookings = useMemo(() => bookings.filter((booking) => booking.status === "requested"), [bookings]);
-  const confirmedBookings = useMemo(() => bookings.filter((booking) => booking.status === "confirmed" && slots.some((slot) => slot.id === booking.slot_id && Date.parse(slot.ends_at) > Date.now())), [bookings, slots]);
+  const confirmedBookings = useMemo(() => bookings.filter((booking) => booking.status === "confirmed" && slots.some((slot) => slot.id === booking.slot_id && Date.parse(slot.ends_at) > now)), [bookings, slots, now]);
   const slotById = useMemo(() => new Map(slots.map((slot) => [slot.id, slot])), [slots]);
 
   async function post(body: Record<string, unknown>) {

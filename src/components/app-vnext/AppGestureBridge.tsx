@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useStationPlayer } from "@/components/StationPlayer";
+import { isNativeRuntime } from "@/lib/app-native";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 
 type TouchStart = {
@@ -10,7 +11,7 @@ type TouchStart = {
   y: number;
   at: number;
   target: Element | null;
-  mode: "edge" | "player" | "now-playing" | "other";
+  mode: "edge" | "player" | "other";
 };
 
 function isInteractive(target: Element | null) {
@@ -27,13 +28,13 @@ export default function AppGestureBridge({ surface }: { surface: AppSurface }) {
       if (event.touches.length !== 1) return;
       const touch = event.touches[0];
       const target = event.target instanceof Element ? event.target : null;
-      const mode: TouchStart["mode"] = player.nowPlayingOpen && target?.closest("[aria-label='Now Playing World']")
-        ? "now-playing"
-        : target?.closest("[data-bvs-player]")
-          ? "player"
-          : surface === "ios" && touch.clientX <= 24
-            ? "edge"
-            : "other";
+      // The shared pointer bridge owns Now Playing gestures on every surface.
+      // A second touch handler here would skip twice and intercept sheet scrolling.
+      const inNowPlaying = Boolean(target?.closest("[aria-label='Now Playing World']"));
+      const mode: TouchStart["mode"] = inNowPlaying ? "other"
+        : target?.closest("[data-bvs-player]") ? "player"
+        : surface === "ios" && !isNativeRuntime() && touch.clientX <= 24 ? "edge"
+        : "other";
       start.current = { x: touch.clientX, y: touch.clientY, at: Date.now(), target, mode };
     };
 
@@ -62,18 +63,7 @@ export default function AppGestureBridge({ surface }: { surface: AppSurface }) {
         return;
       }
 
-      if (began.mode !== "now-playing" || isInteractive(began.target)) return;
-      const dialog = began.target?.closest("[aria-label='Now Playing World']") as HTMLElement | null;
-      if (dy > 78 && ay > ax * 1.15 && (dialog?.scrollTop || 0) <= 6) {
-        event.preventDefault();
-        player.closeNowPlaying();
-        return;
-      }
-      if (ax > 72 && ax > ay * 1.25) {
-        event.preventDefault();
-        if (dx < 0) player.next();
-        else player.previous();
-      }
+
     };
 
     document.addEventListener("touchstart", onStart, { passive: true, capture: true });

@@ -84,7 +84,7 @@ export default function ParticipationThreadPanel({
   }), [session.token]);
 
   const summaryCallback = useRef(onSummary);
-  summaryCallback.current = onSummary;
+  useEffect(() => { summaryCallback.current = onSummary; }, [onSummary]);
 
   const load = useCallback(async () => {
     if (!enabled || !threadId) return;

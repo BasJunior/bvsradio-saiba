@@ -1,8 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { User } from "@supabase/supabase-js";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import type { Session, User } from "@supabase/supabase-js";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
+import { withAuthTimeout } from "@/lib/auth-client-flow";
 import { Capacitor } from "@capacitor/core";
 import { getPushPermission, isNativeRuntime, registerPushDevice } from "@/lib/app-native";
 
@@ -44,69 +45,89 @@ export function AppSessionProvider({ children }: { children: React.ReactNode }) 
   const [premiumActive, setPremiumActive] = useState(false);
   const [premiumPlanLabel, setPremiumPlanLabel] = useState<string | null>(null);
 
-  const hydrate = useCallback(async () => {
-    if (!isSupabaseConfigured()) {
-      setAvatarUrl(null);
-      setProfileDisplayName(null);
-      setProfileUsername(null);
-      setLoading(false);
-      return;
+  const hydrationVersion = useRef(0);
+  const accountId = useRef("");
+
+  const clearAccess = useCallback(() => {
+    setAccess(null);
+    setAvatarUrl(null);
+    setProfileDisplayName(null);
+    setProfileUsername(null);
+    setPremiumActive(false);
+    setPremiumPlanLabel(null);
+  }, []);
+
+  const applySession = useCallback(async (session: Session | null) => {
+    const version = ++hydrationVersion.current;
+    const nextAccount = session?.user.id || "";
+    if (accountId.current !== nextAccount) {
+      accountId.current = nextAccount;
+      clearAccess();
     }
-    const supabase = createClient();
-    const { data } = await supabase.auth.getSession();
-    const session = data.session;
     setUser(session?.user ?? null);
     setToken(session?.access_token || "");
     if (!session?.access_token) {
-      setAccess(null);
-      setAvatarUrl(null);
-      setProfileDisplayName(null);
-      setProfileUsername(null);
-      setPremiumActive(false);
-      setPremiumPlanLabel(null);
+      clearAccess();
       setLoading(false);
       return;
     }
     const response = await fetch("/api/auth/access", {
       headers: { Authorization: `Bearer ${session.access_token}` },
       cache: "no-store",
+      signal: AbortSignal.timeout(10000),
     }).catch(() => null);
-    if (response?.ok) {
-      const payload = (await response.json()) as {
-        access?: AppAccess;
-        profileAvatarUrl?: string | null;
-        profileDisplayName?: string | null;
-        profileUsername?: string | null;
-        premiumActive?: boolean;
-        premiumPlanLabel?: string | null;
-      };
+    const payload = response?.ok ? await response.json().catch(() => null) as {
+      access?: AppAccess;
+      profileAvatarUrl?: string | null;
+      profileDisplayName?: string | null;
+      profileUsername?: string | null;
+      premiumActive?: boolean;
+      premiumPlanLabel?: string | null;
+    } | null : null;
+    // A slow previous-account response must never restore its role or identity.
+    if (version !== hydrationVersion.current) return;
+    if (payload) {
       setAccess(payload.access || {});
       setAvatarUrl(payload.profileAvatarUrl || null);
       setProfileDisplayName(payload.profileDisplayName || null);
       setProfileUsername(payload.profileUsername || null);
       setPremiumActive(Boolean(payload.premiumActive));
       setPremiumPlanLabel(payload.premiumPlanLabel ?? null);
-    } else {
-      setAccess(null);
-      setAvatarUrl(null);
-      setProfileDisplayName(null);
-      setProfileUsername(null);
-      setPremiumActive(false);
-      setPremiumPlanLabel(null);
-    }
+    } else clearAccess();
     setLoading(false);
-  }, []);
+  }, [clearAccess]);
 
+  const hydrate = useCallback(async () => {
+    if (!isSupabaseConfigured()) { clearAccess(); setLoading(false); return; }
+    const version = ++hydrationVersion.current;
+    try {
+      const { data } = await withAuthTimeout(createClient().auth.getSession(), 12000, "Session refresh timed out.");
+      if (version === hydrationVersion.current) await applySession(data.session);
+    } catch {
+      if (version === hydrationVersion.current) { clearAccess(); setLoading(false); }
+    }
+  }, [applySession, clearAccess]);
+
+  const invalidateHydration = useCallback(() => { ++hydrationVersion.current; }, []);
   useEffect(() => {
-    queueMicrotask(() => void hydrate());
-    if (!isSupabaseConfigured()) return;
-    const supabase = createClient();
-    const { data } = supabase.auth.onAuthStateChange(() => {
-      setLoading(true);
-      void hydrate();
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Keep Supabase calls out of its auth callback/lock. Use the supplied session
+    // after the callback has returned instead of calling getSession inside it.
+    timer = setTimeout(() => { if (alive) void hydrate(); }, 0);
+    if (!isSupabaseConfigured()) return () => { alive = false; clearTimeout(timer); };
+    const { data } = createClient().auth.onAuthStateChange((_event, session) => {
+      invalidateHydration();
+      clearTimeout(timer);
+      timer = setTimeout(() => { if (alive) { setLoading(true); void applySession(session); } }, 0);
     });
-    return () => data.subscription.unsubscribe();
-  }, [hydrate]);
+    return () => {
+      alive = false;
+      invalidateHydration();
+      clearTimeout(timer);
+      data.subscription.unsubscribe();
+    };
+  }, [applySession, hydrate, invalidateHydration]);
 
   useEffect(() => {
     if (!token || !isNativeRuntime()) return;

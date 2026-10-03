@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
@@ -33,6 +34,7 @@ function updatedLabel(value?: string | null) {
 }
 
 export default function LyricsPadHub() {
+  const router = useRouter();
   const [token, setToken] = useState('')
   const [sessionReady, setSessionReady] = useState(false)
   const [workspaces, setWorkspaces] = useState<SongWorkspace[]>([])
@@ -105,7 +107,7 @@ export default function LyricsPadHub() {
       const payload = await response.json().catch(() => ({}))
       if (!response.ok || !payload.workspace?.id) throw new Error(payload.error || 'Could not create Lyrics Pad.')
       trackEvent('lyrics_pad_open', { workspace: true, source: 'lyrics_hub', kind: 'blank' })
-      window.location.href = `/creator/studio/songs/${payload.workspace.id}`
+      router.push(`/creator/studio/songs/${payload.workspace.id}`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not create Lyrics Pad.')
       setOpening('')
@@ -115,7 +117,7 @@ export default function LyricsPadHub() {
   async function writeToBeat(beat: OwnedBeat) {
     if (!token || opening) return
     if (beat.workspaceId) {
-      window.location.href = `/creator/studio/songs/${beat.workspaceId}`
+      router.push(`/creator/studio/songs/${beat.workspaceId}`)
       return
     }
     setOpening(beat.beatId)
@@ -129,7 +131,7 @@ export default function LyricsPadHub() {
       const payload = await response.json().catch(() => ({}))
       if (!response.ok || !payload.workspace?.id) throw new Error(payload.error || 'Could not open Lyrics Pad.')
       trackEvent('lyrics_pad_open', { workspace: true, source: 'lyrics_hub', kind: 'licensed' })
-      window.location.href = `/creator/studio/songs/${payload.workspace.id}`
+      router.push(`/creator/studio/songs/${payload.workspace.id}`)
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Could not open Lyrics Pad.')
       setOpening('')

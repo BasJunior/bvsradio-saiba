@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { getPushPermission, registerPushDevice, openNotificationSettings, type PushPermissionState } from "@/lib/app-native";
@@ -38,6 +38,11 @@ const participationDefaults: ParticipationPreferences = {
 };
 
 export default function AppNotificationSettings({ surface }: { surface: AppSurface }) {
+  const { user } = useAppSession();
+  return <AccountNotificationSettings key={user?.id || "guest"} surface={surface} />;
+}
+
+function AccountNotificationSettings({ surface }: { surface: AppSurface }) {
   const { token, signedIn, isCreator } = useAppSession();
   const [preferences, setPreferences] = useState<Preferences>(defaults);
   const [participation, setParticipation] = useState<ParticipationPreferences>(participationDefaults);
@@ -51,24 +56,31 @@ export default function AppNotificationSettings({ surface }: { surface: AppSurfa
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { return "UTC"; }
   }, []);
 
+  const loadVersion = useRef(0);
   const load = useCallback(async () => {
     if (!token) return;
+    const version = ++loadVersion.current;
     const [permission, response, participationResponse, deviceResponse] = await Promise.all([
       getPushPermission(),
 
-      fetch("/api/app/notification-preferences", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null),
-      fetch("/api/app/participation/preferences", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null),
-      fetch("/api/app/push/register", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null),
+      fetch("/api/app/notification-preferences", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(10000) }).catch(() => null),
+      fetch("/api/app/participation/preferences", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(10000) }).catch(() => null),
+      fetch("/api/app/push/register", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: AbortSignal.timeout(10000) }).catch(() => null),
     ]);
+    if (version !== loadVersion.current) return;
     setPushPermission(permission);
-    if (deviceResponse?.ok) setDeviceStatus(await deviceResponse.json());
+    const devicePayload = deviceResponse?.ok ? await deviceResponse.json().catch(() => null) : null;
+    if (version !== loadVersion.current) return;
+    if (devicePayload) setDeviceStatus(devicePayload);
     if (!response?.ok || !deviceResponse?.ok) setMessage("Some notification settings could not be loaded. Please retry.");
     if (response?.ok) {
       const payload = (await response.json()) as { preferences?: Partial<Preferences> };
+      if (version !== loadVersion.current) return;
       setPreferences({ ...defaults, ...(payload.preferences || {}) });
     }
     if (participationResponse?.ok) {
       const payload = (await participationResponse.json()) as { enabled?: boolean; preferences?: Partial<ParticipationPreferences> };
+      if (version !== loadVersion.current) return;
       setParticipationAvailable(payload.enabled !== false);
       const next = { ...participationDefaults, ...(payload.preferences || {}) };
       setParticipation(next);
@@ -76,14 +88,15 @@ export default function AppNotificationSettings({ surface }: { surface: AppSurfa
     }
   }, [token]);
 
+  const invalidateLoad = useCallback(() => { ++loadVersion.current; }, []);
   useEffect(() => {
     let alive = true;
     queueMicrotask(() => { if (alive) void load(); });
     const refresh = () => void load();
     window.addEventListener("bvs:app-resume", refresh);
     window.addEventListener("bvs:push-registration", refresh);
-    return () => { alive = false; window.removeEventListener("bvs:app-resume", refresh); window.removeEventListener("bvs:push-registration", refresh); };
-  }, [load]);
+    return () => { alive = false; invalidateLoad(); window.removeEventListener("bvs:app-resume", refresh); window.removeEventListener("bvs:push-registration", refresh); };
+  }, [load, invalidateLoad]);
   if (!signedIn) return null;
 
   const patchParticipation = async (patch: Partial<ParticipationPreferences>, quiet = false) => {

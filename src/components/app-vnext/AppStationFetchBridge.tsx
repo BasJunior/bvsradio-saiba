@@ -85,7 +85,10 @@ export default function AppStationFetchBridge() {
   const currentRef = useRef<OfflineTrack | null>(null);
   const saverRef = useRef(false);
 
-  currentRef.current = (player.current as OfflineTrack | undefined)?.offline ? (player.current as OfflineTrack) : null;
+  const current = player.current as OfflineTrack | undefined;
+  useEffect(() => {
+    currentRef.current = current?.offline ? current : null;
+  }, [current]);
 
   useEffect(() => {
     const originalFetch = window.fetch.bind(window);

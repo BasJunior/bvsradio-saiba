@@ -15,7 +15,7 @@ export default function AppExperienceStyle() {
         min-height: 100dvh;
         overscroll-behavior-x: none;
         overscroll-behavior-y: none;
-        touch-action: pan-y;
+        touch-action: manipulation;
         background:
           radial-gradient(circle at 82% -8%, rgba(196, 243, 67, .12), transparent 30rem),
           radial-gradient(circle at -10% 28%, rgba(87, 86, 255, .07), transparent 26rem),

@@ -1,9 +1,12 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
+import { createDraftSaveQueue } from '@/lib/draft-save-queue'
+import { withAuthTimeout } from '@/lib/auth-client-flow'
 
 type Workspace = {
   id: string
@@ -30,6 +33,7 @@ type Workspace = {
 const sections = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Bridge', 'Outro']
 
 export default function SongWorkspace({ id }: { id: string }) {
+  const router = useRouter();
   const [token, setToken] = useState('')
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
   const [songTitle, setSongTitle] = useState('')
@@ -37,53 +41,81 @@ export default function SongWorkspace({ id }: { id: string }) {
   const [notes, setNotes] = useState('')
   const [dirty, setDirty] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(() => isSupabaseConfigured() ? '' : 'Account service is unavailable.')
+  const revision = useRef(0)
+  const generation = useRef(0)
+  const [enqueueSave] = useState(createDraftSaveQueue)
+  const invalidateGeneration = useCallback(() => { generation.current++ }, [])
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return setError('Account service is unavailable.')
-    createClient().auth.getSession().then(async ({ data }) => {
+    const currentGeneration = ++generation.current
+    let active = true
+    if (!isSupabaseConfigured()) return
+    withAuthTimeout(createClient().auth.getSession(), 12000, 'Account session timed out.').then(async ({ data }) => {
+      if (!active) return
       const accessToken = data.session?.access_token
       if (!accessToken) return setError('Sign in to open your private Lyrics Pad.')
       setToken(accessToken)
       const response = await fetch(`/api/creator/song-workspaces/${encodeURIComponent(id)}`, {
-        headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store',
+        headers: { Authorization: `Bearer ${accessToken}` }, cache: 'no-store', signal: AbortSignal.timeout(15000),
       })
       const payload = await response.json().catch(() => ({}))
+      if (!active || generation.current !== currentGeneration) return
       if (!response.ok) return setError(payload.error || 'Could not open Song Workspace.')
       const next = payload.workspace as Workspace
       setWorkspace(next)
       setSongTitle(next.songTitle || '')
       setLyrics(next.lyrics || '')
       setNotes(next.notes || '')
+      revision.current++
+      setDirty(false)
       setSaveState('saved')
       trackEvent('lyrics_pad_open', { workspace: true, kind: next.workspaceKind || 'licensed' })
-    }).catch(() => setError('Could not open Song Workspace.'))
-  }, [id])
+    }).catch(() => { if (active) setError('Could not open Song Workspace.') })
+    return () => { active = false; invalidateGeneration() }
+  }, [id, invalidateGeneration])
 
   const save = useCallback(async (status?: 'draft' | 'ready_to_release') => {
-    if (!token || !workspace) return false
+    if (!token || !workspace || workspace.id !== id) return false
+    const savedRevision = revision.current
+    const savedGeneration = generation.current
     setSaveState('saving')
     setError('')
-    const response = await fetch(`/api/creator/song-workspaces/${encodeURIComponent(workspace.id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ songTitle, lyrics, notes, ...(status ? { status } : {}) }),
+    return enqueueSave(async () => {
+      if (generation.current !== savedGeneration) return false
+      try {
+        const response = await fetch(`/api/creator/song-workspaces/${encodeURIComponent(workspace.id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ songTitle, lyrics, notes, ...(status ? { status } : {}) }),
+          signal: AbortSignal.timeout(15000),
+        })
+        if (generation.current !== savedGeneration) return false
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}))
+          if (generation.current !== savedGeneration) return false
+          setError(payload.error || 'Could not save your writing.')
+          setSaveState('error')
+          return false
+        }
+        const payload = await response.json().catch(() => ({}))
+        if (generation.current !== savedGeneration) return false
+        if (payload.workspace) {
+          setWorkspace((current) => current ? { ...current, ...payload.workspace, audioUrl: current.audioUrl } : payload.workspace)
+        }
+        const current = revision.current === savedRevision
+        if (current) { setDirty(false); setSaveState('saved'); setError('') }
+        if (lyrics.trim()) trackEvent(workspace.lyrics ? 'lyrics_return_session' : 'lyrics_first_save', { workspace: true, kind: workspace.workspaceKind })
+        return current
+      } catch {
+        if (generation.current === savedGeneration) {
+          setError('Could not save your writing. Your edits are still here; please try saving again.')
+          setSaveState('error')
+        }
+        return false
+      }
     })
-    if (!response.ok) {
-      const payload = await response.json().catch(() => ({}))
-      setError(payload.error || 'Could not save your writing.')
-      setSaveState('error')
-      return false
-    }
-    const payload = await response.json().catch(() => ({}))
-    if (payload.workspace) {
-      setWorkspace((current) => current ? { ...current, ...payload.workspace, audioUrl: current.audioUrl } : payload.workspace)
-    }
-    setDirty(false)
-    setSaveState('saved')
-    if (lyrics.trim()) trackEvent(workspace.lyrics ? 'lyrics_return_session' : 'lyrics_first_save', { workspace: true, kind: workspace.workspaceKind })
-    return true
-  }, [lyrics, notes, songTitle, token, workspace])
+  }, [enqueueSave, id, lyrics, notes, songTitle, token, workspace])
 
   useEffect(() => {
     if (!dirty || !workspace || !token) return
@@ -91,7 +123,7 @@ export default function SongWorkspace({ id }: { id: string }) {
     return () => window.clearTimeout(timer)
   }, [dirty, save, token, workspace])
 
-  const markDirty = () => { setDirty(true); setSaveState('idle') }
+  const markDirty = () => { revision.current++; setDirty(true); setSaveState('idle') }
   const appendSection = (label: string) => {
     setLyrics(`${lyrics}${lyrics.trim() ? '\n\n' : ''}[${label}]\n`)
     markDirty()
@@ -101,7 +133,7 @@ export default function SongWorkspace({ id }: { id: string }) {
     if (!workspace?.hasAttachedBeat) return
     if (await save('ready_to_release')) {
       trackEvent('prepare_release', { workspace: true })
-      window.location.href = `/upload?mode=release&songWorkspace=${encodeURIComponent(id)}`
+      router.push(`/upload?mode=release&songWorkspace=${encodeURIComponent(id)}`)
     }
   }
 
@@ -119,7 +151,7 @@ export default function SongWorkspace({ id }: { id: string }) {
       <Link href="/lyrics" className="mt-6 inline-flex rounded-full border border-white/15 px-5 py-2.5 text-sm">Back to Lyrics Pad</Link>
     </main>
   )
-  if (!workspace) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Opening your lyrics…</main>
+  if (!workspace || workspace.id !== id) return <main className="min-h-[65vh] p-20 text-center text-text-secondary">Opening your lyrics…</main>
 
   const saveLabel = saveState === 'saving' ? 'Saving…' : saveState === 'error' ? 'Save needs attention' : dirty ? 'Unsaved changes' : 'Saved privately'
 

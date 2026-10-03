@@ -149,7 +149,7 @@ export default function NowPlayingSwipeGestures() {
         if (event.cancelable) event.preventDefault();
         if (absX >= TRACK_THRESHOLD_PX) {
           current.fired = true;
-          if (dx > 0) actions.current.next();
+          if (dx < 0) actions.current.next();
           else actions.current.previous();
           clearGesture();
         }

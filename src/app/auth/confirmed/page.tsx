@@ -82,14 +82,15 @@ export default function ConfirmedPage() {
           return
         }
 
-        let profileDestination = '/start'
+        const profileDestination = '/start'
         const profileRes = await fetch('/api/auth/profile', {
           method: 'POST',
           headers: { Authorization: `Bearer ${data.session.access_token}` },
-        })
-        if (!profileRes.ok) {
+          signal: AbortSignal.timeout(5000),
+        }).catch(() => null)
+        if (profileRes && !profileRes.ok) {
           console.warn('profile setup failed', await profileRes.text())
-        } else {
+        } else if (profileRes) {
           await profileRes.json().catch(() => ({}))
         }
 

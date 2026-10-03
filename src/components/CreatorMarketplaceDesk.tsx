@@ -195,9 +195,9 @@ export function CreatorMarketplaceDesk({
     [listingDirty, setListingDirty] = useState(false),
     [uploads, setUploads] = useState<Record<string, UploadState>>({});
   const uploadRef = useRef(uploads);
-  uploadRef.current = uploads;
+  useEffect(() => { uploadRef.current = uploads; }, [uploads]);
   const sessionRef = useRef(token);
-  sessionRef.current = token;
+  useEffect(() => { sessionRef.current = token; }, [token]);
   const account = accountKey(token);
   const busyRef = useRef(false);
   const base = surface ? `/app/${surface}` : "";
