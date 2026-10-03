@@ -9,6 +9,10 @@ export type PublishedEpisode = {
   episodeNumber: number | null;
   audioUrl: string;
   durationLabel: string | null;
+  showSlug: string;
+  showTitle: string;
+  artwork: string;
+  publishedAt: string;
 };
 
 type CreatorRow = {
@@ -29,6 +33,8 @@ type EpisodeRow = {
   episode_number?: number | null;
   audio_path?: string | null;
   duration_seconds?: number | null;
+  published_at?: string | null;
+  created_at?: string | null;
 };
 
 const SLUG = /^[a-z0-9-]{1,80}$/;
@@ -86,7 +92,7 @@ async function publishedEpisodes(showIds: string[]): Promise<EpisodeRow[]> {
   if (!setup || !showIds.length) return [];
   try {
     const response = await fetch(
-      `${setup.url}/rest/v1/show_episodes?status=eq.published&show_id=in.(${showIds.join(",")})&select=id,show_id,title,description,episode_number,audio_path,duration_seconds&order=episode_number.asc`,
+      `${setup.url}/rest/v1/show_episodes?status=eq.published&show_id=in.(${showIds.join(",")})&select=id,show_id,title,description,episode_number,audio_path,duration_seconds,published_at,created_at&order=published_at.desc.nullslast,created_at.desc&limit=120`,
       { headers: setup.headers, next: { revalidate: 60 }, signal: AbortSignal.timeout(4000) },
     );
     if (!response.ok) return [];
@@ -106,6 +112,17 @@ export async function getPublishedCreatorShows(): Promise<Show[]> {
   return creators.map((row) => toShow(row, withAudio.has(row.id)));
 }
 
+export async function getPublishedEpisodeDrops(): Promise<PublishedEpisode[]> {
+  const creators = await approvedCreators();
+  const episodes = await publishedEpisodes(creators.map(show => show.id));
+  return episodes.flatMap(row => {
+    const show = creators.find(show => show.id === row.show_id);
+    const audioUrl = mediaUrlForStoredValue(row.audio_path);
+    if (!show || !audioUrl) return [];
+    return [{ id: row.id, title: row.title, description: row.description || "", episodeNumber: row.episode_number ?? null, audioUrl, durationLabel: durationLabel(row.duration_seconds), showSlug: show.slug, showTitle: show.title, artwork: show.artwork_url || "/images/editorial/radio-studio-harare.webp", publishedAt: row.published_at || row.created_at || "" }];
+  });
+}
+
 export async function getPublishedEpisodes(slug: string): Promise<PublishedEpisode[]> {
   if (!SLUG.test(slug)) return [];
   const creators = await approvedCreators();
@@ -122,6 +139,10 @@ export async function getPublishedEpisodes(slug: string): Promise<PublishedEpiso
       episodeNumber: row.episode_number ?? null,
       audioUrl,
       durationLabel: durationLabel(row.duration_seconds),
+      showSlug: show.slug,
+      showTitle: show.title,
+      artwork: show.artwork_url || "/images/editorial/radio-studio-harare.webp",
+      publishedAt: row.published_at || row.created_at || "",
     }];
   });
 }

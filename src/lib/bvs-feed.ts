@@ -1,4 +1,5 @@
 import "server-only";
+import { getPublishedEpisodeDrops } from "@/lib/published-shows";
 
 import type { AppSurface } from "@/lib/app-surface";
 import type { BvsObject } from "@/lib/bvs-object";
@@ -186,7 +187,7 @@ export async function getBvsFeed(options: { surface?: AppSurface; limit?: number
     ? `tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&mobile_distribution_clearances!inner(surface,status)&mobile_distribution_clearances.surface=eq.${surface}&mobile_distribution_clearances.status=eq.cleared&select=${trackSelect},mobile_distribution_clearances(surface,status)&order=rotation_added_at.desc.nullslast,created_at.desc&limit=40`
     : `tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=${trackSelect}&order=rotation_added_at.desc.nullslast,created_at.desc&limit=40`;
 
-  const [tracks, releases, profiles, programmes, showEvents, marketplaceListings, beats] = await Promise.all([
+  const [tracks, releases, profiles, programmes, showEvents, marketplaceListings, beats, episodes] = await Promise.all([
     rows<TrackRow>(trackPath),
     rows<ReleaseRow>("releases?is_public=eq.true&editorial_status=eq.approved&select=id,user_id,title,artist_name,genre,cover_url,release_type,track_count,published_at,created_at&order=published_at.desc.nullslast,created_at.desc&limit=32"),
     rows<PublicProfile>("profiles?is_published=eq.true&is_verified=eq.true&select=id,username,avatar_url,role,is_producer,creator_public_name,creator_name_status,created_at&order=created_at.desc&limit=40"),
@@ -194,6 +195,7 @@ export async function getBvsFeed(options: { surface?: AppSurface; limit?: number
     rows<ShowEventRow>("show_events?status=in.(scheduled,live)&select=id,programme_slug,title,status,starts_at,updated_at&order=starts_at.desc&limit=24"),
     rows<MarketplaceListingRow>("creator_marketplace_listings?status=eq.published&select=id,seller_user_id,listing_type,category,title,description,price_usd,artwork_path,published_at,profiles!inner(username,display_name,creator_public_name,creator_name_status,avatar_url)&order=published_at.desc&limit=32"),
     listPublishedBeats(40).catch(() => []),
+    getPublishedEpisodeDrops().catch(() => []),
   ]);
 
   const profileIds = new Set<string>();
@@ -370,6 +372,22 @@ export async function getBvsFeed(options: { surface?: AppSurface; limit?: number
         item: socialItem({ id: profile.id, kind: "artist", title: name, subtitle: role, href: route, image, tags: [profile.is_producer ? "producer" : "artist"] }),
       },
     });
+  }
+
+  for (const episode of episodes) {
+    const src = publicMedia(episode.audioUrl, surface);
+    if (!src) continue;
+    const route = `${surface ? `/app/${surface}/show/` : "/shows/"}${encodeURIComponent(episode.showSlug)}#episode-${encodeURIComponent(episode.id)}`;
+    const artwork = publicMedia(episode.artwork, surface);
+    const object: BvsObject = {
+      id: `episode-${episode.id}`, kind: "show", title: episode.title, subtitle: episode.showTitle, route, artwork,
+      contextLabel: "New episode", availabilityLabel: "Published", rightsState: "published",
+      metadata: [episode.episodeNumber ? `Episode ${episode.episodeNumber}` : "", episode.durationLabel || ""].filter(Boolean),
+      media: { src, artist: episode.showTitle, project: "BVS Shows", artwork },
+      primaryAction: { id: "play", label: "Play episode", intent: "play" },
+      overflowActions: [{ id: "next", label: "Play next", intent: "play-next" }, { id: "show", label: "Open show", intent: "navigate", href: route }],
+    };
+    feed.push({ id: `episode:${episode.id}`, category: "live", verb: "New episode dropped", occurredAt: safeDate(episode.publishedAt), object });
   }
 
   const programmeBySlug = new Map(programmes.map((programme) => [programme.slug, programme]));
