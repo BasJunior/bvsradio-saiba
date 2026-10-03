@@ -47,4 +47,20 @@ assert.match(feed,/menuExtras=\{item.social \? <LibraryAction/);
 const posts=fs.readFileSync('src/components/feed/ParticipationPostCard.tsx','utf8');
 assert.ok(posts.indexOf('FeedMoreActions title')<posts.indexOf('toggle("repost")'),'Repost must remain in the post menu');
 assert.ok(posts.includes('removePost()')&&posts.includes('setEditing'),'Owner actions must remain available');
+const sheetExports = {};
+let closed = 0, historyDismissed = 0;
+const sheetImports = {
+  react:{useCallback:fn=>fn,useEffect(){},useRef:()=>({current:null})},
+  'react/jsx-runtime':{jsx,jsxs:jsx}, 'react-dom':{createPortal:node=>node},
+  '@capacitor/core':{Capacitor:{}}, 'next/navigation':{useRouter:()=>({})},
+  '@/lib/flow-session':{}, '@/lib/analytics':{}, '@/lib/share-url':{}, '@/lib/share-card':{},
+  '@/lib/transient-navigation':{dismissTransientLayer(){historyDismissed++;return true;}},
+};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/flow/BvsActionSheet.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText,{
+  exports:sheetExports,require:name=>sheetImports[name],window:{},document:{body:{}},
+});
+const liveSheet = sheetExports.default({object,open:true,onClose:()=>closed++});
+nodes(liveSheet).find(node=>node.props?.['aria-label']==='Close actions').props.onClick();
+assert.equal(historyDismissed,1,'Close must consume transient history');
+assert.equal(closed,1,'Close must dismiss immediately without waiting for popstate');
 console.log('Calm Feed: artwork playback, no duplicate Play, action menu, save/follow, queue/licence routes and retained post controls passed.');
