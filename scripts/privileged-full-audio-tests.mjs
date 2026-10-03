@@ -91,6 +91,10 @@ assert(confirmedPage.includes('safeRequestedDestination(params.get(\'next\')'), 
 assert(confirmedPage.includes("requestedDestination || profileDestination || '/'"), 'requested BeatStore context must take precedence over the generic role landing after confirmation')
 
 // Web beat detail keeps licence/creation rights separate from member listening.
+assert(beatWorkflow.includes('useStationPlayer'), 'web BeatStore playback must use the persistent BVS player')
+assert(beatWorkflow.includes('player.playNow(beatTrack'), 'web BeatStore play must replace the current persistent recording')
+assert(beatWorkflow.includes("kind: 'beat' as const"), 'web BeatStore playback must identify the queue item as a beat')
+assert(!beatWorkflow.includes('<audio key={audioUrl} controls'), 'web BeatStore must not mount a second standalone audio player')
 assert(beatWorkflow.includes('const hasMemberFullAudio = Boolean(access.member && access.fullAudioUrl)'), 'web BeatStore must accept the server-authorized complete tagged preview for members')
 assert(beatWorkflow.includes('if (!access.owned || !access.orderReference) return'), 'Lyrics Pad creation must remain fail-closed without a paid beat entitlement')
 assert(beatWorkflow.includes('{access.owned ? <section id="beat-writing"'), 'Lyrics Pad must only render for licensed owners')

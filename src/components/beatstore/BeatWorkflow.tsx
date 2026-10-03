@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import LibraryAction from '@/components/LibraryAction'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { trackEvent } from '@/lib/analytics'
+import { useStationPlayer, useStationPlayerProgress } from '@/components/StationPlayer'
 
 type Licence = {
   id: string
@@ -54,6 +55,14 @@ type Workspace = {
 }
 
 const lyricSections = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Bridge', 'Outro']
+
+function formatTime(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '0:00'
+  const whole = Math.floor(seconds)
+  const minutes = Math.floor(whole / 60)
+  const remainder = whole % 60
+  return `${minutes}:${String(remainder).padStart(2, '0')}`
+}
 
 function InlineLyrics({ workspaceId, token }: { workspaceId: string; token: string }) {
   const [workspace, setWorkspace] = useState<Workspace | null>(null)
@@ -153,6 +162,8 @@ function InlineLyrics({ workspaceId, token }: { workspaceId: string; token: stri
 }
 
 export default function BeatWorkflow({ beat }: { beat: Beat }) {
+  const player = useStationPlayer()
+  const timeline = useStationPlayerProgress()
   const [token, setToken] = useState('')
   const [sessionReady, setSessionReady] = useState(false)
   const [access, setAccess] = useState<Access>({ member: false, owned: false })
@@ -209,6 +220,31 @@ export default function BeatWorkflow({ beat }: { beat: Beat }) {
       : access.member
         ? 'BVS member · preview only right now'
         : 'Preview'
+  const beatTrack = useMemo(() => audioUrl ? ({
+    id: beat.id,
+    kind: 'beat' as const,
+    title: beat.title,
+    artist: beat.producerName,
+    src: audioUrl,
+    artwork: beat.artworkUrl || undefined,
+    project: access.owned ? 'BeatStore licensed beat' : hasMemberFullAudio ? 'BeatStore member preview' : 'BVS BeatStore',
+    genre: beat.genre || undefined,
+  }) : null, [access.owned, audioUrl, beat.artworkUrl, beat.genre, beat.id, beat.producerName, beat.title, hasMemberFullAudio])
+  const isCurrent = Boolean(beatTrack && player.current?.src === beatTrack.src)
+  const isPlaying = isCurrent && player.isPlaying
+  const elapsed = isCurrent ? timeline.elapsed : 0
+  const duration = isCurrent ? timeline.duration : 0
+  const progress = duration > 0 ? Math.min(1, Math.max(0, elapsed / duration)) : 0
+
+  const togglePlayback = () => {
+    if (!beatTrack) return
+    if (isCurrent) {
+      player.toggle()
+      return
+    }
+    player.playNow(beatTrack, { from: audioLabel, related: [] })
+    player.setQueueOpen(false)
+  }
 
   const meta = useMemo(() => [beat.genre, beat.mood, beat.bpm ? `${beat.bpm} BPM` : null, beat.musicalKey].filter(Boolean).join(' · '), [beat])
   const licenceHref = `/catalogue?type=beat&beat=${encodeURIComponent(beat.slug || beat.id)}#beatstore`
@@ -262,7 +298,18 @@ export default function BeatWorkflow({ beat }: { beat: Beat }) {
 
         <div className="mt-6 rounded-[1.5rem] border border-brand/20 bg-brand/[.045] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">{audioLabel}</p><p className="mt-1 text-sm text-text-secondary">{access.owned ? 'Stay here, play it and write against it.' : hasMemberFullAudio ? 'Your BVS membership unlocks the full listen. A licence is still required before you use or release the beat.' : 'Hear the public preview, or sign in to BVS for member listening.'}</p></div>{checkingAccess ? <span className="text-xs text-text-secondary">Checking member access…</span> : null}</div>
-          {audioUrl ? <audio key={audioUrl} controls preload="metadata" src={audioUrl} className="mt-4 w-full" /> : <p className="mt-4 text-sm text-text-secondary">Audio is temporarily unavailable.</p>}
+          {audioUrl ? <div className="mt-4 flex items-center gap-3" data-bvs-beat-shared-player="true">
+            <button type="button" onClick={togglePlayback} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-white text-base font-semibold text-black transition hover:bg-brand active:scale-95" aria-label={isPlaying ? `Pause ${beat.title}` : `Play ${beat.title} in BVS player`}>
+              {isPlaying ? 'Ⅱ' : '▶'}
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="mb-1 flex items-center justify-between gap-3 text-[11px] text-text-secondary">
+                <span>{isCurrent ? formatTime(elapsed) : 'Plays in the BVS player'}</span>
+                <span>{duration > 0 ? `-${formatTime(Math.max(0, duration - elapsed))}` : audioLabel}</span>
+              </div>
+              <input type="range" min={0} max={1000} value={Math.round(progress * 1000)} disabled={!isCurrent || duration <= 0} onChange={(event) => player.seek(Number(event.currentTarget.value) / 1000)} aria-label={`Seek ${beat.title}`} className="h-1.5 w-full cursor-pointer accent-brand disabled:cursor-default disabled:opacity-35" />
+            </div>
+          </div> : <p className="mt-4 text-sm text-text-secondary">Audio is temporarily unavailable.</p>}
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
