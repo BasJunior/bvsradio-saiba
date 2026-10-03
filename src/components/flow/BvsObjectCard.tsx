@@ -28,8 +28,8 @@ function runQueueAction(action: BvsAction, object: BvsObject) {
 
 const surfaceByVariant: Record<BvsCardVariant, string> = {
   "compact-row": "flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[.025] p-3",
-  "feed-row": "rounded-2xl border border-white/10 bg-white/[.025] p-3",
-  "feed-beat": "rounded-2xl border border-white/10 bg-white/[.025] p-3",
+  "feed-row": "rounded-2xl p-1",
+  "feed-beat": "rounded-2xl p-1",
   "rail-card": "w-[min(78vw,19rem)] shrink-0 overflow-hidden rounded-3xl border border-white/10 bg-white/[.025]",
   "feature-card": "overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br from-white/[.06] to-white/[.015]",
   "grid-card": "overflow-hidden rounded-3xl border border-white/10 bg-white/[.025]",
@@ -69,6 +69,7 @@ export default function BvsObjectCard(props: {
   object: BvsObject;
   variant?: BvsCardVariant;
   relationship?: string;
+  menuExtras?: React.ReactNode;
 }) {
   return <ResolvedBvsObjectCard {...props} object={resolveObjectNavigation(props.object)} />;
 }
@@ -77,10 +78,12 @@ function ResolvedBvsObjectCard({
   object,
   variant = "grid-card",
   relationship,
+  menuExtras,
 }: {
   object: BvsObject;
   variant?: BvsCardVariant;
   relationship?: string;
+  menuExtras?: React.ReactNode;
 }) {
   const [actionsOpen, setActionsOpen] = useState(false);
   const [failedArtwork, setFailedArtwork] = useState<string | null>(null);
@@ -169,7 +172,7 @@ function ResolvedBvsObjectCard({
         <div className="flex min-w-0 items-start gap-3">
           {playsInline ? (
             <>
-              <button type="button" onClick={activateCard} className={`relative ${artworkClass} shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}>{image}</button>
+              <button type="button" onClick={activateCard} aria-label={`${object.primaryAction?.label || "Play"} ${object.title}`} className={`relative ${artworkClass} shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}>{image}<span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/15"><span className="grid h-8 w-8 place-items-center rounded-full bg-black/65 text-sm text-white">▶</span></span></button>
               <button type="button" onClick={activateCard} className="min-w-0 flex-1 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{feedContent}</button>
             </>
           ) : (
@@ -178,26 +181,12 @@ function ResolvedBvsObjectCard({
               <Link href={object.route} onClick={openObject} className="min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{feedContent}</Link>
             </>
           )}
-        </div>
-
-        <div className="mt-3 flex items-center gap-2 border-t border-white/[.055] pt-3">
-          {object.primaryAction ? (
-            object.primaryAction.intent === "navigate" && object.primaryAction.href ? (
-              <Link href={object.primaryAction.href} onClick={openObject} className="min-h-11 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                {object.primaryAction.label}
-              </Link>
-            ) : (
-              <button type="button" onClick={() => primary(object.primaryAction!)} className="min-h-11 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
-                {object.primaryAction.label}
-              </button>
-            )
-          ) : null}
-          <button ref={overflowRef} type="button" onClick={() => setActionsOpen(true)} aria-haspopup="dialog" aria-label={`More actions for ${object.title}`} className="grid h-11 w-11 place-items-center rounded-full border border-white/10 text-lg text-text-secondary transition hover:border-brand/40 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+          <button ref={overflowRef} type="button" onClick={() => setActionsOpen(true)} aria-haspopup="dialog" aria-label={`More actions for ${object.title}`} className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-lg text-text-secondary transition hover:bg-white/5 hover:text-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
             •••
           </button>
         </div>
 
-        <BvsActionSheet object={object} open={actionsOpen} onClose={() => setActionsOpen(false)} returnFocus={overflowRef} />
+        <BvsActionSheet object={object} open={actionsOpen} onClose={() => setActionsOpen(false)} returnFocus={overflowRef} extras={menuExtras} />
       </article>
     );
   }

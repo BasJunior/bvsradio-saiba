@@ -135,13 +135,13 @@ export default function FeedParticipation({
   return (
     <div className="mt-3 border-t border-white/[.055] px-1 pt-3">
       <div className="flex min-h-10 flex-wrap items-center gap-1.5">
-        <button type="button" aria-pressed={summary.liked} onClick={() => void toggle("like")} className={`min-h-10 rounded-full border px-3 text-xs font-semibold transition ${summary.liked ? "border-[#ff7a70]/45 bg-[#ff7a70]/12 text-[#ff9a92]" : "border-white/10 text-white/55 hover:border-[#ff7a70]/35 hover:text-[#ff9a92]"}`}>
+        <button type="button" aria-label={`${summary.liked ? "Unlike" : "Like"} ${object.title}`} aria-pressed={summary.liked} onClick={() => void toggle("like")} className={`min-h-11 rounded-full px-3 text-xs font-semibold transition active:scale-95 motion-reduce:transform-none ${summary.liked ? "text-[#ff9a92]" : "text-white/55 hover:bg-white/5 hover:text-[#ff9a92]"}`}>
           {summary.liked ? "♥" : "♡"} {summary.likes || "Like"}
         </button>
-        <button type="button" aria-pressed={summary.reposted} onClick={() => void toggle("repost")} className={`min-h-10 rounded-full border px-3 text-xs font-semibold transition ${summary.reposted ? "border-[#7BA9D0]/45 bg-[#7BA9D0]/12 text-[#a8c9e5]" : "border-white/10 text-white/55 hover:border-[#7BA9D0]/35 hover:text-[#a8c9e5]"}`}>
+        <button type="button" aria-label={`${summary.reposted ? "Undo repost" : "Repost"} ${object.title}`} aria-pressed={summary.reposted} onClick={() => void toggle("repost")} className={`min-h-11 rounded-full px-3 text-xs font-semibold transition active:scale-95 motion-reduce:transform-none ${summary.reposted ? "text-[#a8c9e5]" : "text-white/55 hover:bg-white/5 hover:text-[#a8c9e5]"}`}>
           ↻ {summary.reposts || "Repost"}
         </button>
-        <button type="button" aria-expanded={threadOpen} onClick={() => void openDiscussion()} className={`min-h-10 rounded-full border px-3 text-xs font-semibold transition ${threadOpen ? "border-[#929DE0]/45 bg-[#929DE0]/12 text-[#c2c9ff]" : "border-white/10 text-white/55 hover:border-[#929DE0]/35 hover:text-[#c2c9ff]"}`}>
+        <button type="button" aria-label={`Discussion for ${object.title}`} aria-expanded={threadOpen} onClick={() => void openDiscussion()} className={`min-h-11 rounded-full px-3 text-xs font-semibold transition ${threadOpen ? "text-[#c2c9ff]" : "text-white/55 hover:bg-white/5 hover:text-[#c2c9ff]"}`}>
           ◌ {opening ? "Opening…" : summary.comments ? `${summary.comments} Discussion` : "Discussion"}
         </button>
       </div>

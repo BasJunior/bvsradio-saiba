@@ -59,11 +59,13 @@ export default function BvsActionSheet({
   open,
   onClose,
   returnFocus,
+  extras,
 }: {
   object: BvsObject;
   open: boolean;
   onClose: () => void;
   returnFocus?: React.RefObject<HTMLElement | null>;
+  extras?: React.ReactNode;
 }) {
   const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -110,7 +112,7 @@ export default function BvsActionSheet({
   }, [dismiss, object.id, object.kind, onClose, open, returnFocus]);
 
   if (!open || typeof document === "undefined") return null;
-  const actions = object.overflowActions || [];
+  const actions = [object.primaryAction, ...(object.overflowActions || [])].filter((action, index, all): action is BvsAction => Boolean(action) && all.findIndex(candidate => candidate?.id === action?.id) === index);
 
   async function run(action: BvsAction) {
     try {
@@ -161,6 +163,7 @@ export default function BvsActionSheet({
           <button type="button" onClick={dismiss} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 text-lg text-text-secondary hover:border-brand hover:text-brand" aria-label="Close actions">×</button>
         </div>
         <div className="mt-5 grid gap-2">
+          {extras ? <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 p-3">{extras}</div> : null}
           {actions.map((action) => (
             <button key={action.id} type="button" onClick={() => void run(action)} className="min-h-12 rounded-2xl border border-white/10 bg-white/[.03] px-4 py-3 text-left text-sm font-medium transition hover:border-brand/40 hover:bg-brand/[.06] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
               {action.label}

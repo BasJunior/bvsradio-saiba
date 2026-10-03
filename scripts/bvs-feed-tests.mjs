@@ -31,8 +31,8 @@ assert(feed.includes("creator_marketplace_listings?status=eq.published"), "feed 
 assert(!feed.includes("track_review_messages"), "public feed must never expose private track review messages");
 assert(!feed.includes("beat_review_messages"), "public feed must never expose private beat review messages");
 assert(feedList.includes("LibraryAction"), "feed must expose existing save/follow social actions");
-assert(feedList.includes("openBvsShareCard"), "feed must expose sharing");
-assert(feedList.includes("canonicalBvsShareUrl"), "feed sharing must use canonical BVS public URLs");
+assert(actionSheet.includes("openBvsShareCard"), "feed menu must expose sharing");
+assert(actionSheet.includes("canonicalBvsShareUrl"), "feed menu sharing must use canonical BVS public URLs");
 assert(feedList.includes('`/beat/${encodeURIComponent(item.object.id)}`'), "web feed beat shares and saved items must use the exact beat id route");
 assert(feedList.includes('item.category === "beat" ? "feed-beat" : "feed-row"'), "every Feed event must use a content-first row with actions below copy");
 assert(feedList.includes('item.category === "beat" ? "New drop" : item.verb'), "BeatStore feed header must not repeat BeatStore inside the object card");
@@ -42,7 +42,9 @@ assert(objectCard.includes("const feedFocused = feedBeat || feedRow"), "Feed row
 assert(objectCard.includes('object.title.replace(/-/g, "‑")'), "Feed BeatStore titles must keep hyphenated names together on narrow screens");
 assert(objectCard.includes("repeatedMetadata"), "Feed rows must suppress metadata that simply repeats the subtitle");
 assert(objectCard.includes('feedBeat ? "truncate" : "line-clamp-2"'), "Beat metadata must stay compact while other Feed metadata can wrap cleanly");
-assert(objectCard.includes('className="mt-3 flex items-center gap-2 border-t'), "Feed primary and overflow controls must sit below metadata instead of squeezing it");
+assert(objectCard.includes('aria-label={`${object.primaryAction?.label || "Play"} ${object.title}`}'), "Feed artwork must retain a named primary play action");
+assert(feedList.includes('menuExtras={item.social ? <LibraryAction'), "Feed save/follow must remain available in the content menu");
+assert(actionSheet.includes('object.primaryAction, ...(object.overflowActions || [])'), "Feed menus must retain every primary and secondary action");
 assert(objectCard.includes('`/beat/${encodeURIComponent(object.id)}`'), "BVS beat cards must resolve web detail navigation by immutable beat id");
 assert(objectCard.includes('action.href.startsWith("/catalogue?type=beat")'), "legacy BeatStore search actions must be upgraded to exact detail routes");
 assert(actionSheet.includes('import { createPortal } from "react-dom"'), "BVS action sheets must portal outside card/feed stacking contexts");

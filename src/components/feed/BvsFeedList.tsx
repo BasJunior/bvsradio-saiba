@@ -12,8 +12,6 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import type { BvsFeedCategory, BvsFeedFilter, BvsFeedItem } from "@/lib/bvs-feed";
 import type { AppSurface } from "@/lib/app-surface";
 import type { ParticipationPost } from "@/lib/participation-server";
-import { canonicalBvsShareUrl } from "@/lib/share-url";
-import { openBvsShareCard } from "@/lib/share-card";
 import { readLibrary } from "@/lib/library";
 
 const filters: Array<{ id: BvsFeedFilter; label: string }> = [
@@ -237,16 +235,6 @@ export default function BvsFeedList({
     ...visibleSystem.map((item) => ({ type: "system" as const, at: item.occurredAt, id: `system:${item.id}`, item })),
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [visiblePosts, visibleSystem]);
 
-  async function share(item: BvsFeedItem) {
-    openBvsShareCard({
-      title: item.object.title,
-      text: `${item.verb} · ${item.object.subtitle || "BVS"}`,
-      path: canonicalBvsShareUrl(exactFeedRoute(item)),
-      image: item.object.artwork,
-      kicker: item.object.kind === "show" ? "BVS Show" : item.object.kind === "beat" ? "BVS BeatStore" : item.object.contextLabel || item.object.kind,
-    });
-  }
-
   function recordActivity(key: string, active: boolean) {
     setMyActivity((current) => {
       const next = new Set(current);
@@ -326,7 +314,9 @@ export default function BvsFeedList({
           </div></div>
           <button type="button" disabled={refreshing} onClick={() => void refreshFeed()} className="min-h-11 shrink-0 rounded-full border border-white/15 px-3 text-xs font-semibold text-white/70 hover:text-white disabled:opacity-50" aria-label="Refresh feed">{refreshing ? 'Refreshing…' : 'Refresh'}</button>
         </div>
-        <label className="mt-3 block"><span className="sr-only">Search this feed</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search updates, artists or music" className="min-h-11 w-full rounded-xl border border-white/10 bg-black/15 px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-brand/50" /></label>
+        <details className="group mt-2" data-feed-refine="true">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-2 text-xs text-white/55 transition hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-brand [&::-webkit-details-marker]:hidden"><span>Search & filter{query.trim() ? ` · ${query.trim()}` : filter !== "all" ? ` · ${filters.find(item => item.id === filter)?.label}` : ""}</span><span aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none">⌄</span></summary>
+        <label className="mt-2 block"><span className="sr-only">Search this feed</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search updates, artists or music" className="min-h-11 w-full rounded-xl border border-white/10 bg-black/15 px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-brand/50" /></label>
         <div className="mt-2 overflow-x-auto">
           <div className="flex min-w-max gap-1.5 sm:flex-wrap" aria-label="Feed categories">
             {filters.map((item) => {
@@ -345,6 +335,7 @@ export default function BvsFeedList({
             })}
           </div>
         </div>
+        </details>
       </div>
 
       {postsError && filter === "all" ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ff7a70]/20 bg-[#ff7a70]/[.055] px-3 py-2 text-xs text-[#ff9a92]"><span>{postsError}</span><button type="button" onClick={() => void loadPosts(null, false)} className="min-h-9 rounded-full border border-white/15 px-3 text-white">Try again</button></div> : null}
@@ -371,7 +362,7 @@ export default function BvsFeedList({
                 </time>
               </div>
 
-              <BvsObjectCard object={item.object} variant={item.category === "beat" ? "feed-beat" : "feed-row"} />
+              <BvsObjectCard object={item.object} variant={item.category === "beat" ? "feed-beat" : "feed-row"} menuExtras={item.social ? <LibraryAction item={{ ...item.social.item, href: exactFeedRoute(item) }} section={item.social.section} /> : undefined} />
 
               <FeedParticipation
                 key={`${key}:${session.user?.id || "guest"}`}
@@ -382,20 +373,6 @@ export default function BvsFeedList({
                 onActivity={recordActivity}
               />
 
-              <div className="mt-3 flex min-h-11 flex-wrap items-center gap-2 border-t border-white/[.055] px-1 pt-3">
-                {item.social ? (
-                  <LibraryAction item={{ ...item.social.item, href: exactFeedRoute(item) }} section={item.social.section} compact />
-                ) : null}
-                <button
-                  type="button"
-                  onClick={() => void share(item)}
-                  className="min-h-9 rounded-full border border-white/10 px-3 text-xs font-medium text-white/55 transition hover:border-[#58d6a7]/35 hover:text-[#78e6bb]"
-                  aria-label={`Share ${item.object.title}`}
-                >
-                  Share
-                </button>
-                <span className="ml-auto hidden text-[10px] uppercase tracking-[.14em] text-white/25 sm:inline">BVS pulse</span>
-              </div>
             </div>
           );
         })}
