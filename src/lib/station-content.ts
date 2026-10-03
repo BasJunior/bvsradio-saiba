@@ -1,6 +1,7 @@
 import 'server-only'
 import { shows as fallbackShows, type Show } from '@/lib/station'
 import type { ShowEvent, ShowEventStatus } from '@/lib/show-events'
+import { getPublishedCreatorShows } from '@/lib/published-shows'
 
 type ProgrammeRow = { slug: string; title: string; tagline?: string; description?: string; image_url?: string; host: string; day_label: string; start_time?: string; timezone: string; status: 'scheduled' | 'active' }
 
@@ -10,7 +11,7 @@ function scheduleLabel(row: ProgrammeRow) {
   return `${row.day_label} · ${time} ${zone}`
 }
 
-export async function getPublicProgrammes(): Promise<Show[]> {
+async function loadProgrammeRows(): Promise<Show[]> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) return fallbackShows
@@ -21,6 +22,12 @@ export async function getPublicProgrammes(): Promise<Show[]> {
     if (!rows.length) return fallbackShows
     return rows.map(row => ({ slug: row.slug, title: row.title, tagline: row.tagline || '', description: row.description || '', image: row.image_url || '/images/editorial/radio-studio-harare.webp', host: row.host, schedule: scheduleLabel(row), status: row.status === 'active' ? 'active' : 'preview' }))
   } catch { return fallbackShows }
+}
+
+export async function getPublicProgrammes(): Promise<Show[]> {
+  const [programmes, creatorShows] = await Promise.all([loadProgrammeRows(), getPublishedCreatorShows()])
+  const seen = new Set(programmes.map(show => show.slug))
+  return [...creatorShows.filter(show => !seen.has(show.slug)), ...programmes]
 }
 
 export async function getPublicProgramme(slug: string) {
