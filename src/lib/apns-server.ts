@@ -10,6 +10,7 @@ type ApnsNotification = {
   href: string;
   category?: string | null;
   threadId?: string | null;
+  notificationId?: string;
 };
 
 export type ApnsResult = {
@@ -112,7 +113,8 @@ export async function sendApnsPush(notification: ApnsNotification): Promise<Apns
         "apns-topic": topic,
         "apns-push-type": "alert",
         "apns-priority": "10",
-        "apns-expiration": "0",
+        "apns-expiration": String(Math.floor(Date.now() / 1000) + 24 * 60 * 60),
+        ...(notification.notificationId ? { "apns-collapse-id": notification.notificationId } : {}),
         "content-type": "application/json",
       });
     } catch (error) {

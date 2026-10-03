@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import AppNotificationSettings from "@/components/app-vnext/AppNotificationSettings";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
-import { getAppPreference, setAppPreference } from "@/lib/app-native";
+import { getAppPreference, setAppPreference, unregisterPushDevice } from "@/lib/app-native";
 
 type DataMode = "auto" | "saver" | "high";
 
 export default function AppYouClient({ surface }: { surface: AppSurface }) {
-  const { user, loading, signedIn, isCreator, premiumActive, premiumPlanLabel } = useAppSession();
+  const router = useRouter();
+  const { user, token, loading, signedIn, isCreator, premiumActive, premiumPlanLabel } = useAppSession();
   const [dataMode, setDataMode] = useState<DataMode>("auto");
+  const [signOutError, setSignOutError] = useState("");
   const [wifiOnly, setWifiOnly] = useState(true);
 
   useEffect(() => {
@@ -38,8 +41,12 @@ export default function AppYouClient({ surface }: { surface: AppSurface }) {
 
   const signOut = async () => {
     if (!isSupabaseConfigured()) return;
+    try { if (token) await unregisterPushDevice(token); } catch (error) {
+      setSignOutError(error instanceof Error ? error.message : "Could not disconnect notifications."); return;
+    }
     await createClient().auth.signOut();
-    window.location.href = `/app/${surface}`;
+    router.replace(`/app/${surface}`);
+    router.refresh();
   };
 
   if (loading) {
@@ -138,6 +145,7 @@ export default function AppYouClient({ surface }: { surface: AppSurface }) {
         <a href="https://bvsradio.com/privacy" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/[.08] px-4 py-2 text-white/40 transition hover:border-white/18 hover:text-white">Privacy ↗</a>
       </div>
 
+      {signOutError ? <p role="alert" className="mt-5 text-sm text-red-200">{signOutError}</p> : null}
       <button type="button" onClick={() => void signOut()} className="mt-8 min-h-11 rounded-full border border-white/[.08] px-5 text-sm text-white/38 transition hover:border-red-400/30 hover:text-red-200">Sign out</button>
     </div>
   );

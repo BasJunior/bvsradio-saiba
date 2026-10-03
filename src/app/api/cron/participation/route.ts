@@ -34,6 +34,7 @@ export async function GET(request: Request) {
   const pushQueue = await queueParticipationPushNotifications(1000);
   const pushDelivery = await deliverParticipationPushQueue(150);
 
+  console.info("BVS notification worker", JSON.stringify({ outbox, pushQueue, pushDelivery }));
   return NextResponse.json({
     ok: true,
     startedAt,

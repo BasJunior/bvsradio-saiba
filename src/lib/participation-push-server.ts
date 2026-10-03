@@ -39,12 +39,12 @@ function tokenKey(token: string) {
   return createHash("sha256").update(token).digest("hex").slice(0, 24);
 }
 
-async function optedOutUserIds(userIds: string[]) {
+async function optedInUserIds(userIds: string[]) {
   if (!userIds.length) return new Set<string>();
   const preferences = await participationRows<PreferenceRow>(
     `participation_preferences?user_id=in.(${userIds.map(encodeURIComponent).join(",")})&select=user_id,external_community_enabled&limit=1000`,
   );
-  return new Set(preferences.filter((row) => row.external_community_enabled === false).map((row) => row.user_id));
+  return new Set(preferences.filter((row) => row.external_community_enabled === true).map((row) => row.user_id));
 }
 
 function pushRowsFor(notifications: NotificationRow[], devices: DeviceRow[]) {
@@ -72,12 +72,12 @@ export async function queueParticipationPushNotifications(limit = 500) {
   );
   const userIds = [...new Set(devices.map((device) => device.user_id))];
   if (!userIds.length) return { users: 0, notifications: 0, devices: 0 };
-  const optedOut = await optedOutUserIds(userIds);
-  const eligibleIds = userIds.filter((id) => !optedOut.has(id));
+  const optedIn = await optedInUserIds(userIds);
+  const eligibleIds = userIds.filter((id) => optedIn.has(id));
   if (!eligibleIds.length) return { users: 0, notifications: 0, devices: devices.length };
   const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const notifications = await participationRows<NotificationRow>(
-    `participation_notifications?recipient_user_id=in.(${eligibleIds.map(encodeURIComponent).join(",")})&created_at=gte.${encodeURIComponent(since)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at&order=created_at.desc&limit=${Math.min(2000, Math.max(1, limit))}`,
+    `participation_notifications?recipient_user_id=in.(${eligibleIds.map(encodeURIComponent).join(",")})&read_at=is.null&created_at=gte.${encodeURIComponent(since)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at&order=created_at.desc&limit=${Math.min(2000, Math.max(1, limit))}`,
   );
   const rows = pushRowsFor(notifications, devices.filter((device) => eligibleIds.includes(device.user_id)));
   if (rows.length) {
@@ -93,13 +93,13 @@ export async function queueParticipationPushNotifications(limit = 500) {
 export async function queueAndDeliverPushForNotifications(notifications: NotificationRow[]) {
   if (!notifications.length) return { queued: 0, delivered: { configured: false, scanned: 0, sent: 0, failed: 0, deadLetter: 0 } };
   const userIds = [...new Set(notifications.map((row) => row.recipient_user_id))];
-  const [devices, optedOut] = await Promise.all([
+  const [devices, optedIn] = await Promise.all([
     participationRows<DeviceRow>(
       `app_push_devices?user_id=in.(${userIds.map(encodeURIComponent).join(",")})&enabled=eq.true&select=user_id,device_token,platform,app_variant&limit=3000`,
     ),
-    optedOutUserIds(userIds),
+    optedInUserIds(userIds),
   ]);
-  const eligible = notifications.filter((row) => !optedOut.has(row.recipient_user_id));
+  const eligible = notifications.filter((row) => optedIn.has(row.recipient_user_id));
   const rows = pushRowsFor(eligible, devices);
   if (rows.length) {
     await participationInsert(
@@ -158,20 +158,22 @@ export async function deliverParticipationPushQueue(limit = 100) {
   const now = new Date().toISOString();
   await participationPatch(
     `participation_deliveries?channel=eq.push&status=eq.processing&lease_until=lt.${encodeURIComponent(now)}`,
-    { status: "ambiguous", error_class: "lease_expired", last_error: "Delivery lease expired before completion.", updated_at: now },
+    { status: "ambiguous", lease_until: null, scheduled_at: now, error_class: "lease_expired", last_error: "Delivery lease expired before completion.", updated_at: now },
   );
   const deliveries = await participationRows<DeliveryRow>(
-    `participation_deliveries?channel=eq.push&status=in.(queued,failed)&attempts=lt.5&scheduled_at=lte.${encodeURIComponent(now)}&select=id,notification_id,pulse_run_id,recipient_user_id,destination_key,app_identity,status,attempts&order=scheduled_at.asc&limit=${Math.min(250, Math.max(1, limit))}`,
+    `participation_deliveries?channel=eq.push&status=in.(queued,failed,ambiguous)&attempts=lt.5&scheduled_at=lte.${encodeURIComponent(now)}&select=id,notification_id,pulse_run_id,recipient_user_id,destination_key,app_identity,status,attempts&order=scheduled_at.asc&limit=${Math.min(250, Math.max(1, limit))}`,
   );
   let sent = 0;
   let failed = 0;
   let deadLetter = 0;
 
+  const deadline = Date.now() + 20_000;
   for (const delivery of deliveries) {
+    if (Date.now() >= deadline) break;
     const attempt = Number(delivery.attempts || 0) + 1;
     const leaseUntil = new Date(Date.now() + 2 * 60_000).toISOString();
     const claimed = await participationPatch<DeliveryRow>(
-      `participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}&status=in.(queued,failed)&attempts=eq.${delivery.attempts}`,
+      `participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}&status=in.(queued,failed,ambiguous)&attempts=eq.${delivery.attempts}`,
       { status: "processing", attempts: attempt, lease_until: leaseUntil, updated_at: new Date().toISOString() },
     );
     if (!claimed[0]) continue;
@@ -192,11 +194,11 @@ export async function deliverParticipationPushQueue(limit = 100) {
     const devices = await participationRows<{ user_id: string }>(`app_push_devices?device_token=eq.${encodeURIComponent(delivery.destination_key)}&user_id=eq.${encodeURIComponent(delivery.recipient_user_id || "")}&enabled=eq.true&select=user_id&limit=1`);
     const muted = notification.thread_id ? await participationRows(`participation_thread_subscriptions?thread_id=eq.${encodeURIComponent(notification.thread_id)}&user_id=eq.${encodeURIComponent(delivery.recipient_user_id || "")}&muted_at=not.is.null&select=user_id&limit=1`) : [];
     const pref = preferences[0];
-    if ((pref && pref.external_community_enabled === false) || (delivery.pulse_run_id && !pref?.digest_enabled) || !devices.length || muted.length || !(await notificationEligible(notification, delivery.app_identity?.startsWith("ios:") ? "ios" : "android"))) {
+    if ((pref?.external_community_enabled !== true) || (delivery.pulse_run_id && !pref?.digest_enabled) || !devices.length || muted.length || !(await notificationEligible(notification, delivery.app_identity?.startsWith("ios:") ? "ios" : "android"))) {
       await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, { status: "suppressed", lease_until: null, error_class: "no_longer_eligible", updated_at: new Date().toISOString() });
       continue;
     }
-    if (quietNow(pref.timezone, pref.quiet_start, pref.quiet_end)) {
+    if (quietNow(pref?.timezone || "UTC", pref?.quiet_start, pref?.quiet_end)) {
       await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, { status: "queued", attempts: delivery.attempts, lease_until: null, scheduled_at: new Date(Date.now() + 300_000).toISOString() });
       continue;
     }
@@ -212,6 +214,7 @@ export async function deliverParticipationPushQueue(limit = 100) {
           body: notification.detail,
           category: notification.category,
           threadId: notification.thread_id || null,
+          notificationId: notification.id,
           href,
         });
         if (result.ok) {

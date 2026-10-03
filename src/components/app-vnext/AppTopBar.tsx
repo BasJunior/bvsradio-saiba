@@ -45,17 +45,27 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
 
   useEffect(() => {
     let alive = true;
-    setUnread(0);
+    queueMicrotask(() => { if (alive) setUnread(0); });
     if (!token) return;
     const refreshUnread = async () => {
-      const response = await fetch(`/api/app/participation/notifications?surface=${surface}&limit=1`, { headers: {Authorization: `Bearer ${token}`}, cache: "no-store" }).catch(() => null);
-      if (response?.ok && alive) { const result = await response.json(); setUnread(Number(result.unreadCount) || 0); }
+      const headers = { Authorization: `Bearer ${token}` };
+      const [community, operations, marketplace] = await Promise.all([
+        fetch(`/api/app/participation/notifications?surface=${surface}&limit=1`, { headers, cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/notifications", { headers, cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch("/api/marketplace/messages/notifications", { headers, cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
+      let seenAt = "";
+      try { seenAt = window.localStorage.getItem(`bvs_notifications_seen_at:${user?.id}`) || ""; } catch {}
+      const otherUnread = [...(operations?.events || []), ...(marketplace?.events || [])].filter((event: { created_at: string }) => !seenAt || event.created_at > seenAt).length;
+      if (alive) setUnread((Number(community?.unreadCount) || 0) + otherUnread);
     };
     void refreshUnread();
     const timer = window.setInterval(() => void refreshUnread(), 60000);
     window.addEventListener("bvs:notifications-seen", refreshUnread);
-    return () => { alive = false; window.clearInterval(timer); window.removeEventListener("bvs:notifications-seen", refreshUnread); };
-  }, [token, surface]);
+    window.addEventListener("bvs:app-resume", refreshUnread);
+    window.addEventListener("bvs:native-push-received", refreshUnread);
+    return () => { alive = false; window.clearInterval(timer); window.removeEventListener("bvs:notifications-seen", refreshUnread); window.removeEventListener("bvs:app-resume", refreshUnread); window.removeEventListener("bvs:native-push-received", refreshUnread); };
+  }, [token, surface, user?.id]);
 
   return (
     <header

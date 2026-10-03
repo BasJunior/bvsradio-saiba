@@ -1,23 +1,15 @@
 "use client";
 
+import { loadNotificationInbox, mergeNotificationInbox, type InboxEvent } from "@/lib/notification-inbox";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { appDestination, type AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 
-type NotificationEvent = {
-  id: string;
-  notificationId?: string;
-  title: string;
-  detail: string;
-  created_at: string;
-  href: string;
-  kind: string;
-  read_at?: string | null;
-  source?: "operations" | "participation";
-};
+type NotificationEvent = InboxEvent;
 
 function nativeEventHref(surface: AppSurface, event: NotificationEvent) {
+  if (event.kind === "marketplace_message") return `/app/${surface}/studio/marketplace`;
   if (["reply", "mention", "like", "repost", "community", "moderation"].includes(event.kind)) {
     return event.href || `/app/${surface}/feed`;
   }
@@ -34,76 +26,60 @@ function nativeEventHref(surface: AppSurface, event: NotificationEvent) {
   return `/app/${surface}/you`;
 }
 
-export default function AppNotificationsClient({ surface }: { surface: AppSurface }) {
+function NotificationsInbox({ surface }: { surface: AppSurface }) {
   const { user, token, signedIn, loading: sessionLoading } = useAppSession();
   const [events, setEvents] = useState<NotificationEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [reload, setReload] = useState(0);
   const [participationUnread, setParticipationUnread] = useState(0);
 
   useEffect(() => {
     if (sessionLoading) return;
     if (!token) {
-      setEvents([]);
-      setParticipationUnread(0);
-      setLoading(false);
+      queueMicrotask(() => setLoading(false));
       return;
     }
     let alive = true;
-    setLoading(true);
 
-    const operationsRequest = fetch("/api/notifications", {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }).then(async (response) => {
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload?.error || "Could not load Studio notifications.");
-      return (payload.events || []).map((event: NotificationEvent) => ({ ...event, source: "operations" as const }));
-    });
-
-    const participationRequest = fetch(`/api/app/participation/notifications?surface=${surface}&limit=75`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }).then(async (response) => {
-      const payload = await response.json().catch(() => ({}));
-      if (response.status === 404) return { events: [] as NotificationEvent[], unreadCount: 0 };
-      if (!response.ok) throw new Error(payload?.error || "Could not load community notifications.");
-      return {
-        events: (payload.events || []).map((event: NotificationEvent) => ({ ...event, source: "participation" as const })),
-        unreadCount: Number(payload.unreadCount) || 0,
-      };
-    });
-
-    Promise.allSettled([operationsRequest, participationRequest])
-      .then((results) => {
+    const controller = new AbortController();
+    let pending = false;
+    const refresh = async () => {
+      if (pending || !alive || document.visibilityState === "hidden") return;
+      pending = true; setRefreshing(true);
+      try {
+        const result = await loadNotificationInbox(token, surface, controller.signal);
         if (!alive) return;
-        const operational = results[0].status === "fulfilled" ? results[0].value : [];
-        const community = results[1].status === "fulfilled" ? results[1].value : { events: [], unreadCount: 0 };
-        const combined = [...operational, ...community.events]
-          .sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-        setEvents(combined);
-        setParticipationUnread(community.unreadCount);
-        const failures = results.filter((result) => result.status === "rejected") as PromiseRejectedResult[];
-        setError(failures.length === 2 ? "Could not load your inbox." : failures.length ? "Some inbox updates could not be loaded." : "");
-
-        if (community.events.length) {
+        setEvents(current => mergeNotificationInbox(current, result.loaded));
+        const community = result.loaded.find(row => row.source === "participation");
+        if (community) setParticipationUnread(community.unreadCount);
+        setError(result.failed === result.total ? "Could not load your inbox. Try again." : result.failed ? "Some updates could not be loaded. Your available updates are shown below." : "");
+        if (community?.events.length) {
           void fetch("/api/app/participation/notifications", {
-            method: "PATCH",
-            headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: community.events.map((event: NotificationEvent) => event.notificationId).filter(Boolean), seen: true }),
+            method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ ids: community.events.map(event => event.notificationId).filter(Boolean), seen: true }),
           }).catch(() => null);
         }
-        try {
-          window.localStorage.setItem(`bvs_notifications_seen_at:${user?.id}`, new Date().toISOString());
+        if (result.loaded.some(row => row.source === "operations")) {
+          try { window.localStorage.setItem(`bvs_notifications_seen_at:${user?.id}`, new Date().toISOString()); } catch {}
           window.dispatchEvent(new Event("bvs:notifications-seen"));
-        } catch {
-          // Legacy seen-state remains a client enhancement for operational notices.
         }
-      })
-      .finally(() => alive && setLoading(false));
-
-    return () => { alive = false; };
-  }, [sessionLoading, surface, token, user?.id]);
+      } catch { if (alive) setError("Could not refresh your inbox. Please retry."); } finally { pending = false; if (alive) { setLoading(false); setRefreshing(false); } }
+    };
+    queueMicrotask(() => void refresh());
+    const timer = window.setInterval(() => void refresh(), 60000);
+    const onRefresh = () => void refresh();
+    window.addEventListener("bvs:app-resume", onRefresh);
+    window.addEventListener("bvs:native-push-received", onRefresh);
+    document.addEventListener("visibilitychange", onRefresh);
+    return () => {
+      alive = false; controller.abort(); window.clearInterval(timer);
+      window.removeEventListener("bvs:app-resume", onRefresh);
+      window.removeEventListener("bvs:native-push-received", onRefresh);
+      document.removeEventListener("visibilitychange", onRefresh);
+    };
+  }, [sessionLoading, surface, token, user?.id, reload]);
 
   const grouped = useMemo(() => {
     const today = new Date();
@@ -121,16 +97,20 @@ export default function AppNotificationsClient({ surface }: { surface: AppSurfac
 
   function markRead(event: NotificationEvent) {
     if (event.source !== "participation" || !event.notificationId || event.read_at || !token) return;
-    setEvents((current) => current.map((item) => item.id === event.id ? { ...item, read_at: new Date().toISOString() } : item));
-    setParticipationUnread((current) => Math.max(0, current - 1));
     void fetch("/api/app/participation/notifications", {
       method: "PATCH",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ ids: [event.notificationId], read: true }),
-    }).then(response => { if (response.ok) window.dispatchEvent(new Event("bvs:notifications-seen")); }).catch(() => null);
+    }).then(response => {
+      if (response.ok) {
+        setEvents(current => current.map(item => item.id === event.id ? { ...item, read_at: new Date().toISOString() } : item));
+        setParticipationUnread(current => Math.max(0, current - 1));
+        window.dispatchEvent(new Event("bvs:notifications-seen"));
+      } else setError("Could not mark that update as read. Please retry.");
+    }).catch(() => setError("Could not mark that update as read. Please retry."));
   }
 
-  if (sessionLoading || loading) return <div className="mx-auto max-w-4xl px-4 pt-8"><div className="h-44 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
+  if (sessionLoading || (loading && !events.length)) return <div className="mx-auto max-w-4xl px-4 pt-8"><div className="h-44 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
 
   if (!signedIn) return (
     <div className="mx-auto max-w-3xl px-4 pb-12 pt-10 text-center sm:px-6">
@@ -154,6 +134,8 @@ export default function AppNotificationsClient({ surface }: { surface: AppSurfac
         </div>
         <Link href={`/app/${surface}/you`} className="rounded-full border border-white/[.08] px-4 py-2 text-sm text-white/42 transition hover:border-white/18 hover:text-white">Notification settings</Link>
       </div>
+
+      <button type="button" disabled={refreshing} onClick={() => setReload(current => current + 1)} className="mt-5 min-h-10 rounded-full border border-white/10 px-4 text-sm text-white/70 disabled:opacity-50">{refreshing ? "Refreshing…" : "Refresh inbox"}</button>
 
       {error ? <p className="mt-6 rounded-[1.2rem] border border-amber-300/15 bg-amber-300/[.055] p-4 text-sm text-amber-100/80">{error}</p> : null}
 
@@ -191,4 +173,9 @@ export default function AppNotificationsClient({ surface }: { surface: AppSurfac
       ) : null}
     </div>
   );
+}
+
+export default function AppNotificationsClient({ surface }: { surface: AppSurface }) {
+  const { user } = useAppSession();
+  return <NotificationsInbox key={user?.id || "signed-out"} surface={surface} />;
 }
