@@ -18,7 +18,7 @@ export default function HomeListenPanel() {
   const art = player.current?.artwork;
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-black/65 text-left text-white shadow-2xl backdrop-blur-xl">
+    <div className="bvs-culture-station min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-black/65 text-left text-white shadow-2xl backdrop-blur-xl">
       <div
         className="h-1 w-full cursor-pointer bg-white/15"
         role="progressbar"

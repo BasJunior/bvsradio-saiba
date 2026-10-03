@@ -1,3 +1,4 @@
+import BvsStar from "@/components/branding/BvsStar";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -49,15 +50,16 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
             <span className="text-white/45">Built in Zimbabwe · Open to the world</span>
           </div>
 
-          <h1 className="mt-5 max-w-4xl text-[2.8rem] font-semibold leading-[.98] tracking-[-.05em] sm:text-7xl">
+          <div className="bvs-culture-sticker mt-5"><BvsStar /> Your next obsession</div>
+          <h1 className="bvs-poster-title mt-5 max-w-4xl text-[2.8rem] font-semibold leading-[.98] tracking-[-.05em] sm:text-7xl">
             Music moves differently here.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-white/58 sm:text-lg">
-            Listen to what’s next, follow the people behind it, and build your own path. BVS brings music, creators, live experiences and creative tools into one modern ecosystem.
+            New sounds. Real people. Your next favourite. Tap into the rotation, discover artists and make your own noise.
           </p>
 
           <div className="mt-7 flex flex-wrap gap-2.5">
-            <a href="#listen" className="inline-flex min-h-11 items-center rounded-full bg-white px-5 text-sm font-semibold text-black transition hover:bg-brand">
+            <a href="#listen" className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black transition hover:bg-brand-dark">
               Listen now
             </a>
             <Link href={`${base}/explore`} data-home-accent="discover" className="bvs-home-accent-button inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold">
