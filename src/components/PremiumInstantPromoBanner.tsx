@@ -19,7 +19,7 @@ function shouldHideOnPath(pathname: string | null): boolean {
 }
 
 /**
- * Skinny gold/yellow site strip advertising Premium Instant (US$5.99 / release).
+ * Skinny BVS brand strip advertising Premium Instant (US$5.99 / release).
  * Dismissible; low visual weight so it doesn't fight Home / player chrome.
  */
 export default function PremiumInstantPromoBanner() {
@@ -60,7 +60,7 @@ export default function PremiumInstantPromoBanner() {
 
   return (
     <div
-      className="sticky top-16 z-40 border-b border-black/10 bg-[#F5D76E] text-black shadow-[0_1px_0_rgba(0,0,0,0.06)]"
+      className="sticky top-16 z-40 border-b border-black/10 bg-brand text-black shadow-[0_1px_0_rgba(0,0,0,0.06)]"
       role="region"
       aria-label="Premium Instant available"
     >
@@ -74,7 +74,7 @@ export default function PremiumInstantPromoBanner() {
         </p>
         <Link
           href="/premium"
-          className="shrink-0 rounded-full bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#F5D76E] hover:bg-black/85 sm:px-3 sm:text-[11px]"
+          className="shrink-0 rounded-full bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand hover:bg-black/85 sm:px-3 sm:text-[11px]"
         >
           View
         </Link>

@@ -2,8 +2,8 @@ export default function AppExperienceStyle() {
   return (
     <style>{`
       html[data-bvs-app-shell="true"] {
-        --bvs-app-gold: #e3bd58;
-        --bvs-app-gold-soft: rgba(227, 189, 88, .14);
+        --bvs-app-accent: #c4f343;
+        --bvs-app-accent-soft: rgba(196, 243, 67, .14);
         --bvs-app-line: rgba(255, 255, 255, .085);
         --bvs-app-panel: rgba(18, 18, 20, .72);
         --bvs-app-panel-strong: rgba(15, 15, 17, .9);
@@ -17,7 +17,7 @@ export default function AppExperienceStyle() {
         overscroll-behavior-y: none;
         touch-action: pan-y;
         background:
-          radial-gradient(circle at 82% -8%, rgba(212, 175, 55, .12), transparent 30rem),
+          radial-gradient(circle at 82% -8%, rgba(196, 243, 67, .12), transparent 30rem),
           radial-gradient(circle at -10% 28%, rgba(87, 86, 255, .07), transparent 26rem),
           linear-gradient(180deg, #09090b 0%, #070708 48%, #050506 100%);
         background-attachment: fixed;
@@ -80,7 +80,7 @@ export default function AppExperienceStyle() {
         height: 24rem;
         transform: translateX(-50%);
         border-radius: 999px;
-        background: radial-gradient(ellipse, rgba(212,175,55,.075), transparent 66%);
+        background: radial-gradient(ellipse, rgba(196,243,67,.075), transparent 66%);
         filter: blur(20px);
         pointer-events: none;
       }
@@ -116,15 +116,15 @@ export default function AppExperienceStyle() {
       }
 
       .bvs-app-stage .text-brand {
-        color: var(--bvs-app-gold);
+        color: var(--bvs-app-accent);
       }
 
       .bvs-app-stage .bg-brand {
-        background-color: var(--bvs-app-gold);
+        background-color: var(--bvs-app-accent);
       }
 
       .bvs-app-stage ::selection {
-        background: rgba(227,189,88,.28);
+        background: rgba(196,243,67,.28);
       }
 
       /* Native player is a docked shell layer, never a floating inset card. */
