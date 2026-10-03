@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 }
 
 export default function MarketplaceLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return children
+  return <div className="bvs-square-marketplace">{children}</div>
 }

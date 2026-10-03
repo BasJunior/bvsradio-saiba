@@ -6,11 +6,12 @@ import { useEffect, useId, useRef, useState } from "react";
 
 export type CreatorPortrait = { id: string; name: string; image: string; href: string; detail: string };
 
-export default function CreatorPortraitRail({ title, tone, items, allHref }: {
+export default function CreatorPortraitRail({ title, tone, items, allHref, accent = "green" }: {
   title: string;
   tone: "charcoal" | "ink";
   items: CreatorPortrait[];
   allHref: string;
+  accent?: "green" | "purple";
 }) {
   const id = useId();
   const railRef = useRef<HTMLDivElement>(null);
@@ -34,7 +35,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref }: {
   }
 
   if (!items.length) return null;
-  return <section className={`bvs-creator-band bvs-creator-band--${tone}`} aria-labelledby={`${id}-heading`}>
+  return <section className={`bvs-creator-band bvs-creator-band--${tone} ${accent === "purple" ? "bvs-creator-band--purple" : ""}`} aria-labelledby={`${id}-heading`}>
     <div className="bvs-creator-band-inner">
       <div className="bvs-creator-band-header">
         <div><p className="bvs-creator-kicker">The people behind the sound</p><h2 id={`${id}-heading`}>{title}</h2></div>

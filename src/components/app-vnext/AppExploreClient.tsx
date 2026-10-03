@@ -278,12 +278,12 @@ export default function AppExploreClient({
               const image = safeImage(item.artwork);
               const isLiked = liked.has(item.id);
               return (
-                <article key={item.id} className={`group flex min-w-0 gap-3 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-3 transition hover:border-white/15 hover:bg-white/[.04] ${discoveryHome ? "flex-col" : ""}`}>
+                <article key={item.id} className={`bvs-discover-music-card group flex min-w-0 gap-3 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-3 transition hover:border-white/15 hover:bg-white/[.04] ${discoveryHome ? "flex-col" : ""}`}>
                   <button type="button" onClick={() => play(item)} className={`relative shrink-0 overflow-hidden rounded-[1rem] bg-white/[.04] ${discoveryHome ? "aspect-square w-full" : "h-16 w-16"}`} aria-label={`${player.current?.id === item.id && player.isPlaying ? "Pause" : "Play"} ${item.title}`}>
                     {image ? <Image src={image} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center text-xs text-brand">BVS</span>}
                     <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/20 text-lg text-white opacity-80 transition group-hover:opacity-100">{player.current?.id === item.id && player.isPlaying ? "Ⅱ" : "▶"}</span>
                   </button>
-                  <div className="min-w-0 flex-1">
+                  <div className="bvs-discover-music-caption min-w-0 flex-1">
                     <button type="button" onClick={() => play(item)} className="block w-full text-left">
                       <h3 className="line-clamp-2 font-semibold">{item.title}</h3>
                       <p className="truncate text-sm text-white/48">{item.artist}</p>
@@ -325,7 +325,7 @@ export default function AppExploreClient({
       ) : null}
 
       {show("producers") && filtered.producers.length ? (
-        <section className="mt-11">
+        <section className="bvs-discover-producers mt-11">
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Producers</p>
           <h2 className="mt-2 text-3xl font-semibold">Meet the people behind the sound.</h2>
           <p className="mt-3 text-xs text-white/60">Scroll sideways → · Tap a portrait to explore</p>
@@ -343,7 +343,7 @@ export default function AppExploreClient({
       ) : null}
 
       {show("beats") && filtered.beats.length ? (
-        <section className="mt-11">
+        <section className="bvs-discover-producers mt-11">
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">BeatStore</p>
           <h2 className="mt-2 text-3xl font-semibold">Find the start of your next record.</h2>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
