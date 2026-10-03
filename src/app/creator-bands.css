@@ -85,6 +85,15 @@
 .bvs-square-marketplace .bvs-marketplace-caption { border-top: 1px solid rgb(255 255 255 / .3); }
 .bvs-square-marketplace h2 { letter-spacing: -.035em; }
 .bvs-square-marketplace :is(button, a[class*="rounded"]) { min-height: 44px; }
+
+/* Feed keeps its compact actions while matching the square editorial pages. */
+.bvs-square-feed { background: #0a0a0a; }
+.bvs-square-feed [class*="rounded"] { border-radius: 0; }
+.bvs-square-feed :is(.bvs-feed-entry, [data-community-thread], .bvs-participation-composer) { border: 1px solid rgb(255 255 255 / .25); background: #1b1b1b; box-shadow: none; }
+.bvs-square-feed [aria-label="Feed controls"] { border-width: 1px 0; border-color: rgb(255 255 255 / .2); box-shadow: none; }
+.bvs-square-feed .bvs-feed-entry > article { border: 0; background: transparent; box-shadow: none; }
+.bvs-square-feed .bvs-feed-entry > article + div { border-top-color: rgb(255 255 255 / .2); }
+.bvs-square-feed [data-community-thread] > [class*="border-t"] { border-top-color: rgb(255 255 255 / .2); }
 .bvs-discover-actions { min-width: 0; margin-top: .5rem; }
 .bvs-discover-actions > summary { display: flex; align-items: center; gap: .5rem; width: fit-content; padding-inline: .5rem; }
 .bvs-discover-actions-content { display: grid; gap: .5rem; padding: .75rem; border-top: 1px solid rgb(255 255 255 / .2); background: #1b1b1b; }

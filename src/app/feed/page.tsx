@@ -15,7 +15,7 @@ export default async function BvsFeedPage() {
   const items = await getBvsFeed({ limit: 90 });
 
   return (
-    <main className="mx-auto min-h-screen max-w-4xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10">
+    <main className="bvs-square-feed mx-auto min-h-screen max-w-4xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10">
       <header className="mb-7 sm:mb-9">
         <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.24em] bvs-section-label">
           <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_18px_rgba(212,175,55,.75)]" aria-hidden="true" />

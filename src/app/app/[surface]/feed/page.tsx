@@ -14,7 +14,7 @@ export default async function AppFeedPage({ params }: { params: Promise<{ surfac
   const participation = participationEnabled();
 
   return (
-    <main className="bvs-page-main mx-auto min-h-[100dvh] max-w-4xl px-4 pb-10 sm:px-6">
+    <main className="bvs-square-feed bvs-page-main mx-auto min-h-[100dvh] max-w-4xl px-4 pb-10 sm:px-6">
       <header className="pb-5 pt-6 sm:pb-7 sm:pt-8">
         <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.22em] bvs-section-label">
           <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_18px_rgba(212,175,55,.75)]" aria-hidden="true" />
