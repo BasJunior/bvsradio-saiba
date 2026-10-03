@@ -348,7 +348,7 @@ export default function BvsFeedList({
           const item = entry.item;
           const key = targetKey(item);
           return (
-            <div key={entry.id} className="rounded-[1.65rem] border border-white/[.075] bg-white/[.018] p-3 sm:p-4">
+            <div key={entry.id} className="bvs-feed-entry rounded-[1.65rem] border border-white/[.075] bg-white/[.018] p-3 sm:p-4">
               <div className="mb-3 flex items-center justify-between gap-3 px-1">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
