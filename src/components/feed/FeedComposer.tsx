@@ -205,7 +205,7 @@ export default function FeedComposer({
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="flex min-h-12 w-full items-center rounded-2xl border border-white/[.08] bg-black/15 px-4 text-left text-sm text-white/50 transition hover:border-[#929DE0]/35 hover:text-white/72"
+        className="flex min-h-12 w-full items-center rounded-2xl border-0 bg-transparent px-4 text-left text-sm text-white/50 transition hover:bg-white/[.035] hover:text-white/72 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#929DE0]/55"
         aria-expanded={expanded}
       >
         What are you working on?
