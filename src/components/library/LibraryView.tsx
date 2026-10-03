@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { readLibrary, toggleLibraryItem } from "@/lib/library";
 import type { DiscoveryItem } from "@/lib/discovery";
 import { useLibrarySync } from "@/components/LibrarySyncProvider";
@@ -76,6 +77,7 @@ function libraryAccent(section: ActiveSection) {
 }
 
 export default function LibraryView() {
+  const router = useRouter();
   const [active, setActive] = useState<ActiveSection>("all");
   const [favourites, setFavourites] = useState<DiscoveryItem[]>([]);
   const [following, setFollowing] = useState<DiscoveryItem[]>([]);
@@ -218,7 +220,7 @@ export default function LibraryView() {
 
   async function writeToBeat(beat: OwnedBeat) {
     if (beat.workspaceId) {
-      window.location.href = `/creator/studio/songs/${beat.workspaceId}`;
+      router.push(`/creator/studio/songs/${beat.workspaceId}`);
       return;
     }
     if (!isSupabaseConfigured()) return;
@@ -235,7 +237,7 @@ export default function LibraryView() {
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Could not open Lyrics Pad.");
-      window.location.href = `/creator/studio/songs/${payload.workspace.id}`;
+      router.push(`/creator/studio/songs/${payload.workspace.id}`);
     } catch (caught) {
       setOwnedError(caught instanceof Error ? caught.message : "Could not open Lyrics Pad.");
       setOpeningBeat("");

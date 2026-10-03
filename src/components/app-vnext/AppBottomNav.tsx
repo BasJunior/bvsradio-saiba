@@ -38,10 +38,10 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
     : { href: `${base}/explore?kind=beats`, label: "Beats", icon: "beats" as const, active: (pathname === `${base}/explore` && searchParams.get("kind") === "beats") || pathname.startsWith(`${base}/beat/`) };
   const items: Array<{ href: string; label: string; icon: NavIconName; active: boolean }> = [
     { href: base, label: "Home", icon: "home", active: pathname === base },
+    { href: `${base}/feed`, label: "Feed", icon: "feed", active: pathname.startsWith(`${base}/feed`) },
     { href: `${base}/explore`, label: "Discover", icon: "discover", active: pathname.startsWith(`${base}/explore`) && (isCreator || searchParams.get("kind") !== "beats") },
     { href: `${base}/library`, label: "Library", icon: "library", active: pathname.startsWith(`${base}/library`) || pathname.startsWith(`${base}/playlist`) },
     roleDestination,
-    { href: `${base}/feed`, label: "Feed", icon: "feed", active: pathname.startsWith(`${base}/feed`) },
   ];
 
   return (

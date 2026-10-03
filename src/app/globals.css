@@ -239,3 +239,7 @@ p, .text-base {
     scroll-behavior: auto !important;
   }
 }
+
+/* Custom player gestures own only their axis; content and pinch zoom remain free. */
+[data-np-swipe-track] { touch-action: pan-y pinch-zoom; }
+[data-np-dismiss-zone] { touch-action: pan-x pinch-zoom; }

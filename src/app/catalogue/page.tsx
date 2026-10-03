@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   PRICE_SINGLE_DOWNLOAD,
   catalogueUnitPrice,
@@ -297,6 +297,7 @@ function CollapsibleCollection({
 }
 
 function CataloguePageContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(() => {
     if (typeof window === "undefined") return "";
@@ -739,11 +740,11 @@ function CataloguePageContent() {
     }
 
     if (action?.type === "release") {
-      window.location.assign(`/album/${encodeURIComponent(action.releaseId)}`);
+      router.push(`/album/${encodeURIComponent(action.releaseId)}`);
       return;
     }
     if (action?.type === "href") {
-      window.location.assign(action.href);
+      router.push(action.href);
       return;
     }
 

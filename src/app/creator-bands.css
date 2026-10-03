@@ -122,3 +122,9 @@
   .bvs-creator-band, .bvs-home-release-band { background: Canvas; color: CanvasText; --portrait-line: CanvasText; }
   .bvs-creator-band .bvs-creator-directory { color: LinkText; }
 }
+
+/* Keep square surfaces easy to navigate with a keyboard as well as a thumb. */
+:is(.bvs-square-home, .bvs-square-discover, .bvs-square-marketplace, .bvs-square-feed) :is(a, button, summary):focus-visible {
+  outline: 2px solid var(--bvs-culture-lilac, #c1a7ff);
+  outline-offset: 3px;
+}

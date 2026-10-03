@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { safeAuthDestination } from "@/lib/auth-client-flow";
 import { externalBvsUrl, isExternalLegalOrLicenceUrl } from "@/lib/app-external-boundary";
 
 export type AppSurface = "ios" | "android";
@@ -42,7 +44,7 @@ export function appDestination(surface: AppSurface, url: URL) {
   if (isExternalLegalOrLicenceUrl(url)) return null;
   if (path === "/auth/login") {
     const requestedNext = url.searchParams.get("next") || "";
-    const next = requestedNext.startsWith(`/app/${surface}`) ? requestedNext : `/app/${surface}/you`;
+    const next = safeAuthDestination(requestedNext, `/app/${surface}/you`, `/app/${surface}`);
     return `/app/${surface}/login?next=${encodeURIComponent(next)}`;
   }
   if (path === "/auth/signup") return `/app/${surface}/join/email`;
@@ -51,6 +53,11 @@ export function appDestination(surface: AppSurface, url: URL) {
   if (path === "/search" || path === "/catalogue") return exploreRoute(surface, url);
   if (path === "/radio" || path === "/") return `/app/${surface}`;
   if (path === "/library") return `/app/${surface}/library`;
+  if (path === "/feed" || path.startsWith("/feed/")) return `/app/${surface}${path}${url.search}${url.hash}`;
+  const beatOrPlaylist = path.match(/^\/(beat|playlist)\/([^/]+)$/);
+  if (beatOrPlaylist) return `/app/${surface}${path}${url.search}${url.hash}`;
+  const song = path.match(/^\/creator\/studio\/songs\/([^/]+)$/);
+  if (song) return `/app/${surface}/studio/songs/${song[1]}${url.search}${url.hash}`;
   if (path === "/notifications") return `/app/${surface}/notifications`;
   if (path === "/account") return `/app/${surface}/account`;
   if (path.startsWith("/account/orders/")) return `/app/${surface}/studio/orders`;
@@ -69,11 +76,12 @@ export function appDestination(surface: AppSurface, url: URL) {
   const artistMatch = path.match(/^\/artist\/([^/]+)$/);
   if (artistMatch?.[1]) return `/app/${surface}/creator/${artistMatch[1]}${url.search}`;
   const showMatch = path.match(/^\/shows\/([^/]+)$/);
-  if (showMatch?.[1]) return `/app/${surface}/show/${showMatch[1]}`;
+  if (showMatch?.[1]) return `/app/${surface}/show/${showMatch[1]}${url.search}${url.hash}`;
   return null;
 }
 
 export default function AppBootstrap({ surface }: { surface: AppSurface }) {
+  const router = useRouter();
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.bvsAppShell = "true";
@@ -111,7 +119,7 @@ export default function AppBootstrap({ surface }: { surface: AppSurface }) {
       const destination = appDestination(surface, url);
       if (!destination) return;
       event.preventDefault();
-      window.location.assign(destination);
+      router.push(destination);
     };
 
     document.addEventListener("click", guardNavigation, true);
@@ -121,6 +129,6 @@ export default function AppBootstrap({ surface }: { surface: AppSurface }) {
       delete root.dataset.bvsAppShell;
       delete root.dataset.bvsAppSurface;
     };
-  }, [surface]);
+  }, [router, surface]);
   return null;
 }

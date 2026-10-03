@@ -1,7 +1,7 @@
 "use client";
 
 import { Capacitor } from "@capacitor/core";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { externalBvsUrl } from "@/lib/app-external-boundary";
 
@@ -32,6 +32,7 @@ function openOutsideNativeShell(url: URL) {
  */
 export default function MobileIosBoundary() {
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const nativeIos = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
@@ -68,7 +69,7 @@ export default function MobileIosBoundary() {
       event.preventDefault();
       event.stopPropagation();
       if (contained) {
-        window.location.assign(contained);
+        router.push(contained);
         return;
       }
 
@@ -78,7 +79,7 @@ export default function MobileIosBoundary() {
 
     document.addEventListener("click", onClick, true);
     return () => document.removeEventListener("click", onClick, true);
-  }, [pathname]);
+  }, [pathname, router]);
 
   return null;
 }

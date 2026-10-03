@@ -5,25 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import QrLoginPanel from '@/components/QrLoginPanel'
-
-function safeNextPath(raw: string | null): string {
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/'
-  return raw
-}
-
-async function withTimeout<T>(promise: PromiseLike<T>, ms: number, message: string): Promise<T> {
-  let timer: number | undefined
-  try {
-    return await Promise.race([
-      Promise.resolve(promise),
-      new Promise<T>((_resolve, reject) => {
-        timer = window.setTimeout(() => reject(new Error(message)), ms)
-      }),
-    ])
-  } finally {
-    if (timer !== undefined) window.clearTimeout(timer)
-  }
-}
+import { safeAuthDestination, withAuthTimeout } from '@/lib/auth-client-flow'
 
 export default function LoginPage() {
   const [identifier, setIdentifier] = useState('')
@@ -32,7 +14,7 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [nextPath] = useState(() => typeof window === 'undefined'
     ? '/'
-    : safeNextPath(new URLSearchParams(window.location.search).get('next')))
+    : safeAuthDestination(new URLSearchParams(window.location.search).get('next')))
   const [alreadyIn, setAlreadyIn] = useState<string | null>(null)
 
   useEffect(() => {
@@ -68,6 +50,7 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: id, password }),
+        signal: AbortSignal.timeout(15000),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -81,7 +64,7 @@ export default function LoginPage() {
       }
 
       const supabase = createClient()
-      const { error: sessionError } = await withTimeout(
+      const { error: sessionError } = await withAuthTimeout(
         supabase.auth.setSession({ access_token, refresh_token }),
         12000,
         'Sign-in session setup timed out. Please try again.',
@@ -92,12 +75,11 @@ export default function LoginPage() {
       const profileRes = await fetch('/api/auth/profile', {
         method: 'POST',
         headers: { Authorization: `Bearer ${access_token}` },
+        signal: AbortSignal.timeout(5000),
       }).catch(() => null)
       const profile = profileRes?.ok ? await profileRes.json().catch(() => ({})) : {}
       const profileDestination =
-        typeof profile.destination === 'string' && profile.destination.startsWith('/')
-          ? profile.destination
-          : '/'
+        safeAuthDestination(typeof profile.destination === 'string' ? profile.destination : null)
 
       // A full navigation rehydrates all auth-aware shell providers from the persisted session.
       window.location.assign(nextPath === '/' ? profileDestination : nextPath)

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { safeAuthDestination, withAuthTimeout } from "@/lib/auth-client-flow";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
@@ -10,8 +11,7 @@ const fieldClass = "min-h-12 w-full rounded-[1rem] border border-white/[.08] bg-
 
 function safeNext(surface: AppSurface, value: string | null) {
   const fallback = `/app/${surface}/you`;
-  if (!value || !value.startsWith(`/app/${surface}`) || value.startsWith("//")) return fallback;
-  return value;
+  return safeAuthDestination(value, fallback, `/app/${surface}`);
 }
 
 export default function AppLoginClient({ surface }: { surface: AppSurface }) {
@@ -41,6 +41,7 @@ export default function AppLoginClient({ surface }: { surface: AppSurface }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: id, password }),
+        signal: AbortSignal.timeout(15000),
       });
       const payload = await response.json().catch(() => ({})) as {
         error?: string;
@@ -50,14 +51,15 @@ export default function AppLoginClient({ surface }: { surface: AppSurface }) {
       const accessToken = payload.session?.access_token;
       const refreshToken = payload.session?.refresh_token;
       if (!accessToken || !refreshToken) throw new Error("Sign in succeeded but no session was returned.");
-      const { error: sessionError } = await createClient().auth.setSession({
+      const { error: sessionError } = await withAuthTimeout(createClient().auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
-      });
+      }), 12000, "Sign-in session setup timed out. Please try again.");
       if (sessionError) throw sessionError;
       await fetch("/api/auth/profile", {
         method: "POST",
         headers: { Authorization: `Bearer ${accessToken}` },
+        signal: AbortSignal.timeout(5000),
       }).catch(() => null);
       router.replace(next);
       router.refresh();

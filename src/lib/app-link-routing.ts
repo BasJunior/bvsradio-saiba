@@ -29,6 +29,10 @@ function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, 
     return withQueryAndHash(root, search, hash);
   }
   if (pathname === "/library") return withQueryAndHash(`${root}/library`, search, hash);
+  if (pathname === "/feed" || /^\/feed\/[^/]+$/.test(pathname)) return withQueryAndHash(`${root}${pathname}`, search, hash);
+  if (/^\/(beat|playlist)\/[^/]+$/.test(pathname)) return withQueryAndHash(`${root}${pathname}`, search, hash);
+  const song = pathname.match(/^\/creator\/studio\/songs\/([^/]+)$/);
+  if (song) return withQueryAndHash(`${root}/studio/songs/${song[1]}`, search, hash);
   if (pathname === "/notifications") return withQueryAndHash(`${root}/notifications`, search, hash);
   if (pathname === "/account") return withQueryAndHash(`${root}/account`, search, hash);
   if (pathname.startsWith("/account/orders/")) return withQueryAndHash(`${root}/studio/orders`, search, hash);
@@ -64,7 +68,7 @@ function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, 
 
 export function appRouteForNativeUrl(raw: string, surface: AppLinkSurface, currentHost?: string): string | null {
   const value = String(raw || "").trim();
-  if (!value) return null;
+  if (!value || /[\\\u0000-\u001f\u007f]/.test(value)) return null;
 
   let url: URL;
   try {
