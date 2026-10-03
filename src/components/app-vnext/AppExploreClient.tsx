@@ -1,5 +1,6 @@
 "use client";
 
+import DiscoverMoreActions from "@/components/DiscoverMoreActions";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -192,7 +193,7 @@ export default function AppExploreClient({
   };
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
+    <div className="bvs-square-discover mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
       <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Discover</p>
       <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight sm:text-4xl">Find your next favourite.</h1>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45 sm:text-base">Press play on a new sound. Meet the artist. Follow what moves you.</p>
@@ -224,6 +225,7 @@ export default function AppExploreClient({
         </div>
       ) : null}
 
+      <details className="bvs-discover-filters mt-2"><summary className="min-h-11 cursor-pointer text-sm text-white/60">Filters{kind !== "all" ? ` · ${kind}` : ""}{genre ? ` · ${genre}` : ""}</summary>
       <div className="mt-2 flex gap-2 overflow-x-auto pb-2" aria-label="Filter discovery results">
         {(["all", "music", "artists", "producers", "beats"] as ExploreKind[]).map((value) => (
           <button
@@ -243,6 +245,7 @@ export default function AppExploreClient({
         {sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(sound.key); setRound(0); setLimit(24); }} className={`min-h-10 shrink-0 rounded-full border px-3 text-xs ${genre === sound.key ? "border-brand/50 bg-brand/10 text-brand" : "border-white/15 text-white/50"}`}>{sound.label}</button>)}
       </div> : null}
       {genre && !sounds.some(sound => sound.key === genre) ? <button type="button" onClick={() => setGenre("")} className="mt-3 min-h-10 text-sm text-brand">Clear sound filter: {genre}</button> : null}
+      </details>
       {unavailable ? <div role="status" className="mt-4 rounded-xl border border-white/15 p-3 text-sm text-white/50"><p>Some discoveries could not be loaded. You can still explore what is here.</p><button type="button" onClick={() => { setLoading(true); setUnavailable(false); setLoadAttempt(value => value + 1); }} className="mt-2 min-h-10 rounded-full border border-white/20 px-4 text-white">Retry loading</button></div> : null}
       {!query.trim() && kind === "all" ? <section className="mt-5 rounded-2xl border border-brand/20 bg-brand/[.035] p-4">
         <p className="font-semibold">{activeMode.description}</p>
@@ -278,7 +281,7 @@ export default function AppExploreClient({
                 <article key={item.id} className={`group flex min-w-0 gap-3 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-3 transition hover:border-white/15 hover:bg-white/[.04] ${discoveryHome ? "flex-col" : ""}`}>
                   <button type="button" onClick={() => play(item)} className={`relative shrink-0 overflow-hidden rounded-[1rem] bg-white/[.04] ${discoveryHome ? "aspect-square w-full" : "h-16 w-16"}`} aria-label={`${player.current?.id === item.id && player.isPlaying ? "Pause" : "Play"} ${item.title}`}>
                     {image ? <Image src={image} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center text-xs text-brand">BVS</span>}
-                    <span className="absolute inset-0 grid place-items-center bg-black/20 text-lg text-white opacity-80 transition group-hover:opacity-100">▶</span>
+                    <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/20 text-lg text-white opacity-80 transition group-hover:opacity-100">{player.current?.id === item.id && player.isPlaying ? "Ⅱ" : "▶"}</span>
                   </button>
                   <div className="min-w-0 flex-1">
                     <button type="button" onClick={() => play(item)} className="block w-full text-left">
@@ -286,12 +289,11 @@ export default function AppExploreClient({
                       <p className="truncate text-sm text-white/48">{item.artist}</p>
                       <p className="mt-1 text-xs text-white/30">{item.genre || item.project || "BVS release"}</p>
                     </button>
-                    <div className="mt-2 flex flex-wrap items-start gap-2">
-                      <button type="button" onClick={() => play(item)} className="min-h-9 rounded-full bg-brand px-3 text-xs font-semibold text-black">{player.current?.id === item.id && player.isPlaying ? "Pause" : "Play"}</button>
+                    <DiscoverMoreActions title={item.title}>
                       <button type="button" aria-pressed={isLiked} aria-label={`${isLiked ? "Unsave" : "Save"} ${item.title}`} onClick={() => toggleLike(item)} className={`min-h-9 rounded-full border px-3 text-xs font-semibold ${isLiked ? "border-brand/35 bg-brand/10 text-brand" : "border-white/12 text-white/45"}`}>{isLiked ? "♥ Saved" : "♡ Save"}</button>
                       <AppPlaylistPicker trackId={item.id} compact />
                       <AppDownloadButton trackId={item.id} surface={surface} compact />
-                    </div>
+                    </DiscoverMoreActions>
                   </div>
                 </article>
               );
@@ -302,10 +304,11 @@ export default function AppExploreClient({
       ) : null}
 
       {show("artists") && filtered.artists.length ? (
-        <section className="mt-11">
+        <section className="bvs-discover-creators mt-11">
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Artists</p>
           <h2 className="mt-2 text-3xl font-semibold">Names to know.</h2>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <p className="mt-3 text-xs text-white/60">Scroll sideways → · Tap a portrait to explore</p>
+          <div className="bvs-discover-rail mt-5" tabIndex={0} role="region" aria-label="Creator portraits — scroll horizontally">
             {filtered.artists.map((item) => {
               const image = safeImage(item.image);
               return (
@@ -325,7 +328,8 @@ export default function AppExploreClient({
         <section className="mt-11">
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Producers</p>
           <h2 className="mt-2 text-3xl font-semibold">Meet the people behind the sound.</h2>
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <p className="mt-3 text-xs text-white/60">Scroll sideways → · Tap a portrait to explore</p>
+          <div className="bvs-discover-rail mt-5" tabIndex={0} role="region" aria-label="Creator portraits — scroll horizontally">
             {filtered.producers.map((item) => (
               <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}?as=producer`} className="group min-w-0 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
                 <ExploreArtwork src={item.image} label="Producer" />
@@ -364,9 +368,10 @@ export default function AppExploreClient({
                     genre={item.genre}
                     beatId={item.id}
                     surface={surface}
+                    compact
                   />
                 ) : null}
-                <Link href={`/app/${surface}/beat/${item.id}`} className="mt-3 inline-flex min-h-10 items-center rounded-full border border-brand/30 px-4 text-sm font-semibold text-brand transition hover:bg-brand/10">Open beat</Link>
+
               </article>
             ))}
           </div>

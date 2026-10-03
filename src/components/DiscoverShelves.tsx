@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import DiscoverMoreActions from '@/components/DiscoverMoreActions'
 import LibraryAction from '@/components/LibraryAction'
 import { useStationPlayer } from '@/components/StationPlayer'
 import { trackEvent } from '@/lib/analytics'
@@ -39,25 +40,26 @@ export default function DiscoverShelves({ shelves, round, onMore, onBrowse, onDe
       </div>
       <span className="sr-only" role="status">Discovery selection {round + 1}</span>
     </div>
-    {shelves.map(shelf => <section key={shelf.id} aria-labelledby={`discover-${shelf.id}`}>
+    {shelves.map(shelf => <section key={shelf.id} className={shelf.kind === 'artist' || shelf.kind === 'producer' ? 'bvs-discover-creators' : ''} aria-labelledby={`discover-${shelf.id}`}>
       <div className="mb-4 flex items-start justify-between gap-4">
         <div><h2 id={`discover-${shelf.id}`} className="text-xl font-semibold sm:text-2xl">{shelf.title}</h2><p className="mt-1 max-w-xl text-sm text-text-secondary">{shelf.description}</p></div>
         <button type="button" onClick={() => onBrowse(shelf.kind)} className="min-h-11 shrink-0 text-sm text-brand" aria-label={`Browse all ${shelf.kind === 'artist' ? 'creators' : shelf.kind === 'release' ? 'fresh arrivals' : shelf.kind === 'story' ? 'stories' : `${shelf.kind}s`}`}>Browse all →</button>
       </div>
-      <div className="discovery-shelf-grid">
+      <p className="mb-3 text-xs text-text-secondary">Scroll sideways → · Tap artwork to listen or explore</p>
+      <div className="discovery-shelf-grid bvs-discover-rail" tabIndex={0} role="region" aria-label={`${shelf.title} — scroll horizontally`}>
         {shelf.items.map(item => {
           const playable = toDiscoveryTrack(item)
           const playing = Boolean(playable && player.current?.id === playable.id && player.isPlaying)
           const creator = item.kind === 'artist' || item.kind === 'producer'
           return <article key={item.id} className="group min-w-0" data-discovery-item={item.id}>
-            {item.detail ? <button type="button" onClick={() => onDetails(item)} className="block w-full rounded-2xl text-left focus-visible:outline-2 focus-visible:outline-brand" aria-label={`Details for ${item.title}`}><DiscoveryArtwork item={item} /></button> : <Link href={item.href} aria-label={`Open ${item.title}`} className="block focus-visible:outline-2 focus-visible:outline-brand"><DiscoveryArtwork item={item} /></Link>}
+            {playable ? <button type="button" onClick={() => playItem(item)} className="relative block w-full text-left focus-visible:outline-2 focus-visible:outline-brand" aria-label={`${playing ? 'Pause' : item.kind === 'beat' ? 'Preview' : 'Play'} ${item.title}`}><DiscoveryArtwork item={item} /><span aria-hidden="true" className="absolute bottom-2 right-2 grid h-11 w-11 place-items-center bg-black/75 text-white">{playing ? 'Ⅱ' : '▶'}</span></button> : item.detail ? <button type="button" onClick={() => onDetails(item)} className="block w-full text-left focus-visible:outline-2 focus-visible:outline-brand" aria-label={`Details for ${item.title}`}><DiscoveryArtwork item={item} /></button> : <Link href={item.href} aria-label={`Open ${item.title}`} className="block focus-visible:outline-2 focus-visible:outline-brand"><DiscoveryArtwork item={item} /></Link>}
             <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || (item.onBvs ? 'On BVS radio' : item.kind)}</p>
             {item.detail ? <button type="button" onClick={() => onDetails(item)} className="mt-1 block w-full text-left"><h3 className="line-clamp-2 text-sm font-semibold text-white sm:text-base">{item.title}</h3></button> : <Link href={item.href} className="mt-1 block"><h3 className="line-clamp-2 text-sm font-semibold text-white sm:text-base">{item.title}</h3></Link>}
             <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-secondary">{item.subtitle}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              {playable ? <button type="button" onClick={() => playItem(item)} aria-label={`${playing ? 'Pause' : item.kind === 'beat' ? 'Preview' : 'Play'} ${item.title}`} className="min-h-10 rounded-full bg-brand px-4 text-xs font-semibold text-black">{playing ? 'Ⅱ Pause' : item.kind === 'beat' ? '▶ Preview' : '▶ Play'}</button> : item.detail ? <button type="button" onClick={() => onDetails(item)} className="min-h-10 rounded-full border border-white/20 px-3 text-xs text-white">Explore release</button> : !creator ? <Link href={item.href} className="inline-flex min-h-10 items-center rounded-full border border-white/20 px-3 text-xs text-white">{item.kind === 'playlist' ? 'Open playlist' : item.kind === 'story' ? 'Read story' : 'Explore'}</Link> : null}
+            {creator || playable ? <DiscoverMoreActions title={item.title}>
               {creator || item.kind === 'track' || item.kind === 'beat' ? <LibraryAction item={{ ...item, kind: creator ? 'artist' : item.kind as 'track' | 'beat' }} section={creator ? 'follows' : 'favourites'} compact analyticsSource="discover" /> : null}
-            </div>
+              {item.detail ? <button type="button" onClick={() => onDetails(item)} className="min-h-11 text-left text-sm text-brand">View details</button> : <Link href={item.href} className="inline-flex min-h-11 items-center text-sm text-brand">View details →</Link>}
+            </DiscoverMoreActions> : null}
           </article>
         })}
       </div>

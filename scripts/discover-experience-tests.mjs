@@ -97,6 +97,7 @@ let finishBeats, opened = 0, played = [], saved = [];
 const nativeTracks = music.map(i=>({id:i.detail.id,title:i.title,artist:i.detail.artist,src:i.detail.src,genre:i.detail.genre}));
 const player = {current:null,isPlaying:false,playNow:(item,opts)=>played.push({item,opts}),playAll:items=>played.push({items}),setQueueOpen(){},openNowPlaying(){opened++;},toggle(){}};
 const imports = {
+  '@/components/DiscoverMoreActions':{default:'more-actions'},
   'next/link':{default:'link'},'next/image':{default:'image'},
   '@/components/app-vnext/AppBeatPreviewPlayer':{default:'preview'},
   '@/components/app-vnext/AppDownloadButton':{default:'download'},
@@ -126,7 +127,11 @@ assert.equal(nodes(tree).filter(n=>n.type==='article').length,6,'One failed sour
 button(tree,'Hip-Hop').props.onClick(); tree=render(props);
 button(tree,'▶ Play discoveries').props.onClick();
 assert.ok(played.at(-1).items.every(i=>discovery.soundKey(i.genre)==='hip-hop'),'Native discovery queue must respect the selected genre');
-button(tree,'Play').props.onClick();
+const firstPlay = nodes(tree).find(n => n.type === 'button' && n.props['aria-label']?.startsWith('Play Song'));
+assert.ok(firstPlay, 'Native artwork must retain a labelled play action');
+assert.equal(button(tree,'Play'),undefined,'Cards must not duplicate artwork playback with a footer button');
+assert.ok(nodes(tree).some(n=>n.type==='more-actions'),'Secondary native utilities must remain reachable through More');
+firstPlay.props.onClick();
 assert.equal(opened,0,'Starting a discovery track must keep the browsing screen open');
 assert.equal(saved.at(-1).href,'/app/ios','Native listening history must stay in the app namespace');
 button(tree,'Show more music →').props.onClick(); tree=render(props);

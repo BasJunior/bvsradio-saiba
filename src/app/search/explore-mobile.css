@@ -28,7 +28,7 @@
 
   .explore-route > main > label input {
     min-height: 3rem;
-    border-radius: 1rem !important;
+    border-radius: 0 !important;
     padding: 0.8rem 1rem !important;
     font-size: 1rem !important;
     line-height: 1.25rem;
@@ -80,7 +80,7 @@
   .explore-route section[aria-labelledby^="search-"] article > div:first-child {
     width: 3.5rem !important;
     height: 3.5rem !important;
-    border-radius: 0.8rem !important;
+    border-radius: 0 !important;
   }
 
   .explore-route section[aria-labelledby^="search-"] article > :nth-child(2) {
