@@ -24,7 +24,7 @@ export default function HomeCreatorBands() {
     return () => controller.abort();
   }, []);
   return <div className="bvs-creator-bands">
-    <CreatorPortraitRail title="Artists" tone="paper" allHref="/music/artists" items={artists.map(artist => ({ id: artist.id, name: artist.name, image: artist.image, href: `/artist/${encodeURIComponent(artist.username)}`, detail: `${artist.trackCount} published ${artist.trackCount === 1 ? "track" : "tracks"}` }))} />
+    <CreatorPortraitRail title="Artists" tone="ink" allHref="/music/artists" items={artists.map(artist => ({ id: artist.id, name: artist.name, image: artist.image, href: `/artist/${encodeURIComponent(artist.username)}`, detail: `${artist.trackCount} published ${artist.trackCount === 1 ? "track" : "tracks"}` }))} />
     <CreatorPortraitRail title="Producers" tone="ink" allHref="/music/producers" items={producers.map(producer => ({ id: producer.id, name: producer.name, image: producer.image, href: `/artist/${encodeURIComponent(producer.username)}`, detail: `${producer.beatCount} ${producer.beatCount === 1 ? "beat" : "beats"} · BeatStore` }))} />
     {failed ? <p className="px-4 py-6 text-center text-sm text-text-secondary">Creator portraits are temporarily unavailable. <a href="/music/artists" className="underline">Explore the artist directory</a>.</p> : null}
   </div>;

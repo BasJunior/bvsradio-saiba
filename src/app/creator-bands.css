@@ -1,7 +1,6 @@
-/* The sketch's paper/ink bands, within BVS's existing dark + accent system. */
-.bvs-creator-band { padding: clamp(2rem, 5vw, 4rem) 0; border-block: 1px solid currentColor; }
-.bvs-creator-band--paper { --portrait-line: #161616; background: #cacaca; color: #101010; }
-.bvs-creator-band--ink { --portrait-line: #e8e8e8; background: #0a0a0a; color: #f5f5f5; }
+/* Square editorial Home. One dark canvas, separated by fine horizontal lines. */
+.bvs-creator-band { padding: clamp(2rem, 5vw, 4rem) 0; border-top: 1px solid rgb(255 255 255 / .2); }
+.bvs-creator-band--ink { --portrait-line: rgb(255 255 255 / .3); background: #0a0a0a; color: #f5f5f5; }
 .bvs-creator-band-inner { max-width: 80rem; margin-inline: auto; padding-inline: 1rem; }
 .bvs-creator-band-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
 .bvs-creator-kicker { font-size: .65rem; text-transform: uppercase; letter-spacing: .16em; font-weight: 700; opacity: .7; }
@@ -25,18 +24,24 @@
 .bvs-creator-portrait:hover .bvs-creator-caption { background: var(--color-brand); color: #101010; }
 .bvs-creator-portrait:focus-visible, .bvs-creator-portrait-rail:focus-visible, .bvs-creator-scroll-controls button:focus-visible, .bvs-creator-directory:focus-visible { outline: 3px solid currentColor; outline-offset: 3px; }
 .bvs-app-creator-bands { margin-inline: -1rem; margin-top: 2.5rem; }
-.bvs-home-release-band { background: #cacaca; color: #101010; border-block: 1px solid #161616; }
+.bvs-home-release-band { background: #0a0a0a; color: #f5f5f5; border-top: 1px solid rgb(255 255 255 / .2); }
 .bvs-home-release-band > div { max-width: 80rem; margin-inline: auto; padding: 2.5rem 1rem; }
-.bvs-home-release-band .bvs-home-accent-label { color: #315d80; }
-.bvs-home-release-band .bvs-home-accent-button { color: #315d80; border-color: #315d80; }
-.bvs-home-release-band > div > div > div > p:not(.bvs-home-accent-label) { color: #404040; }
 .bvs-home-release-band .bvs-release-directory { background: transparent; border: 0; border-radius: 0; padding: 0; }
-.bvs-home-release-band .bvs-release-directory > p { color: #404040; }
-.bvs-home-release-band .bvs-release-row { border-color: #777; border-radius: 0; background: transparent; }
-.bvs-home-release-band .bvs-release-row:hover { background: #bcbcbc; }
-.bvs-home-release-band .bvs-release-row p, .bvs-home-release-band .bvs-release-row span { color: #404040; }
-.bvs-home-release-band .bvs-release-row h3 { color: #101010; }
+.bvs-home-release-band .bvs-release-row { border-width: 1px 0 0; border-color: rgb(255 255 255 / .2); border-radius: 0; background: transparent; }
+.bvs-home-release-band .bvs-release-row:hover { background: rgb(163 219 255 / .05); }
 .bvs-home-release-band .bvs-release-photo { border-radius: 0; }
+
+/* Scoped to page content: global navigation, persistent player and portalled
+   action sheets retain their own geometry. No theme tokens are changed. */
+.bvs-square-home [class*="rounded"], .bvs-square-home :is(section, article) { border-radius: 0; }
+.bvs-square-home [class*="clip-path"] { clip-path: inset(0); }
+.bvs-square-home section { border-inline: 0; border-bottom: 0; border-top: 1px solid rgb(255 255 255 / .2); background-color: #0a0a0a; }
+.bvs-square-home .bvs-home-accent-card { border-width: 1px 0 0; background: transparent; box-shadow: none; }
+.bvs-square-home .bvs-home-accent-card:hover { background: rgb(var(--bvs-home-rgb) / .05); }
+.bvs-square-home :is(.bvs-culture-listen, .bvs-culture-station, .bvs-app-home-hero) { box-shadow: none; }
+.bvs-square-home .bvs-culture-listen { border-width: 1px 0; background: transparent; padding-inline: 0; }
+.bvs-square-home .bvs-app-home-hero { border-width: 1px 0; background-color: #0a0a0a; }
+.bvs-square-home .bvs-release-directory { border: 0; }
 @media (min-width: 640px) {
   .bvs-creator-band-inner, .bvs-home-release-band > div { padding-inline: 1.5rem; }
   .bvs-creator-portrait { flex-basis: 200px; }

@@ -36,7 +36,7 @@ const paths = [
 
 export default function HomePage() {
   return (
-    <div className="relative overflow-hidden bg-bg-primary text-text-primary">
+    <div className="bvs-square-home relative overflow-hidden bg-bg-primary text-text-primary">
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] opacity-80"
         aria-hidden="true"

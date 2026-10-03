@@ -8,7 +8,7 @@ export type CreatorPortrait = { id: string; name: string; image: string; href: s
 
 export default function CreatorPortraitRail({ title, tone, items, allHref }: {
   title: string;
-  tone: "paper" | "ink";
+  tone: "ink";
   items: CreatorPortrait[];
   allHref: string;
 }) {

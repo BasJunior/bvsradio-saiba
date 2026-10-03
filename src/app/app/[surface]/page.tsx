@@ -37,7 +37,7 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
   const base = `/app/${surface}`;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
+    <div className="bvs-square-home mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
       <section className="bvs-app-home-hero relative isolate overflow-hidden rounded-[2.2rem] border border-white/[.08] bg-[#111113]/72 px-5 py-7 shadow-[0_28px_90px_rgba(0,0,0,.35)] backdrop-blur-2xl [clip-path:inset(0_round_2.2rem)] [contain:paint] sm:px-9 sm:py-10">
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
           <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full bg-brand/[.13] blur-3xl" />
