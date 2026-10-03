@@ -16,7 +16,7 @@ vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/home/Creat
   exports,require:name=>imports[name],window:{matchMedia:()=>({matches:reduced})},
 });
 const items=[{id:'one',name:'A creator',image:'/portrait.jpg',href:'/artist/one',detail:'3 tracks'}];
-const tree=exports.default({title:'Artists',tone:'paper',allHref:'/music/artists',items});
+const tree=exports.default({title:'Artists',tone:'ink',allHref:'/music/artists',items});
 function nodes(tree){return tree&&typeof tree==='object'?[tree,...[tree.props?.children].flat(Infinity).flatMap(nodes)]:[];}
 const all=nodes(tree);
 assert.equal(all.find(node=>node.props?.className==='bvs-creator-portrait').props.href,'/artist/one');
@@ -30,17 +30,21 @@ next.props.onClick();
 assert.equal(calls[0].left,320);assert.equal(calls[0].behavior,'smooth');
 reduced=true;previous.props.onClick();
 assert.equal(calls[1].left,-320);assert.equal(calls[1].behavior,'auto');
-assert.equal(exports.default({title:'Artists',tone:'paper',allHref:'/',items:[]}),null);
+assert.equal(exports.default({title:'Artists',tone:'ink',allHref:'/',items:[]}),null);
 const css=fs.readFileSync('src/app/creator-bands.css','utf8');
-assert.match(css,/\.bvs-creator-band--paper[^}]*background: #cacaca/);
+assert.ok(!css.includes('#cacaca')&&!css.includes('band--paper'),'No alternating grey surfaces');
 assert.match(css,/\.bvs-creator-band--ink[^}]*background: #0a0a0a/);
 assert.match(css,/\.bvs-creator-photo[^}]*border-radius: 0/);
 assert.match(css,/\.bvs-creator-caption[^}]*border-top: 1px/);
 assert.match(css,/scroll-snap-type: x proximity/);
 const app=fs.readFileSync('src/components/app-vnext/AppHomeDiscoverySections.tsx','utf8');
-assert.ok(app.includes('title="Artists" tone="paper"')&&app.includes('title="Producers" tone="ink"'));
+assert.ok(app.includes('title="Artists" tone="charcoal"')&&app.includes('title="Producers" tone="ink"'));
+assert.match(css,/\.bvs-creator-band--charcoal[^}]*background: #1b1b1b/,'Artist grey must stay close to black');
 assert.ok(app.includes('/explore?kind=artists')&&app.includes('/explore?kind=producers'));
 assert.ok(app.includes('getPublishedProducers')&&app.includes('fairDailyOrder(producerRows, "producers")'));
 const home=fs.readFileSync('src/components/home/HomeCreatorBands.tsx','utf8');
 assert.ok(home.includes('Promise.allSettled')&&home.includes('AbortController'));
-console.log('Creator portrait rails: paper/ink bands, divider lines, profile links, scrolling, reduced motion and web/iOS parity passed.');
+for (const path of ['src/app/page.tsx','src/app/app/[surface]/page.tsx']) assert.ok(fs.readFileSync(path,'utf8').includes('bvs-square-home'));
+assert.match(css,/\.bvs-square-home \[class\*="rounded"\][^}]*border-radius: 0/);
+assert.match(css,/\.bvs-square-home section[^}]*border-inline: 0/);
+console.log('Dark square Home: divider lines, no grey bands, profile links, scrolling, reduced motion and web/iOS parity passed.');
