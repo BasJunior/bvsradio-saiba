@@ -4,7 +4,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import LibraryAction from "@/components/LibraryAction";
 import AppShareButton from "@/components/app-vnext/AppShareButton";
+import ShowEpisodeList from "@/components/shows/ShowEpisodeList";
 import type { DiscoveryItem } from "@/lib/discovery";
+import { getPublishedEpisodes } from "@/lib/published-shows";
 import { getPublicProgramme, getPublicShowContext, getPublicShowEvent } from "@/lib/station-content";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +16,7 @@ export default async function AppShowPage({ params }: { params: Promise<{ surfac
   if (surface !== "ios" && surface !== "android") notFound();
   const programme = await getPublicProgramme(slug);
   if (!programme) notFound();
+  const episodes = await getPublishedEpisodes(slug);
   const event = await getPublicShowEvent(slug);
   const context = event ? await getPublicShowContext(event.id) : { creators: [], setlist: [] };
   const item: DiscoveryItem = { id: `show-${programme.slug}`, kind: "show", title: programme.title, subtitle: programme.schedule, href: `/app/${surface}/show/${programme.slug}`, image: programme.image };
@@ -28,6 +31,8 @@ export default async function AppShowPage({ params }: { params: Promise<{ surfac
     {context.creators.length ? <section className="mt-8"><p className="text-xs uppercase tracking-[.18em] text-brand">Creators</p><h2 className="mt-1 text-2xl font-semibold">People behind this show.</h2><div className="mt-4 flex flex-wrap gap-2">{context.creators.map((creator) => creator.username ? <Link key={creator.id} href={`/app/${surface}/creator/${creator.username}`} className="rounded-full border border-white/10 px-4 py-2 text-sm hover:border-brand/35"><b>{creator.publicName}</b><span className="text-text-secondary"> · {creator.role}</span></Link> : <span key={creator.id} className="rounded-full border border-white/10 px-4 py-2 text-sm"><b>{creator.publicName}</b><span className="text-text-secondary"> · {creator.role}</span></span>)}</div></section> : null}
 
     {context.setlist.length ? <section className="mt-8"><p className="text-xs uppercase tracking-[.18em] text-brand">Setlist</p><h2 className="mt-1 text-2xl font-semibold">Music from the room.</h2><div className="mt-4 space-y-2">{context.setlist.map((track, index) => <div key={track.id} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/5 text-xs text-text-secondary">{index + 1}</span><div className="min-w-0"><p className="truncate font-semibold">{track.title}</p><p className="truncate text-sm text-text-secondary">{track.artistName}</p></div></div>)}</div></section> : null}
+
+    {episodes.length ? <section className="mt-8"><ShowEpisodeList episodes={episodes} /></section> : null}
 
     <section className="mt-8 rounded-2xl border border-white/10 p-5"><p className="text-xs uppercase tracking-[.18em] text-brand">Stay in the loop</p><p className="mt-2 text-sm text-text-secondary">Follow this show to keep it in your Library and get start or live reminders when show notifications are enabled.</p></section>
   </div>;
