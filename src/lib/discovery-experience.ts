@@ -38,7 +38,8 @@ export function discoveryCreatorKey(value?: string) {
 export function toDiscoveryTrack(item: SearchItem) {
   const detail = item.detail
   if ((item.kind !== 'track' && item.kind !== 'beat') || !detail?.src) return null
-  return { id: detail.id, title: item.title, artist: detail.artist, src: detail.src, artwork: item.image, genre: detail.genre, project: item.kind === 'beat' ? 'BVS BeatStore' : detail.collection || 'Discover BVS' }
+  const downloadPrice = item.kind === 'track' && detail.streamOnly !== true && typeof detail.price === 'number' && Number.isFinite(detail.price) && detail.price > 0 ? detail.price : null
+  return { isDownloadable: downloadPrice !== null, downloadPrice, id: detail.id, title: item.title, artist: detail.artist, src: detail.src, artwork: item.image, genre: detail.genre, project: item.kind === 'beat' ? 'BVS BeatStore' : detail.collection || 'Discover BVS' }
 }
 export type DiscoveryShelf = { id: string; title: string; description: string; kind: SearchKind; items: SearchItem[] }
 const date = (value?: string) => { const parsed = Date.parse(value || ''); return Number.isFinite(parsed) ? parsed : 0 }

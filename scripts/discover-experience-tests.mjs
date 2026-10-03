@@ -64,6 +64,23 @@ assert.equal(discovery.discoverySounds(pool).filter(i=>i.key==='hip-hop').length
 assert.ok(!discovery.discoverySounds(pool).some(i=>i.key.startsWith('artist')),'Artist names must not become genre chips');
 assert.equal(shelves.find(s=>s.id==='fresh').items[0].id,'track-17','Fresh arrivals must sort newest first');
 assert.equal(discovery.toDiscoveryTrack(silent),null);
+const sellable = {...music[0],detail:{...music[0].detail,price:2,streamOnly:false}};
+assert.equal(discovery.toDiscoveryTrack(sellable).isDownloadable,true,'Discover playback must carry the public download offer into the player');
+assert.equal(discovery.toDiscoveryTrack(sellable).downloadPrice,2);
+assert.equal(discovery.toDiscoveryTrack({...sellable,detail:{...sellable.detail,streamOnly:true}}).isDownloadable,false);
+assert.equal(discovery.toDiscoveryTrack({...sellable,kind:'beat'}).isDownloadable,false,'Beat preview must not become a song download');
+const boundary = pure('src/lib/app-external-boundary.ts');
+assert.equal(boundary.isExternalLegalOrLicenceUrl(new URL('https://bvsradio.com/buy?track=track-1')),true,'Native query-style Buy links must open web checkout externally');
+assert.equal(boundary.isExternalLegalOrLicenceUrl(new URL('https://bvsradio.com/app/ios/explore')),false);
+const renderBuy = harness('src/components/BuyTrackButton.tsx',{
+  '@/lib/analytics':{trackEvent(){}}, '@/lib/cart-client':{upsertTrackCartLine(){}},
+});
+const buyTree = renderBuy({track:{id:'track-1',title:'Song',artist:'Artist',src:'/media.mp3',isDownloadable:true,downloadPrice:2},variant:'compact'});
+assert.equal(buyTree.props.href,'https://bvsradio.com/buy?track=track-1');
+assert.ok(nodes(buyTree).some(n=>n.type==='span' && n.props.children==='Buy' && n.props.className==='sm:hidden'),'Compact player must have a visible mobile Buy label');
+assert.equal(renderBuy({track:{id:'off-sale',isDownloadable:false,downloadPrice:2},variant:'compact'}),null);
+const playerSource=readFileSync('src/components/StationPlayer.tsx','utf8');
+assert.match(playerSource, /variant="compact" className="inline-flex min-h-10/,'Compact Buy must not be hidden on mobile');
 assert.equal(discovery.buildDiscoveryShelves(pool,0,'missing',now).length,0,'An empty genre must not show unrelated picks');
 
 let finishBeats, opened = 0, played = [], saved = [];

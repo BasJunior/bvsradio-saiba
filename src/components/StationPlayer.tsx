@@ -2019,7 +2019,7 @@ export function PersistentPlayer() {
               Watch
             </button>
           ) : null}
-          <BuyTrackButton track={player.current} variant="compact" className="hidden sm:inline-flex" />
+          <BuyTrackButton key={player.current?.id || "no-track"} track={player.current} variant="compact" className="inline-flex min-h-10 items-center justify-center" />
           <button
             type="button"
             onClick={() => player.toggleLike("persistent_player")}
