@@ -2,14 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { appDestination, type AppSurface } from "@/components/app-vnext/AppBootstrap";
 import AppOfflineDownloads from "@/components/app-vnext/AppOfflineDownloads";
 import AppPlaylists, { type AppPlaylist } from "@/components/app-vnext/AppPlaylists";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { useStationPlayer } from "@/components/StationPlayer";
 import { listOffline } from "@/lib/app-offline-native";
-import { readLibrary } from "@/lib/library";
+import { useLocalLibrary } from "@/lib/use-local-library";
+import { useAccountJson } from "@/lib/use-account-json";
+import { withAuthTimeout, safeAuthDestination } from "@/lib/auth-client-flow";
 import type { DiscoveryItem } from "@/lib/discovery";
 
 type ActiveSection = "all" | "liked" | "playlists" | "downloads" | "following" | "recent";
@@ -34,72 +36,45 @@ function nativeHref(surface: AppSurface, item: DiscoveryItem) {
   } catch {
     // Fall through to Discover when a saved href is malformed.
   }
-  if (item.href?.startsWith(`/app/${surface}`)) return item.href;
+  if (item.href?.startsWith(`/app/${surface}/`)) return safeAuthDestination(item.href, `/app/${surface}/explore`, `/app/${surface}`);
   return `/app/${surface}/explore?q=${encodeURIComponent(item.title)}`;
 }
 
 export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
   const [active, setActive] = useState<ActiveSection>("all");
-  const [liked, setLiked] = useState<DiscoveryItem[]>([]);
-  const [following, setFollowing] = useState<DiscoveryItem[]>([]);
-  const [recent, setRecent] = useState<DiscoveryItem[]>([]);
-  const [playlists, setPlaylists] = useState<AppPlaylist[]>([]);
   const [downloadCount, setDownloadCount] = useState(0);
-  const [libraryMetaLoading, setLibraryMetaLoading] = useState(false);
-  const { signedIn, token } = useAppSession();
+  const { signedIn, token, user } = useAppSession();
+  const owner = user?.id || "";
+  const likedCache = useLocalLibrary("favourites", owner);
+  const liked = useMemo(() => likedCache.filter(item => item.kind !== "beat"), [likedCache]);
+  const following = useLocalLibrary("follows", owner);
+  const recent = useLocalLibrary("history", owner);
+  const playlistRequest = useAccountJson<{ playlists?: AppPlaylist[] }>({ owner, token, url: "/api/app/playlists", enabled: signedIn });
+  const reloadPlaylists = playlistRequest.reload;
+  const playlists = playlistRequest.data?.playlists || [];
+  const libraryMetaLoading = playlistRequest.loading;
   const player = useStationPlayer();
 
-  const syncLocalLibrary = useCallback(() => {
-    setLiked(readLibrary("favourites").filter((item) => item.kind !== "beat"));
-    setFollowing(readLibrary("follows"));
-    setRecent(readLibrary("history"));
-  }, []);
-
   useEffect(() => {
-    syncLocalLibrary();
-    window.addEventListener("bvs:library-change", syncLocalLibrary);
-    window.addEventListener("storage", syncLocalLibrary);
-    return () => {
-      window.removeEventListener("bvs:library-change", syncLocalLibrary);
-      window.removeEventListener("storage", syncLocalLibrary);
+    let alive = true;
+    let version = 0;
+    const refreshOffline = async () => {
+      const request = ++version;
+      const offline = await withAuthTimeout(listOffline(), 12000, "Offline library timed out.").catch(() => []);
+      if (alive && request === version) setDownloadCount(offline.length);
     };
-  }, [syncLocalLibrary]);
-
-  const loadMeta = useCallback(async () => {
-    setLibraryMetaLoading(true);
-    try {
-      const offline = await listOffline().catch(() => []);
-      setDownloadCount(offline.length);
-
-      if (!signedIn || !token) {
-        setPlaylists([]);
-        return;
-      }
-
-      const response = await fetch("/api/app/playlists", {
-        headers: { Authorization: `Bearer ${token}` },
-        cache: "no-store",
-      }).catch(() => null);
-      if (!response?.ok) return;
-      const payload = (await response.json().catch(() => ({}))) as { playlists?: AppPlaylist[] };
-      setPlaylists(Array.isArray(payload.playlists) ? payload.playlists : []);
-    } finally {
-      setLibraryMetaLoading(false);
-    }
-  }, [signedIn, token]);
-
-  useEffect(() => {
-    void loadMeta();
-    const refresh = () => void loadMeta();
-    window.addEventListener("bvs:playlists-change", refresh);
+    const refresh = () => { reloadPlaylists(); void refreshOffline(); };
+    void refreshOffline();
+    window.addEventListener("bvs:playlists-change", reloadPlaylists);
     window.addEventListener("bvs:offline-change", refresh);
     window.addEventListener("bvs:app-resume", refresh);
     return () => {
-      window.removeEventListener("bvs:playlists-change", refresh);
+      alive = false;
+      window.removeEventListener("bvs:playlists-change", reloadPlaylists);
       window.removeEventListener("bvs:offline-change", refresh);
       window.removeEventListener("bvs:app-resume", refresh);
     };
-  }, [loadMeta]);
+  }, [reloadPlaylists]);
 
   const clearedById = useMemo(
     () => new Map(player.tracks.filter((track) => track.id).map((track) => [track.id as string, track])),
@@ -166,11 +141,7 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
                 <h3 className="truncate font-semibold">{item.title}</h3>
                 <p className="truncate text-sm text-white/43">{item.subtitle}</p>
               </Link>
-              {canPlay ? (
-                <button type="button" onClick={() => playItem(item, from, related)} aria-label={`Play ${item.title}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand text-sm font-semibold text-black">▶</button>
-              ) : (
-                <Link href={nativeHref(surface, item)} aria-label={`Open ${item.title}`} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/[.08] text-white/55">→</Link>
-              )}
+              <Link href={nativeHref(surface, item)} aria-label={`Open ${item.title}`} className="grid h-11 w-11 shrink-0 place-items-center text-white/55">→</Link>
             </article>
           );
         })}
@@ -183,12 +154,12 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
   const recentPlaylists = playlists.slice(0, 4);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
+    <div className="bvs-square-library mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.22em]">Your BVS</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-6xl">Library</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45 sm:text-base">The things you keep should be the easiest things to reach.</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-white/45 sm:text-base">Your music. Your mixes. Your next listen.</p>
         </div>
         <Link href={`/app/${surface}/explore`} data-library-accent="discover" className="bvs-library-accent-button min-h-11 rounded-full border px-5 py-3 text-sm font-semibold">Discover music →</Link>
       </div>
@@ -214,6 +185,14 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
             );
           })}
         </nav>
+        <details className="mt-2">
+          <summary className="min-h-11 cursor-pointer py-3 text-sm text-white/60">More{active === "following" ? " · Following" : active === "recent" ? " · Recently played" : ""}</summary>
+          <nav aria-label="More Library sections" className="flex flex-wrap gap-2 pb-2">
+            <button type="button" onClick={() => setActive("following")} aria-pressed={active === "following"} className="min-h-11 border border-white/15 px-4 text-sm">Following · {following.length}</button>
+            <button type="button" onClick={() => setActive("recent")} aria-pressed={active === "recent"} className="min-h-11 border border-white/15 px-4 text-sm">Recently played · {recent.length}</button>
+          </nav>
+        </details>
+        {playlistRequest.error ? <p role="alert" className="mt-2 text-sm text-red-300">{playlistRequest.error} <button type="button" onClick={playlistRequest.reload} className="min-h-11 px-3 underline">Try again</button></p> : null}
       </div>
 
       {active === "all" ? (
@@ -222,12 +201,12 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Quick access</p>
-                <h2 id="quick-access-heading" className="mt-1 text-2xl font-semibold">Everything important, above the fold.</h2>
+                <h2 id="quick-access-heading" className="mt-1 text-2xl font-semibold">Made yours.</h2>
               </div>
               {libraryMetaLoading ? <span className="text-xs text-white/30">Updating…</span> : null}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="bvs-library-metrics mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <QuickCard accent="library" icon="♡" label="Liked Music" value={`${liked.length} saved`} onClick={() => setActive("liked")} />
               <QuickCard accent="library" icon="▶" label="Playlists" value={signedIn ? `${playlists.length} playlists` : "Sign in to sync"} onClick={() => setActive("playlists")} />
               <QuickCard accent="downloads" icon="↓" label="Downloads" value={`${downloadCount} offline`} onClick={() => setActive("downloads")} />
@@ -235,27 +214,13 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
             </div>
           </section>
 
-          <section className="mt-7 rounded-[1.6rem] border border-white/[.07] bg-white/[.022] p-4 sm:p-5" aria-labelledby="library-now-heading">
+          {recentHistory.length ? <section className="bvs-library-shelf mt-8" aria-labelledby="library-now-heading">
             <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Your Library now</p>
-                <h2 id="library-now-heading" className="mt-1 text-xl font-semibold">Pick up without hunting for it.</h2>
-              </div>
-              {playableRecent.length ? <button type="button" onClick={() => playCollection(playableRecent, "Recently Played")} className="min-h-10 shrink-0 rounded-full bg-white px-4 text-xs font-semibold text-black">▶ Continue</button> : null}
+              <h2 id="library-now-heading" className="text-2xl font-semibold">Continue listening</h2>
+              {playableRecent.length ? <button type="button" onClick={() => playCollection(playableRecent, "Recently Played")} className="min-h-11 border border-white/15 px-4 text-sm font-semibold">▶ Play all</button> : null}
             </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={() => setActive("recent")} className="rounded-[1.2rem] border border-white/[.07] bg-black/10 p-4 text-left transition hover:border-white/15">
-                <span className="text-xs font-semibold text-brand">Continue listening</span>
-                <span className="mt-2 block truncate font-semibold">{recent[0]?.title || "Your next listen will appear here"}</span>
-                <span className="mt-1 block truncate text-sm text-white/38">{recent[0]?.subtitle || "Recently played stays within reach."}</span>
-              </button>
-              <button type="button" onClick={() => setActive("downloads")} className="rounded-[1.2rem] border border-white/[.07] bg-black/10 p-4 text-left transition hover:border-white/15">
-                <span className="text-xs font-semibold text-brand">Offline ready</span>
-                <span className="mt-2 block font-semibold">{downloadCount ? `${downloadCount} download${downloadCount === 1 ? "" : "s"} on this device` : "No downloads yet"}</span>
-                <span className="mt-1 block text-sm text-white/38">Keep listening where connectivity drops.</span>
-              </button>
-            </div>
-          </section>
+            <div className="mt-4">{renderRows(recentHistory, "Recently Played", playableRecent)}</div>
+          </section> : null}
 
           {signedIn ? (
             <section className="mt-8" aria-labelledby="playlists-heading">
@@ -287,18 +252,6 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
             </div>
           </section>
 
-          <section className="mt-8 grid gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => setActive("following")} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-4 text-left transition hover:border-white/15">
-              <p data-library-accent="discover" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Following</p>
-              <p className="mt-2 text-xl font-semibold">{following.length} creator{following.length === 1 ? "" : "s"}</p>
-              <p className="mt-1 text-sm text-white/38">Keep the people behind the music close.</p>
-            </button>
-            <button type="button" onClick={() => setActive("recent")} className="rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-4 text-left transition hover:border-white/15">
-              <p data-library-accent="library" className="bvs-library-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Recently played</p>
-              <p className="mt-2 text-xl font-semibold">{recentHistory[0]?.title || "Your listening history"}</p>
-              <p className="mt-1 truncate text-sm text-white/38">{recentHistory[0]?.subtitle || "Pick up where you left off."}</p>
-            </button>
-          </section>
         </>
       ) : null}
 
@@ -314,13 +267,13 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
 
       {active === "playlists" ? (
         <section className="mt-2">
-          {signedIn ? <AppPlaylists surface={surface} /> : <EmptyState title="Sign in for playlists." copy="Your playlists sync with your BVS identity across devices." href={`/app/${surface}/join`} action="Sign in or join" />}
+          {signedIn ? <AppPlaylists key={owner} surface={surface} /> : <EmptyState title="Sign in for playlists." copy="Your playlists sync with your BVS identity across devices." href={`/app/${surface}/join`} action="Sign in or join" />}
         </section>
       ) : null}
 
       {active === "downloads" ? (
         <section className="mt-2">
-          {signedIn ? <AppOfflineDownloads surface={surface} /> : <EmptyState title="Sign in for Downloads." copy="Offline music is tied to your BVS identity and rights availability." href={`/app/${surface}/join`} action="Sign in or join" />}
+          {signedIn ? <AppOfflineDownloads key={owner} surface={surface} /> : <EmptyState title="Sign in for Downloads." copy="Offline music is tied to your BVS identity and rights availability." href={`/app/${surface}/join`} action="Sign in or join" />}
         </section>
       ) : null}
 

@@ -29,7 +29,7 @@ for (const field of [
 assert.ok(
   studio.includes("Needs your attention") &&
     studio.includes("Unfinished submissions") &&
-    studio.includes("These are server-side BVS records, not browser guesses."),
+    studio.includes("Your upload progress is saved. Pick up after a reload or lost connection."),
   "Studio must explain durable submission state in creator language.",
 );
 for (const state of ["preparing", "uploading", "uploaded", "finalizing", "failed"]) {

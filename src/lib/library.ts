@@ -12,7 +12,10 @@ const cacheOwnerKey = 'bvs.library.cache-owner.v1'
 
 function safeParse(value: string | null): DiscoveryItem[] {
   if (!value) return []
-  try { return JSON.parse(value) as DiscoveryItem[] } catch { return [] }
+  try {
+    const items: unknown = JSON.parse(value)
+    return Array.isArray(items) ? items.filter((item): item is DiscoveryItem => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && typeof item.title === 'string' && typeof item.href === 'string' && typeof item.subtitle === 'string' && ['track', 'release', 'artist', 'beat', 'show'].includes(item.kind))) : []
+  } catch { return [] }
 }
 
 function normalizeLibraryItem(item: DiscoveryItem): DiscoveryItem {
@@ -24,8 +27,20 @@ function normalizeLibraryItem(item: DiscoveryItem): DiscoveryItem {
 }
 
 export function readLibrary(section: LibrarySection): DiscoveryItem[] {
-  if (typeof window === 'undefined') return []
-  return safeParse(window.localStorage.getItem(keys[section])).map(normalizeLibraryItem)
+  return libraryItemsFromSnapshot(getLibrarySnapshot(section))
+}
+
+export function getLibrarySnapshot(section: LibrarySection, owner?: string) {
+  if (typeof window === 'undefined') return '[]'
+  try {
+    const cachedOwner = window.localStorage.getItem(cacheOwnerKey)
+    if (owner !== undefined && cachedOwner && cachedOwner !== owner) return '[]'
+    return window.localStorage.getItem(keys[section]) || '[]'
+  } catch { return '[]' }
+}
+
+export function libraryItemsFromSnapshot(snapshot: string): DiscoveryItem[] {
+  return safeParse(snapshot).map(normalizeLibraryItem)
 }
 
 export function writeLibrary(section: LibrarySection, items: DiscoveryItem[], source: 'local' | 'remote' = 'local') {
@@ -42,8 +57,10 @@ export function getLibraryCacheOwner() {
 export function setLibraryCacheOwner(userId?: string | null) {
   if (typeof window === 'undefined') return
   const next = String(userId || '').trim()
+  const previous = window.localStorage.getItem(cacheOwnerKey) || ''
   if (next) window.localStorage.setItem(cacheOwnerKey, next)
   else window.localStorage.removeItem(cacheOwnerKey)
+  if (previous !== next) window.dispatchEvent(new CustomEvent('bvs:library-change', { detail: { source: 'remote' } }))
 }
 
 export function clearLibraryCache() {

@@ -47,6 +47,6 @@ assert.match(releaseForm, /setMaterialTypes\(\['leased_beat'\]\)/, 'Song Workspa
 const libraryView = fs.readFileSync('src/components/library/LibraryView.tsx', 'utf8')
 assert.match(libraryView, /webOnly = !surface/, 'Licensed Beats/Lyrics Pad must stay off the iOS library surface')
 assert.match(libraryView, /id: "licensed-beats"/, 'web library exposes licensed beat licences')
-assert.match(libraryView, /fetch\("\/api\/library\/owned"/, 'licensed beat surface must retain the existing entitlement-backed API')
+assert.match(libraryView, /url: "\/api\/library\/owned"/, 'licensed beat surface must retain the existing entitlement-backed API')
 
 console.log('song workspace entitlement tests passed')

@@ -128,3 +128,37 @@
   outline: 2px solid var(--bvs-culture-lilac, #c1a7ff);
   outline-offset: 3px;
 }
+
+/* Library and Studio use the same square, quiet collection system on web and native. */
+:is(.bvs-square-library, .bvs-square-studio) [class*="rounded"] { border-radius: 0; }
+.bvs-square-library { background: #0a0a0a; }
+:is(.bvs-square-library, .bvs-square-studio) :is(h1, h2) { letter-spacing: -.035em; }
+:is(.bvs-square-library, .bvs-square-studio) :is(button, summary, a[class*="rounded"]) { min-height: 44px; }
+:is(.bvs-square-library, .bvs-square-studio) :is(a, button, summary):focus-visible { outline: 2px solid var(--bvs-culture-lilac, #c1a7ff); outline-offset: 3px; }
+.bvs-square-library > section, .bvs-square-library .bvs-library-shelf { border-width: 1px 0 0; border-color: rgb(255 255 255 / .2); border-radius: 0; padding-top: 1.5rem; background: transparent; }
+.bvs-square-library article { border-width: 0 0 1px; border-color: rgb(255 255 255 / .15); background: transparent; padding-inline: 0; }
+.bvs-square-library .bvs-library-metrics { gap: 0; border: 1px solid rgb(255 255 255 / .2); }
+.bvs-square-library .bvs-library-metrics > button { min-height: 105px; border: 0; border-inline-end: 1px solid rgb(255 255 255 / .15); background: #171719; transform: none; }
+.bvs-square-library .bvs-library-metrics > button:last-child { border-inline-end: 0; }
+.bvs-square-library .bvs-library-accent-button[aria-pressed="true"] { border-color: currentColor; box-shadow: inset 0 -2px currentColor; }
+.bvs-square-library .bvs-library-metrics .bvs-library-accent-button { min-height: 32px; border: 0; height: 32px; width: 32px; }
+.bvs-square-library :is([aria-label="Primary library sections"], [aria-label="Library sections"]) > button { border-color: transparent; background: transparent; }
+.bvs-square-library details > summary { list-style: none; }
+.bvs-square-library details > summary::after { content: " +"; }
+.bvs-square-library details[open] > summary::after { content: " −"; }
+.bvs-square-studio .bvs-native-studio :is(.bvs-studio-role, .bvs-studio-work-card, .bvs-studio-release-path) { background: #171719; box-shadow: none; transform: none; border-color: rgb(var(--bvs-studio-rgb) / .3); }
+.bvs-square-studio .bvs-native-studio > section { border-width: 1px 0 0; border-color: rgb(255 255 255 / .2); padding-top: 1.5rem; background: transparent; }
+.bvs-square-studio .bvs-studio-work-card { border-width: 1px 0 0; }
+.bvs-square-studio .bvs-studio-work-card:hover { border-color: rgb(var(--bvs-studio-rgb) / .7); }
+@media (max-width: 639px) {
+  .bvs-square-library .bvs-library-metrics > button:nth-child(2) { border-inline-end: 0; }
+  .bvs-square-library .bvs-library-metrics > button:nth-child(-n+2) { border-bottom: 1px solid rgb(255 255 255 / .15); }
+}
+@media (forced-colors: active) {
+  .bvs-square-library .bvs-library-metrics > button, .bvs-square-studio .bvs-native-studio :is(.bvs-studio-role, .bvs-studio-work-card) { background: Canvas; border-color: CanvasText; }
+}
+.bvs-square-library .bvs-library-item-actions { margin-left: auto; }
+.bvs-square-library .bvs-library-item-actions[open] { flex-basis: 100%; }
+.bvs-square-library .bvs-library-item-actions > summary { text-align: right; }
+.bvs-square-library .bvs-library-item-actions > summary::after { content: none; }
+.bvs-square-library .bvs-library-item-actions .relative > .absolute { position: static; width: 100%; margin-top: .5rem; }
