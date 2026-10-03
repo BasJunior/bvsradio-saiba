@@ -63,6 +63,8 @@
 .bvs-discover-actions-content { display: grid; gap: .5rem; padding: .75rem; border-top: 1px solid rgb(255 255 255 / .2); background: #1b1b1b; }
 .bvs-discover-actions-content :is(button, a) { min-height: 44px; }
 .bvs-discover-actions-content > div { min-width: 0; }
+/* Web playlist choices expand inside the card instead of clipping at a rail. */
+.bvs-discover-actions-content .relative > .absolute { position: static; width: 100%; margin-top: .5rem; }
 .bvs-discover-filters { border-bottom: 1px solid rgb(255 255 255 / .2); padding-bottom: .5rem; }
 .bvs-discover-filters > summary { display: flex; align-items: center; gap: .5rem; }
 .bvs-discover-filters > summary::after { content: "+"; margin-left: auto; }
