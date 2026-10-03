@@ -27,14 +27,16 @@ type WorkspaceLink = {
   startsWith?: string;
 };
 
+const creationLinks: WorkspaceLink[] = [
+  { href: "/creator/studio/create/release", label: "New release", accent: "core" },
+  { href: "/creator/studio/create/beat", label: "New beat", accent: "beats" },
+  { href: "/creator/studio/create/service", label: "New service", accent: "marketplace" },
+];
 const workspaceLinks: WorkspaceLink[] = [
   { href: "/creator/studio", label: "Home", accent: "core", match: "/creator/studio" },
-  { href: "/creator/studio/create/release", label: "New release", accent: "core", startsWith: "/creator/studio/create/release" },
-  { href: "/creator/studio/create/beat", label: "New beat", accent: "beats", startsWith: "/creator/studio/create/beat" },
-  { href: "/creator/studio/create/service", label: "New service", accent: "marketplace", startsWith: "/creator/studio/create/service" },
-  { href: "/creator/studio/manage", label: "Manage", accent: "core", startsWith: "/creator/studio/manage" },
-  { href: "/creator/marketplace", label: "Storefront", accent: "marketplace" },
-  { href: "/artists", label: "Money", accent: "money" },
+  { href: "/creator/studio/manage", label: "Catalogue", accent: "core", startsWith: "/creator/studio/manage" },
+  { href: "/creator/studio/services", label: "Services", accent: "marketplace", startsWith: "/creator/studio/services" },
+  { href: "/creator/studio/earnings", label: "Earnings", accent: "money", match: "/creator/studio/earnings" },
 ];
 
 export default function StudioProductionShell({ children }: { children: ReactNode }) {
@@ -92,34 +94,39 @@ export default function StudioProductionShell({ children }: { children: ReactNod
             <Link href="/marketplace" data-studio-accent="marketplace" className="bvs-studio-accent-button hidden shrink-0 rounded-full border px-4 py-2 text-xs font-semibold sm:inline-flex">Public Marketplace</Link>
           </div>
 
-          <nav aria-label="Creator Studio workspace" className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          <nav aria-label="Creator Studio workspace" className="mt-3 flex flex-wrap items-center gap-2 pb-1">
             {workspaceLinks.map((item) => {
               const active = item.match ? pathname === item.match : item.startsWith ? pathname.startsWith(item.startsWith) : false;
               return (
-                <Link key={item.href} href={item.href} data-studio-accent={item.accent} aria-current={active ? "page" : undefined} className={`bvs-studio-accent-button shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold ${active ? "ring-1 ring-current/25" : ""}`}>
+                <div key={item.href} className="contents"><Link href={item.href} data-studio-accent={item.accent} aria-current={active ? "page" : undefined} className={`bvs-studio-accent-button shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold ${active ? "ring-1 ring-current/25" : ""}`}>
                   {item.label}
                 </Link>
+                {item.match === '/creator/studio' ? <details className="relative">
+                  <summary data-studio-accent="core" aria-current={pathname.startsWith('/creator/studio/create/') ? 'page' : undefined} className="bvs-studio-accent-button cursor-pointer rounded-full border px-3.5 py-2 text-xs font-semibold">Create</summary>
+                  <div className="absolute left-0 top-full z-50 mt-2 min-w-48 rounded-2xl border border-white/15 bg-bg-primary p-2 shadow-xl">
+                    {creationLinks.map(item => <Link key={item.href} href={item.href} data-studio-accent={item.accent} onClick={event => event.currentTarget.closest('details')?.removeAttribute('open')} className="block rounded-xl px-3 py-3 text-sm hover:bg-white/5">{item.label}</Link>)}
+                  </div>
+                </details> : null}</div>
               );
             })}
-            {token ? <a href="#studio-wallet" data-studio-accent="money" className="bvs-studio-accent-button shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold">Wallet</a> : null}
           </nav>
 
           {links.length > 0 ? (
-            <nav aria-label="Current Studio page sections" className="mt-2 flex gap-1.5 overflow-x-auto">
-              <span className="shrink-0 px-1 py-1.5 text-[10px] font-semibold uppercase tracking-[.14em] text-text-secondary">On this page</span>
+            <details className="mt-2"><summary className="cursor-pointer py-1.5 text-xs text-text-secondary">On this page</summary>
+              <nav aria-label="Current Studio page sections" className="mt-1 flex flex-wrap gap-1.5">
               {links.map((item) => (
                 <a key={item.id} href={`#${item.id}`} data-studio-accent={item.accent} className="bvs-studio-accent-label shrink-0 rounded-full px-3 py-1.5 text-xs transition hover:bg-white/5">
                   {item.label}
                 </a>
               ))}
-            </nav>
+              </nav></details>
           ) : null}
         </div>
       </div>
 
       {children}
 
-      {token && (
+      {token && pathname !== "/creator/studio/earnings" && (
         <section id="studio-wallet" className="mx-auto max-w-6xl scroll-mt-48 px-5 pb-16 sm:px-6" aria-labelledby="studio-wallet-heading">
           <div data-studio-accent="money" className="rounded-2xl border border-white/10 bg-white/[.015] p-5 sm:p-6">
             <div className="flex flex-wrap items-end justify-between gap-3">
@@ -128,7 +135,7 @@ export default function StudioProductionShell({ children }: { children: ReactNod
                 <h2 id="studio-wallet-heading" className="mt-2 text-2xl font-semibold">Money at a glance</h2>
                 <p className="mt-2 max-w-2xl text-sm text-text-secondary">A read-only view of your BVS seller wallet and settlement ledger.</p>
               </div>
-              <Link href="/artists" className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm font-semibold">Open full wallet →</Link>
+              <Link href="/creator/studio/earnings" className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm font-semibold">Open full wallet →</Link>
             </div>
             <div className="mt-5 border-t border-white/10 pt-4"><StudioMoneySummary token={token} /></div>
           </div>

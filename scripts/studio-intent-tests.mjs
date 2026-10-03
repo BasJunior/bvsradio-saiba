@@ -33,7 +33,7 @@ assert(home.includes("/creator/studio/create/release"), "web Studio has Release 
 assert(home.includes("/creator/studio/create/beat"), "web Studio has Sell a beat");
 assert(home.includes("/creator/studio/create/service"), "web Studio has Offer a service");
 assert(home.includes("/creator/studio/manage"), "web Studio links full Studio");
-assert(home.includes('href="/artists"'), "web Studio money stays on production wallet /artists");
+assert(home.includes('href="/creator/studio/earnings"') && read("src/app/creator/studio/earnings/page.tsx").includes("@/app/artists/page"), "Studio earnings must reuse the production wallet inside the workspace");
 assert(home.includes("legacyStudioAnchors"), "web Studio legacy hash redirects remain");
 assert(home.includes("studio_open"), "web Studio instrumentation remains");
 assert(exists("src/app/creator/studio/create/release/page.tsx"), "web release route exists");
@@ -46,13 +46,13 @@ assert(marketplace.includes('"studio_session"'), "studio_session category remain
 assert(analytics.includes("create_intent_selected"), "create_intent_selected remains allowlisted");
 assert(capacitor.includes("https://bvsradio.com/app/${mobileSurface}") || capacitor.includes("bvsradio.com/app/"), "Capacitor still loads live contained app surface");
 
-// Web should treat Studio as a first-class creator destination, using the same access source of truth.
+// Web offers one consistent Studio entry; authenticated workspace APIs retain access control.
 assert(accessRoute.includes("const isCreator = profileRole !== 'listener' || isProducerFlag || isEditorial"), "web/app access must keep creator identity source of truth");
-assert(webNavbar.includes("const showCreator = Boolean(access?.creator)"), "web Studio visibility must use creator access");
-assert(webNavbar.includes('data-bvs-web-studio="desktop"'), "desktop web creators must get a first-class Studio button");
-assert(webNavbar.includes('data-bvs-web-studio="mobile"'), "mobile web creators must get a one-tap Studio button");
-assert(webNavbar.includes('href="/creator/studio"'), "web Studio button must open canonical Creator Studio");
-assert(webNavbar.includes("studioActive"), "web Studio button must expose active-route state");
+const webNavigation = read("src/lib/web-navigation.ts");
+const mobileNavigation = read("src/components/layout/MobileFlowNav.tsx");
+assert(webNavigation.includes("href: '/creator/studio'"), "shared web navigation must open canonical Studio");
+assert(webNavbar.includes('webDestinations') && mobileNavigation.includes('webDestinations'), "desktop and mobile must share web destinations");
+assert(webNavbar.includes('isWebDestinationActive') && mobileNavigation.includes('isWebDestinationActive'), "desktop and mobile must share active route state");
 
 assert(quickBeat.includes("BeatPackUploadForm"), "Sell a beat exposes existing beat-pack uploader");
 assert(quickBeat.includes("Beat pack / EP"), "Sell a beat includes Beat pack / EP mode");

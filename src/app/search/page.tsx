@@ -65,7 +65,7 @@ type CatalogueTrack = {
   inRotation?: boolean
   featured?: boolean
 }
-type ExploreMode = 'fresh' | 'rotation' | 'playlists' | 'creators' | 'beats' | 'culture'
+type ExploreMode = 'all' | 'fresh' | 'rotation' | 'playlists' | 'creators' | 'beats' | 'culture'
 
 const filters: Array<{ label: string; value: 'all' | SearchKind }> = [
   { label: 'All', value: 'all' }, { label: 'Tracks', value: 'track' }, { label: 'Releases', value: 'release' }, { label: 'Playlists', value: 'playlist' },
@@ -74,6 +74,7 @@ const filters: Array<{ label: string; value: 'all' | SearchKind }> = [
 ]
 const headings: Record<SearchKind, string> = { track: 'Tracks', release: 'Releases', playlist: 'Playlists', artist: 'Artists', producer: 'Producers', beat: 'Beats', show: 'Shows', story: 'Stories', service: 'Services' }
 const exploreModes: Array<{ value: ExploreMode; label: string; kinds: SearchKind[]; description: string }> = [
+  { value: 'all', label: 'Discover', kinds: ['track', 'release', 'playlist', 'artist', 'producer', 'beat', 'show', 'story', 'service'], description: 'Music, beats, artists and shows together. Follow what catches your ear.' },
   { value: 'fresh', label: 'Fresh', kinds: ['track', 'release', 'playlist', 'beat', 'story'], description: 'Newest publicly published BVS music, playlists, beats and stories first.' },
   { value: 'rotation', label: 'On BVS', kinds: ['track'], description: 'Tracks currently cleared into the live BVS radio rotation.' },
   { value: 'playlists', label: 'Playlists', kinds: ['playlist'], description: 'Public playlists made by BVS listeners and creators.' },
@@ -133,7 +134,7 @@ function flowDetailProps(item: SearchItem) {
 export default function SearchPage() {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | SearchKind>('all')
-  const [mode, setMode] = useState<ExploreMode>('fresh')
+  const [mode, setMode] = useState<ExploreMode>('all')
   const [artists, setArtists] = useState<PublishedArtistSummary[]>([])
   const [producers, setProducers] = useState<PublishedProducerSummary[]>([])
   const [beats, setBeats] = useState<PublicBeat[]>([])
@@ -151,7 +152,7 @@ export default function SearchPage() {
       const nextMode = params.get('mode') as ExploreMode | null
       setQuery(params.get('q') || '')
       setFilter(nextFilter && filters.some(item => item.value === nextFilter) ? nextFilter : 'all')
-      setMode(nextMode && exploreModes.some(item => item.value === nextMode) ? nextMode : 'fresh')
+      setMode(nextMode && exploreModes.some(item => item.value === nextMode) ? nextMode : 'all')
     }
     sync()
     window.addEventListener('popstate', sync)
@@ -344,12 +345,13 @@ export default function SearchPage() {
   const activeMode = exploreModes.find(item => item.value === mode) || exploreModes[0]
 
   return <main className="mx-auto min-h-[70vh] max-w-7xl px-4 py-12 sm:px-6">
-    <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Explore BVS</p>
-    <h1 className="text-4xl md:text-5xl">Music, playlists, creators and the scene around them</h1>
-    <p className="mt-3 max-w-2xl text-text-secondary">Search published BVS content or move through recent music, public playlists, verified creators, BeatStore and programmes.</p>
-    <label className="mt-8 block max-w-3xl"><span className="sr-only">Search BVS</span><input autoFocus value={query} onChange={event => setQuery(event.target.value)} placeholder="Try “Vibes”, “Wolf Bridges” or “gospel”" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
+    <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Discover BVS</p>
+    <h1 className="text-4xl md:text-5xl">Find your next favourite</h1>
+    <p className="mt-3 max-w-2xl text-text-secondary">Music, beats, artists and shows in one place. Browse everything or search for something you love.</p>
+    <div className="mt-5 flex flex-wrap gap-3 text-sm"><Link href="/feed" className="text-brand hover:underline">Community Feed →</Link><Link href="/radio" className="text-brand hover:underline">Live radio →</Link></div>
+    <label className="mt-8 block max-w-3xl"><span className="sr-only">Search BVS</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Try “Vibes”, “Wolf Bridges” or “gospel”" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
     {flowV2Flags.exploreModes && !query.trim() ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${mode === item.value ? 'bg-brand text-black' : 'border border-white/10 bg-white/[.03] text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
-    <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter results">{filters.map(item => <button key={item.value} onClick={() => setFilter(item.value)} aria-pressed={filter === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${filter === item.value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div>
+    {query.trim() || filter !== 'all' ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter results">{filters.map(item => <button key={item.value} onClick={() => setFilter(item.value)} aria-pressed={filter === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${filter === item.value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
 
     {!query.trim() && filter === 'all' ? <section className="mt-10" aria-label="Explore published BVS content"><h2 className="text-3xl font-semibold">{flowV2Flags.exploreModes ? activeMode.label : 'Discover now'}</h2><p className="mt-2 text-text-secondary">{flowV2Flags.exploreModes ? activeMode.description : 'Published and editorially visible BVS content.'}</p></section> : <h2 className="mt-10 text-3xl font-semibold">{query.trim() ? `Results for “${query.trim()}”` : headings[filter as SearchKind]}</h2>}
     <div className="mt-7 space-y-12">
