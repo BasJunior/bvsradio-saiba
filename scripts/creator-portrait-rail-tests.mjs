@@ -11,6 +11,7 @@ const exports = {};
 const imports = {
   react:{useId:()=> 'portraits',useRef:()=>({current:rail}),useState:()=>[{previous:false,next:true},()=>{}],useEffect:fn=>fn()},
   'react/jsx-runtime':{jsx,jsxs:jsx}, 'next/image':{default:'image'},'next/link':{default:'link'},
+  '@/lib/image-optimization':{shouldBypassImageOptimizer: source => /^https?:|blob:|data:/.test(source)},
 };
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/home/CreatorPortraitRail.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText,{
   exports,require:name=>imports[name],window:{matchMedia:()=>({matches:reduced})},
