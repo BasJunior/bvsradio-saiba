@@ -42,8 +42,8 @@ assert.ok(
 );
 assert.ok(
   playlistShelf.includes("/api/playlists/public?limit=6") &&
-    playlistShelf.includes('loading="lazy"') &&
-    playlistShelf.includes('decoding="async"'),
+    playlistShelf.includes('CreatorPortraitRail') &&
+    (await readFile(new URL("../src/components/home/CreatorPortraitRail.tsx", import.meta.url), "utf8")).includes('loading="lazy" decoding="async"'),
   "Home playlists must request only visible rows and lazy-load below-fold artwork.",
 );
 

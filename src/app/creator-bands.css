@@ -43,7 +43,20 @@
 .bvs-square-home .bvs-home-accent-card:hover { background: rgb(var(--bvs-home-rgb) / .05); }
 .bvs-square-home :is(.bvs-culture-listen, .bvs-culture-station, .bvs-app-home-hero) { box-shadow: none; }
 .bvs-square-home .bvs-culture-listen { border-width: 1px 0; background: transparent; padding-inline: 0; }
+/* Home uses one heading and card scale, including collections and work tools. */
+.bvs-square-home :is(.bvs-home-personal-band, .bvs-home-join-band) h2 { font-size: clamp(2.1rem, 5vw, 4rem); line-height: 1; text-transform: uppercase; font-weight: 850; letter-spacing: -.055em; }
+.bvs-square-home .bvs-home-join-band { text-align: left; max-width: 80rem; margin-inline: auto; }
+.bvs-square-home .bvs-home-join-band :is(h2, p) { margin-inline: 0; }
+.bvs-square-home .bvs-home-join-band > div { justify-content: flex-start; }
+.bvs-home-beat-portrait > article { width: 100%; min-width: 0; border: 0; background: transparent; border-radius: 0; box-shadow: none; }
+.bvs-home-beat-portrait > article > button + div { border-top: 1px solid var(--portrait-line); padding: .85rem .75rem; }
+.bvs-home-beat-portrait > article h3 { font-size: 1rem; font-weight: 800; line-height: 1.2; }
+.bvs-home-beat-portrait > article > div:last-of-type { flex-wrap: wrap; padding-inline: .75rem; }
+.bvs-home-beat-portrait > div { padding: 0 .75rem .75rem; }
+.bvs-home-beat-portrait { --color-brand: var(--bvs-culture-lilac); }
+.bvs-creator-band h2 { overflow-wrap: anywhere; }
 .bvs-square-home .bvs-app-home-hero { border-width: 1px 0; background-color: #0a0a0a; }
+.bvs-square-home section[data-bvs-culture="station"] { background-color: #1b1b1b; }
 .bvs-square-home .bvs-release-directory { border: 0; }
 
 /* Discover uses the same quiet, square editorial surfaces as Home. */

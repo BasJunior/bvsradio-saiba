@@ -20,7 +20,8 @@ assert.ok(
 assert.ok(
   checkout.includes("unoptimized={shouldBypassImageOptimizer(item.artwork)}") &&
     account.includes("unoptimized={shouldBypassImageOptimizer(currentPhoto)}") &&
-    homeShows.includes("unoptimized={shouldBypassImageOptimizer(show.image)}") &&
+    homeShows.includes("CreatorPortraitRail") &&
+    (await readFile(new URL("../src/components/home/CreatorPortraitRail.tsx", import.meta.url), "utf8")).includes("unoptimized={shouldBypassImageOptimizer(item.image)}") &&
     showPage.includes("unoptimized={shouldBypassImageOptimizer(show.image)}"),
   "Dynamic checkout, preview and programme artwork must retain per-image optimizer bypass guards.",
 );

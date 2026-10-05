@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import LibraryAction from "@/components/LibraryAction";
 import type { BvsObject } from "@/lib/bvs-object";
@@ -54,25 +54,17 @@ export default function HomeBeatRail() {
   }));
 
   return (
-    <section data-home-accent="beats" className="border-y border-white/10 bg-bg-secondary/45 py-12 sm:py-16" aria-labelledby="fresh-beats-title">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
-        <div className="flex items-end justify-between gap-4">
-          <div><p className="bvs-home-accent-label text-xs uppercase tracking-[.2em]">Connected discovery</p><h2 id="fresh-beats-title" className="mt-2 text-3xl sm:text-4xl">Fresh from BeatStore</h2><p className="mt-2 text-sm text-text-secondary">Preview producer work, save beats you like and come back to them when you are ready to create.</p></div>
-          <Link href="/catalogue?type=beat#beatstore" className="bvs-home-accent-button hidden rounded-full border px-4 py-2 text-sm font-semibold sm:block">View all beats →</Link>
-        </div>
-        <div className="mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4" data-flow-scroll-key="home-beatstore">
+    <CreatorPortraitRail data-home-accent="beats" title="BeatStore" kicker="Find the sound for your next record" tone="ink" accent="purple" allHref="/catalogue?type=beat#beatstore" items={beats.map(beat => ({ id: beat.id, name: beat.title, image: beat.artworkUrl || "", href: `/beat/${beat.id}`, detail: beat.producer || "BVS producer" }))}>
           {objects.map((object, index) => {
             const beat = beats[index];
             const href = `/beat/${beat.id}`;
-            return <div key={object.id} className="snap-start">
+            return <div key={object.id} className="bvs-home-beat-portrait bvs-creator-portrait">
               <BvsObjectCard object={object} variant="rail-card" />
               <div className="mt-2 flex justify-end">
                 <LibraryAction item={{ id: `beat-${beat.id}`, kind: 'beat', title: beat.title, subtitle: beat.producer || 'BVS producer', href, image: beat.artworkUrl, tags: [beat.genre || '', beat.mood || ''].filter(Boolean) }} section="favourites" compact />
               </div>
             </div>;
           })}
-        </div>
-      </div>
-    </section>
+    </CreatorPortraitRail>
   );
 }

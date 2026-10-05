@@ -1,5 +1,5 @@
 import BvsStar from "@/components/branding/BvsStar";
-import Image from "next/image";
+import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import { Suspense } from "react";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
@@ -102,19 +102,7 @@ export default function HomePage() {
 
       <DeferredHomeCreatorBands />
 
-      <section data-home-accent="discover" className="bvs-home-release-band relative" aria-label="Discover BVS music"><div>
-        <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-          <div className="max-w-3xl">
-            <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Discover</p>
-            <h2 className="mt-2 text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Find your next favourite before everyone else does.</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
-              Move from a song to the artist, release and wider BVS catalogue without breaking the listening flow.
-            </p>
-          </div>
-          <Link href="/search" data-home-accent="discover" className="bvs-home-accent-button rounded-full border px-4 py-2 text-sm font-semibold">Explore everything →</Link>
-        </div>
-        <div className="mt-8 sm:mt-10"><DeferredPublishedAlbumsShelf /></div>
-      </div></section>
+      <DeferredPublishedAlbumsShelf />
 
       <DeferredHomeEngagementHub />
 
@@ -126,43 +114,20 @@ export default function HomePage() {
         <HomeShowsSection />
       </Suspense>
 
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div data-home-accent="marketplace" className="relative overflow-hidden rounded-[1.65rem] border border-white/10 bg-white/[.03] p-6 sm:p-8">
-            <div className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-[#91af85]/10 blur-3xl" aria-hidden="true" />
-            <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Marketplace</p>
-            <h2 className="mt-2 max-w-xl text-balance text-3xl font-semibold tracking-tight">Find the people and services that move a record forward.</h2>
-            <p className="mt-3 max-w-xl text-sm leading-relaxed text-text-secondary sm:text-base">
-              Browse real creator services and availability when you need production, recording, mixing, mastering or other specialist help.
-            </p>
-            <Link href="/marketplace" className="bvs-home-accent-button mt-6 inline-flex rounded-full border px-5 py-2.5 text-sm font-semibold">
-              Explore Marketplace →
-            </Link>
-          </div>
+      <CreatorPortraitRail data-home-accent="marketplace" title="Marketplace" kicker="The people and services behind your next record" tone="charcoal" allHref="/marketplace" items={[
+        { id: "services", name: "Creator services", image: "/images/editorial/audio-engineering-work.webp", href: "/marketplace", detail: "Explore production, recording, mixing and mastering" },
+        { id: "studio", name: "BVS Studio services", image: "/images/hero-studio.jpg", href: "/shop", detail: "Explore official BVS audio services" },
+      ]} />
 
-          <div className="grid overflow-hidden rounded-[1.65rem] border border-white/10 bg-bg-card/45 sm:grid-cols-[12rem_1fr]">
-            <div className="relative min-h-48 sm:min-h-full">
-              <Image src="/images/editorial/audio-engineering-work.webp" alt="Audio engineer working at a mixing console" fill className="object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent to-black/15" />
-            </div>
-            <div data-home-accent="studio" className="p-6 sm:p-7">
-              <p className="bvs-home-accent-label text-xs font-semibold uppercase tracking-[.2em]">Creator Studio</p>
-              <h2 className="mt-2 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">From first upload to what comes next.</h2>
-              <p className="mt-3 text-sm leading-relaxed text-text-secondary">
-                Submit music, follow review and release progress, then see performance and money from one creator workspace. Your first BVS release does not require Premium.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2.5">
-                <Link href="/creator/studio" className="bvs-home-accent-button rounded-full border px-5 py-2.5 text-sm font-semibold">Open Studio</Link>
-                <Link href="/upload" className="rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold">Submit music</Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <CreatorPortraitRail title="Creator Studio" kicker="From first upload to what comes next" tone="ink" accent="purple" allHref="/creator/studio" items={[
+        { id: "workspace", name: "Your workspace", image: "/images/editorial/radio-studio-harare.webp", href: "/creator/studio", detail: "Follow review, release progress, performance and money" },
+        { id: "release", name: "Submit music", image: "/images/musicians.jpg", href: "/upload", detail: "Your first BVS release does not require Premium" },
+        { id: "beat", name: "Submit a beat", image: "/images/editorial/audio-engineering-work.webp", href: "/creator/studio/create/beat", detail: "Build your producer catalogue" },
+      ]} />
 
-      <section className="border-t border-white/10 px-4 py-10 text-center sm:px-6 sm:py-16">
+      <section className="bvs-home-join-band border-t border-white/10 px-4 py-10 text-center sm:px-6 sm:py-16">
         <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Built in Zimbabwe · Open to the world</p>
-        <h2 className="mx-auto mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Listen now. Find something worth coming back for.</h2>
+        <h2 className="mx-auto mt-3 max-w-2xl text-balance text-3xl font-semibold tracking-tight sm:text-4xl">Join BVS</h2>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-text-secondary sm:text-base">
           Join free to save music, follow creators and keep your BVS listening experience with you.
         </p>

@@ -2,16 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useId, useRef, useState } from "react";
+import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-export type CreatorPortrait = { id: string; name: string; image: string; href: string; detail: string };
+export type CreatorPortrait = { id: string; name: string; image: string; href: string; detail: string; accent?: string };
 
-export default function CreatorPortraitRail({ title, tone, items, allHref, accent = "green" }: {
+export default function CreatorPortraitRail({ title, tone, items, allHref, accent = "green", kicker = "The people behind the sound", children, "data-home-accent": homeAccent }: {
   title: string;
   tone: "charcoal" | "ink";
   items: CreatorPortrait[];
   allHref: string;
   accent?: "green" | "purple";
+  kicker?: string;
+  children?: ReactNode;
+  "data-home-accent"?: string;
 }) {
   const id = useId();
   const railRef = useRef<HTMLDivElement>(null);
@@ -35,10 +39,10 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, accen
   }
 
   if (!items.length) return null;
-  return <section className={`bvs-creator-band bvs-creator-band--${tone} ${accent === "purple" ? "bvs-creator-band--purple" : ""}`} aria-labelledby={`${id}-heading`}>
+  return <section data-home-accent={homeAccent} className={`bvs-creator-band bvs-creator-band--${tone} ${accent === "purple" ? "bvs-creator-band--purple" : ""}`} aria-labelledby={`${id}-heading`}>
     <div className="bvs-creator-band-inner">
       <div className="bvs-creator-band-header">
-        <div><p className="bvs-creator-kicker">The people behind the sound</p><h2 id={`${id}-heading`}>{title}</h2></div>
+        <div><p className="bvs-creator-kicker">{kicker}</p><h2 id={`${id}-heading`}>{title}</h2></div>
         <Link className="bvs-creator-directory" href={allHref}>See all <span aria-hidden="true">↗</span></Link>
       </div>
       <div className="bvs-creator-scroll-guide">
@@ -49,8 +53,8 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, accen
         </div>
       </div>
       <div ref={railRef} id={`${id}-rail`} className="bvs-creator-portrait-rail" role="region" aria-label={`${title} portraits`} aria-describedby={`${id}-hint`} tabIndex={0}>
-        {items.map(item => <Link key={item.id} href={item.href} className="bvs-creator-portrait">
-          <div className="bvs-creator-photo"><Image src={item.image || "/assets/images/default-avatar.png"} alt="" fill sizes="(max-width: 640px) 160px, (max-width: 1024px) 200px, 240px" unoptimized={/^https?:\/\//i.test(item.image)} className="object-cover" /></div>
+        {children || items.map(item => <Link key={item.id} href={item.href} data-home-accent={item.accent} className="bvs-creator-portrait">
+          <div className="bvs-creator-photo"><Image src={item.image || "/assets/images/default-avatar.png"} alt="" fill loading="lazy" decoding="async" sizes="(max-width: 640px) 160px, (max-width: 1024px) 200px, 240px" unoptimized={shouldBypassImageOptimizer(item.image)} className="object-cover" /></div>
           <div className="bvs-creator-caption"><h3>{item.name}</h3><p>{item.detail}</p></div>
         </Link>)}
       </div>

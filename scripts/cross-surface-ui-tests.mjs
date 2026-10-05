@@ -50,8 +50,8 @@ assert(appLibrary.includes('accent="downloads"'), "iOS Downloads mirrors blue la
 assert(appLibrary.includes("bvs-library-accent-card"), "iOS Library mirrors accent cards");
 
 assert(appHome.includes('data-home-accent="feed"'), "iOS Home mirrors Feed lavender");
-assert(appHome.includes('data-home-accent="studio"'), "iOS Home mirrors Studio blue");
-assert(appHome.includes('data-home-accent="marketplace"'), "iOS Home mirrors Marketplace green");
+assert(appHome.includes('accent: "studio"'), "iOS Home mirrors Studio blue through shared cards");
+assert(appHome.includes('accent: "marketplace"'), "iOS Home mirrors Marketplace green through shared cards");
 assert(appDiscovery.includes('data-home-accent="discover"'), "iOS Home discovery is teal");
 assert(appDiscovery.includes('data-home-accent="shows"'), "iOS Home shows are rose");
 

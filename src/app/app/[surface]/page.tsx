@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import AppJoinCard from "@/components/app-vnext/AppJoinCard";
 import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
 import AppHomeDiscoverySections from "@/components/app-vnext/AppHomeDiscoverySections";
@@ -104,26 +105,13 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
         <AppHomeDiscoverySections surface={surface} />
       </Suspense>
 
-      <section className="mt-12 grid gap-3 sm:grid-cols-3">
-        <Link href={`${base}/library`} data-home-accent="feed" className="bvs-home-accent-card group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5">
-          <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Library</p>
-          <h2 className="mt-3 text-2xl font-semibold">Everything you want to come back to.</h2>
-          <p className="mt-3 text-sm leading-6 text-white/42">Likes, playlists, follows, history and offline music in one place.</p>
-          <span className="mt-5 inline-block text-sm font-semibold text-white/64 group-hover:text-brand">Open Library →</span>
-        </Link>
-        <Link href={`${base}/studio`} data-home-accent="studio" className="bvs-home-accent-card group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5">
-          <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Studio</p>
-          <h2 className="mt-3 text-2xl font-semibold">From listening to releasing.</h2>
-          <p className="mt-3 text-sm leading-6 text-white/42">Create, submit, follow review, publish and understand what happens next.</p>
-          <span className="bvs-home-accent-arrow mt-5 inline-block text-sm font-semibold">Enter Studio →</span>
-        </Link>
-        <Link href={`${base}/marketplace`} data-home-accent="marketplace" className="bvs-home-accent-card group rounded-[1.65rem] border border-white/[.07] bg-white/[.025] p-5">
-          <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">Marketplace</p>
-          <h2 className="mt-3 text-2xl font-semibold">Find the people who move your work forward.</h2>
-          <p className="mt-3 text-sm leading-6 text-white/42">Studios, production and creative services, connected to the same ecosystem.</p>
-          <span className="mt-5 inline-block text-sm font-semibold text-white/64 group-hover:text-brand">Browse Marketplace →</span>
-        </Link>
-      </section>
+      <div className="bvs-app-creator-bands">
+        <CreatorPortraitRail title="Your BVS" kicker="Keep listening, collecting and creating" tone="charcoal" allHref={`${base}/library`} items={[
+          { id: "library", name: "Your Library", image: "/images/editorial/music-discovery-show.webp", href: `${base}/library`, detail: "Likes, playlists, follows, history and offline music" },
+          { id: "studio", accent: "studio", name: "Creator Studio", image: "/images/editorial/radio-studio-harare.webp", href: `${base}/studio`, detail: "Create, submit, follow review and publish" },
+          { id: "marketplace", accent: "marketplace", name: "Marketplace", image: "/images/editorial/audio-engineering-work.webp", href: `${base}/marketplace`, detail: "Studios, production and creative services" },
+        ]} />
+      </div>
     </div>
   );
 }
