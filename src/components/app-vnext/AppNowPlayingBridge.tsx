@@ -86,8 +86,12 @@ export default function AppNowPlayingBridge() {
   // skip commands stay disabled so iOS does not replace track navigation.
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !("mediaSession" in navigator)) return;
-    // Native and WebKit must not compete for the same remote command center.
-    if (nativeHandler()) return;
+    // A now-playing metadata bridge alone does not prove that the installed
+    // binary owns music-only transport. Preserve the previously working WebKit
+    // fallback on old builds; defer only to explicitly capable native builds.
+    const musicOnlyNativeBridge = nativeHandler() &&
+      ((window as BvsWebkitWindow).__bvsNativeMusicControlsVersion || 0) >= 1;
+    if (musicOnlyNativeBridge) return;
 
     const applyMusicControls = () => {
       const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
@@ -103,11 +107,20 @@ export default function AppNowPlayingBridge() {
       });
     };
 
-    // StationPlayer owns the generic browser fallback. Apply the contained-app
-    // policy one task later so this wins on old binaries without a native bridge.
-    const timeout = window.setTimeout(applyMusicControls, 0);
-    return () => window.clearTimeout(timeout);
-  }, [current?.id, current?.src]);
+    // Apply after StationPlayer and native metadata effects, including playback
+    // restarts on the same track and foreground restoration.
+    let timeout: number;
+    const schedule = () => {
+      window.clearTimeout(timeout);
+      timeout = window.setTimeout(applyMusicControls, 0);
+    };
+    schedule();
+    window.addEventListener("bvs:app-resume", schedule);
+    return () => {
+      window.clearTimeout(timeout);
+      window.removeEventListener("bvs:app-resume", schedule);
+    };
+  }, [current?.id, current?.src, player.isPlaying]);
 
   useEffect(() => {
     if (!("mediaSession" in navigator) || !current || typeof MediaMetadata === "undefined") return;

@@ -52,7 +52,16 @@ function mount({ nativeBridge = false, version, unsupportedSeek = false } = {}) 
 
 for (const version of [undefined, 0, 1]) {
   const app = mount({ nativeBridge: true, version });
-  assert.equal(app.handlers.size, 0, 'Native bridge must exclusively own transport commands');
+  assert.equal(app.handlers.size, version === 1 ? 0 : 5,
+    'Metadata-only native bridge must retain the previously working WebKit music controls');
+  if (version !== 1) {
+    assert.equal(app.handlers.get('seekforward'), null);
+    assert.equal(app.handlers.get('seekbackward'), null);
+    app.handlers.clear();
+    app.events.get('bvs:app-resume')();
+    assert.equal(typeof app.handlers.get('nexttrack'), 'function', 'Resume must restore next track');
+    assert.equal(typeof app.handlers.get('previoustrack'), 'function', 'Resume must restore previous track');
+  }
   assert.equal(app.messages.find(m => m.action === 'update').canSeek, version === 1,
     'Legacy binary must receive canSeek=false so it cannot enable interval skip');
   assert.equal(app.messages.at(-1).action, version === 1 ? 'position' : 'update',
