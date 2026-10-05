@@ -56,7 +56,7 @@
 .bvs-home-beat-portrait { --color-brand: var(--bvs-culture-lilac); }
 .bvs-creator-band h2 { overflow-wrap: anywhere; }
 .bvs-square-home .bvs-app-home-hero { border-width: 1px 0; background-color: #0a0a0a; }
-.bvs-square-home section[data-bvs-culture="station"] { background-color: #1b1b1b; }
+.bvs-square-home section[data-bvs-culture="station"]:not(.bvs-creator-band--charcoal):not(.bvs-home-release-band) { background-color: #1b1b1b; }
 .bvs-square-home .bvs-release-directory { border: 0; }
 
 /* Discover uses the same quiet, square editorial surfaces as Home. */
