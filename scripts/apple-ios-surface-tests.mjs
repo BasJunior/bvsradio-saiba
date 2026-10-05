@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import './ios-music-transport-tests.mjs'
 
 function read(path) {
   return fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
@@ -174,8 +175,12 @@ assert(stationPlayer.includes('window.addEventListener("bvs:app-resume", reconci
 assert(stationPlayer.includes('if (!el.paused && !el.ended)'), 'remote play must be idempotent against real media state')
 
 assert(appDelegate.includes('commands.changePlaybackPositionCommand.addTarget'), 'native iOS must bridge Control Center scrubbing')
-assert(appDelegate.includes('commands.skipForwardCommand.preferredIntervals = [15]'), 'native iOS must expose a 15 second forward skip')
-assert(appDelegate.includes('commands.skipBackwardCommand.preferredIntervals = [15]'), 'native iOS must expose a 15 second backward skip')
+assert(!appDelegate.includes('commands.skipForwardCommand.addTarget'), 'native music transport must not register forward interval skip')
+assert(!appDelegate.includes('commands.skipBackwardCommand.addTarget'), 'native music transport must not register backward interval skip')
+assert(!/skip(?:Forward|Backward)Command\.isEnabled = true/.test(appDelegate), 'native interval skipping must never be enabled')
+assert(appDelegate.includes('applyMusicRemoteCommandPolicy()'), 'native music command policy must be reapplied after media updates')
+assert(nowPlayingBridge.includes('if (nativeHandler()) return;'), 'web fallback must not compete with native remote controls')
+assert(nowPlayingBridge.includes('__bvsNativeMusicControlsVersion'), 'older native builds must not enable interval skip through canSeek')
 assert(appDelegate.includes('window.__bvsReceiveNativeMediaCommand'), 'native commands must use the queued WebView bridge')
 assert(appDelegate.includes('pendingNativeMediaPayloads'), 'failed native media dispatches must be retained for retry')
 assert(appDelegate.includes('DispatchQueue.main.async'), 'native WebView media dispatch must stay on the main thread')

@@ -16,6 +16,7 @@ type NativeMediaCommandPayload = {
 };
 
 type BvsWebkitWindow = Window & {
+  __bvsNativeMusicControlsVersion?: number;
   __bvsNativeMediaReady?: boolean;
   __bvsNativeMediaQueue?: NativeMediaCommandPayload[];
   webkit?: {
@@ -85,19 +86,21 @@ export default function AppNowPlayingBridge() {
   // skip commands stay disabled so iOS does not replace track navigation.
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !("mediaSession" in navigator)) return;
+    // Native and WebKit must not compete for the same remote command center.
+    if (nativeHandler()) return;
 
     const applyMusicControls = () => {
-      try {
-        navigator.mediaSession.setActionHandler("previoustrack", () => commandState.current.previous());
-        navigator.mediaSession.setActionHandler("nexttrack", () => commandState.current.next());
-        navigator.mediaSession.setActionHandler("seekto", (details) => {
-          if (typeof details.seekTime === "number") commandState.current.seekTo(details.seekTime);
-        });
-        navigator.mediaSession.setActionHandler("seekbackward", null);
-        navigator.mediaSession.setActionHandler("seekforward", null);
-      } catch {
-        // iOS/WKWebView versions expose different Media Session subsets.
-      }
+      const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+        try { navigator.mediaSession.setActionHandler(action, handler); } catch {}
+      };
+      // Each action is isolated: an unsupported seekto must not prevent clearing skips.
+      set("seekbackward", null);
+      set("seekforward", null);
+      set("previoustrack", () => commandState.current.previous());
+      set("nexttrack", () => commandState.current.next());
+      set("seekto", (details) => {
+        if (typeof details.seekTime === "number") commandState.current.seekTo(details.seekTime);
+      });
     };
 
     // StationPlayer owns the generic browser fallback. Apply the contained-app
@@ -145,11 +148,13 @@ export default function AppNowPlayingBridge() {
       album: current.project || player.playingFrom || "BVS Radio",
       artwork: absoluteArtwork(current.artwork),
       playing: player.isPlaying,
-      elapsed: Math.max(0, timeline.elapsed || 0),
+      elapsed: Math.max(0, commandState.current.elapsed || 0),
       duration: Math.max(0, timeline.duration || 0),
       canNext,
       canPrevious,
-      canSeek,
+      // Older installed binaries couple canSeek to interval-skip availability.
+      // Only opt in to native scrubbing after the binary advertises music-only controls.
+      canSeek: canSeek && ((window as BvsWebkitWindow).__bvsNativeMusicControlsVersion || 0) >= 1,
     });
   }, [canNext, canPrevious, canSeek, current, timeline.duration, player.isPlaying, player.playingFrom]);
 
@@ -160,13 +165,17 @@ export default function AppNowPlayingBridge() {
     const second = Math.floor(timeline.elapsed || 0);
     if (second === lastNativeSecond.current) return;
     lastNativeSecond.current = second;
+    const musicOnlyBinary = ((window as BvsWebkitWindow).__bvsNativeMusicControlsVersion || 0) >= 1;
     handler.postMessage({
-      action: "position",
+      // Legacy native position messages do not refresh command availability.
+      // Reassert canSeek=false there too, after WebKit updates its media session.
+      action: musicOnlyBinary ? "position" : "update",
+      ...(!musicOnlyBinary ? { canNext, canPrevious, canSeek: false } : {}),
       playing: player.isPlaying,
       elapsed: Math.max(0, timeline.elapsed || 0),
       duration: Math.max(0, timeline.duration || 0),
     });
-  }, [current, timeline.duration, timeline.elapsed, player.isPlaying]);
+  }, [canNext, canPrevious, current, timeline.duration, timeline.elapsed, player.isPlaying]);
 
   useEffect(() => {
     const win = window as BvsWebkitWindow;
