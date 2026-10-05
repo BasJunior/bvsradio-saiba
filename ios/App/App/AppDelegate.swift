@@ -14,6 +14,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     private let nowPlayingRouteHandler = "bvsNowPlaying"
     private let pushRegistrationHandler = "bvsPushRegistration"
     private var remoteCommandsConfigured = false
+    private var canNextTrack = false
+    private var canPreviousTrack = false
+    private var canScrubTrack = false
     private var currentArtworkURL = ""
     private var pendingPushHref: String?
     private var pushActionBridgeReady = false
@@ -62,6 +65,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         configureNavigationGesturesIfNeeded()
         configureRemoteCommandsIfNeeded()
         flushPendingNativeMediaCommands()
+        applyMusicRemoteCommandPolicy()
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -105,6 +109,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             (() => {
               if (window.__bvsNativeRouteBridgeInstalled) return;
               window.__bvsNativeRouteBridgeInstalled = true;
+              window.__bvsNativeMusicControlsVersion = 1;
               const emit = () => window.webkit?.messageHandlers?.bvsNavigationRoute?.postMessage(window.location.href);
               for (const name of ['pushState', 'replaceState']) {
                 const original = window.history[name];
@@ -169,12 +174,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         if action == "clear" {
             center.nowPlayingInfo = nil
             currentArtworkURL = ""
-            let commands = MPRemoteCommandCenter.shared()
-            commands.nextTrackCommand.isEnabled = false
-            commands.previousTrackCommand.isEnabled = false
-            commands.skipForwardCommand.isEnabled = false
-            commands.skipBackwardCommand.isEnabled = false
-            commands.changePlaybackPositionCommand.isEnabled = false
+            canNextTrack = false
+            canPreviousTrack = false
+            canScrubTrack = false
+            applyMusicRemoteCommandPolicy()
             return
         }
 
@@ -188,19 +191,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
                 loadNowPlayingArtwork(artwork)
             }
 
-            let commands = MPRemoteCommandCenter.shared()
             if let canNext = boolean(payload["canNext"]) {
-                commands.nextTrackCommand.isEnabled = canNext
+                canNextTrack = canNext
             }
             if let canPrevious = boolean(payload["canPrevious"]) {
-                commands.previousTrackCommand.isEnabled = canPrevious
+                canPreviousTrack = canPrevious
             }
             if let canSeek = boolean(payload["canSeek"]) {
-                // BVS is a music player: keep transport controls as previous/next track.
-                // Seeking remains available through the scrubber without replacing those controls.
-                commands.skipForwardCommand.isEnabled = false
-                commands.skipBackwardCommand.isEnabled = false
-                commands.changePlaybackPositionCommand.isEnabled = canSeek
+                canScrubTrack = canSeek
             }
         }
 
@@ -214,6 +212,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             info[MPNowPlayingInfoPropertyPlaybackRate] = playing ? 1.0 : 0.0
         }
         center.nowPlayingInfo = info
+        // WebKit can refresh the shared command center as media starts/resumes.
+        // Reassert the music-only transport policy on position updates too.
+        applyMusicRemoteCommandPolicy()
+    }
+
+    private func applyMusicRemoteCommandPolicy() {
+        let commands = MPRemoteCommandCenter.shared()
+        commands.skipForwardCommand.isEnabled = false
+        commands.skipBackwardCommand.isEnabled = false
+        commands.nextTrackCommand.isEnabled = canNextTrack
+        commands.previousTrackCommand.isEnabled = canPreviousTrack
+        commands.changePlaybackPositionCommand.isEnabled = canScrubTrack
     }
 
     @objc private func handleAudioSessionInterruption(_ notification: Notification) {
@@ -299,18 +309,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
 
         // Keep interval skip commands disabled for music UX. The progress scrubber
         // uses changePlaybackPositionCommand instead and does not replace track controls.
-        commands.skipForwardCommand.preferredIntervals = [15]
         commands.skipForwardCommand.isEnabled = false
-        commands.skipForwardCommand.addTarget { [weak self] event in
-            guard let event = event as? MPSkipIntervalCommandEvent else { return .commandFailed }
-            return self?.emitNativeMediaCommand("skip-forward", extra: ["interval": event.interval]) == true ? .success : .commandFailed
-        }
-        commands.skipBackwardCommand.preferredIntervals = [15]
         commands.skipBackwardCommand.isEnabled = false
-        commands.skipBackwardCommand.addTarget { [weak self] event in
-            guard let event = event as? MPSkipIntervalCommandEvent else { return .commandFailed }
-            return self?.emitNativeMediaCommand("skip-backward", extra: ["interval": event.interval]) == true ? .success : .commandFailed
-        }
         commands.changePlaybackPositionCommand.isEnabled = false
         commands.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let event = event as? MPChangePlaybackPositionCommandEvent else { return .commandFailed }
