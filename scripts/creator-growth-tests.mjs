@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
-import { creatorGrowth, promotionCaption } from '../src/lib/creator-growth.ts';
+import { creatorGrowth, creatorGrowthAccess, promotionCaption } from '../src/lib/creator-growth.ts';
+for (const profile of [{ role: 'artist', is_producer: true }, { role: 'admin', is_producer: true }, { role: 'admin' }]) {
+  assert.equal(creatorGrowthAccess(profile, 'producer').role, 'producer');
+  assert.equal(creatorGrowthAccess(profile, 'artist').role, 'artist');
+}
+assert.equal(creatorGrowthAccess({ role: 'listener', is_producer: true }, 'artist').role, 'producer');
+assert.equal(creatorGrowthAccess({ role: 'artist' }, 'producer').role, 'artist');
+assert.equal(creatorGrowthAccess({ role: 'show_creator' }, 'artist').role, 'show_creator');
+assert.equal(creatorGrowthAccess({ role: 'artist', is_producer: true }, 'unknown').role, 'artist');
 const zero = { live: 0, promotions: 0, listeners: 0, sales: 0, activeWeeks: 0 };
 assert.equal(creatorGrowth(zero,'artist').current.name,'Launch');
 assert.equal(creatorGrowth(zero,'artist').current.stars,0);

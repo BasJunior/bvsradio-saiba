@@ -2,6 +2,14 @@ export type GrowthMetrics = {
   live: number; promotions: number; listeners: number; sales: number; activeWeeks: number;
 };
 export type GrowthRole = 'artist' | 'producer' | 'show_creator';
+export function creatorGrowthAccess(profile: { role: string; is_producer?: boolean }, requested: string | null) {
+  const canMakeMusic = ['artist', 'admin'].includes(profile.role);
+  const canProduce = Boolean(profile.is_producer) || profile.role === 'admin';
+  const defaultRole: GrowthRole = profile.role === 'show_creator' ? 'show_creator' : profile.is_producer && profile.role !== 'artist' ? 'producer' : 'artist';
+  const role: GrowthRole = requested === 'artist' && canMakeMusic ? 'artist'
+    : requested === 'producer' && canProduce ? 'producer' : defaultRole;
+  return { role, canMakeMusic, canProduce };
+}
 export type GrowthGoal = { id: keyof GrowthMetrics; label: string; target: number; value: number; done: boolean };
 export const growthLevels = [
   { id: 'launch', name: 'Launch', live: 1, promotions: 1, listeners: 10, sales: 1, activeWeeks: 2 },
