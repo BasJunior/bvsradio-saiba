@@ -1,5 +1,10 @@
 /* Square editorial Home. Quiet charcoal bands, separated by fine lines. */
 .bvs-directory-title { font-size: clamp(2.1rem, 5vw, 4rem); line-height: 1; text-transform: uppercase; font-weight: 850; letter-spacing: -.055em; overflow-wrap: anywhere; }
+.bvs-beatstore-directory [data-beat-directory] { display: flex; gap: 1rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 1rem; scrollbar-width: thin; }
+.bvs-beatstore-directory [data-beat-directory] > article { flex: 0 0 160px; min-width: 0; scroll-snap-align: start; }
+.bvs-beatstore-directory [data-beat-directory]:focus-visible { outline: 2px solid var(--bvs-culture-lilac); outline-offset: 3px; }
+@media (min-width: 640px) { .bvs-beatstore-directory [data-beat-directory] > article { flex-basis: 200px; } }
+@media (min-width: 1024px) { .bvs-beatstore-directory [data-beat-directory] > article { flex-basis: 240px; } }
 .bvs-discovery-directory .bvs-creator-band { margin-top: 2rem; }
 .bvs-discovery-directory .bvs-creator-band h2.bvs-directory-name { margin-top: 0; font-size: 1rem; font-weight: 800; line-height: 1.2; text-transform: none; letter-spacing: normal; overflow-wrap: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bvs-home-directory-destination .bvs-marketplace-provider-card { width: 160px; flex: 0 0 160px; min-width: 0; scroll-snap-align: start; }
