@@ -1,30 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import CommunityChat from "@/components/CommunityChat";
+import ListenerRoom from "@/components/radio/ListenerRoom";
 
 export const metadata: Metadata = {
-  title: "Live Room | BVS Radio",
-  description: "Join the BVS Radio live room while the station keeps playing.",
+  title: "Listener Room | BVS Radio",
+  description: "Talk about what you’re hearing, discover tracks and meet fellow BVS listeners.",
 };
 
 export default function RadioRoomPage() {
-  return (
-    <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
-      <header className="mb-8">
-        <Link href="/radio" className="text-sm text-brand hover:underline">← Back to BVS Radio</Link>
-        <p className="mt-6 text-xs font-semibold uppercase tracking-[.22em] text-brand">BVS live room</p>
-        <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Listen together.</h1>
-        <p className="mt-4 max-w-2xl text-base text-text-secondary sm:text-lg">
-          The station keeps playing through the persistent BVS player while you follow the room. Signed-in listeners can read; eligible members can join the conversation.
-        </p>
-      </header>
-
-      <CommunityChat roomTitle="BVS live room" loginNext="/radio/room" />
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
-        <p>Keep it about the music and the moment. Reports go privately to BVS moderators.</p>
-        <Link href="/radio/schedule" className="text-brand hover:underline">See the station schedule →</Link>
-      </div>
-    </main>
-  );
+  return <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+    <header className="mb-8">
+      <Link href="/radio" className="text-sm text-brand hover:underline">Back to BVS Radio</Link>
+      <p className="mt-6 text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Listen together</p>
+      <h1 className="mt-2 text-4xl font-extrabold uppercase tracking-tight sm:text-6xl">Listener room</h1>
+      <p className="mt-4 max-w-2xl text-base leading-7 text-text-secondary">A place for the music you’re hearing and the people discovering it with you. React, ask a question, or put someone onto their next favourite track.</p>
+    </header>
+    <ListenerRoom standalone />
+  </main>;
 }

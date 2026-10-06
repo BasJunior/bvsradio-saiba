@@ -11,7 +11,7 @@ import { useStationPlayer } from "@/components/StationPlayer";
 
 type SessionTab = "queue" | "history" | "room";
 const sessionTabs: SessionTab[] = ["queue", "history", "room"];
-const CommunityChat = dynamic(() => import("@/components/CommunityChat"), {
+const ListenerRoom = dynamic(() => import("@/components/radio/ListenerRoom"), {
   loading: () => <p className="py-6 text-sm text-text-secondary" role="status">Loading listener room…</p>,
 });
 
@@ -103,13 +103,7 @@ export default function RadioSessionHome() {
           ) : null}
 
           {tab === "room" ? (
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="max-w-2xl text-sm text-text-secondary">Listen and follow the room without leaving the station. Signed-in listeners can read; eligible members can join the conversation.</p>
-                <Link href="/radio/room" className="text-sm text-brand hover:underline">Open full room →</Link>
-              </div>
-              <CommunityChat roomTitle="BVS live room" loginNext="/radio/room" />
-            </div>
+            <ListenerRoom />
           ) : null}
         </div>
       </section>
