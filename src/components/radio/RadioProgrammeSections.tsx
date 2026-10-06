@@ -38,9 +38,8 @@ function nextOccurrence(show: Show) {
 
 export default async function RadioProgrammeSections() {
   const shows = await getPublicProgrammes();
-  const activeShow = shows.find((show) => show.status === "active");
   const upcoming = shows
-    .filter((show) => show.status !== "active")
+    .filter((show) => Number.isFinite(nextOccurrence(show)))
     .sort((a, b) => nextOccurrence(a) - nextOccurrence(b));
   const nextShow = upcoming[0];
   const laterShow = upcoming[1];
@@ -58,12 +57,9 @@ export default async function RadioProgrammeSections() {
 
         <div className="grid gap-3 md:grid-cols-3">
           <article className="rounded-2xl border border-brand/30 bg-brand/[0.06] p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Now</p>
-            <h3 className="mt-2 text-xl font-semibold">{activeShow?.title || "BVS Continuous Rotation"}</h3>
-            <p className="mt-2 text-sm text-text-secondary">
-              {activeShow ? `${activeShow.schedule} · Presented by ${activeShow.host}` : "Approved artist releases and selected curated tracks keep the station moving."}
-            </p>
-            {activeShow ? <Link href={`/shows/${activeShow.slug}`} className="mt-4 inline-block text-sm text-brand hover:underline">Open show →</Link> : null}
+            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">The station</p>
+            <h3 className="mt-2 text-xl font-semibold">BVS Continuous Rotation</h3>
+            <p className="mt-2 text-sm text-text-secondary">Approved artist releases and selected curated tracks. Press play above to listen.</p>
           </article>
 
           <article className="rounded-2xl border border-white/10 bg-bg-card/30 p-5">
@@ -96,7 +92,7 @@ export default async function RadioProgrammeSections() {
               <Link key={show.slug} href={`/shows/${show.slug}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-card/35">
                 <div className="relative aspect-[16/9] overflow-hidden">
                   <Image src={show.image} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover transition duration-500 group-hover:scale-105" />
-                  {show.status === "active" ? <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black">Live</span> : null}
+                  {show.status === "active" ? <span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">On BVS</span> : null}
                 </div>
                 <div className="p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">{show.schedule}</p>

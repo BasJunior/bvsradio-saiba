@@ -104,3 +104,17 @@ const replay = session.find(node => node.type === "button" && nodes(node).some(c
 replay.props.onClick();
 assert.equal(actions.at(-1), track.id);
 console.log("Radio UI behavior passed: shared playback, seek, no duplicate queue, keyboard tabs and history replay.");
+
+const Programme = await loadComponent("../src/components/radio/RadioProgrammeSections.tsx", {
+  "next/image": { default: "image" }, "next/link": { default: "link" },
+  "@/lib/image-optimization": { shouldBypassImageOptimizer: () => false },
+  "@/lib/station-content": { getPublicProgrammes: async () => [
+    { slug: "published", title: "Published show", schedule: "Weekly · CAT", host: "Host", status: "active", image: "/show.jpg" },
+    { slug: "scheduled", title: "Scheduled show", schedule: "Friday · 20:00 CAT", host: "Host", status: "preview", image: "/show.jpg" },
+  ] },
+});
+const programme = nodes(await Programme());
+const headings = programme.filter(node => node.type === "h3").map(node => node.props.children);
+assert.deepEqual(headings.slice(0, 2), ["BVS Continuous Rotation", "Scheduled show"], "Publication alone must not claim a live broadcast or upcoming timed programme");
+assert.ok(!programme.some(node => node.props?.children === "Live"));
+console.log("Radio programme truth passed: published is not live, and unscheduled shows are excluded from the timed schedule.");
