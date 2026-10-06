@@ -7,11 +7,14 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export type CreatorPortrait = { id: string; name: string; image: string; href: string; detail: string; accent?: string };
 
-export default function CreatorPortraitRail({ title, tone, items, allHref, accent = "green", kicker = "The people behind the sound", children, "data-home-accent": homeAccent }: {
+export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, accent = "green", kicker = "The people behind the sound", children, "data-home-accent": homeAccent }: {
   title: string;
   tone: "charcoal" | "ink";
   items: CreatorPortrait[];
   allHref: string;
+  allAction?: () => void;
+  allLabel?: string;
+  emptyMessage?: string;
   accent?: "green" | "purple";
   kicker?: string;
   children?: ReactNode;
@@ -38,14 +41,14 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, accen
     rail.scrollBy({ left: direction * rail.clientWidth * .8, behavior: reduced ? "auto" : "smooth" });
   }
 
-  if (!items.length) return null;
+  if (!items.length && !emptyMessage) return null;
   return <section data-home-accent={homeAccent} className={`bvs-creator-band bvs-creator-band--${tone} ${accent === "purple" ? "bvs-creator-band--purple" : ""}`} aria-labelledby={`${id}-heading`}>
     <div className="bvs-creator-band-inner">
       <div className="bvs-creator-band-header">
         <div><p className="bvs-creator-kicker">{kicker}</p><h2 id={`${id}-heading`}>{title}</h2></div>
-        <Link className="bvs-creator-directory" href={allHref}>See all <span aria-hidden="true">↗</span></Link>
+        {allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>}
       </div>
-      <div className="bvs-creator-scroll-guide">
+      {items.length ? <><div className="bvs-creator-scroll-guide">
         <p id={`${id}-hint`}>Swipe or scroll sideways <span aria-hidden="true">→</span></p>
         <div className="bvs-creator-scroll-controls">
           <button type="button" aria-label={`Scroll ${title.toLowerCase()} left`} aria-controls={`${id}-rail`} disabled={!edges.previous} onClick={() => move(-1)}>←</button>
@@ -58,6 +61,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, accen
           <div className="bvs-creator-caption"><h3>{item.name}</h3><p>{item.detail}</p></div>
         </Link>)}
       </div>
+      </> : <p className="mt-6 text-sm text-text-secondary">{emptyMessage}</p>}
     </div>
   </section>;
 }

@@ -17,9 +17,9 @@ export default function RadioPlayer() {
   const elapsed = Number.isFinite(timeline.elapsed) ? Math.max(0, Math.min(duration, timeline.elapsed)) : 0;
 
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-[#19191c] p-5 sm:p-8">
+    <div className="overflow-hidden border border-white/10 bg-[#19191c] p-5 sm:p-8">
       <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-8">
-        <button type="button" onClick={player.openNowPlaying} className="relative mx-auto aspect-square w-44 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-xl sm:mx-0 sm:w-56 lg:w-64" aria-label="Open full player">
+        <button type="button" onClick={player.openNowPlaying} className="relative mx-auto aspect-square w-44 shrink-0 overflow-hidden border border-white/10 bg-white/5 shadow-xl sm:mx-0 sm:w-56 lg:w-64" aria-label="Open full player">
           {player.current?.artwork ? (
             <Image src={player.current.artwork} alt="" fill sizes="(min-width: 1024px) 256px, (min-width: 640px) 224px, 176px" unoptimized={shouldBypassImageOptimizer(player.current.artwork)} className="object-cover" />
           ) : (

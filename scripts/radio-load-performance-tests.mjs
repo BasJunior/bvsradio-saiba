@@ -5,6 +5,7 @@ import ts from "typescript";
 
 const radioPage = await readFile(new URL("../src/app/radio/page.tsx", import.meta.url), "utf8");
 const programmeSections = await readFile(new URL("../src/components/radio/RadioProgrammeSections.tsx", import.meta.url), "utf8");
+const portraitRail = await readFile(new URL("../src/components/home/CreatorPortraitRail.tsx", import.meta.url), "utf8");
 
 assert.ok(
   radioPage.includes('import { Suspense } from "react"') &&
@@ -27,7 +28,7 @@ assert.ok(
 assert.ok(
   programmeSections.includes('id="radio-coming-up"') &&
     programmeSections.includes('id="radio-shows"') &&
-    programmeSections.includes("shouldBypassImageOptimizer(show.image)"),
+    programmeSections.includes("CreatorPortraitRail") && portraitRail.includes("shouldBypassImageOptimizer(item.image)"),
   "Streaming must preserve the station clock, show cards and safe image boundary.",
 );
 
@@ -91,6 +92,8 @@ let selectedTab = "queue";
 const RadioSession = await loadComponent("../src/components/RadioSessionHome.tsx", {
   react: { useState: () => [selectedTab, value => { selectedTab = value; }], useRef: () => ({ current: [] }) },
   "next/link": { default: "link" }, "next/dynamic": { default: () => "chat" },
+  "next/image": { default: "image" }, "@/components/home/CreatorPortraitRail": { default: "portrait-rail" },
+  "@/lib/image-optimization": { shouldBypassImageOptimizer: () => false },
   "@/components/flow/FlowRelationships": { default: "relationships" },
   "@/components/StationPlayer": { useStationPlayer: () => player },
 });
@@ -106,15 +109,17 @@ assert.equal(actions.at(-1), track.id);
 console.log("Radio UI behavior passed: shared playback, seek, no duplicate queue, keyboard tabs and history replay.");
 
 const Programme = await loadComponent("../src/components/radio/RadioProgrammeSections.tsx", {
-  "next/image": { default: "image" }, "next/link": { default: "link" },
-  "@/lib/image-optimization": { shouldBypassImageOptimizer: () => false },
+  "@/components/home/CreatorPortraitRail": { default: "portrait-rail" },
   "@/lib/station-content": { getPublicProgrammes: async () => [
     { slug: "published", title: "Published show", schedule: "Weekly · CAT", host: "Host", status: "active", image: "/show.jpg" },
     { slug: "scheduled", title: "Scheduled show", schedule: "Friday · 20:00 CAT", host: "Host", status: "preview", image: "/show.jpg" },
   ] },
 });
 const programme = nodes(await Programme());
-const headings = programme.filter(node => node.type === "h3").map(node => node.props.children);
-assert.deepEqual(headings.slice(0, 2), ["BVS Continuous Rotation", "Scheduled show"], "Publication alone must not claim a live broadcast or upcoming timed programme");
+const rails = programme.filter(node => node.type === "portrait-rail");
+assert.equal(rails.length, 2);
+assert.deepEqual(Array.from(rails[0].props.items, item => item.name), ["BVS Continuous Rotation", "Scheduled show"], "Publication alone must not claim a live broadcast or upcoming timed programme");
+assert.equal(rails[1].props.items.length, 2, "All published shows must be present in the sideways rail");
+assert.ok(nodes(RadioSession()).some(node => node.type === "portrait-rail"), "Session history must reuse the Home portrait rail");
 assert.ok(!programme.some(node => node.props?.children === "Live"));
 console.log("Radio programme truth passed: published is not live, and unscheduled shows are excluded from the timed schedule.");
