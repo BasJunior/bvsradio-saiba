@@ -38,9 +38,8 @@ function nextOccurrence(show: Show) {
 
 export default async function RadioProgrammeSections() {
   const shows = await getPublicProgrammes();
-  const activeShow = shows.find((show) => show.status === "active");
   const upcoming = shows
-    .filter((show) => show.status !== "active")
+    .filter((show) => Number.isFinite(nextOccurrence(show)))
     .sort((a, b) => nextOccurrence(a) - nextOccurrence(b));
   const nextShow = upcoming[0];
   const laterShow = upcoming[1];
@@ -50,20 +49,17 @@ export default async function RadioProgrammeSections() {
       <section id="radio-coming-up" className="mt-12 scroll-mt-28" aria-labelledby="coming-up-heading">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Station clock</p>
-            <h2 id="coming-up-heading" className="mt-1 text-3xl font-semibold">Now, next, later.</h2>
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Schedule · Times in CAT unless stated</p>
+            <h2 id="coming-up-heading" className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">On the programme</h2>
           </div>
           <Link href="/radio/schedule" className="text-sm text-brand hover:underline">Full schedule →</Link>
         </div>
 
         <div className="grid gap-3 md:grid-cols-3">
           <article className="rounded-2xl border border-brand/30 bg-brand/[0.06] p-5">
-            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Now</p>
-            <h3 className="mt-2 text-xl font-semibold">{activeShow?.title || "BVS Continuous Rotation"}</h3>
-            <p className="mt-2 text-sm text-text-secondary">
-              {activeShow ? `${activeShow.schedule} · Presented by ${activeShow.host}` : "Approved artist releases and selected curated tracks keep the station moving."}
-            </p>
-            {activeShow ? <Link href={`/shows/${activeShow.slug}`} className="mt-4 inline-block text-sm text-brand hover:underline">Open show →</Link> : null}
+            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">The station</p>
+            <h3 className="mt-2 text-xl font-semibold">BVS Continuous Rotation</h3>
+            <p className="mt-2 text-sm text-text-secondary">Approved artist releases and selected curated tracks. Press play above to listen.</p>
           </article>
 
           <article className="rounded-2xl border border-white/10 bg-bg-card/30 p-5">
@@ -82,21 +78,21 @@ export default async function RadioProgrammeSections() {
         </div>
       </section>
 
-      {shows.length ? (
-        <section id="radio-shows" className="mt-14 scroll-mt-28" aria-labelledby="continue-bvs-heading">
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Continue with BVS</p>
-              <h2 id="continue-bvs-heading" className="mt-1 text-3xl font-semibold">Shows worth staying for.</h2>
-            </div>
-            <Link href="/shows" className="text-sm text-brand hover:underline">All shows →</Link>
+      <section id="radio-shows" className="mt-14 scroll-mt-28" aria-labelledby="continue-bvs-heading">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">More voices. More stories.</p>
+            <h2 id="continue-bvs-heading" className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Shows</h2>
           </div>
+          <Link href="/shows" className="text-sm text-brand hover:underline">All shows →</Link>
+        </div>
+      {shows.length ? (
           <div className="grid gap-5 md:grid-cols-3">
             {shows.slice(0, 3).map((show) => (
               <Link key={show.slug} href={`/shows/${show.slug}`} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-card/35">
                 <div className="relative aspect-[16/9] overflow-hidden">
                   <Image src={show.image} alt="" fill sizes="(min-width: 768px) 33vw, 100vw" unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover transition duration-500 group-hover:scale-105" />
-                  {show.status === "active" ? <span className="absolute left-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-black">Live</span> : null}
+                  {show.status === "active" ? <span className="absolute left-3 top-3 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">On BVS</span> : null}
                 </div>
                 <div className="p-5">
                   <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">{show.schedule}</p>
@@ -106,8 +102,8 @@ export default async function RadioProgrammeSections() {
               </Link>
             ))}
           </div>
-        </section>
-      ) : null}
+      ) : <p className="rounded-2xl border border-white/10 p-6 text-sm text-text-secondary">Published shows will appear here. In the meantime, explore the station rotation.</p>}
+      </section>
     </>
   );
 }

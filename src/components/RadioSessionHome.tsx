@@ -1,12 +1,16 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
-import CommunityChat from "@/components/CommunityChat";
+import dynamic from "next/dynamic";
 import FlowRelationships from "@/components/flow/FlowRelationships";
 import { useStationPlayer } from "@/components/StationPlayer";
 
 type SessionTab = "queue" | "history" | "room";
+const sessionTabs: SessionTab[] = ["queue", "history", "room"];
+const CommunityChat = dynamic(() => import("@/components/CommunityChat"), {
+  loading: () => <p className="py-6 text-sm text-text-secondary" role="status">Loading listener room…</p>,
+});
 
 function TrackThumb({ src }: { src?: string }) {
   return (
@@ -25,11 +29,10 @@ export default function RadioSessionHome() {
   const player = useStationPlayer();
   const [tab, setTab] = useState<SessionTab>("queue");
   const panelRef = useRef<HTMLDivElement>(null);
-  const heardCount = useMemo(() => {
-    const ids = new Set(player.history.map((track) => track.id || track.src));
-    if (player.current) ids.add(player.current.id || player.current.src);
-    return ids.size;
-  }, [player.current, player.history]);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const heardIds = new Set(player.history.map((track) => track.id || track.src));
+  if (player.current) heardIds.add(player.current.id || player.current.src);
+  const heardCount = heardIds.size;
 
   const currentHref = player.current?.title
     ? `/catalogue?q=${encodeURIComponent(player.current.title)}`
@@ -46,12 +49,12 @@ export default function RadioSessionHome() {
 
   return (
     <div className="space-y-8">
-      <section className="overflow-hidden rounded-2xl border border-white/10 bg-bg-card/35" aria-labelledby="radio-session-heading">
-        <div className="border-b border-white/10 px-4 pt-4 sm:px-6 sm:pt-5">
+      <section aria-labelledby="radio-session-heading">
+        <div>
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Your BVS session</p>
-              <h2 id="radio-session-heading" className="mt-1 text-xl font-semibold sm:text-2xl">Stay with the station.</h2>
+              <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Listen your way</p>
+              <h2 id="radio-session-heading" className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Your session</h2>
             </div>
             <p className="text-xs text-text-secondary">{heardCount} heard · {player.upNext.length} up next</p>
           </div>
@@ -59,15 +62,27 @@ export default function RadioSessionHome() {
             {([
               ["queue", `Up next${player.upNext.length ? ` · ${player.upNext.length}` : ""}`],
               ["history", `Recently played${player.history.length ? ` · ${player.history.length}` : ""}`],
-              ["room", "Live room"],
-            ] as Array<[SessionTab, string]>).map(([value, label]) => (
+              ["room", "Listener room"],
+            ] as Array<[SessionTab, string]>).map(([value, label], index) => (
               <button
                 key={value}
                 type="button"
                 role="tab"
+                id={`radio-tab-${value}`}
+                ref={element => { tabRefs.current[index] = element; }}
+                tabIndex={tab === value ? 0 : -1}
                 aria-selected={tab === value}
                 aria-controls="radio-session-panel"
                 onClick={() => selectTab(value)}
+                onKeyDown={event => {
+                  const next = event.key === "ArrowRight" ? (index + 1) % sessionTabs.length
+                    : event.key === "ArrowLeft" ? (index + sessionTabs.length - 1) % sessionTabs.length
+                      : event.key === "Home" ? 0 : event.key === "End" ? sessionTabs.length - 1 : null;
+                  if (next === null) return;
+                  event.preventDefault();
+                  setTab(sessionTabs[next]);
+                  tabRefs.current[next]?.focus();
+                }}
                 className={`min-h-11 shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition ${
                   tab === value ? "border-brand text-white" : "border-transparent text-text-secondary hover:text-white"
                 }`}
@@ -78,9 +93,9 @@ export default function RadioSessionHome() {
           </div>
         </div>
 
-        <div ref={panelRef} id="radio-session-panel" className="scroll-mt-32 p-4 sm:p-6">
+        <div ref={panelRef} id="radio-session-panel" role="tabpanel" aria-labelledby={`radio-tab-${tab}`} tabIndex={0} className="mt-3 scroll-mt-32 rounded-2xl border border-white/10 bg-[#141416] p-4 sm:p-6">
           {tab === "queue" ? (
-            <div role="tabpanel" className="space-y-2">
+            <div className="space-y-2">
               {player.upNext.length ? player.upNext.slice(0, 8).map((item, index) => (
                 <button
                   key={item.key}
@@ -117,7 +132,7 @@ export default function RadioSessionHome() {
           ) : null}
 
           {tab === "history" ? (
-            <div role="tabpanel">
+            <div>
               {player.history.length ? (
                 <ol className="space-y-2">
                   {player.history.slice(0, 12).map((track, index) => (
@@ -143,7 +158,7 @@ export default function RadioSessionHome() {
           ) : null}
 
           {tab === "room" ? (
-            <div role="tabpanel" className="space-y-4">
+            <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="max-w-2xl text-sm text-text-secondary">Listen and follow the room without leaving the station. Signed-in listeners can read; eligible members can join the conversation.</p>
                 <Link href="/radio/room" className="text-sm text-brand hover:underline">Open full room →</Link>
@@ -154,11 +169,12 @@ export default function RadioSessionHome() {
         </div>
       </section>
 
-      <section id="radio-context" className="scroll-mt-28 rounded-2xl border border-white/10 bg-bg-card/25 p-5 sm:p-6" aria-labelledby="around-track-heading">
+      <section id="radio-context" className="scroll-mt-28 pt-4 sm:pt-6" aria-labelledby="around-track-heading">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Around what you’re hearing</p>
-            <h2 id="around-track-heading" className="mt-1 truncate text-2xl font-semibold">{player.current?.title || "The BVS rotation"}</h2>
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Meet the creators</p>
+            <h2 id="around-track-heading" className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Behind the music</h2>
+            <p className="mt-4 truncate text-lg font-medium">{player.current?.title || "The BVS rotation"}</p>
             <p className="mt-1 truncate text-sm text-text-secondary">
               {player.current ? `${player.current.artist}${player.current.project ? ` · ${player.current.project}` : ""}` : "Verified BVS context appears as the station plays."}
             </p>
