@@ -1085,7 +1085,7 @@ function CataloguePageContent() {
   const clearProducerFilter = showAllBeats;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12 pb-28">
+    <div className={`max-w-7xl mx-auto px-6 py-12 pb-28 ${beatsMode ? "bvs-square-marketplace bvs-beatstore-directory" : ""}`}>
       <section className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-end mb-10">
         <div>
           <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
@@ -1095,11 +1095,11 @@ function CataloguePageContent() {
                 ? "BVS BeatStore"
                 : "BVS Music"}
           </p>
-          <h1 className="text-5xl font-semibold mb-4">
+          <h1 className="bvs-directory-title mb-4">
             {producerMode
               ? producerLabel
               : beatsMode
-                ? "Beats for artists and producers."
+                ? "BeatStore"
                 : "Music from the BVS library."}
           </h1>
           <p className="max-w-2xl text-text-secondary text-lg">
@@ -1565,7 +1565,8 @@ function CataloguePageContent() {
         </div>
       </section>
 
-      <section className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {beatsMode ? <p className="mb-4 text-sm text-text-secondary">Swipe or scroll sideways to explore all matching beats.</p> : null}
+      <section data-beat-directory={beatsMode ? true : undefined} role={beatsMode ? "region" : undefined} aria-label={beatsMode ? "BeatStore catalogue — scroll horizontally" : undefined} tabIndex={beatsMode ? 0 : undefined} className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {filteredTracks.map((track) => {
           const active = currentTrack?.id === track.id && isPlaying;
 

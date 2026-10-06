@@ -63,3 +63,6 @@ assert.equal(directory.filter(node=>node.type==='article').length,30);
 assert.equal(directory.filter(node=>node.type==='link'&&node.props.href==='/catalogue?producer=one').length,30,'Producer catalogue links stay available');
 for(const page of ['src/app/music/artists/page.tsx','src/app/music/producers/page.tsx','src/app/shows/page.tsx']) assert.ok(fs.readFileSync(page,'utf8').includes('DiscoveryDirectory'));
 console.log('See-all directories passed: shared Home rail, page heading, full collection and catalogue links.');
+const catalogue=fs.readFileSync('src/app/catalogue/page.tsx','utf8');
+assert.ok(catalogue.includes('data-beat-directory={beatsMode ? true : undefined}'));
+assert.ok(catalogue.includes('filteredTracks.map((track) =>'), 'BeatStore preserves all filtered results');
