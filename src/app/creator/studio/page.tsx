@@ -7,6 +7,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { useBrowserSession } from "@/lib/use-browser-session";
 import { useAccountJson } from "@/lib/use-account-json";
 import { trackEvent } from "@/lib/analytics";
+import CreatorGrowthPanel from '@/components/CreatorGrowthPanel';
 
 type WorkspaceData = {
   profile: {
@@ -176,6 +177,7 @@ export default function CreatorStudioHome() {
 
       {artist && uploadStatus.active.length > 0 && <SubmissionStatusPanel sessions={uploadStatus.active} />}
       {artist && <ArtistActivationPanel activity={activity} />}
+      <CreatorGrowthPanel key={session?.user.id} owner={session?.user.id || ''} token={session?.access_token || ''} />
 
       <section className="mt-8 grid gap-3 md:grid-cols-3" aria-label="Create in BVS">
         {createActions.map((action, index) => (

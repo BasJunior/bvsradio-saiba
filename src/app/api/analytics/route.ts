@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { analyticsEvents, type AnalyticsProperties } from "@/lib/analytics"
+import { attachPromotion } from '@/lib/creator-promotion-server'
 
 const allowed = new Set<string>(analyticsEvents)
 const meaningfulActivity = new Set([
@@ -109,6 +110,7 @@ export async function POST(request: Request) {
       properties.visitor_id = body.visitorId
     }
     const userId = await authenticatedUserId(request, body.userId, url, anon)
+    await attachPromotion(request, properties, userId).catch(() => { delete properties.promotion_id })
 
     const response = await fetch(`${url}/rest/v1/analytics_events`, {
       method: "POST",

@@ -1,3 +1,4 @@
+import CreatorAchievementBadges from "@/components/CreatorAchievementBadges";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -91,6 +92,7 @@ export default async function ArtistPage({
             Verified {profile.role}
           </p>
           <h1 className="mt-2 text-5xl">{profile.name}</h1>
+          <CreatorAchievementBadges creatorId={profile.id} />
           {profile.location && (
             <p className="mt-3 text-sm text-brand">{profile.location}</p>
           )}

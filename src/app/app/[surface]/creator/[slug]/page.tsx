@@ -1,3 +1,4 @@
+import CreatorAchievementBadges from "@/components/CreatorAchievementBadges";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -75,6 +76,7 @@ export default async function AppCreatorPage({
         <div>
           <p className="text-xs uppercase tracking-[.2em] text-brand">Verified {producerContext ? "producer" : profile.role}</p>
           <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{displayName}</h1>
+          <CreatorAchievementBadges creatorId={profile.id} />
           {profile.location ? <p className="mt-2 text-sm text-text-secondary">{profile.location}</p> : null}
           <p className="mt-4 max-w-2xl text-sm leading-6 text-text-secondary">{profile.bio}</p>
           {profile.tracks.length ? (
