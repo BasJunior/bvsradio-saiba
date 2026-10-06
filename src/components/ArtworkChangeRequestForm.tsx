@@ -55,16 +55,18 @@ export default function ArtworkChangeRequestForm({
   heading = "Request a change",
   copy,
   formId = "cover-change",
+  initialTarget = "",
 }: {
   token: string;
   scope: "releases" | "beats";
   heading?: string;
   copy?: string;
   formId?: string;
+  initialTarget?: string;
 }) {
   const [targets, setTargets] = useState<Target[]>([]);
   const [requests, setRequests] = useState<RequestRow[]>([]);
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState(initialTarget);
   const [requestType, setRequestType] = useState("artwork_replacement");
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);

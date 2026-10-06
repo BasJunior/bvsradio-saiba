@@ -203,7 +203,7 @@ export default function CreatorStudioHome() {
         </div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <ManageLink href="/creator/studio/manage#releases" accent="core" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
-          {artist && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" accent="core" />}
+          {(artist || producer) && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" accent={producer && !artist ? "beats" : "core"} />}
           <ManageLink href="/creator/studio/earnings" label="Money" detail="Wallet & earnings" accent="money" />
           <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" accent="marketplace" />
           <ManageLink href="/creator/studio/services" label="Profile & storefront" detail="Advanced setup" accent="marketplace" />
@@ -360,7 +360,7 @@ function ProofMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function ManageLink({ href, label, detail, accent }: { href: string; label: string; detail: string; accent: "core" | "marketplace" | "money" }) {
+function ManageLink({ href, label, detail, accent }: { href: string; label: string; detail: string; accent: "core" | "beats" | "marketplace" | "money" }) {
   return (
     <Link href={href} data-studio-accent={accent} className="bvs-studio-accent-card flex min-h-[4.5rem] flex-col justify-center rounded-2xl border border-white/10 p-4">
       <p className="font-semibold">{label}</p>

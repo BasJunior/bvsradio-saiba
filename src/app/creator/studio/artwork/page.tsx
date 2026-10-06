@@ -1,7 +1,10 @@
 import Link from "next/link";
 import StudioArtworkClient from "@/components/StudioArtworkClient";
 
-export default function StudioArtworkPage() {
+export default async function StudioArtworkPage({ searchParams }: { searchParams: Promise<{ beat?: string | string[]; track?: string | string[]; release?: string | string[] }> }) {
+  const params = await searchParams;
+  const beatId = typeof params.beat === "string" ? params.beat : "";
+  const releaseTarget = typeof params.release === "string" ? `release:${params.release}` : typeof params.track === "string" ? `track:${params.track}` : "";
   return (
     <main className="mx-auto max-w-3xl px-5 pb-20 pt-10 sm:px-6 sm:pt-12">
       <Link href="/creator/studio" className="inline-flex min-h-11 items-center text-sm text-brand">
@@ -13,7 +16,7 @@ export default function StudioArtworkPage() {
         Replace artwork for a track, release, beat, or beat pack without changing the underlying item. BVS keeps the current cover live until editorial approves the new image.
       </p>
       <div className="mt-8">
-        <StudioArtworkClient />
+        <StudioArtworkClient initialBeatId={beatId} initialReleaseTarget={releaseTarget} />
       </div>
     </main>
   );
