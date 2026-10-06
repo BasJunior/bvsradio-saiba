@@ -170,7 +170,8 @@ export default function CreatorStudioHome() {
   return (
     <main className="mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-6 sm:pt-12">
       <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">BVS Studio</p>
-      <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Make your next move, {displayName}.</h1>
+      <h1 className="bvs-directory-title mt-2">Creator Studio</h1>
+      <p className="mt-3 text-lg font-semibold">Make your next move, {displayName}.</p>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
         Start with the job. BVS will bring in rights, marketplace, distribution and money tools only when they are needed.
       </p>

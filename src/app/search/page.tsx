@@ -364,8 +364,8 @@ export default function SearchPage() {
 
   return <main className="bvs-square-discover mx-auto min-h-[70vh] max-w-7xl px-4 pb-12 pt-8 sm:px-6">
     <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Discover BVS</p>
-    <h1 className="text-3xl md:text-4xl">Find your next favourite</h1>
-    <p className="mt-3 max-w-2xl text-text-secondary">Press play on a new sound. Meet the artist. Follow what moves you.</p>
+    <h1 className="bvs-directory-title">{mode === 'playlists' ? 'Playlists' : mode === 'fresh' ? 'Releases' : mode === 'beats' ? 'Beats & tools' : activeMode.label}</h1>
+    <p className="mt-3 max-w-2xl text-text-secondary">{activeMode.description}</p>
     <div className="mt-5 flex flex-wrap gap-3 text-sm"><Link href="/feed" className="text-brand hover:underline">Community Feed →</Link><Link href="/radio" className="text-brand hover:underline">Live radio →</Link></div>
     <label className="mt-5 block max-w-3xl"><span className="sr-only">Search BVS</span><input value={query} onChange={event => { setQuery(event.target.value); setResultLimit(40) }} placeholder="Search for an artist, track, beat or sound" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
     {flowV2Flags.exploreModes && !query.trim() ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${mode === item.value ? 'bg-brand text-black' : 'border border-white/10 bg-white/[.03] text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}

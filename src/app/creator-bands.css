@@ -1,4 +1,17 @@
 /* Square editorial Home. Quiet charcoal bands, separated by fine lines. */
+.bvs-directory-title { font-size: clamp(2.1rem, 5vw, 4rem); line-height: 1; text-transform: uppercase; font-weight: 850; letter-spacing: -.055em; overflow-wrap: anywhere; }
+.bvs-discovery-directory .bvs-creator-band { margin-top: 2rem; }
+.bvs-discovery-directory .bvs-creator-band h2.bvs-directory-name { margin-top: 0; font-size: 1rem; font-weight: 800; line-height: 1.2; text-transform: none; letter-spacing: normal; overflow-wrap: normal; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bvs-home-directory-destination .bvs-marketplace-provider-card { width: 160px; flex: 0 0 160px; min-width: 0; scroll-snap-align: start; }
+.bvs-home-directory-destination .bvs-provider-directory-rail { display: flex; gap: 1rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity; padding-bottom: 1rem; scrollbar-width: thin; }
+.bvs-provider-directory-rail:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 3px; }
+.bvs-square-discover [data-discovery-shelves] section h2 { font-size: clamp(2.1rem, 5vw, 4rem); line-height: 1; font-weight: 850; letter-spacing: -.055em; }
+.bvs-square-discover [data-discovery-shelves] section > div:first-child { flex-wrap: wrap; }
+.bvs-square-discover [data-discovery-shelves] .bvs-discover-rail > :is(article, a) { flex-basis: 160px; }
+@media (min-width: 640px) { .bvs-square-discover [data-discovery-shelves] .bvs-discover-rail > :is(article, a) { flex-basis: 200px; } }
+@media (min-width: 1024px) { .bvs-square-discover [data-discovery-shelves] .bvs-discover-rail > :is(article, a) { flex-basis: 240px; } }
+@media (min-width: 640px) { .bvs-home-directory-destination .bvs-marketplace-provider-card { width: 200px; flex-basis: 200px; } }
+@media (min-width: 1024px) { .bvs-home-directory-destination .bvs-marketplace-provider-card { width: 240px; flex-basis: 240px; } }
 .bvs-creator-band { --bvs-creator-accent: var(--color-brand); padding: clamp(2rem, 5vw, 4rem) 0; border-top: 1px solid rgb(255 255 255 / .2); }
 .bvs-creator-band--purple { --bvs-creator-accent: var(--bvs-culture-lilac); }
 .bvs-creator-band--ink { --portrait-line: rgb(255 255 255 / .3); background: #0a0a0a; color: #f5f5f5; }

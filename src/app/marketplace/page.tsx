@@ -20,7 +20,7 @@ function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
   return (
     <article className="bvs-marketplace-provider-card bvs-surface bvs-surface-hover overflow-hidden rounded-[1.65rem] sm:rounded-3xl">
       <Link href={`/marketplace/${provider.slug}`} className="group block">
-        <div className="relative aspect-[16/9] overflow-hidden bg-black/40">
+        <div className="relative aspect-square overflow-hidden bg-black/40">
           {provider.heroImage ? (
             <img
               src={provider.heroImage}
@@ -116,11 +116,11 @@ export default function MarketplacePage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+    <main className="bvs-square-marketplace bvs-home-directory-destination mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
       <section className="max-w-4xl">
         <p className="bvs-section-kicker">BVS Marketplace</p>
-        <h1 className="mt-3 text-balance text-4xl font-semibold sm:text-5xl md:text-6xl">
-          Find the studio, engineer or creative service for your next record.
+        <h1 className="bvs-directory-title mt-3">
+          Marketplace
         </h1>
         <p className="mt-4 max-w-3xl text-base text-text-secondary sm:mt-5 sm:text-lg">
           One marketplace for independent BVS providers and official BVS services. Open a provider store, compare what they offer and book real published studio availability when a calendar is available.
@@ -148,7 +148,8 @@ export default function MarketplacePage() {
           <h2 id="marketplace-providers-title" className="text-3xl font-semibold sm:text-4xl">Studios, engineers and producers</h2>
           <p className="max-w-lg text-sm text-text-secondary">Each provider keeps their services, prices, policies and availability together in one store.</p>
         </div>
-        <div className="mt-5 grid gap-4 sm:mt-7 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <p className="mt-4 text-sm text-text-secondary">Swipe or scroll sideways to explore all providers.</p>
+        <div className="bvs-provider-directory-rail mt-5" role="region" aria-label="Provider storefronts — scroll horizontally" tabIndex={0}>
           {matchingStorefronts.map((provider) => <ProviderCard key={provider.slug} provider={provider} />)}
         </div>
         <MarketplaceProviderMap providers={matchingStorefronts} />
