@@ -123,3 +123,41 @@ assert.equal(rails[1].props.items.length, 2, "All published shows must be presen
 assert.ok(nodes(RadioSession()).some(node => node.type === "portrait-rail"), "Session history must reuse the Home portrait rail");
 assert.ok(!programme.some(node => node.props?.children === "Live"));
 console.log("Radio programme truth passed: published is not live, and unscheduled shows are excluded from the timed schedule.");
+
+// Listener Room shares transport and only prepares conversation drafts.
+const ListenerRoom = await loadComponent("../src/components/radio/ListenerRoom.tsx", {
+  "next/image": { default: "image" }, "next/link": { default: "link" },
+  "@/components/CommunityChat": { default: "chat" },
+  "@/components/StationPlayer": { useStationPlayer: () => player },
+  "@/lib/image-optimization": { shouldBypassImageOptimizer: () => false },
+});
+let room = nodes(ListenerRoom({ standalone: true }));
+assert.ok(!room.some(node => node.type === "audio"), "The room must not create another player");
+room.find(node => node.type === "button" && node.props.children === "Play music").props.onClick();
+assert.equal(actions.at(-1), "toggle");
+let roomChat = room.find(node => node.type === "chat");
+assert.equal(roomChat.props.loginNext, "/radio/room");
+assert.ok(roomChat.props.prompts[0].text.includes("Test song by Artist"));
+player.current = null;
+assert.ok(nodes(ListenerRoom({})).find(node => node.type === "chat").props.prompts[0].text.includes("BVS rotation"));
+player.current = track;
+let chatState = 0, drafted = "";
+let access = { premium: true, staff: false, canPost: true };
+const Chat = await loadComponent("../src/components/CommunityChat.tsx", {
+  "next/link": { default: "link" },
+  react: { useState: () => {
+    const index = chatState++;
+    const values = [{ messages: [], access }, "", "", "", false, false, true];
+    return [values[index], value => { if (index === 1) drafted = value; }];
+  }, useRef: () => ({ current: null }), useId: () => "test-composer", useCallback: fn => fn, useEffect() {} },
+  "@/lib/supabase": { isSupabaseConfigured: () => false, createClient() { throw new Error("No real auth in fixture"); } },
+});
+let chat = nodes(Chat(roomChat.props));
+chat.find(node => node.type === "button" && node.props.children === "React to this track").props.onClick();
+assert.equal(drafted, roomChat.props.prompts[0].text, "Prompts must prepare an editable draft, not send a message");
+assert.ok(chat.some(node => node.type === "textarea" && node.props.maxLength === 500));
+access = { premium: false, staff: false, canPost: false };
+chatState = 0;
+chat = nodes(Chat(roomChat.props));
+assert.ok(!chat.some(node => node.type === "textarea"), "Read-only members must retain the existing posting gate");
+console.log("Listener Room behavior passed: shared transport, track-aware drafts, empty track and read-only access.");
