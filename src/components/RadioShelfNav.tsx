@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 
 const shelves = [
-  { id: "radio-on-air", label: "On air" },
-  { id: "radio-session", label: "Session" },
-  { id: "radio-context", label: "Track context" },
-  { id: "radio-coming-up", label: "Coming up" },
+  { id: "radio-on-air", label: "Listen" },
+  { id: "radio-session", label: "Your session" },
+  { id: "radio-context", label: "Behind the music" },
+  { id: "radio-coming-up", label: "Programme" },
   { id: "radio-shows", label: "Shows" },
 ] as const;
 
@@ -46,9 +46,9 @@ export default function RadioShelfNav() {
   return (
     <nav
       aria-label="Radio shelves"
-      className="sticky top-16 z-30 -mx-4 mb-6 overflow-x-auto border-y border-white/10 bg-bg/90 px-4 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6 md:static md:mx-0 md:rounded-full md:border md:bg-bg-card/35 md:px-2"
+      className="mb-5 overflow-x-auto border-b border-white/10 pb-3"
     >
-      <div className="flex min-w-max items-center gap-1 md:min-w-0 md:justify-center">
+      <div className="flex min-w-max items-center gap-1">
         {shelves.map((shelf) => (
           <a
             key={shelf.id}
@@ -57,7 +57,7 @@ export default function RadioShelfNav() {
             aria-current={active === shelf.id ? "location" : undefined}
             className={`min-h-10 shrink-0 rounded-full px-4 py-2 text-sm font-medium transition ${
               active === shelf.id
-                ? "bg-brand text-black"
+                ? "bg-white/10 text-white"
                 : "text-text-secondary hover:bg-white/5 hover:text-white"
             }`}
           >
