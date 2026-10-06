@@ -2,6 +2,9 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
+import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
+import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import dynamic from "next/dynamic";
 import FlowRelationships from "@/components/flow/FlowRelationships";
 import { useStationPlayer } from "@/components/StationPlayer";
@@ -13,16 +16,9 @@ const CommunityChat = dynamic(() => import("@/components/CommunityChat"), {
 });
 
 function TrackThumb({ src }: { src?: string }) {
-  return (
-    <span className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.05]">
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" className="absolute inset-0 h-full w-full object-cover" />
-      ) : (
-        <span className="absolute inset-0 grid place-items-center text-[10px] font-semibold text-text-secondary">BVS</span>
-      )}
-    </span>
-  );
+  return <span className="bvs-creator-photo block">
+    {src ? <Image src={src} alt="" fill sizes="(max-width: 640px) 160px, (max-width: 1024px) 200px, 240px" unoptimized={shouldBypassImageOptimizer(src)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-lg font-semibold text-white/60">BVS Radio</span>}
+  </span>;
 }
 
 export default function RadioSessionHome() {
@@ -49,15 +45,9 @@ export default function RadioSessionHome() {
 
   return (
     <div className="space-y-8">
-      <section aria-labelledby="radio-session-heading">
-        <div>
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Listen your way</p>
-              <h2 id="radio-session-heading" className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">Your session</h2>
-            </div>
-            <p className="text-xs text-text-secondary">{heardCount} heard · {player.upNext.length} up next</p>
-          </div>
+      <section aria-label="Your BVS session">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <p className="text-xs text-text-secondary">{heardCount} heard · {player.upNext.length} up next</p>
           <div className="mt-4 flex gap-1 overflow-x-auto pb-0" role="tablist" aria-label="Radio session views">
             {([
               ["queue", `Up next${player.upNext.length ? ` · ${player.upNext.length}` : ""}`],
@@ -93,68 +83,23 @@ export default function RadioSessionHome() {
           </div>
         </div>
 
-        <div ref={panelRef} id="radio-session-panel" role="tabpanel" aria-labelledby={`radio-tab-${tab}`} tabIndex={0} className="mt-3 scroll-mt-32 rounded-2xl border border-white/10 bg-[#141416] p-4 sm:p-6">
+        <div ref={panelRef} id="radio-session-panel" role="tabpanel" aria-labelledby={`radio-tab-${tab}`} tabIndex={0} className="mt-3 scroll-mt-32">
           {tab === "queue" ? (
-            <div className="space-y-2">
-              {player.upNext.length ? player.upNext.slice(0, 8).map((item, index) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => player.jumpToQueueItem(item.key)}
-                  className="flex min-h-14 w-full min-w-0 items-center gap-3 rounded-xl border border-transparent px-2 py-2 text-left hover:border-white/10 hover:bg-white/[0.04]"
-                >
-                  <span className="w-5 shrink-0 text-center text-xs tabular-nums text-text-secondary">{index + 1}</span>
-                  <TrackThumb src={item.track.artwork} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium">{item.track.title}</span>
-                    <span className="block truncate text-xs text-text-secondary">{item.track.artist}</span>
-                  </span>
-                  <span className="shrink-0 text-[10px] uppercase tracking-wider text-text-secondary">
-                    {item.source === "user" ? "You" : item.source === "mix" ? "Similar" : "Station"}
-                  </span>
-                </button>
-              )) : (
-                <div className="rounded-xl border border-dashed border-white/10 p-7 text-center text-sm text-text-secondary">
-                  The station will build what comes next when playback starts.
-                </div>
-              )}
-              <div className="flex flex-wrap gap-2 pt-2">
-                <button type="button" onClick={() => player.setQueueOpen(true)} className="rounded-full border border-white/15 px-4 py-2 text-sm hover:bg-white/5">
-                  Open full queue
-                </button>
-                {player.mode === "ondemand" ? (
-                  <button type="button" onClick={player.backToStation} className="rounded-full border border-brand/30 bg-brand/10 px-4 py-2 text-sm text-brand hover:bg-brand/20">
-                    Back to station
-                  </button>
-                ) : null}
-              </div>
-            </div>
+            <CreatorPortraitRail title="Up next" kicker="Your BVS session" tone="charcoal" allHref="#radio-session" allAction={() => player.setQueueOpen(true)} allLabel="Full queue" emptyMessage="The station will build what comes next when playback starts." items={player.upNext.slice(0, 18).map(item => ({ id: item.key, name: item.track.title, image: item.track.artwork || "", href: "#radio-session", detail: item.track.artist }))}>
+              {player.upNext.slice(0, 18).map((item, index) => <button key={item.key} type="button" onClick={() => player.jumpToQueueItem(item.key)} className="bvs-creator-portrait text-left" aria-label={`Play ${item.track.title} by ${item.track.artist}`}>
+                <TrackThumb src={item.track.artwork} />
+                <span className="bvs-creator-caption block"><span className="block truncate text-base font-extrabold">{item.track.title}</span><span className="mt-1 block truncate text-xs opacity-75">{item.track.artist}</span><span className="mt-2 block text-[10px] uppercase tracking-wider opacity-70">{index + 1} · {item.source === "user" ? "Your queue" : item.source === "mix" ? "Similar" : "Station"}</span></span>
+              </button>)}
+            </CreatorPortraitRail>
           ) : null}
 
           {tab === "history" ? (
-            <div>
-              {player.history.length ? (
-                <ol className="space-y-2">
-                  {player.history.slice(0, 12).map((track, index) => (
-                    <li key={`${track.id || track.src}-${index}`}>
-                      <button type="button" onClick={() => player.playHistoryTrack(track)} className="flex min-h-14 w-full min-w-0 items-center gap-3 rounded-xl px-2 py-2 text-left hover:bg-white/[0.04]">
-                        <TrackThumb src={track.artwork} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">{track.title}</span>
-                          <span className="block truncate text-xs text-text-secondary">{track.artist}</span>
-                        </span>
-                        <span className="shrink-0 text-xs text-brand">Play again</span>
-                      </button>
-                    </li>
-                  ))}
-                </ol>
-              ) : (
-                <div className="rounded-xl border border-dashed border-white/10 p-7 text-center text-sm text-text-secondary">
-                  Recently played will build here as your session unfolds.
-                </div>
-              )}
-              <div className="pt-4"><Link href="/library" className="text-sm text-brand hover:underline">Open your Library →</Link></div>
-            </div>
+            <CreatorPortraitRail title="Recently played" kicker="Your BVS session" tone="charcoal" allHref="/library" allLabel="Your Library" emptyMessage="Recently played will build here as your session unfolds." items={player.history.slice(0, 18).map((track, index) => ({ id: `${track.id || track.src}-${index}`, name: track.title, image: track.artwork || "", href: "/library", detail: track.artist }))}>
+              {player.history.slice(0, 18).map((track, index) => <button key={`${track.id || track.src}-${index}`} type="button" onClick={() => player.playHistoryTrack(track)} className="bvs-creator-portrait text-left" aria-label={`Play ${track.title} again`}>
+                <TrackThumb src={track.artwork} />
+                <span className="bvs-creator-caption block"><span className="block truncate text-base font-extrabold">{track.title}</span><span className="mt-1 block truncate text-xs opacity-75">{track.artist}</span><span className="mt-2 block text-[10px] uppercase tracking-wider opacity-70">Play again</span></span>
+              </button>)}
+            </CreatorPortraitRail>
           ) : null}
 
           {tab === "room" ? (
