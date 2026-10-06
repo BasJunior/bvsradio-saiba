@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import ArtworkChangeRequestForm from "@/components/ArtworkChangeRequestForm";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 
-export default function StudioArtworkClient() {
+export default function StudioArtworkClient({ initialBeatId = "", initialReleaseTarget = "" }: { initialBeatId?: string; initialReleaseTarget?: string }) {
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
 
@@ -40,6 +40,8 @@ export default function StudioArtworkClient() {
   return (
     <div className="space-y-8">
       <ArtworkChangeRequestForm
+        key={initialReleaseTarget || "release-cover"}
+        initialTarget={initialReleaseTarget}
         token={token}
         scope="releases"
         heading="Change release cover artwork"
@@ -47,6 +49,8 @@ export default function StudioArtworkClient() {
         formId="studio-release-cover-change"
       />
       <ArtworkChangeRequestForm
+        key={initialBeatId || "beat-cover"}
+        initialTarget={initialBeatId ? `beat:${initialBeatId}` : ""}
         token={token}
         scope="beats"
         heading="Change beat or beat pack cover artwork"

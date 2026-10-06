@@ -959,6 +959,7 @@ function ArtistReleases({
                     </div>
                   ))}
                   <CreatorNextMoveCard move={nextMove} className="mt-4" />
+                  <Link href={`/creator/studio/artwork?release=${encodeURIComponent(release.id)}#studio-release-cover-change`} aria-label={`Change cover for ${release.title}`} className="bvs-studio-accent-button mt-3 inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Change cover</Link>
                 </article>
               );
             })}
@@ -1006,6 +1007,7 @@ function ArtistReleases({
                 <div className="mt-3">
                   <FullAccessAudioPlayer accessId={`studio-track:${track.id}`} title={track.title} artist={track.artist_name || 'Your submission'} src={track.file_url} artwork={track.artwork_url} sourceLabel="Studio · your full submission" genre={track.genre} compact />
                 </div>
+                <Link href={`/creator/studio/artwork?track=${encodeURIComponent(track.id)}#studio-release-cover-change`} aria-label={`Change cover for ${track.title}`} className="bvs-studio-accent-button mt-3 inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Change cover</Link>
                 <p className="mt-3 text-xs text-text-secondary">
                   {track.is_downloadable
                     ? `${track.licence_type.replaceAll("_", " ")} · $${Number(track.download_price || 0).toFixed(2)}`

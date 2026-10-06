@@ -492,6 +492,9 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
                     <FullAccessAudioPlayer accessId={`studio-beat:${beat.id}`} title={beat.title} artist="Your BeatStore submission" src={beat.master_path || beat.preview_path} artwork={beat.artwork_path} sourceLabel="Studio · your full beat" genre={beat.genre} compact />
                   </div>
                   <CreatorNextMoveCard move={nextMove} className="mt-3" />
+                  <Link href={`/creator/studio/artwork?beat=${encodeURIComponent(beat.id)}#studio-beat-cover-change`} aria-label={`Change cover for ${beat.title}`} className="bvs-studio-accent-button mt-3 inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">
+                    Change cover
+                  </Link>
                   <div data-studio-accent="insights" className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4">
                     <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-wider">Review conversation</p>
                     <div className="mt-2 space-y-2">
