@@ -1,0 +1,37 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+import * as crypto from 'node:crypto';
+function load(path, imports, extra={}) {
+  const exports = {};
+  const code=ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS}}).outputText;
+  vm.runInNewContext(code,{exports,require:name=>{if(name in imports)return imports[name]; throw new Error(`Unexpected import ${name}`)},Buffer,Date,Request,URL,AbortSignal,process:{env:{SUPABASE_SERVICE_ROLE_KEY:'test-secret'}},...extra});
+  return exports;
+}
+const creator={creatorHeaders:{},creatorUrl:p=>p,creatorJson:async r=>r.json()};
+const id='12345678-1234-4123-8123-123456789abc';
+let paths=[];
+const server=load('src/lib/creator-promotion-server.ts',{'server-only':{},'node:crypto':crypto,'@/lib/creator-server':creator,'@/lib/media-url':{mediaUrlForStoredValue:x=>x}}, {fetch:async path=>{paths.push(path);return {json:async()=>[{title:'Example',artwork_url:'/art.png',show_creator_profiles:{slug:'test-show'}}]}}});
+const cookie=server.promotionCookie(id);
+assert.equal(server.readPromotionCookie(new Request('https://bvsradio.com',{headers:{cookie:`bvs_promotion=${cookie}`}})),id);
+assert.equal(server.readPromotionCookie(new Request('https://bvsradio.com',{headers:{cookie:`bvs_promotion=${cookie.slice(0,-1)}x`}})),null);
+assert.equal(server.readPromotionCookie(new Request('https://bvsradio.com',{headers:{cookie:`bvs_promotion=${id}.1.${'0'.repeat(64)}`}})),null);
+assert.equal(server.readPromotionCookie(new Request('https://bvsradio.com')),null);
+assert.equal(await server.promotionItem('track','//evil.example'),null);
+const item=await server.promotionItem('track',id,id);
+assert.equal(item.path,`/song/${id}`);
+assert.ok(paths[0].includes(`user_id=eq.${id}`));
+assert.ok(paths[0].includes('is_public=eq.true&editorial_status=eq.approved'));
+await server.promotionItem('beat',id,id);
+assert.ok(paths[1].includes('rights_confirmed=eq.true'));
+assert.ok(paths[1].includes(`producer_user_id=eq.${id}`));
+const response={json:(body,init)=>({body,status:init?.status||200})};
+let ownedRequest,write;
+const post=load('src/app/api/creator/promotions/route.ts',{'next/server':{NextResponse:response},'@/lib/creator-server':{...creator,creatorIdentity:async()=>({user:{id}})},'@/lib/creator-promotion-server':{promotionItem:async(...args)=>{ownedRequest=args;return item}},'@/lib/creator-growth':{promotionCaption:()=> 'Listen and save'}},{fetch:async(path,options)=>{write={path,options};return {json:async()=>[{id}]}}});
+const result=await post.POST(new Request('https://bvsradio.com/api/creator/promotions',{method:'POST',body:JSON.stringify({kind:'track',itemId:id,userId:'spoofed-owner',path:'https://evil.example'})}));
+assert.equal(result.body.path,`/go/${id}`);
+assert.equal(ownedRequest[2],id,'Ownership must come from the authenticated user, never the payload');
+assert.match(write.path,/on_conflict=user_id,item_kind,item_id/);
+assert.equal(JSON.parse(write.options.body).user_id,id);
+console.log('Promotion behavior: signed attribution, tamper rejection, publication/ownership filters, canonical links and idempotent preparation passed.');

@@ -186,7 +186,7 @@ export async function makeStoryCard({ title, text, kicker, image, format = "stor
   context.fillRect(72, footerY - 35, 5, 58);
   context.font = "700 25px Arial, sans-serif";
   const category = kicker.toLowerCase();
-  const action = category.includes("beat") ? "FIND YOUR NEXT RECORD" : /creator|artist|producer/.test(category) ? "MEET YOUR NEXT FAVOURITE" : category.includes("show") || category.includes("episode") ? "TUNE IN ON BVS" : category.includes("community") ? "JOIN THE CONVERSATION" : "PRESS PLAY ON BVS";
+  const action = category.includes("buy this beat") ? "BUY THIS BEAT ON BVS" : category.includes("listen and save") ? "LISTEN AND SAVE ON BVS" : category.includes("beat") ? "FIND YOUR NEXT RECORD" : /creator|artist|producer/.test(category) ? "MEET YOUR NEXT FAVOURITE" : category.includes("show") || category.includes("episode") ? "TUNE IN ON BVS" : category.includes("community") ? "JOIN THE CONVERSATION" : "PRESS PLAY ON BVS";
   context.fillText(action, 98, footerY);
   context.textAlign = "right";
   context.fillStyle = "#ffffff";

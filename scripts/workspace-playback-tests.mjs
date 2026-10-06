@@ -21,6 +21,7 @@ const studio = load('src/app/creator/studio/page.tsx', {
   '@/lib/use-browser-session': { useBrowserSession: () => ({ session: null, loading: false }) },
   '@/lib/use-account-json': { useAccountJson: () => ({ data: null, error: '', reload() {} }) },
   '@/lib/supabase': { isSupabaseConfigured: () => false }, '@/lib/analytics': { trackEvent: () => {} },
+  '@/components/CreatorGrowthPanel': { default: 'creator-growth' },
 }, { window: { location: { hash: '#insights' } } })
 studio.default(); effects.forEach(fn => fn())
 assert.deepEqual(destinations, ['/creator/studio/manage#insights'], 'Legacy Studio navigation must use the router without replacing the document')

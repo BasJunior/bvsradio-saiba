@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import BvsStar from "@/components/branding/BvsStar";
+import CreatorGrowthPanel from '@/components/CreatorGrowthPanel';
 import { useMemo } from "react";
 import { useAccountJson } from "@/lib/use-account-json";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
@@ -202,6 +203,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
         </section>
       ) : null}
 
+      <CreatorGrowthPanel key={user?.id} owner={user?.id || ''} token={token} surface={surface} />
       <section data-studio-accent="insights" className="mt-7 rounded-[1.7rem] border border-white/[.07] bg-white/[.022] p-5 sm:p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
