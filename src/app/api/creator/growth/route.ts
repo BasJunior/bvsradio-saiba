@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { creatorHeaders, creatorIdentity, creatorJson, creatorUrl } from '@/lib/creator-server';
-import { creatorGrowth, type GrowthMetrics, type GrowthRole, type PromotionItem } from '@/lib/creator-growth';
+import { creatorGrowth, creatorGrowthAccess, type GrowthMetrics, type PromotionItem } from '@/lib/creator-growth';
 import { mediaUrlForStoredValue } from '@/lib/media-url';
 import { promotionRows } from '@/lib/creator-promotion-server';
 
@@ -9,9 +9,8 @@ export async function GET(request: Request) {
   if (!identity) return NextResponse.json({ error: 'Sign in to view your goals.' }, { status: 401 });
   if (!identity.profile || (identity.profile.role === 'listener' && !identity.profile.is_producer)) return NextResponse.json({ error: 'Creator access required.' }, { status: 403 });
   const owner = identity.user.id;
-  const role: GrowthRole = identity.profile.role === 'show_creator' ? 'show_creator' : identity.profile.is_producer && identity.profile.role !== 'artist' ? 'producer' : 'artist';
   const requested = new URL(request.url).searchParams.get('role');
-  const selected: GrowthRole = requested === 'producer' && (identity.profile.is_producer || identity.profile.role === 'admin') ? 'producer' : role;
+  const { role: selected, canMakeMusic, canProduce } = creatorGrowthAccess(identity.profile, requested);
   try {
     const rpc = async (name: string, body: object) => creatorJson(await fetch(creatorUrl(`rpc/${name}`), { method: 'POST', headers: creatorHeaders, body: JSON.stringify(body), cache: 'no-store' }));
     const [metrics, results, tracks, beats, episodes] = await Promise.all([
@@ -37,7 +36,7 @@ export async function GET(request: Request) {
     ].filter(Boolean);
     if (earned.length) await creatorJson(await fetch(creatorUrl('creator_achievements?on_conflict=user_id,badge_id'), { method: 'POST', headers: { ...creatorHeaders, Prefer: 'resolution=ignore-duplicates,return=minimal' }, body: JSON.stringify(earned.map(badge_id => ({ user_id: owner, badge_id }))) }));
     const badges = await promotionRows(`creator_achievements?user_id=eq.${owner}&select=badge_id,earned_at&order=earned_at.desc`);
-    return NextResponse.json({ role: selected, canMakeMusic: ['artist','admin'].includes(identity.profile.role), canProduce: Boolean(identity.profile.is_producer) || identity.profile.role === 'admin', metrics, ...growth, items, results, badges }, { headers: { 'Cache-Control': 'private, no-store' } });
+    return NextResponse.json({ role: selected, canMakeMusic, canProduce, metrics, ...growth, items, results, badges }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch {
     return NextResponse.json({ error: 'Your goals are temporarily unavailable. Try again shortly.' }, { status: 503 });
   }
