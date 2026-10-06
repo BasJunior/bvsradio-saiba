@@ -49,3 +49,17 @@ for (const path of ['src/app/page.tsx','src/app/app/[surface]/page.tsx']) assert
 assert.match(css,/\.bvs-square-home \[class\*="rounded"\][^}]*border-radius: 0/);
 assert.match(css,/\.bvs-square-home section[^}]*border-inline: 0/);
 console.log('Dark square Home: divider lines, no grey bands, profile links, scrolling, reduced motion and web/iOS parity passed.');
+const directoryHeading = nodes(exports.default({title:'Artists',tone:'charcoal',allHref:'/catalogue',items,headingLevel:1}));
+assert.equal(directoryHeading.filter(node=>node.type==='h1').length,1,'Full directory has one real page heading');
+assert.ok(all.some(node=>node.type==='h2'),'Home retains its section heading');
+const directoryExports = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/home/DiscoveryDirectory.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText,{
+  exports:directoryExports,require:name=>name==='./CreatorPortraitRail'?{default:'shared-rail'}:imports[name],
+});
+const directoryItems=Array.from({length:30},(_,index)=>({...items[0],id:String(index),secondaryHref:'/catalogue?producer=one',secondaryLabel:'View catalogue'}));
+const directory=nodes(directoryExports.default({title:'Producers',kicker:'BeatStore',description:'Published producers',items:directoryItems,browseHref:'/catalogue',browseLabel:'Browse beats',emptyMessage:'No producers yet'}));
+assert.equal(directory.find(node=>node.type==='shared-rail').props.items.length,30,'See all must preserve the full collection');
+assert.equal(directory.filter(node=>node.type==='article').length,30);
+assert.equal(directory.filter(node=>node.type==='link'&&node.props.href==='/catalogue?producer=one').length,30,'Producer catalogue links stay available');
+for(const page of ['src/app/music/artists/page.tsx','src/app/music/producers/page.tsx','src/app/shows/page.tsx']) assert.ok(fs.readFileSync(page,'utf8').includes('DiscoveryDirectory'));
+console.log('See-all directories passed: shared Home rail, page heading, full collection and catalogue links.');

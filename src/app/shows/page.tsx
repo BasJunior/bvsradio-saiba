@@ -1,34 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
-import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
-import Link from "next/link";
+import DiscoveryDirectory from "@/components/home/DiscoveryDirectory";
 import { getPublicProgrammes } from "@/lib/station-content";
-
-export const metadata: Metadata = { title: "Shows", description: "Explore live and upcoming BVS Radio programmes." };
+export const metadata: Metadata = { title: "Shows", description: "Explore published and upcoming BVS Radio programmes." };
 export const revalidate = 60;
-
 export default async function ShowsPage() {
   const shows = await getPublicProgrammes();
-  return (
-    <div className="mx-auto max-w-6xl px-6 py-14">
-      <p className="text-xs uppercase tracking-[.2em] text-brand">BVS programmes</p>
-      <h1 className="mt-2 text-5xl font-semibold">Programme schedule and upcoming originals.</h1>
-      <p className="mt-5 max-w-2xl text-lg text-text-secondary">BVS labels every programme clearly: upcoming concepts remain previews, while broadcast recordings appear only after editorial publication.</p>
-      <div className="mt-12 grid gap-6 md:grid-cols-2">
-        {shows.map((show) => (
-          <Link key={show.slug} href={`/shows/${show.slug}`} className="group grid overflow-hidden rounded-2xl border border-white/10 bg-white/[.03] sm:grid-cols-[12rem_1fr]">
-            <div className="relative min-h-48">
-              <Image src={show.image} alt="" fill unoptimized={shouldBypassImageOptimizer(show.image)} className="object-cover" />
-            </div>
-            <div className="p-6">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-brand">{show.status === "active" ? "Published" : "Upcoming programme"}</span>
-              <h2 className="mt-2 text-2xl font-semibold group-hover:text-brand">{show.title}</h2>
-              <p className="mt-2 text-sm text-text-secondary">{show.description}</p>
-              <p className="mt-5 text-xs text-text-secondary">{show.schedule}</p>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
+  return <DiscoveryDirectory title="Shows" kicker="Conversations and replay moments" description="Explore BVS programmes and published recordings. Upcoming concepts remain clearly labelled." browseHref="/radio/schedule" browseLabel="Station schedule" emptyMessage="Programmes will appear here when published by BVS editorial." items={shows.map(show => ({ id: show.slug, name: show.title, image: show.image, href: `/shows/${show.slug}`, detail: `${show.status === 'active' ? 'Published' : 'Upcoming programme'} · ${show.schedule}`, description: show.description }))} />;
 }

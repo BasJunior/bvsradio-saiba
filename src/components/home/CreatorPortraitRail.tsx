@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export type CreatorPortrait = { id: string; name: string; image: string; href: string; detail: string; accent?: string };
 
-export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, accent = "green", kicker = "The people behind the sound", children, "data-home-accent": homeAccent }: {
+export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, headingLevel = 2, accent = "green", kicker = "The people behind the sound", children, "data-home-accent": homeAccent }: {
   title: string;
   tone: "charcoal" | "ink";
   items: CreatorPortrait[];
@@ -15,12 +15,14 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
   allAction?: () => void;
   allLabel?: string;
   emptyMessage?: string;
+  headingLevel?: 1 | 2;
   accent?: "green" | "purple";
   kicker?: string;
   children?: ReactNode;
   "data-home-accent"?: string;
 }) {
   const id = useId();
+  const Heading = headingLevel === 1 ? "h1" : "h2";
   const railRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ previous: false, next: false });
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
   return <section data-home-accent={homeAccent} className={`bvs-creator-band bvs-creator-band--${tone} ${accent === "purple" ? "bvs-creator-band--purple" : ""}`} aria-labelledby={`${id}-heading`}>
     <div className="bvs-creator-band-inner">
       <div className="bvs-creator-band-header">
-        <div><p className="bvs-creator-kicker">{kicker}</p><h2 id={`${id}-heading`}>{title}</h2></div>
+        <div><p className="bvs-creator-kicker">{kicker}</p><Heading id={`${id}-heading`} className={headingLevel === 1 ? "bvs-directory-title" : undefined}>{title}</Heading></div>
         {allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>}
       </div>
       {items.length ? <><div className="bvs-creator-scroll-guide">
