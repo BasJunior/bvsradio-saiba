@@ -5,6 +5,7 @@ import { RootNavbar, RootMobileFlowNav } from "@/components/layout/RootChrome";
 import Footer from "@/components/layout/Footer";
 import AuthLinkRescue from "@/components/AuthLinkRescue";
 import AnalyticsBootstrap from "@/components/AnalyticsBootstrap";
+import Ga4WebTag from "@/components/Ga4WebTag";
 import WebVitalsReporter from "@/components/WebVitalsReporter";
 import MobileIosBoundary from "@/components/MobileIosBoundary";
 import PremiumInstantPromoBanner from "@/components/PremiumInstantPromoBanner";
@@ -108,6 +109,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <DeferredGlobalTools />
                 <ShareCardHost />
                 <AnalyticsBootstrap />
+                <Ga4WebTag />
                 <WebVitalsReporter />
                 <Suspense fallback={null}>
                   <RootMobileFlowNav />
