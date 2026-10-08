@@ -123,6 +123,7 @@ export default function AccountPage() {
       { href: '/library', title: 'Library', copy: 'Favourites, follows and listening history.' },
       { href: '/checkout', title: 'Cart', copy: 'Review your current basket and continue checkout.' },
       { href: '/notifications', title: 'Notifications', copy: 'Review editorial, creator, order and account updates.' },
+      { href: '/newsletter', title: 'Newsletter', copy: 'Choose BVS email updates or unsubscribe.' },
     ]
     if (access.creator) items.push({ href: '/creator/studio', title: 'Creator Studio', copy: 'Manage submissions, releases and creator workflows.' })
     if (access.artist) items.push({ href: '/artists', title: 'Artist wallet', copy: 'View onboarding, deposits, balance and payout readiness.' })

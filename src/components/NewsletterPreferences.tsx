@@ -1,0 +1,12 @@
+'use client';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { createClient } from '@/lib/supabase';
+export default function NewsletterPreferences() {
+  const [token,setToken] = useState(''); const [loaded,setLoaded] = useState(false); const [active,setActive] = useState(false); const [audience,setAudience] = useState('listener'); const [message,setMessage] = useState(''); const [busy,setBusy] = useState(false);
+  useEffect(() => { let live=true; void createClient().auth.getSession().then(async ({data}) => { const t=data.session?.access_token || ''; if(!live)return; setToken(t); if(t){const r=await fetch('/api/newsletter/preferences',{headers:{Authorization:`Bearer ${t}`}});const p=await r.json();if(!r.ok)throw new Error(p.error);if(live){setActive(p.active);setAudience(p.audience);}} }).catch(e=>{if(live)setMessage(e.message);}).finally(()=>{if(live)setLoaded(true);}); return()=>{live=false;}; },[]);
+  async function save(){setBusy(true);setMessage('');try{const r=await fetch('/api/newsletter/preferences',{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({active,audience})});const p=await r.json();if(!r.ok)throw new Error(p.error);setMessage(active?'You’re subscribed.':'You’re unsubscribed.');}catch(e){setMessage(e instanceof Error?e.message:'Could not save.');}finally{setBusy(false);}}
+  if(!loaded)return <p className="mt-6">Opening preferences…</p>;
+  if(!token)return <Link className="mt-6 inline-flex min-h-11 items-center text-brand" href="/auth/login?next=/newsletter">Sign in to choose your newsletter preferences →</Link>;
+  return <section className="mt-8 space-y-5 border-t border-white/20 pt-6"><label className="flex gap-3"><input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)} />Email me BVS music and creator updates.</label><label className="block">I’m interested in<select className="mt-2 block w-full border border-white/20 bg-black p-3" value={audience} onChange={e=>setAudience(e.target.value)}><option value="listener">Music & listening</option><option value="artist">Artist releases & Studio</option><option value="producer">Beats & producer tools</option></select></label><button disabled={busy} onClick={()=>void save()} className="min-h-11 bg-brand px-5 py-3 font-semibold text-black disabled:opacity-50">{busy?'Saving…':'Save preferences'}</button><p role="status">{message}</p></section>;
+}

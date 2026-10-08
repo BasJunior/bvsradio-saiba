@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 
 const moreLinks = [
+  { href: "/editorial/newsletter", label: "Newsletter" },
   { href: "/editorial/marketplace", label: "Marketplace" },
   { href: "/editorial/finance", label: "Finance" },
   { href: "/admin/creator-workflows", label: "Writing & research" },

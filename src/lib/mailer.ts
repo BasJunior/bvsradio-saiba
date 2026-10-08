@@ -67,6 +67,8 @@ export async function sendBvsEmail(opts: {
   html?: string;
   replyTo?: string;
   attachments?: BvsEmailAttachment[];
+  unsubscribeUrl?: string;
+  timeoutMs?: number;
 }): Promise<void> {
   const host = process.env.SMTP_HOST || "smtp.ionos.de";
   const port = Number(process.env.SMTP_PORT || "587");
@@ -82,6 +84,7 @@ export async function sendBvsEmail(opts: {
     secure: port === 465,
     auth: { user, pass },
     requireTLS: port === 587,
+    ...(opts.timeoutMs ? { connectionTimeout: opts.timeoutMs, greetingTimeout: opts.timeoutMs, socketTimeout: opts.timeoutMs } : {}),
   });
 
   await transporter.sendMail({
@@ -91,6 +94,7 @@ export async function sendBvsEmail(opts: {
     text: opts.text,
     html: opts.html || opts.text.replace(/\n/g, "<br/>"),
     replyTo: opts.replyTo || user,
+    ...(opts.unsubscribeUrl ? { headers: { 'List-Unsubscribe': `<${opts.unsubscribeUrl}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' } } : {}),
     attachments: (opts.attachments || []).map((file) => ({
       filename: file.filename,
       content: Buffer.isBuffer(file.content) ? file.content : Buffer.from(file.content),
