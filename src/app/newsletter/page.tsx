@@ -1,0 +1,2 @@
+import NewsletterPreferences from '@/components/NewsletterPreferences';
+export default function NewsletterPage() { return <main className="mx-auto max-w-2xl px-5 py-12 pb-32"><p className="text-sm text-brand">BVS Radio · Email</p><h1 className="bvs-directory-title mt-3">Stay in the loop</h1><p className="mt-4 text-text-secondary">Get selected music, beats and creator updates from BVS. Choose what interests you. You can unsubscribe at any time.</p><NewsletterPreferences /></main>; }

@@ -1,0 +1,2 @@
+import NewsletterDesk from '@/components/NewsletterDesk';
+export default function NewsletterDeskPage(){return <main className="mx-auto max-w-4xl px-5 py-12 pb-32"><p className="text-sm text-brand">Editorial · Audience</p><h1 className="bvs-directory-title mt-3">Newsletter</h1><p className="mt-4 text-text-secondary">Prepare updates for opted-in listeners, artists and producers. Review every campaign before queuing delivery.</p><NewsletterDesk /></main>;}
