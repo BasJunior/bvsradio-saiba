@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Ga4ConsentSettings from "@/components/Ga4ConsentSettings";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -10,7 +11,8 @@ export default function PrivacyPage() {
     <div className="max-w-4xl mx-auto px-4 py-12">
       <section className="bg-bg-card/50 backdrop-blur rounded-2xl border border-white/10 p-8 md:p-12">
         <h1 className="text-3xl md:text-4xl font-bold mb-2">Privacy Policy</h1>
-        <p className="text-text-secondary mb-8">Last updated: July 15, 2026</p>
+        <p className="text-text-secondary mb-8">Last updated: October 8, 2026</p>
+        <Ga4ConsentSettings />
 
         <div className="prose prose-invert max-w-none space-y-6 text-text-secondary leading-relaxed">
           <p>This privacy policy describes how BVS Radio (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) collects, uses, and shares information when you use our website and services.</p>
@@ -34,12 +36,15 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-6 space-y-2">
             <li>Service providers who help us operate our website and deliver our services</li>
             <li>Payment processors to facilitate transactions</li>
-            <li>Advertising and analytics partners, including Google AdSense</li>
+            <li>Analytics providers, currently Google Analytics on the public website only after you allow it</li>
             <li>Legal authorities when required by law</li>
           </ul>
 
           <h2 className="text-2xl font-semibold text-text-primary mt-10">Cookies and Tracking Technologies</h2>
-          <p>We use cookies and similar tracking technologies to remember your preferences, analyze site traffic, and deliver targeted advertisements. You can control cookies through your browser settings.</p>
+          <p>We use essential cookies and similar technologies to remember your preferences and keep the site working. Website analytics cookies are used only if you tap Allow analytics. They are not used in the BVS iOS or Android app.</p>
+
+          <h2 className="text-2xl font-semibold text-text-primary mt-10">Google Analytics on the website</h2>
+          <p>If you allow analytics on bvsradio.com, we load Google Analytics 4 (measurement ID G-6KW0YW2LL2) so we can see which website pages help the station grow. This is website-only. We do not load Google Analytics inside the native iOS or Android app, we do not enable Google advertising signals, and we do not use this tag for ad personalization. You can change this choice on this page. Do Not Track is respected.</p>
 
           <h2 className="text-2xl font-semibold text-text-primary mt-10">Privacy-conscious product analytics</h2>
           <p>BVS measures a small set of product events—such as playback starts, coarse listening-duration ranges, searches with no result, saves, uploads, and checkout outcomes—to improve reliability and content discovery. These events do not contain names, email addresses, payment details, raw IP addresses, or advertising identifiers. The anonymous analytics session ends when the browser tab closes, Do Not Track is respected, and operational data is retained for no longer than 90 days.</p>
