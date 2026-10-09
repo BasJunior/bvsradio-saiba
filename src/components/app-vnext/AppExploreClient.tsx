@@ -8,6 +8,7 @@ import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import AppBeatPreviewPlayer from "@/components/app-vnext/AppBeatPreviewPlayer";
 import AppDownloadButton from "@/components/app-vnext/AppDownloadButton";
 import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
+import SongShareButton from "@/components/SongShareButton";
 import { useStationPlayer } from "@/components/StationPlayer";
 import { fairCreatorDailyOrder } from "@/lib/fair-discovery-order";
 import { soundKey, discoveryCreatorKey } from "@/lib/discovery-experience";
@@ -293,6 +294,7 @@ export default function AppExploreClient({
                       <button type="button" aria-pressed={isLiked} aria-label={`${isLiked ? "Unsave" : "Save"} ${item.title}`} onClick={() => toggleLike(item)} className={`min-h-9 rounded-full border px-3 text-xs font-semibold ${isLiked ? "border-brand/35 bg-brand/10 text-brand" : "border-white/12 text-white/45"}`}>{isLiked ? "♥ Saved" : "♡ Save"}</button>
                       <AppPlaylistPicker trackId={item.id} compact />
                       <AppDownloadButton trackId={item.id} surface={surface} compact />
+                      <SongShareButton id={item.id} title={item.title} artist={item.artist} image={image} compact />
                     </DiscoverMoreActions>
                   </div>
                 </article>
