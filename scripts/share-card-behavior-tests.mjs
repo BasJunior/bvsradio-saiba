@@ -9,7 +9,7 @@ let canvas;
 const context = {
   font:'', textAlign:'left', fillStyle:'',
   measureText(value) { return { width: value.length * Number(this.font.match(/(\d+)px/)?.[1] || 20) * .52 }; },
-  fillText(value,x,y) { text.push({value,x,y,width:this.measureText(value).width,align:this.textAlign}); },
+  fillText(value,x,y) { text.push({value,x,y,width:this.measureText(value).width,align:this.textAlign,font:this.font}); },
   drawImage(...args) { draws.push(args); },
   fillRect(){},save(){},restore(){},beginPath(){},roundRect(){},clip(){},
   createLinearGradient(){return {addColorStop(){}};},
@@ -44,10 +44,15 @@ for (const format of ['story','square']) {
   }
   assert.ok(text.some(t=>t.value.endsWith('…')),'Long titles must truncate');
   assert.ok(text.some(t=>t.value==='FIND YOUR NEXT RECORD'),'Beat card CTA must match content');
-  assert.ok(text.some(t=>t.value==='BEST VIRTUAL SOUND' && t.align==='center'),'Brand lockup should be centered under the artwork');
+  const nowOnBvs = text.find(t=>t.value==='NOW ON BVS');
+  assert.ok(nowOnBvs && nowOnBvs.align==='center','Share card must carry the centered NOW ON BVS headline');
+  assert.match(nowOnBvs.font,/900/,'NOW ON BVS should use the heaviest headline weight');
+  assert.ok(text.some(t=>t.value==='BEST VIRTUAL SOUND'),'Bottom brand row must retain the BVS identity');
+  assert.ok(text.some(t=>t.value==='bvsradio.com' && t.align==='right'),'Bottom brand row must carry the BVS URL at the right edge');
   if (format === 'story') {
     const titleLine = text.find(t=>t.value.startsWith('A very long song'));
-    assert.ok(titleLine?.y >= 1200,'Story title should sit below the artwork, away from Instagram top chrome');
+    assert.ok(nowOnBvs.y <= 240,'NOW ON BVS must stay above the artwork');
+    assert.ok(titleLine?.y >= 1200,'Story title should sit directly below the artwork');
   }
 }
 text.length=0;
@@ -60,4 +65,4 @@ scope.fetch=async()=>({ok:false});
 text.length=0;
 assert.ok(await render({title:'No artwork',kicker:'BVS Community'}),'Missing artwork must still export a valid card');
 assert.ok(text.some(t=>t.value==='JOIN THE CONVERSATION'));
-console.log('Share card formats, centered safe-area layout, logo/artwork, long title bounds, contextual CTA, fallbacks and cleanup passed.');
+console.log('Share card formats, bold NOW ON BVS hierarchy, artwork/title layout, brand row, long-title bounds, contextual CTA, fallbacks and cleanup passed.');

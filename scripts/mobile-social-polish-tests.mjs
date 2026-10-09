@@ -30,14 +30,17 @@ assert(postsRoute.includes('message_kind=eq.root&status=eq.published'), 'Feed hy
 assert(!postsRoute.includes('message_kind=eq.root&status=in.(published,deleted)'), 'Deleted root messages must not hydrate Feed cards')
 assert(postsRoute.includes('raw.startsWith("artist-")'), 'Following lane must normalize creator library keys')
 
-// Story shares should be a designed 9:16 media asset with the actual artwork and Instagram-safe composition.
+// Story shares should follow the social mock: bold header, large artwork, centered title, lower brand row.
 assert(share.includes('canvas.width = 1080') && share.includes('canvas.height = format === "story" ? 1920 : 1080'), 'Story cards must remain 1080x1920')
 assert(share.includes('loadStoryImage(image)'), 'Story card renderer must load the shared artwork')
-assert(share.includes('drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, story ? 34 : 28)'), 'Story artwork must dominate the story card')
-assert(share.includes('const coverY = story ? 230 : 54'), 'Story artwork must leave clear space for Instagram top chrome')
-assert(share.includes('context.textAlign = "center"'), 'Story title and branding must use a centered social composition')
-assert(share.includes('story ? 360 : 260'), 'BVS share logo must render as a large lower-card brand mark')
-assert(share.includes('PRESS PLAY ON BVS'), 'Story card must carry a visible BVS call to action')
+assert(share.includes('context.fillText("NOW ON BVS"'), 'Story cards must carry the strong NOW ON BVS headline')
+assert(share.includes('context.font = `900 ${story ? 62 : 38}px'), 'NOW ON BVS must use the heaviest display weight')
+assert(share.includes('const coverY = story ? 300 : 125'), 'Artwork must sit below the top headline and Instagram controls')
+assert(share.includes('const coverSize = story ? 860 : 570'), 'Story artwork must remain the dominant visual')
+assert(share.includes('const titleY = story ? 1248 : 756'), 'Title must sit immediately below the artwork')
+assert(share.includes('const logoX = story ? 82 : 64') && share.includes('const logoY = story ? 1642 : 982'), 'BVS logo must anchor the lower-left brand row')
+assert(share.includes('context.fillText("bvsradio.com"'), 'Bottom brand row must carry the BVS URL')
+assert(share.includes('PRESS PLAY ON BVS'), 'Story card must retain a contextual BVS call to action')
 assert(share.includes('new URL(src, base)'), 'Relative share artwork must resolve against canonical BVS')
 assert(!share.includes('window.location.origin'), 'Story media must not inherit preview/deployment origins')
 

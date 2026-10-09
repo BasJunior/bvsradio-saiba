@@ -109,7 +109,7 @@ function drawCoverImage(
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
   const shade = context.createLinearGradient(0, y, 0, y + height);
   shade.addColorStop(0, "rgba(0,0,0,0)");
-  shade.addColorStop(1, "rgba(0,0,0,.25)");
+  shade.addColorStop(1, "rgba(0,0,0,.22)");
   context.fillStyle = shade;
   context.fillRect(x, y, width, height);
   context.restore();
@@ -161,14 +161,21 @@ export async function makeStoryCard({ title, text, kicker, image, format = "stor
   const lime = "#bbff65";
   const centerX = canvas.width / 2;
   const action = shareActionFor(kicker);
-  context.fillStyle = "#0d100e";
+
+  context.fillStyle = "#090c0a";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
   const [logo, loaded] = await Promise.all([loadStoryImage(BVS_STORY_LOGO), loadStoryImage(image)]);
-  const coverSize = story ? 860 : 500;
+
+  // Strong brand headline sits above the artwork, but still below Instagram's busiest top controls.
+  context.textAlign = "center";
+  context.fillStyle = lime;
+  context.font = `900 ${story ? 62 : 38}px Arial, sans-serif`;
+  context.fillText("NOW ON BVS", centerX, story ? 225 : 78);
+
+  const coverSize = story ? 860 : 570;
   const coverX = (canvas.width - coverSize) / 2;
-  // Story keeps the Instagram chrome-heavy top clear; all brand/title copy sits below the artwork.
-  const coverY = story ? 230 : 54;
+  const coverY = story ? 300 : 125;
   if (loaded?.image) drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, story ? 34 : 28);
   else {
     context.fillStyle = "#20281b";
@@ -176,47 +183,57 @@ export async function makeStoryCard({ title, text, kicker, image, format = "stor
     if (logo?.image) drawContainedImage(context, logo.image, coverX + coverSize * .18, coverY + coverSize * .18, coverSize * .64, coverSize * .64);
   }
 
-  context.textAlign = "center";
-  context.fillStyle = lime;
-  context.font = `700 ${story ? 28 : 22}px Arial, sans-serif`;
-  context.fillText(kicker.toUpperCase(), centerX, story ? 1138 : 598);
-
+  // The track/show title is treated as one centered lockup directly below the image.
   context.fillStyle = "#ffffff";
-  context.font = `800 ${story ? 80 : 58}px Arial, sans-serif`;
-  const titleWidth = story ? 900 : 900;
-  const titleY = story ? 1202 : 646;
-  const afterTitle = drawWrappedText(context, title, centerX, titleY, titleWidth, story ? 88 : 66, story ? 3 : 2);
+  context.font = `900 ${story ? 76 : 52}px Arial, sans-serif`;
+  const titleY = story ? 1248 : 756;
+  const afterTitle = drawWrappedText(
+    context,
+    title,
+    centerX,
+    titleY,
+    story ? 900 : 900,
+    story ? 82 : 58,
+    story ? 2 : 2,
+  );
 
   let afterText = afterTitle;
   if (text) {
     context.fillStyle = "#b9beb9";
-    context.font = `400 ${story ? 34 : 27}px Arial, sans-serif`;
-    afterText = drawWrappedText(context, text, centerX, afterTitle + (story ? 18 : 10), story ? 850 : 820, story ? 44 : 34, 2);
-  }
-
-  const logoY = story ? Math.max(1535, Math.min(1580, afterText + 26)) : Math.max(840, Math.min(875, afterText + 18));
-  if (logo?.image) {
-    drawContainedImage(
+    context.font = `500 ${story ? 34 : 25}px Arial, sans-serif`;
+    afterText = drawWrappedText(
       context,
-      logo.image,
-      story ? 360 : 410,
-      logoY,
-      story ? 360 : 260,
-      story ? 128 : 92,
+      text,
+      centerX,
+      afterTitle + (story ? 16 : 8),
+      story ? 850 : 840,
+      story ? 42 : 30,
+      story ? 2 : 1,
     );
   }
 
-  context.fillStyle = "#9fa59f";
-  context.font = `600 ${story ? 23 : 18}px Arial, sans-serif`;
-  context.fillText("BEST VIRTUAL SOUND", centerX, logoY + (story ? 150 : 108));
-
-  const actionY = story ? 1718 : 988;
+  // Keep the contextual action, but make it secondary to artwork/title instead of another headline.
+  const actionY = story ? Math.max(1515, Math.min(1560, afterText + 20)) : 948;
   context.fillStyle = lime;
-  context.font = `700 ${story ? 27 : 21}px Arial, sans-serif`;
+  context.font = `800 ${story ? 25 : 19}px Arial, sans-serif`;
   context.fillText(action, centerX, actionY);
+
+  // Bottom brand row mirrors the social mock: logo left, BVS identity + URL across the lower edge.
+  const logoX = story ? 82 : 64;
+  const logoY = story ? 1642 : 982;
+  const logoWidth = story ? 210 : 150;
+  const logoHeight = story ? 94 : 56;
+  if (logo?.image) drawContainedImage(context, logo.image, logoX, logoY, logoWidth, logoHeight);
+
+  context.textAlign = "left";
+  context.fillStyle = "#aeb4ae";
+  context.font = `700 ${story ? 23 : 17}px Arial, sans-serif`;
+  context.fillText("BEST VIRTUAL SOUND", logoX + logoWidth + (story ? 26 : 18), logoY + (story ? 54 : 34));
+
+  context.textAlign = "right";
   context.fillStyle = "#ffffff";
-  context.font = `600 ${story ? 24 : 19}px Arial, sans-serif`;
-  context.fillText("bvsradio.com", centerX, actionY + (story ? 42 : 32));
+  context.font = `800 ${story ? 28 : 20}px Arial, sans-serif`;
+  context.fillText("bvsradio.com", story ? 998 : 1016, logoY + (story ? 57 : 35));
   context.textAlign = "left";
 
   if (logo?.objectUrl) URL.revokeObjectURL(logo.objectUrl);
