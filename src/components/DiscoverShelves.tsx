@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import DiscoverMoreActions from '@/components/DiscoverMoreActions'
 import LibraryAction from '@/components/LibraryAction'
+import SongShareButton from '@/components/SongShareButton'
 import { useStationPlayer } from '@/components/StationPlayer'
 import { trackEvent } from '@/lib/analytics'
 import { toDiscoveryTrack, type DiscoveryShelf, type SearchItem, type SearchKind } from '@/lib/discovery-experience'
@@ -58,6 +59,7 @@ export default function DiscoverShelves({ shelves, round, onMore, onBrowse, onDe
             <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-secondary">{item.subtitle}</p>
             {creator || playable ? <DiscoverMoreActions title={item.title}>
               {creator || item.kind === 'track' || item.kind === 'beat' ? <LibraryAction item={{ ...item, kind: creator ? 'artist' : item.kind as 'track' | 'beat' }} section={creator ? 'follows' : 'favourites'} compact analyticsSource="discover" /> : null}
+              {item.kind === 'track' ? <SongShareButton id={item.id} title={item.title} artist={item.subtitle} image={item.image} compact /> : null}
               {item.detail ? <button type="button" onClick={() => onDetails(item)} className="min-h-11 text-left text-sm text-brand">View details</button> : <Link href={item.href} className="inline-flex min-h-11 items-center text-sm text-brand">View details →</Link>}
             </DiscoverMoreActions> : null}
           </article>
