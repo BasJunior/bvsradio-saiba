@@ -162,7 +162,7 @@ export async function makeStoryCard({ title, text, kicker, image, format = "stor
   const centerX = canvas.width / 2;
   const action = shareActionFor(kicker);
 
-  context.fillStyle = "#090c0a";
+  context.fillStyle = "#000000";
   context.fillRect(0, 0, canvas.width, canvas.height);
 
   const [logo, loaded] = await Promise.all([loadStoryImage(BVS_STORY_LOGO), loadStoryImage(image)]);
@@ -173,50 +173,41 @@ export async function makeStoryCard({ title, text, kicker, image, format = "stor
   context.font = `900 ${story ? 62 : 38}px Arial, sans-serif`;
   context.fillText("NOW ON BVS", centerX, story ? 225 : 78);
 
-  const coverSize = story ? 860 : 570;
+  const coverSize = story ? 860 : 640;
   const coverX = (canvas.width - coverSize) / 2;
-  const coverY = story ? 300 : 125;
-  if (loaded?.image) drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, story ? 34 : 28);
+  const coverY = story ? 300 : 140;
+  const panelBottom = story ? 1550 : 956;
+  if (loaded?.image) drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, 0);
   else {
-    context.fillStyle = "#20281b";
+    context.fillStyle = "#141414";
     context.fillRect(coverX, coverY, coverSize, coverSize);
     if (logo?.image) drawContainedImage(context, logo.image, coverX + coverSize * .18, coverY + coverSize * .18, coverSize * .64, coverSize * .64);
   }
 
-  // The track/show title is treated as one centered lockup directly below the image.
-  context.fillStyle = "#ffffff";
-  context.font = `900 ${story ? 76 : 52}px Arial, sans-serif`;
-  const titleY = story ? 1248 : 756;
-  const afterTitle = drawWrappedText(
-    context,
-    title,
-    centerX,
-    titleY,
-    story ? 900 : 900,
-    story ? 82 : 58,
-    story ? 2 : 2,
-  );
+  // Artwork and metadata share one square frame, matching the BVS social sketch.
+  context.strokeStyle = "rgba(255,255,255,.65)";
+  context.lineWidth = 2;
+  context.strokeRect(coverX, coverY, coverSize, panelBottom - coverY);
+  context.beginPath();
+  context.moveTo(coverX, coverY + coverSize);
+  context.lineTo(coverX + coverSize, coverY + coverSize);
+  context.stroke();
 
-  let afterText = afterTitle;
+  context.fillStyle = "#ffffff";
+  context.font = `900 ${story ? 72 : 44}px Arial, sans-serif`;
+  const titleY = story ? 1240 : 824;
+  const afterTitle = drawWrappedText(context, title, centerX, titleY, coverSize - 64, story ? 82 : 50, 2);
+
   if (text) {
     context.fillStyle = "#b9beb9";
-    context.font = `500 ${story ? 34 : 25}px Arial, sans-serif`;
-    afterText = drawWrappedText(
-      context,
-      text,
-      centerX,
-      afterTitle + (story ? 16 : 8),
-      story ? 850 : 840,
-      story ? 42 : 30,
-      story ? 2 : 1,
-    );
+    context.font = `500 ${story ? 32 : 25}px Arial, sans-serif`;
+    drawWrappedText(context, text, centerX, afterTitle + (story ? 16 : 8), coverSize - 80, story ? 42 : 30, story ? 2 : 1);
   }
 
-  // Keep the contextual action, but make it secondary to artwork/title instead of another headline.
-  const actionY = story ? Math.max(1515, Math.min(1560, afterText + 20)) : 948;
+  // Context stays in the header so the framed title block remains uncluttered.
   context.fillStyle = lime;
   context.font = `800 ${story ? 25 : 19}px Arial, sans-serif`;
-  context.fillText(action, centerX, actionY);
+  context.fillText(action, centerX, story ? 266 : 108);
 
   // Bottom brand row mirrors the social mock: logo left, BVS identity + URL across the lower edge.
   const logoX = story ? 82 : 64;
@@ -361,7 +352,7 @@ export default function AppShareButton({
         role="dialog"
         aria-modal="true"
         aria-label={`Share ${title}`}
-        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[2rem] border border-white/10 bg-[#0b0b0d] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[2rem] sm:pb-5"
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[8px] border border-white/10 bg-[#0b0b0d] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[8px] sm:pb-5"
       >
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
         <div className="flex items-start justify-between gap-4">
@@ -373,18 +364,18 @@ export default function AppShareButton({
         </div>
 
         <div className="mt-4 flex gap-2" aria-label="Card format">
-          {(["story", "square"] as const).map(value => <button key={value} type="button" aria-pressed={format === value} onClick={() => setFormat(value)} className={`min-h-10 flex-1 rounded-full border px-4 text-xs ${format === value ? "border-[#bbff65] bg-[#bbff65]/10 text-[#bbff65]" : "border-white/15 text-white/60"}`}>{value === "story" ? "Story · 9:16" : "Post · 1:1"}</button>)}
+          {(["story", "square"] as const).map(value => <button key={value} type="button" aria-pressed={format === value} onClick={() => setFormat(value)} className={`min-h-10 flex-1 rounded-[4px] border px-4 text-xs ${format === value ? "border-[#bbff65] bg-[#bbff65]/10 text-[#bbff65]" : "border-white/15 text-white/60"}`}>{value === "story" ? "Story · 9:16" : "Post · 1:1"}</button>)}
         </div>
-        <div className="mt-4 flex min-h-52 justify-center rounded-2xl bg-white/[.03] p-3" aria-busy={!card || card.format !== format}>
-          {card && card.format === format ? <img src={card.preview} alt={`${title} ${format} share card`} className={`max-h-[40dvh] w-auto rounded-lg ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`} /> : <p className="self-center text-sm text-white/50">Preparing your card…</p>}
+        <div className="mt-4 flex min-h-52 justify-center rounded-none bg-white/[.03] p-3" aria-busy={!card || card.format !== format}>
+          {card && card.format === format ? <img src={card.preview} alt={`${title} ${format} share card`} className={`max-h-[40dvh] w-auto rounded-none ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`} /> : <p className="self-center text-sm text-white/50">Preparing your card…</p>}
         </div>
         <p className="mt-2 text-center text-[11px] text-white/45">The preview is the exact image you’ll share.</p>
-        <button type="button" disabled={sharing || !card || card.format !== format} onClick={() => void share()} className="mt-4 min-h-12 w-full rounded-2xl bg-[#bbff65] px-5 text-sm font-semibold text-black disabled:opacity-50">{sharing ? "Opening share…" : "Share card…"}</button>
+        <button type="button" disabled={sharing || !card || card.format !== format} onClick={() => void share()} className="mt-4 min-h-12 w-full rounded-[4px] bg-[#bbff65] px-5 text-sm font-semibold text-black disabled:opacity-50">{sharing ? "Opening share…" : "Share card…"}</button>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button type="button" disabled={!card || card.format !== format} onClick={save} className="min-h-11 rounded-xl border border-white/15 text-sm disabled:opacity-40">Save image</button>
-          <button type="button" onClick={() => void copy()} className="min-h-11 rounded-xl border border-white/15 text-sm">{copied ? "Copied ✓" : "Copy link"}</button>
-          <a href={`https://wa.me/?text=${encodeURIComponent(`${title}\n${text || kicker}\n${url}`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center rounded-xl border border-white/15 text-sm">WhatsApp link ↗</a>
-          <button type="button" onClick={() => void shareLink()} className="min-h-11 rounded-xl border border-white/15 text-sm">Share link…</button>
+          <button type="button" disabled={!card || card.format !== format} onClick={save} className="min-h-11 rounded-[4px] border border-white/15 text-sm disabled:opacity-40">Save image</button>
+          <button type="button" onClick={() => void copy()} className="min-h-11 rounded-[4px] border border-white/15 text-sm">{copied ? "Copied ✓" : "Copy link"}</button>
+          <a href={`https://wa.me/?text=${encodeURIComponent(`${title}\n${text || kicker}\n${url}`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center rounded-[4px] border border-white/15 text-sm">WhatsApp link ↗</a>
+          <button type="button" onClick={() => void shareLink()} className="min-h-11 rounded-[4px] border border-white/15 text-sm">Share link…</button>
         </div>
         <p className="mt-3 text-center text-xs leading-5 text-white/50">Choose Instagram, WhatsApp or another app from your phone’s share sheet. For Stories, copy the link and add a link sticker.</p>
         {message ? <p role="status" className="mt-3 rounded-xl bg-white/5 p-3 text-sm text-white/75">{message}</p> : null}
