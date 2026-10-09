@@ -37,15 +37,22 @@ for (const format of ['story','square']) {
   assert.match(file.name,new RegExp(`-${format}\\.png$`));
   assert.equal(draws.length,2,'Both uploaded logo and content artwork must render');
   for(const draw of text) {
-    assert.ok(draw.y<canvas.height-70,'Text must stay within export bounds');
-    assert.ok(draw.align==='right'||draw.x+draw.width<=1010,'Long titles must stay within the card');
+    assert.ok(draw.y<canvas.height-55,'Text must stay within export bounds');
+    if (draw.align === 'center') assert.ok(draw.x-(draw.width/2)>=50 && draw.x+(draw.width/2)<=1030,'Centered text must stay inside the safe card width');
+    else if (draw.align === 'right') assert.ok(draw.x-draw.width>=50,'Right-aligned text must stay inside the safe card width');
+    else assert.ok(draw.x+draw.width<=1030,'Left-aligned text must stay inside the safe card width');
   }
   assert.ok(text.some(t=>t.value.endsWith('…')),'Long titles must truncate');
   assert.ok(text.some(t=>t.value==='FIND YOUR NEXT RECORD'),'Beat card CTA must match content');
+  assert.ok(text.some(t=>t.value==='BEST VIRTUAL SOUND' && t.align==='center'),'Brand lockup should be centered under the artwork');
+  if (format === 'story') {
+    const titleLine = text.find(t=>t.value.startsWith('A very long song title'));
+    assert.ok(titleLine?.y >= 1200,'Story title should sit below the artwork, away from Instagram top chrome');
+  }
 }
 text.length=0;
 await render({title:'x'.repeat(180),kicker:'BVS Show',format:'square'});
-assert.ok(text.filter(t=>t.value.startsWith('x')).every(t=>t.width<=410),'Unbroken titles must wrap');
+assert.ok(text.filter(t=>t.value.startsWith('x')).every(t=>t.width<=900),'Unbroken square titles must wrap within the centered title area');
 assert.ok(text.some(t=>t.value==='TUNE IN ON BVS'));
 assert.ok(requests.includes('https://preview.example/branding/bvs-share-logo.png'),'Uploaded logo must load on current deployment');
 assert.ok(revocations.length>=5,'Loaded image URLs must be cleaned up');
@@ -53,4 +60,4 @@ scope.fetch=async()=>({ok:false});
 text.length=0;
 assert.ok(await render({title:'No artwork',kicker:'BVS Community'}),'Missing artwork must still export a valid card');
 assert.ok(text.some(t=>t.value==='JOIN THE CONVERSATION'));
-console.log('Share card formats, logo/artwork, long title bounds, contextual CTA, fallbacks and cleanup passed.');
+console.log('Share card formats, centered safe-area layout, logo/artwork, long title bounds, contextual CTA, fallbacks and cleanup passed.');
