@@ -98,6 +98,7 @@ const nativeTracks = music.map(i=>({id:i.detail.id,title:i.title,artist:i.detail
 const player = {current:null,isPlaying:false,playNow:(item,opts)=>played.push({item,opts}),playAll:items=>played.push({items}),setQueueOpen(){},openNowPlaying(){opened++;},toggle(){}};
 const imports = {
   '@/components/DiscoverMoreActions':{default:'more-actions'},
+  '@/components/SongShareButton':{default:'song-share'},
   'next/link':{default:'link'},'next/image':{default:'image'},
   '@/components/app-vnext/AppBeatPreviewPlayer':{default:'preview'},
   '@/components/app-vnext/AppDownloadButton':{default:'download'},
@@ -131,6 +132,7 @@ const firstPlay = nodes(tree).find(n => n.type === 'button' && n.props['aria-lab
 assert.ok(firstPlay, 'Native artwork must retain a labelled play action');
 assert.equal(button(tree,'Play'),undefined,'Cards must not duplicate artwork playback with a footer button');
 assert.ok(nodes(tree).some(n=>n.type==='more-actions'),'Secondary native utilities must remain reachable through More');
+assert.ok(nodes(tree).some(n=>n.type==='song-share'),'Song sharing must remain reachable through the native More menu');
 firstPlay.props.onClick();
 assert.equal(opened,0,'Starting a discovery track must keep the browsing screen open');
 assert.equal(saved.at(-1).href,'/app/ios','Native listening history must stay in the app namespace');
@@ -138,4 +140,4 @@ button(tree,'Show more music →').props.onClick(); tree=render(props);
 assert.equal(nodes(tree).filter(n=>n.type==='article').length,9,'Browse more must expose the full matched pool');
 const search=nodes(tree).find(n=>n.type==='input');search.props.onChange({target:{value:'no-match'}});tree=render(props);
 assert.ok(button(tree,'Start discovering'),'Empty native views must offer a reset');
-console.log('Discover behavior passed: diverse rotating picks, genre matching, real playback, fresh order, independent native loading, rights-scoped queue, browse-more and empty-state recovery.');
+console.log('Discover behavior passed: diverse rotating picks, genre matching, real playback, fresh order, independent native loading, rights-scoped queue, browse-more, song sharing and empty-state recovery.');

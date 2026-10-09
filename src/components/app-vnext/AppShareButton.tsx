@@ -14,6 +14,7 @@ export type AppShareButtonProps = {
   compact?: boolean;
   autoOpen?: boolean;
   hideTrigger?: boolean;
+  triggerLabel?: string;
   onDismiss?: () => void;
 };
 
@@ -108,7 +109,7 @@ function drawCoverImage(
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
   const shade = context.createLinearGradient(0, y, 0, y + height);
   shade.addColorStop(0, "rgba(0,0,0,0)");
-  shade.addColorStop(1, "rgba(0,0,0,.22)");
+  shade.addColorStop(1, "rgba(0,0,0,.25)");
   context.fillStyle = shade;
   context.fillRect(x, y, width, height);
   context.restore();
@@ -134,6 +135,17 @@ function drawContainedImage(
   );
 }
 
+function shareActionFor(kicker: string) {
+  const category = kicker.toLowerCase();
+  return category.includes("buy this beat") ? "BUY THIS BEAT ON BVS"
+    : category.includes("listen and save") ? "LISTEN AND SAVE ON BVS"
+      : category.includes("beat") ? "FIND YOUR NEXT RECORD"
+        : /creator|artist|producer/.test(category) ? "MEET YOUR NEXT FAVOURITE"
+          : category.includes("show") || category.includes("episode") ? "TUNE IN ON BVS"
+            : category.includes("community") ? "JOIN THE CONVERSATION"
+              : "PRESS PLAY ON BVS";
+}
+
 export type ShareCardFormat = "story" | "square";
 
 export async function makeStoryCard({ title, text, kicker, image, format = "story" }: { title: string; text?: string; kicker: string; image?: string; format?: ShareCardFormat }) {
@@ -144,55 +156,71 @@ export async function makeStoryCard({ title, text, kicker, image, format = "stor
   canvas.height = format === "story" ? 1920 : 1080;
   const context = canvas.getContext("2d");
   if (!context) return null;
+
   const story = format === "story";
   const lime = "#bbff65";
-  context.fillStyle = "#101211";
+  const centerX = canvas.width / 2;
+  const action = shareActionFor(kicker);
+  context.fillStyle = "#0d100e";
   context.fillRect(0, 0, canvas.width, canvas.height);
-  // All important content stays inside Story controls' top and bottom zones.
-  const top = story ? 220 : 64;
-  const [logo, loaded] = await Promise.all([loadStoryImage(BVS_STORY_LOGO), loadStoryImage(image)]);
-  if (logo?.image) drawContainedImage(context, logo.image, 72, top, 112, 112);
-  context.fillStyle = lime;
-  context.font = "700 24px Arial, sans-serif";
-  drawWrappedText(context, kicker.toUpperCase(), 216, top + 46, 770, 32, 2);
-  context.fillStyle = "#a6aca6";
-  context.font = "400 22px Arial, sans-serif";
-  context.fillText("BEST VIRTUAL SOUND", 216, top + 94);
 
-  const coverX = story ? 110 : 72, coverY = story ? 370 : 236;
-  const coverSize = story ? 860 : 480;
-  if (loaded?.image) drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, 24);
+  const [logo, loaded] = await Promise.all([loadStoryImage(BVS_STORY_LOGO), loadStoryImage(image)]);
+  const coverSize = story ? 860 : 500;
+  const coverX = (canvas.width - coverSize) / 2;
+  // Story keeps the Instagram chrome-heavy top clear; all brand/title copy sits below the artwork.
+  const coverY = story ? 230 : 54;
+  if (loaded?.image) drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, story ? 34 : 28);
   else {
     context.fillStyle = "#20281b";
     context.fillRect(coverX, coverY, coverSize, coverSize);
-    if (logo?.image) drawContainedImage(context, logo.image, coverX + coverSize * .16, coverY + coverSize * .16, coverSize * .68, coverSize * .68);
+    if (logo?.image) drawContainedImage(context, logo.image, coverX + coverSize * .18, coverY + coverSize * .18, coverSize * .64, coverSize * .64);
   }
+
+  context.textAlign = "center";
+  context.fillStyle = lime;
+  context.font = `700 ${story ? 28 : 22}px Arial, sans-serif`;
+  context.fillText(kicker.toUpperCase(), centerX, story ? 1138 : 598);
+
+  context.fillStyle = "#ffffff";
+  context.font = `800 ${story ? 80 : 58}px Arial, sans-serif`;
+  const titleWidth = story ? 900 : 900;
+  const titleY = story ? 1202 : 646;
+  const afterTitle = drawWrappedText(context, title, centerX, titleY, titleWidth, story ? 88 : 66, story ? 3 : 2);
+
+  let afterText = afterTitle;
+  if (text) {
+    context.fillStyle = "#b9beb9";
+    context.font = `400 ${story ? 34 : 27}px Arial, sans-serif`;
+    afterText = drawWrappedText(context, text, centerX, afterTitle + (story ? 18 : 10), story ? 850 : 820, story ? 44 : 34, 2);
+  }
+
+  const logoY = story ? Math.max(1535, Math.min(1580, afterText + 26)) : Math.max(840, Math.min(875, afterText + 18));
+  if (logo?.image) {
+    drawContainedImage(
+      context,
+      logo.image,
+      story ? 360 : 410,
+      logoY,
+      story ? 360 : 260,
+      story ? 128 : 92,
+    );
+  }
+
+  context.fillStyle = "#9fa59f";
+  context.font = `600 ${story ? 23 : 18}px Arial, sans-serif`;
+  context.fillText("BEST VIRTUAL SOUND", centerX, logoY + (story ? 150 : 108));
+
+  const actionY = story ? 1718 : 988;
+  context.fillStyle = lime;
+  context.font = `700 ${story ? 27 : 21}px Arial, sans-serif`;
+  context.fillText(action, centerX, actionY);
+  context.fillStyle = "#ffffff";
+  context.font = `600 ${story ? 24 : 19}px Arial, sans-serif`;
+  context.fillText("bvsradio.com", centerX, actionY + (story ? 42 : 32));
+  context.textAlign = "left";
+
   if (logo?.objectUrl) URL.revokeObjectURL(logo.objectUrl);
   if (loaded?.objectUrl) URL.revokeObjectURL(loaded.objectUrl);
-
-  const titleX = story ? 72 : 596;
-  const titleY = story ? 1320 : 296;
-  const titleWidth = story ? 936 : 410;
-  context.fillStyle = "#ffffff";
-  context.font = `700 ${story ? 72 : 54}px Arial, sans-serif`;
-  const afterTitle = drawWrappedText(context, title, titleX, titleY, titleWidth, story ? 82 : 64, 3);
-  if (text) {
-    context.fillStyle = "#b6bcb6";
-    context.font = `400 ${story ? 30 : 27}px Arial, sans-serif`;
-    drawWrappedText(context, text, titleX, afterTitle + 24, titleWidth, 40, story ? 2 : 4);
-  }
-  const footerY = story ? 1732 : 910;
-  context.fillStyle = lime;
-  context.fillRect(72, footerY - 35, 5, 58);
-  context.font = "700 25px Arial, sans-serif";
-  const category = kicker.toLowerCase();
-  const action = category.includes("buy this beat") ? "BUY THIS BEAT ON BVS" : category.includes("listen and save") ? "LISTEN AND SAVE ON BVS" : category.includes("beat") ? "FIND YOUR NEXT RECORD" : /creator|artist|producer/.test(category) ? "MEET YOUR NEXT FAVOURITE" : category.includes("show") || category.includes("episode") ? "TUNE IN ON BVS" : category.includes("community") ? "JOIN THE CONVERSATION" : "PRESS PLAY ON BVS";
-  context.fillText(action, 98, footerY);
-  context.textAlign = "right";
-  context.fillStyle = "#ffffff";
-  context.font = "600 24px Arial, sans-serif";
-  context.fillText("bvsradio.com", 1008, footerY);
-  context.textAlign = "left";
   const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/png"));
   if (!blob) return null;
   const name = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "share";
@@ -208,6 +236,7 @@ export default function AppShareButton({
   compact = false,
   autoOpen = false,
   hideTrigger = false,
+  triggerLabel = "Share",
   onDismiss,
 }: AppShareButtonProps) {
   const [open, setOpen] = useState(autoOpen);
@@ -354,7 +383,7 @@ export default function AppShareButton({
         onClick={() => setOpen(true)}
         className={compact ? "min-h-9 rounded-full border border-white/10 px-3 text-xs" : "min-h-10 rounded-full border border-white/15 px-4 text-sm"}
       >
-        Share
+        {triggerLabel}
       </button>}
       {shareLayer}
     </>
