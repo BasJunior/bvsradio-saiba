@@ -4,14 +4,14 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 const source = fs.readFileSync('src/components/app-vnext/AppShareButton.tsx', 'utf8');
-const draws = [], text = [], requests = [], revocations = [];
+const draws = [], text = [], requests = [], revocations = [], frames = [], radii = [];
 let canvas;
 const context = {
   font:'', textAlign:'left', fillStyle:'',
   measureText(value) { return { width: value.length * Number(this.font.match(/(\d+)px/)?.[1] || 20) * .52 }; },
   fillText(value,x,y) { text.push({value,x,y,width:this.measureText(value).width,align:this.textAlign,font:this.font}); },
   drawImage(...args) { draws.push(args); },
-  fillRect(){},save(){},restore(){},beginPath(){},roundRect(){},clip(){},
+  fillRect(){},save(){},restore(){},beginPath(){},roundRect(x,y,w,h,r){radii.push(r);},clip(){},strokeRect(...args){frames.push(args);},moveTo(){},lineTo(){},stroke(){},
   createLinearGradient(){return {addColorStop(){}};},
 };
 class ImageMock {
@@ -29,13 +29,25 @@ const scope = {
 vm.runInNewContext(ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText,scope);
 const render=scope.exports.makeStoryCard;
 for (const format of ['story','square']) {
-  text.length=0; draws.length=0;
+  text.length=0; draws.length=0; frames.length=0; radii.length=0;
   const file=await render({title:'A very long song title '.repeat(15),text:'Wolf Bridges · Hip-Hop',kicker:'BVS BeatStore',image:'/cover.jpg',format});
   assert.equal(canvas.width,1080);
   assert.equal(canvas.height,format==='story'?1920:1080);
   assert.equal(file.type,'image/png');
   assert.match(file.name,new RegExp(`-${format}\\.png$`));
   assert.equal(draws.length,2,'Both uploaded logo and content artwork must render');
+  assert.deepEqual(radii, [0], 'Artwork must export with square corners');
+  assert.equal(frames.length, 1, 'Artwork and title must share a single frame');
+  const [frameX, frameY, frameWidth, frameHeight] = frames[0];
+  const artwork = draws[0];
+  assert.equal(artwork[5], frameX);
+  assert.equal(artwork[6], frameY);
+  assert.equal(artwork[7], frameWidth);
+  assert.ok(frameHeight > frameWidth, 'Frame must also contain the title band');
+  for (const line of text.filter(t => t.value.startsWith('A very long') || t.value.includes('Wolf Bridges'))) {
+    assert.ok(line.y > frameY + frameWidth && line.y < frameY + frameHeight, 'Metadata must sit below artwork inside the frame');
+    assert.ok(line.width <= frameWidth - 64, 'Metadata must fit inside the frame');
+  }
   for(const draw of text) {
     assert.ok(draw.y<canvas.height-55,'Text must stay within export bounds');
     if (draw.align === 'center') assert.ok(draw.x-(draw.width/2)>=50 && draw.x+(draw.width/2)<=1030,'Centered text must stay inside the safe card width');

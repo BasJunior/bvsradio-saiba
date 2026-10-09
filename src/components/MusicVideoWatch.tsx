@@ -99,7 +99,7 @@ export default function MusicVideoWatch({
   if (watching) {
     return (
       <div className={`relative mx-auto w-full ${className}`}>
-        <div className="relative mx-auto aspect-video w-full max-h-[min(48vh,24rem)] overflow-hidden rounded-[1.5rem] border border-white/10 bg-black shadow-[0_35px_100px_rgba(0,0,0,.55)] sm:max-h-none sm:rounded-[2rem]">
+        <div className="relative mx-auto aspect-video w-full max-h-[min(48vh,24rem)] overflow-hidden rounded-[8px] border border-white/15 bg-black sm:max-h-none">
           {/* eslint-disable-next-line jsx-a11y/media-has-caption -- artist MV; captions later */}
           <video
             ref={videoRef}
@@ -129,7 +129,7 @@ export default function MusicVideoWatch({
 
   return (
     <div className={`space-y-3 ${className}`}>
-      <div className="relative mx-auto aspect-square w-full max-h-[min(42vh,18rem)] overflow-hidden rounded-[1.5rem] border border-white/10 bg-white/5 shadow-[0_35px_100px_rgba(0,0,0,.55)] sm:max-h-none sm:rounded-[2rem]">
+      <div className="relative mx-auto aspect-square w-full max-h-[min(42vh,18rem)] overflow-hidden rounded-[8px] border border-white/15 bg-[#141414] sm:max-h-none">
         {poster ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
