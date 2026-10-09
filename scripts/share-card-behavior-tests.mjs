@@ -46,7 +46,7 @@ for (const format of ['story','square']) {
   assert.ok(text.some(t=>t.value==='FIND YOUR NEXT RECORD'),'Beat card CTA must match content');
   assert.ok(text.some(t=>t.value==='BEST VIRTUAL SOUND' && t.align==='center'),'Brand lockup should be centered under the artwork');
   if (format === 'story') {
-    const titleLine = text.find(t=>t.value.startsWith('A very long song title'));
+    const titleLine = text.find(t=>t.value.startsWith('A very long song'));
     assert.ok(titleLine?.y >= 1200,'Story title should sit below the artwork, away from Instagram top chrome');
   }
 }
