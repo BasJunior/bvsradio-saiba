@@ -21,6 +21,7 @@ function harness(path, imports, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, queueMicrotask, URLSearchParams, console, require(name) {
+    if (name === '@/lib/discovery-search') return pure('src/lib/discovery-search.ts');
     if (name === 'react') return react;
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: 'fragment' };
     if (name in imports) return imports[name];

@@ -8,8 +8,13 @@ const calls = [];
 let reduced = false;
 const rail = {scrollLeft:0,clientWidth:400,scrollWidth:1500,addEventListener(){},removeEventListener(){},scrollBy:options=>calls.push(options)};
 const exports = {};
+const searchExports = {};
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/discovery-search.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports:searchExports});
+for (const query of ['Hills', 'W.Hills', 'W. Hills', 'W. Hill$', 'w.hills']) assert.equal(searchExports.matchesDiscoveryQuery(query,['W. Hill$', '/artist/w.hills']),true,`Find Hills with ${query}`);
+assert.equal(searchExports.matchesDiscoveryQuery('Wolf',['W. Hill$', '/artist/w.hills']),false);
 const imports = {
-  react:{useId:()=> 'portraits',useRef:()=>({current:rail}),useState:()=>[{previous:false,next:true},()=>{}],useEffect:fn=>fn()},
+  '@/lib/discovery-search':searchExports,
+  react:{useId:()=> 'portraits',useRef:()=>({current:rail}),useState:value=>[typeof value === "string" ? value : {previous:false,next:true},()=>{}],useEffect:fn=>fn()},
   'react/jsx-runtime':{jsx,jsxs:jsx}, 'next/image':{default:'image'},'next/link':{default:'link'},
   '@/lib/image-optimization':{shouldBypassImageOptimizer: source => /^https?:|blob:|data:/.test(source)},
 };
@@ -56,6 +61,9 @@ const directoryExports = {};
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/home/DiscoveryDirectory.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText,{
   exports:directoryExports,require:name=>name==='./CreatorPortraitRail'?{default:'shared-rail'}:imports[name],
 });
+const grid=nodes(exports.default({title:'Artists',tone:'charcoal',allHref:'/catalogue',items,layout:'grid'}));
+assert.ok(grid.some(node=>node.props?.className?.includes('bvs-creator-portrait-grid')));
+assert.equal(grid.filter(node=>node.type==='button').length,0,'Full directory displays a grid without sideways-only controls');
 const directoryItems=Array.from({length:30},(_,index)=>({...items[0],id:String(index),secondaryHref:'/catalogue?producer=one',secondaryLabel:'View catalogue'}));
 const directory=nodes(directoryExports.default({title:'Producers',kicker:'BeatStore',description:'Published producers',items:directoryItems,browseHref:'/catalogue',browseLabel:'Browse beats',emptyMessage:'No producers yet'}));
 assert.equal(directory.find(node=>node.type==='shared-rail').props.items.length,30,'See all must preserve the full collection');

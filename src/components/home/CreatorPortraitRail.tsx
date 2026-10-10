@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export type CreatorPortrait = { id: string; name: string; image: string; href: string; detail: string; accent?: string };
 
-export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, headingLevel = 2, accent = "green", kicker = "The people behind the sound", children, "data-home-accent": homeAccent }: {
+export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, headingLevel = 2, accent = "green", kicker = "The people behind the sound", children, layout = "rail", "data-home-accent": homeAccent }: {
   title: string;
   tone: "charcoal" | "ink";
   items: CreatorPortrait[];
@@ -19,6 +19,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
   accent?: "green" | "purple";
   kicker?: string;
   children?: ReactNode;
+  layout?: "rail" | "grid";
   "data-home-accent"?: string;
 }) {
   const id = useId();
@@ -50,14 +51,14 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
         <div><p className="bvs-creator-kicker">{kicker}</p><Heading id={`${id}-heading`} className={headingLevel === 1 ? "bvs-directory-title" : undefined}>{title}</Heading></div>
         {allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>}
       </div>
-      {items.length ? <><div className="bvs-creator-scroll-guide">
+      {items.length ? <>{layout === "rail" ? <div className="bvs-creator-scroll-guide">
         <p id={`${id}-hint`}>Swipe or scroll sideways <span aria-hidden="true">→</span></p>
         <div className="bvs-creator-scroll-controls">
           <button type="button" aria-label={`Scroll ${title.toLowerCase()} left`} aria-controls={`${id}-rail`} disabled={!edges.previous} onClick={() => move(-1)}>←</button>
           <button type="button" aria-label={`Scroll ${title.toLowerCase()} right`} aria-controls={`${id}-rail`} disabled={!edges.next} onClick={() => move(1)}>→</button>
         </div>
-      </div>
-      <div ref={railRef} id={`${id}-rail`} className="bvs-creator-portrait-rail" role="region" aria-label={`${title} portraits`} aria-describedby={`${id}-hint`} tabIndex={0}>
+      </div> : null}
+      <div ref={railRef} id={`${id}-rail`} className={`bvs-creator-portrait-rail${layout === "grid" ? " bvs-creator-portrait-grid" : ""}`} role="region" aria-label={`${title} portraits`} aria-describedby={layout === "rail" ? `${id}-hint` : undefined} tabIndex={0}>
         {children || items.map(item => <Link key={item.id} href={item.href} data-home-accent={item.accent} className="bvs-creator-portrait">
           <div className="bvs-creator-photo"><Image src={item.image || "/assets/images/default-avatar.png"} alt="" fill loading="lazy" decoding="async" sizes="(max-width: 640px) 160px, (max-width: 1024px) 200px, 240px" unoptimized={shouldBypassImageOptimizer(item.image)} className="object-cover" /></div>
           <div className="bvs-creator-caption"><h3>{item.name}</h3><p>{item.detail}</p></div>

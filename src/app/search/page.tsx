@@ -5,6 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import LibraryAction from '@/components/LibraryAction'
 import ExploreItemDetails, { type ExploreDetail } from '@/components/ExploreItemDetails'
+import { matchesDiscoveryQuery } from '@/lib/discovery-search'
 import { discoveryItems } from '@/lib/discovery'
 import { trackEvent } from '@/lib/analytics'
 import type { PublishedArtistSummary, PublishedProducerSummary } from '@/lib/artist-content'
@@ -234,8 +235,8 @@ export default function SearchPage() {
         badge: 'Made on BVS',
         publishedAt: item.updatedAt || undefined,
       })),
-      ...artists.filter(item => !producerIds.has(item.id)).map(item => ({ id: `artist-${item.id}`, kind: 'artist' as const, title: item.name, subtitle: `${item.role} · ${item.trackCount} published ${item.trackCount === 1 ? 'track' : 'tracks'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
-      ...producers.map(item => ({ id: `producer-${item.id}`, kind: 'producer' as const, title: item.name, subtitle: `Producer · ${item.beatCount} published ${item.beatCount === 1 ? 'beat' : 'beats'}`, href: `/artist/${item.username}`, image: item.image, tags: item.genres })),
+      ...artists.filter(item => !producerIds.has(item.id)).map(item => ({ id: `artist-${item.id}`, kind: 'artist' as const, title: item.name, subtitle: `${item.role} · ${item.trackCount} published ${item.trackCount === 1 ? 'track' : 'tracks'}`, href: `/artist/${item.username}`, image: item.image, tags: [item.username, ...item.genres] })),
+      ...producers.map(item => ({ id: `producer-${item.id}`, kind: 'producer' as const, title: item.name, subtitle: `Producer · ${item.beatCount} published ${item.beatCount === 1 ? 'beat' : 'beats'}`, href: `/artist/${item.username}`, image: item.image, tags: [item.username, ...item.genres] })),
       ...beats.map(item => {
         const href = `/beat/${encodeURIComponent(item.id)}`
         return {
@@ -301,7 +302,7 @@ export default function SearchPage() {
     const modeKinds = exploreModes.find(item => item.value === mode)?.kinds || []
     const matched = items.filter(item => {
       const matchesFilter = filter === 'all' || item.kind === filter
-      const matchesQuery = !needle || [item.title, item.subtitle, ...(item.tags || [])].join(' ').toLowerCase().includes(needle)
+      const matchesQuery = matchesDiscoveryQuery(query, [item.title, item.subtitle, ...(item.tags || [])])
       const matchesMode = !flowV2Flags.exploreModes || needle || filter !== 'all' || modeKinds.includes(item.kind)
       return matchesFilter && matchesQuery && matchesMode && matchesSound(item, genre)
     })

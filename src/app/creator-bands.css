@@ -205,3 +205,8 @@
 .bvs-artist-profile #music { padding: 1.5rem 0; border-width: 1px 0 0; background: transparent; }
 .bvs-artist-profile #music article { border-width: 0 0 1px; padding: 1rem 0; }
 @media (min-width: 640px) { .bvs-catalogue-page .bvs-creator-band { margin-inline: -1.5rem; } }
+
+.bvs-creator-portrait-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; scroll-snap-type: none; }
+.bvs-creator-portrait-grid > .bvs-creator-portrait { width: auto; min-width: 0; }
+@media (min-width: 640px) { .bvs-creator-portrait-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .bvs-creator-portrait-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
