@@ -30,17 +30,20 @@ assert(postsRoute.includes('message_kind=eq.root&status=eq.published'), 'Feed hy
 assert(!postsRoute.includes('message_kind=eq.root&status=in.(published,deleted)'), 'Deleted root messages must not hydrate Feed cards')
 assert(postsRoute.includes('raw.startsWith("artist-")'), 'Following lane must normalize creator library keys')
 
-// Story shares should follow the social mock: bold header, large artwork, centered title, lower brand row.
+// Share Card V2 should keep BVS hierarchy while using rounded artwork, waveform, glass metadata and a branded CTA.
 assert(share.includes('canvas.width = 1080') && share.includes('canvas.height = format === "story" ? 1920 : 1080'), 'Story cards must remain 1080x1920')
 assert(share.includes('loadStoryImage(image)'), 'Story card renderer must load the shared artwork')
 assert(share.includes('context.fillText("NOW ON BVS"'), 'Story cards must carry the strong NOW ON BVS headline')
-assert(share.includes('context.font = `900 ${story ? 62 : 38}px'), 'NOW ON BVS must use the heaviest display weight')
-assert(share.includes('const coverY = story ? 300 : 140'), 'Artwork must sit below the top headline and Instagram controls')
-assert(share.includes('const coverSize = story ? 860 : 640'), 'Story artwork must remain the dominant visual')
-assert(share.includes('const titleY = story ? 1240 : 824'), 'Title must sit immediately below the artwork')
-assert(share.includes('const logoX = story ? 82 : 64') && share.includes('const logoY = story ? 1642 : 982'), 'BVS logo must anchor the lower-left brand row')
-assert(share.includes('context.fillText("bvsradio.com"'), 'Bottom brand row must carry the BVS URL')
-assert(share.includes('PRESS PLAY ON BVS'), 'Story card must retain a contextual BVS call to action')
+assert(share.includes('context.font = `900 ${story ? 54 : 34}px'), 'NOW ON BVS must use the heaviest display weight')
+assert(share.includes('const coverY = story ? 270 : 124'), 'Artwork must sit below the top headline and social controls')
+assert(share.includes('const coverSize = story ? 820 : 610'), 'Story artwork must remain the dominant visual')
+assert(share.includes('const coverRadius = story ? 46 : 34'), 'Artwork must use the rounded BVS card treatment')
+assert(share.includes('drawWaveform(context'), 'Share cards must include the BVS audio waveform motif')
+assert(share.includes('context.fillText("DISCOVERED ON BVS"'), 'Metadata must sit inside the branded glass panel')
+assert(share.includes('const ctaY = story ? 1584 : 986'), 'Branded CTA must sit below the metadata panel')
+assert(share.includes('const logoWidth = story ? 176 : 106'), 'BVS logo must anchor the branded CTA pill')
+assert(share.includes('bvsradio.com · Built in Zimbabwe · Open to the world'), 'Story footer must carry the BVS URL and origin line')
+assert(share.includes('LISTEN ON BVS'), 'Music shares must retain a contextual BVS call to action')
 assert(share.includes('new URL(src, base)'), 'Relative share artwork must resolve against canonical BVS')
 assert(!share.includes('window.location.origin'), 'Story media must not inherit preview/deployment origins')
 
@@ -77,5 +80,4 @@ assert(apns.includes('https://api.push.apple.com'), 'Production APNs endpoint mu
 assert(apns.includes('BVS_APNS_PRIVATE_KEY'), 'APNs credentials must come from environment secrets')
 assert(pushDelivery.includes('sendApnsPush'), 'Push queue must route iOS deliveries through direct APNs when configured')
 assert(pushDelivery.includes('BadDeviceToken|Unregistered'), 'Invalid APNs tokens must be retired')
-
 console.log('Mobile social polish assertions passed.')
