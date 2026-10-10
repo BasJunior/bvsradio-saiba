@@ -1117,11 +1117,14 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       Capacitor.getPlatform() === "ios" &&
       Boolean(
         (window as Window & {
+          __bvsNativeMusicControlsVersion?: number;
           webkit?: { messageHandlers?: { bvsNowPlaying?: unknown } };
         }).webkit?.messageHandlers?.bvsNowPlaying,
-      );
+      ) &&
+      ((window as Window & { __bvsNativeMusicControlsVersion?: number }).__bvsNativeMusicControlsVersion || 0) >= 1;
 
     // Newer iOS binaries own remote commands through MPRemoteCommandCenter.
+    // A metadata-only bridge in older binaries does not own music transport.
     // Keep Web Media Session as the fallback for Safari and older app builds,
     // but never let both layers process one lock-screen tap.
     if (nativeIosBridge) {

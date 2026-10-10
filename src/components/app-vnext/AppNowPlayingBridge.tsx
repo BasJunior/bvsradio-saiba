@@ -201,8 +201,10 @@ export default function AppNowPlayingBridge() {
       else if (command === "next") state.next();
       else if (command === "previous") state.previous();
       else if (command === "seek" && typeof payload?.position === "number") state.seekTo(payload.position);
-      else if (command === "skip-forward") state.seekTo(state.elapsed + (payload?.interval || 15));
-      else if (command === "skip-backward") state.seekTo(state.elapsed - (payload?.interval || 15));
+      // Older installed binaries can still emit interval-command names. Treat
+      // those buttons as music navigation too; never jump by 15 seconds.
+      else if (command === "skip-forward") state.next();
+      else if (command === "skip-backward") state.previous();
     };
 
     const onCommand = (event: Event) => {
