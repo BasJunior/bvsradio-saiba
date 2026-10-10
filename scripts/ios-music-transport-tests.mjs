@@ -72,6 +72,13 @@ for (const version of [undefined, 0, 1]) {
   assert.equal(app.calls.next, 1);
   assert.equal(app.calls.previous, 1);
   assert.equal(app.calls.seek.length, 0, 'Track commands must not seek by seconds');
+  app.events.get('bvs:native-media-command')({ detail: { command: 'skip-forward', interval: 15 } });
+  app.events.get('bvs:native-media-command')({ detail: { command: 'skip-backward', interval: 15 } });
+  assert.equal(app.calls.next, 2, 'Legacy forward button must navigate to the next track');
+  assert.equal(app.calls.previous, 2, 'Legacy backward button must use previous-track mechanics');
+  assert.equal(app.calls.seek.length, 0, 'Legacy interval-command names must never perform interval seeks');
+  app.events.get('bvs:native-media-command')({ detail: { command: 'seek', position: 72 } });
+  assert.deepEqual(app.calls.seek, [72], 'Explicit timeline scrubbing remains separate from track navigation');
 }
 const fallback = mount({ unsupportedSeek: true });
 assert.equal(fallback.handlers.get('seekforward'), null);
@@ -81,4 +88,39 @@ fallback.handlers.get('previoustrack')();
 assert.equal(fallback.calls.next, 1);
 assert.equal(fallback.calls.previous, 1);
 assert.equal(fallback.calls.seek.length, 0);
+
+// Execute the actual StationPlayer effect, not an imitation of its capability
+// check. A parent rerender must not wipe the old-binary fallback installed by
+// AppNowPlayingBridge, while capable binaries retain exclusive native ownership.
+const stationSource = fs.readFileSync('src/components/StationPlayer.tsx', 'utf8');
+const start = stationSource.indexOf('  // Keep browser / web-app lock-screen controls');
+const end = stationSource.indexOf('\n  useEffect(() => {', start + stationSource.slice(start).indexOf('useEffect(() => {') + 1);
+const transportEffect = ts.transpileModule(stationSource.slice(start, end), { compilerOptions: {
+  module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022,
+} }).outputText;
+for (const version of [undefined, 0, 1, 2]) {
+  const handlers = new Map();
+  const calls = { play: 0, pause: 0, next: 0, previous: 0, seek: [] };
+  const scope = {
+    useEffect: fn => fn(),
+    Capacitor: { isNativePlatform: () => true, getPlatform: () => 'ios' },
+    window: { __bvsNativeMusicControlsVersion: version, webkit: { messageHandlers: { bvsNowPlaying: {} } } },
+    navigator: { mediaSession: { setActionHandler: (action, handler) => handlers.set(action, handler) } },
+    play: () => calls.play++, pause: () => calls.pause++, seekTo: value => calls.seek.push(value),
+    advance: direction => direction === 1 ? calls.next++ : calls.previous++,
+  };
+  vm.runInNewContext(transportEffect, scope);
+  if (version >= 1) {
+    assert.equal([...handlers.values()].every(handler => handler === null), true, 'Capable native binaries exclusively own commands');
+  } else {
+    handlers.get('nexttrack')(); handlers.get('previoustrack')();
+    handlers.get('play')(); handlers.get('pause')();
+    assert.equal(calls.next, 1); assert.equal(calls.previous, 1);
+    assert.equal(calls.play, 1); assert.equal(calls.pause, 1);
+    vm.runInNewContext(transportEffect, scope);
+    assert.equal(typeof handlers.get('nexttrack'), 'function', 'Parent effect must preserve old-binary next controls');
+    assert.equal(handlers.get('seekforward'), null);
+    assert.equal(handlers.get('seekbackward'), null);
+  }
+}
 console.log('iOS music transport: native ownership, old-binary compatibility and WebKit fallback passed.');
