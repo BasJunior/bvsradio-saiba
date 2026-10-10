@@ -1,3 +1,4 @@
+import { creatorTrackFilter } from '@/lib/creator-track-links';
 import { NextResponse } from "next/server";
 import { creatorPublicName } from "@/lib/public-name";
 import { mediaUrlForStoredValue } from "@/lib/media-url";
@@ -10,7 +11,7 @@ const headers = { apikey: key, Authorization: `Bearer ${key}` };
 const supported = new Set(["creator", "track", "beat"]);
 
 function norm(value: unknown) {
-  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "").trim();
+  return String(value || "").toLowerCase().replace(/\$/g, "s").replace(/[^a-z0-9]+/g, "").trim();
 }
 
 async function rows<T>(path: string): Promise<T[]> {
@@ -63,8 +64,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ kin
   if (kind === "creator") {
     const profile = await findProfile(id);
     if (!profile) return NextResponse.json({ error: "Creator not published." }, { status: 404 });
+    const trackFilter = await creatorTrackFilter(profile.id, profile.username);
     const [tracks, beats] = await Promise.all([
-      rows<{ id: string; title: string; genre?: string; artwork_url?: string }>(`tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,genre,artwork_url&order=created_at.desc&limit=30`),
+      rows<{ id: string; title: string; genre?: string; artwork_url?: string }>(`tracks?${trackFilter}&is_public=eq.true&editorial_status=eq.approved&select=id,title,genre,artwork_url&order=created_at.desc&limit=30`),
       rows<{ id: string; title: string; genre?: string; artwork_path?: string }>(`beats?producer_user_id=eq.${profile.id}&is_public=eq.true&status=eq.published&select=id,title,genre,artwork_path&order=published_at.desc&limit=30`),
     ]);
     return NextResponse.json({
@@ -109,13 +111,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ kin
   if (!track) return NextResponse.json({ error: "Track not published." }, { status: 404 });
   const [owner, credits, producers] = await Promise.all([
     findProfile(track.user_id),
-    rows<{ person_name: string; credit_role: string }>(`track_credits?track_id=eq.${track.id}&is_verified=eq.true&select=person_name,credit_role`),
-    rows<PublicProfile>("profiles?is_published=eq.true&is_verified=eq.true&is_producer=eq.true&select=id,username,display_name,creator_public_name,creator_name_status,avatar_url,is_producer&limit=200"),
+    rows<{ person_name: string; credit_role: string; profile_url?: string }>(`track_credits?track_id=eq.${track.id}&is_verified=eq.true&select=person_name,credit_role,profile_url`),
+    rows<PublicProfile>("profiles?is_published=eq.true&is_verified=eq.true&select=id,username,display_name,creator_public_name,creator_name_status,avatar_url,is_producer&limit=200"),
   ]);
-  const producerCredits = credits.filter((credit) => /producer|production/i.test(credit.credit_role));
+  const producerCredits = credits.filter((credit) => /producer|production|artist|perform|vocal/i.test(credit.credit_role));
   const matchedProducers = producerCredits.flatMap((credit) => {
     const needle = norm(credit.person_name);
-    const matches = producers.filter((candidate) => [profileName(candidate), candidate.display_name, candidate.username].some((name) => norm(name) === needle));
+    const matches = producers.filter((candidate) => credit.profile_url
+      ? credit.profile_url === `/artist/${candidate.username}` || credit.profile_url === `https://bvsradio.com/artist/${candidate.username}`
+      : [profileName(candidate), candidate.username].some((name) => norm(name) === needle));
     // A verified credit plus a verified profile is not enough when the public
     // name is ambiguous. Fail closed until Editorial links a stable identity.
     return matches.length === 1 ? [{ credit, profile: matches[0] }] : [];
@@ -124,7 +128,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ kin
     node: { id: track.id, kind: "track", route: `/catalogue?q=${encodeURIComponent(track.title)}`, title: track.title, artwork: mediaUrlForStoredValue(track.artwork_url) || undefined, metadata: [track.genre].filter(Boolean), verified: true },
     edges: [
       ...(owner ? [{ relationship: "performed_by", direction: "outgoing", verified: true, node: { id: owner.id, kind: "creator", route: `/artist/${owner.username}`, title: profileName(owner), artwork: mediaUrlForStoredValue(owner.avatar_url) || undefined } }] : []),
-      ...matchedProducers.map(({ credit, profile }) => ({ relationship: "produced_by", direction: "outgoing", verified: true, credit: credit.credit_role, node: { id: profile.id, kind: "creator", route: `/artist/${profile.username}`, title: profileName(profile), artwork: mediaUrlForStoredValue(profile.avatar_url) || undefined } })),
+      ...matchedProducers.filter(({profile}) => profile.id !== owner?.id).filter(({profile}, index, list) => list.findIndex(item => item.profile.id === profile.id) === index).map(({ credit, profile }) => ({ relationship: /producer|production/i.test(credit.credit_role) ? "produced_by" : "performed_by", direction: "outgoing", verified: true, credit: credit.credit_role, node: { id: profile.id, kind: "creator", route: `/artist/${profile.username}`, title: profileName(profile), artwork: mediaUrlForStoredValue(profile.avatar_url) || undefined } })),
     ],
   });
 }

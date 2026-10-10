@@ -1,3 +1,4 @@
+import { creatorTrackFilter } from '@/lib/creator-track-links';
 import { NextResponse } from "next/server";
 import { mediaUrlForStoredValue } from "@/lib/media-url";
 import type { StationTrack } from "@/lib/station";
@@ -31,8 +32,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     : "";
 
   try {
+    const profileResponse = await fetch(`${url}/rest/v1/profiles?id=eq.${id}&is_published=eq.true&select=username&limit=1`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }, cache: 'no-store',
+    });
+    if (!profileResponse.ok) return NextResponse.json({ error: 'Creator unavailable.' }, { status: 503 });
+    const profile = (await profileResponse.json())[0] as { username: string } | undefined;
+    if (!profile) return NextResponse.json({ error: 'Creator not published.' }, { status: 404 });
+    const trackFilter = await creatorTrackFilter(id, profile.username);
     const response = await fetch(
-      `${url}/rest/v1/tracks?user_id=eq.${encodeURIComponent(id)}&is_public=eq.true&editorial_status=eq.approved${mobileFilter}&select=id,title,artist_name,file_url,artwork_url,genre,release_id${mobileJoin}&order=created_at.asc&limit=500`,
+      `${url}/rest/v1/tracks?${trackFilter}&is_public=eq.true&editorial_status=eq.approved${mobileFilter}&select=id,title,artist_name,file_url,artwork_url,genre,release_id${mobileJoin}&order=created_at.asc&limit=500`,
       {
         headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: "application/json" },
         cache: "no-store",

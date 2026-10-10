@@ -1,4 +1,6 @@
 import 'server-only'
+import { curatedCatalogueTracks } from '@/lib/catalogue-curated-tracks'
+import { creatorTrackFilter, getLinkedCreatorCredits, creditLinksToCreator } from '@/lib/creator-track-links'
 import { creatorPublicName, publicHandleAccountCandidates, resolvePublicHandle } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 
@@ -12,7 +14,9 @@ export type PublicArtistTrack = {
   licence_type?: string
   isrc?: string
   spotify_url?: string
-  credits: Array<{ person_name: string; credit_role: string }>
+  external_url?: string
+  artist_name?: string
+  credits: Array<{ person_name: string; credit_role: string; profile_url?: string }>
 }
 
 export type PublicArtist = {
@@ -108,6 +112,27 @@ const legacyCreatorTracks: Record<string, PublicArtistTrack[]> = {
   ],
 }
 
+function catalogueTitleKey(title: string) {
+  const key = title.toLowerCase().replace(/\s*\((?:feat|ft)\.?[^)]*\)/g, '').replace(/[^a-z0-9]/g, '')
+  return ({ kurtkobain: 'curtcobain', nanganisa: 'nanganisa' } as Record<string, string>)[key] || key
+}
+
+function curatedCreatorWorks(username: string, publishedTitles: string[] = []): PublicArtistTrack[] {
+  if (!['whills', 'w.hills'].includes(username.toLowerCase())) return []
+  const published = new Set(publishedTitles.map(catalogueTitleKey))
+  return curatedCatalogueTracks.filter(track => {
+    const featured = track.title.match(/\((?:feat|ft)\.?\s+([^)]*)\)/i)?.[1] || ''
+    const people = `${track.artist},${featured}`.split(/\s*(?:,|&|\bx\b)\s*/i)
+    return people.some(name => name.toLowerCase().replace(/\$/g, 's').replace(/[^a-z0-9]/g, '') === 'whills') && !published.has(catalogueTitleKey(track.title))
+  }).map(track => ({
+    id: `curated-${track.id}`, title: track.title, artist_name: track.artist,
+    genre: `${track.collection} · ${track.streamOnly ? 'External stream' : 'BVS archive'}`,
+    artwork_url: track.artwork, external_url: track.externalUrl,
+    is_downloadable: false, licence_type: 'external_stream',
+    credits: [{ person_name: 'W.Hills', credit_role: 'Artist', profile_url: '/artist/w.hills' }],
+  }))
+}
+
 const fallbackSummaries = Object.values(fallback).map((artist) => ({
   id: artist.id,
   username: artist.username,
@@ -148,17 +173,21 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
     }>).filter((profile) => ['artist', 'admin'].includes(profile.role))
     if (!profiles.length) return []
 
+    const linkedCredits = await getLinkedCreatorCredits()
     const ids = profiles.map((profile) => profile.id)
+    const linkedIds = [...new Set(linkedCredits.map(credit => credit.track_id))]
+    const trackFilter = linkedIds.length ? `or=(user_id.in.(${ids.join(',')}),id.in.(${linkedIds.join(',')}))` : `user_id=in.(${ids.join(',')})`
     const tracksResponse = await fetch(
-      `${url}/rest/v1/tracks?user_id=in.(${ids.join(',')})&is_public=eq.true&editorial_status=eq.approved&select=user_id,genre,artwork_url`,
+      `${url}/rest/v1/tracks?${trackFilter}&is_public=eq.true&editorial_status=eq.approved&select=id,title,user_id,genre,artwork_url`,
       { headers, next: { revalidate: 60 } },
     )
     const tracks = tracksResponse.ok
-      ? await tracksResponse.json() as Array<{ user_id: string; genre?: string; artwork_url?: string }>
+      ? await tracksResponse.json() as Array<{ id: string; title: string; user_id: string; genre?: string; artwork_url?: string }>
       : []
     return profiles.map((profile) => {
-      const artistTracks = tracks.filter((track) => track.user_id === profile.id)
-      const linkedTracks = legacyCreatorTracks[profile.username] || []
+      const creditIds = new Set(linkedCredits.filter(credit => creditLinksToCreator(credit, profile.username)).map(credit => credit.track_id))
+      const artistTracks = tracks.filter((track) => track.user_id === profile.id || creditIds.has(track.id))
+      const linkedTracks = [...(legacyCreatorTracks[profile.username] || []), ...curatedCreatorWorks(profile.username, artistTracks.map(track => track.title))]
       const genres = [...new Set([
         ...artistTracks.map((track) => track.genre),
         ...linkedTracks.map((track) => track.genre),
@@ -254,11 +283,12 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
     const creatorDetails = waitlistResponse.ok ? (await waitlistResponse.json())[0] : null
 
     let databaseTracks: Array<Omit<PublicArtistTrack, 'credits'> & { artwork_url?: string }> = []
-    const trackSelectWithDsp = 'id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type,isrc,spotify_url'
-    const trackSelectBase = 'id,title,genre,artwork_url,in_rotation,is_downloadable,licence_type'
+    const trackFilter = await creatorTrackFilter(profile.id, profile.username)
+    const trackSelectWithDsp = 'id,title,artist_name,genre,artwork_url,in_rotation,is_downloadable,licence_type,isrc,spotify_url'
+    const trackSelectBase = 'id,title,artist_name,genre,artwork_url,in_rotation,is_downloadable,licence_type'
     for (const select of [trackSelectWithDsp, trackSelectBase]) {
       const tracksResponse = await fetch(
-        `${url}/rest/v1/tracks?user_id=eq.${profile.id}&is_public=eq.true&editorial_status=eq.approved&select=${select}&order=created_at.desc`,
+        `${url}/rest/v1/tracks?${trackFilter}&is_public=eq.true&editorial_status=eq.approved&select=${select}&order=created_at.desc`,
         { headers, next: { revalidate: 60 } },
       )
       if (tracksResponse.ok) {
@@ -274,9 +304,9 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       return { id: beat.id, title: beat.title, genre: beat.genre, artwork_url: mediaUrlForStoredValue(beat.artwork_path) || undefined, starting_price: prices.length ? Math.min(...prices) : 29 }
     })
     const ids = databaseTracks.map((track) => track.id)
-    let credits: Array<{ track_id: string; person_name: string; credit_role: string }> = []
+    let credits: Array<{ track_id: string; person_name: string; credit_role: string; profile_url?: string }> = []
     if (ids.length) {
-      const creditsResponse = await fetch(`${url}/rest/v1/track_credits?track_id=in.(${ids.join(',')})&is_verified=eq.true&select=track_id,person_name,credit_role`, { headers, next: { revalidate: 60 } })
+      const creditsResponse = await fetch(`${url}/rest/v1/track_credits?track_id=in.(${ids.join(',')})&is_verified=eq.true&select=track_id,person_name,credit_role,profile_url`, { headers, next: { revalidate: 60 } })
       if (creditsResponse.ok) credits = await creditsResponse.json()
     }
     const publicUsername = resolvePublicHandle(profile.username) || profile.username
@@ -319,7 +349,7 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       role,
       bio: profile.bio || 'Verified creator on BVS Radio.',
       image: artistImage(profile.avatar_url, trackArtwork || beatArtwork),
-      tracks: [...publicTracks, ...linkedTracks],
+      tracks: [...publicTracks, ...linkedTracks, ...curatedCreatorWorks(profile.username, publicTracks.map(track => track.title))],
       beats,
       location: [creatorDetails?.city, creatorDetails?.country].filter(Boolean).join(', '),
       links,
