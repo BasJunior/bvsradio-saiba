@@ -120,7 +120,7 @@ export default function FlowRelationships({ kind, id, compact = false, view = "a
       const unique = new Map<string, GraphEdge>();
       for (const result of trackGraphs) {
         for (const edge of result?.edges || []) {
-          if (edge.verified && edge.relationship === "produced_by" && edge.node.kind === "creator" && edge.node.id !== id) unique.set(edge.node.id, edge);
+          if (edge.verified && ["produced_by", "performed_by"].includes(edge.relationship) && edge.node.kind === "creator" && edge.node.id !== id) unique.set(edge.node.id, edge);
         }
       }
       setProducerState({ id, edges: [...unique.values()] });
@@ -161,7 +161,7 @@ export default function FlowRelationships({ kind, id, compact = false, view = "a
             <h2 className="mt-1 text-2xl font-semibold">Creators behind the sound</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {producerEdges.map((edge) => <BvsObjectCard key={edge.node.id} object={creatorObject(edge)} variant="relationship-card" relationship="produced_by" />)}
+            {producerEdges.map((edge) => <BvsObjectCard key={edge.node.id} object={creatorObject(edge)} variant="relationship-card" relationship={edge.relationship} />)}
           </div>
         </section>
       ) : null}

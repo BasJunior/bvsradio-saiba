@@ -71,7 +71,7 @@ export default async function ArtistPage({
   const producerFirst = /producer/i.test(profile.role) && hasBeats;
   const hasPlayableIdentity = /^[0-9a-f-]{36}$/i.test(profile.id);
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
+    <main className="bvs-artist-profile mx-auto max-w-5xl px-6 py-12">
       <Link href="/music/artists" className="text-sm text-brand">
         ← All BVS creators
       </Link>
@@ -210,7 +210,7 @@ export default async function ArtistPage({
                               {track.title}
                             </h3>
                             <p className="text-xs text-text-secondary">
-                              {track.genre || "Music"}
+                              {track.artist_name || track.genre || "Music"}
                               {track.in_rotation ? " · In BVS rotation" : ""}
                             </p>
                           </div>
@@ -225,6 +225,7 @@ export default async function ArtistPage({
                                 Spotify →
                               </a>
                             )}
+                            {track.external_url ? <a href={external(track.external_url)} target="_blank" rel="noreferrer" className="text-sm text-brand">Open stream ↗</a> : null}
                             <Link
                               href={`/catalogue?q=${encodeURIComponent(track.title)}`}
                               className="text-sm text-brand"
@@ -233,7 +234,7 @@ export default async function ArtistPage({
                             </Link>
                           </div>
                         </div>
-                        {hasPlayableIdentity ? (
+                        {hasPlayableIdentity && /^[0-9a-f-]{36}$/i.test(track.id) ? (
                           <div className="mt-2">
                             <AppCreatorPlayback creatorId={profile.id} creatorName={profile.name} startTrackId={track.id} compact />
                           </div>
@@ -248,17 +249,18 @@ export default async function ArtistPage({
                         {track.credits.length > 0 && (
                           <p className="mt-3 border-t border-white/10 pt-2 text-xs text-text-secondary">
                             Verified credits:{" "}
-                            {track.credits
-                              .map(
-                                (credit) =>
-                                  `${credit.person_name} — ${credit.credit_role}`,
-                              )
-                              .join(" · ")}
+                            {track.credits.map((credit, index) => (
+                              <span key={`${credit.person_name}-${credit.credit_role}-${index}`}>
+                                {index > 0 ? " · " : ""}
+                                {credit.profile_url?.startsWith("/artist/") ? <Link href={credit.profile_url} className="text-brand hover:underline">{credit.person_name}</Link> : credit.person_name}
+                                {` — ${credit.credit_role}`}
+                              </span>
+                            ))}
                           </p>
                         )}
                       </div>
                     </div>
-                    <FlowRelationships kind="track" id={track.id} compact />
+                    {/^[0-9a-f-]{36}$/i.test(track.id) ? <FlowRelationships kind="track" id={track.id} compact /> : null}
                   </article>
                 ))}
               </div>

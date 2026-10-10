@@ -193,3 +193,15 @@
 .bvs-square-library .bvs-library-item-actions > summary { text-align: right; }
 .bvs-square-library .bvs-library-item-actions > summary::after { content: none; }
 .bvs-square-library .bvs-library-item-actions .relative > .absolute { position: static; width: 100%; margin-top: .5rem; }
+
+/* Catalogue and artist credits share the square BVS directory language. */
+.bvs-catalogue-page .bvs-catalogue-section-title { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; line-height: 1; text-transform: uppercase; letter-spacing: -.045em; }
+.bvs-catalogue-page > section:first-child { border-top: 0; padding-top: 0; }
+.bvs-catalogue-page .bvs-creator-band { margin-inline: -1rem; margin-bottom: 2.5rem; }
+.bvs-catalogue-page #browse > div:first-child { background: #101010; box-shadow: none; }
+.bvs-catalogue-page article { background: #101010; border-color: rgb(255 255 255 / .14); }
+.bvs-catalogue-page article > button { width: 100%; }
+.bvs-artist-profile [class*="rounded"] { border-radius: 0; }
+.bvs-artist-profile #music { padding: 1.5rem 0; border-width: 1px 0 0; background: transparent; }
+.bvs-artist-profile #music article { border-width: 0 0 1px; padding: 1rem 0; }
+@media (min-width: 640px) { .bvs-catalogue-page .bvs-creator-band { margin-inline: -1.5rem; } }
