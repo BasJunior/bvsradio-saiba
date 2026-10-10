@@ -114,7 +114,7 @@ const legacyCreatorTracks: Record<string, PublicArtistTrack[]> = {
 
 function catalogueTitleKey(title: string) {
   const key = title.toLowerCase().replace(/\s*\((?:feat|ft)\.?[^)]*\)/g, '').replace(/[^a-z0-9]/g, '')
-  return ({ kurtkobain: 'curtcobain', nanganisa: 'nanganisa' } as Record<string, string>)[key] || key
+  return ({ kurtkobain: 'curtcobain' } as Record<string, string>)[key] || key
 }
 
 function curatedCreatorWorks(username: string, publishedTitles: string[] = []): PublicArtistTrack[] {
@@ -325,7 +325,9 @@ export async function getPublicArtist(slug: string): Promise<PublicArtist | null
       artwork_url: mediaUrlForStoredValue(track.artwork_url) || undefined,
       isrc: track.isrc || undefined,
       spotify_url: track.spotify_url || undefined,
-      credits: credits.filter(credit => credit.track_id === track.id),
+      credits: credits.filter(credit => credit.track_id === track.id).filter((credit, index, rows) => rows.findIndex(row =>
+        (row.profile_url || row.person_name) === (credit.profile_url || credit.person_name) && row.credit_role === credit.credit_role
+      ) === index),
     }))
     const waitlistLinks = (creatorDetails?.links || {}) as { instagram?: string; spotify?: string; website?: string }
     const links = {

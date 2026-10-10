@@ -875,7 +875,7 @@ function CataloguePageContent() {
             ? {
                 action,
                 tracks: (list || [])
-                  .filter((t) => t.src && !t.streamOnly)
+                  .filter((t) => t.src)
                   .map(toStationTrack),
                 from: track.collection || track.artist,
               }
