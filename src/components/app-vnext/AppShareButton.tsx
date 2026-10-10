@@ -19,6 +19,8 @@ export type AppShareButtonProps = {
 };
 
 const BVS_STORY_LOGO = "/branding/bvs-share-logo.png";
+const BVS_LIME = "#bbff65";
+const BVS_BLACK = "#050605";
 
 function drawWrappedText(
   context: CanvasRenderingContext2D,
@@ -88,6 +90,30 @@ async function loadStoryImage(src?: string) {
   }
 }
 
+function coverCrop(image: HTMLImageElement, width: number, height: number) {
+  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
+  const sourceWidth = width / scale;
+  const sourceHeight = height / scale;
+  return {
+    sourceWidth,
+    sourceHeight,
+    sourceX: Math.max(0, (image.naturalWidth - sourceWidth) / 2),
+    sourceY: Math.max(0, (image.naturalHeight - sourceHeight) / 2),
+  };
+}
+
+function drawCoverFill(
+  context: CanvasRenderingContext2D,
+  image: HTMLImageElement,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+) {
+  const { sourceX, sourceY, sourceWidth, sourceHeight } = coverCrop(image, width, height);
+  context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
+}
+
 function drawCoverImage(
   context: CanvasRenderingContext2D,
   image: HTMLImageElement,
@@ -97,11 +123,7 @@ function drawCoverImage(
   height: number,
   radius: number,
 ) {
-  const scale = Math.max(width / image.naturalWidth, height / image.naturalHeight);
-  const sourceWidth = width / scale;
-  const sourceHeight = height / scale;
-  const sourceX = Math.max(0, (image.naturalWidth - sourceWidth) / 2);
-  const sourceY = Math.max(0, (image.naturalHeight - sourceHeight) / 2);
+  const { sourceX, sourceY, sourceWidth, sourceHeight } = coverCrop(image, width, height);
   context.save();
   context.beginPath();
   context.roundRect(x, y, width, height, radius);
@@ -109,7 +131,7 @@ function drawCoverImage(
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
   const shade = context.createLinearGradient(0, y, 0, y + height);
   shade.addColorStop(0, "rgba(0,0,0,0)");
-  shade.addColorStop(1, "rgba(0,0,0,.22)");
+  shade.addColorStop(1, "rgba(0,0,0,.18)");
   context.fillStyle = shade;
   context.fillRect(x, y, width, height);
   context.restore();
@@ -135,6 +157,66 @@ function drawContainedImage(
   );
 }
 
+function drawRoundedSurface(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+  fill: string,
+  stroke: string,
+) {
+  context.save();
+  context.beginPath();
+  context.roundRect(x, y, width, height, radius);
+  context.fillStyle = fill;
+  context.fill();
+  context.strokeStyle = stroke;
+  context.lineWidth = 2;
+  context.stroke();
+  context.restore();
+}
+
+function drawWaveform(context: CanvasRenderingContext2D, centerX: number, centerY: number, width: number, story: boolean) {
+  const bars = story ? 57 : 45;
+  const gap = width / bars;
+  context.save();
+  context.lineCap = "round";
+  context.lineWidth = story ? 5 : 4;
+  for (let index = 0; index < bars; index += 1) {
+    const distance = Math.abs(index - ((bars - 1) / 2)) / ((bars - 1) / 2);
+    const envelope = Math.pow(1 - distance, 1.6);
+    const pulse = .35 + (.65 * Math.abs(Math.sin((index + 2) * .73)));
+    const height = (story ? 66 : 42) * (.16 + (envelope * pulse));
+    context.strokeStyle = index % 8 === 0 ? "rgba(255,255,255,.78)" : "rgba(187,255,101,.92)";
+    const x = centerX - (width / 2) + (gap * index) + (gap / 2);
+    context.beginPath();
+    context.moveTo(x, centerY - (height / 2));
+    context.lineTo(x, centerY + (height / 2));
+    context.stroke();
+  }
+  context.restore();
+}
+
+function fitTextSize(context: CanvasRenderingContext2D, value: string, maxWidth: number, preferred: number, minimum: number, weight = 800) {
+  let size = preferred;
+  do {
+    context.font = `${weight} ${size}px Arial, sans-serif`;
+    if (context.measureText(value).width <= maxWidth) return size;
+    size -= 1;
+  } while (size > minimum);
+  return minimum;
+}
+
+function cleanCardText(value?: string) {
+  if (!value) return "";
+  return value
+    .replace(/\s*·\s*Listen on BVS Radio\s*$/i, "")
+    .replace(/^Listen on BVS Radio$/i, "")
+    .trim();
+}
+
 function shareActionFor(kicker: string) {
   const category = kicker.toLowerCase();
   return category.includes("buy this beat") ? "BUY THIS BEAT ON BVS"
@@ -143,7 +225,7 @@ function shareActionFor(kicker: string) {
         : /creator|artist|producer/.test(category) ? "MEET YOUR NEXT FAVOURITE"
           : category.includes("show") || category.includes("episode") ? "TUNE IN ON BVS"
             : category.includes("community") ? "JOIN THE CONVERSATION"
-              : "PRESS PLAY ON BVS";
+              : "LISTEN ON BVS";
 }
 
 export type ShareCardFormat = "story" | "square";
@@ -158,73 +240,149 @@ export async function makeStoryCard({ title, text, kicker, image, format = "stor
   if (!context) return null;
 
   const story = format === "story";
-  const lime = "#bbff65";
   const centerX = canvas.width / 2;
   const action = shareActionFor(kicker);
-
-  context.fillStyle = "#000000";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-
+  const cardText = cleanCardText(text);
   const [logo, loaded] = await Promise.all([loadStoryImage(BVS_STORY_LOGO), loadStoryImage(image)]);
 
-  // Strong brand headline sits above the artwork, but still below Instagram's busiest top controls.
+  context.fillStyle = BVS_BLACK;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Artwork-led backdrop: the same cover expands behind the card, darkened into BVS black.
+  if (loaded?.image) {
+    context.save();
+    if ("filter" in context) context.filter = story ? "blur(54px) saturate(1.12) brightness(.55)" : "blur(40px) saturate(1.08) brightness(.5)";
+    drawCoverFill(context, loaded.image, -90, -90, canvas.width + 180, canvas.height + 180);
+    context.restore();
+  }
+  const backdropShade = context.createLinearGradient(0, 0, 0, canvas.height);
+  backdropShade.addColorStop(0, "rgba(0,0,0,.28)");
+  backdropShade.addColorStop(.56, "rgba(0,0,0,.57)");
+  backdropShade.addColorStop(1, "rgba(0,0,0,.94)");
+  context.fillStyle = backdropShade;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  const brandWash = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+  brandWash.addColorStop(0, "rgba(187,255,101,.16)");
+  brandWash.addColorStop(.36, "rgba(187,255,101,0)");
+  brandWash.addColorStop(1, "rgba(187,255,101,.07)");
+  context.fillStyle = brandWash;
+  context.fillRect(0, 0, canvas.width, canvas.height);
+
   context.textAlign = "center";
-  context.fillStyle = lime;
-  context.font = `900 ${story ? 62 : 38}px Arial, sans-serif`;
-  context.fillText("NOW ON BVS", centerX, story ? 225 : 78);
+  context.fillStyle = BVS_LIME;
+  context.font = `900 ${story ? 54 : 34}px Arial, sans-serif`;
+  context.fillText("NOW ON BVS", centerX, story ? 176 : 72);
 
-  const coverSize = story ? 860 : 640;
+  context.fillStyle = "rgba(255,255,255,.78)";
+  const kickerLabel = kicker.toUpperCase();
+  const kickerFont = fitTextSize(context, kickerLabel, 900, story ? 22 : 15, 12, 700);
+  context.font = `700 ${kickerFont}px Arial, sans-serif`;
+  context.fillText(kickerLabel, centerX, story ? 214 : 100);
+
+  const coverSize = story ? 820 : 610;
   const coverX = (canvas.width - coverSize) / 2;
-  const coverY = story ? 300 : 140;
-  const panelBottom = story ? 1550 : 956;
-  if (loaded?.image) drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, 0);
-  else {
-    context.fillStyle = "#141414";
-    context.fillRect(coverX, coverY, coverSize, coverSize);
-    if (logo?.image) drawContainedImage(context, logo.image, coverX + coverSize * .18, coverY + coverSize * .18, coverSize * .64, coverSize * .64);
+  const coverY = story ? 270 : 124;
+  const coverRadius = story ? 46 : 34;
+  if (loaded?.image) {
+    drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, coverRadius);
+  } else {
+    drawRoundedSurface(context, coverX, coverY, coverSize, coverSize, coverRadius, "rgba(12,14,12,.9)", "rgba(187,255,101,.26)");
+    if (logo?.image) drawContainedImage(context, logo.image, coverX + (coverSize * .2), coverY + (coverSize * .2), coverSize * .6, coverSize * .6);
   }
-
-  // Artwork and metadata share one square frame, matching the BVS social sketch.
-  context.strokeStyle = "rgba(255,255,255,.65)";
-  context.lineWidth = 2;
-  context.strokeRect(coverX, coverY, coverSize, panelBottom - coverY);
+  context.save();
   context.beginPath();
-  context.moveTo(coverX, coverY + coverSize);
-  context.lineTo(coverX + coverSize, coverY + coverSize);
+  context.roundRect(coverX, coverY, coverSize, coverSize, coverRadius);
+  context.strokeStyle = "rgba(255,255,255,.28)";
+  context.lineWidth = 2;
   context.stroke();
+  context.restore();
 
-  context.fillStyle = "#ffffff";
-  context.font = `900 ${story ? 72 : 44}px Arial, sans-serif`;
-  const titleY = story ? 1240 : 824;
-  const afterTitle = drawWrappedText(context, title, centerX, titleY, coverSize - 64, story ? 82 : 50, 2);
+  drawWaveform(context, centerX, story ? 1144 : 770, story ? 780 : 570, story);
 
-  if (text) {
-    context.fillStyle = "#b9beb9";
-    context.font = `500 ${story ? 32 : 25}px Arial, sans-serif`;
-    drawWrappedText(context, text, centerX, afterTitle + (story ? 16 : 8), coverSize - 80, story ? 42 : 30, story ? 2 : 1);
-  }
-
-  // Context stays in the header so the framed title block remains uncluttered.
-  context.fillStyle = lime;
-  context.font = `800 ${story ? 25 : 19}px Arial, sans-serif`;
-  context.fillText(action, centerX, story ? 266 : 108);
-
-  // Bottom brand row mirrors the social mock: logo left, BVS identity + URL across the lower edge.
-  const logoX = story ? 82 : 64;
-  const logoY = story ? 1642 : 982;
-  const logoWidth = story ? 210 : 150;
-  const logoHeight = story ? 94 : 56;
-  if (logo?.image) drawContainedImage(context, logo.image, logoX, logoY, logoWidth, logoHeight);
+  const panelX = story ? 78 : 150;
+  const panelY = story ? 1212 : 800;
+  const panelWidth = story ? 924 : 780;
+  const panelHeight = story ? 350 : 174;
+  const panelRadius = story ? 42 : 30;
+  drawRoundedSurface(
+    context,
+    panelX,
+    panelY,
+    panelWidth,
+    panelHeight,
+    panelRadius,
+    "rgba(6,8,6,.78)",
+    "rgba(187,255,101,.34)",
+  );
 
   context.textAlign = "left";
-  context.fillStyle = "#aeb4ae";
-  context.font = `700 ${story ? 23 : 17}px Arial, sans-serif`;
-  context.fillText("BEST VIRTUAL SOUND", logoX + logoWidth + (story ? 26 : 18), logoY + (story ? 54 : 34));
+  const textX = panelX + (story ? 48 : 34);
+  const textWidth = panelWidth - (story ? 96 : 68);
+  context.fillStyle = BVS_LIME;
+  context.font = `800 ${story ? 20 : 14}px Arial, sans-serif`;
+  context.fillText("DISCOVERED ON BVS", textX, panelY + (story ? 48 : 30));
+
+  context.fillStyle = "#ffffff";
+  context.font = `900 ${story ? 70 : 38}px Arial, sans-serif`;
+  const titleY = panelY + (story ? 126 : 64);
+  const afterTitle = drawWrappedText(context, title, textX, titleY, textWidth, story ? 78 : 40, 2);
+
+  if (cardText) {
+    context.fillStyle = "rgba(255,255,255,.68)";
+    context.font = `600 ${story ? 30 : 18}px Arial, sans-serif`;
+    drawWrappedText(context, cardText, textX, afterTitle + (story ? 12 : 5), textWidth, story ? 38 : 22, story ? 2 : 1);
+  }
+
+  const ctaX = story ? 90 : 170;
+  const ctaY = story ? 1584 : 986;
+  const ctaWidth = story ? 900 : 740;
+  const ctaHeight = story ? 144 : 70;
+  const ctaRadius = ctaHeight / 2;
+  drawRoundedSurface(
+    context,
+    ctaX,
+    ctaY,
+    ctaWidth,
+    ctaHeight,
+    ctaRadius,
+    "rgba(7,10,7,.84)",
+    "rgba(187,255,101,.72)",
+  );
+
+  const logoWidth = story ? 176 : 106;
+  const logoHeight = story ? 86 : 48;
+  if (logo?.image) drawContainedImage(context, logo.image, ctaX + (story ? 26 : 18), ctaY + ((ctaHeight - logoHeight) / 2), logoWidth, logoHeight);
+
+  const dividerX = ctaX + logoWidth + (story ? 52 : 40);
+  context.beginPath();
+  context.moveTo(dividerX, ctaY + (story ? 32 : 17));
+  context.lineTo(dividerX, ctaY + ctaHeight - (story ? 32 : 17));
+  context.strokeStyle = "rgba(255,255,255,.24)";
+  context.lineWidth = 2;
+  context.stroke();
+
+  const ctaTextX = dividerX + (story ? 36 : 24);
+  const ctaTextWidth = ctaX + ctaWidth - ctaTextX - (story ? 92 : 58);
+  const ctaFont = fitTextSize(context, action, ctaTextWidth, story ? 34 : 20, story ? 23 : 15, 900);
+  context.textAlign = "left";
+  context.fillStyle = "#ffffff";
+  context.font = `900 ${ctaFont}px Arial, sans-serif`;
+  context.fillText(action, ctaTextX, ctaY + (ctaHeight / 2) + (ctaFont * .34));
 
   context.textAlign = "right";
-  context.fillStyle = "#ffffff";
-  context.font = `800 ${story ? 28 : 20}px Arial, sans-serif`;
-  context.fillText("bvsradio.com", story ? 998 : 1016, logoY + (story ? 57 : 35));
+  context.fillStyle = BVS_LIME;
+  context.font = `500 ${story ? 54 : 32}px Arial, sans-serif`;
+  context.fillText("→", ctaX + ctaWidth - (story ? 34 : 22), ctaY + (ctaHeight / 2) + (story ? 18 : 10));
+
+  if (story) {
+    context.textAlign = "center";
+    context.fillStyle = "rgba(255,255,255,.55)";
+    context.font = "600 22px Arial, sans-serif";
+    context.fillText("BEST VIRTUAL SOUND", centerX, 1790);
+    context.fillStyle = "rgba(255,255,255,.72)";
+    context.font = "700 24px Arial, sans-serif";
+    context.fillText("bvsradio.com · Built in Zimbabwe · Open to the world", centerX, 1834);
+  }
   context.textAlign = "left";
 
   if (logo?.objectUrl) URL.revokeObjectURL(logo.objectUrl);
@@ -343,7 +501,7 @@ export default function AppShareButton({
 
   const shareLayer = open && typeof document !== "undefined" ? createPortal(
     <div
-      className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/75 backdrop-blur-md sm:items-center sm:p-6"
       role="presentation"
       onMouseDown={(event) => event.target === event.currentTarget && close()}
     >
@@ -352,33 +510,33 @@ export default function AppShareButton({
         role="dialog"
         aria-modal="true"
         aria-label={`Share ${title}`}
-        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[8px] border border-white/10 bg-[#0b0b0d] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[8px] sm:pb-5"
+        className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[30px] border border-white/10 bg-[#090b09]/95 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[30px] sm:pb-5"
       >
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Share on social</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">BVS Share Card</p>
             <h2 className="mt-1 text-2xl font-semibold">Share your discovery.</h2>
           </div>
-          <button type="button" onClick={close} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 text-lg text-white/55" aria-label="Close share">×</button>
+          <button type="button" onClick={close} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[.04] text-lg text-white/65" aria-label="Close share">×</button>
         </div>
 
-        <div className="mt-4 flex gap-2" aria-label="Card format">
-          {(["story", "square"] as const).map(value => <button key={value} type="button" aria-pressed={format === value} onClick={() => setFormat(value)} className={`min-h-10 flex-1 rounded-[4px] border px-4 text-xs ${format === value ? "border-[#bbff65] bg-[#bbff65]/10 text-[#bbff65]" : "border-white/15 text-white/60"}`}>{value === "story" ? "Story · 9:16" : "Post · 1:1"}</button>)}
+        <div className="mt-4 flex gap-2 rounded-2xl bg-white/[.035] p-1.5" aria-label="Card format">
+          {(["story", "square"] as const).map(value => <button key={value} type="button" aria-pressed={format === value} onClick={() => setFormat(value)} className={`min-h-10 flex-1 rounded-xl border px-4 text-xs font-medium transition ${format === value ? "border-[#bbff65]/70 bg-[#bbff65]/12 text-[#bbff65]" : "border-transparent text-white/55"}`}>{value === "story" ? "Story · 9:16" : "Post · 1:1"}</button>)}
         </div>
-        <div className="mt-4 flex min-h-52 justify-center rounded-none bg-white/[.03] p-3" aria-busy={!card || card.format !== format}>
-          {card && card.format === format ? <img src={card.preview} alt={`${title} ${format} share card`} className={`max-h-[40dvh] w-auto rounded-none ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`} /> : <p className="self-center text-sm text-white/50">Preparing your card…</p>}
+        <div className="mt-4 flex min-h-52 justify-center rounded-3xl border border-white/[.06] bg-white/[.025] p-3" aria-busy={!card || card.format !== format}>
+          {card && card.format === format ? <img src={card.preview} alt={`${title} ${format} share card`} className={`max-h-[40dvh] w-auto rounded-2xl ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`} /> : <p className="self-center text-sm text-white/50">Preparing your card…</p>}
         </div>
         <p className="mt-2 text-center text-[11px] text-white/45">The preview is the exact image you’ll share.</p>
-        <button type="button" disabled={sharing || !card || card.format !== format} onClick={() => void share()} className="mt-4 min-h-12 w-full rounded-[4px] bg-[#bbff65] px-5 text-sm font-semibold text-black disabled:opacity-50">{sharing ? "Opening share…" : "Share card…"}</button>
+        <button type="button" disabled={sharing || !card || card.format !== format} onClick={() => void share()} className="mt-4 min-h-12 w-full rounded-2xl bg-[#bbff65] px-5 text-sm font-bold text-black shadow-[0_0_32px_rgba(187,255,101,.12)] disabled:opacity-50">{sharing ? "Opening share…" : "Share card…"}</button>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button type="button" disabled={!card || card.format !== format} onClick={save} className="min-h-11 rounded-[4px] border border-white/15 text-sm disabled:opacity-40">Save image</button>
-          <button type="button" onClick={() => void copy()} className="min-h-11 rounded-[4px] border border-white/15 text-sm">{copied ? "Copied ✓" : "Copy link"}</button>
-          <a href={`https://wa.me/?text=${encodeURIComponent(`${title}\n${text || kicker}\n${url}`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center rounded-[4px] border border-white/15 text-sm">WhatsApp link ↗</a>
-          <button type="button" onClick={() => void shareLink()} className="min-h-11 rounded-[4px] border border-white/15 text-sm">Share link…</button>
+          <button type="button" disabled={!card || card.format !== format} onClick={save} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm disabled:opacity-40">Save image</button>
+          <button type="button" onClick={() => void copy()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">{copied ? "Copied ✓" : "Copy link"}</button>
+          <a href={`https://wa.me/?text=${encodeURIComponent(`${title}\n${text || kicker}\n${url}`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[.025] text-sm">WhatsApp link ↗</a>
+          <button type="button" onClick={() => void shareLink()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">Share link…</button>
         </div>
         <p className="mt-3 text-center text-xs leading-5 text-white/50">Choose Instagram, WhatsApp or another app from your phone’s share sheet. For Stories, copy the link and add a link sticker.</p>
-        {message ? <p role="status" className="mt-3 rounded-xl bg-white/5 p-3 text-sm text-white/75">{message}</p> : null}
+        {message ? <p role="status" className="mt-3 rounded-2xl border border-white/[.06] bg-white/[.04] p-3 text-sm text-white/75">{message}</p> : null}
       </div>
     </div>,
     document.body,
