@@ -15,7 +15,7 @@ export default function HomeCreatorBands() {
     const deadline = window.setTimeout(() => controller.abort(), 10000);
     async function load() {
       const [artistResult, producerResult] = await Promise.allSettled([
-        fetch("/api/artists?limit=18", { signal: controller.signal }).then(response => response.ok ? response.json() : Promise.reject()),
+        fetch("/api/artists", { signal: controller.signal }).then(response => response.ok ? response.json() : Promise.reject()),
         fetch("/api/producers", { signal: controller.signal }).then(response => response.ok ? response.json() : Promise.reject()),
       ]);
       window.clearTimeout(deadline);

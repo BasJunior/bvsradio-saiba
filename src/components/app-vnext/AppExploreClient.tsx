@@ -1,5 +1,7 @@
 "use client";
 
+import { matchesDiscoveryQuery } from "@/lib/discovery-search";
+
 import DiscoverMoreActions from "@/components/DiscoverMoreActions";
 import Image from "next/image";
 import Link from "next/link";
@@ -122,12 +124,12 @@ export default function AppExploreClient({
     return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 10).map(([key]) => ({ key, label:key === "hip-hop" ? "Hip-Hop" : key === "r&b" ? "R&B" : key.replace(/\b\w/g, c => c.toUpperCase()) }));
   }, [tracks, beats, artists, producers]);
   const matched = useMemo(() => {
-    const matches = (parts: Array<string | undefined | string[]>) => !needle || parts.flat().filter(Boolean).join(" ").toLowerCase().includes(needle);
+    const matches = (parts: Array<string | undefined | string[]>) => matchesDiscoveryQuery(needle, parts.flat());
     const matchesGenre = (genres: Array<string | undefined>) => !genre || genres.flatMap(value => (value || "").split(/[,/|]/)).some(value => soundKey(value) === genre);
     return {
       tracks:tracks.filter(i => matches([i.title, i.artist, i.genre, i.project]) && matchesGenre([i.genre])),
-      artists:artists.filter(i => matches([i.name, i.role, i.genres]) && matchesGenre(i.genres || [])),
-      producers:producers.filter(i => matches([i.name, i.genres]) && matchesGenre(i.genres || [])),
+      artists:artists.filter(i => matches([i.name, i.username, i.role, i.genres]) && matchesGenre(i.genres || [])),
+      producers:producers.filter(i => matches([i.name, i.username, i.genres]) && matchesGenre(i.genres || [])),
       beats:beats.filter(i => matches([i.title, i.producer, i.genre, i.mood]) && matchesGenre([i.genre])),
     };
   }, [artists, beats, genre, needle, producers, tracks]);
