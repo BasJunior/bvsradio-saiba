@@ -21,48 +21,8 @@ export type AppShareButtonProps = {
 const BVS_STORY_LOGO = "/branding/bvs-share-logo.png";
 const BVS_LIME = "#bbff65";
 const BVS_BLACK = "#050605";
-
-function drawWrappedText(
-  context: CanvasRenderingContext2D,
-  value: string,
-  x: number,
-  y: number,
-  maxWidth: number,
-  lineHeight: number,
-  maxLines: number,
-) {
-  const words = value.trim().split(/\s+/).filter(Boolean).flatMap(word => {
-    const chunks: string[] = [];
-    let chunk = "";
-    for (const letter of word) {
-      if (chunk && context.measureText(chunk + letter).width > maxWidth) { chunks.push(chunk); chunk = ""; }
-      chunk += letter;
-    }
-    if (chunk) chunks.push(chunk);
-    return chunks;
-  });
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (context.measureText(candidate).width <= maxWidth || !current) {
-      current = candidate;
-      continue;
-    }
-    lines.push(current);
-    current = word;
-    if (lines.length >= maxLines - 1) break;
-  }
-  if (current && lines.length < maxLines) lines.push(current);
-  const consumed = lines.join(" ").split(/\s+/).length;
-  if (consumed < words.length && lines.length) {
-    let last = lines[lines.length - 1];
-    while (last.length > 1 && context.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
-    lines[lines.length - 1] = `${last}…`;
-  }
-  lines.forEach((line, index) => context.fillText(line, x, y + (index * lineHeight)));
-  return y + (lines.length * lineHeight);
-}
+const BVS_CHARCOAL = "#1b1b1b";
+const BVS_SHARE_FONT = '-apple-system, BlinkMacSystemFont, "SF Pro", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
 
 async function loadStoryImage(src?: string) {
   if (!src || typeof window === "undefined") return null;
@@ -114,26 +74,20 @@ function drawCoverFill(
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
 }
 
-function drawCoverImage(
+function drawSquareCoverImage(
   context: CanvasRenderingContext2D,
   image: HTMLImageElement,
   x: number,
   y: number,
   width: number,
   height: number,
-  radius: number,
 ) {
   const { sourceX, sourceY, sourceWidth, sourceHeight } = coverCrop(image, width, height);
   context.save();
   context.beginPath();
-  context.roundRect(x, y, width, height, radius);
+  context.rect(x, y, width, height);
   context.clip();
   context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, x, y, width, height);
-  const shade = context.createLinearGradient(0, y, 0, y + height);
-  shade.addColorStop(0, "rgba(0,0,0,0)");
-  shade.addColorStop(1, "rgba(0,0,0,.18)");
-  context.fillStyle = shade;
-  context.fillRect(x, y, width, height);
   context.restore();
 }
 
@@ -157,56 +111,28 @@ function drawContainedImage(
   );
 }
 
-function drawRoundedSurface(
+function fitTextSize(
   context: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  radius: number,
-  fill: string,
-  stroke: string,
+  value: string,
+  maxWidth: number,
+  preferred: number,
+  minimum: number,
+  weight = 800,
 ) {
-  context.save();
-  context.beginPath();
-  context.roundRect(x, y, width, height, radius);
-  context.fillStyle = fill;
-  context.fill();
-  context.strokeStyle = stroke;
-  context.lineWidth = 2;
-  context.stroke();
-  context.restore();
-}
-
-function drawWaveform(context: CanvasRenderingContext2D, centerX: number, centerY: number, width: number, story: boolean) {
-  const bars = story ? 57 : 45;
-  const gap = width / bars;
-  context.save();
-  context.lineCap = "round";
-  context.lineWidth = story ? 5 : 4;
-  for (let index = 0; index < bars; index += 1) {
-    const distance = Math.abs(index - ((bars - 1) / 2)) / ((bars - 1) / 2);
-    const envelope = Math.pow(1 - distance, 1.6);
-    const pulse = .35 + (.65 * Math.abs(Math.sin((index + 2) * .73)));
-    const height = (story ? 66 : 42) * (.16 + (envelope * pulse));
-    context.strokeStyle = index % 8 === 0 ? "rgba(255,255,255,.78)" : "rgba(187,255,101,.92)";
-    const x = centerX - (width / 2) + (gap * index) + (gap / 2);
-    context.beginPath();
-    context.moveTo(x, centerY - (height / 2));
-    context.lineTo(x, centerY + (height / 2));
-    context.stroke();
-  }
-  context.restore();
-}
-
-function fitTextSize(context: CanvasRenderingContext2D, value: string, maxWidth: number, preferred: number, minimum: number, weight = 800) {
   let size = preferred;
   do {
-    context.font = `${weight} ${size}px Arial, sans-serif`;
+    context.font = `${weight} ${size}px ${BVS_SHARE_FONT}`;
     if (context.measureText(value).width <= maxWidth) return size;
     size -= 1;
   } while (size > minimum);
   return minimum;
+}
+
+function fitSingleLine(context: CanvasRenderingContext2D, value: string, maxWidth: number) {
+  if (context.measureText(value).width <= maxWidth) return value;
+  let fitted = value.trim();
+  while (fitted.length > 1 && context.measureText(`${fitted}…`).width > maxWidth) fitted = fitted.slice(0, -1).trimEnd();
+  return `${fitted}…`;
 }
 
 function cleanCardText(value?: string) {
@@ -248,141 +174,104 @@ export async function makeStoryCard({ title, text, kicker, image, format = "stor
   context.fillStyle = BVS_BLACK;
   context.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Artwork-led backdrop: the same cover expands behind the card, darkened into BVS black.
+  // The artwork itself becomes the poster backdrop, heavily blurred and darkened.
   if (loaded?.image) {
     context.save();
-    if ("filter" in context) context.filter = story ? "blur(54px) saturate(1.12) brightness(.55)" : "blur(40px) saturate(1.08) brightness(.5)";
-    drawCoverFill(context, loaded.image, -90, -90, canvas.width + 180, canvas.height + 180);
+    if ("filter" in context) context.filter = story ? "blur(56px) saturate(1.08) brightness(.58)" : "blur(42px) saturate(1.06) brightness(.54)";
+    drawCoverFill(context, loaded.image, -100, -100, canvas.width + 200, canvas.height + 200);
     context.restore();
   }
   const backdropShade = context.createLinearGradient(0, 0, 0, canvas.height);
-  backdropShade.addColorStop(0, "rgba(0,0,0,.28)");
-  backdropShade.addColorStop(.56, "rgba(0,0,0,.57)");
-  backdropShade.addColorStop(1, "rgba(0,0,0,.94)");
+  backdropShade.addColorStop(0, "rgba(0,0,0,.18)");
+  backdropShade.addColorStop(.58, "rgba(0,0,0,.36)");
+  backdropShade.addColorStop(1, "rgba(0,0,0,.76)");
   context.fillStyle = backdropShade;
   context.fillRect(0, 0, canvas.width, canvas.height);
-  const brandWash = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-  brandWash.addColorStop(0, "rgba(187,255,101,.16)");
-  brandWash.addColorStop(.36, "rgba(187,255,101,0)");
-  brandWash.addColorStop(1, "rgba(187,255,101,.07)");
-  context.fillStyle = brandWash;
-  context.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Poster geometry: square corners, thick black frame, no glass or waveform.
+  const cardX = story ? 100 : 190;
+  const cardWidth = story ? 880 : 700;
+  const frame = story ? 18 : 14;
+  const headerY = story ? 250 : 30;
+  const headerHeight = story ? 120 : 70;
+  const artworkY = headerY + headerHeight + frame;
+  const artworkSize = cardWidth;
+  const infoY = artworkY + artworkSize + frame;
+  const infoHeight = story ? 220 : 114;
+  const upperBottom = infoY + infoHeight;
+
+  context.fillStyle = BVS_BLACK;
+  context.fillRect(cardX - frame, headerY - frame, cardWidth + (frame * 2), upperBottom - headerY + (frame * 2));
+
+  context.fillStyle = BVS_CHARCOAL;
+  context.fillRect(cardX, headerY, cardWidth, headerHeight);
 
   context.textAlign = "center";
   context.fillStyle = BVS_LIME;
-  context.font = `900 ${story ? 54 : 34}px Arial, sans-serif`;
-  context.fillText("NOW ON BVS", centerX, story ? 176 : 72);
+  const headlineSize = story ? 86 : 52;
+  context.font = `900 ${headlineSize}px ${BVS_SHARE_FONT}`;
+  context.fillText("NOW ON BVS", centerX, headerY + (story ? 88 : 53));
 
-  context.fillStyle = "rgba(255,255,255,.78)";
-  const kickerLabel = kicker.toUpperCase();
-  const kickerFont = fitTextSize(context, kickerLabel, 900, story ? 22 : 15, 12, 700);
-  context.font = `700 ${kickerFont}px Arial, sans-serif`;
-  context.fillText(kickerLabel, centerX, story ? 214 : 100);
-
-  const coverSize = story ? 820 : 610;
-  const coverX = (canvas.width - coverSize) / 2;
-  const coverY = story ? 270 : 124;
-  const coverRadius = story ? 46 : 34;
+  context.fillStyle = BVS_BLACK;
+  context.fillRect(cardX, artworkY, cardWidth, artworkSize);
   if (loaded?.image) {
-    drawCoverImage(context, loaded.image, coverX, coverY, coverSize, coverSize, coverRadius);
-  } else {
-    drawRoundedSurface(context, coverX, coverY, coverSize, coverSize, coverRadius, "rgba(12,14,12,.9)", "rgba(187,255,101,.26)");
-    if (logo?.image) drawContainedImage(context, logo.image, coverX + (coverSize * .2), coverY + (coverSize * .2), coverSize * .6, coverSize * .6);
+    drawSquareCoverImage(context, loaded.image, cardX, artworkY, cardWidth, artworkSize);
+  } else if (logo?.image) {
+    context.fillStyle = "#111311";
+    context.fillRect(cardX, artworkY, cardWidth, artworkSize);
+    drawContainedImage(context, logo.image, cardX + (cardWidth * .2), artworkY + (artworkSize * .2), cardWidth * .6, artworkSize * .6);
   }
-  context.save();
-  context.beginPath();
-  context.roundRect(coverX, coverY, coverSize, coverSize, coverRadius);
-  context.strokeStyle = "rgba(255,255,255,.28)";
-  context.lineWidth = 2;
-  context.stroke();
-  context.restore();
 
-  drawWaveform(context, centerX, story ? 1144 : 770, story ? 780 : 570, story);
+  context.fillStyle = BVS_CHARCOAL;
+  context.fillRect(cardX, infoY, cardWidth, infoHeight);
 
-  const panelX = story ? 78 : 150;
-  const panelY = story ? 1212 : 800;
-  const panelWidth = story ? 924 : 780;
-  const panelHeight = story ? 350 : 174;
-  const panelRadius = story ? 42 : 30;
-  drawRoundedSurface(
-    context,
-    panelX,
-    panelY,
-    panelWidth,
-    panelHeight,
-    panelRadius,
-    "rgba(6,8,6,.78)",
-    "rgba(187,255,101,.34)",
-  );
-
+  const textX = cardX + (story ? 48 : 34);
+  const textWidth = cardWidth - (story ? 96 : 68);
+  const titleSize = fitTextSize(context, title, textWidth, story ? 72 : 42, story ? 38 : 27, 900);
   context.textAlign = "left";
-  const textX = panelX + (story ? 48 : 34);
-  const textWidth = panelWidth - (story ? 96 : 68);
-  context.fillStyle = BVS_LIME;
-  context.font = `800 ${story ? 20 : 14}px Arial, sans-serif`;
-  context.fillText("DISCOVERED ON BVS", textX, panelY + (story ? 48 : 30));
-
   context.fillStyle = "#ffffff";
-  context.font = `900 ${story ? 70 : 38}px Arial, sans-serif`;
-  const titleY = panelY + (story ? 126 : 64);
-  const afterTitle = drawWrappedText(context, title, textX, titleY, textWidth, story ? 78 : 40, 2);
+  context.font = `900 ${titleSize}px ${BVS_SHARE_FONT}`;
+  const fittedTitle = fitSingleLine(context, title, textWidth);
+  context.fillText(fittedTitle, textX, infoY + (story ? 90 : 48));
 
   if (cardText) {
-    context.fillStyle = "rgba(255,255,255,.68)";
-    context.font = `600 ${story ? 30 : 18}px Arial, sans-serif`;
-    drawWrappedText(context, cardText, textX, afterTitle + (story ? 12 : 5), textWidth, story ? 38 : 22, story ? 2 : 1);
+    const artistSize = fitTextSize(context, cardText, textWidth, story ? 42 : 25, story ? 28 : 18, 700);
+    context.fillStyle = "rgba(255,255,255,.72)";
+    context.font = `700 ${artistSize}px ${BVS_SHARE_FONT}`;
+    const fittedArtist = fitSingleLine(context, cardText, textWidth);
+    context.fillText(fittedArtist, textX, infoY + (story ? 166 : 88));
   }
 
-  const ctaX = story ? 90 : 170;
-  const ctaY = story ? 1584 : 986;
-  const ctaWidth = story ? 900 : 740;
-  const ctaHeight = story ? 144 : 70;
-  const ctaRadius = ctaHeight / 2;
-  drawRoundedSurface(
-    context,
-    ctaX,
-    ctaY,
-    ctaWidth,
-    ctaHeight,
-    ctaRadius,
-    "rgba(7,10,7,.84)",
-    "rgba(187,255,101,.72)",
-  );
+  // The CTA is intentionally disconnected from the upper card, but its logo and action cells touch.
+  const ctaY = story ? 1600 : 958;
+  const ctaHeight = story ? 170 : 86;
+  const ctaLogoWidth = story ? 200 : 110;
+  context.fillStyle = BVS_BLACK;
+  context.fillRect(cardX - frame, ctaY - frame, cardWidth + (frame * 2), ctaHeight + (frame * 2));
 
-  const logoWidth = story ? 176 : 106;
-  const logoHeight = story ? 86 : 48;
-  if (logo?.image) drawContainedImage(context, logo.image, ctaX + (story ? 26 : 18), ctaY + ((ctaHeight - logoHeight) / 2), logoWidth, logoHeight);
+  context.fillStyle = "#deded9";
+  context.fillRect(cardX, ctaY, ctaLogoWidth, ctaHeight);
+  if (logo?.image) {
+    const logoPad = story ? 18 : 10;
+    drawContainedImage(context, logo.image, cardX + logoPad, ctaY + logoPad, ctaLogoWidth - (logoPad * 2), ctaHeight - (logoPad * 2));
+  }
 
-  const dividerX = ctaX + logoWidth + (story ? 52 : 40);
-  context.beginPath();
-  context.moveTo(dividerX, ctaY + (story ? 32 : 17));
-  context.lineTo(dividerX, ctaY + ctaHeight - (story ? 32 : 17));
-  context.strokeStyle = "rgba(255,255,255,.24)";
-  context.lineWidth = 2;
-  context.stroke();
+  const ctaContentX = cardX + ctaLogoWidth;
+  const ctaContentWidth = cardWidth - ctaLogoWidth;
+  context.fillStyle = BVS_CHARCOAL;
+  context.fillRect(ctaContentX, ctaY, ctaContentWidth, ctaHeight);
 
-  const ctaTextX = dividerX + (story ? 36 : 24);
-  const ctaTextWidth = ctaX + ctaWidth - ctaTextX - (story ? 92 : 58);
-  const ctaFont = fitTextSize(context, action, ctaTextWidth, story ? 34 : 20, story ? 23 : 15, 900);
+  const ctaTextX = ctaContentX + (story ? 46 : 24);
+  const ctaTextWidth = ctaContentWidth - (story ? 150 : 82);
+  const ctaFont = fitTextSize(context, action, ctaTextWidth, story ? 56 : 29, story ? 34 : 20, 900);
   context.textAlign = "left";
-  context.fillStyle = "#ffffff";
-  context.font = `900 ${ctaFont}px Arial, sans-serif`;
-  context.fillText(action, ctaTextX, ctaY + (ctaHeight / 2) + (ctaFont * .34));
+  context.fillStyle = BVS_LIME;
+  context.font = `900 ${ctaFont}px ${BVS_SHARE_FONT}`;
+  context.fillText(action, ctaTextX, ctaY + (ctaHeight / 2) + (ctaFont * .35));
 
   context.textAlign = "right";
-  context.fillStyle = BVS_LIME;
-  context.font = `500 ${story ? 54 : 32}px Arial, sans-serif`;
-  context.fillText("→", ctaX + ctaWidth - (story ? 34 : 22), ctaY + (ctaHeight / 2) + (story ? 18 : 10));
-
-  if (story) {
-    context.textAlign = "center";
-    context.fillStyle = "rgba(255,255,255,.55)";
-    context.font = "600 22px Arial, sans-serif";
-    context.fillText("BEST VIRTUAL SOUND", centerX, 1790);
-    context.fillStyle = "rgba(255,255,255,.72)";
-    context.font = "700 24px Arial, sans-serif";
-    context.fillText("bvsradio.com · Built in Zimbabwe · Open to the world", centerX, 1834);
-  }
+  context.font = `800 ${story ? 72 : 40}px ${BVS_SHARE_FONT}`;
+  context.fillText("→", cardX + cardWidth - (story ? 30 : 18), ctaY + (ctaHeight / 2) + (story ? 24 : 14));
   context.textAlign = "left";
 
   if (logo?.objectUrl) URL.revokeObjectURL(logo.objectUrl);
