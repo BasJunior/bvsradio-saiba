@@ -31,6 +31,11 @@ function nativeHandler(): NativeNowPlayingHandler | undefined {
   return (window as BvsWebkitWindow).webkit?.messageHandlers?.bvsNowPlaying;
 }
 
+function nativeMusicControlsVersion() {
+  if (typeof window === "undefined") return 0;
+  return (window as BvsWebkitWindow).__bvsNativeMusicControlsVersion || 0;
+}
+
 function absoluteArtwork(src?: string) {
   if (!src || typeof window === "undefined") return "";
   try {
@@ -87,11 +92,10 @@ export default function AppNowPlayingBridge() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !("mediaSession" in navigator)) return;
     // A now-playing metadata bridge alone does not prove that the installed
-    // binary owns music-only transport. Preserve the previously working WebKit
-    // fallback on old builds; defer only to explicitly capable native builds.
-    const musicOnlyNativeBridge = nativeHandler() &&
-      ((window as BvsWebkitWindow).__bvsNativeMusicControlsVersion || 0) >= 1;
-    if (musicOnlyNativeBridge) return;
+    // binary owns native transport. Version 1+ does own transport, while older
+    // metadata-only builds keep the WebKit fallback below.
+    const nativeTransportBridge = nativeHandler() && nativeMusicControlsVersion() >= 1;
+    if (nativeTransportBridge) return;
 
     const applyMusicControls = () => {
       const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
@@ -153,6 +157,7 @@ export default function AppNowPlayingBridge() {
     const handler = nativeHandler();
     if (!handler) return;
     lastNativeSecond.current = -1;
+    const scrubSafeNativeBinary = nativeMusicControlsVersion() >= 2;
     handler.postMessage({
       action: "update",
       id: current.id || current.src,
@@ -165,9 +170,11 @@ export default function AppNowPlayingBridge() {
       duration: Math.max(0, timeline.duration || 0),
       canNext,
       canPrevious,
-      // Older installed binaries couple canSeek to interval-skip availability.
-      // Only opt in to native scrubbing after the binary advertises music-only controls.
-      canSeek: canSeek && ((window as BvsWebkitWindow).__bvsNativeMusicControlsVersion || 0) >= 1,
+      // Version 1 native transport existed while some shipped builds still
+      // coupled canSeek to podcast-style ±15s commands. Never advertise native
+      // seeking to that ambiguous generation. Version 2 is reserved for the
+      // interval-free music command policy.
+      canSeek: canSeek && scrubSafeNativeBinary,
     });
   }, [canNext, canPrevious, canSeek, current, timeline.duration, player.isPlaying, player.playingFrom]);
 
@@ -178,12 +185,14 @@ export default function AppNowPlayingBridge() {
     const second = Math.floor(timeline.elapsed || 0);
     if (second === lastNativeSecond.current) return;
     lastNativeSecond.current = second;
-    const musicOnlyBinary = ((window as BvsWebkitWindow).__bvsNativeMusicControlsVersion || 0) >= 1;
+    const scrubSafeNativeBinary = nativeMusicControlsVersion() >= 2;
     handler.postMessage({
-      // Legacy native position messages do not refresh command availability.
-      // Reassert canSeek=false there too, after WebKit updates its media session.
-      action: musicOnlyBinary ? "position" : "update",
-      ...(!musicOnlyBinary ? { canNext, canPrevious, canSeek: false } : {}),
+      // Version 1 is native-transport capable but not safe to receive canSeek:
+      // shipped builds from that generation can turn it back into ±15s controls.
+      // Keep reasserting canSeek=false until a v2 binary explicitly advertises
+      // the interval-free music policy.
+      action: scrubSafeNativeBinary ? "position" : "update",
+      ...(!scrubSafeNativeBinary ? { canNext, canPrevious, canSeek: false } : {}),
       playing: player.isPlaying,
       elapsed: Math.max(0, timeline.elapsed || 0),
       duration: Math.max(0, timeline.duration || 0),
