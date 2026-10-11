@@ -21,6 +21,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     private var pendingPushHref: String?
     private var pushActionBridgeReady = false
     private var pendingNativeMediaPayloads: [[String: Any]] = []
+    private var bridgeRetryPending = false
+    private var bridgeRetryCount = 0
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Allow HTML5 / WebView audio to continue when the screen locks (radio use case).
@@ -62,6 +64,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     }
 
     func applicationDidBecomeActive(_ application: UIApplication) {
+        bridgeRetryCount = 0
         configureNavigationGesturesIfNeeded()
         configureRemoteCommandsIfNeeded()
         flushPendingNativeMediaCommands()
@@ -95,6 +98,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             #if DEBUG
             NSLog("BVS navigation bridge unavailable root=%@", String(describing: window?.rootViewController))
             #endif
+            scheduleBridgeRetry()
             return
         }
         bridge.loadViewIfNeeded()
@@ -102,8 +106,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             #if DEBUG
             NSLog("BVS navigation web view unavailable")
             #endif
+            scheduleBridgeRetry()
             return
         }
+        bridgeRetryCount = 0
         let routeBridge = WKUserScript(
             source: """
             (() => {
@@ -140,12 +146,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         webView.configuration.userContentController.add(self, name: nowPlayingRouteHandler)
         webView.configuration.userContentController.add(self, name: pushRegistrationHandler)
         webView.evaluateJavaScript(routeBridge.source)
+        emitPushEvent("bvs:native-push-bridge-ready", payload: [:])
         webViewURLObservation = webView.observe(\.url, options: [.initial, .new]) { [weak self] observedWebView, _ in
             self?.updateNavigationGestures(for: observedWebView)
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            self?.emitPushEvent("bvs:native-push-bridge-ready", payload: [:])
             self?.flushPendingPushAction()
             self?.flushPendingNativeMediaCommands()
+        }
+    }
+
+    private func scheduleBridgeRetry() {
+        guard !bridgeRetryPending, bridgeRetryCount < 20 else { return }
+        bridgeRetryPending = true
+        bridgeRetryCount += 1
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let self else { return }
+            self.bridgeRetryPending = false
+            self.configureNavigationGesturesIfNeeded()
         }
     }
 
