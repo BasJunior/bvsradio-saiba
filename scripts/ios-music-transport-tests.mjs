@@ -52,39 +52,53 @@ function mount({ nativeBridge = false, version, unsupportedSeek = false } = {}) 
 
 for (const version of [undefined, 0, 1, 2]) {
   const app = mount({ nativeBridge: true, version });
-  assert.equal(app.handlers.size, Number(version || 0) >= 1 ? 0 : 5,
-    'Metadata-only native bridge must retain the previously working WebKit music controls');
+
+  // Legacy metadata-only builds keep WebKit Previous/Next. Native transport
+  // builds own Previous/Next themselves. Every contained iOS generation must
+  // finish with all Media Session seek actions explicitly disabled.
   if (Number(version || 0) < 1) {
-    assert.equal(app.handlers.get('seekforward'), null);
-    assert.equal(app.handlers.get('seekbackward'), null);
+    assert.equal(typeof app.handlers.get('nexttrack'), 'function');
+    assert.equal(typeof app.handlers.get('previoustrack'), 'function');
+  } else {
+    assert.equal(app.handlers.has('nexttrack'), false, 'native transport must keep exclusive Previous/Next ownership');
+    assert.equal(app.handlers.has('previoustrack'), false, 'native transport must keep exclusive Previous/Next ownership');
+  }
+  assert.equal(app.handlers.get('seekforward'), null, 'forward interval seeking must always be disabled');
+  assert.equal(app.handlers.get('seekbackward'), null, 'backward interval seeking must always be disabled');
+  assert.equal(app.handlers.get('seekto'), null, 'contained iOS lock-screen scrubbing stays disabled until a verified native build ships');
+
+  if (Number(version || 0) < 1) {
     app.handlers.clear();
     app.events.get('bvs:app-resume')();
     assert.equal(typeof app.handlers.get('nexttrack'), 'function', 'Resume must restore next track');
     assert.equal(typeof app.handlers.get('previoustrack'), 'function', 'Resume must restore previous track');
   }
+
   const update = app.messages.find(m => m.action === 'update');
-  assert.equal(update.canSeek, version === 2,
-    'Only v2 interval-free native controls may receive canSeek=true');
-  assert.equal(app.messages.at(-1).action, version === 2 ? 'position' : 'update',
-    'v1 and older binaries must keep receiving command-policy updates');
-  if (version !== 2) assert.equal(app.messages.at(-1).canSeek, false,
-    'v1 and older binaries must repeatedly receive canSeek=false to suppress ±15s controls');
+  assert.equal(update.canSeek, false, 'no currently installed iOS binary may receive canSeek=true');
+  assert.equal(app.messages.at(-1).action, 'update', 'heartbeat must reassert the music-only command policy');
+  assert.equal(app.messages.at(-1).canSeek, false, 'heartbeat must keep ±15s controls disabled');
+
   app.events.get('bvs:native-media-command')({ detail: { command: 'next' } });
   app.events.get('bvs:native-media-command')({ detail: { command: 'previous' } });
   assert.equal(app.calls.next, 1);
   assert.equal(app.calls.previous, 1);
   assert.equal(app.calls.seek.length, 0, 'Track commands must not seek by seconds');
+
   app.events.get('bvs:native-media-command')({ detail: { command: 'skip-forward', interval: 15 } });
   app.events.get('bvs:native-media-command')({ detail: { command: 'skip-backward', interval: 15 } });
   assert.equal(app.calls.next, 2, 'Legacy forward button must navigate to the next track');
   assert.equal(app.calls.previous, 2, 'Legacy backward button must use previous-track mechanics');
   assert.equal(app.calls.seek.length, 0, 'Legacy interval-command names must never perform interval seeks');
+
   app.events.get('bvs:native-media-command')({ detail: { command: 'seek', position: 72 } });
-  assert.deepEqual(app.calls.seek, [72], 'Explicit timeline scrubbing remains separate from track navigation');
+  assert.deepEqual(app.calls.seek, [72], 'explicit native seek messages remain separate from interval-skip buttons');
 }
+
 const fallback = mount({ unsupportedSeek: true });
 assert.equal(fallback.handlers.get('seekforward'), null);
 assert.equal(fallback.handlers.get('seekbackward'), null);
+// Unsupported seekto must not prevent music navigation from being installed.
 fallback.handlers.get('nexttrack')();
 fallback.handlers.get('previoustrack')();
 assert.equal(fallback.calls.next, 1);
@@ -125,4 +139,4 @@ for (const version of [undefined, 0, 1, 2]) {
     assert.equal(handlers.get('seekbackward'), null);
   }
 }
-console.log('iOS music transport: native ownership, v1 15-second regression guard, old-binary compatibility and WebKit fallback passed.');
+console.log('iOS music transport: all contained-app seeking suppressed, track navigation preserved, legacy interval commands remapped.');

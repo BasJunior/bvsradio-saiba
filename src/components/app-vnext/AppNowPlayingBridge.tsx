@@ -87,8 +87,8 @@ export default function AppNowPlayingBridge() {
 
   // Older installed iOS binaries still rely on Web Media Session for remote
   // controls. Keep those controls music-first: previous / play-pause / next.
-  // Absolute timeline scrubbing remains available, but podcast-style interval
-  // skip commands stay disabled so iOS does not replace track navigation.
+  // Absolute timeline scrubbing remains available on web, but podcast-style
+  // interval skip commands stay disabled in the contained iOS app.
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !("mediaSession" in navigator)) return;
     // A now-playing metadata bridge alone does not prove that the installed
@@ -101,7 +101,7 @@ export default function AppNowPlayingBridge() {
       const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
         try { navigator.mediaSession.setActionHandler(action, handler); } catch {}
       };
-      // Each action is isolated: an unsupported seekto must not prevent clearing skips.
+      // Each action is isolated so one unsupported action cannot block the rest.
       set("seekbackward", null);
       set("seekforward", null);
       set("previoustrack", () => commandState.current.previous());
@@ -152,12 +152,27 @@ export default function AppNowPlayingBridge() {
     } catch {}
   }, [timeline.duration, timeline.elapsed, player.isPlaying]);
 
+  // WKWebView can restore default seek actions after position-state updates even
+  // when the app previously cleared seekforward/seekbackward. Re-clear every seek
+  // action after each Media Session refresh. This deliberately disables lock-screen
+  // scrubbing inside the native iOS shell until a new binary proves an interval-free
+  // native implementation. Previous/Next remain owned by native v1+ or the legacy
+  // WebKit fallback above.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !("mediaSession" in navigator)) return;
+    const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
+      try { navigator.mediaSession.setActionHandler(action, handler); } catch {}
+    };
+    set("seekbackward", null);
+    set("seekforward", null);
+    set("seekto", null);
+  }, [current?.id, current?.src, timeline.duration, timeline.elapsed, player.isPlaying]);
+
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !current) return;
     const handler = nativeHandler();
     if (!handler) return;
     lastNativeSecond.current = -1;
-    const scrubSafeNativeBinary = nativeMusicControlsVersion() >= 2;
     handler.postMessage({
       action: "update",
       id: current.id || current.src,
@@ -170,11 +185,10 @@ export default function AppNowPlayingBridge() {
       duration: Math.max(0, timeline.duration || 0),
       canNext,
       canPrevious,
-      // Version 1 native transport existed while some shipped builds still
-      // coupled canSeek to podcast-style ±15s commands. Never advertise native
-      // seeking to that ambiguous generation. Version 2 is reserved for the
-      // interval-free music command policy.
-      canSeek: canSeek && scrubSafeNativeBinary,
+      // Hard fail-safe: no currently installed native generation is allowed to
+      // advertise seeking. Older v1 binaries can translate canSeek into ±15s
+      // transport buttons, so keep it false until a new verified binary ships.
+      canSeek: false,
     });
   }, [canNext, canPrevious, canSeek, current, timeline.duration, player.isPlaying, player.playingFrom]);
 
@@ -185,14 +199,14 @@ export default function AppNowPlayingBridge() {
     const second = Math.floor(timeline.elapsed || 0);
     if (second === lastNativeSecond.current) return;
     lastNativeSecond.current = second;
-    const scrubSafeNativeBinary = nativeMusicControlsVersion() >= 2;
     handler.postMessage({
-      // Version 1 is native-transport capable but not safe to receive canSeek:
-      // shipped builds from that generation can turn it back into ±15s controls.
-      // Keep reasserting canSeek=false until a v2 binary explicitly advertises
-      // the interval-free music policy.
-      action: scrubSafeNativeBinary ? "position" : "update",
-      ...(!scrubSafeNativeBinary ? { canNext, canPrevious, canSeek: false } : {}),
+      // Reassert the music-only policy every second. Some installed binaries
+      // refresh MPRemoteCommandCenter while playback advances, so one initial
+      // canSeek=false is not sufficient to guarantee the ±15s buttons stay gone.
+      action: "update",
+      canNext,
+      canPrevious,
+      canSeek: false,
       playing: player.isPlaying,
       elapsed: Math.max(0, timeline.elapsed || 0),
       duration: Math.max(0, timeline.duration || 0),
