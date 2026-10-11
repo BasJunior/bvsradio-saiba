@@ -94,8 +94,8 @@ export default function AppNowPlayingBridge() {
     // A now-playing metadata bridge alone does not prove that the installed
     // binary owns native transport. Version 1+ does own transport, while older
     // metadata-only builds keep the WebKit fallback below.
-    const nativeTransportBridge = nativeHandler() && nativeMusicControlsVersion() >= 1;
-    if (nativeTransportBridge) return;
+    const musicOnlyNativeBridge = nativeHandler() && nativeMusicControlsVersion() >= 1;
+    if (musicOnlyNativeBridge) return;
 
     const applyMusicControls = () => {
       const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
