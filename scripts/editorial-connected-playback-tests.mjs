@@ -1,5 +1,6 @@
 
 import fs from 'node:fs'
+import './editorial-workspace-tests.mjs'
 
 function read(path) { return fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8') }
 function assert(condition, message) { if (!condition) throw new Error(message) }

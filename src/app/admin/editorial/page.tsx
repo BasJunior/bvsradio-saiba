@@ -9,6 +9,7 @@ import ReleaseEditorialPanel from '@/components/ReleaseEditorialPanel'
 import MusicVideoEditorialPanel from '@/components/MusicVideoEditorialPanel'
 import { creatorPublicName, producerPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
+import EditorialWorkspace, { useEditorialWorkspaceSection } from '@/components/editorial/EditorialWorkspace'
 import EditorialAnalytics from '@/components/EditorialAnalytics'
 import EditorialSectionCarousel, { EditorialArtistGroupCard, groupEditorialByArtist, matchesEditorialFilter } from '@/components/EditorialSectionCarousel'
 import EditorialConnectedPreview from '@/components/editorial/EditorialConnectedPreview'
@@ -329,6 +330,8 @@ export default function EditorialDashboard() {
         <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}</p>
       )}
 
+      <EditorialWorkspace sections={[...jump.filter(item => item.id !== 'ed-programmes'), { id: 'ed-music-videos', label: 'Music videos', accent: 'shows' }]} initialSection={releaseQueue ? 'ed-releases' : beatQueue ? 'ed-beats' : 'ed-tracks'}>
+      <EditorialDropDown id="ed-overview" label="Overview" accent="core">
       <Link
         href="/admin/creator-workflows"
         data-editorial-accent="core"
@@ -341,27 +344,7 @@ export default function EditorialDashboard() {
         <span className="bvs-editorial-accent-label text-sm font-semibold">Open queue →</span>
       </Link>
 
-      <div id="ed-music-videos" data-editorial-accent="core" className="mt-5 scroll-mt-28">
-        <MusicVideoEditorialPanel />
-      </div>
-
-      <details className="mt-8 rounded-2xl border border-white/10 bg-bg-primary/90 p-3">
-        <summary className="cursor-pointer text-sm text-text-secondary">Jump to a workflow section</summary>
-        <nav aria-label="Editorial sections" className="mt-3 flex flex-wrap gap-2">
-          {jump.map((item) => (
-            <a
-              key={item.id}
-              href={`#${item.id}`}
-              data-editorial-accent={item.accent || undefined}
-              className={item.accent ? "bvs-editorial-accent-button rounded-full border px-3 py-1.5 text-xs" : "rounded-full border border-white/10 px-3 py-1.5 text-xs text-text-secondary transition hover:border-white/25"}
-            >
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </details>
-
-      <section id="ed-overview" className="mt-7 scroll-mt-36 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mt-4 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {[
           { label: 'Needs review', value: trackNeedsReview + beatNeedsReview + releaseNeedsReview, detail: `${releaseNeedsReview} releases · ${trackNeedsReview} singles · ${beatNeedsReview} beats`, accent: 'core' },
           { label: 'Processed decisions', value: trackProcessed + beatProcessed + releaseProcessed, detail: 'Approved, published or rejected work', accent: 'releases' },
@@ -427,7 +410,16 @@ export default function EditorialDashboard() {
         </div>
       </section>
 
-      <EditorialAnalytics token={token} />
+      </EditorialDropDown>
+      <EditorialDropDown id="ed-music-videos" label="Music videos" accent="shows">
+      <div data-editorial-accent="core" className="mt-5 scroll-mt-28">
+        <MusicVideoEditorialPanel />
+      </div>
+
+      </EditorialDropDown>
+      <EditorialDropDown id="ed-analytics" label="Analytics" accent="core">
+        <EditorialAnalytics token={token} />
+      </EditorialDropDown>
 
       <EditorialDropDown id="ed-releases" label="Albums and EPs" accent="releases" count={releaseQueue} defaultOpen={releaseQueue > 0}>
         <ReleaseEditorialPanel
@@ -567,6 +559,7 @@ export default function EditorialDashboard() {
           </table>
         </div>
       </EditorialDropDown>
+      </EditorialWorkspace>
     </main>
   )
 }
@@ -586,8 +579,21 @@ function EditorialDropDown({
   accent?: 'core' | 'releases' | 'beats' | 'people' | 'marketplace' | 'shows' | 'money'
   children: ReactNode
 }) {
+  const workspace = useEditorialWorkspaceSection()
+  const selected = workspace?.active
+  const active = selected === id
+  const visited = workspace?.visited.includes(id)
   const [open, setOpen] = useState(defaultOpen)
   const panelId = `${id}-panel`
+
+  if (selected) {
+    // Keep visited forms mounted so changing queues preserves review notes.
+    if (!active && !visited) return null
+    return <section id={id === 'ed-analytics' ? 'ed-analytics-workspace' : id} hidden={!active} data-editorial-accent={accent} className="bvs-editorial-panel scroll-mt-36 border-b border-white/10 py-4">
+      <h2 className="bvs-editorial-accent-label mb-4 text-xl font-semibold">{label}{typeof count === 'number' ? <span className="ml-2 text-sm text-text-secondary">{count}</span> : null}</h2>
+      {children}
+    </section>
+  }
 
   return (
     <section id={id} data-editorial-accent={accent} data-state={open ? 'open' : 'closed'} className="bvs-editorial-panel mt-5 scroll-mt-28 rounded-2xl border border-white/10 bg-white/[.012]">
