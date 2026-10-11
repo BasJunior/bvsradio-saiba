@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000" role="img" aria-label="One Man Army — Ambition_Runner cover">
+<defs>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6d4f99"/><stop offset=".28" stop-color="#f0e6ff"/><stop offset=".48" stop-color="#a875e7"/><stop offset=".7" stop-color="#ded0f5"/><stop offset="1" stop-color="#523271"/></linearGradient>
+  <radialGradient id="halo"><stop stop-color="#8d51cf" stop-opacity=".22"/><stop offset="1" stop-color="#8d51cf" stop-opacity="0"/></radialGradient>
+  <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#dac2ff" stroke-opacity=".045" stroke-width="1"/></pattern>
+</defs>
+<rect width="1000" height="1000" fill="#0b0b0f"/>
+<rect x="28" y="28" width="944" height="944" fill="none" stroke="#a47adb" stroke-opacity=".36"/>
+<rect x="58" y="324" width="884" height="465" fill="url(#grid)"/>
+<g font-family="Arial, Helvetica, sans-serif" fill="#f3f1f6">
+  <text x="58" y="70" font-size="25" font-weight="900" letter-spacing="-1">BVS<tspan fill="#ccff3d">.</tspan></text>
+  <text x="942" y="68" text-anchor="end" fill="#c8a4fa" font-size="18" font-weight="700" letter-spacing="5">BEATSTORE</text>
+  <path d="M58 94H942" stroke="#c8a4fa" stroke-opacity=".45"/>
+  <text x="58" y="220" font-size="114" font-weight="900" letter-spacing="-3">ONE MAN</text><text x="58" y="340.84000000000003" font-size="114" font-weight="900" letter-spacing="-3">ARMY</text>
+  <g transform="translate(75.00000000000001 85) scale(0.85)"><ellipse cx="500" cy="736" rx="280" ry="36" fill="url(#halo)"/><path d="M463 692V405L500 370L537 405V692L500 717Z" fill="url(#metal)"/><path d="M500 370V717" stroke="#ece0ff" stroke-width="2"/><path d="M290 720L500 658L710 720" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M297 707L500 645L703 707" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M304 694L500 632L696 694" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M311 681L500 619L689 681" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M318 668L500 606L682 668" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M325 655L500 593L675 655" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M332 642L500 580L668 642" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M339 629L500 567L661 629" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M346 616L500 554L654 616" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M353 603L500 541L647 603" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M360 590L500 528L640 590" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M367 577L500 515L633 577" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M374 564L500 502L626 564" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M381 551L500 489L619 551" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M388 538L500 476L612 538" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M395 525L500 463L605 525" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M402 512L500 450L598 512" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M409 499L500 437L591 499" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M416 486L500 424L584 486" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M423 473L500 411L577 473" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M430 460L500 398L570 460" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M437 447L500 385L563 447" fill="none" stroke="url(#metal)" stroke-width="5"/><path d="M500 348V328M255 734H225M745 734H775" stroke="#ccff3d" stroke-width="3"/></g>
+  <path d="M58 821H942" stroke="#c8a4fa" stroke-opacity=".45"/>
+  <text x="58" y="862" fill="#c8a4fa" font-size="16" letter-spacing="4">PRODUCED BY</text>
+  <text x="58" y="912" font-size="42" font-weight="700" letter-spacing="-1">Ambition_Runner</text>
+  <text x="58" y="950" fill="#9f99a9" font-size="16" letter-spacing="2">AMAPIANO</text>
+  <path d="M897 926H942V950H897Z" fill="#c8a4fa"/><path d="M904 938H935" stroke="#0b0b0f" stroke-width="3"/>
+</g>
+</svg>
