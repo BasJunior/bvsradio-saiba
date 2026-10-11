@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000" role="img" aria-label="KINGS — InnoxBeats cover">
+<defs>
+  <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#6d4f99"/><stop offset=".28" stop-color="#f0e6ff"/><stop offset=".48" stop-color="#a875e7"/><stop offset=".7" stop-color="#ded0f5"/><stop offset="1" stop-color="#523271"/></linearGradient>
+  <radialGradient id="halo"><stop stop-color="#8d51cf" stop-opacity=".22"/><stop offset="1" stop-color="#8d51cf" stop-opacity="0"/></radialGradient>
+  <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#dac2ff" stroke-opacity=".045" stroke-width="1"/></pattern>
+</defs>
+<rect width="1000" height="1000" fill="#0b0b0f"/>
+<rect x="28" y="28" width="944" height="944" fill="none" stroke="#a47adb" stroke-opacity=".36"/>
+<rect x="58" y="324" width="884" height="465" fill="url(#grid)"/>
+<g font-family="Arial, Helvetica, sans-serif" fill="#f3f1f6">
+  <text x="58" y="70" font-size="25" font-weight="900" letter-spacing="-1">BVS<tspan fill="#ccff3d">.</tspan></text>
+  <text x="942" y="68" text-anchor="end" fill="#c8a4fa" font-size="18" font-weight="700" letter-spacing="5">BEATSTORE</text>
+  <path d="M58 94H942" stroke="#c8a4fa" stroke-opacity=".45"/>
+  <text x="58" y="220" font-size="114" font-weight="900" letter-spacing="-3">KINGS</text>
+  <g transform="translate(0 0) scale(1)"><ellipse cx="500" cy="718" rx="285" ry="45" fill="url(#halo)"/><path d="M285 635L236 418L369 503L500 358L631 503L764 418L715 635Z" fill="#a875e7" fill-opacity=".06" stroke="url(#metal)" stroke-width="5"/><path d="M285 635L236 418L369 503L500 358L631 503L764 418L715 635" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M291 629L243.8 430L369 504.2L500 371.2L631 504.2L756.2 430L709 629" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M297 623L251.6 442L369 505.4L500 384.4L631 505.4L748.4 442L703 623" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M303 617L259.4 454L369 506.6L500 397.6L631 506.6L740.6 454L697 617" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M309 611L267.2 466L369 507.8L500 410.8L631 507.8L732.8 466L691 611" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M315 605L275 478L369 509L500 424L631 509L725 478L685 605" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M321 599L282.8 490L369 510.2L500 437.2L631 510.2L717.2 490L679 599" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M327 593L290.6 502L369 511.4L500 450.4L631 511.4L709.4 502L673 593" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M333 587L298.4 514L369 512.6L500 463.6L631 512.6L701.6 514L667 587" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M339 581L306.2 526L369 513.8L500 476.8L631 513.8L693.8 526L661 581" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M345 575L314 538L369 515L500 490L631 515L686 538L655 575" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M351 569L321.8 550L369 516.2L500 503.20000000000005L631 516.2L678.2 550L649 569" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M357 563L329.6 562L369 517.4L500 516.4L631 517.4L670.4 562L643 563" fill="none" stroke="url(#metal)" stroke-width="1.5" stroke-opacity=".65"/><path d="M292 660H708M304 680H696" stroke="url(#metal)" stroke-width="5"/><path d="M500 476L527 514L500 552L473 514Z" fill="#ccff3d"/><path d="M500 322V340M205 670H227M773 670H795" stroke="#ccff3d" stroke-width="3"/></g>
+  <path d="M58 821H942" stroke="#c8a4fa" stroke-opacity=".45"/>
+  <text x="58" y="862" fill="#c8a4fa" font-size="16" letter-spacing="4">PRODUCED BY</text>
+  <text x="58" y="912" font-size="42" font-weight="700" letter-spacing="-1">InnoxBeats</text>
+  <text x="58" y="950" fill="#9f99a9" font-size="16" letter-spacing="2">HIP-HOP / 136 BPM</text>
+  <path d="M897 926H942V950H897Z" fill="#c8a4fa"/><path d="M904 938H935" stroke="#0b0b0f" stroke-width="3"/>
+</g>
+</svg>
