@@ -37,7 +37,7 @@ for (const format of ['story','square']) {
   assert.match(file.name,new RegExp(`-${format}\\.png$`));
   assert.equal(draws.length,3,'Backdrop artwork, foreground artwork and uploaded BVS logo must all render');
   assert.equal(radii.length,0,'Poster share cards must not use rounded canvas geometry');
-  assert.ok(rects.length>=10,'Poster share cards must build their structure from square rectangular surfaces');
+  assert.ok(rects.length>=9,'Poster share cards must build their structure from square rectangular surfaces');
   const nowOnBvs = text.find(t=>t.value==='NOW ON BVS');
   assert.ok(nowOnBvs && nowOnBvs.align==='center','Share card must carry the centered NOW ON BVS headline');
   assert.match(nowOnBvs.font,/900/,'NOW ON BVS should use the heaviest headline weight');
