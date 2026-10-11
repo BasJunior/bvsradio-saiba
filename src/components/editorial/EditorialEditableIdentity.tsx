@@ -121,14 +121,14 @@ export default function EditorialEditableIdentity({
   return (
     <div className="min-w-0 flex-1">
       <div className="flex min-w-0 items-center gap-2">
-        <h3 className="min-w-0 truncate text-xl font-semibold">{title}</h3>
+        <h3 className="min-w-0 break-words text-lg font-semibold sm:text-xl">{title}</h3>
         {editButton(`Edit title for ${title}`)}
       </div>
       <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1.5 text-sm text-text-secondary">
         <span className="truncate">{artist}</span>
         {editButton(`Edit artist relationship for ${title}`)}
-        {secondary ? <span className="min-w-0">· {secondary}</span> : null}
       </div>
+      {secondary ? <p className="mt-1 break-words text-xs leading-5 text-text-secondary">{secondary}</p> : null}
 
       {editing ? (
         <div className="mt-3 rounded-2xl border border-brand/25 bg-black/30 p-4">

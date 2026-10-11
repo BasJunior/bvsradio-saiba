@@ -150,12 +150,12 @@ export default function EditorialConnectedPreview({
   }
 
   return (
-    <div>
+    <div className="min-w-0 w-full">
       <div
         data-editorial-connected-preview={previewId}
         data-editorial-review-audio={previewId}
         data-editorial-audio-source={resolvedAudioSource || undefined}
-        className={`flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/[.055] ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
+        className={`flex min-w-0 items-center gap-2 border border-white/10 bg-white/[.055] sm:gap-3 ${compact ? 'px-2.5 py-1.5' : 'px-3 py-2'}`}
       >
         <button
           type="button"
@@ -174,7 +174,7 @@ export default function EditorialConnectedPreview({
           value={Math.round(progress * 1000)}
           disabled={!active || duration <= 0}
           onChange={(event) => player.seek(Number(event.target.value) / 1000)}
-          className="min-w-20 flex-1 accent-brand disabled:opacity-45"
+          className="min-w-0 w-0 flex-1 accent-brand disabled:opacity-45"
           aria-label={`Seek review audio for ${title}`}
         />
         <span className="w-10 shrink-0 text-[11px] tabular-nums text-text-secondary">{duration > 0 ? `-${formatTime(Math.max(0, duration - elapsed))}` : '0:00'}</span>

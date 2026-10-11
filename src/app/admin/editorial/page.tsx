@@ -841,8 +841,8 @@ function BeatStoreEditorialPanel({
 function BeatReviewThread({ beat, messages, profiles, act, busy }: { beat: Beat; messages: BeatReviewMessage[]; profiles: Profile[]; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
   const [message, setMessage] = useState('')
   const producerProfiles = profiles.filter((profile) => profile.is_producer || profile.role === 'admin')
-  return <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-    <p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>
+  return <details className="border border-white/10 bg-black/20 p-3">
+    <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-brand">Review conversation{messages.length ? ` (${messages.length})` : ''}</summary>
     <div className="mt-2 max-h-44 space-y-2 overflow-y-auto">
       {messages.map(item => <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs"><span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}<span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span></p>)}
       {!messages.length && <p className="text-xs text-text-secondary">No messages yet.</p>}
@@ -856,7 +856,7 @@ function BeatReviewThread({ beat, messages, profiles, act, busy }: { beat: Beat;
         {producerProfiles.map(profile => <option key={profile.id} value={profile.id}>{profile.display_name || profile.username}</option>)}
       </select>
     </label>
-  </div>
+  </details>
 }
 
 function TrackCard({ track, credits, messages, profiles, allowed, act, busy }: { track: Track; credits: Credit[]; messages: TrackReviewMessage[]; profiles: Profile[]; allowed: (p: EditorialPermission) => boolean; act: (action: string, body: Record<string, unknown>) => Promise<void>; busy: string }) {
@@ -874,7 +874,7 @@ function TrackCard({ track, credits, messages, profiles, allowed, act, busy }: {
   const [iosEvidence, setIosEvidence] = useState(iosClearance?.evidence_reference || '')
   const [iosNotes, setIosNotes] = useState(iosClearance?.review_notes || '')
   const disabled = Boolean(busy)
-  return <article className="rounded-2xl border border-white/10 bg-white/[.025] p-5"><div className="flex flex-wrap justify-between gap-4"><div className="flex min-w-0 gap-4">{track.artwork_url?<div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-white/5"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl border border-dashed border-white/15 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0 flex-1"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><div className="mt-1"><EditorialEditableIdentity kind="track" id={track.id} title={track.title} artist={track.artist_name} currentProfileId={track.user_id} profiles={profiles} editable={allowed('approve_submissions')} secondary={`${track.genre} · ${new Date(track.created_at).toLocaleDateString()}`} /></div><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><div className="min-w-[16rem] flex-1 sm:max-w-md"><EditorialConnectedPreview previewId={`single:${track.id}`} title={track.title} artist={track.artist_name} src={track.file_url} artwork={track.artwork_url} project="Editorial · Singles" genre={track.genre} compact /></div></div>
+  return <article className="min-w-0 border border-white/10 bg-white/[.025] p-3 sm:p-5"><div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2"><div className="grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[6rem_minmax(0,1fr)] sm:gap-4">{track.artwork_url?<div className="relative h-16 w-16 overflow-hidden border border-white/10 bg-white/5 sm:h-24 sm:w-24"><Image src={track.artwork_url} alt={`${track.title} submitted artwork`} fill unoptimized={/^https?:\/\//i.test(track.artwork_url)} className="object-cover" /></div>:<div className="grid h-16 w-16 place-items-center border border-dashed border-white/15 sm:h-24 sm:w-24 text-center text-[10px] text-text-secondary">No artwork submitted</div>}<div className="min-w-0 flex-1"><p className={`text-xs font-semibold uppercase tracking-wider ${statusClass[track.editorial_status] || 'text-text-secondary'}`}>{track.editorial_status.replace('_', ' ')}</p><div className="mt-1"><EditorialEditableIdentity kind="track" id={track.id} title={track.title} artist={track.artist_name} currentProfileId={track.user_id} profiles={profiles} editable={allowed('approve_submissions')} secondary={`${track.genre} · ${new Date(track.created_at).toLocaleDateString()}`} /></div><p className="mt-2 text-xs text-text-secondary">{track.artwork_url?'Submitted artwork attached':'Request artwork before publishing if required.'}</p></div></div><div className="min-w-0 w-full lg:self-start"><EditorialConnectedPreview previewId={`single:${track.id}`} title={track.title} artist={track.artist_name} src={track.file_url} artwork={track.artwork_url} project="Editorial · Singles" genre={track.genre} compact /></div></div>
     {allowed('approve_submissions') && <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]"><textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Private review notes" className="min-h-20 rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-brand"/><div className="flex flex-wrap items-start gap-2"><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'in_review', notes })} className="rounded-full border border-white/20 px-4 py-2 text-xs">Review</button><button disabled={disabled} onClick={() => setMessageOpen(open => !open)} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{messageOpen ? 'Close message' : 'Send message'}</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'approved', notes })} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-semibold text-black">Approve</button><button disabled={disabled} onClick={() => act('review_track', { trackId: track.id, status: 'rejected', notes })} className="rounded-full bg-red-400 px-4 py-2 text-xs font-semibold text-black">Reject</button><button disabled={disabled} onClick={async () => { if (!window.confirm(`Move “${track.title}” from Singles to the BeatStore review queue?`)) return; await act('reclassify_track_as_beat', { trackId: track.id }) }} className="rounded-full border border-amber-300/60 px-4 py-2 text-xs text-amber-200">Move to BeatStore</button>{track.editorial_status === 'approved' && <button disabled={disabled} onClick={() => act('publish_track', { trackId: track.id, publish: !track.is_public })} className="rounded-full border border-brand px-4 py-2 text-xs text-brand">{track.is_public ? 'Unpublish track' : 'Publish track'}</button>}</div></div>}
     {messageOpen && <div className="mt-4 rounded-xl border border-brand/20 bg-black/20 p-4"><p className="text-xs font-semibold uppercase tracking-wider text-brand">Review conversation</p>{messages.length > 0 && <div className="mt-3 max-h-44 space-y-2 overflow-y-auto">{messages.map(item => <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs"><span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}<span className="ml-2 text-text-secondary">{new Date(item.created_at).toLocaleString()}</span></p>)}</div>}<div className="mt-3 grid gap-2 md:grid-cols-[1fr_auto]"><textarea autoFocus value={message} onChange={e => setMessage(e.target.value)} maxLength={2000} placeholder="Message the uploader about classification, rights, artwork or requested changes…" className="min-h-24 rounded-lg border border-white/10 bg-black/20 p-3 text-sm"/><button disabled={disabled || !message.trim()} onClick={async () => { await act('message_track', { trackId: track.id, message }); setMessage('') }} className="self-start rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black disabled:opacity-40">Post message</button></div></div>}
     <div className="mt-5 grid gap-5 border-t border-white/10 pt-5 lg:grid-cols-3">
@@ -1231,21 +1231,21 @@ function BeatsCarousel({
               const audioSrc = beat.review_audio_url || beat.master_path || publicUrl(beat.preview_path)
               const artSrc = publicUrl(beat.artwork_path)
               return (
-                <article key={beat.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5">
-                  <div className="flex flex-wrap justify-between gap-4">
-                    <div className="flex min-w-0 flex-1 gap-4">
+                <article key={beat.id} className="min-w-0 border border-white/10 bg-white/[.025] p-3 sm:p-5">
+                  <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2">
+                    <div className="grid min-w-0 grid-cols-[4rem_minmax(0,1fr)] items-start gap-3 sm:grid-cols-[5rem_minmax(0,1fr)] sm:gap-4">
                       {artSrc ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={artSrc}
                           alt=""
-                          className="h-20 w-20 shrink-0 rounded-xl object-cover ring-1 ring-white/10"
+                          className="aspect-square h-16 w-16 object-cover ring-1 ring-white/10 sm:h-20 sm:w-20"
                           onError={(e) => {
                             ;(e.currentTarget as HTMLImageElement).style.display = 'none'
                           }}
                         />
                       ) : (
-                        <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[10px] text-text-secondary">
+                        <div className="flex h-16 w-16 items-center justify-center bg-white/5 text-[10px] text-text-secondary sm:h-20 sm:w-20">
                           No art
                         </div>
                       )}
@@ -1257,7 +1257,7 @@ function BeatsCarousel({
                         {beat.editorial_notes && <p className="mt-2 text-sm text-text-secondary">Notes: {beat.editorial_notes}</p>}
                       </div>
                     </div>
-                    {audioSrc ? <div className="min-w-[16rem] flex-1 sm:max-w-md"><EditorialConnectedPreview previewId={`beat:${beat.id}`} title={beat.title} artist={nameFor(beat.producer_user_id)} src={audioSrc} artwork={artSrc} project="Editorial · BeatStore" genre={beat.genre} compact /></div> : null}
+                    {audioSrc ? <div className="min-w-0 w-full lg:self-start"><EditorialConnectedPreview previewId={`beat:${beat.id}`} title={beat.title} artist={nameFor(beat.producer_user_id)} src={audioSrc} artwork={artSrc} project="Editorial · BeatStore" genre={beat.genre} compact /></div> : null}
                   </div>
                   {enabled && (
                     <div className="mt-4">
