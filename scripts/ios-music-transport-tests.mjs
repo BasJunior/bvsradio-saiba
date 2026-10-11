@@ -50,11 +50,11 @@ function mount({ nativeBridge = false, version, unsupportedSeek = false } = {}) 
   return { handlers, messages, events, calls };
 }
 
-for (const version of [undefined, 0, 1]) {
+for (const version of [undefined, 0, 1, 2]) {
   const app = mount({ nativeBridge: true, version });
-  assert.equal(app.handlers.size, version === 1 ? 0 : 5,
+  assert.equal(app.handlers.size, Number(version || 0) >= 1 ? 0 : 5,
     'Metadata-only native bridge must retain the previously working WebKit music controls');
-  if (version !== 1) {
+  if (Number(version || 0) < 1) {
     assert.equal(app.handlers.get('seekforward'), null);
     assert.equal(app.handlers.get('seekbackward'), null);
     app.handlers.clear();
@@ -62,11 +62,13 @@ for (const version of [undefined, 0, 1]) {
     assert.equal(typeof app.handlers.get('nexttrack'), 'function', 'Resume must restore next track');
     assert.equal(typeof app.handlers.get('previoustrack'), 'function', 'Resume must restore previous track');
   }
-  assert.equal(app.messages.find(m => m.action === 'update').canSeek, version === 1,
-    'Legacy binary must receive canSeek=false so it cannot enable interval skip');
-  assert.equal(app.messages.at(-1).action, version === 1 ? 'position' : 'update',
-    'Legacy heartbeat must reassert music command availability');
-  if (version !== 1) assert.equal(app.messages.at(-1).canSeek, false);
+  const update = app.messages.find(m => m.action === 'update');
+  assert.equal(update.canSeek, version === 2,
+    'Only v2 interval-free native controls may receive canSeek=true');
+  assert.equal(app.messages.at(-1).action, version === 2 ? 'position' : 'update',
+    'v1 and older binaries must keep receiving command-policy updates');
+  if (version !== 2) assert.equal(app.messages.at(-1).canSeek, false,
+    'v1 and older binaries must repeatedly receive canSeek=false to suppress ±15s controls');
   app.events.get('bvs:native-media-command')({ detail: { command: 'next' } });
   app.events.get('bvs:native-media-command')({ detail: { command: 'previous' } });
   assert.equal(app.calls.next, 1);
@@ -123,4 +125,4 @@ for (const version of [undefined, 0, 1, 2]) {
     assert.equal(handlers.get('seekbackward'), null);
   }
 }
-console.log('iOS music transport: native ownership, old-binary compatibility and WebKit fallback passed.');
+console.log('iOS music transport: native ownership, v1 15-second regression guard, old-binary compatibility and WebKit fallback passed.');
