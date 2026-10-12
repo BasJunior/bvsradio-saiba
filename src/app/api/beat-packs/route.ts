@@ -26,16 +26,129 @@ type PackItem = {
   masterPath?: unknown
 }
 
+type DraftPackRow = {
+  id: string
+  title: string
+  description?: string
+  genre?: string
+  artwork_path?: string | null
+  status: string
+  created_at?: string
+  updated_at?: string
+}
+
+type DraftBeatRow = {
+  id: string
+  pack_id?: string | null
+  pack_position?: number | null
+  title: string
+  mood?: string
+  bpm?: number | null
+  musical_key?: string | null
+  preview_path?: string | null
+  master_path?: string | null
+  rights_confirmed?: boolean
+  beat_licence_options?: Array<{
+    licence_code?: string
+    price_usd?: number
+    is_active?: boolean
+  }>
+}
+
+async function requireProducer(request: Request) {
+  const identity = await beatIdentity(request)
+  if (!identity?.user?.id) {
+    return { error: NextResponse.json({ error: 'Sign in required.' }, { status: 401 }) }
+  }
+  let profile = await loadProducerProfile(identity.user.id)
+  if (!profile) {
+    return { error: NextResponse.json({ error: 'Profile not found.' }, { status: 403 }) }
+  }
+  profile = (await ensureProducerFlag(identity.user.id, profile)) as typeof profile
+  if (!(await isProducerCapable(profile))) {
+    return { error: NextResponse.json({ error: 'Producer access required.' }, { status: 403 }) }
+  }
+  return { identity, profile }
+}
+
+export async function GET(request: Request) {
+  try {
+    const access = await requireProducer(request)
+    if ('error' in access) return access.error
+    const userId = access.identity.user.id
+
+    const packsRes = await fetch(
+      beatUrl(
+        `beat_packs?producer_user_id=eq.${userId}&status=eq.draft&select=id,title,description,genre,artwork_path,status,created_at,updated_at&order=updated_at.desc&limit=50`,
+      ),
+      { headers: beatHeaders, cache: 'no-store' },
+    )
+    if (!packsRes.ok) {
+      console.error('beat pack drafts load failed', packsRes.status, await packsRes.text().catch(() => ''))
+      return NextResponse.json({ error: 'Could not load beat pack drafts.' }, { status: 503 })
+    }
+
+    const packs = (await packsRes.json()) as DraftPackRow[]
+    if (!packs.length) return NextResponse.json({ drafts: [], count: 0 })
+
+    const packIds = packs.map(pack => pack.id)
+    const beatsRes = await fetch(
+      beatUrl(
+        `beats?producer_user_id=eq.${userId}&pack_id=in.(${packIds.join(',')})&select=id,pack_id,pack_position,title,mood,bpm,musical_key,preview_path,master_path,rights_confirmed,beat_licence_options(licence_code,price_usd,is_active)&order=pack_position.asc`,
+      ),
+      { headers: beatHeaders, cache: 'no-store' },
+    )
+    if (!beatsRes.ok) {
+      console.error('beat pack draft items load failed', beatsRes.status, await beatsRes.text().catch(() => ''))
+      return NextResponse.json({ error: 'Could not load beat pack draft items.' }, { status: 503 })
+    }
+    const beats = (await beatsRes.json()) as DraftBeatRow[]
+
+    const drafts = packs.map(pack => {
+      const items = beats
+        .filter(beat => beat.pack_id === pack.id)
+        .sort((a, b) => Number(a.pack_position || 0) - Number(b.pack_position || 0))
+        .map(beat => {
+          const licence = (beat.beat_licence_options || []).find(
+            option => option.licence_code === 'standard_lease' && option.is_active !== false,
+          ) || (beat.beat_licence_options || [])[0]
+          return {
+            id: beat.id,
+            title: beat.title,
+            mood: beat.mood || '',
+            bpm: beat.bpm,
+            musicalKey: beat.musical_key || '',
+            priceUsd: Number(licence?.price_usd || 29),
+            previewPath: beat.preview_path || null,
+            masterPath: beat.master_path || null,
+            rightsConfirmed: beat.rights_confirmed === true,
+          }
+        })
+      return {
+        id: pack.id,
+        title: pack.title,
+        description: pack.description || '',
+        genre: pack.genre || 'Hip-Hop',
+        artworkPath: pack.artwork_path || null,
+        createdAt: pack.created_at || null,
+        updatedAt: pack.updated_at || pack.created_at || null,
+        rightsConfirmed: items.length > 0 && items.every(item => item.rightsConfirmed),
+        items,
+      }
+    })
+
+    return NextResponse.json({ drafts, count: drafts.length })
+  } catch (error) {
+    console.error('beat packs GET', error)
+    return NextResponse.json({ error: 'Could not load beat pack drafts.' }, { status: 500 })
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const identity = await beatIdentity(request)
-    if (!identity?.user?.id) return NextResponse.json({ error: 'Sign in required.' }, { status: 401 })
-    let profile = await loadProducerProfile(identity.user.id)
-    if (!profile) return NextResponse.json({ error: 'Profile not found.' }, { status: 403 })
-    profile = (await ensureProducerFlag(identity.user.id, profile)) as typeof profile
-    if (!(await isProducerCapable(profile))) {
-      return NextResponse.json({ error: 'Producer access required.' }, { status: 403 })
-    }
+    const access = await requireProducer(request)
+    if ('error' in access) return access.error
+    const identity = access.identity
     if (!r2Configured()) return NextResponse.json({ error: 'Media storage is unavailable.' }, { status: 503 })
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
@@ -45,10 +158,24 @@ export async function POST(request: Request) {
     const artworkPath = cleanText(body.artworkPath, 500) || null
     const items = Array.isArray(body.items) ? (body.items as PackItem[]) : []
     const submit = body.submit === true
+    const replacePackId = cleanText(body.replacePackId, 64) || null
     if (!title) return NextResponse.json({ error: 'Pack title is required.' }, { status: 400 })
     if (submit && body.rightsConfirmed !== true) return NextResponse.json({ error: 'Confirm rights before submitting.' }, { status: 400 })
     if (items.length < 2 || items.length > 20) {
       return NextResponse.json({ error: 'A beat pack must contain 2 to 20 beats.' }, { status: 400 })
+    }
+
+    if (replacePackId) {
+      const existingRes = await fetch(
+        beatUrl(
+          `beat_packs?id=eq.${encodeURIComponent(replacePackId)}&producer_user_id=eq.${identity.user.id}&status=eq.draft&select=id&limit=1`,
+        ),
+        { headers: beatHeaders, cache: 'no-store' },
+      )
+      const existing = existingRes.ok ? await existingRes.json() as Array<{ id: string }> : []
+      if (!existingRes.ok || !existing[0]?.id) {
+        return NextResponse.json({ error: 'That beat pack draft could not be reopened. Refresh drafts and try again.' }, { status: 404 })
+      }
     }
 
     const normalized = items.map((item, index) => ({
@@ -156,7 +283,50 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Could not create lease prices for this pack. Please retry.' }, { status: 503 })
     }
 
-    return NextResponse.json({ ok: true, packId, count: created.length, status: submit ? 'submitted' : 'draft' })
+    let replaced = false
+    if (replacePackId && replacePackId !== packId) {
+      const hideOldBeats = await fetch(
+        beatUrl(`beats?producer_user_id=eq.${identity.user.id}&pack_id=eq.${encodeURIComponent(replacePackId)}&status=eq.draft`),
+        {
+          method: 'PATCH',
+          headers: { ...beatHeaders, Prefer: 'return=minimal' },
+          body: JSON.stringify({ status: 'suspended', is_public: false, updated_at: new Date().toISOString() }),
+        },
+      )
+      const hideOldPack = await fetch(
+        beatUrl(`beat_packs?id=eq.${encodeURIComponent(replacePackId)}&producer_user_id=eq.${identity.user.id}&status=eq.draft`),
+        {
+          method: 'PATCH',
+          headers: { ...beatHeaders, Prefer: 'return=minimal' },
+          body: JSON.stringify({ status: 'suspended', is_public: false, updated_at: new Date().toISOString() }),
+        },
+      )
+      if (hideOldBeats.ok && hideOldPack.ok) {
+        const removeOldBeats = await fetch(
+          beatUrl(`beats?producer_user_id=eq.${identity.user.id}&pack_id=eq.${encodeURIComponent(replacePackId)}&status=eq.suspended`),
+          { method: 'DELETE', headers: beatHeaders },
+        )
+        const removeOldPack = await fetch(
+          beatUrl(`beat_packs?id=eq.${encodeURIComponent(replacePackId)}&producer_user_id=eq.${identity.user.id}&status=eq.suspended`),
+          { method: 'DELETE', headers: beatHeaders },
+        )
+        replaced = removeOldBeats.ok && removeOldPack.ok
+        if (!replaced) {
+          console.warn('beat pack draft replacement cleanup incomplete', replacePackId)
+        }
+      } else {
+        console.warn('beat pack draft replacement could not hide old draft', replacePackId)
+      }
+    }
+
+    return NextResponse.json({
+      ok: true,
+      packId,
+      count: created.length,
+      status: submit ? 'submitted' : 'draft',
+      replacedDraft: Boolean(replacePackId),
+      replacementCleanupComplete: replacePackId ? replaced : undefined,
+    })
   } catch (error) {
     console.error('beat packs POST', error)
     return NextResponse.json({ error: 'Could not submit beat pack.' }, { status: 500 })
