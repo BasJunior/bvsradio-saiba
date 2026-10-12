@@ -3,8 +3,8 @@
 
 # Native / store packaging (not served by Next.js)
 android
-ios
-ops
+ios/**
+ops/**
 artifacts
 out
 output
