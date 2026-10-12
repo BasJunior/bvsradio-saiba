@@ -64,7 +64,7 @@ assert.equal(registrations, 3);
 // Execute APNs request creation; use an ephemeral test key, never a production credential.
 const { privateKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
 let appleHeaders, applePayload;
-const apns = module('src/lib/apns-server.ts', { 'node:crypto': crypto, 'node:http2': { connect() {
+const apns = module('src/lib/apns-server.ts', { '@/lib/notification-push-link': module('src/lib/notification-push-link.ts', {}), 'node:crypto': crypto, 'node:http2': { connect() {
   const client = new EventEmitter(); client.close = () => {}; client.destroy = () => {};
   client.request = headers => {
     appleHeaders = headers;
@@ -82,6 +82,11 @@ assert.equal(applePayload.aps.sound, 'default');
 assert.equal(applePayload.aps.badge, undefined, 'Badge stays omitted unless the sender knows unread count');
 result = await apns.sendApnsPush({ token: 'a'.repeat(64), title: 'BVS', body: 'An update', href: '/app/ios/notifications', notificationId: 'notification-id', badge: 12 });
 assert.equal(applePayload.aps.badge, 12, 'SpringBoard badge must carry the unread count');
+const noticeId = '12345678-1234-1234-1234-123456789abc';
+await apns.sendApnsPush({ token: 'a'.repeat(64), title: 'BVS', body: 'An update', href: '/app/ios/feed/abc#reply-def', notificationId: noticeId });
+assert.equal(applePayload.notificationId, noticeId);
+assert.equal(applePayload.href, `/app/ios/feed/abc?bvs_notice=${noticeId}#reply-def`, 'APNs href preserves notification ID through build 17');
+
 
 native.setAppIconBadge(12);
 assert.equal(stored.get('bvs_push_device_token'), '');

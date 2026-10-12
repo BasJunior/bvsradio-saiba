@@ -1,3 +1,4 @@
+import { recordNotificationActivity } from "@/lib/notification-orchestration-server"
 import { NextResponse } from "next/server"
 import { analyticsEvents, type AnalyticsProperties } from "@/lib/analytics"
 import { attachPromotion } from '@/lib/creator-promotion-server'
@@ -110,6 +111,7 @@ export async function POST(request: Request) {
       properties.visitor_id = body.visitorId
     }
     const userId = await authenticatedUserId(request, body.userId, url, anon)
+    if (userId) await recordNotificationActivity(userId, body.event).catch(() => undefined)
     await attachPromotion(request, properties, userId).catch(() => { delete properties.promotion_id })
 
     const response = await fetch(`${url}/rest/v1/analytics_events`, {
