@@ -41,7 +41,7 @@ type MessageRow = {
   id: string;
   thread_id: string;
   author_user_id?: string | null;
-  message_kind: "root" | "reply";
+  message_kind: "root" | "comment" | "reply";
   reply_to_id?: string | null;
   body: string;
   status: "published" | "deleted";
@@ -76,6 +76,14 @@ async function loadThread(threadId: string, viewerId: string | null, surface: im
   );
   const visibleMessages = messages.filter((message) => !message.author_user_id || !blocked.has(message.author_user_id));
   const authorIds = [...new Set(visibleMessages.flatMap((message) => [message.author_user_id || ""]).filter(Boolean))];
+  const likeRows = visibleMessages.some((message) => message.status === "published" && message.message_kind !== "root")
+    ? await participationRpc<{ message_id: string; like_count: number | string; viewer_liked: boolean }[]>(
+      "participation_message_like_summary", {
+        p_message_ids: visibleMessages.filter((message) => message.status === "published" && message.message_kind !== "root").map((message) => message.id),
+        p_viewer: viewerId,
+      },
+    ) : [];
+  const likesById = new Map((likeRows || []).map((row) => [row.message_id, row]));
   const profiles = await loadParticipationProfiles(authorIds);
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
   const messageById = new Map(visibleMessages.map((message) => [message.id, message]));
@@ -119,6 +127,8 @@ async function loadThread(threadId: string, viewerId: string | null, surface: im
         replyToId: message.reply_to_id || null,
         body: message.status === "deleted" ? "This message was deleted." : message.body,
         deleted: message.status === "deleted",
+        likes: message.status === "deleted" ? 0 : Number(likesById.get(message.id)?.like_count) || 0,
+        liked: message.status !== "deleted" && Boolean(likesById.get(message.id)?.viewer_liked),
         createdAt: message.created_at,
         editedAt: message.edited_at || null,
         author: actor || {
