@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { Capacitor } from "@capacitor/core";
+import { runRemoteTrackCommand } from "@/lib/remote-music-transport";
 import { useStationPlayer, useStationPlayerProgress } from "@/components/StationPlayer";
 import { isBeatTrack, isEditorialPlay } from "@/lib/beat-playback";
 
@@ -16,7 +17,6 @@ type NativeMediaCommandPayload = {
 };
 
 type BvsWebkitWindow = Window & {
-  __bvsNativeMusicControlsVersion?: number;
   __bvsNativeMediaReady?: boolean;
   __bvsNativeMediaQueue?: NativeMediaCommandPayload[];
   webkit?: {
@@ -29,11 +29,6 @@ type BvsWebkitWindow = Window & {
 function nativeHandler(): NativeNowPlayingHandler | undefined {
   if (typeof window === "undefined") return undefined;
   return (window as BvsWebkitWindow).webkit?.messageHandlers?.bvsNowPlaying;
-}
-
-function nativeMusicControlsVersion() {
-  if (typeof window === "undefined") return 0;
-  return (window as BvsWebkitWindow).__bvsNativeMusicControlsVersion || 0;
 }
 
 function absoluteArtwork(src?: string) {
@@ -65,6 +60,7 @@ export default function AppNowPlayingBridge() {
     seekTo: player.seekTo,
   });
   const current = player.current;
+  const timelineSecond = Math.floor(timeline.elapsed || 0);
   const constrainedNext = Boolean(current && (isBeatTrack(current) || isEditorialPlay(current)));
   const canNext = Boolean(
     current &&
@@ -85,18 +81,11 @@ export default function AppNowPlayingBridge() {
     };
   }, [timeline.elapsed, player.isPlaying, player.next, player.pause, player.play, player.previous, player.seekTo]);
 
-  // Older installed iOS binaries still rely on Web Media Session for remote
-  // controls. Keep those controls music-first: previous / play-pause / next.
-  // Absolute timeline scrubbing remains available on web, but podcast-style
-  // interval skip commands stay disabled in the contained iOS app.
+  // Keep explicit WebKit music actions in every installed native generation.
+  // Native targets alone do not describe the WebView's supported actions; an
+  // empty Media Session action set allows WebKit's default interval controls.
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !("mediaSession" in navigator)) return;
-    // A now-playing metadata bridge alone does not prove that the installed
-    // binary owns native transport. Version 1+ does own transport, while older
-    // metadata-only builds keep the WebKit fallback below.
-    const musicOnlyNativeBridge = nativeHandler() && nativeMusicControlsVersion() >= 1;
-    if (musicOnlyNativeBridge) return;
-
     const applyMusicControls = () => {
       const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
         try { navigator.mediaSession.setActionHandler(action, handler); } catch {}
@@ -104,11 +93,11 @@ export default function AppNowPlayingBridge() {
       // Each action is isolated so one unsupported action cannot block the rest.
       set("seekbackward", null);
       set("seekforward", null);
-      set("previoustrack", () => commandState.current.previous());
-      set("nexttrack", () => commandState.current.next());
-      set("seekto", (details) => {
-        if (typeof details.seekTime === "number") commandState.current.seekTo(details.seekTime);
-      });
+      set("previoustrack", () => runRemoteTrackCommand("previous", "web", () => commandState.current.previous()));
+      set("nexttrack", () => runRemoteTrackCommand("next", "web", () => commandState.current.next()));
+      set("seekto", null);
+      set("play", () => { void commandState.current.play(); });
+      set("pause", () => commandState.current.pause());
     };
 
     // Apply after StationPlayer and native metadata effects, including playback
@@ -124,7 +113,7 @@ export default function AppNowPlayingBridge() {
       window.clearTimeout(timeout);
       window.removeEventListener("bvs:app-resume", schedule);
     };
-  }, [current?.id, current?.src, player.isPlaying]);
+  }, [current?.id, current?.src, timeline.duration, timelineSecond, player.isPlaying]);
 
   useEffect(() => {
     if (!("mediaSession" in navigator) || !current || typeof MediaMetadata === "undefined") return;
@@ -156,8 +145,7 @@ export default function AppNowPlayingBridge() {
   // when the app previously cleared seekforward/seekbackward. Re-clear every seek
   // action after each Media Session refresh. This deliberately disables lock-screen
   // scrubbing inside the native iOS shell until a new binary proves an interval-free
-  // native implementation. Previous/Next remain owned by native v1+ or the legacy
-  // WebKit fallback above.
+  // native implementation. Explicit WebKit track actions remain installed.
   useEffect(() => {
     if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios" || !("mediaSession" in navigator)) return;
     const set = (action: MediaSessionAction, handler: MediaSessionActionHandler | null) => {
@@ -221,13 +209,13 @@ export default function AppNowPlayingBridge() {
       const state = commandState.current;
       if (command === "play") void state.play();
       else if (command === "pause") state.pause();
-      else if (command === "next") state.next();
-      else if (command === "previous") state.previous();
+      else if (command === "next") runRemoteTrackCommand("next", "native", () => state.next());
+      else if (command === "previous") runRemoteTrackCommand("previous", "native", () => state.previous());
       else if (command === "seek" && typeof payload?.position === "number") state.seekTo(payload.position);
       // Older installed binaries can still emit interval-command names. Treat
       // those buttons as music navigation too; never jump by 15 seconds.
-      else if (command === "skip-forward") state.next();
-      else if (command === "skip-backward") state.previous();
+      else if (command === "skip-forward") runRemoteTrackCommand("next", "native", () => state.next());
+      else if (command === "skip-backward") runRemoteTrackCommand("previous", "native", () => state.previous());
     };
 
     const onCommand = (event: Event) => {
