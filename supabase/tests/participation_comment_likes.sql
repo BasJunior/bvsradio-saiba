@@ -1,5 +1,5 @@
 -- Transactional smoke test against the deployed schema. No comments or likes
--- survive this test and it creates no notification/outbox events.
+-- or outbox events survive this test. It sends no notifications.
 BEGIN;
 DO $$
 DECLARE v_actor UUID; v_author UUID; v_thread UUID := gen_random_uuid(); v_root UUID := gen_random_uuid(); v_comment UUID := gen_random_uuid(); v_reply UUID := gen_random_uuid();

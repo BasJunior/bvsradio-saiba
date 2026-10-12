@@ -82,7 +82,7 @@ assert(panel.includes('message.kind !== "root"'),'Comment buttons must not dupli
 assert(panel.includes('session.user?.id || "guest"'),'Like state must reset between accounts');
 assert(panel.includes('!message.deleted && !editing'),'Deleted messages must not offer likes');
 const reader=fs.readFileSync('src/app/api/app/participation/threads/[id]/route.ts','utf8');
-assert(reader.includes('participation_message_like_summary'),'Reopening conversations must restore persisted counts and viewer state');
+assert(reader.includes('participation_discussion_page'),'Reopening conversations must restore persisted counts and viewer state');
 console.log('Comment likes passed: verified actor, native visibility, blocks, deleted/mismatched messages, rate limits, optimistic response, retry states, rollback and account isolation.');
 
 // Execute the actual thread loader with responses arriving out of order.
@@ -91,9 +91,9 @@ const loaderSource=threadSource.slice(threadSource.indexOf('  const load = useCa
 const loads=[], rendered=[];
 const generation={current:0};
 const scope={
-  useCallback:fn=>fn, enabled:true, threadId, surface:'ios', authHeaders:()=>({}),
+  URLSearchParams, sort:"oldest", setLoadingMore:()=>{}, useCallback:fn=>fn, enabled:true, threadId, surface:'ios', authHeaders:()=>({}),
   loadGeneration:generation, summaryCallback:{current:()=>{}},
-  setLoading:()=>{}, setError:()=>{}, setPayload:value=>rendered.push(value),
+  setLoading:()=>{}, setError:()=>{}, setPayload:value=>rendered.push(typeof value === "function" ? value(rendered.at(-1)) : value),
   fetch:()=>new Promise(resolve=>loads.push(resolve)),
 };
 vm.runInNewContext(ts.transpileModule(loaderSource+'\nglobalThis.runLoad=load;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,scope);

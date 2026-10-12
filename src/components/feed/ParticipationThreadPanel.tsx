@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import ParticipationMentionPicker, { type MentionProfile } from "@/components/feed/ParticipationMentionPicker";
+import { discussionForest, type DiscussionNode } from "@/lib/discussion-tree";
+import FeedMoreActions from "@/components/feed/FeedMoreActions";
+import CommentShareButton from "@/components/feed/CommentShareButton";
 import CommentLikeButton from "@/components/feed/CommentLikeButton";
 import type { AppSurface } from "@/lib/app-surface";
 
@@ -23,6 +27,7 @@ export type ThreadMessage = {
 };
 
 type ThreadPayload = {
+  pagination?: { sort: string; nextCursor: string | null };
   thread: {
     id: string;
     type: "post" | "content";
@@ -65,6 +70,10 @@ export default function ParticipationThreadPanel({
   onSummary?: (summary: ThreadPayload["summary"]) => void;
 }) {
   const session = useAppSession();
+  const [sort, setSort] = useState("oldest");
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [focus, setFocus] = useState("");
+  const [shareNotice, setShareNotice] = useState("");
   const [payload, setPayload] = useState<ThreadPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -90,30 +99,36 @@ export default function ParticipationThreadPanel({
   const summaryCallback = useRef(onSummary);
   useEffect(() => { summaryCallback.current = onSummary; }, [onSummary]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (append = false, cursor?: string, focusId?: string) => {
     const generation = ++loadGeneration.current;
     if (!enabled || !threadId) return;
-    setLoading(true);
-    const response = await fetch(`/api/app/participation/threads/${encodeURIComponent(threadId)}${surface ? `?surface=${surface}` : ""}`, {
+    if (append) setLoadingMore(true); else setLoading(true);
+    const hashFocus = typeof window !== "undefined" ? window.location.hash.match(/^#reply-([a-f0-9-]{36})$/i)?.[1] : undefined;
+    const params = new URLSearchParams({ sort, ...(surface ? { surface } : {}), ...(cursor ? { cursor } : {}), ...(focusId || hashFocus ? { focus: focusId || hashFocus! } : {}) });
+    const response = await fetch(`/api/app/participation/threads/${encodeURIComponent(threadId)}?${params}`, {
       headers: authHeaders(), cache: "no-store",
     }).catch(() => null);
     const data = response ? await response.json().catch(() => ({})) as ThreadPayload & { error?: string } : null;
     if (generation !== loadGeneration.current) return;
     if (!response?.ok || !data?.thread) {
       setError(data?.error || "Conversation could not be loaded.");
-      setPayload(null);
+      if (!append) setPayload(null);
     } else {
-      setPayload(data);
+      setPayload(previous => append && previous?.thread.id === data.thread.id
+        ? { ...data, messages: [...new Map([...previous.messages, ...data.messages].map(message => [message.id, message])).values()] }
+        : data);
       setError("");
       summaryCallback.current?.(data.summary);
     }
     setLoading(false);
-  }, [authHeaders, enabled, threadId, surface]);
+    setLoadingMore(false);
+  }, [authHeaders, enabled, threadId, surface, sort]);
 
+  const invalidateLoad = useCallback(() => { loadGeneration.current++; }, []);
   useEffect(() => {
     void load();
-    return () => { loadGeneration.current++; };
-  }, [load]);
+    return invalidateLoad;
+  }, [load, invalidateLoad]);
 
   useEffect(() => {
     setDraft("");
@@ -129,6 +144,19 @@ export default function ParticipationThreadPanel({
   const root = useMemo(() => payload?.messages.find((message) => message.kind === "root") || null, [payload]);
   const conversation = useMemo(() => payload?.messages.filter((message) => message.kind !== "root") || [], [payload]);
   const defaultParent = payload?.thread.type === "post" ? root : null;
+  const forest = useMemo(() => discussionForest(conversation), [conversation]);
+  useEffect(() => {
+    const read = () => setFocus(window.location.hash.match(/^#reply-([a-f0-9-]{36})$/i)?.[1] || "");
+    const change = () => { read(); void load(); };
+    read(); window.addEventListener("hashchange", change);
+    return () => window.removeEventListener("hashchange", change);
+  }, [threadId, load]);
+  useEffect(() => {
+    if (!focus || !payload) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById(`reply-${focus}`)?.scrollIntoView({ block: "center", behavior: "auto" }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [focus, payload]);
+
 
   async function agreeRules() {
     if (!session.token || !rulesAccepted) return false;
@@ -156,7 +184,7 @@ export default function ParticipationThreadPanel({
       headers: authHeaders(true),
       body: JSON.stringify({ body: draft, replyToId: parent?.id || null, clientKey: draftKey, mentionUserIds: mentions.map((profile) => profile.id) }),
     }).catch(() => null);
-    const data = response ? await response.json().catch(() => ({})) as { error?: string; code?: string } : {};
+    const data = response ? await response.json().catch(() => ({})) as { error?: string; code?: string; messageId?: string } : {};
     if (!response?.ok) {
       if (response?.status === 409 && data.code === "RULES_REQUIRED") setRulesRequired(true);
       else setError(data.error || "Could not send your reply. Your text is still here.");
@@ -168,7 +196,8 @@ export default function ParticipationThreadPanel({
     setMentions([]);
     setReplyingTo(null);
     setRulesAccepted(false);
-    await load();
+    if (data.messageId) setFocus(data.messageId);
+    await load(false, undefined, data.messageId);
     setSending(false);
   }
 
@@ -233,11 +262,14 @@ export default function ParticipationThreadPanel({
   function renderMessage(message: ThreadMessage) {
     const own = message.author.id === session.user?.id;
     return (
-      <article key={message.id} id={`reply-${message.id}`} className="rounded-xl border border-white/[.06] bg-white/[.022] p-3">
+      <article key={message.id} id={`reply-${message.id}`} className={`rounded-[4px] border bg-white/[.022] p-3 scroll-mt-28 ${focus === message.id ? "border-brand/60 bg-brand/[.045]" : "border-white/[.06]"}`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <strong className="font-semibold text-white/78">{message.author.displayName}</strong>
+              <Link href={surface ? `/app/${surface}/member/${encodeURIComponent(message.author.id)}` : `/member/${encodeURIComponent(message.author.id)}`} className="inline-flex min-h-9 items-center gap-2 font-semibold text-white/78 hover:text-brand">
+                {message.author.avatarUrl ? <Image src={message.author.avatarUrl} alt="" width={28} height={28} unoptimized className="h-7 w-7 shrink-0 rounded-[4px] object-cover" /> : <span aria-hidden="true" className="grid h-7 w-7 shrink-0 place-items-center rounded-[4px] bg-white/10 text-[10px]">{message.author.displayName.slice(0, 1).toUpperCase()}</span>}
+                {message.author.displayName}
+              </Link>
               {message.replyToAuthor ? <span className="text-[#929DE0]">replying to {message.replyToAuthor.displayName}</span> : null}
               <time className="text-white/28" dateTime={message.createdAt}>{relativeTime(message.createdAt)}</time>
               {message.editedAt ? <span className="text-white/25">edited</span> : null}
@@ -254,14 +286,28 @@ export default function ParticipationThreadPanel({
           <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
             {message.kind !== "root" ? <CommentLikeButton key={`${session.user?.id || "guest"}:${message.id}`} threadId={threadId} messageId={message.id} authorName={message.author.displayName} likes={message.likes || 0} liked={Boolean(message.liked)} token={session.token || null} surface={surface} /> : null}
             {session.signedIn ? <button type="button" onClick={() => setReplyingTo(message)} className="min-h-8 font-semibold text-[#929DE0] hover:text-white">Reply</button> : null}
-            {own ? <button type="button" onClick={() => { setEditing(message); setEditBody(message.body); }} className="min-h-8 text-white/42 hover:text-white">Edit</button> : null}
-            {own ? <button type="button" onClick={() => void removeMessage(message)} className="min-h-8 text-white/42 hover:text-[#ff9a92]">Delete</button> : null}
-            {!own && session.signedIn ? <button type="button" onClick={() => { setReporting(message); setReportReason("spam"); setReportDetails(""); }} className="min-h-8 text-white/38 hover:text-[#ff9a92]">Report</button> : null}
-            {!own && session.signedIn ? <button type="button" onClick={() => void blockAuthor(message)} className="min-h-8 text-white/38 hover:text-[#ff9a92]">Block</button> : null}
+            <FeedMoreActions title={`comment by ${message.author.displayName}`}>
+              <CommentShareButton threadId={threadId} messageId={message.id} authorName={message.author.displayName} body={message.body} onNotice={setShareNotice} />
+            {own ? <button type="button" onClick={() => { setEditing(message); setEditBody(message.body); }} className="min-h-11 rounded-lg px-3 text-left text-white/42 hover:text-white">Edit</button> : null}
+            {own ? <button type="button" onClick={() => void removeMessage(message)} className="min-h-11 rounded-lg px-3 text-left text-white/42 hover:text-[#ff9a92]">Delete</button> : null}
+            {!own && session.signedIn ? <button type="button" onClick={() => { setReporting(message); setReportReason("spam"); setReportDetails(""); }} className="min-h-11 rounded-lg px-3 text-left text-white/38 hover:text-[#ff9a92]">Report</button> : null}
+            {!own && session.signedIn ? <button type="button" onClick={() => void blockAuthor(message)} className="min-h-11 rounded-lg px-3 text-left text-white/38 hover:text-[#ff9a92]">Block</button> : null}
+            </FeedMoreActions>
           </div>
         ) : null}
       </article>
     );
+  }
+
+  function renderBranch(node: DiscussionNode<ThreadMessage>, depth = 0): React.ReactNode {
+    const containsFocus = (entry: DiscussionNode<ThreadMessage>): boolean => entry.message.id === focus || entry.children.some(containsFocus);
+    return <div key={node.message.id} className="min-w-0">
+      {renderMessage(node.message)}
+      {node.children.length ? <details open={containsFocus(node) ? true : undefined} className={`mt-2 min-w-0 border-l border-white/10 pl-3 ${depth < 3 ? "ml-3" : ""}`}>
+        <summary className="min-h-10 cursor-pointer py-2 text-xs font-semibold text-[#c2c9ff]">View {node.children.length} {node.children.length === 1 ? "reply" : "replies"}</summary>
+        <div className="space-y-2">{node.children.map(child => renderBranch(child, depth + 1))}</div>
+      </details> : null}
+    </div>;
   }
 
   if (!enabled) return null;
@@ -271,6 +317,7 @@ export default function ParticipationThreadPanel({
   return (
     <section className="space-y-3" aria-label="Conversation">
       <div className="flex flex-wrap items-center gap-2 text-xs">
+        <label className="inline-flex items-center gap-2 text-white/50"><span className="sr-only">Sort comments</span><select aria-label="Sort comments" value={sort} onChange={event => setSort(event.target.value)} className="min-h-10 rounded-[4px] border border-white/10 bg-[#111] px-2 text-xs"><option value="oldest">Oldest first</option><option value="newest">Newest first</option><option value="top">Top comments</option></select></label>
         <span className="font-semibold text-white/58">{payload.summary.comments} {payload.summary.comments === 1 ? "reply" : "replies"}</span>
         {session.signedIn ? (
           <>
@@ -281,13 +328,15 @@ export default function ParticipationThreadPanel({
         <Link href="/contact" className="ml-auto min-h-9 px-2 py-2 text-white/38 hover:text-white">Support</Link>
       </div>
 
+      {shareNotice ? <p role="status" className="text-xs text-brand">{shareNotice}</p> : null}
       {showRoot && (payload.thread.object || payload.thread.attachment) ? (
         <Link href={(payload.thread.object || payload.thread.attachment)!.href} className="block rounded-xl border border-white/10 p-3 text-sm bvs-section-label">
           {(payload.thread.object || payload.thread.attachment)!.title} →
         </Link>
       ) : null}
       {showRoot && root && payload.thread.type === "post" ? renderMessage(root) : null}
-      <div className="space-y-2">{conversation.map(renderMessage)}</div>
+      <div className="space-y-3">{forest.map(node => renderBranch(node))}</div>
+      {payload.pagination?.nextCursor ? <button type="button" disabled={loadingMore} onClick={() => void load(true, payload.pagination!.nextCursor!)} className="min-h-11 w-full rounded-[4px] border border-white/15 px-4 text-sm font-semibold text-white/65 disabled:opacity-40">{loadingMore ? "Loading…" : "Load more comments"}</button> : null}
       {!conversation.length ? <p className="rounded-xl border border-white/[.06] bg-white/[.015] p-4 text-sm text-white/38">No replies yet. Be the first person to add something useful.</p> : null}
 
       {reporting ? (

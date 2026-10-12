@@ -58,6 +58,8 @@ function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, 
   if (communityRoomMatch?.[1]) return withQueryAndHash(`${root}/rooms/${communityRoomMatch[1]}`, search, hash);
   if (pathname === "/community" || pathname === "/community/rooms" || pathname === "/rooms") return withQueryAndHash(`${root}/rooms`, search, hash);
 
+  const memberMatch = pathname.match(/^\/member\/([^/]+)$/);
+  if (memberMatch?.[1]) return withQueryAndHash(`${root}/member/${memberMatch[1]}`, search, hash);
   const artistMatch = pathname.match(/^\/artist\/([^/]+)$/);
   if (artistMatch?.[1]) return withQueryAndHash(`${root}/creator/${artistMatch[1]}`, search, hash);
   const showMatch = pathname.match(/^\/shows\/([^/]+)$/);
