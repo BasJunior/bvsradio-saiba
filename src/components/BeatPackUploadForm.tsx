@@ -182,7 +182,7 @@ export default function BeatPackUploadForm() {
   }
 
   const openDraft = (draft: DraftPack) => {
-    const restored = draft.items.map(item => ({
+    const restored: PackBeat[] = draft.items.map(item => ({
       id: crypto.randomUUID(),
       title: item.title,
       mood: item.mood || '',
