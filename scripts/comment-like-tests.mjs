@@ -84,3 +84,25 @@ assert(panel.includes('!message.deleted && !editing'),'Deleted messages must not
 const reader=fs.readFileSync('src/app/api/app/participation/threads/[id]/route.ts','utf8');
 assert(reader.includes('participation_message_like_summary'),'Reopening conversations must restore persisted counts and viewer state');
 console.log('Comment likes passed: verified actor, native visibility, blocks, deleted/mismatched messages, rate limits, optimistic response, retry states, rollback and account isolation.');
+
+// Execute the actual thread loader with responses arriving out of order.
+const threadSource=fs.readFileSync('src/components/feed/ParticipationThreadPanel.tsx','utf8');
+const loaderSource=threadSource.slice(threadSource.indexOf('  const load = useCallback('),threadSource.indexOf('\n  useEffect(() => {',threadSource.indexOf('  const load = useCallback(')));
+const loads=[], rendered=[];
+const generation={current:0};
+const scope={
+  useCallback:fn=>fn, enabled:true, threadId, surface:'ios', authHeaders:()=>({}),
+  loadGeneration:generation, summaryCallback:{current:()=>{}},
+  setLoading:()=>{}, setError:()=>{}, setPayload:value=>rendered.push(value),
+  fetch:()=>new Promise(resolve=>loads.push(resolve)),
+};
+vm.runInNewContext(ts.transpileModule(loaderSource+'\nglobalThis.runLoad=load;', {compilerOptions:{target:ts.ScriptTarget.ES2022}}).outputText,scope);
+const first=scope.runLoad(), second=scope.runLoad();
+loads[1]({ok:true,json:async()=>({thread:{id:threadId},summary:{},messages:[{liked:false}]})}); await second;
+loads[0]({ok:true,json:async()=>({thread:{id:threadId},summary:{},messages:[{liked:true}]})}); await first;
+assert.equal(rendered.length,1,'Old thread responses must not overwrite the current account');
+assert.equal(rendered[0].messages[0].liked,false);
+const leaving=scope.runLoad(); generation.current++;
+loads[2]({ok:true,json:async()=>({thread:{id:threadId},summary:{},messages:[{liked:true}]})}); await leaving;
+assert.equal(rendered.length,1,'A response after account/thread cleanup must be ignored');
+console.log('Comment viewer-state isolation passed for out-of-order loads and account/thread cleanup.');

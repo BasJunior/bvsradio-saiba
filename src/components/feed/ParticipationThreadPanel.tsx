@@ -86,16 +86,19 @@ export default function ParticipationThreadPanel({
     ...(session.token ? { Authorization: `Bearer ${session.token}` } : {}),
   }), [session.token]);
 
+  const loadGeneration = useRef(0);
   const summaryCallback = useRef(onSummary);
   useEffect(() => { summaryCallback.current = onSummary; }, [onSummary]);
 
   const load = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     if (!enabled || !threadId) return;
     setLoading(true);
     const response = await fetch(`/api/app/participation/threads/${encodeURIComponent(threadId)}${surface ? `?surface=${surface}` : ""}`, {
       headers: authHeaders(), cache: "no-store",
     }).catch(() => null);
     const data = response ? await response.json().catch(() => ({})) as ThreadPayload & { error?: string } : null;
+    if (generation !== loadGeneration.current) return;
     if (!response?.ok || !data?.thread) {
       setError(data?.error || "Conversation could not be loaded.");
       setPayload(null);
@@ -107,7 +110,10 @@ export default function ParticipationThreadPanel({
     setLoading(false);
   }, [authHeaders, enabled, threadId, surface]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    return () => { loadGeneration.current++; };
+  }, [load]);
 
   useEffect(() => {
     setDraft("");
