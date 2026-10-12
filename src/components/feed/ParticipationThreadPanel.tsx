@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import ParticipationMentionPicker, { type MentionProfile } from "@/components/feed/ParticipationMentionPicker";
+import CommentLikeButton from "@/components/feed/CommentLikeButton";
 import type { AppSurface } from "@/lib/app-surface";
 
 export type ThreadMessage = {
@@ -13,6 +14,8 @@ export type ThreadMessage = {
   replyToId: string | null;
   body: string;
   deleted: boolean;
+  likes: number;
+  liked: boolean;
   createdAt: string;
   editedAt: string | null;
   author: { id: string; username: string | null; displayName: string; avatarUrl: string | null };
@@ -242,7 +245,8 @@ export default function ParticipationThreadPanel({
           </div>
         </div>
         {!message.deleted && !editing ? (
-          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px]">
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+            {message.kind !== "root" ? <CommentLikeButton key={`${session.user?.id || "guest"}:${message.id}`} threadId={threadId} messageId={message.id} authorName={message.author.displayName} likes={message.likes || 0} liked={Boolean(message.liked)} token={session.token || null} surface={surface} /> : null}
             {session.signedIn ? <button type="button" onClick={() => setReplyingTo(message)} className="min-h-8 font-semibold text-[#929DE0] hover:text-white">Reply</button> : null}
             {own ? <button type="button" onClick={() => { setEditing(message); setEditBody(message.body); }} className="min-h-8 text-white/42 hover:text-white">Edit</button> : null}
             {own ? <button type="button" onClick={() => void removeMessage(message)} className="min-h-8 text-white/42 hover:text-[#ff9a92]">Delete</button> : null}
