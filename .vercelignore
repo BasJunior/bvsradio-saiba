@@ -3,8 +3,12 @@
 
 # Native / store packaging (not served by Next.js)
 android
-ios/**
-ops/**
+ios/App/Pods
+ios/App/build
+ios/build
+ios/App/App/public
+ops/store-launch/builds
+ops/store-launch/assets
 artifacts
 out
 output
