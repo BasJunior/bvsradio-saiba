@@ -9,6 +9,7 @@ import AppLibraryViewToggle from "@/components/app-vnext/AppLibraryViewToggle";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { measureHeader } from "@/lib/chrome-layout";
 import HeaderSearch from "@/components/layout/HeaderSearch";
+import { setAppIconBadge } from "@/lib/app-native";
 
 function MarketplaceIcon() {
   return (
@@ -46,26 +47,43 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
   useEffect(() => {
     let alive = true;
     queueMicrotask(() => { if (alive) setUnread(0); });
-    if (!token) return;
+    if (!token) {
+      if (!loading) setAppIconBadge(0);
+      return;
+    }
+    let revision = 0;
+    const counts = { community: 0, operations: 0, marketplace: 0 };
     const refreshUnread = async () => {
+      const requestRevision = ++revision;
       const headers = { Authorization: `Bearer ${token}` };
       const [community, operations, marketplace] = await Promise.all([
         fetch(`/api/app/participation/notifications?surface=${surface}&limit=1`, { headers, cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/notifications", { headers, cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
         fetch("/api/marketplace/messages/notifications", { headers, cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
-      let seenAt = "";
-      try { seenAt = window.localStorage.getItem(`bvs_notifications_seen_at:${user?.id}`) || ""; } catch {}
-      const otherUnread = [...(operations?.events || []), ...(marketplace?.events || [])].filter((event: { created_at: string }) => !seenAt || event.created_at > seenAt).length;
-      if (alive) setUnread((Number(community?.unreadCount) || 0) + otherUnread);
+      if (!alive || requestRevision !== revision) return;
+      if (community && Number.isFinite(community.unseenCount)) {
+        counts.community = Math.max(0, community.unseenCount);
+        // Match APNs: the native badge counts server-backed unseen push notices.
+        // Operational inbox events are not part of the current APNs sender.
+        setAppIconBadge(counts.community);
+      }
+      for (const [source, payload] of [["operations", operations], ["marketplace", marketplace]] as const) {
+        if (!payload || !Array.isArray(payload.events)) continue;
+        let seenAt = "";
+        try { seenAt = window.localStorage.getItem(`bvs_notifications_seen_at:${user?.id}:${source}`) || window.localStorage.getItem(`bvs_notifications_seen_at:${user?.id}`) || ""; } catch {}
+        counts[source] = payload.events.filter((event: { created_at: string }) => !seenAt || event.created_at > seenAt).length;
+      }
+      setUnread(counts.community + counts.operations + counts.marketplace);
     };
     void refreshUnread();
     const timer = window.setInterval(() => void refreshUnread(), 60000);
     window.addEventListener("bvs:notifications-seen", refreshUnread);
     window.addEventListener("bvs:app-resume", refreshUnread);
     window.addEventListener("bvs:native-push-received", refreshUnread);
-    return () => { alive = false; window.clearInterval(timer); window.removeEventListener("bvs:notifications-seen", refreshUnread); window.removeEventListener("bvs:app-resume", refreshUnread); window.removeEventListener("bvs:native-push-received", refreshUnread); };
-  }, [token, surface, user?.id]);
+    window.addEventListener("bvs:native-push-bridge-ready", refreshUnread);
+    return () => { alive = false; window.removeEventListener("bvs:native-push-bridge-ready", refreshUnread); window.clearInterval(timer); window.removeEventListener("bvs:notifications-seen", refreshUnread); window.removeEventListener("bvs:app-resume", refreshUnread); window.removeEventListener("bvs:native-push-received", refreshUnread); };
+  }, [token, surface, user?.id, loading]);
 
   return (
     <header
@@ -100,7 +118,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           >
             <MarketplaceIcon />
           </Link>
-          {user ? <Link href={`/app/${surface}/notifications`} className="relative grid h-11 w-11 place-items-center rounded-full text-white/62 hover:bg-white/[.055]" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}>
+          {user ? <Link href={`/app/${surface}/notifications`} className="relative grid h-11 w-11 place-items-center rounded-full text-white/62 hover:bg-white/[.055]" aria-label={`Notifications${unread ? `, ${unread} new` : ""}`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
             {unread ? <span className="absolute right-0 top-0 rounded-full bg-brand px-1.5 text-[10px] font-bold text-black">{unread > 99 ? "99+" : unread}</span> : null}
           </Link> : null}

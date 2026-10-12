@@ -1,6 +1,6 @@
 "use client";
 
-import { loadNotificationInbox, mergeNotificationInbox, type InboxEvent } from "@/lib/notification-inbox";
+import { acknowledgeNotificationInbox, loadNotificationInbox, mergeNotificationInbox, type InboxEvent } from "@/lib/notification-inbox";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { appDestination, type AppSurface } from "@/components/app-vnext/AppBootstrap";
@@ -55,15 +55,9 @@ function NotificationsInbox({ surface }: { surface: AppSurface }) {
         const community = result.loaded.find(row => row.source === "participation");
         if (community) setParticipationUnread(community.unreadCount);
         setError(result.failed === result.total ? "Could not load your inbox. Try again." : result.failed ? "Some updates could not be loaded. Your available updates are shown below." : "");
-        if (community?.events.length) {
-          void fetch("/api/app/participation/notifications", {
-            method: "PATCH", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-            body: JSON.stringify({ ids: community.events.map(event => event.notificationId).filter(Boolean), seen: true }),
-          }).catch(() => null);
-        }
-        if (result.loaded.some(row => row.source === "operations")) {
-          try { window.localStorage.setItem(`bvs_notifications_seen_at:${user?.id}`, new Date().toISOString()); } catch {}
-          window.dispatchEvent(new Event("bvs:notifications-seen"));
+        if (user?.id) {
+          const acknowledged = await acknowledgeNotificationInbox(token, user.id, result.loaded, controller.signal);
+          if (alive && !acknowledged) setError("Your updates loaded, but their seen status could not be saved. Please refresh to retry.");
         }
       } catch { if (alive) setError("Could not refresh your inbox. Please retry."); } finally { pending = false; if (alive) { setLoading(false); setRefreshing(false); } }
     };

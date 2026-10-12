@@ -11,6 +11,7 @@ type ApnsNotification = {
   category?: string | null;
   threadId?: string | null;
   notificationId?: string;
+  badge?: number;
 };
 
 export type ApnsResult = {
@@ -76,6 +77,7 @@ export async function sendApnsPush(notification: ApnsNotification): Promise<Apns
     aps: {
       alert: { title: notification.title.slice(0, 120), body: notification.body.slice(0, 500) },
       sound: "default",
+      ...(Number.isFinite(notification.badge) ? { badge: Math.max(0, Math.min(9999, Math.trunc(Number(notification.badge)))) } : {}),
       ...(notification.threadId ? { "thread-id": notification.threadId } : {}),
       ...(notification.category ? { category: notification.category } : {}),
     },

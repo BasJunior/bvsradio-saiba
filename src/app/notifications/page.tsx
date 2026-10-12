@@ -1,6 +1,6 @@
 'use client'
 
-import { loadNotificationInbox, mergeNotificationInbox } from '@/lib/notification-inbox'
+import { acknowledgeNotificationInbox, loadNotificationInbox, mergeNotificationInbox } from '@/lib/notification-inbox'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
@@ -47,9 +47,9 @@ export default function NotificationsPage() {
         if (!alive) return
         setEvents(current => mergeNotificationInbox(current, result.loaded))
         setError(result.failed === result.total ? 'Could not load notifications. Please retry.' : result.failed ? 'Some updates could not be loaded. Available updates are shown below.' : '')
-        if (result.loaded.some(row => row.source === 'operations')) {
-          try { window.localStorage.setItem(`bvs_notifications_seen_at:${data.session?.user.id}`, new Date().toISOString()) } catch {}
-          window.dispatchEvent(new Event('bvs:notifications-seen'))
+        if (data.session?.user.id) {
+          const acknowledged = await acknowledgeNotificationInbox(token, data.session.user.id, result.loaded, controller.signal)
+          if (alive && !acknowledged) setError('Your updates loaded, but their seen status could not be saved. Please refresh to retry.')
         }
       } catch { if (alive) setError('Could not load notifications. Please retry.') }
       finally { pending = false; if (alive) { setLoading(false); setRefreshing(false) } }

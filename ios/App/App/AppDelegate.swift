@@ -433,6 +433,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             }
             return
         }
+        if action == "setBadge" {
+            applyAppIconBadge(badgeCount(from: payload["count"]))
+            return
+        }
         guard action == "register" else { return }
         center.requestAuthorization(options: [.alert, .badge, .sound]) { [weak self] granted, error in
             guard let self else { return }
@@ -448,6 +452,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
                         UIApplication.shared.registerForRemoteNotifications()
                     }
                 }
+            }
+        }
+    }
+
+    private func badgeCount(from raw: Any?) -> Int {
+        if let number = raw as? NSNumber { return max(0, number.intValue) }
+        if let value = raw as? Int { return max(0, value) }
+        if let value = raw as? Double { return max(0, Int(value)) }
+        if let value = raw as? String, let parsed = Int(value) { return max(0, parsed) }
+        return 0
+    }
+
+    private func applyAppIconBadge(_ count: Int) {
+        let value = max(0, min(count, 9999))
+        DispatchQueue.main.async {
+            if #available(iOS 16.0, *) {
+                UNUserNotificationCenter.current().setBadgeCount(value) { _ in }
+            } else {
+                UIApplication.shared.applicationIconBadgeNumber = value
             }
         }
     }

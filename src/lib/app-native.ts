@@ -199,6 +199,14 @@ export function openNotificationSettings() {
   return true;
 }
 
+export function setAppIconBadge(count: number) {
+  const bridge = iosPushBridge();
+  if (!bridge) return false;
+  const value = Math.max(0, Math.min(9999, Math.floor(Number(count) || 0)));
+  bridge.postMessage({ action: "setBadge", count: value });
+  return true;
+}
+
 export async function getPushPermission(): Promise<PushPermissionState> {
   if (!isNativeRuntime()) return "unavailable";
 
