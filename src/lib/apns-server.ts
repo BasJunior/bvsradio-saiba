@@ -1,3 +1,4 @@
+import { notificationPushHref } from "@/lib/notification-push-link";
 import "server-only";
 
 import { createPrivateKey, sign } from "node:crypto";
@@ -81,7 +82,8 @@ export async function sendApnsPush(notification: ApnsNotification): Promise<Apns
       ...(notification.threadId ? { "thread-id": notification.threadId } : {}),
       ...(notification.category ? { category: notification.category } : {}),
     },
-    href: notification.href,
+    href: notificationPushHref(notification.href, notification.notificationId),
+    notificationId: notification.notificationId || null,
     category: notification.category || null,
     threadId: notification.threadId || null,
   });

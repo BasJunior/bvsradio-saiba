@@ -1,16 +1,37 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { App } from "@capacitor/app";
 import { StatusBar } from "@capacitor/status-bar";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { appRouteForNativeUrl } from "@/lib/app-link-routing";
 import { getNetworkStatus, isNativeRuntime, listenNetworkStatus, listenPushNotificationActions } from "@/lib/app-native";
+import { createNotificationInteractionQueue } from "@/lib/notification-interaction-queue";
+import { notificationPushAction } from "@/lib/notification-push-link";
+import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { emitAppTelemetry } from "@/lib/app-telemetry";
 
 export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
   const router = useRouter();
+  const { token, user } = useAppSession();
+  const tokenRef = useRef(token);
+  const previousUser = useRef(user?.id);
+  const interactionQueue = useRef<ReturnType<typeof createNotificationInteractionQueue> | null>(null);
+  useEffect(() => {
+    tokenRef.current = token;
+    if (!interactionQueue.current) interactionQueue.current = createNotificationInteractionQueue(() => tokenRef.current);
+    if (previousUser.current && previousUser.current !== user?.id) interactionQueue.current.clear();
+    previousUser.current = user?.id;
+    void interactionQueue.current.flush();
+  }, [token, user?.id]);
+  useEffect(() => {
+    const flush = () => { void interactionQueue.current?.flush(); };
+    const timer = window.setInterval(flush, 30000);
+    window.addEventListener("online", flush);
+    window.addEventListener("bvs:app-resume", flush);
+    return () => { window.clearInterval(timer); window.removeEventListener("online", flush); window.removeEventListener("bvs:app-resume", flush); };
+  }, []);
 
   useEffect(() => {
     let stopNetwork: (() => Promise<void>) | null = null;
@@ -20,9 +41,15 @@ export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
     let stopAppState: (() => Promise<void>) | null = null;
     let alive = true;
 
-    const routeNativeUrl = (raw: string, source: "link" | "push") => {
+    const recordInteraction = (notificationId: unknown, event: "notification_opened" | "deeplink_opened") => {
+      if (typeof notificationId !== "string") return;
+      interactionQueue.current?.add(notificationId, event);
+      void interactionQueue.current?.flush();
+    };
+    const routeNativeUrl = (raw: string, source: "link" | "push", notificationId?: unknown) => {
       const target = appRouteForNativeUrl(raw, surface, window.location.hostname);
       if (!target) return;
+      if (source === "push") recordInteraction(notificationId, "deeplink_opened");
       emitAppTelemetry(source === "push" ? "push_open" : "deep_link_open", surface, { route: target.split(/[?#]/)[0] });
       window.dispatchEvent(new CustomEvent("bvs:app-entry", { detail: { source, target } }));
       router.push(target);
@@ -56,7 +83,9 @@ export default function AppNativeRuntime({ surface }: { surface: AppSurface }) {
       void listenPushNotificationActions((action) => {
         const data = action.notification?.data || {};
         const raw = typeof data.href === "string" ? data.href : typeof data.url === "string" ? data.url : "";
-        if (raw) routeNativeUrl(raw, "push");
+        const tap = notificationPushAction(raw, data.notificationId);
+        recordInteraction(tap.notificationId, "notification_opened");
+        if (raw) routeNativeUrl(tap.href, "push", tap.notificationId);
       }).then((stop) => { if (alive) stopPushActions = stop; else void stop(); });
 
       void App.addListener("appStateChange", ({ isActive }) => {

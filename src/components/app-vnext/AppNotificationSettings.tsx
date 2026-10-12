@@ -170,13 +170,8 @@ function AccountNotificationSettings({ surface }: { surface: AppSurface }) {
     const result = await registerPushDevice(token, surface);
     setPushPermission(result.permission);
     if (result.ok) {
-      if (!preferences.community) {
-        const saved = await patchParticipation({ external_community_enabled: true }, true);
-        if (!saved) { setMessage("Device registered, but community alerts could not be enabled. Please retry."); setBusy(false); return; }
-        setPreferences((current) => ({ ...current, community: true }));
-      }
       await load();
-      setMessage("Device registered. Community alerts are enabled. Lock-screen display also follows your device’s notification settings.");
+      setMessage("Device registered. Your category choices are unchanged. Choose the alerts you want below; lock-screen display also follows your device’s notification settings.");
     } else {
       setMessage(result.error || (result.permission === "denied" ? "Notifications are disabled in iPhone Settings." : "Notifications were not enabled."));
     }
@@ -194,7 +189,7 @@ function AccountNotificationSettings({ surface }: { surface: AppSurface }) {
         <h2 className="mt-1 text-2xl font-semibold">Useful alerts, under your control.</h2>
         <p className="mt-2 max-w-xl text-sm text-text-secondary">BVS asks for system permission only when you choose to enable alerts. Choose what appears in your inbox and whether community updates reach your lock screen.</p>
       </div>
-      <button type="button" disabled={busy || saving || pushPermission === "unavailable"} onClick={() => void enablePush()} className="min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black disabled:opacity-50">{busy ? "Enabling…" : pushPermission === "granted" && preferences.community ? "Refresh device registration" : "Enable lock-screen alerts"}</button>
+      <button type="button" disabled={busy || saving || pushPermission === "unavailable"} onClick={() => void enablePush()} className="min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black disabled:opacity-50">{busy ? "Enabling…" : pushPermission === "granted" ? "Refresh device registration" : "Enable lock-screen alerts"}</button>
     </div>
     <p className="mt-3 text-xs text-text-secondary">System permission: <span className="font-semibold text-white">{pushPermission}</span></p>
 
