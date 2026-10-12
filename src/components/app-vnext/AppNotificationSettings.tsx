@@ -95,7 +95,8 @@ function AccountNotificationSettings({ surface }: { surface: AppSurface }) {
     const refresh = () => void load();
     window.addEventListener("bvs:app-resume", refresh);
     window.addEventListener("bvs:push-registration", refresh);
-    return () => { alive = false; invalidateLoad(); window.removeEventListener("bvs:app-resume", refresh); window.removeEventListener("bvs:push-registration", refresh); };
+    window.addEventListener("bvs:native-push-bridge-ready", refresh);
+    return () => { alive = false; invalidateLoad(); window.removeEventListener("bvs:app-resume", refresh); window.removeEventListener("bvs:push-registration", refresh); window.removeEventListener("bvs:native-push-bridge-ready", refresh); };
   }, [load, invalidateLoad]);
   if (!signedIn) return null;
 

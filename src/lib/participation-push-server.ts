@@ -23,6 +23,8 @@ type NotificationRow = {
   message_id?: string | null;
   thread_id?: string | null;
   created_at: string;
+  seen_at?: string | null;
+  read_at?: string | null;
 };
 type DeliveryRow = {
   id: string;
@@ -77,7 +79,7 @@ export async function queueParticipationPushNotifications(limit = 500) {
   if (!eligibleIds.length) return { users: 0, notifications: 0, devices: devices.length };
   const since = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   const notifications = await participationRows<NotificationRow>(
-    `participation_notifications?recipient_user_id=in.(${eligibleIds.map(encodeURIComponent).join(",")})&read_at=is.null&created_at=gte.${encodeURIComponent(since)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at&order=created_at.desc&limit=${Math.min(2000, Math.max(1, limit))}`,
+    `participation_notifications?recipient_user_id=in.(${eligibleIds.map(encodeURIComponent).join(",")})&read_at=is.null&seen_at=is.null&created_at=gte.${encodeURIComponent(since)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at&order=created_at.desc&limit=${Math.min(2000, Math.max(1, limit))}`,
   );
   const rows = pushRowsFor(notifications, devices.filter((device) => eligibleIds.includes(device.user_id)));
   if (rows.length) {
@@ -120,7 +122,7 @@ function retryAt(attempt: number) {
 async function notificationFor(delivery: DeliveryRow) {
   if (!delivery.notification_id) return null;
   return (await participationRows<NotificationRow>(
-    `participation_notifications?id=eq.${encodeURIComponent(delivery.notification_id)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at&limit=1`,
+    `participation_notifications?id=eq.${encodeURIComponent(delivery.notification_id)}&select=id,recipient_user_id,category,title,detail,target_href,event_id,message_id,thread_id,created_at,seen_at,read_at&limit=1`,
   ))[0] || null;
 }
 
@@ -194,7 +196,7 @@ export async function deliverParticipationPushQueue(limit = 100) {
     const devices = await participationRows<{ user_id: string }>(`app_push_devices?device_token=eq.${encodeURIComponent(delivery.destination_key)}&user_id=eq.${encodeURIComponent(delivery.recipient_user_id || "")}&enabled=eq.true&select=user_id&limit=1`);
     const muted = notification.thread_id ? await participationRows(`participation_thread_subscriptions?thread_id=eq.${encodeURIComponent(notification.thread_id)}&user_id=eq.${encodeURIComponent(delivery.recipient_user_id || "")}&muted_at=not.is.null&select=user_id&limit=1`) : [];
     const pref = preferences[0];
-    if ((pref?.external_community_enabled !== true) || (delivery.pulse_run_id && !pref?.digest_enabled) || !devices.length || muted.length || !(await notificationEligible(notification, delivery.app_identity?.startsWith("ios:") ? "ios" : "android"))) {
+    if (notification.seen_at || notification.read_at || (pref?.external_community_enabled !== true) || (delivery.pulse_run_id && !pref?.digest_enabled) || !devices.length || muted.length || !(await notificationEligible(notification, delivery.app_identity?.startsWith("ios:") ? "ios" : "android"))) {
       await participationPatch(`participation_deliveries?id=eq.${encodeURIComponent(delivery.id)}`, { status: "suppressed", lease_until: null, error_class: "no_longer_eligible", updated_at: new Date().toISOString() });
       continue;
     }
@@ -208,6 +210,10 @@ export async function deliverParticipationPushQueue(limit = 100) {
 
     if (platform === "ios" && directAppleConfigured) {
       try {
+        const unseen = await participationRows<NotificationRow>(
+          `participation_notifications?recipient_user_id=eq.${encodeURIComponent(delivery.recipient_user_id || "")}&read_at=is.null&seen_at=is.null&select=id,recipient_user_id,event_id,thread_id,message_id&limit=500`,
+        );
+        const eligible = await Promise.all(unseen.map(row => notificationEligible(row, "ios")));
         const result = await sendApnsPush({
           token: delivery.destination_key,
           title: notification.title,
@@ -216,6 +222,7 @@ export async function deliverParticipationPushQueue(limit = 100) {
           threadId: notification.thread_id || null,
           notificationId: notification.id,
           href,
+          badge: eligible.filter(Boolean).length,
         });
         if (result.ok) {
           await markSent(delivery.id, result.receipt || "apns:accepted");

@@ -45,7 +45,7 @@ function cursorFor(row?: NotificationRow) {
 }
 
 export async function GET(request: Request) {
-  if (!participationEnabled()) return NextResponse.json({ enabled: false, events: [], unreadCount: 0, nextCursor: null });
+  if (!participationEnabled()) return NextResponse.json({ enabled: false, events: [], unreadCount: 0, unseenCount: 0, nextCursor: null });
   if (!participationReady()) return NextResponse.json({ error: "Participation inbox is unavailable." }, { status: 503 });
   const user = await requireAppUser(request);
   if (!user) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   const eligible = await Promise.all(rawPage.map(row => notificationEligible(row, surface)));
   const page = rawPage.filter((_, index) => eligible[index]);
   const unread = await participationRows<NotificationRow>(
-    `participation_notifications?recipient_user_id=eq.${encodeURIComponent(user.id)}&read_at=is.null&select=id,recipient_user_id,event_id,thread_id,message_id&limit=500`,
+    `participation_notifications?recipient_user_id=eq.${encodeURIComponent(user.id)}&read_at=is.null&select=id,recipient_user_id,event_id,thread_id,message_id,seen_at&limit=500`,
   );
   const unreadEligible = await Promise.all(unread.map(row => notificationEligible(row, surface)));
   return NextResponse.json({
@@ -86,6 +86,7 @@ export async function GET(request: Request) {
       messageId: row.message_id || null,
     })),
     unreadCount: unreadEligible.filter(Boolean).length,
+    unseenCount: unread.filter((row, index) => unreadEligible[index] && !row.seen_at).length,
     unreadCountCapped: unread.length >= 500,
     nextCursor: rows.length > limit ? cursorFor(rawPage[rawPage.length - 1]) : null,
   }, { headers: { "Cache-Control": "private, no-store" } });
