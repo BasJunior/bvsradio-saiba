@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Capacitor } from "@capacitor/core";
+import { runRemoteTrackCommand } from "@/lib/remote-music-transport";
 import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { StationTrack } from "@/lib/station";
@@ -1112,37 +1113,21 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       }
     };
 
-    const nativeIosBridge =
-      Capacitor.isNativePlatform() &&
-      Capacitor.getPlatform() === "ios" &&
-      Boolean(
-        (window as Window & {
-          __bvsNativeMusicControlsVersion?: number;
-          webkit?: { messageHandlers?: { bvsNowPlaying?: unknown } };
-        }).webkit?.messageHandlers?.bvsNowPlaying,
-      ) &&
-      ((window as Window & { __bvsNativeMusicControlsVersion?: number }).__bvsNativeMusicControlsVersion || 0) >= 1;
+    const nativeIosBridge = Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
 
-    // Newer iOS binaries own remote commands through MPRemoteCommandCenter.
-    // A metadata-only bridge in older binaries does not own music transport.
-    // Keep Web Media Session as the fallback for Safari and older app builds,
-    // but never let both layers process one lock-screen tap.
-    if (nativeIosBridge) {
-      for (const action of ["play", "pause", "previoustrack", "nexttrack", "seekto", "seekbackward", "seekforward"] as MediaSessionAction[]) {
-        setHandler(action, null);
-      }
-      return;
-    }
-
+    // WebKit needs explicit music actions even when the binary also registers
+    // MPRemoteCommandCenter targets. Clearing every action restores WebKit's
+    // default media-element seek controls. Both delivery paths share a gate so
+    // one system tap cannot advance two tracks.
     setHandler("play", () => {
       void play();
     });
     setHandler("pause", () => {
       pause();
     });
-    setHandler("previoustrack", () => advance(-1, { userSkip: true, skipReason: "media_session_previous" }));
-    setHandler("nexttrack", () => advance(1, { userSkip: true, skipReason: "media_session_next" }));
-    setHandler("seekto", (details) => {
+    setHandler("previoustrack", () => runRemoteTrackCommand("previous", "web", () => advance(-1, { userSkip: true, skipReason: "media_session_previous" })));
+    setHandler("nexttrack", () => runRemoteTrackCommand("next", "web", () => advance(1, { userSkip: true, skipReason: "media_session_next" })));
+    setHandler("seekto", nativeIosBridge ? null : (details) => {
       if (typeof details.seekTime === "number") seekTo(details.seekTime);
     });
 
