@@ -49,6 +49,8 @@ type MessageRow = {
   updated_at: string;
   edited_at?: string | null;
   deleted_at?: string | null;
+  like_count?: number | string;
+  viewer_liked?: boolean;
 };
 
 type SummaryRow = {
@@ -60,7 +62,7 @@ type SummaryRow = {
   viewer_reposted: boolean;
 };
 
-async function loadThread(threadId: string, viewerId: string | null, surface: import("@/lib/app-surface").AppSurface | null) {
+async function loadThread(threadId: string, viewerId: string | null, surface: import("@/lib/app-surface").AppSurface | null, options: { sort: string; cursor: Record<string, unknown> | null; focus: string | null }) {
   const threads = await participationRows<ThreadRow>(
     `participation_threads?id=eq.${encodeURIComponent(threadId)}&status=in.(published,locked)&select=id,thread_type,author_user_id,intent,object_kind,object_id,object_title,object_href,object_owner_user_id,attachment_kind,attachment_id,attachment_title,attachment_href,status,created_at,updated_at&limit=1`,
   );
@@ -71,22 +73,20 @@ async function loadThread(threadId: string, viewerId: string | null, surface: im
   if (viewerId && rootOwner && await blockedPair(viewerId, rootOwner)) return null;
 
   const blocked = viewerId ? await userBlockSet(viewerId) : new Set<string>();
-  const messages = await participationRows<MessageRow>(
-    `participation_messages?thread_id=eq.${encodeURIComponent(thread.id)}&status=in.(published,deleted)&select=id,thread_id,author_user_id,message_kind,reply_to_id,body,status,created_at,updated_at,edited_at,deleted_at&order=created_at.asc,id.asc&limit=500`,
-  );
-  const visibleMessages = messages.filter((message) => !message.author_user_id || !blocked.has(message.author_user_id));
-  const authorIds = [...new Set(visibleMessages.flatMap((message) => [message.author_user_id || ""]).filter(Boolean))];
-  const likeRows = visibleMessages.some((message) => message.status === "published" && message.message_kind !== "root")
-    ? await participationRpc<{ message_id: string; like_count: number | string; viewer_liked: boolean }[]>(
-      "participation_message_like_summary", {
-        p_message_ids: visibleMessages.filter((message) => message.status === "published" && message.message_kind !== "root").map((message) => message.id),
-        p_viewer: viewerId,
-      },
-    ) : [];
-  const likesById = new Map((likeRows || []).map((row) => [row.message_id, row]));
+  const page = await participationRpc<{ messages: MessageRow[]; next_cursor: Record<string, unknown> | null }>("participation_discussion_page", {
+    p_thread: thread.id, p_viewer: viewerId, p_sort: options.sort, p_limit: 40, p_cursor: options.cursor, p_focus: options.focus,
+  });
+  const visibleMessages = (page?.messages || []).filter((message) => !message.author_user_id || !blocked.has(message.author_user_id));
+  const parentIds = [...new Set(visibleMessages.map(message => message.reply_to_id).filter(Boolean))];
+  const parents = parentIds.length ? await participationRows<MessageRow>(
+    `participation_messages?id=in.(${parentIds.map(id => encodeURIComponent(id!)).join(",")})&thread_id=eq.${encodeURIComponent(thread.id)}&status=in.(published,deleted)&select=id,author_user_id,body,status&limit=100`,
+  ) : [];
+  const visibleParents = parents.filter(message => !message.author_user_id || !blocked.has(message.author_user_id));
+  const authorIds = [...new Set([...visibleMessages, ...visibleParents].map(message => message.author_user_id || "").filter(Boolean))];
+  const likesById = new Map(visibleMessages.map(message => [message.id, { like_count: message.like_count || 0, viewer_liked: Boolean(message.viewer_liked) }]));
   const profiles = await loadParticipationProfiles(authorIds);
   const profileById = new Map(profiles.map((profile) => [profile.id, profile]));
-  const messageById = new Map(visibleMessages.map((message) => [message.id, message]));
+  const messageById = new Map([...visibleParents, ...visibleMessages].map((message) => [message.id, message]));
   const summaryRows = await participationRpc<SummaryRow[]>("participation_thread_summary", {
     p_thread_ids: [thread.id],
     p_viewer: viewerId,
@@ -99,6 +99,7 @@ async function loadThread(threadId: string, viewerId: string | null, surface: im
     : [];
 
   return {
+    pagination: { sort: options.sort, nextCursor: page?.next_cursor ? Buffer.from(JSON.stringify(page.next_cursor)).toString("base64url") : null },
     thread: {
       id: thread.id,
       type: thread.thread_type,
@@ -165,7 +166,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!participationReady()) return NextResponse.json({ error: "Participation is unavailable." }, { status: 503 });
   const user = await requireAppUser(request);
   const threadId = String((await params).id || "").trim();
-  const payload = threadId ? await loadThread(threadId, user?.id || null, participationRequestSurface(request)) : null;
+  const url = new URL(request.url);
+  const sort = ["oldest", "newest", "top"].includes(url.searchParams.get("sort") || "") ? url.searchParams.get("sort")! : "oldest";
+  let cursor: Record<string, unknown> | null = null;
+  const rawCursor = url.searchParams.get("cursor");
+  if (rawCursor) {
+    try {
+      const value = JSON.parse(Buffer.from(rawCursor.slice(0, 800), "base64url").toString()) as Record<string, unknown>;
+      if (typeof value.at !== "string" || !Number.isFinite(Date.parse(value.at)) || typeof value.id !== "string" || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(value.id) || typeof value.likes !== "number" || value.likes < 0 || !Number.isSafeInteger(value.likes)) throw Error();
+      cursor = value;
+    } catch { return NextResponse.json({ error: "Invalid discussion cursor." }, { status: 400 }); }
+  }
+  const focusRaw = url.searchParams.get("focus") || "";
+  const focus = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(focusRaw) ? focusRaw : null;
+  const payload = threadId ? await loadThread(threadId, user?.id || null, participationRequestSurface(request), { sort, cursor, focus }) : null;
   if (!payload) return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
   return NextResponse.json(payload, { headers: { "Cache-Control": user ? "private, no-store" : "public, max-age=30, stale-while-revalidate=60" } });
 }

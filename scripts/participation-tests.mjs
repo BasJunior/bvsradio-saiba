@@ -1,3 +1,4 @@
+import "./discussion-navigation-tests.mjs";
 import "./comment-like-tests.mjs";
 import fs from "node:fs";
 import path from "node:path";

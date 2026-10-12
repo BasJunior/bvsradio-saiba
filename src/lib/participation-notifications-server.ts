@@ -3,6 +3,7 @@ import "server-only";
 import {
   loadParticipationProfiles,
   participationInsert,
+  participationRpc,
   participationPatch,
   participationRows,
   userBlockSet,
@@ -12,7 +13,7 @@ import { queueAndDeliverPushForNotifications } from "@/lib/participation-push-se
 
 type DomainEvent = {
   id: string;
-  event_type: "post_created" | "message_replied" | "message_mentioned" | "thread_liked" | "thread_reposted" | "creator_followed" | "thread_reported" | "thread_moderated";
+  event_type: "post_created" | "message_replied" | "message_mentioned" | "thread_liked" | "message_liked" | "thread_reposted" | "creator_followed" | "thread_reported" | "thread_moderated";
   actor_user_id?: string | null;
   thread_id?: string | null;
   message_id?: string | null;
@@ -173,6 +174,10 @@ async function eligibleCandidates(event: DomainEvent) {
     }
   }
 
+  if (event.event_type === "message_liked" && message?.author_user_id) {
+    addCandidate(map, { userId: message.author_user_id, category: "like", title: `${actorName} liked your comment`, detail, priority: 20 }, actorId);
+  }
+
   if ((event.event_type === "thread_liked" || event.event_type === "thread_reposted") && ownerId) {
     const liked = event.event_type === "thread_liked";
     addCandidate(map, {
@@ -242,7 +247,12 @@ async function fanoutEvent(event: DomainEvent) {
       return { processed: true, notifications: 0 };
     }
 
-    if (candidates.length) {
+    let grouped: NotificationRow[] | null = null;
+    if (event.event_type === "message_liked") {
+      const actor = event.actor_user_id ? (await loadParticipationProfiles([event.actor_user_id]))[0] : null;
+      grouped = candidates.length ? await participationRpc<NotificationRow[]>("group_participation_comment_like", { p_event: event.id, p_actor_name: actor?.displayName || "A BVS member" }) || [] : [];
+    }
+    if (candidates.length && grouped === null) {
       await participationInsert<NotificationRow>(
         "participation_notifications?on_conflict=recipient_user_id,event_id",
         candidates.map((candidate) => ({
@@ -251,7 +261,7 @@ async function fanoutEvent(event: DomainEvent) {
           category: candidate.category,
           title: candidate.title,
           detail: candidate.detail,
-          target_href: `/participation/thread/${event.thread_id}`,
+          target_href: `/participation/thread/${event.thread_id}${message?.id ? `#reply-${message.id}` : ""}`,
           thread_id: event.thread_id,
           message_id: message?.id || null,
           created_at: event.occurred_at,
@@ -260,12 +270,12 @@ async function fanoutEvent(event: DomainEvent) {
       );
     }
 
-    const notifications = candidates.length
+    const notifications = grouped !== null ? grouped : candidates.length
       ? await participationRows<NotificationRow>(
         `participation_notifications?event_id=eq.${encodeURIComponent(event.id)}&select=id,recipient_user_id,event_id,category,title,detail,target_href,thread_id,message_id,created_at&limit=500`,
       )
       : [];
-    if (candidates.length && !notifications.length) throw new Error("notification persistence failed");
+    if (candidates.length && grouped === null && !notifications.length) throw new Error("notification persistence failed");
 
     if (notifications.length) {
       await participationInsert(
@@ -307,7 +317,7 @@ async function fanoutEvent(event: DomainEvent) {
 export async function processParticipationOutbox(limit = 25) {
   await participationPatch("participation_domain_events?fanout_status=eq.processing&fanout_lease_until=lt." + encodeURIComponent(new Date().toISOString()), { fanout_status: "failed", fanout_lease_until: null });
   const events = await participationRows<DomainEvent>(
-    `participation_domain_events?fanout_status=in.(pending,failed)&fanout_attempts=lt.10&event_type=in.(post_created,message_replied,message_mentioned,thread_liked,thread_reposted,creator_followed,thread_reported,thread_moderated)&select=id,event_type,actor_user_id,thread_id,message_id,occurred_at,payload,fanout_status,fanout_attempts&order=occurred_at.asc&limit=${Math.min(100, Math.max(1, limit))}`,
+    `participation_domain_events?fanout_status=in.(pending,failed)&fanout_attempts=lt.10&event_type=in.(post_created,message_replied,message_mentioned,thread_liked,message_liked,thread_reposted,creator_followed,thread_reported,thread_moderated)&select=id,event_type,actor_user_id,thread_id,message_id,occurred_at,payload,fanout_status,fanout_attempts&order=occurred_at.asc&limit=${Math.min(100, Math.max(1, limit))}`,
   );
   let processed = 0;
   let notifications = 0;

@@ -3,8 +3,8 @@ import { participationRows, participationThreadEligible, userBlockSet } from "@/
 import type { AppSurface } from "@/lib/app-surface";
 
 export function notificationHref(target: string, surface: AppSurface | null) {
-  const thread = target.match(/^\/participation\/thread\/([a-f0-9-]+)$/i);
-  if (thread) return surface ? `/app/${surface}/feed/${thread[1]}` : `/feed/${thread[1]}`;
+  const thread = target.match(/^\/participation\/thread\/([a-f0-9-]+)(#reply-[a-f0-9-]+)?$/i);
+  if (thread) return surface ? `/app/${surface}/feed/${thread[1]}${thread[2] || ""}` : `/feed/${thread[1]}${thread[2] || ""}`;
   if (target === "/participation/feed") return surface ? `/app/${surface}/notifications` : "/notifications";
   if (target === "/start") return surface ? `/app/${surface}/you` : "/start";
   return surface ? `/app/${surface}/notifications` : "/notifications";
