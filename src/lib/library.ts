@@ -19,6 +19,7 @@ function safeParse(value: string | null): DiscoveryItem[] {
 }
 
 function normalizeLibraryItem(item: DiscoveryItem): DiscoveryItem {
+  if (item.kind === 'track' && /^beat-/.test(item.id)) item = { ...item, kind: 'beat' }
   if (item.kind !== 'beat') return item
   const beatId = String(item.id || '').replace(/^beat-/, '')
   if (!/^[0-9a-f-]{36}$/i.test(beatId)) return item

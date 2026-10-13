@@ -8,11 +8,13 @@ import { appLibrary } from "@/lib/app-surface";
 import type { DiscoveryItem } from "@/lib/discovery";
 import { trackEvent } from "@/lib/analytics";
 import { readLibrary } from "@/lib/library";
+import { libraryPlaybackId, useLibraryPlayback } from "@/lib/use-library-playback";
 
 export default function HomeContinueListening() {
   const player = useStationPlayer();
   const { surface, appChrome } = useAppSurface();
   const [history, setHistory] = useState<DiscoveryItem[]>([]);
+  const playback = useLibraryPlayback(history, player.tracks);
 
   useEffect(() => {
     const sync = () => setHistory(readLibrary("history"));
@@ -26,17 +28,13 @@ export default function HomeContinueListening() {
   }, []);
 
   const playable = useMemo(() => {
-    const byId = new Map(
-      player.tracks
-        .filter((track) => track.id)
-        .map((track) => [track.id as string, track] as const),
-    );
+    const byId = playback.byId;
     return history
-      .filter((item) => item.kind === "track")
-      .map((item) => ({ item, track: byId.get(item.id) }))
+      .filter((item) => item.kind === "track" || item.kind === "beat")
+      .map((item) => ({ item, track: byId.get(item.id) || byId.get(libraryPlaybackId(item)) }))
       .filter((entry): entry is { item: DiscoveryItem; track: NonNullable<typeof entry.track> } => Boolean(entry.track))
       .slice(0, 3);
-  }, [history, player.tracks]);
+  }, [history, playback.byId]);
 
   if (!playable.length) return null;
 

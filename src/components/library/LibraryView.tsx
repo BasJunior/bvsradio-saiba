@@ -17,6 +17,8 @@ import type { Session } from "@supabase/supabase-js";
 import { useBrowserSession } from "@/lib/use-browser-session";
 import { useLocalLibrary } from "@/lib/use-local-library";
 import { useAccountJson } from "@/lib/use-account-json";
+import { libraryPlaybackId, useLibraryPlayback } from "@/lib/use-library-playback";
+import type { StationTrack } from "@/lib/station";
 
 type ActiveSection = "all" | "liked" | "playlists" | "downloads" | "following" | "recent" | "saved-beats" | "licensed-beats";
 type OwnedBeat = {
@@ -96,7 +98,6 @@ export default function LibraryView() {
 function AccountLibraryView({ session }: { session: Session | null }) {
   const router = useRouter();
   const player = useStationPlayer();
-  const playableById = useMemo(() => new Map(player.tracks.filter(track => track.id).map(track => [track.id as string, track])), [player.tracks]);
   const location = useSyncExternalStore(subscribeLibraryLocation, () => `${window.location.search}${window.location.hash}`, () => "");
   const selected = initialSection(location);
   const alive = useRef(true);
@@ -110,6 +111,7 @@ function AccountLibraryView({ session }: { session: Session | null }) {
   const favourites = useLocalLibrary("favourites", owner);
   const following = useLocalLibrary("follows", owner);
   const history = useLocalLibrary("history", owner);
+  const playback = useLibraryPlayback([...favourites, ...history], player.tracks);
   const playlistRequest = useAccountJson<{ playlists?: PlaylistSummary[] }>({ owner, token, url: "/api/playlists" });
   const downloadRequest = useAccountJson<{ downloads?: LibraryDownload[] }>({ owner, token, url: "/api/library/downloads", errorMessage: "Could not load downloads." });
   const ownedRequest = useAccountJson<{ beats?: OwnedBeat[] }>({ owner, token, url: "/api/library/owned", errorMessage: "Could not load licences." });
@@ -182,16 +184,19 @@ function AccountLibraryView({ session }: { session: Session | null }) {
     return <div className="space-y-3">
       {items.map(item => {
         const trackId = rawTrackId(item);
-        const track = item.kind === "track" ? playableById.get(item.id) || playableById.get(trackId) : undefined;
+        const track = playback.byId.get(item.id) || playback.byId.get(libraryPlaybackId(item));
         return <div key={item.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-4">
           {track ? <button type="button" aria-label={`Play ${item.title}`} onClick={() => player.playNow(track, { from: "Library" })} className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden border border-white/20 bg-white/5 text-brand">
             {item.image ? <Image src={item.image} alt="" fill unoptimized className="object-cover" /> : null}<span className="relative grid h-full w-full place-items-center bg-black/25">▶</span>
           </button> : null}
-          <Link href={item.href} className="min-w-0 flex-1">
+          {track ? <button type="button" onClick={() => player.playNow(track, { from: "Library" })} aria-label={`Play ${item.title}`} className="min-w-0 flex-1 text-left">
+            <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-brand">{track.kind === "beat" ? "Beat" : "track"}</p>
+            <h2 className="truncate font-medium">{item.title}</h2><p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
+          </button> : <Link href={item.href} className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-brand">{item.kind === "beat" ? "Beat" : item.kind}</p>
             <h2 className="truncate font-medium">{item.title}</h2>
             <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
-          </Link>
+          </Link>}
           {kind !== "recent" ? <details className="bvs-library-item-actions"><summary className="cursor-pointer px-3 py-3 text-sm text-text-secondary" aria-label={`More actions for ${item.title}`}>•••</summary><div className="flex flex-wrap items-center gap-2 border-t border-white/15 p-3">
             {kind === "liked" && trackId ? <PlaylistQuickAdd trackId={trackId} compact /> : null}
             {kind === "saved-beats" ? <Link href={item.href} className="min-h-10 rounded-full border border-brand/25 px-3 py-2 text-xs font-semibold text-brand">View beat</Link> : null}
@@ -218,6 +223,7 @@ function AccountLibraryView({ session }: { session: Session | null }) {
 
   return (
     <div className="bvs-square-library mx-auto min-h-[60vh] max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+      {playback.error ? <p role="status" className="mb-4 text-sm text-red-200">{playback.error} <button type="button" onClick={playback.retry} className="min-h-11 px-3 underline">Retry previews</button></p> : null}
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <p data-library-accent="library" className="bvs-library-accent-label mb-3 text-xs uppercase tracking-[0.25em]">Your BVS</p>
@@ -270,7 +276,7 @@ function AccountLibraryView({ session }: { session: Session | null }) {
           <QuickAccessCard accent="library" label="Recently Played" count={history.length} detail="Continue listening" symbol="◷" onClick={() => changeSection("recent")} />
         </div>
 
-        {history.length ? <LibraryShelf title="Continue listening" actionLabel="See recent" onAction={() => changeSection("recent")} items={history.slice(0, 4)} /> : null}
+        {history.length ? <LibraryShelf title="Continue listening" actionLabel="See recent" onAction={() => changeSection("recent")} items={history.slice(0, 4)} byId={playback.byId} onPlay={track => player.playNow(track, { from: "Continue listening" })} /> : null}
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <div data-library-panel="playlists" data-library-accent="library" className="rounded-3xl border border-white/10 bg-white/[.02] p-5">
@@ -329,10 +335,14 @@ function QuickAccessCard({ accent, label, count, detail, symbol, onClick }: { ac
   </button>;
 }
 
-function LibraryShelf({ title, actionLabel, onAction, items }: { title: string; actionLabel: string; onAction: () => void; items: DiscoveryItem[] }) {
+function LibraryShelf({ title, actionLabel, onAction, items, byId, onPlay }: { title: string; actionLabel: string; onAction: () => void; items: DiscoveryItem[]; byId?: Map<string, StationTrack>; onPlay?: (track: StationTrack) => void }) {
   return <section className="mt-6 rounded-3xl border border-white/10 bg-white/[.02] p-5">
     <div className="flex items-center justify-between gap-3"><h3 className="text-lg font-semibold">{title}</h3><button type="button" onClick={onAction} className="text-sm font-semibold text-brand">{actionLabel} →</button></div>
-    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{items.map(item => <Link key={item.id} href={item.href} className="min-w-0 rounded-2xl border border-white/10 p-3 transition hover:border-brand/35"><p className="truncate font-medium">{item.title}</p><p className="mt-1 truncate text-xs text-text-secondary">{item.subtitle}</p></Link>)}</div>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{items.map(item => {
+      const track = byId?.get(item.id) || byId?.get(libraryPlaybackId(item));
+      const caption = <><p className="truncate font-medium">{item.title}</p><p className="mt-1 truncate text-xs text-text-secondary">{item.subtitle}</p></>;
+      return track && onPlay ? <button key={item.id} type="button" onClick={() => onPlay(track)} aria-label={`Play ${item.title}`} className="min-w-0 rounded-2xl border border-white/10 p-3 text-left transition hover:border-brand/35">{caption}</button> : <Link key={item.id} href={item.href} className="min-w-0 rounded-2xl border border-white/10 p-3 transition hover:border-brand/35">{caption}</Link>;
+    })}</div>
   </section>;
 }
 

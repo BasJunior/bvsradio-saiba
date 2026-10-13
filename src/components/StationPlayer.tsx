@@ -1029,10 +1029,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       pushHistory(current);
       recordListening({
         id: trackLibraryId(current),
-        kind: "track",
+        kind: isBeatTrack(current) ? "beat" : "track",
         title: current.title,
         subtitle: current.artist,
-        href: "/radio",
+        href: isBeatTrack(current) ? `/beat/${String(current.id || '').replace(/^beat-/, '')}` : "/radio",
+        image: current.artwork,
       });
     } catch (playError: unknown) {
       if (request !== playRequest.current) return;
@@ -1269,7 +1270,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setNowPlaying(item);
       const relatedItems = (opts?.related || [])
         .filter((t) => t.src && trackKey(t) !== trackKey(tagged))
-        .map((t) => makeQueueItem(beat ? { ...t, kind: "beat" as const, project: t.project || "BVS BeatStore" } : t, source));
+        .map((t) => {
+          const relatedBeat = isBeatTrack(t);
+          return makeQueueItem(relatedBeat ? { ...t, kind: "beat" as const, project: t.project || "BVS BeatStore" } : t, relatedBeat && !signedInRef.current && !review ? "preview" : "user");
+        });
       if (review) {
         setUpNext(relatedItems.filter((entry) => entry.source !== "station"));
       } else if (beat) {
