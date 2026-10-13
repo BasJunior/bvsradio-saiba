@@ -95,11 +95,11 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
         <Link href={home} className="flex min-w-0 items-center gap-3" aria-label="BVS home">
           <span className="inline-flex shrink-0 overflow-hidden rounded-xl bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,.06)]">
             <Image
-              src="/branding/bvs-logo-2026.png"
+              src="/branding/bvs-logo-wide-2026.png"
               alt="BVS"
-              width={2000}
-              height={2000}
-              className="h-14 w-auto object-contain"
+              width={1715}
+              height={917}
+              className="h-11 w-auto object-contain"
               priority
             />
           </span>

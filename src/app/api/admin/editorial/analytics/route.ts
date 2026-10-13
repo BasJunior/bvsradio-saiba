@@ -19,6 +19,19 @@ async function rows(path: string): Promise<Row[]> {
   return response.json()
 }
 
+async function dailyPlatformActivity(start: string, end: string) {
+  const response = await fetch(editorialUrl('rpc/bvs_daily_platform_activity'), {
+    method: 'POST', headers: serviceHeaders, cache: 'no-store',
+    body: JSON.stringify({ start_day: start, end_day: end }),
+  })
+  if (!response.ok) throw new Error(`Daily activity unavailable: ${response.status}`)
+  const daily = await response.json() as Array<{ day: string; visitors: number; signed_in_users: number; visit_tracking: boolean }>
+  return {
+    timezone: 'UTC',
+    daily: daily.map(row => ({ day: row.day, visitors: Number(row.visitors), signedInUsers: Number(row.signed_in_users), visitTracking: row.visit_tracking })),
+  }
+}
+
 function dateKey(value: string) {
   return value.slice(0, 10)
 }
@@ -57,7 +70,7 @@ export async function GET(request: Request) {
   const previousStartIso = previousStart.toISOString()
 
   try {
-    const [profiles, events, tracks, releases, requests, trackPlayEvents, streamQualifications] = await Promise.all([
+    const [profiles, events, tracks, releases, requests, trackPlayEvents, streamQualifications, platformActivity] = await Promise.all([
       rows(`profiles?created_at=gte.${encodeURIComponent(previousStartIso)}&select=role,created_at&order=created_at.asc&limit=5000`),
       rows(`analytics_events?created_at=gte.${encodeURIComponent(periodStartIso)}&select=event_name,session_id,properties,source,created_at&order=created_at.asc&limit=20000`) as Promise<AnalyticsEvent[]>,
       rows('tracks?select=id,title,artist_name,genre,file_url,play_count,like_count,editorial_status,is_public,in_rotation,created_at&order=play_count.desc&limit=2000'),
@@ -65,6 +78,7 @@ export async function GET(request: Request) {
       rows('track_review_requests?select=id,status,created_at&limit=2000').catch(() => []),
       rows(`track_play_events?created_at=gte.${encodeURIComponent(periodStartIso)}&select=id,created_at&limit=20000`).catch(() => []),
       rows(`stream_qualifications?created_at=gte.${encodeURIComponent(periodStartIso)}&select=id,status,created_at&limit=20000`).catch(() => []),
+      dailyPlatformActivity(dateKey(periodStartIso), dateKey(now.toISOString())),
     ])
 
     const currentProfiles = profiles.filter((profile) => String(profile.created_at) >= periodStartIso)
@@ -235,6 +249,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       rangeDays: days,
+      platformActivity,
       registrations: {
         total: currentProfiles.length,
         previousTotal: previousProfiles.length,

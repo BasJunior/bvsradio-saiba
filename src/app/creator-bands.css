@@ -109,6 +109,8 @@
 .bvs-square-discover [data-discovery-shelves] .bvs-discover-rail > article > :is(a, button):not(:first-child) { padding-inline: .85rem; }
 .bvs-square-discover .bvs-discover-music-card.flex-col .bvs-discover-music-caption { display: flex; flex-direction: column; width: 100%; }
 .bvs-square-discover .bvs-discover-music-card.flex-col .bvs-discover-actions { margin-top: auto; padding-top: .5rem; }
+.bvs-square-discover .bvs-discover-music-card { transition: background-color .18s, border-color .18s; }
+.bvs-square-discover .bvs-discover-music-card:is(:hover, :focus-within, :active) { border-color: var(--bvs-culture-blue, #a3dbff); background-color: color-mix(in srgb, var(--bvs-culture-blue, #a3dbff) 14%, #0a0a0a); }
 
 /* Join remains recognisable across both navigation shells. */
 .bvs-join-button { background: var(--bvs-culture-lilac); color: #0a0a0a; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }

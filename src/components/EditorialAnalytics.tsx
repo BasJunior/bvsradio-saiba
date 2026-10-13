@@ -1,9 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import DailyActivityChart, { type PlatformActivity } from '@/components/DailyActivityChart'
 
 type Analytics = {
   rangeDays: number
+  platformActivity?: PlatformActivity
   registrations: {
     total: number
     previousTotal: number
@@ -300,6 +302,8 @@ export default function EditorialAnalytics({ token }: { token: string }) {
               <Metric label="Awaiting review" value={data.pipeline.awaitingReview} />
             </div>
           </div>
+
+          {data.platformActivity ? <DailyActivityChart activity={data.platformActivity} rangeDays={data.rangeDays} /> : null}
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Metric label="Published catalogue" value={data.pipeline.published} />
