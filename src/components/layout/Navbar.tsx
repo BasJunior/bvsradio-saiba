@@ -294,7 +294,7 @@ export default function Navbar() {
               </button>
             ) : null}
             <Link href={appHome(surface)} replace className="flex min-w-0 items-center gap-2" aria-label="BVS Radio app home">
-              <Image src="/branding/bvs-logo-2026.png" alt="BVS Radio" width={2000} height={2000} className="h-10 w-auto rounded-none object-contain" priority />
+              <Image src="/branding/bvs-logo-2026.png" alt="BVS Radio" width={2000} height={2000} className="h-14 w-auto rounded-none object-contain" priority />
             </Link>
           </div>
           <div className="hidden items-center gap-5 text-sm font-medium md:flex">
@@ -323,7 +323,7 @@ export default function Navbar() {
             alt="BVS Radio"
             width={2000}
             height={2000}
-            className="h-11 w-auto rounded-none object-contain"
+            className="h-14 w-auto rounded-none object-contain"
             priority
           />
         </Link>
