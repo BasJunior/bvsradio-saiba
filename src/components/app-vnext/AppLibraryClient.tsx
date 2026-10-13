@@ -13,6 +13,7 @@ import { useLocalLibrary } from "@/lib/use-local-library";
 import { useAccountJson } from "@/lib/use-account-json";
 import { withAuthTimeout, safeAuthDestination } from "@/lib/auth-client-flow";
 import type { DiscoveryItem } from "@/lib/discovery";
+import { libraryPlaybackId, useLibraryPlayback } from "@/lib/use-library-playback";
 
 type ActiveSection = "all" | "liked" | "playlists" | "downloads" | "following" | "recent";
 
@@ -76,21 +77,19 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
     };
   }, [reloadPlaylists]);
 
-  const clearedById = useMemo(
-    () => new Map(player.tracks.filter((track) => track.id).map((track) => [track.id as string, track])),
-    [player.tracks],
-  );
+  const playback = useLibraryPlayback([...liked, ...recent], player.tracks);
+  const clearedById = playback.byId;
 
   const playableLiked = useMemo(
     () => liked
-      .map((item) => item.kind === "track" ? clearedById.get(item.id) : undefined)
+      .map((item) => clearedById.get(item.id) || clearedById.get(libraryPlaybackId(item)))
       .filter((track): track is NonNullable<typeof track> => Boolean(track)),
     [clearedById, liked],
   );
 
   const playableRecent = useMemo(
     () => recent
-      .map((item) => item.kind === "track" ? clearedById.get(item.id) : undefined)
+      .map((item) => clearedById.get(item.id) || clearedById.get(libraryPlaybackId(item)))
       .filter((track): track is NonNullable<typeof track> => Boolean(track)),
     [clearedById, recent],
   );
@@ -103,7 +102,7 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
   };
 
   const playItem = (item: DiscoveryItem, from: string, related: typeof playableLiked) => {
-    const track = item.kind === "track" ? clearedById.get(item.id) : undefined;
+    const track = clearedById.get(item.id) || clearedById.get(libraryPlaybackId(item));
     if (!track) return;
     player.playNow(track, { from, related: related.filter((candidate) => candidate.id !== track.id) });
     player.setQueueOpen(false);
@@ -124,7 +123,7 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
     return (
       <div className="space-y-2">
         {items.map((item) => {
-          const canPlay = item.kind === "track" && clearedById.has(item.id);
+          const canPlay = clearedById.has(item.id) || clearedById.has(libraryPlaybackId(item));
           return (
             <article key={`${from}-${item.id}`} className="group flex min-w-0 items-center gap-3 rounded-[1.3rem] border border-white/[.07] bg-white/[.02] p-3 transition hover:border-white/15 hover:bg-white/[.035]">
               <button
@@ -137,10 +136,14 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
                 {item.image ? <Image src={item.image} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center text-xs text-brand">BVS</span>}
                 {canPlay ? <span className="absolute inset-0 grid place-items-center bg-black/25 text-white">▶</span> : null}
               </button>
-              <Link href={nativeHref(surface, item)} className="min-w-0 flex-1">
+              {canPlay ? <button type="button" onClick={() => playItem(item, from, related)} aria-label={`Play ${item.title}`} className="min-w-0 flex-1 text-left">
                 <h3 className="truncate font-semibold">{item.title}</h3>
                 <p className="truncate text-sm text-white/43">{item.subtitle}</p>
-              </Link>
+              </button> : <Link href={nativeHref(surface, item)} className="min-w-0 flex-1">
+                <h3 className="truncate font-semibold">{item.title}</h3>
+                <p className="truncate text-sm text-white/43">{item.subtitle}</p>
+                <p className="mt-1 text-xs text-white/35">{playback.loading ? "Loading preview…" : playback.error ? "Preview unavailable" : "Not currently available to play"}</p>
+              </Link>}
               <Link href={nativeHref(surface, item)} aria-label={`Open ${item.title}`} className="grid h-11 w-11 shrink-0 place-items-center text-white/55">→</Link>
             </article>
           );
@@ -163,6 +166,8 @@ export default function AppLibraryClient({ surface }: { surface: AppSurface }) {
         </div>
         <Link href={`/app/${surface}/explore`} data-library-accent="discover" className="bvs-library-accent-button min-h-11 rounded-full border px-5 py-3 text-sm font-semibold">Discover music →</Link>
       </div>
+
+      {playback.error ? <p role="status" className="mt-4 text-sm text-red-200">{playback.error} <button type="button" onClick={playback.retry} className="min-h-11 px-3 underline">Retry previews</button></p> : null}
 
       {!signedIn ? (
         <Link href={`/app/${surface}/join`} className="mt-5 inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">Sync your Library</Link>

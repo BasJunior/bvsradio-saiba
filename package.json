@@ -48,7 +48,7 @@
     "test:security-definers": "node scripts/security-definer-tests.mjs",
     "test:playback-proof": "node scripts/playback-proof-tests.mjs",
     "test:listener-artist-bridge": "node scripts/listener-artist-bridge-tests.mjs",
-    "test:home-continue-listening": "node scripts/home-continue-listening-tests.mjs",
+    "test:home-continue-listening": "node scripts/home-continue-listening-tests.mjs && npm run test:library-beat-resume",
     "test:studio-submission-status": "node scripts/studio-submission-status-tests.mjs",
     "test:upload-session-cleanup": "node scripts/upload-session-cleanup-tests.mjs",
     "test:security-access-contract": "node scripts/security-access-contract-tests.mjs",
@@ -60,7 +60,8 @@
     "test:recent-changes": "node scripts/recent-change-behavior-tests.mjs && node scripts/notification-reliability-tests.mjs && node scripts/auth-session-hotfix-tests.mjs && node scripts/audit-regression-tests.mjs && node scripts/account-collection-tests.mjs && npm run test:daily-platform-activity",
     "test:workspace-playback": "node scripts/workspace-playback-tests.mjs",
     "test:creator-growth": "node --experimental-strip-types scripts/creator-growth-tests.mjs && node scripts/creator-promotion-tests.mjs",
-    "test:daily-platform-activity": "node scripts/daily-platform-activity-tests.mjs"
+    "test:daily-platform-activity": "node scripts/daily-platform-activity-tests.mjs",
+    "test:library-beat-resume": "node scripts/library-beat-resume-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",
