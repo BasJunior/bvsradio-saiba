@@ -18,9 +18,12 @@ assert.equal(await auth.withAuthTimeout(Promise.resolve('ok'), 100, 'timeout'), 
 await assert.rejects(auth.withAuthTimeout(new Promise(() => {}), 5, 'timeout'), /timeout/);
 const routes = load('src/lib/app-link-routing.ts');
 for (const surface of ['ios', 'android']) {
-  for (const path of ['/feed', '/feed/post-id', '/beat/beat-id', '/playlist/playlist-id']) {
+  for (const path of ['/feed', '/feed/post-id', '/song/0b16582e-50ca-4c80-815f-e5a01fc82cbd', '/beat/beat-id', '/playlist/playlist-id']) {
     assert.equal(routes.appRouteForNativeUrl(`https://bvsradio.com${path}?x=1#target`, surface), `/app/${surface}${path}?x=1#target`);
   }
+  assert.equal(routes.appRouteForNativeUrl('https://www.bvsradio.com/song/song-id', surface), `/app/${surface}/song/song-id`);
+  assert.equal(routes.appRouteForNativeUrl('https://bvsradio.com/app/android/song/song-id?from=story', surface), `/app/${surface}/song/song-id?from=story`);
+  assert.equal(routes.appRouteForNativeUrl('https://evil.test/song/song-id', surface), null);
   assert.equal(routes.appRouteForNativeUrl('bvsradio://creator/studio/songs/work-id', surface), `/app/${surface}/studio/songs/work-id`);
   assert.equal(routes.appRouteForNativeUrl('https://evil.test/feed', surface), null);
   assert.equal(routes.appRouteForNativeUrl('/\\evil.test/feed', surface), null);

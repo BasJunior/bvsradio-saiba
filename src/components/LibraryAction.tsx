@@ -10,11 +10,13 @@ export default function LibraryAction({
   item,
   section = 'favourites',
   compact = false,
+  rectangular = false,
   analyticsSource,
 }: {
   item: DiscoveryItem
   section?: Extract<LibrarySection, 'favourites' | 'follows'>
   compact?: boolean
+  rectangular?: boolean
   analyticsSource?: string
 }) {
   const [saved, setSaved] = useState(false)
@@ -40,7 +42,7 @@ export default function LibraryAction({
       if (section === 'favourites' && item.kind === 'beat' && next) trackEvent('beat_save', { beat_id: item.id, source: source || null })
       if (section === 'follows') trackEvent(next ? 'creator_follow' : 'creator_unfollow', { creator_id: item.id, kind: item.kind, source: source || null })
     }}
-    className={`rounded-full border transition ${saved ? 'border-brand bg-brand/15 text-brand' : 'border-white/20 text-text-secondary hover:border-brand hover:text-white'} ${compact ? 'px-3 py-1 text-xs' : 'px-5 py-2 text-sm'}`}
+    className={`${rectangular ? 'inline-flex min-h-10 items-center justify-center rounded-none' : 'rounded-full'} border transition ${saved ? 'border-brand bg-brand/15 text-brand' : 'border-white/20 text-text-secondary hover:border-brand hover:text-white'} ${compact ? 'px-3 py-1 text-xs' : 'px-5 py-2 text-sm'}`}
   >
     {section === 'favourites' ? (saved ? '♥ ' : '♡ ') : (saved ? '✓ ' : '+ ')}{label}
   </button>

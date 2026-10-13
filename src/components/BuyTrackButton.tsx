@@ -53,7 +53,7 @@ export default function BuyTrackButton({
           trackEvent("beat_licence_view", { beat_id: beatId, source: "player_buy_cta", variant });
         }}
         className={variant === "compact"
-          ? `shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`
+          ? `inline-flex min-h-10 items-center justify-center shrink-0 rounded-none bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`
           : `block rounded-2xl border border-brand/50 bg-brand px-4 py-4 text-left text-black transition hover:brightness-110 ${className}`}
         aria-label={`Buy a licence for ${track.title} on BVS web`}
       >
@@ -101,7 +101,7 @@ export default function BuyTrackButton({
           prepareWebCart();
           if (event.defaultPrevented) setBusy(false);
         }}
-        className={`shrink-0 rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`}
+        className={`inline-flex min-h-10 items-center justify-center shrink-0 rounded-none bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`}
         aria-label={`Buy ${track.title} for $${price.toFixed(2)} on BVS web checkout`}
       >
         {busy ? "Opening…" : <><span className="sm:hidden">Buy</span><span className="hidden sm:inline">{label}</span></>}

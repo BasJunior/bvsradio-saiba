@@ -350,7 +350,7 @@ export default function AppShareButton({
     try {
       if (navigator.canShare?.({ files: [storyCard] })) {
         // Start the system sheet during this tap, before awaiting any image work.
-        const pending = navigator.share({ title: `${title} · BVS`, text: `${shareText}\n${url}`, files: [storyCard] });
+        const pending = navigator.share({ title: `${title} · BVS`, text: `${shareText}\n${url}`, url, files: [storyCard] });
         setOpen(false);
         await pending;
         onDismiss?.();
@@ -384,6 +384,7 @@ export default function AppShareButton({
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
+      setMessage(format === "story" ? "Link copied. In Instagram, choose Stickers → Link, paste it and label it Listen on BVS." : "Link copied. Paste it into your post or message.");
       window.setTimeout(() => setCopied(false), 1600);
     } catch { setMessage("Couldn’t copy the link. Try Share link."); }
   };
@@ -420,11 +421,11 @@ export default function AppShareButton({
         <button type="button" disabled={sharing || !card || card.format !== format} onClick={() => void share()} className="mt-4 min-h-12 w-full rounded-2xl bg-[#bbff65] px-5 text-sm font-bold text-black shadow-[0_0_32px_rgba(187,255,101,.12)] disabled:opacity-50">{sharing ? "Opening share…" : "Share card…"}</button>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button type="button" disabled={!card || card.format !== format} onClick={save} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm disabled:opacity-40">Save image</button>
-          <button type="button" onClick={() => void copy()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">{copied ? "Copied ✓" : "Copy link"}</button>
+          <button type="button" onClick={() => void copy()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">{copied ? "Link copied ✓" : format === "story" ? "Copy Story link" : "Copy link"}</button>
           <a href={`https://wa.me/?text=${encodeURIComponent(`${title}\n${text || kicker}\n${url}`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[.025] text-sm">WhatsApp link ↗</a>
           <button type="button" onClick={() => void shareLink()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">Share link…</button>
         </div>
-        <p className="mt-3 text-center text-xs leading-5 text-white/50">Choose Instagram, WhatsApp or another app from your phone’s share sheet. For Stories, copy the link and add a link sticker.</p>
+        <p className="mt-3 text-center text-xs leading-5 text-white/50">For an Instagram Story: share or save the card, copy the Story link, then add a Link sticker in Instagram. The sticker opens this exact title on BVS.</p>
         {message ? <p role="status" className="mt-3 rounded-2xl border border-white/[.06] bg-white/[.04] p-3 text-sm text-white/75">{message}</p> : null}
       </div>
     </div>,
