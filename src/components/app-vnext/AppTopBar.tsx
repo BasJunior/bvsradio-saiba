@@ -99,7 +99,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
               alt="BVS"
               width={2000}
               height={2000}
-              className="h-9 w-auto object-contain"
+              className="h-14 w-auto object-contain"
               priority
             />
           </span>
