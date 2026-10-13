@@ -1835,6 +1835,7 @@ function CreatorFollowAction({
     <LibraryAction
       section="follows"
       compact
+      rectangular
       analyticsSource={analyticsSource}
       item={{
         id: `artist-${track.creatorId}`,

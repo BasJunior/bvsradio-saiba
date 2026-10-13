@@ -30,7 +30,7 @@ function legacyRoute(pathname: string, surface: AppLinkSurface, search: string, 
   }
   if (pathname === "/library") return withQueryAndHash(`${root}/library`, search, hash);
   if (pathname === "/feed" || /^\/feed\/[^/]+$/.test(pathname)) return withQueryAndHash(`${root}${pathname}`, search, hash);
-  if (/^\/(beat|playlist)\/[^/]+$/.test(pathname)) return withQueryAndHash(`${root}${pathname}`, search, hash);
+  if (/^\/(song|beat|playlist)\/[^/]+$/.test(pathname)) return withQueryAndHash(`${root}${pathname}`, search, hash);
   const song = pathname.match(/^\/creator\/studio\/songs\/([^/]+)$/);
   if (song) return withQueryAndHash(`${root}/studio/songs/${song[1]}`, search, hash);
   if (pathname === "/notifications") return withQueryAndHash(`${root}/notifications`, search, hash);

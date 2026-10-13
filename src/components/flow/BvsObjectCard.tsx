@@ -192,7 +192,7 @@ function ResolvedBvsObjectCard({
   }
 
   return (
-    <article className={`group ${surfaceByVariant[variant]}`} data-flow-focus-id={`${object.kind}:${object.id}`} tabIndex={-1}>
+    <article className={`group ${!compact ? "flex h-full flex-col" : ""} ${surfaceByVariant[variant]}`} data-flow-focus-id={`${object.kind}:${object.id}`} tabIndex={-1}>
       {compact ? (
         <>
           {object.primaryAction && ["play", "play-next", "queue"].includes(object.primaryAction.intent) ? (
@@ -227,7 +227,7 @@ function ResolvedBvsObjectCard({
         </>
       )}
 
-      <div className={`${compact ? "shrink-0" : "px-4 pb-4 sm:px-5 sm:pb-5"} flex items-center gap-2`}>
+      <div className={`${compact ? "shrink-0" : "mt-auto px-4 pb-4 sm:px-5 sm:pb-5"} flex items-center gap-2`}>
         {object.primaryAction ? (
           object.primaryAction.intent === "navigate" && object.primaryAction.href ? (
             <Link href={object.primaryAction.href} onClick={openObject} className="min-h-11 rounded-full bg-brand px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
