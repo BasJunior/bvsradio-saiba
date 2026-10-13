@@ -4,6 +4,7 @@ import { attachPromotion } from '@/lib/creator-promotion-server'
 
 const allowed = new Set<string>(analyticsEvents)
 const meaningfulActivity = new Set([
+  "platform_visit",
   "player_start",
   "track_save",
   "beat_save",

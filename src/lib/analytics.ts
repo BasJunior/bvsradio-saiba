@@ -1,4 +1,5 @@
 export const analyticsEvents = [
+  "platform_visit",
   "playback_intent",
   "playback_media_requested",
   "playback_first_audio",
@@ -247,6 +248,22 @@ export function trackReturnSessionIfNeeded() {
     sendEvent("return_session", { days_since_first: Math.max(1, Math.floor((now - first) / 86400000)) })
   } catch {
     // Analytics must never block product use.
+  }
+}
+
+/** Record browsing-only visits once per UTC day and identity in this tab. */
+export function trackPlatformVisit() {
+  if (typeof window === "undefined" || document.visibilityState === "hidden") return
+  try {
+    if (!analyticsAllowed()) return
+    const day = new Date().toISOString().slice(0, 10)
+    const key = `bvs.analytics.visit.v1:${authenticatedIdentity?.userId || "guest"}`
+    if (window.sessionStorage.getItem(key) === day) return
+    const surface = window.location.pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1] || "web"
+    trackEvent("platform_visit", { surface })
+    window.sessionStorage.setItem(key, day)
+  } catch {
+    // Storage or analytics failures must not interrupt browsing.
   }
 }
 
