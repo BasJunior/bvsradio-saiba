@@ -103,7 +103,12 @@ export default function BvsSignalPanel({
       const payload = await response.json().catch(() => ({})) as SignalPayload & { error?: string };
       if (!response.ok) throw new Error(payload.error || "Could not Catch this track.");
       setSignal(payload);
-      trackEvent("bvs_signal_catch", { track_id: trackId, source, catch_position: payload.catchPosition });
+      trackEvent("engagement_action_open", {
+        action: "bvs_signal_catch",
+        track_id: trackId,
+        source,
+        catch_position: payload.catchPosition,
+      });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not Catch this track.");
     } finally {
