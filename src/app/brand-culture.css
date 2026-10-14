@@ -49,6 +49,21 @@
 }
 .bvs-home-accent-card:hover { background: rgb(var(--bvs-home-rgb) / .1); }
 .bvs-home-accent-label { font-weight: 800; }
+
+/* Discover cards use the same ice-blue hover lighting as the landing page. */
+.bvs-square-discover {
+  --bvs-discover-rgb: 163 219 255;
+}
+.bvs-square-discover :is(.bvs-discover-music-card, .bvs-discover-rail > a, .bvs-discover-producers article) {
+  border-color: rgb(var(--bvs-discover-rgb) / .25);
+  background: rgb(var(--bvs-discover-rgb) / .055);
+  transition: border-color .2s ease, background-color .2s ease, transform .2s ease;
+}
+.bvs-square-discover :is(.bvs-discover-music-card, .bvs-discover-rail > a, .bvs-discover-producers article):hover {
+  border-color: rgb(var(--bvs-discover-rgb) / .34);
+  background: rgb(var(--bvs-discover-rgb) / .1);
+}
+
 .bvs-feed-lane[aria-pressed="true"] { background: rgb(var(--bvs-section-rgb) / .18); }
 .bvs-participation-composer { background-image: linear-gradient(135deg, rgb(193 167 255 / .07), transparent); }
 .bvs-page-main :is(a, button, input, textarea, select):focus-visible {
@@ -60,7 +75,8 @@
   .bvs-culture-listen { box-shadow: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .bvs-home-accent-card { transition: none; }
+  .bvs-home-accent-card,
+  .bvs-square-discover :is(.bvs-discover-music-card, .bvs-discover-rail > a, .bvs-discover-producers article) { transition: none; }
 }
 @media (forced-colors: active) {
   .bvs-poster-title.bvs-poster-title { color: CanvasText; }
