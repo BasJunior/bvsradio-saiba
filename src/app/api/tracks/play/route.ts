@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server'
 
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+function normaliseSource(source: unknown) {
+  const value = String(source || '')
+  if (value === 'station') return 'station'
+  if (value === 'artist' || value === 'embed') return value
+  // On-demand player queues are catalogue listening, never station proof.
+  // Unknown sources also stay non-station so they cannot manufacture First Spin.
+  return 'catalogue'
+}
+
 export async function POST(request: Request) {
   try {
     const { trackId, source } = await request.json() as { trackId?: unknown; source?: unknown }
@@ -17,7 +26,7 @@ export async function POST(request: Request) {
       headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         p_track_id: id,
-        p_source: ['station', 'catalogue', 'artist', 'embed'].includes(String(source)) ? String(source) : 'station',
+        p_source: normaliseSource(source),
       }),
     })
 

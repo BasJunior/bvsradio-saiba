@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import AppCreatorPlayback from '@/components/app-vnext/AppCreatorPlayback';
 import LibraryAction from '@/components/LibraryAction';
 import AppShareButton from '@/components/app-vnext/AppShareButton';
+import BvsSignalPanel from '@/components/BvsSignalPanel';
 import { promotionRows, UUID } from '@/lib/creator-promotion-server';
 import { mediaUrlForStoredValue } from '@/lib/media-url';
 async function load(id: string) {
@@ -13,7 +14,7 @@ async function load(id: string) {
 }
 export async function songMetadata(id: string): Promise<Metadata> {
   const track = await load(id);
-  return track ? { title: `${track.title} · ${track.artist_name}`, description: `Listen to ${track.title} on BVS Radio. Save the music and follow ${track.artist_name}.` } : { title: 'Song unavailable' };
+  return track ? { title: `${track.title} · ${track.artist_name}`, description: `Listen to ${track.title} on BVS Radio, see its BVS Signal and save the discovery.` } : { title: 'Song unavailable' };
 }
 export default async function SongDetail({ id, surface }: { id: string; surface?: 'ios' | 'android' }) {
   const track = await load(id);
@@ -26,9 +27,10 @@ export default async function SongDetail({ id, surface }: { id: string; surface?
       {image ? <Image src={image} alt={`${track.title} artwork`} width={640} height={640} unoptimized className="aspect-square w-full rounded-3xl object-cover" /> : null}
       <div><h1 className="text-4xl font-semibold">{track.title}</h1><p className="mt-3 text-xl text-text-secondary">{track.artist_name}</p>
         <div className="mt-6"><AppCreatorPlayback creatorId={track.user_id} creatorName={track.artist_name || 'Artist'} startTrackId={track.id} surface={surface} compact /></div>
+        <BvsSignalPanel trackId={track.id} source="song" />
         <div className="mt-5"><LibraryAction item={{ id: track.id, kind: 'track', title: track.title, subtitle: track.artist_name || '', href: surface ? `/app/${surface}${path}` : path, image: image || undefined }} /></div>
         {track.profiles?.username ? <Link className="mt-5 inline-flex min-h-11 items-center text-brand" href={surface ? `/app/${surface}/creator/${encodeURIComponent(track.user_id)}` : `/artist/${encodeURIComponent(track.profiles.username)}`}>Follow {track.artist_name}</Link> : null}
-        <div className="mt-4"><AppShareButton title={track.title} text="Listen and save on BVS Radio" path={path} image={image || undefined} kicker="Music" /></div>
+        <div className="mt-4"><AppShareButton title={track.title} text="Hear where this track is moving on BVS Radio" path={path} image={image || undefined} kicker="BVS Signal" /></div>
       </div>
     </div>
   </main>;
