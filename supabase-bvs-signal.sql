@@ -50,6 +50,7 @@ revoke all on table public.track_catches from anon, authenticated;
 revoke all on table public.track_first_station_spin from anon, authenticated;
 grant all on table public.track_signal_config to service_role;
 grant all on table public.track_catches to service_role;
+grant usage, select on sequence public.track_catches_id_seq to service_role;
 grant select on table public.track_first_station_spin to service_role;
 
 comment on table public.track_signal_config is

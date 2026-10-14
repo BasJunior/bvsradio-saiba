@@ -16,10 +16,10 @@ assert.ok(sql.includes("create table if not exists public.track_catches"), "Catc
 assert.ok(sql.includes("unique (track_id, user_id)"), "Catch must be idempotent per listener and track.");
 assert.ok(sql.includes("first_spin_scheduled_at") && sql.includes("track_first_station_spin"), "Schedule and actual First Spin proof must stay separate.");
 assert.ok(sql.includes("min(created_at) as first_spin_played_at") && sql.includes("where source = 'station'"), "Actual First Spin must derive from the earliest station play.");
-assert.ok(sql.includes("revoke all on table public.track_catches from anon, authenticated"), "Catch writes must remain server-mediated.");
+assert.ok(sql.includes("revoke all on table public.track_catches from anon, authenticated") && sql.includes("grant usage, select on sequence public.track_catches_id_seq to service_role"), "Catch writes must remain server-mediated with trusted identity-sequence access.");
 
 assert.ok(signal.includes("firstSpinScheduledAt") && signal.includes("firstSpinPlayedAt"), "Signal state must distinguish schedule from playback truth.");
-assert.ok(signal.indexOf("hasPlayedSpin") < signal.indexOf("first_spin_scheduled"), "Recorded playback must outrank schedule state.");
+assert.ok(signal.includes("if (!hasPlayedSpin && hasScheduledSpin && scheduledMs > now)"), "A clock-only schedule must never override recorded playback truth.");
 
 assert.ok(server.includes("is_public=eq.true&editorial_status=eq.approved"), "Only public approved tracks may expose Signal.");
 assert.ok(server.includes("track_first_station_spin") && server.includes("track_catches?on_conflict=track_id,user_id"), "Signal server must read station proof and write idempotent Catches.");
