@@ -18,7 +18,7 @@ export type AppShareButtonProps = {
   onDismiss?: () => void;
 };
 
-const BVS_STORY_LOGO = "/branding/bvs-share-logo.png";
+const BVS_STORY_LOGO = "/branding/bvs-logo-cyan-2026.png";
 const BVS_LIME = "#bbff65";
 const BVS_BLACK = "#050605";
 const BVS_CHARCOAL = "#1b1b1b";
