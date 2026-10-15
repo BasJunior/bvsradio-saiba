@@ -1,6 +1,7 @@
 "use client";
 
 import { useStationPlayer, useStationPlayerProgress } from "@/components/StationPlayer";
+import BvsSignalPanel from "@/components/BvsSignalPanel";
 import FlowRelationships from "@/components/flow/FlowRelationships";
 
 function formatTime(seconds: number) {
@@ -87,6 +88,7 @@ export default function HomeListenPanel() {
             Open Now Playing
           </button>
         </div>
+        <BvsSignalPanel trackId={player.current?.id} source="station" title={player.current?.title} artist={player.current?.artist} artwork={player.current?.artwork} compact />
         <FlowRelationships kind="track" id={player.current?.id} compact />
       </div>
     </div>
