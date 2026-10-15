@@ -6,6 +6,13 @@ and only from a line editorial staff have approved. Human presenter and guest
 audio uses the same clock. If a voice file or the speech service fails, the
 next record still plays.
 
+The day uses three sessions on the Africa/Harare clock: Daytime 06:00–16:00
+(Ara), Evening 16:00–22:00 (Rex), and After hours 22:00–06:00 (Sal). One host
+stays with a session. A session with no approved line keeps using the approved
+clips already on the station. Editorial can rename a host or change that
+session’s voice from `/admin/station-host`. New lines are generated for whoever
+is on the clock, then previewed and approved before they air.
+
 ## What is proof
 
 - Only `ops/playout/station-engine.mjs` may call `reportSignalStarted`.

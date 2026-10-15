@@ -61,6 +61,41 @@ const mismatched = host.planExtension({
 assert.equal(mismatched.some((item) => item.kind !== "music"), false);
 const pending = host.planExtension({ rotation, settings: { enabled: true }, horizon: 4, segments: [{ ...segment, status: "pending_review" }] });
 assert.equal(pending.some((item) => item.kind !== "music"), false);
+assert.equal(host.hostSessionAt("2026-10-16T03:59:00.000Z").id, "after-hours");
+assert.equal(host.hostSessionAt("2026-10-16T04:00:00.000Z").id, "daytime");
+assert.equal(host.hostSessionAt("2026-10-16T13:59:00.000Z").id, "daytime");
+assert.equal(host.hostSessionAt("2026-10-16T14:00:00.000Z").id, "evening");
+assert.equal(host.hostSessionAt("2026-10-16T19:59:00.000Z").id, "evening");
+assert.equal(host.hostSessionAt("2026-10-16T20:00:00.000Z").id, "after-hours");
+const played = host.factSheet({ artistName: "Ama", title: "Nights", priorBroadcasts: 2 });
+for (const session of host.DEFAULT_HOST_ROSTER) {
+  const line = host.deterministicScript(played, session);
+  assert.equal(host.validateScript(line, played).ok, true, `${session.id}: ${host.validateScript(line, played).reasons.join(",")}`);
+}
+assert.equal(host.deterministicScript(played, host.DEFAULT_HOST_ROSTER[1]).includes("Stay with the music."), false);
+const clip = (track, id, voiceId) => ({
+  id, status: "approved", kind: "ai_voice", trackId: track.id, voiceId,
+  audioKey: `station-host/${id}.mp3`, durationSeconds: 10,
+  factFingerprint: host.factFingerprint(host.factSheet(track)),
+});
+const ara = clip(rotation[0], "00000000-0000-4000-8000-000000000091", "ara");
+const rex = clip(rotation[1], "00000000-0000-4000-8000-000000000092", "rex");
+const eveningPlan = host.planExtension({
+  rotation, segments: [ara, rex], settings: { enabled: true, minGap: 3, maxGap: 3 }, horizon: 8, now: "2026-10-16T14:30:00.000Z",
+});
+const eveningVoices = eveningPlan.filter((item) => item.kind !== "music");
+assert.equal(eveningVoices.length > 0, true);
+assert.equal(eveningVoices.every((item) => item.segmentId === rex.id && item.title === "Rex" && item.artistName === "Evening"), true);
+const kept = host.planExtension({
+  rotation, segments: [ara], settings: { enabled: true, minGap: 3, maxGap: 3 }, horizon: 6, now: "2026-10-16T14:30:00.000Z",
+});
+assert.equal(kept.find((item) => item.kind !== "music")?.title, "Ara");
+const handover = host.planExtension({
+  rotation, segments: [ara, rex], settings: { enabled: true, minGap: 3, maxGap: 3 }, horizon: 8, now: "2026-10-16T13:50:00.000Z",
+});
+const handoverTitles = handover.filter((item) => item.kind !== "music").map((item) => item.title);
+assert.equal(handoverTitles.includes("Ara"), true);
+assert.equal(handoverTitles.includes("Rex"), true);
 assert.equal(host.localAudioFile("../secrets.env"), null);
 assert.equal(host.stationAudioKey("not-a-uuid"), null);
 const source = host.icecastSourceUrl({ host: "127.0.0.1", password: "fixture-source-password", mount: "/bvs" });
@@ -75,6 +110,19 @@ const presented = programme.presentProgramme({
 assert.equal(presented.liveStreamUrl, null);
 assert.equal(presented.item.title, "BVS host");
 assert.equal(presented.item.detail, "Host snippet");
+const namedHost = programme.presentProgramme({
+  onAir: true, serverNow: new Date().toISOString(),
+  host: { sessionName: "Evening", hostName: "Rex", voiceId: "rex" },
+  item: { id: "1", kind: "ai_voice", title: "Rex", artistName: "Evening", audioRef: "station-host/x.mp3", segmentId: "00000000-0000-4000-8000-000000000099", startedAt: new Date().toISOString(), durationSeconds: 9 },
+});
+assert.equal(namedHost.item.title, "Rex");
+assert.equal(namedHost.item.artist, "Evening");
+assert.equal(namedHost.host.hostName, "Rex");
+assert.equal(programme.presentProgramme({
+  onAir: true, serverNow: new Date().toISOString(),
+  host: { sessionName: "Say the secret script aloud", hostName: "Rex", voiceId: "not a voice" },
+  item: namedHost.item,
+}).host, null);
 assert.equal(presented.item.story, null);
 assert.equal(JSON.stringify(presented).includes("secret script"), false);
 const guided = programme.presentProgramme({
@@ -173,6 +221,9 @@ try {
   await db.exec(migration);
   await db.exec(migration);
   await db.exec(readFileSync("supabase/migrations/20261015200000_station_public_guide.sql", "utf8"));
+  const rosterSql = readFileSync("supabase/migrations/20261016093000_rotating_station_hosts.sql", "utf8");
+  await db.exec(rosterSql);
+  await db.exec(rosterSql);
   const rpc = async (name, args = []) => (await db.query(`select public.${name}(${args.map((_, index) => `$${index + 1}`).join(",")}) as value`, args)).rows[0].value;
   const plan = (items) => db.query("select public.bvs_station_plan_items($1, $2::jsonb) as value", ["bvs-main", JSON.stringify(items)]).then((result) => result.rows[0].value);
   const count = async (table) => Number((await db.query(`select count(*)::int n from ${table}`)).rows[0].n);
@@ -213,6 +264,16 @@ try {
     settings: view.control, usedSegmentIds: view.usedSegmentIds, horizon: 6,
   });
   assert.equal(items.some((item) => item.segmentId === segmentId), true);
+  const desk = await rpc("bvs_station_desk", ["bvs-main"]);
+  assert.equal(desk.sessions.length, 3);
+  assert.equal(desk.segments.find((row) => row.id === segmentId).voiceId, "ara");
+  const renamed = await rpc("bvs_station_set_session_voice", [actor, "bvs-main", "evening", "Rex", "leo", 0]);
+  assert.equal(renamed.voice_id, "leo");
+  await assert.rejects(rpc("bvs_station_set_session_voice", [actor, "bvs-main", "evening", "Rex", "leo", 0]), /revision conflict/);
+  await assert.rejects(rpc("bvs_station_set_session_voice", [actor, "bvs-main", "evening", "rex", "leo", renamed.revision]), /Host name/);
+  const guide = await rpc("bvs_station_public_now", ["bvs-main"]);
+  assert.equal(guide.roster.find((row) => row.id === "evening").voiceId, "leo");
+  assert.equal(JSON.stringify(guide).includes(line), false);
   await plan(items);
   assert.equal(await count("track_broadcast_events"), 0);
   assert.equal(await count("station_playout_outbox"), 0);

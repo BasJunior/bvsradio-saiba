@@ -9,6 +9,7 @@ import {
   textFromResponsesApi,
   ttsRequestBody,
   type HostFacts,
+  type HostSession,
 } from "@/lib/station-host.mjs";
 
 const RESPONSES_URL = "https://api.x.ai/v1/responses";
@@ -16,10 +17,11 @@ const TTS_URL = "https://api.x.ai/v1/tts";
 
 export async function generateHostLine(facts: HostFacts, options: {
   voiceId?: string;
+  session?: Pick<HostSession, "style" | "speed" | "softness" | "voiceId"> | null;
   fetchImpl?: typeof fetch;
   apiKey?: string;
 } = {}) {
-  const voiceId = options.voiceId || process.env.BVS_HOST_VOICE_ID || "ara";
+  const voiceId = options.voiceId || options.session?.voiceId || process.env.BVS_HOST_VOICE_ID || "ara";
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const apiKey = options.apiKey ?? process.env.XAI_API_KEY ?? "";
   let modelText = "";
@@ -28,7 +30,7 @@ export async function generateHostLine(facts: HostFacts, options: {
       const response = await fetchImpl(RESPONSES_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "grok-4.7", input: scriptPrompt(facts), store: false }),
+        body: JSON.stringify({ model: "grok-4.7", input: scriptPrompt(facts, options.session), store: false }),
         signal: AbortSignal.timeout(20000),
       });
       if (response.ok) modelText = textFromResponsesApi(await response.json());
@@ -36,7 +38,7 @@ export async function generateHostLine(facts: HostFacts, options: {
       modelText = "";
     }
   }
-  const chosen = chooseScript(facts, modelText);
+  const chosen = chooseScript(facts, modelText, options.session);
   let audio: { audio: Buffer; durationSeconds: number; contentType: string } | null = null;
   let speechError = apiKey ? "" : "Speech key is not configured.";
   if (apiKey) {
@@ -45,7 +47,13 @@ export async function generateHostLine(facts: HostFacts, options: {
       const response = await fetchImpl(TTS_URL, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify(ttsRequestBody({ text: chosen.script, voiceId, replace })),
+        body: JSON.stringify(ttsRequestBody({
+          text: chosen.script,
+          voiceId,
+          replace,
+          speed: options.session?.speed,
+          softness: options.session?.softness,
+        })),
         signal: AbortSignal.timeout(30000),
       });
       if (!response.ok) speechError = "Speech synthesis was not accepted.";

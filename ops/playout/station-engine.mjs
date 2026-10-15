@@ -155,6 +155,7 @@ export async function runStationEngine({
         settings: view?.control,
         usedSegmentIds: view?.usedSegmentIds || [],
         horizon,
+        now: now(),
       });
       if (items.length) await store.plan(programmeId, items);
       view = await store.view(programmeId);

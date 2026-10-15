@@ -5,13 +5,22 @@ import { useCallback, useEffect, useState } from "react";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 
 type Settings = { enabled: boolean; voiceId: string; minGap: number; maxGap: number; hostStopped: boolean; revision: number };
+type HostSession = { id: string; name: string; hostName: string; voiceId: string; startsMinute: number; endsMinute: number; revision: number };
 type Pronunciation = { artistKey: string; artistName: string; spokenForm: string; status: string; asWritten: boolean; revision: number };
 type Segment = {
   id: string; kind: string; status: string; script: string; trackId: string | null; artistName: string | null;
-  durationSeconds: number | null; audioKey: string | null; revision: number; error: string | null;
+  durationSeconds: number | null; audioKey: string | null; revision: number; error: string | null; voiceId?: string | null;
 };
 type Item = { id: string; position: number; kind: string; status: string; title: string; artistName: string; skipReason: string | null };
-type Desk = { settings: Settings; pronunciations: Pronunciation[]; segments: Segment[]; items: Item[]; undelivered: number; onAir: boolean; playoutConfigured: boolean; speechConfigured: boolean };
+type Desk = { settings: Settings; sessions: HostSession[]; activeSessionId: string; pronunciations: Pronunciation[]; segments: Segment[]; items: Item[]; undelivered: number; onAir: boolean; playoutConfigured: boolean; speechConfigured: boolean };
+
+const VOICES = ["ara", "eve", "leo", "rex", "sal"];
+
+function clockLabel(minute: number) {
+  const hour = Math.floor(minute / 60) % 24;
+  const rest = minute % 60;
+  return `${String(hour).padStart(2, "0")}:${String(rest).padStart(2, "0")}`;
+}
 
 export default function StationHostPage() {
   const [desk, setDesk] = useState<Desk | null>(null);
@@ -98,11 +107,20 @@ export default function StationHostPage() {
           <section className="mt-8 border border-white/15 bg-white/[.025] p-5">
             <h2 className="text-xl font-semibold">{settings.hostStopped ? "Host stopped" : settings.enabled ? "Host enabled" : "Host disabled"}</h2>
             <p className="mt-2 text-sm text-white/55">{desk.onAir ? "The programme clock is live." : "No fresh engine heartbeat. Listeners stay on the browser rotation, which cannot prove a First Spin."} {desk.undelivered ? `${desk.undelivered} acknowledgement${desk.undelivered === 1 ? "" : "s"} still waiting.` : "No acknowledgements waiting."}</p>
-            <p className="mt-2 text-xs text-white/45">{desk.playoutConfigured ? "Signed playout ingress is configured." : "Playout proof is not configured, so airings cannot become First Spins yet."} {desk.speechConfigured ? "Speech generation is configured." : "Speech key is missing. Grounded scripts can still be saved, but they cannot air without audio."} Voice {String(settings.voiceId)}. Gap {settings.minGap}–{settings.maxGap} tracks.</p>
+            <p className="mt-2 text-xs text-white/45">{desk.playoutConfigured ? "Signed playout ingress is configured." : "Playout proof is not configured, so airings cannot become First Spins yet."} {desk.speechConfigured ? "Speech generation is configured." : "Speech key is missing. Grounded scripts can still be saved, but they cannot air without audio."} Gap {settings.minGap}–{settings.maxGap} tracks.</p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button type="button" disabled={busy} onClick={() => void act({ action: "set_host", enabled: !settings.enabled, stop: null, revision: settings.revision })} className="min-h-11 bg-brand px-4 text-sm font-semibold text-black disabled:opacity-40">{settings.enabled ? "Disable host" : "Enable host"}</button>
               <button type="button" disabled={busy || settings.hostStopped} onClick={() => void act({ action: "set_host", enabled: null, stop: true, revision: settings.revision })} className="min-h-11 border border-red-300/40 px-4 text-sm text-red-100 disabled:opacity-40">Stop host now</button>
               <button type="button" disabled={busy || !settings.hostStopped} onClick={() => void act({ action: "set_host", enabled: null, stop: false, revision: settings.revision })} className="min-h-11 border border-white/20 px-4 text-sm disabled:opacity-40">Resume host</button>
+            </div>
+          </section>
+          <section className="mt-6 border border-white/15 p-5">
+            <h2 className="text-xl font-semibold">Host roster</h2>
+            <p className="mt-2 text-sm text-white/55">Zimbabwe time. One host stays with a session. New lines are generated for whoever is on the clock, then previewed and approved here. Until that host has an approved line, the station keeps the clips it already has.</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {(desk.sessions || []).map((session) => (
+                <SessionCard key={session.id} session={session} active={session.id === desk.activeSessionId} busy={busy} act={act} />
+              ))}
             </div>
           </section>
           <section className="mt-6 border border-white/15 p-5">
@@ -160,6 +178,36 @@ export default function StationHostPage() {
   );
 }
 
+function SessionCard({ session, active, busy, act }: {
+  session: HostSession; active: boolean; busy: boolean;
+  act: (values: Record<string, unknown>) => Promise<void>;
+}) {
+  const [hostName, setHostName] = useState(session.hostName);
+  const [voiceId, setVoiceId] = useState(session.voiceId);
+  const voices = VOICES.includes(voiceId) ? VOICES : [voiceId, ...VOICES];
+  return (
+    <form className="border border-white/10 p-3" onSubmit={(event) => {
+      event.preventDefault();
+      void act({ action: "set_session_voice", sessionId: session.id, hostName, voiceId, revision: session.revision });
+    }}>
+      <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-brand">{active ? "On the clock" : "Session"}</p>
+      <h3 className="mt-1 font-semibold">{session.name}</h3>
+      <p className="text-xs text-white/45">{clockLabel(session.startsMinute)}–{clockLabel(session.endsMinute)}</p>
+      <label className="mt-3 block text-xs text-white/55">
+        Name listeners see
+        <input value={hostName} onChange={(event) => setHostName(event.target.value)} className="mt-1 min-h-10 w-full border border-white/15 bg-black/20 px-2 text-sm" />
+      </label>
+      <label className="mt-2 block text-xs text-white/55">
+        Voice
+        <select value={voiceId} onChange={(event) => setVoiceId(event.target.value)} className="mt-1 min-h-10 w-full border border-white/15 bg-black/20 px-2 text-sm">
+          {voices.map((voice) => <option key={voice} value={voice}>{voice}</option>)}
+        </select>
+      </label>
+      <button type="submit" disabled={busy || (hostName === session.hostName && voiceId === session.voiceId)} className="mt-3 min-h-10 border border-white/20 px-3 text-xs disabled:opacity-40">Save host</button>
+    </form>
+  );
+}
+
 function SegmentCard({ segment, busy, act, upload, token }: {
   segment: Segment; busy: boolean;
   act: (values: Record<string, unknown>) => Promise<void>;
@@ -179,7 +227,7 @@ function SegmentCard({ segment, busy, act, upload, token }: {
   return (
     <article className="border border-white/10 p-4">
       <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-brand">{segment.kind} · {segment.status}</p>
-      <p className="mt-1 text-sm text-white/55">{segment.artistName || "BVS"} {segment.durationSeconds ? `· ${segment.durationSeconds}s` : ""}</p>
+      <p className="mt-1 text-sm text-white/55">{segment.artistName || "BVS"} {segment.voiceId ? `· ${segment.voiceId}` : ""} {segment.durationSeconds ? `· ${segment.durationSeconds}s` : ""}</p>
       {segment.kind === "ai_voice" ? (
         <textarea value={script} onChange={(event) => setScript(event.target.value)} className="mt-3 min-h-24 w-full border border-white/15 bg-black/20 p-3 text-sm" />
       ) : <p className="mt-3 text-sm">{segment.script}</p>}

@@ -13,11 +13,18 @@ export type ProgrammeItem = {
   story: string | null;
 };
 
+export type ProgrammeHost = {
+  sessionName: string;
+  hostName: string;
+  voiceId: string;
+};
+
 export type ProgrammeSnapshot = {
   onAir: boolean;
   serverNow: string | null;
   liveStreamUrl: string | null;
   outputMode: string | null;
+  host: ProgrammeHost | null;
   item: ProgrammeItem | null;
   upNext: Array<{ id: string; kind: string; title: string; artist: string; detail: string | null; story: string | null }>;
 };
@@ -54,10 +61,31 @@ export function publicStreamUrl(value: unknown) {
   }
 }
 
-function hostTitle(kind: string) {
+function safeName(value: unknown) {
+  const text = String(value || "").trim();
+  if (!/^[A-Z][a-z]+(?:[ '-][A-Za-z][a-z]+){0,2}$/.test(text) || text.length > 32) return null;
+  return text;
+}
+
+function hostTitle(kind: string, title: unknown) {
   if (kind === "guest") return "BVS guest";
   if (kind === "human_voice") return "BVS presenter";
-  return "BVS host";
+  return safeName(title) || "BVS host";
+}
+
+function hostCredit(kind: string, artist: unknown) {
+  if (!kind || kind === "music") return null;
+  return safeName(artist) || "BVS Radio";
+}
+
+function presentHost(value: unknown): ProgrammeHost | null {
+  if (!value || typeof value !== "object") return null;
+  const row = value as Record<string, unknown>;
+  const sessionName = safeName(row.sessionName);
+  const hostName = safeName(row.hostName);
+  const voiceId = typeof row.voiceId === "string" && /^[a-z0-9][a-z0-9_-]{0,79}$/.test(row.voiceId) ? row.voiceId : "";
+  if (!sessionName || !hostName || !voiceId) return null;
+  return { sessionName, hostName, voiceId };
 }
 
 /** Listener copy from fields editorial already saved. Spoken scripts stay off this object. */
@@ -78,8 +106,10 @@ export function presentProgramme(snapshot: {
   outputMode?: string | null;
   item?: Record<string, unknown> | null;
   upNext?: Array<Record<string, unknown>> | null;
+  host?: unknown;
+  roster?: unknown;
 } | null): ProgrammeSnapshot {
-  const empty: ProgrammeSnapshot = { onAir: false, item: null, upNext: [], serverNow: null, liveStreamUrl: null, outputMode: null };
+  const empty: ProgrammeSnapshot = { onAir: false, item: null, upNext: [], serverNow: null, liveStreamUrl: null, outputMode: null, host: null };
   if (!snapshot || typeof snapshot !== "object") return empty;
   const liveStreamUrl = publicStreamUrl(snapshot.liveStreamUrl || snapshot.live_stream_public_url);
   const current = snapshot.item && typeof snapshot.item.kind === "string" ? snapshot.item : null;
@@ -91,8 +121,8 @@ export function presentProgramme(snapshot: {
   const item: ProgrammeItem | null = current ? {
     id: String(current.id || ""),
     kind,
-    title: music ? String(current.title || "") : hostTitle(kind),
-    artist: music ? String(current.artistName || current.artist || "") : "BVS Radio",
+    title: music ? String(current.title || "") : hostTitle(kind, current.title),
+    artist: music ? String(current.artistName || current.artist || "") : (hostCredit(kind, current.artistName || current.artist) || "BVS Radio"),
     src: music ? audioRef : audioRef && segmentId ? `/api/station/voice/${segmentId}` : "",
     artwork: typeof current.artwork === "string" ? current.artwork : "",
     trackId: music && typeof current.trackId === "string" ? current.trackId : null,
@@ -108,14 +138,16 @@ export function presentProgramme(snapshot: {
     serverNow: typeof snapshot.serverNow === "string" ? snapshot.serverNow : null,
     liveStreamUrl,
     outputMode: typeof snapshot.outputMode === "string" ? snapshot.outputMode : null,
+    host: presentHost(snapshot.host),
     item: visible,
     upNext: (snapshot.upNext || []).slice(0, 8).map((entry) => {
       const nextFacts = listenerFacts(entry);
+      const nextKind = String(entry.kind || "");
       return {
         id: String(entry.id || ""),
-        kind: String(entry.kind || ""),
-        title: entry.kind === "music" ? String(entry.title || "") : hostTitle(String(entry.kind || "")),
-        artist: entry.kind === "music" ? String(entry.artistName || entry.artist || "") : "BVS Radio",
+        kind: nextKind,
+        title: nextKind === "music" ? String(entry.title || "") : hostTitle(nextKind, entry.title),
+        artist: nextKind === "music" ? String(entry.artistName || entry.artist || "") : (hostCredit(nextKind, entry.artistName || entry.artist) || "BVS Radio"),
         detail: nextFacts.detail,
         story: nextFacts.story,
       };
@@ -156,6 +188,6 @@ export function followSharedProgramme({
     artwork: item.artwork || "",
     kind: item.kind,
     upNext: snapshot.upNext,
-    note: item.kind === "music" ? "Shared BVS programme" : "BVS host · shared programme",
+    note: item.kind === "music" ? "Shared BVS programme" : `${item.title} · shared programme`,
   };
 }
