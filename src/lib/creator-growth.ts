@@ -35,6 +35,66 @@ export function creatorGrowth(metrics: GrowthMetrics, role: GrowthRole) {
   return { levels, current, completed: levels.filter(level => level.complete).map(level => level.name), rewardStatus: 'not_launched' as const };
 }
 
+export type MarketplaceGrowthMetrics = {
+  storefrontStatus: string | null;
+  publishedProducts: number;
+};
+
+export type GrowthOpportunity = {
+  id: 'marketplace_storefront' | 'marketplace_first_product' | 'marketplace_catalogue';
+  label: string;
+  detail: string;
+  value: number;
+  target: number;
+  href: '/creator/marketplace';
+};
+
+export function marketplaceGrowthOpportunity(metrics: MarketplaceGrowthMetrics, role: GrowthRole): GrowthOpportunity | null {
+  if (role !== 'producer') return null;
+  const status = metrics.storefrontStatus;
+  if (status !== 'approved') {
+    if (status === 'submitted' || status === 'in_review') {
+      return {
+        id: 'marketplace_storefront',
+        label: 'Your Marketplace storefront is in review',
+        detail: 'No action needed. Once it is approved, you can add producer products whenever you are ready.',
+        value: 0,
+        target: 1,
+        href: '/creator/marketplace',
+      };
+    }
+    return {
+      id: 'marketplace_storefront',
+      label: status ? 'Finish your Marketplace storefront' : 'Set up your Marketplace storefront',
+      detail: 'Optional: give your sample packs, presets and other producer products a home on BVS.',
+      value: 0,
+      target: 1,
+      href: '/creator/marketplace',
+    };
+  }
+  if (metrics.publishedProducts < 1) {
+    return {
+      id: 'marketplace_first_product',
+      label: 'List your first producer product',
+      detail: 'Optional: turn a drum kit, sample pack, preset bank, MIDI pack or template into something your audience can buy.',
+      value: metrics.publishedProducts,
+      target: 1,
+      href: '/creator/marketplace',
+    };
+  }
+  if (metrics.publishedProducts < 3) {
+    return {
+      id: 'marketplace_catalogue',
+      label: 'Grow your Marketplace shelf',
+      detail: 'You already have a live product. Add more only when you have something worth sharing.',
+      value: metrics.publishedProducts,
+      target: 3,
+      href: '/creator/marketplace',
+    };
+  }
+  return null;
+}
+
 export type PromotionItem = { id: string; kind: 'track' | 'beat' | 'episode'; title: string; path: string; image?: string | null };
 export function promotionCaption(item: PromotionItem) {
   return item.kind === 'beat'
