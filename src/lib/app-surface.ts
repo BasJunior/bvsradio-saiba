@@ -76,7 +76,7 @@ export function hrefForAppSurface(href: string, surface: AppSurface | null | und
   if (path === "/search") return `${appExplore(surface)}${query}`;
   if (path === "/library") return appLibrary(surface);
   if (path === "/catalogue" && /(?:^|&)type=beat(?:&|#|$)/.test(search)) return appBeats(surface);
-  if (path === "/radio") return `${appHome(surface)}#listen`;
+  if (path === "/radio") return `${appHome(surface)}/radio${query}${hash ? `#${hash}` : ""}`;
   return hash ? `${path}${query}#${hash}` : href;
 }
 

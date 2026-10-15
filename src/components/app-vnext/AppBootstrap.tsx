@@ -51,7 +51,8 @@ export function appDestination(surface: AppSurface, url: URL) {
   if (path === "/auth/forgot-password") return `/app/${surface}/forgot-password`;
   if (path === "/auth/qr/approve") return `/app/${surface}/qr/approve${url.search}${url.hash}`;
   if (path === "/search" || path === "/catalogue") return exploreRoute(surface, url);
-  if (path === "/radio" || path === "/") return `/app/${surface}`;
+  if (path === "/radio") return `/app/${surface}/radio`;
+  if (path === "/") return `/app/${surface}`;
   if (path === "/library") return `/app/${surface}/library`;
   if (path === "/feed" || path.startsWith("/feed/")) return `/app/${surface}${path}${url.search}${url.hash}`;
   const beatOrPlaylist = path.match(/^\/(beat|playlist)\/([^/]+)$/);

@@ -1,20 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useStationPlayer } from "@/components/StationPlayer";
 import type { ProgrammeSnapshot } from "@/lib/station-programme";
 
 export default function SharedProgrammeGuide() {
+  const player = useStationPlayer();
   const [programme, setProgramme] = useState<ProgrammeSnapshot | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const joiningRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
+    let inFlight = false;
     const load = async () => {
+      if (inFlight || controller.signal.aborted) return;
+      inFlight = true;
       try {
-        const response = await fetch("/api/station/now", { cache: "no-store", signal: controller.signal });
-        if (!response.ok) return;
-        setProgramme(await response.json() as ProgrammeSnapshot);
+        const response = await fetch("/api/station/now", {
+          cache: "no-store",
+          signal: AbortSignal.any([
+            controller.signal,
+            AbortSignal.timeout(10000),
+          ]),
+        });
+        if (!response.ok) throw new Error("Programme unavailable");
+        const snapshot = (await response.json()) as ProgrammeSnapshot;
+        if (!controller.signal.aborted) {
+          setProgramme(snapshot);
+          setUnavailable(false);
+        }
       } catch {
-        /* The player keeps the last good moment. */
+        if (!controller.signal.aborted) setUnavailable(true);
+      } finally {
+        inFlight = false;
       }
     };
     void load();
@@ -25,70 +45,141 @@ export default function SharedProgrammeGuide() {
     };
   }, []);
 
-  const item = programme?.onAir ? programme.item : null;
-  const upcoming = programme?.upNext || [];
+  const item = !unavailable && programme?.onAir ? programme.item : null;
+  const upcoming = !unavailable ? programme?.upNext || [] : [];
   const snippets = [
     ...(item && item.kind !== "music" ? [item] : []),
     ...upcoming.filter((entry) => entry.kind && entry.kind !== "music"),
   ];
+  const following =
+    player.sharedProgramme && !unavailable && Boolean(programme?.onAir);
+  const current = player.current;
+  const status = unavailable
+    ? "The station update is unavailable. Your current audio can keep playing."
+    : following
+      ? player.isPlaying
+        ? "You’re listening live with BVS."
+        : "You’re paused. Resume to catch up with the station."
+      : player.isPlaying
+        ? "You’re listening to your own selection. Rejoin live whenever you’re ready."
+        : "Join the station at the song playing now.";
+  const join = async () => {
+    if (joiningRef.current) return;
+    joiningRef.current = true;
+    setJoining(true);
+    try {
+      await player.joinSharedProgramme();
+    } finally {
+      joiningRef.current = false;
+      setJoining(false);
+    }
+  };
 
   return (
-    <section className="mt-8 grid gap-4 lg:grid-cols-3" aria-label="Shared programme">
-      <article className="rounded-2xl border border-white/10 bg-bg-card/30 p-5 lg:col-span-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Station intro</p>
-        <h2 className="mt-2 text-2xl font-semibold">One programme. The same moment for everyone.</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
-          You are on the shared BVS programme. The server keeps the clock. Skipping here leaves only this browser.
+    <section
+      className="mt-8 grid gap-4 lg:grid-cols-3"
+      aria-label="Shared programme"
+    >
+      <article className="border border-white/10 bg-bg-card/30 p-5 lg:col-span-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
+          The BVS programme
         </p>
+        <h2 className="mt-2 text-2xl font-semibold">
+          One station. Independent sound.
+        </h2>
+        <p role="status" className="mt-2 text-sm leading-6 text-text-secondary">
+          {status}
+        </p>
+        {(!following || !player.isPlaying) && (
+          <button
+            type="button"
+            disabled={joining}
+            onClick={() => void join()}
+            className="mt-4 min-h-11 border border-brand/40 px-4 py-2 text-sm font-semibold text-brand disabled:opacity-50"
+          >
+            {joining ? "Joining…" : following ? "Resume live" : "Rejoin live"}
+          </button>
+        )}
+        {current && !following && (
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-text-secondary">
+              You’re listening to
+            </p>
+            <p className="mt-2 font-semibold">{current.title}</p>
+            <p className="text-sm text-text-secondary">{current.artist}</p>
+          </div>
+        )}
         <div className="mt-5 border-t border-white/10 pt-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-text-secondary">On now</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-text-secondary">
+            On the station now
+          </p>
           {item ? (
             <>
               <p className="mt-2 text-xl font-semibold">{item.title}</p>
               <p className="text-sm text-text-secondary">{item.artist}</p>
-              {item.detail ? <p className="mt-2 text-sm text-white/80">{item.detail}</p> : null}
+              {item.detail && (
+                <p className="mt-2 text-sm text-white/80">{item.detail}</p>
+              )}
             </>
           ) : (
-            <p className="mt-2 text-sm text-text-secondary">The shared programme is quiet. Press Listen live and it will pick up the station clock.</p>
+            <p className="mt-2 text-sm text-text-secondary">
+              {unavailable
+                ? "Waiting for the next station update."
+                : programme
+                  ? "The shared programme is currently off air."
+                  : "Loading the station…"}
+            </p>
           )}
         </div>
-        <div className="mt-5 border-t border-white/10 pt-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-text-secondary">Studio story</p>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">
-            {item && item.kind !== "music"
-              ? "This break is a host snippet. The music returns on the shared clock."
-              : item?.story || "No studio note is saved for this song yet. Editorial adds one before the host can say it."}
-          </p>
-        </div>
+        {item?.kind === "music" && item.story && (
+          <div className="mt-5 border-t border-white/10 pt-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-text-secondary">
+              Behind the song
+            </p>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">
+              {item.story}
+            </p>
+          </div>
+        )}
       </article>
       <div className="grid gap-4">
-        <article className="rounded-2xl border border-white/10 bg-bg-card/30 p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Coming up</p>
+        <article className="border border-white/10 bg-bg-card/30 p-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
+            Coming up on the station
+          </p>
           {upcoming.length ? (
             <ol className="mt-3 space-y-3">
               {upcoming.map((entry, index) => (
                 <li key={entry.id || index}>
                   <p className="text-sm font-semibold">{entry.title}</p>
-                  <p className="text-xs text-text-secondary">{entry.detail || entry.artist}</p>
+                  <p className="text-xs text-text-secondary">
+                    {[entry.artist, entry.detail].filter(Boolean).join(" · ")}
+                  </p>
                 </li>
               ))}
             </ol>
           ) : (
-            <p className="mt-3 text-sm text-text-secondary">The next songs appear when the station clock has them lined up.</p>
+            <p className="mt-3 text-sm text-text-secondary">
+              {unavailable
+                ? "The programme will update when the connection returns."
+                : "More music is on its way."}
+            </p>
           )}
         </article>
-        <article className="rounded-2xl border border-white/10 bg-bg-card/30 p-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Snippets</p>
-          {snippets.length ? (
+        {snippets.length > 0 && (
+          <article className="border border-white/10 bg-bg-card/30 p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
+              Between the songs
+            </p>
             <ul className="mt-3 space-y-2 text-sm">
               {snippets.map((entry) => (
-                <li key={entry.id}>{entry.title} · {entry.artist}</li>
+                <li key={entry.id}>
+                  {entry.title} · {entry.artist}
+                </li>
               ))}
             </ul>
-          ) : (
-            <p className="mt-3 text-sm leading-6 text-text-secondary">Approved host snippets sit between songs. None is on the clock yet, so the music keeps going.</p>
-          )}
-        </article>
+          </article>
+        )}
       </div>
     </section>
   );

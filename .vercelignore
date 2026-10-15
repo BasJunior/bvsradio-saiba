@@ -113,3 +113,6 @@ supabase-*.sql
 # Small schema fixtures used by the beat-crate transaction build gate.
 !supabase-beatstore-mvp.sql
 !supabase-beat-packs.sql
+
+# Station-host SQL fixture used by the shared-listen build gate.
+!supabase-bvs-signal.sql

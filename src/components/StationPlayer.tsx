@@ -261,6 +261,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const [programmeNote, setProgrammeNote] = useState<string | null>(null);
   const [programmeEpoch, setProgrammeEpoch] = useState(0);
   const leftSharedRef = useRef(false);
+  const sharedJoinRequest = useRef(0);
   const sharedItemRef = useRef<string | null>(null);
   const sharedSeekRef = useRef<number | null>(null);
   const [autoplay, setAutoplay] = useState(true);
@@ -645,11 +646,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, [mode, playingFrom, autoplay, shuffle, volume, nowPlaying, upNext]);
 
   const leaveSharedProgramme = useCallback((message: string) => {
+    sharedJoinRequest.current += 1;
     leftSharedRef.current = true;
     sharedItemRef.current = null;
     sharedSeekRef.current = null;
     setSharedProgramme(false);
     setProgrammeNote(null);
+    setPlayingFrom("Your rotation");
     setNotice(message);
   }, []);
 
@@ -961,6 +964,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const advance = useCallback(
     (direction: 1 | -1, opts?: { autoSkip?: boolean; userSkip?: boolean; skipReason?: string }) => {
+      if (opts?.userSkip) sharedJoinRequest.current += 1;
       const leavingShared = Boolean(opts?.userSkip && sharedItemRef.current && !leftSharedRef.current);
       if (leavingShared) {
         leaveSharedProgramme("You left the shared programme. This browser is on its own rotation.");
@@ -1096,7 +1100,55 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     advance(1, { autoSkip: true });
   }, [advance, current, flushListening, markPlaybackFailure, tracks.length]);
 
+  const joinSharedProgramme = useCallback(async () => {
+    const request = ++sharedJoinRequest.current;
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/station/now", { cache: "no-store", signal: AbortSignal.timeout(12000) });
+      if (!response.ok) throw new Error("station");
+      const snapshot = await response.json() as ProgrammeSnapshot;
+      if (request !== sharedJoinRequest.current) return false;
+      const decision = followSharedProgramme({
+        mode: "station",
+        leftStation: false,
+        snapshot,
+        previousItemId: null,
+      });
+      if (decision.action !== "follow") {
+        setNotice("The shared programme is not on air yet.");
+        return false;
+      }
+      flushListening();
+      leftSharedRef.current = false;
+      setMode("station");
+      sharedItemRef.current = decision.itemId;
+      sharedSeekRef.current = decision.seekSeconds;
+      setSharedProgramme(true);
+      setProgrammeNote(decision.note);
+      setPlayingFrom(decision.note);
+      setNowPlaying(makeQueueItem({
+        id: decision.trackId,
+        title: decision.title,
+        artist: decision.artist,
+        src: decision.src,
+        artwork: decision.artwork,
+      }, "station"));
+      setProgrammeEpoch((value) => value + 1);
+      setPlaying(true);
+      return true;
+    } catch {
+      if (request !== sharedJoinRequest.current) return false;
+      setError("The shared programme could not be joined.");
+      return false;
+    }
+  }, [flushListening]);
+
   const play = useCallback(async () => {
+    if (sharedItemRef.current && !leftSharedRef.current && modeRef.current === "station") {
+      await joinSharedProgramme();
+      return;
+    }
     const el = audio.current;
     if (!el || !current) {
       setError("No track is loaded. Open Listen or pick something from the catalogue.");
@@ -1142,12 +1194,13 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       });
       setError(details.error_name === "NotAllowedError" ? "Tap Play to start audio." : "Playback could not start. Please try again.");
     }
-  }, [beginPlaybackAttempt, current, markPlaybackFailure, pushHistory]);
+  }, [beginPlaybackAttempt, current, joinSharedProgramme, markPlaybackFailure, pushHistory]);
 
   const pause = useCallback(() => {
     const el = audio.current;
     if (!el) return;
     playRequest.current += 1;
+    sharedJoinRequest.current += 1;
     const wasPlaying = !el.paused && !el.ended;
     el.pause();
     if (playbackAttempt.current) playbackAttempt.current.lastMediaTime = null;
@@ -1174,11 +1227,12 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       !signedInRef.current &&
       !editorialHoldRef.current &&
       !isEditorialPlay(nowRef.current.track);
+    if (sharedItemRef.current && !leftSharedRef.current) leaveSharedProgramme("Seeking uses this browser’s rotation. Rejoin live to catch up.");
     const max = guestPreview ? Math.min(el.duration, GUEST_BEAT_PREVIEW_SECONDS) : el.duration;
     const next = Math.min(max, Math.max(0, seconds));
     el.currentTime = next;
     setElapsed(next);
-  }, []);
+  }, [leaveSharedProgramme]);
 
   const seek = useCallback((ratio: number) => {
     const el = audio.current;
@@ -1281,6 +1335,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   }, []);
 
   const toggleShuffle = useCallback(() => {
+    sharedJoinRequest.current += 1;
     if (sharedItemRef.current && !leftSharedRef.current) {
       leaveSharedProgramme("Shuffle uses this browser's rotation.");
     }
@@ -1355,6 +1410,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setElapsed(0);
       setDuration(0);
       setMode("ondemand");
+      sharedJoinRequest.current += 1;
       setPlayingFrom(opts?.from || tagged.project || tagged.artist || "On demand");
       if (nowRef.current) pushHistory(nowRef.current.track);
       const source = guestBeat ? "preview" : "user";
@@ -1448,11 +1504,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const jumpToQueueItem = useCallback(
     (key: string) => {
+      sharedJoinRequest.current += 1;
       setUpNext((q) => {
         if (sharedItemRef.current && !leftSharedRef.current) {
-          leftSharedRef.current = true;
-          sharedItemRef.current = null;
-          setSharedProgramme(false);
+          leaveSharedProgramme("You left the shared programme for your queue.");
         }
         const idx = q.findIndex((i) => i.key === key);
         if (idx < 0) return q;
@@ -1468,49 +1523,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         return autoplayRef.current ? fillUpNext(target.track, rest) : rest;
       });
     },
-    [fillUpNext, flushListening, pushHistory],
+    [fillUpNext, flushListening, leaveSharedProgramme, pushHistory],
   );
-
-  const joinSharedProgramme = useCallback(async () => {
-    leftSharedRef.current = false;
-    sharedItemRef.current = null;
-    setMode("station");
-    setError(null);
-    setNotice(null);
-    setProgrammeEpoch((value) => value + 1);
-    try {
-      const response = await fetch("/api/station/now", { cache: "no-store" });
-      if (!response.ok) throw new Error("station");
-      const snapshot = await response.json() as ProgrammeSnapshot;
-      const decision = followSharedProgramme({
-        mode: "station",
-        leftStation: false,
-        snapshot,
-        previousItemId: null,
-      });
-      if (decision.action !== "follow") {
-        setNotice("The shared programme is not on air yet.");
-        return false;
-      }
-      sharedItemRef.current = decision.itemId;
-      sharedSeekRef.current = decision.seekSeconds;
-      setSharedProgramme(true);
-      setProgrammeNote(decision.note);
-      setPlayingFrom(decision.note);
-      setNowPlaying(makeQueueItem({
-        id: decision.trackId,
-        title: decision.title,
-        artist: decision.artist,
-        src: decision.src,
-        artwork: decision.artwork,
-      }, "station"));
-      setPlaying(true);
-      return true;
-    } catch {
-      setError("The shared programme could not be joined.");
-      return false;
-    }
-  }, []);
 
   const backToStation = useCallback(() => {
     const pool = tracksRef.current;
