@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { creatorGrowth, creatorGrowthAccess, promotionCaption } from '../src/lib/creator-growth.ts';
+import { creatorGrowth, creatorGrowthAccess, marketplaceGrowthOpportunity, promotionCaption } from '../src/lib/creator-growth.ts';
 for (const profile of [{ role: 'artist', is_producer: true }, { role: 'admin', is_producer: true }, { role: 'admin' }]) {
   assert.equal(creatorGrowthAccess(profile, 'producer').role, 'producer');
   assert.equal(creatorGrowthAccess(profile, 'artist').role, 'artist');
@@ -22,6 +22,12 @@ assert.equal(creatorGrowth({...launch, listeners: 0, sales: 0},'show_creator').c
 const all = { live: 5, promotions: 5, listeners: 1000, sales: 10, activeWeeks: 8 };
 assert.equal(creatorGrowth(all,'artist').current,null);
 assert.equal(creatorGrowth(all,'artist').rewardStatus,'not_launched');
+assert.equal(marketplaceGrowthOpportunity({ storefrontStatus: null, publishedProducts: 0 }, 'artist'), null);
+assert.equal(marketplaceGrowthOpportunity({ storefrontStatus: null, publishedProducts: 0 }, 'producer')?.id, 'marketplace_storefront');
+assert.equal(marketplaceGrowthOpportunity({ storefrontStatus: 'submitted', publishedProducts: 0 }, 'producer')?.label, 'Your Marketplace storefront is in review');
+assert.equal(marketplaceGrowthOpportunity({ storefrontStatus: 'approved', publishedProducts: 0 }, 'producer')?.id, 'marketplace_first_product');
+assert.equal(marketplaceGrowthOpportunity({ storefrontStatus: 'approved', publishedProducts: 2 }, 'producer')?.id, 'marketplace_catalogue');
+assert.equal(marketplaceGrowthOpportunity({ storefrontStatus: 'approved', publishedProducts: 3 }, 'producer'), null);
 assert.match(promotionCaption({id:'x',kind:'beat',title:'Example',path:'/beat/x'}),/buy your beat licence/);
 assert.match(promotionCaption({id:'x',kind:'track',title:'Example',path:'/song/x'}),/Listen, save/);
-console.log('Creator growth: progression, role goals, partial completion and no automatic cash reward passed.');
+console.log('Creator growth: progression, optional Marketplace nudges, role goals, partial completion and no automatic cash reward passed.');

@@ -63,7 +63,7 @@ text.length=0;
 await render({title:'x'.repeat(180),kicker:'BVS Show',format:'square'});
 assert.ok(text.filter(t=>t.value.startsWith('x')).every(t=>t.width<=632),'Unbroken square titles must stay within the poster metadata panel');
 assert.ok(text.some(t=>t.value==='TUNE IN ON BVS'));
-assert.ok(requests.includes('https://preview.example/branding/bvs-share-logo.png'),'Uploaded logo must load on current deployment');
+assert.ok(requests.includes('https://preview.example/branding/bvs-logo-cyan-2026.png'),'New BVS logo must load on current deployment');
 assert.ok(revocations.length>=5,'Loaded image URLs must be cleaned up');
 scope.fetch=async()=>({ok:false});
 text.length=0;
