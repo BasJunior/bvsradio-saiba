@@ -9,6 +9,8 @@ export type ProgrammeItem = {
   startedAt: string | null;
   durationSeconds: number;
   segmentId: string | null;
+  detail: string | null;
+  story: string | null;
 };
 
 export type ProgrammeSnapshot = {
@@ -17,7 +19,7 @@ export type ProgrammeSnapshot = {
   liveStreamUrl: string | null;
   outputMode: string | null;
   item: ProgrammeItem | null;
-  upNext: Array<{ id: string; kind: string; title: string; artist: string }>;
+  upNext: Array<{ id: string; kind: string; title: string; artist: string; detail: string | null; story: string | null }>;
 };
 
 export type FollowDecision =
@@ -58,6 +60,16 @@ function hostTitle(kind: string) {
   return "BVS host";
 }
 
+/** Listener copy from fields editorial already saved. Spoken scripts stay off this object. */
+function listenerFacts(entry: Record<string, unknown>) {
+  const kind = String(entry.kind || "");
+  if (kind && kind !== "music") return { detail: "Host snippet", story: null as string | null };
+  const genre = typeof entry.genre === "string" ? entry.genre.trim() : "";
+  const storyRaw = typeof entry.story === "string" ? entry.story : typeof entry.editorialReason === "string" ? entry.editorialReason : "";
+  const story = storyRaw.trim().slice(0, 240);
+  return { detail: genre || null, story: story || null };
+}
+
 export function presentProgramme(snapshot: {
   onAir?: boolean;
   serverNow?: string | null;
@@ -75,6 +87,7 @@ export function presentProgramme(snapshot: {
   const music = kind === "music";
   const segmentId = typeof current?.segmentId === "string" ? current.segmentId : null;
   const audioRef = typeof current?.audioRef === "string" ? current.audioRef : "";
+  const facts = current ? listenerFacts(current) : { detail: null, story: null };
   const item: ProgrammeItem | null = current ? {
     id: String(current.id || ""),
     kind,
@@ -86,6 +99,8 @@ export function presentProgramme(snapshot: {
     startedAt: typeof current.startedAt === "string" ? current.startedAt : null,
     durationSeconds: Number(current.durationSeconds) || 0,
     segmentId,
+    detail: facts.detail,
+    story: facts.story,
   } : null;
   const visible = item?.src ? item : null;
   return {
@@ -94,12 +109,17 @@ export function presentProgramme(snapshot: {
     liveStreamUrl,
     outputMode: typeof snapshot.outputMode === "string" ? snapshot.outputMode : null,
     item: visible,
-    upNext: (snapshot.upNext || []).slice(0, 8).map((entry) => ({
-      id: String(entry.id || ""),
-      kind: String(entry.kind || ""),
-      title: entry.kind === "music" ? String(entry.title || "") : hostTitle(String(entry.kind || "")),
-      artist: entry.kind === "music" ? String(entry.artistName || entry.artist || "") : "BVS Radio",
-    })),
+    upNext: (snapshot.upNext || []).slice(0, 8).map((entry) => {
+      const nextFacts = listenerFacts(entry);
+      return {
+        id: String(entry.id || ""),
+        kind: String(entry.kind || ""),
+        title: entry.kind === "music" ? String(entry.title || "") : hostTitle(String(entry.kind || "")),
+        artist: entry.kind === "music" ? String(entry.artistName || entry.artist || "") : "BVS Radio",
+        detail: nextFacts.detail,
+        story: nextFacts.story,
+      };
+    }),
   };
 }
 

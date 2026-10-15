@@ -8,6 +8,7 @@ import AppJoinCard from "@/components/app-vnext/AppJoinCard";
 import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
 import AppHomeDiscoverySections from "@/components/app-vnext/AppHomeDiscoverySections";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
+import SharedListenButton from "@/components/SharedListenButton";
 import type { MobileSurface } from "@/lib/station-library";
 
 export const dynamic = "force-dynamic";
@@ -60,9 +61,7 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
           </p>
 
           <div className="mt-7 flex flex-wrap gap-2.5">
-            <a href="#listen" className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black transition hover:bg-brand-dark">
-              Listen now
-            </a>
+            <SharedListenButton className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black transition hover:bg-brand-dark disabled:opacity-60" />
             <Link href={`${base}/explore`} data-home-accent="discover" className="bvs-home-accent-button inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold">
               Discover music
             </Link>

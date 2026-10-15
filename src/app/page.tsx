@@ -3,6 +3,7 @@ import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import { Suspense } from "react";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
+import SharedListenButton from "@/components/SharedListenButton";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
@@ -64,9 +65,7 @@ export default function HomePage() {
             </p>
 
             <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
-              <Link href="#listen" className="rounded-full bg-brand px-6 py-3 text-center text-sm font-semibold text-black shadow-[0_14px_38px_rgba(212,175,55,.20)] hover:bg-brand-dark">
-                Start listening
-              </Link>
+              <SharedListenButton className="rounded-full bg-brand px-6 py-3 text-center text-sm font-semibold text-black shadow-[0_14px_38px_rgba(212,175,55,.20)] hover:bg-brand-dark disabled:opacity-60" />
               <Link href="/search" data-home-accent="discover" className="bvs-home-accent-button rounded-full border px-6 py-3 text-center text-sm font-semibold backdrop-blur-sm">
                 Discover music
               </Link>
@@ -84,7 +83,18 @@ export default function HomePage() {
         <HomeContinueListening />
 
         <div className="mt-8 grid gap-3 sm:mt-10 md:grid-cols-3">
-          {paths.map((item) => (
+          {paths.map((item) => item.accent === "listen" ? (
+            <div
+              key={item.eyebrow}
+              data-home-accent={item.accent}
+              className="bvs-home-accent-card rounded-[1.4rem] border border-white/10 bg-white/[.025] p-5"
+            >
+              <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{item.eyebrow}</p>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight">{item.title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-text-secondary">{item.copy}</p>
+              <SharedListenButton idleLabel="Listen now" className="bvs-home-accent-arrow mt-4 text-left text-sm font-semibold" />
+            </div>
+          ) : (
             <Link
               key={item.eyebrow}
               href={item.href}
