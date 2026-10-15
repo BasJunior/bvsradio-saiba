@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useStationPlayer } from "@/components/StationPlayer";
 
 export default function SharedListenButton({
@@ -12,15 +13,15 @@ export default function SharedListenButton({
   idleLabel?: string;
 }) {
   const player = useStationPlayer();
-  const [joined, setJoined] = useState(false);
+  const pathname = usePathname();
+  const surface = pathname.match(/^\/app\/(ios|android)(?:\/|$)/)?.[1];
+  const radioHref = surface ? `/app/${surface}/radio` : "/radio";
   const [pending, setPending] = useState(false);
-  // The station poll marks the shared clock before audio starts. The button
-  // stays Listen until this press joins, or until shared audio is already playing.
-  const live = joined || (player.sharedProgramme && player.isPlaying);
+  const live = player.sharedProgramme && player.isPlaying;
 
   if (live) {
     return (
-      <Link href="/radio" className={className}>
+      <Link href={radioHref} className={className}>
         Go to Radio
       </Link>
     );
@@ -33,9 +34,11 @@ export default function SharedListenButton({
       className={className}
       onClick={async () => {
         setPending(true);
-        const ok = await player.joinSharedProgramme();
-        setPending(false);
-        if (ok) setJoined(true);
+        try {
+          await player.joinSharedProgramme();
+        } finally {
+          setPending(false);
+        }
       }}
     >
       {pending ? "Joining…" : idleLabel}

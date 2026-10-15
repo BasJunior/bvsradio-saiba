@@ -58,7 +58,7 @@ assert.equal(matchPrimaryDestination("beats", "/catalogue", "type=beat"), true);
 assert.equal(matchPrimaryDestination("beats", "/catalogue", "q=hello"), false);
 assert.equal(matchPrimaryDestination("explore", "/search"), true);
 
-assert.equal(hrefForAppSurface("/radio", "android"), "/app/android#listen");
+assert.equal(hrefForAppSurface("/radio", "android"), "/app/android/radio");
 
 const navigationOperations = [];
 globalThis.window = {
