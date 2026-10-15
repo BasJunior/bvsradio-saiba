@@ -5,6 +5,7 @@ import RadioPlayer from "@/components/RadioPlayer";
 import RadioSessionHome from "@/components/RadioSessionHome";
 import RadioShelfNav from "@/components/RadioShelfNav";
 import RadioProgrammeSections from "@/components/radio/RadioProgrammeSections";
+import SharedProgrammeGuide from "@/components/radio/SharedProgrammeGuide";
 
 export const metadata: Metadata = {
   title: { absolute: "Radio | BVS Radio" },
@@ -37,6 +38,7 @@ export default function RadioPage() {
       <section id="radio-on-air" className="scroll-mt-28" aria-labelledby="now-playing-heading">
         <h2 id="now-playing-heading" className="sr-only">Now playing on BVS Radio</h2>
         <RadioPlayer />
+        <SharedProgrammeGuide />
       </section>
 
       <div id="radio-session" className="mt-10 scroll-mt-28 sm:mt-14">

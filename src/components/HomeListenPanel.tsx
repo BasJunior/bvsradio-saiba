@@ -1,6 +1,7 @@
 "use client";
 
 import { useStationPlayer, useStationPlayerProgress } from "@/components/StationPlayer";
+import SharedListenButton from "@/components/SharedListenButton";
 import BvsSignalPanel from "@/components/BvsSignalPanel";
 import FlowRelationships from "@/components/flow/FlowRelationships";
 
@@ -77,6 +78,7 @@ export default function HomeListenPanel() {
           <span className="w-fit rounded-full bg-white/10 px-3 py-1 text-xs text-white/70 sm:text-sm">
             {player.mode === "ondemand" ? "On demand queue" : "Editorial rotation"} · {player.upNext.length} up next
           </span>
+          <SharedListenButton idleLabel="Listen live" className="w-fit font-medium text-brand hover:underline disabled:opacity-60" />
           <button
             type="button"
             onClick={() => player.setQueueOpen(true)}

@@ -74,7 +74,19 @@ const presented = programme.presentProgramme({
 });
 assert.equal(presented.liveStreamUrl, null);
 assert.equal(presented.item.title, "BVS host");
+assert.equal(presented.item.detail, "Host snippet");
+assert.equal(presented.item.story, null);
 assert.equal(JSON.stringify(presented).includes("secret script"), false);
+const guided = programme.presentProgramme({
+  onAir: true, serverNow: new Date().toISOString(),
+  item: { id: "m1", kind: "music", title: "Nights", artistName: "Ama", genre: "Jazz", story: "Saved because the vocal sits in the night rotation.", editorialReason: "ignore the longer desk note", script: "Say the secret script aloud", audioRef: "/api/media/nights.mp3", trackId: rotation[0].id, startedAt: new Date().toISOString(), durationSeconds: 30 },
+  upNext: [{ id: "m2", kind: "music", title: "Dawn", artistName: "Bantu", genre: "Soul", editorialReason: "Next because the lyric answers Nights." }],
+});
+assert.equal(guided.item.detail, "Jazz");
+assert.equal(guided.item.story, "Saved because the vocal sits in the night rotation.");
+assert.equal(guided.upNext[0].detail, "Soul");
+assert.equal(guided.upNext[0].story, "Next because the lyric answers Nights.");
+assert.equal(JSON.stringify(guided).includes("secret script"), false);
 const follow = programme.followSharedProgramme({ mode: "station", leftStation: false, snapshot: programme.presentProgramme({
   onAir: true, serverNow: new Date().toISOString(), item: { id: "m1", kind: "music", title: "Nights", artistName: "Ama", audioRef: "/api/media/nights.mp3", trackId: rotation[0].id, startedAt: new Date(Date.now() - 3000).toISOString(), durationSeconds: 30 },
 }), previousItemId: null });
@@ -160,6 +172,7 @@ try {
   const migration = readFileSync("supabase/migrations/20261015183000_bvs_ai_station_host.sql", "utf8");
   await db.exec(migration);
   await db.exec(migration);
+  await db.exec(readFileSync("supabase/migrations/20261015200000_station_public_guide.sql", "utf8"));
   const rpc = async (name, args = []) => (await db.query(`select public.${name}(${args.map((_, index) => `$${index + 1}`).join(",")}) as value`, args)).rows[0].value;
   const plan = (items) => db.query("select public.bvs_station_plan_items($1, $2::jsonb) as value", ["bvs-main", JSON.stringify(items)]).then((result) => result.rows[0].value);
   const count = async (table) => Number((await db.query(`select count(*)::int n from ${table}`)).rows[0].n);

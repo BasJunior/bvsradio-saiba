@@ -104,6 +104,7 @@ type PlayerContextValue = {
   jumpToQueueItem: (key: string) => void;
   backToStation: () => void;
   playHistoryTrack: (track: StationTrack) => void;
+  joinSharedProgramme: () => Promise<boolean>;
   sharedProgramme: boolean;
   programmeNote: string | null;
 };
@@ -1470,6 +1471,47 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     [fillUpNext, flushListening, pushHistory],
   );
 
+  const joinSharedProgramme = useCallback(async () => {
+    leftSharedRef.current = false;
+    sharedItemRef.current = null;
+    setMode("station");
+    setError(null);
+    setNotice(null);
+    setProgrammeEpoch((value) => value + 1);
+    try {
+      const response = await fetch("/api/station/now", { cache: "no-store" });
+      if (!response.ok) throw new Error("station");
+      const snapshot = await response.json() as ProgrammeSnapshot;
+      const decision = followSharedProgramme({
+        mode: "station",
+        leftStation: false,
+        snapshot,
+        previousItemId: null,
+      });
+      if (decision.action !== "follow") {
+        setNotice("The shared programme is not on air yet.");
+        return false;
+      }
+      sharedItemRef.current = decision.itemId;
+      sharedSeekRef.current = decision.seekSeconds;
+      setSharedProgramme(true);
+      setProgrammeNote(decision.note);
+      setPlayingFrom(decision.note);
+      setNowPlaying(makeQueueItem({
+        id: decision.trackId,
+        title: decision.title,
+        artist: decision.artist,
+        src: decision.src,
+        artwork: decision.artwork,
+      }, "station"));
+      setPlaying(true);
+      return true;
+    } catch {
+      setError("The shared programme could not be joined.");
+      return false;
+    }
+  }, []);
+
   const backToStation = useCallback(() => {
     const pool = tracksRef.current;
     if (!pool.length) return;
@@ -1592,6 +1634,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       jumpToQueueItem,
       backToStation,
       playHistoryTrack,
+      joinSharedProgramme,
       sharedProgramme,
       programmeNote,
     }),
@@ -1635,6 +1678,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       jumpToQueueItem,
       backToStation,
       playHistoryTrack,
+      joinSharedProgramme,
       sharedProgramme,
       programmeNote,
     ],
