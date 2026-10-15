@@ -1,0 +1,19 @@
+[Unit]
+Description=BVS shared station playout engine
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=bvs
+Group=bvs
+WorkingDirectory=/opt/bvsradio
+EnvironmentFile=/etc/bvs/station-engine.env
+ExecStart=/usr/bin/node ops/playout/station-engine.mjs
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

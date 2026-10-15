@@ -29,11 +29,12 @@ export default function RadioPlayer() {
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em]">
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-white/75">{player.mode === "ondemand" ? "Your selection" : "Station rotation"}</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-white/75">{player.sharedProgramme ? "Shared programme" : player.mode === "ondemand" ? "Your selection" : "Station rotation"}</span>
             <span className="text-text-secondary">{player.isPlaying ? "Playing" : player.current ? "Ready to listen" : "Loading station…"}</span>
           </div>
           <h2 className="mt-4 break-words text-3xl font-semibold leading-tight tracking-tight sm:text-4xl lg:text-5xl">{player.current?.title || "Independent sound. Non-stop."}</h2>
           <p className="mt-2 truncate text-base text-text-secondary sm:text-lg">{player.current?.artist || "Music from the BVS community"}</p>
+          {player.programmeNote ? <p className="mt-1 text-xs uppercase tracking-[.14em] text-brand">{player.programmeNote}</p> : null}
 
           <div className="mt-6 flex items-center gap-3">
             <button type="button" onClick={player.previous} className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/5 hover:bg-white/10" aria-label="Previous recording">◀</button>

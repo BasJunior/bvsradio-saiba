@@ -43,7 +43,10 @@ Catch. Authenticated reads are private/no-store.
    Existing config/Catches remain; legacy First Spin claims intentionally disappear.
 3. Deploy this PR. Old application versions cannot insert receipts without ordinals;
    use a maintenance window or pause Catch during the migration/deploy boundary.
-4. Smoke-test approved/public gating, duplicate Catch, editorial conflict handling,
+4. Apply `supabase/migrations/20261015183000_bvs_ai_station_host.sql` only after
+   the trusted-journey migration. It adds the shared programme. It does not write
+   `track_broadcast_events`.
+5. Smoke-test approved/public gating, duplicate Catch, editorial conflict handling,
    and missing-proof presentation before exposing the feature to users.
 
 The migration was behavior-tested in embedded PostgreSQL with fixture roles and
@@ -54,9 +57,12 @@ the older application expects the former Catch insert shape.
 
 ## Connect the real broadcaster — required activation step
 
-This repository has browser-managed rotation, not the server playout process.
-The endpoint and reporter are implemented here; they are NOT evidence that a
-broadcaster is connected.
+`ops/playout/station-engine.mjs` is the broadcaster for the shared programme.
+It calls `reportSignalStarted` only after a music file has actually started.
+Scheduling, the editorial desk, and every browser player must not call the
+signed ingress. A browser that follows `/api/station/now` is a listener, not
+a proof. The endpoint and reporter are not evidence that a live engine is
+connected or that this migration has been applied.
 
 Configure separate, server-only secrets per environment:
 
