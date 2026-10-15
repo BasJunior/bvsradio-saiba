@@ -117,6 +117,7 @@ export default function SignalEditorialPage() {
       <p className="mt-3 max-w-2xl text-white/60">Explain the selection. Announce its First Spin. Verify the broadcast. Recognise a Breakout. The audience keeps its own discovery receipts.</p>
       <div className="mt-5 flex flex-wrap gap-3">
         <Link href="/admin/editorial" className="inline-flex min-h-11 items-center border border-white/15 px-4 text-sm">Editorial workflow →</Link>
+        <Link href="/admin/station-host" className="inline-flex min-h-11 items-center border border-white/15 px-4 text-sm">Station host →</Link>
         <button type="button" disabled={busy || loading} onClick={() => { setLoading(true); setError(""); setRefresh(v => v + 1); }} className="min-h-11 border border-white/15 px-4 text-sm disabled:opacity-40">Refresh desk</button>
       </div>
       {!loading && <p className={`mt-5 border p-4 text-xs ${configured ? "border-white/15 text-white/55" : "border-amber-300/25 text-amber-100"}`}>

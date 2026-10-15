@@ -38,6 +38,9 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# station-host audio generated on a server
+/var/
 next-env.d.ts
 
 # order JSON (PII)
