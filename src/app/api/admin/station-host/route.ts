@@ -8,6 +8,7 @@ import {
   durationAcceptable,
   factFingerprint,
   factSheet,
+  hostSessionAt,
   pronunciationFor,
   stationAudioKey,
   validateScript,
@@ -34,12 +35,28 @@ type DeskPayload = {
   pronunciations?: Array<Record<string, unknown>>;
   segments?: unknown[];
   items?: unknown[];
+  sessions?: Array<Record<string, unknown>>;
+  stationNow?: string;
   undelivered?: number;
   onAir?: boolean;
 };
 
+function presentSessions(rows: Array<Record<string, unknown>> | undefined) {
+  return (rows || []).map((row) => ({
+    id: String(row.session_id || row.id || ""),
+    name: String(row.name || ""),
+    hostName: String(row.host_name || row.hostName || ""),
+    voiceId: String(row.voice_id || row.voiceId || ""),
+    startsMinute: Number(row.starts_minute ?? row.startsMinute),
+    endsMinute: Number(row.ends_minute ?? row.endsMinute),
+    revision: Number(row.revision) || 0,
+  })).filter((row) => row.id);
+}
+
 function presentDesk(data: DeskPayload | null) {
   const settings = data?.settings || {};
+  const sessions = presentSessions(data?.sessions);
+  const active = hostSessionAt(data?.stationNow || new Date(), sessions);
   return {
     settings: {
       enabled: Boolean(settings.enabled),
@@ -49,6 +66,8 @@ function presentDesk(data: DeskPayload | null) {
       hostStopped: Boolean(settings.host_stopped_at),
       revision: Number(settings.revision) || 0,
     },
+    sessions,
+    activeSessionId: active.id,
     pronunciations: (data?.pronunciations || []).map((row) => ({
       artistKey: row.artist_key,
       artistName: row.artist_name,
@@ -78,11 +97,12 @@ export async function GET(request: Request) {
 }
 
 async function rotationTrack(trackId: string) {
-  const view = await stationRpc<{ rotation?: Array<Record<string, unknown>>; pronunciations?: Array<Record<string, unknown>>; control?: { voiceId?: string } }>("bvs_station_engine_view", { p_programme_id: PROGRAMME_ID });
+  const view = await stationRpc<{ rotation?: Array<Record<string, unknown>>; pronunciations?: Array<Record<string, unknown>>; control?: { voiceId?: string; roster?: Array<Record<string, unknown>> } }>("bvs_station_engine_view", { p_programme_id: PROGRAMME_ID });
   if (!view.ok || !view.data) return null;
   const track = (view.data.rotation || []).find((entry) => entry.id === trackId);
   if (!track) return null;
-  return { track, pronunciations: view.data.pronunciations || [], voiceId: view.data.control?.voiceId || "ara" };
+  const session = hostSessionAt(new Date(), view.data.control?.roster);
+  return { track, pronunciations: view.data.pronunciations || [], session };
 }
 
 export async function POST(request: Request) {
@@ -91,6 +111,18 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body || typeof body.action !== "string") return json({ error: "Unknown station action." }, 400);
   const actor = identity.user.id;
+
+  if (body.action === "set_session_voice") {
+    if (typeof body.sessionId !== "string" || typeof body.hostName !== "string" || typeof body.voiceId !== "string" || !Number.isSafeInteger(body.revision)) {
+      return json({ error: "Session, host name, voice, and revision required." }, 400);
+    }
+    const result = await stationRpc("bvs_station_set_session_voice", {
+      p_actor: actor, p_programme_id: PROGRAMME_ID, p_session_id: body.sessionId,
+      p_host_name: body.hostName, p_voice_id: body.voiceId, p_revision: body.revision,
+    });
+    if (!result.ok || !result.data) return conflict(result);
+    return json({ ok: true });
+  }
 
   if (body.action === "set_host") {
     if (!Number.isSafeInteger(body.revision)) return json({ error: "Current revision required." }, 400);
@@ -142,7 +174,7 @@ export async function POST(request: Request) {
     const result = await stationRpc("bvs_station_save_segment", {
       p_actor: actor, p_id: body.id, p_programme_id: PROGRAMME_ID, p_kind: "ai_voice", p_script: body.script,
       p_fact_sheet: facts, p_fingerprint: factFingerprint(facts), p_track_id: segment.trackId, p_artist_key: segment.artistKey,
-      p_artist_name: facts.artistName, p_voice_id: process.env.BVS_HOST_VOICE_ID || "ara", p_revision: body.revision, p_error: null,
+      p_artist_name: facts.artistName, p_voice_id: typeof segment.voiceId === "string" && segment.voiceId ? segment.voiceId : "ara", p_revision: body.revision, p_error: null,
     });
     if (!result.ok || !result.data) return conflict(result);
     return json({ ok: true });
@@ -174,7 +206,7 @@ export async function POST(request: Request) {
     if (!facts) return json({ error: "Track is missing a title or artist." }, 400);
     let generated;
     try {
-      generated = await generateHostLine(facts, { voiceId: String(found.voiceId || "ara") });
+      generated = await generateHostLine(facts, { voiceId: found.session.voiceId, session: found.session });
     } catch {
       return json({ error: "A grounded host line could not be built. Music continues without it." }, 422);
     }
@@ -183,7 +215,7 @@ export async function POST(request: Request) {
       p_actor: actor, p_id: id, p_programme_id: PROGRAMME_ID, p_kind: "ai_voice", p_script: generated.script,
       p_fact_sheet: generated.facts, p_fingerprint: generated.fingerprint, p_track_id: body.trackId,
       p_artist_key: artistKey(String(found.track.artistName || "")), p_artist_name: facts.artistName,
-      p_voice_id: found.voiceId || "ara", p_revision: 0, p_error: generated.speechError || null,
+      p_voice_id: found.session.voiceId, p_revision: 0, p_error: generated.speechError || null,
     });
     if (!saved.ok || !saved.data) return conflict(saved);
     if (generated.audio && durationAcceptable("ai_voice", generated.audio.durationSeconds)) {

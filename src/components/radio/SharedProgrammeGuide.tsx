@@ -87,6 +87,11 @@ export default function SharedProgrammeGuide() {
         <h2 className="mt-2 text-2xl font-semibold">
           One station. Independent sound.
         </h2>
+        {programme?.host && !unavailable && (
+          <p className="mt-2 text-sm text-text-secondary">
+            {programme.host.sessionName} with {programme.host.hostName}
+          </p>
+        )}
         <p role="status" className="mt-2 text-sm leading-6 text-text-secondary">
           {status}
         </p>

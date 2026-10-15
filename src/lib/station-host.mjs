@@ -2,10 +2,65 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 
 export const PROGRAMME_ID = "bvs-main";
+export const STATION_TIME_ZONE = "Africa/Harare";
 export const VOICE_MIN_SECONDS = 8;
 export const VOICE_MAX_SECONDS = 15;
 export const HUMAN_MIN_SECONDS = 2;
 export const HUMAN_MAX_SECONDS = 900;
+
+/** Day boundaries stay here so the engine and the listener guide share one clock. */
+export const DEFAULT_HOST_ROSTER = [
+  { id: "daytime", name: "Daytime", hostName: "Ara", voiceId: "ara", startsMinute: 6 * 60, endsMinute: 16 * 60, speed: 1, softness: "soft", style: "warm" },
+  { id: "evening", name: "Evening", hostName: "Rex", voiceId: "rex", startsMinute: 16 * 60, endsMinute: 22 * 60, speed: 1.05, softness: "plain", style: "confident" },
+  { id: "after-hours", name: "After hours", hostName: "Sal", voiceId: "sal", startsMinute: 22 * 60, endsMinute: 6 * 60, speed: 0.9, softness: "soft", style: "calm" },
+];
+
+const VOICE_ID = /^[a-z0-9][a-z0-9_-]{0,79}$/;
+const PERSON_NAME = /^[A-Z][a-z]+(?:[ '-][A-Za-z][a-z]+){0,2}$/;
+
+export function normalizeRoster(roster) {
+  return DEFAULT_HOST_ROSTER.map((row) => {
+    const override = Array.isArray(roster)
+      ? roster.find((entry) => entry && (entry.id === row.id || entry.sessionId === row.id))
+      : null;
+    if (!override) return { ...row };
+    const hostName = String(override.hostName || override.host_name || "").trim();
+    const voiceId = String(override.voiceId || override.voice_id || "").trim();
+    return {
+      ...row,
+      hostName: PERSON_NAME.test(hostName) && hostName.length <= 32 ? hostName : row.hostName,
+      voiceId: VOICE_ID.test(voiceId) ? voiceId : row.voiceId,
+    };
+  });
+}
+
+export function minuteInTimeZone(value, timeZone = STATION_TIME_ZONE) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return 0;
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone, hour: "2-digit", minute: "2-digit", hourCycle: "h23",
+  }).formatToParts(date);
+  let hour = Number(parts.find((part) => part.type === "hour")?.value);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value);
+  if (hour === 24) hour = 0;
+  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return 0;
+  return hour * 60 + minute;
+}
+
+export function sessionCovers(session, minute) {
+  const start = Number(session?.startsMinute);
+  const end = Number(session?.endsMinute);
+  if (!Number.isInteger(start) || !Number.isInteger(end)) return false;
+  if (start === end) return true;
+  if (start < end) return minute >= start && minute < end;
+  return minute >= start || minute < end;
+}
+
+export function hostSessionAt(value, roster) {
+  const sessions = normalizeRoster(roster);
+  const minute = minuteInTimeZone(value);
+  return sessions.find((session) => sessionCovers(session, minute)) || sessions[0];
+}
 
 const CONNECTIVES = new Set(`a an the this that these those here there is are was were be been being and or but so of in on at to for with from by as into onto it its it's you your you're we our we'll here's that's just stay keep listening music song track station radio bvs one up next coming leave speak with us them now today tonight again back here's here`.split(/\s+/));
 const DENY = new Set("chart charts viral million billion award awards grammy grammys streams listeners listener produced producer producers written writer featuring ft platinum trending popular fans followers views debut anniversary sold smash hit banger legendary iconic".split(/\s+/));
@@ -112,27 +167,38 @@ function usableReason(facts) {
   return /[.!?]$/.test(reason) ? reason : `${reason}.`;
 }
 
-export function deterministicScript(facts) {
+export function deterministicScript(facts, session) {
   const name = facts.spokenName;
   const title = facts.title;
   const reason = usableReason(facts);
-  const opening = facts.priorBroadcasts === 0 ? "First time on BVS for this one." : "Back on the BVS station.";
-  const body = `Here's ${name}, with ${title}.`;
-  const middle = reason || "We'll leave the song to speak.";
-  let script = `${opening} ${body} ${middle} Stay with the music.`;
+  const first = facts.priorBroadcasts === 0;
+  const style = session?.style || "warm";
+  const opening = first ? "First time on BVS for this one." : "Back on the BVS station.";
+  const intro = `Here's ${name}, with ${title}.`;
+  let script;
+  if (style === "confident") {
+    script = reason ? `${opening} ${intro} ${reason}` : `${opening} ${intro} We'll leave the song to speak.`;
+  } else if (style === "calm") {
+    script = first
+      ? `${opening} ${intro} We'll leave the song to speak.`
+      : `Here's ${name}, with ${title}, on BVS. We'll leave the song to speak.`;
+  } else {
+    const middle = reason || "We'll leave the song to speak.";
+    script = `${opening} ${intro} ${middle} Stay with the music.`;
+  }
   if (!validateScript(script, facts).ok) {
-    script = facts.priorBroadcasts === 0
+    script = first
       ? `First time on BVS for this one. Here's ${name}, with ${title}. Stay with the music.`
       : `Here's ${name}, with ${title}, on BVS. Stay with the music.`;
   }
   return script.replace(/\s+/g, " ").trim();
 }
 
-export function chooseScript(facts, modelText) {
+export function chooseScript(facts, modelText, session) {
   const candidate = String(modelText || "").replace(/\s+/g, " ").trim();
   const checked = candidate ? validateScript(candidate, facts) : { ok: false };
   if (checked.ok && wordCount(candidate) <= 36) return { script: candidate, source: "model" };
-  const script = deterministicScript(facts);
+  const script = deterministicScript(facts, session);
   const fallback = validateScript(script, facts);
   if (!fallback.ok) {
     const error = new Error("Grounded script could not be built.");
@@ -175,6 +241,27 @@ export function pronunciationFor(artistName, pronunciations = []) {
   return (pronunciations || []).find((entry) => entry?.artistKey === key || entry?.artist_key === key || artistKey(entry?.artistName || entry?.artist_name || "") === key) || null;
 }
 
+function asDate(value) {
+  const date = value instanceof Date ? value : new Date(value || Date.now());
+  return Number.isFinite(date.getTime()) ? date : new Date();
+}
+
+function advance(date, seconds) {
+  return new Date(date.getTime() + Math.max(0, Number(seconds) || 0) * 1000);
+}
+
+function segmentUsable(segment) {
+  return Boolean(segment && segment.status === "approved" && segment.audioKey && durationAcceptable(segment.kind, segment.durationSeconds));
+}
+
+function labelForVoice(voice, roster) {
+  if (voice.kind === "guest") return { title: "BVS guest", artistName: "BVS Radio" };
+  if (voice.kind === "human_voice") return { title: "BVS presenter", artistName: "BVS Radio" };
+  const match = normalizeRoster(roster).find((session) => session.voiceId === voice.voiceId);
+  if (match) return { title: match.hostName, artistName: match.name };
+  return { title: "BVS host", artistName: "BVS Radio" };
+}
+
 export function planExtension({
   rotation,
   segments = [],
@@ -185,16 +272,12 @@ export function planExtension({
   settings,
   usedSegmentIds = [],
   horizon = 8,
+  now = new Date(),
 }) {
   const enabled = Boolean(settings?.enabled) && !settings?.hostStopped;
+  const roster = normalizeRoster(settings?.roster);
   const used = new Set(usedSegmentIds);
-  const approved = new Map();
-  const floating = [];
-  for (const segment of segments) {
-    if (segment.status !== "approved" || !segment.audioKey || !durationAcceptable(segment.kind, segment.durationSeconds)) continue;
-    if (segment.trackId) approved.set(segment.trackId, segment);
-    else floating.push(segment);
-  }
+  const usable = (segments || []).filter(segmentUsable);
   const tracks = (rotation || []).filter((track) => track?.id && track.title && track.artistName && track.audioRef);
   if (!tracks.length || horizon <= 0) return [];
   const items = [];
@@ -204,30 +287,38 @@ export function planExtension({
   let cursor = 0;
   let plannedMusic = 0;
   let guard = 0;
+  let at = asDate(now);
+  const matchesTrack = (pool, entry) => {
+    const candidate = pool.find((segment) => segment.trackId === entry.id && !used.has(segment.id));
+    if (!candidate) return null;
+    const entryFacts = factSheet(entry, pronunciationFor(entry.artistName, pronunciations));
+    if (!entryFacts || candidate.factFingerprint !== factFingerprint(entryFacts)) return null;
+    return candidate;
+  };
   while (plannedMusic < horizon && guard < horizon * 4) {
     guard += 1;
     let track = tracks[cursor % tracks.length];
     cursor += 1;
     if (items.at(-1)?.trackId === track.id && tracks.length > 1) continue;
-    const ready = (entry) => {
-      const candidate = approved.get(entry.id);
-      if (!candidate || used.has(candidate.id)) return null;
-      const entryFacts = factSheet(entry, pronunciationFor(entry.artistName, pronunciations));
-      if (!entryFacts || candidate.factFingerprint !== factFingerprint(entryFacts)) return null;
-      return candidate;
-    };
     if (enabled && since >= voiceGap(slot, settings)) {
-      const human = floating.find((entry) => !used.has(entry.id));
-      let voice = human || ready(track);
+      const session = hostSessionAt(at, roster);
+      const floating = usable.find((entry) => !entry.trackId && entry.kind !== "ai_voice" && !used.has(entry.id));
+      const sessionClips = usable.filter((entry) => entry.kind === "ai_voice" && entry.voiceId === session.voiceId);
+      const aiPool = sessionClips.length ? sessionClips : usable.filter((entry) => entry.kind === "ai_voice");
+      const tied = usable.filter((entry) => entry.kind !== "ai_voice" && entry.trackId);
+      const pool = [...tied, ...aiPool];
+      let voice = floating || matchesTrack(pool, track);
       if (!voice) {
-        const intro = tracks.find((entry) => entry.id !== items.at(-1)?.trackId && ready(entry)) || tracks.find((entry) => ready(entry));
+        const intro = tracks.find((entry) => entry.id !== items.at(-1)?.trackId && matchesTrack(pool, entry))
+          || tracks.find((entry) => matchesTrack(pool, entry));
         if (intro) {
           track = intro;
-          voice = ready(intro);
+          voice = matchesTrack(pool, intro);
         }
       }
       if (voice) {
         const id = itemId();
+        const label = labelForVoice(voice, roster);
         items.push({
           id,
           position,
@@ -235,8 +326,8 @@ export function planExtension({
           trackId: voice.trackId || null,
           segmentId: voice.id,
           eventId: `voice:${id}`,
-          title: voice.kind === "guest" ? "BVS guest" : voice.kind === "human_voice" ? "BVS presenter" : "BVS host",
-          artistName: "BVS Radio",
+          title: label.title,
+          artistName: label.artistName,
           audioRef: voice.audioKey,
           durationSeconds: Number(voice.durationSeconds),
         });
@@ -244,9 +335,11 @@ export function planExtension({
         position += 1;
         slot += 1;
         since = 0;
+        at = advance(at, voice.durationSeconds);
       } else since = 0;
     }
     const musicId = itemId();
+    const musicDuration = Number(track.durationSeconds) > 0 ? Number(track.durationSeconds) : 180;
     items.push({
       id: musicId,
       position,
@@ -257,19 +350,26 @@ export function planExtension({
       title: track.title,
       artistName: track.artistName,
       audioRef: track.audioRef,
-      durationSeconds: Number(track.durationSeconds) > 0 ? Number(track.durationSeconds) : 180,
+      durationSeconds: musicDuration,
     });
     position += 1;
     since += 1;
     plannedMusic += 1;
+    at = advance(at, musicDuration);
   }
   return items;
 }
 
-export function scriptPrompt(facts) {
+export function scriptPrompt(facts, session) {
+  const delivery = session?.style === "confident"
+    ? "Sound confident and direct."
+    : session?.style === "calm"
+      ? "Sound calm and brief. Leave room for the music."
+      : "Sound welcoming and specific.";
   return [
     "Write one spoken line for the BVS Radio host.",
-    "Sound relaxed and specific. No hype, no slogans, no extra facts.",
+    delivery,
+    "No hype, no slogans, no extra facts.",
     "Use only the JSON facts. Do not add popularity, places, credits, awards, or milestones.",
     "If priorBroadcasts is 0, you may say \"first time on BVS\" and you must not say \"First Spin\".",
     "Say \"First Spin\" only when firstSpinAired is true.",
@@ -289,12 +389,14 @@ export function textFromResponsesApi(payload) {
   return parts.join("").trim();
 }
 
-export function ttsRequestBody({ text, voiceId = "ara", replace }) {
+export function ttsRequestBody({ text, voiceId = "ara", replace, speed = 0.95, softness = "soft" }) {
+  const rate = Number(speed);
+  const spoken = softness === "plain" ? text : `<soft>${text}</soft>`;
   const body = {
-    text: `<soft>${text}</soft>`,
+    text: spoken,
     voice_id: voiceId || "ara",
     language: "en",
-    speed: 0.95,
+    speed: Number.isFinite(rate) ? Math.min(1.5, Math.max(0.7, rate)) : 0.95,
     with_timestamps: true,
     output_format: { codec: "mp3", sample_rate: 44100, bit_rate: 128000 },
   };
