@@ -3,6 +3,7 @@ import { can, editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/edit
 import { creatorPublicName, producerPublicName } from '@/lib/public-name'
 import { mediaUrlForStoredValue } from '@/lib/media-url'
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
+import { crateProgress } from '@/lib/beat-crate'
 import type { EditorialPermission } from '@/lib/editorial'
 import { PRODUCER_NAME_USE_ARTIST } from '@/lib/creator-entitlements'
 
@@ -243,18 +244,28 @@ async function workTrack(identity: Awaited<ReturnType<typeof editorialIdentity>>
 async function workBeat(identity: Awaited<ReturnType<typeof editorialIdentity>>, id: string): Promise<WorkItem | null> {
   const beat = (await rows(`beats?id=eq.${encodeURIComponent(id)}&select=*,beat_licence_options(*)&limit=1`))[0]
   if (!beat) return null
-  const [profiles, messages, audit] = await Promise.all([
-    rows(`profiles?id=eq.${encodeURIComponent(text(beat.producer_user_id))}&select=id,username,creator_public_name,creator_name_status,producer_public_name,producer_name_status&limit=1`),
+  const [profiles, messages, audit, entries, producerBeats] = await Promise.all([
+    rows(`profiles?id=eq.${encodeURIComponent(text(beat.producer_user_id))}&select=*&limit=1`),
     rows(`beat_review_messages?beat_id=eq.${encodeURIComponent(id)}&select=author_kind,message,created_at&order=created_at.asc&limit=100`),
     recentAudit(id),
+    rows(`beat_crate_entries?user_id=eq.${encodeURIComponent(text(beat.producer_user_id))}&select=instagram_username&limit=1`),
+    rows(`beats?producer_user_id=eq.${encodeURIComponent(text(beat.producer_user_id))}&select=status,preview_path,submitted_at,created_at`),
   ])
   const profile = profiles[0]
   const producer = producerPublicName({ producerPublicName: text(profile?.producer_public_name), producerNameStatus: text(profile?.producer_name_status), publicName: text(profile?.creator_public_name), publicNameStatus: text(profile?.creator_name_status), username: text(profile?.username) })
+  const challenge = crateProgress(producerBeats.map(b => ({status:text(b.status),preview_path:text(b.preview_path),submitted_at:text(b.submitted_at),created_at:text(b.created_at)})), {avatar_url:text(profile?.avatar_url),is_producer:profile?.is_producer === true},text(entries[0]?.instagram_username))
   const licences = Array.isArray(beat.beat_licence_options) ? beat.beat_licence_options as Array<Record<string, unknown>> : []
   return {
     kind: 'beat', id, title: text(beat.title) || 'Untitled beat', subtitle: [producer, text(beat.genre)].filter(Boolean).join(' · '), status: text(beat.status), section: 'ed-beats', createdAt: text(beat.created_at) || undefined,
     artwork: await signStoredMedia(text(beat.artwork_path)), audio: await signStoredMedia(text(beat.master_path) || text(beat.preview_path)), description: text(beat.description) || undefined,
     fields: [
+      ...(entries.length ? [
+        {label:'Challenge Instagram',value:`@${text(entries[0].instagram_username)}`},
+        {label:'Crate approved',value:`${challenge.approved}/25 · ${challenge.pending} awaiting review`},
+        {label:'Profile picture',value:challenge.hasPhoto?'Added':'Missing'},
+        {label:'25th qualifying submission',value:challenge.submittedAt?dateValue(challenge.submittedAt):'Not yet complete'},
+        {label:'Prize verification',value:challenge.readyForVerification?'Ready for manual checks — verify follow/tags and originality before confirming a prize':'Requirements incomplete'},
+      ] : []),
       { label: 'Producer', value: producer || '—' }, { label: 'Genre', value: text(beat.genre) || '—' }, { label: 'Mood', value: text(beat.mood) || '—' }, { label: 'BPM', value: text(beat.bpm) || '—' }, { label: 'Key', value: text(beat.musical_key) || '—' }, { label: 'Public', value: yesNo(beat.is_public) }, { label: 'Submitted', value: dateValue(beat.created_at) },
     ],
     related: [

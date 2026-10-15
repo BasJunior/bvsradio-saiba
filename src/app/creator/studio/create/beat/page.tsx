@@ -10,9 +10,9 @@ export default function CreateBeatPage() {
         ← Studio
       </Link>
       <p className="mt-8 text-xs font-semibold uppercase tracking-[.22em] text-brand">Create · Beat</p>
-      <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Sell a beat</h1>
+      <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Fill your beat crate</h1>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
-        Upload it, set the starting price and confirm your rights. BVS handles the BeatStore record and editorial workflow behind the scenes.
+        Upload one beat or a batch of up to 25. Save your progress, set your prices and send your original work for editorial review.
       </p>
       <div className="mt-8">
         <QuickBeatCreate />

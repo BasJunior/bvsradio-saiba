@@ -54,12 +54,10 @@ assert(webNavigation.includes("href: '/creator/studio'"), "shared web navigation
 assert(webNavbar.includes('webDestinations') && mobileNavigation.includes('webDestinations'), "desktop and mobile must share web destinations");
 assert(webNavbar.includes('isWebDestinationActive') && mobileNavigation.includes('isWebDestinationActive'), "desktop and mobile must share active route state");
 
-assert(quickBeat.includes("BeatPackUploadForm"), "Sell a beat exposes existing beat-pack uploader");
-assert(quickBeat.includes("Beat pack / EP"), "Sell a beat includes Beat pack / EP mode");
-assert(quickBeat.includes('setMode("pack")'), "beat-pack mode can be selected");
-assert(quickBeat.includes('trackEvent("create_submission_complete"'), "single-beat submission analytics remain intact");
-assert(beatPack.includes("/api/beat-packs"), "beat-pack form uses existing pack API");
-assert(beatPackRoute.includes("items.length < 2 || items.length > 20"), "beat-pack API preserves 2–20 item bound");
+assert(quickBeat.includes("BeatCrateUploadForm"), "Quick beat creation uses the recoverable single/bulk uploader");
+assert(beatPack.includes("BeatCrateUploadForm"), "pack creation uses the same recoverable uploader");
+assert(beatPack.includes("LegacyBeatPackUploadForm"), "older saved pack drafts remain accessible");
+assert(beatPackRoute.includes("items.length < 2 || items.length > 25"), "legacy pack API supports 2–25 items");
 
 // Build gates remain active; the vNext reconciliation updates their contracts rather than bypassing them.
 const pkg = JSON.parse(read("package.json"));

@@ -1,9 +1,9 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
-import { isAllowedAudioFile } from '@/lib/audio-formats'
+import BeatCrateUploadForm from '@/components/BeatCrateUploadForm'
 import FullAccessAudioPlayer from '@/components/FullAccessAudioPlayer'
 import CreatorNextMoveCard from '@/components/CreatorNextMoveCard'
 import CreatorNextMovePrompt from '@/components/CreatorNextMovePrompt'
@@ -53,30 +53,7 @@ type BeatEntitlements = {
 const field =
   'w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand'
 
-function validateArtwork(file: File) {
-  if (!/\.(jpe?g|png|webp)$/i.test(file.name)) return 'Cover art must be JPG, PNG, or WebP.'
-  if (!file.size) return 'The selected cover art is empty.'
-  if (file.size > 8 * 1024 * 1024) return 'Cover art must be 8MB or smaller.'
-  return ''
-}
-
-async function putSigned(slot: { signedUrl: string; path: string; contentType?: string }, file: File, onProgress: (percent: number) => void) {
-  const contentType = file.type || (file.name.match(/\.png$/i) ? 'image/png' : file.name.match(/\.webp$/i) ? 'image/webp' : file.name.match(/\.(jpe?g)$/i) ? 'image/jpeg' : 'application/octet-stream')
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest()
-    xhr.open('PUT', slot.signedUrl)
-    xhr.setRequestHeader('Content-Type', slot.contentType || contentType)
-    xhr.upload.onprogress = event => {
-      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100))
-    }
-    xhr.onload = () => xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed for ${file.name}.`))
-    xhr.onerror = () => reject(new Error(`Upload failed for ${file.name}. Check your connection and retry.`))
-    xhr.send(file)
-  })
-  return slot.path
-}
-
-export default function MyBeatStore({ creationOnly = false }: { creationOnly?: boolean }) {
+export default function MyBeatStore({ creationOnly = false, managementOnly = false }: { creationOnly?: boolean; managementOnly?: boolean }) {
   const supabaseReady = isSupabaseConfigured()
   const [token, setToken] = useState('')
   const [beats, setBeats] = useState<Beat[]>([])
@@ -84,17 +61,6 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
   const [error, setError] = useState(supabaseReady ? '' : 'Supabase is not configured.')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState('')
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [genre, setGenre] = useState('Hip-Hop')
-  const [mood, setMood] = useState('')
-  const [bpm, setBpm] = useState('')
-  const [price, setPrice] = useState('29')
-  const [preview, setPreview] = useState<File | null>(null)
-  const [master, setMaster] = useState<File | null>(null)
-  const [artwork, setArtwork] = useState<File | null>(null)
-  const [rights, setRights] = useState(false)
   const [reviewReplies, setReviewReplies] = useState<Record<string, string>>({})
 
   const load = useCallback(async (accessToken: string) => {
@@ -124,98 +90,6 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
         }
       })
   }, [creationOnly, load, supabaseReady])
-
-  const onSubmit = async (e: FormEvent, submit: boolean) => {
-    e.preventDefault()
-    if (!token) return
-    setBusy(true)
-    setError('')
-    setMessage('')
-    try {
-      if (!title.trim()) throw new Error('Title is required.')
-      if (!rights) throw new Error('Confirm rights before saving.')
-      if (submit && !preview) throw new Error('Upload a tagged preview before submitting.')
-      for (const file of [preview, master].filter((value): value is File => Boolean(value))) {
-        const check = isAllowedAudioFile(file)
-        if (!check.ok) throw new Error(check.error)
-      }
-      if (artwork) {
-        const artworkError = validateArtwork(artwork)
-        if (artworkError) throw new Error(artworkError)
-      }
-
-      let previewPath: string | null = null
-      let masterPath: string | null = null
-      let artworkPath: string | null = null
-
-      if (preview || master || artwork) {
-        const prepRes = await fetch('/api/beats/upload/prepare', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            preview: preview
-              ? { name: preview.name, type: preview.type, size: preview.size }
-              : undefined,
-            master: master
-              ? { name: master.name, type: master.type, size: master.size }
-              : undefined,
-            artwork: artwork
-              ? { name: artwork.name, type: artwork.type, size: artwork.size }
-              : undefined,
-          }),
-        })
-        const prep = await prepRes.json().catch(() => ({}))
-        if (!prepRes.ok) throw new Error(prep.error || 'Could not prepare uploads.')
-        const slots = prep.slots || {}
-        if (preview && slots.preview) previewPath = await putSigned(slots.preview, preview, percent => setUploadProgress(`Tagged preview · ${preview.name}: ${percent}%`))
-        if (master && slots.master) masterPath = await putSigned(slots.master, master, percent => setUploadProgress(`Master · ${master.name}: ${percent}%`))
-        if (artwork && slots.artwork) artworkPath = await putSigned(slots.artwork, artwork, percent => setUploadProgress(`Cover · ${artwork.name}: ${percent}%`))
-      }
-
-      setUploadProgress(submit ? 'Submitting for editorial review…' : 'Saving draft…')
-      const createRes = await fetch('/api/beats', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          title,
-          description,
-          genre,
-          mood,
-          bpm: bpm ? Number(bpm) : null,
-          priceUsd: Number(price),
-          rightsConfirmed: true,
-          previewPath,
-          masterPath,
-          artworkPath,
-          submit,
-        }),
-      })
-      const created = await createRes.json().catch(() => ({}))
-      if (!createRes.ok) throw new Error(created.error || 'Could not save beat.')
-
-      setMessage(submit ? 'Beat submitted for editorial review.' : 'Beat draft saved.')
-      setTitle('')
-      setDescription('')
-      setMood('')
-      setBpm('')
-      setPreview(null)
-      setMaster(null)
-      setArtwork(null)
-      setRights(false)
-      if (!creationOnly) await load(token)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Save failed.')
-    } finally {
-      setBusy(false)
-      setUploadProgress('')
-    }
-  }
 
   const submitExisting = async (beatId: string) => {
     if (!token) return
@@ -264,6 +138,8 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
       setBusy(false)
     }
   }
+
+  if (creationOnly) return <BeatCrateUploadForm />
 
   if (error && !token) {
     return (
@@ -356,119 +232,7 @@ export default function MyBeatStore({ creationOnly = false }: { creationOnly?: b
       {error && <p className="mt-4 rounded-xl bg-red-500/10 p-4 text-red-200">{error}</p>}
       {message && <p className="mt-4 rounded-xl bg-brand/10 p-4 text-brand">{message}</p>}
 
-      <form
-        className="mt-6 grid gap-3 rounded-2xl border border-white/10 bg-black/10 p-5 sm:p-6"
-        onSubmit={(e) => void onSubmit(e, false)}
-      >
-        <h3 className="text-xl">Add beat</h3>
-        <input
-          required
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Beat title"
-          className={field}
-        />
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Description"
-          className={`${field} min-h-24`}
-        />
-        <div className="grid gap-3 sm:grid-cols-3">
-          <input
-            value={genre}
-            onChange={(e) => setGenre(e.target.value)}
-            placeholder="Genre"
-            className={field}
-          />
-          <input
-            value={mood}
-            onChange={(e) => setMood(e.target.value)}
-            placeholder="Mood tags"
-            className={field}
-          />
-          <input
-            value={bpm}
-            onChange={(e) => setBpm(e.target.value)}
-            placeholder="BPM"
-            inputMode="numeric"
-            className={field}
-          />
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="text-sm text-text-secondary">
-            Standard lease price (USD)
-            <input
-              required
-              type="number"
-              min={1}
-              step="0.01"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className={`${field} mt-1`}
-            />
-          </label>
-          <label className="text-sm text-text-secondary">
-            Tagged preview audio *
-            <input
-              type="file"
-              accept="audio/*,.mp3,.wav,.m4a,.ogg"
-              onChange={(e) => setPreview(e.target.files?.[0] || null)}
-              className={`${field} mt-1`}
-            />
-          </label>
-          <label className="text-sm text-text-secondary">
-            WAV / master (private)
-            <input
-              type="file"
-              accept="audio/*,.mp3,.wav,.m4a,.ogg"
-              onChange={(e) => setMaster(e.target.files?.[0] || null)}
-              className={`${field} mt-1`}
-            />
-          </label>
-          <label className="text-sm text-text-secondary">
-            Cover art
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
-              onChange={(e) => setArtwork(e.target.files?.[0] || null)}
-              className={`${field} mt-1`}
-            />
-          </label>
-        </div>
-        <label className="flex items-start gap-3 text-sm text-text-secondary">
-          <input
-            type="checkbox"
-            checked={rights}
-            onChange={(e) => setRights(e.target.checked)}
-            className="mt-1"
-          />
-          I own or control the rights to this beat and can offer a Standard lease on BVS.
-        </label>
-        <div className="flex flex-wrap gap-3">
-          <button
-            type="submit"
-            disabled={busy}
-            className="rounded-full border border-white/20 px-5 py-2 disabled:opacity-40"
-          >
-            {busy ? 'Saving…' : 'Save draft'}
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={(e) => void onSubmit(e as unknown as FormEvent, true)}
-            className="bvs-studio-accent-button rounded-full border px-5 py-2 font-semibold disabled:opacity-40"
-          >
-            {busy ? 'Working…' : 'Submit for review'}
-          </button>
-        </div>
-        {uploadProgress && <p className="bvs-studio-accent-label text-sm" role="status">{uploadProgress}</p>}
-        <p className="text-xs text-text-secondary">
-          Licence tiers: Standard Lease ($15–$50), Premium Lease ($50–$200), Exclusive ($200–$2000).
-          Your listed price is authoritative at checkout (server-resolved from your licence option).
-          Full versioned terms are snapshotted at purchase so later template edits do not change what the buyer accepted.
-        </p>
-      </form>
+      {!managementOnly && <BeatCrateUploadForm onSubmitted={() => { if (token && !creationOnly) void load(token) }} />}
 
       {!creationOnly && <div className="mt-8 space-y-3">
         <h3 className="text-xl">Your beats</h3>

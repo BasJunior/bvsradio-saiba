@@ -161,8 +161,8 @@ export async function POST(request: Request) {
     const replacePackId = cleanText(body.replacePackId, 64) || null
     if (!title) return NextResponse.json({ error: 'Pack title is required.' }, { status: 400 })
     if (submit && body.rightsConfirmed !== true) return NextResponse.json({ error: 'Confirm rights before submitting.' }, { status: 400 })
-    if (items.length < 2 || items.length > 20) {
-      return NextResponse.json({ error: 'A beat pack must contain 2 to 20 beats.' }, { status: 400 })
+    if (items.length < 2 || items.length > 25) {
+      return NextResponse.json({ error: 'A beat pack must contain 2 to 25 beats.' }, { status: 400 })
     }
 
     if (replacePackId) {
