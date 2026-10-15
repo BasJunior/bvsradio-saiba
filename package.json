@@ -64,7 +64,7 @@
     "test:creator-growth": "node --experimental-strip-types scripts/creator-growth-tests.mjs && node scripts/creator-promotion-tests.mjs",
     "test:daily-platform-activity": "node scripts/daily-platform-activity-tests.mjs",
     "test:library-beat-resume": "node scripts/library-beat-resume-tests.mjs",
-    "test:beat-crate": "node scripts/beat-crate-tests.mjs && node scripts/beat-crate-client-tests.mjs"
+    "test:beat-crate": "node scripts/beat-crate-tests.mjs && NODE_ENV=test node scripts/beat-crate-client-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",

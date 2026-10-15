@@ -20,10 +20,12 @@ Challenge UI shows approved/pending/needs-attention counts, profile-photo status
 
 ## Activation order
 
-1. Approve and apply `supabase/migrations/20261015211020_beat_crate_launch_readiness.sql` to production project `rdwwyolrxahimcgpkzzy`. Automatic approval review blocked this action in the implementing session; it has NOT been applied.
+1. Approve and apply `supabase/migrations/20261015211020_beat_crate_launch_readiness.sql` to production project `rdwwyolrxahimcgpkzzy`. Applied with explicit user approval on 15 October 2026 at approximately 21:31 UTC. RLS and service-only permissions were verified.
 2. Verify RLS on both new tables and confirm `anon` and `authenticated` have no table access or finalization-function execution. The function is SECURITY INVOKER and service-role-only.
 3. Deploy this reviewed commit to Vercel project `bvsradio-saiba` (`prj_jdey5oej8CGAROfdPK2f5frnq2YK`), team `team_HYmWoU6WIW4IHXmh3mrB10Oq`, production domain `bvsradio.com`.
 4. On a producer test account, use mobile Safari and desktop: sign in from beat entry, select 25 distinct original audio files, add covers, save Instagram, confirm rights, submit, and verify exactly 25 beats and licences with pending review.
 5. Repeat with an interrupted transfer and reload; the completed files must show received, and missing files must request reselection. Verify the editorial handle and approval progress.
 
-Authenticated production upload and real-device network interruption have not been verified because activation is blocked on the migration. No production load-capacity claim is made. If rollout fails, revert the application commit; retain the additive tables and saved drafts rather than deleting producer work.
+Authenticated production upload and real-device network interruption remain unverified. No production load-capacity claim is made. If rollout fails, revert the application commit; retain the additive tables and saved drafts rather than deleting producer work.
+
+The React flow test explicitly uses NODE_ENV=test because production React does not expose the act test helper; application builds retain production mode.
