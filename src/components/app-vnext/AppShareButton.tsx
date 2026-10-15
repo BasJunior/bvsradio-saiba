@@ -156,6 +156,30 @@ function shareActionFor(kicker: string) {
 
 export type ShareCardFormat = "story" | "square";
 
+type InstagramStoryResult = { requestId: string; success: boolean; error?: string };
+
+function instagramStoryBridge() {
+  return (window as Window & {
+    webkit?: { messageHandlers?: { bvsInstagramStory?: { postMessage: (payload: object) => void } } };
+  }).webkit?.messageHandlers?.bvsInstagramStory;
+}
+
+function fileBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result !== "string" || !result.startsWith("data:image/png;base64,")) {
+        reject(new Error("Could not read the Story card."));
+        return;
+      }
+      resolve(result.slice("data:image/png;base64,".length));
+    };
+    reader.onerror = () => reject(new Error("Could not read the Story card."));
+    reader.readAsDataURL(file);
+  });
+}
+
 export async function makeStoryCard({ title, text, kicker, image, format = "story" }: { title: string; text?: string; kicker: string; image?: string; format?: ShareCardFormat }) {
   if (typeof document === "undefined") return null;
   await document.fonts.ready;
@@ -303,6 +327,7 @@ export default function AppShareButton({
   const [message, setMessage] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const close = () => { setOpen(false); onDismiss?.(); };
+  const canShareInstagramStory = typeof window !== "undefined" && Boolean(instagramStoryBridge());
 
   useEffect(() => {
     if (!open) return;
@@ -371,6 +396,41 @@ export default function AppShareButton({
     onDismiss?.();
   };
 
+  const shareInstagramStory = async () => {
+    const bridge = instagramStoryBridge();
+    if (sharing || !bridge || !card || card.format !== "story") return;
+    setSharing(true);
+    setMessage("");
+    try {
+      const imageBase64 = await fileBase64(card.file);
+      const requestId = crypto.randomUUID();
+      const result = await new Promise<InstagramStoryResult>((resolve, reject) => {
+        const timeout = window.setTimeout(() => {
+          window.removeEventListener("bvs:instagram-story-result", onResult);
+          reject(new Error("Instagram did not respond. Try again or use Share card."));
+        }, 10000);
+        const onResult = (event: Event) => {
+          const detail = (event as CustomEvent<InstagramStoryResult>).detail;
+          if (detail?.requestId !== requestId) return;
+          window.clearTimeout(timeout);
+          window.removeEventListener("bvs:instagram-story-result", onResult);
+          resolve(detail);
+        };
+        window.addEventListener("bvs:instagram-story-result", onResult);
+        try { bridge.postMessage({ requestId, imageBase64, url }); }
+        catch (error) {
+          window.clearTimeout(timeout);
+          window.removeEventListener("bvs:instagram-story-result", onResult);
+          reject(error);
+        }
+      });
+      if (!result.success) throw new Error(result.error || "Instagram could not open the Story editor.");
+      close();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Instagram could not open the Story editor.");
+    } finally { setSharing(false); }
+  };
+
   const save = () => {
     if (!card || card.format !== format) return;
     const anchor = document.createElement("a");
@@ -418,14 +478,15 @@ export default function AppShareButton({
           {card && card.format === format ? <img src={card.preview} alt={`${title} ${format} share card`} className={`max-h-[40dvh] w-auto rounded-2xl ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`} /> : <p className="self-center text-sm text-white/50">Preparing your card…</p>}
         </div>
         <p className="mt-2 text-center text-[11px] text-white/45">The preview is the exact image you’ll share.</p>
-        <button type="button" disabled={sharing || !card || card.format !== format} onClick={() => void share()} className="mt-4 min-h-12 w-full rounded-2xl bg-[#bbff65] px-5 text-sm font-bold text-black shadow-[0_0_32px_rgba(187,255,101,.12)] disabled:opacity-50">{sharing ? "Opening share…" : "Share card…"}</button>
+        {canShareInstagramStory && format === "story" ? <button type="button" disabled={sharing || !card || card.format !== "story"} onClick={() => void shareInstagramStory()} className="mt-4 min-h-12 w-full rounded-2xl bg-[#bbff65] px-5 text-sm font-bold text-black shadow-[0_0_32px_rgba(187,255,101,.12)] disabled:opacity-50">{sharing ? "Opening Instagram…" : "Share to Instagram Story"}</button> : null}
+        <button type="button" disabled={sharing || !card || card.format !== format} onClick={() => void share()} className={`${canShareInstagramStory && format === "story" ? "mt-2 border border-white/10 bg-white/[.025] text-white" : "mt-4 bg-[#bbff65] text-black shadow-[0_0_32px_rgba(187,255,101,.12)]"} min-h-12 w-full rounded-2xl px-5 text-sm font-bold disabled:opacity-50`}>{sharing ? "Opening share…" : "Share card…"}</button>
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button type="button" disabled={!card || card.format !== format} onClick={save} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm disabled:opacity-40">Save image</button>
           <button type="button" onClick={() => void copy()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">{copied ? "Link copied ✓" : format === "story" ? "Copy Story link" : "Copy link"}</button>
           <a href={`https://wa.me/?text=${encodeURIComponent(`${title}\n${text || kicker}\n${url}`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[.025] text-sm">WhatsApp link ↗</a>
           <button type="button" onClick={() => void shareLink()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">Share link…</button>
         </div>
-        <p className="mt-3 text-center text-xs leading-5 text-white/50">For an Instagram Story: share or save the card, copy the Story link, then add a Link sticker in Instagram. The sticker opens this exact title on BVS.</p>
+        <p className="mt-3 text-center text-xs leading-5 text-white/50">{canShareInstagramStory && format === "story" ? "Instagram controls whether the BVS link appears on your Story. Check the Story preview before posting." : "For an Instagram Story: share or save the card, copy the Story link, then add a Link sticker in Instagram. The sticker opens this exact title on BVS."}</p>
         {message ? <p role="status" className="mt-3 rounded-2xl border border-white/[.06] bg-white/[.04] p-3 text-sm text-white/75">{message}</p> : null}
       </div>
     </div>,
