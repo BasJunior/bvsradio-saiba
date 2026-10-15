@@ -2,12 +2,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAccountJson } from '@/lib/use-account-json';
-import { creatorGrowth, promotionCaption, type GrowthMetrics, type GrowthRole, type PromotionItem } from '@/lib/creator-growth';
+import { creatorGrowth, marketplaceGrowthOpportunity, promotionCaption, type GrowthMetrics, type GrowthRole, type MarketplaceGrowthMetrics, type PromotionItem } from '@/lib/creator-growth';
 import { canonicalBvsShareUrl } from '@/lib/share-url';
 import AppShareButton from '@/components/app-vnext/AppShareButton';
 
 type Data = ReturnType<typeof creatorGrowth> & {
   role: GrowthRole; canProduce: boolean; canMakeMusic: boolean; metrics: GrowthMetrics; items: PromotionItem[];
+  marketplace?: MarketplaceGrowthMetrics;
   badges: Array<{ badge_id: string; earned_at: string }>;
   results: Array<{ id: string; kind: string; itemId: string; visits: number; plays: number; saves: number }>;
 };
@@ -31,6 +32,10 @@ export default function CreatorGrowthPanel({ owner, token, surface }: { owner: s
     return () => window.clearTimeout(timer);
   }, [data, owner]);
   const base = surface ? `/app/${surface}/studio` : '/creator/studio';
+  const marketplaceOpportunity = data
+    ? marketplaceGrowthOpportunity(data.marketplace || { storefrontStatus: null, publishedProducts: 0 }, data.role)
+    : null;
+  const marketplaceHref = surface ? `${base}/marketplace` : marketplaceOpportunity?.href || '/creator/marketplace';
   const items = data?.items.filter(item => item.kind === (data.role === 'producer' ? 'beat' : data.role === 'show_creator' ? 'episode' : 'track')) || [];
   return <section id="grow" data-growth-role={data?.role} aria-label="Grow with BVS" className="mt-8 rounded-3xl border border-white/10 bg-white/[.025] p-5 sm:p-6">
     <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-sm font-semibold text-brand">Grow with BVS</p><h2 className="mt-2 text-3xl font-semibold">{data?.current?.name || (data ? 'Your next chapter' : 'Your next goal')}</h2></div>
@@ -46,6 +51,13 @@ export default function CreatorGrowthPanel({ owner, token, surface }: { owner: s
         <div className="mt-5 grid gap-3 sm:grid-cols-2">{data.current.goals.map(goal => <div key={goal.id} data-growth-goal={goal.id} data-complete={goal.done} className="bvs-growth-goal rounded-2xl border border-white/10 p-4"><div className="flex items-center justify-between gap-2"><p className="text-sm font-semibold">{goal.label}</p><span className={goal.done ? 'text-brand' : 'text-text-secondary'} aria-label={goal.done ? 'Complete' : 'In progress'}>{goal.done ? '★' : '☆'}</span></div><p className="mt-2 text-sm text-text-secondary">{goal.value}/{goal.target}</p><progress value={Math.min(goal.value,goal.target)} max={goal.target} aria-label={goal.label} className="mt-3 h-2 w-full accent-brand" /></div>)}</div>
         <p className="mt-3 text-sm leading-6 text-text-secondary">Listener goals count distinct signed-in listeners with validated streams. Your own listening, pending streams and refunded sales do not count. Consistency means publishing in different calendar weeks.</p>
       </> : <p className="mt-4 text-sm leading-6 text-text-secondary">You completed Breakthrough. International opportunities will need verified BVS and distributed-release performance, plus a separate selection process.</p>}
+      {marketplaceOpportunity ? <aside aria-label="Marketplace opportunity" className="mt-5 rounded-2xl border border-brand/20 bg-brand/[.04] p-4">
+        <p className="text-xs font-semibold uppercase tracking-[.14em] text-brand">Optional Marketplace opportunity</p>
+        <h3 className="mt-2 text-lg font-semibold">{marketplaceOpportunity.label}</h3>
+        <p className="mt-2 text-sm leading-6 text-text-secondary">{marketplaceOpportunity.detail}</p>
+        {marketplaceOpportunity.target > 1 ? <><progress value={Math.min(marketplaceOpportunity.value, marketplaceOpportunity.target)} max={marketplaceOpportunity.target} aria-label={marketplaceOpportunity.label} className="mt-3 h-2 w-full accent-brand" /><p className="mt-2 text-xs text-text-secondary">{marketplaceOpportunity.value}/{marketplaceOpportunity.target} live products</p></> : null}
+        <div className="mt-3 flex flex-wrap items-center gap-3"><Link href={marketplaceHref} className="inline-flex min-h-11 items-center text-sm text-brand">View Marketplace workspace →</Link><span className="text-xs text-text-secondary">This does not affect your stars or level.</span></div>
+      </aside> : null}
       <div className="mt-5 flex flex-wrap gap-2" aria-label="Your achievements">{data.badges.map(badge => <span key={badge.badge_id} className="rounded-full border border-brand/25 bg-brand/[.06] px-3 py-2 text-sm text-brand">★ {badgeNames[badge.badge_id] || badge.badge_id}</span>)}</div>
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3"><h3 className="text-xl font-semibold">Promote your work</h3><Link href={surface ? `${base}/${data.role === 'producer' ? 'beats' : 'release'}` : `${base}/manage`} className="inline-flex min-h-11 items-center text-sm text-brand">Open catalogue</Link></div>
       {!items.length ? <p className="mt-3 text-sm leading-6 text-text-secondary">Promotion tools unlock when your content is approved and published. Finish your submission or check its review status.</p> : <div className="mt-4 space-y-3">{items.map(item => <PromotionRow key={item.id} item={item} token={token} result={data.results.find(result => result.kind === item.kind && result.itemId === item.id)} onPrepared={reload} />)}</div>}
