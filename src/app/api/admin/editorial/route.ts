@@ -436,6 +436,12 @@ export async function PATCH(request: Request) {
         requirePermission('manage_rotation')
         const trackId = String(body.trackId || '')
         const enabled = Boolean(body.enabled)
+        if (enabled) {
+          const tracks = await requiredJson(`tracks?id=eq.${encodeURIComponent(trackId)}&select=duration_sec&limit=1`)
+          if (!(Number(tracks[0]?.duration_sec) > 0)) {
+            return NextResponse.json({ error: 'Verify the audio duration before adding this track to rotation.' }, { status: 409 })
+          }
+        }
         const result = await patchTable('tracks', `id=eq.${encodeURIComponent(trackId)}&editorial_status=eq.approved&is_public=eq.true`, { in_rotation: enabled, rotation_added_at: enabled ? new Date().toISOString() : null })
         if (!result?.length) return NextResponse.json({ error: 'Publish an approved track before adding it to rotation.' }, { status: 409 })
         await audit(identity.user.id, enabled ? 'rotation_added' : 'rotation_removed', 'track', trackId)
@@ -761,6 +767,13 @@ export async function PATCH(request: Request) {
         }
 
         const selectedMemberIds = new Set(selectedReleaseTrackIds)
+        const selectedTrackIds = members.filter((member) => selectedMemberIds.has(member.id) && member.track_id).map((member) => member.track_id)
+        if (selectedTrackIds.length) {
+          const tracks = await requiredJson(`tracks?id=in.(${selectedTrackIds.join(',')})&select=id,duration_sec`) as Array<{ id: string; duration_sec?: number | null }>
+          if (selectedTrackIds.some((id) => !tracks.some((track) => track.id === id && Number(track.duration_sec) > 0))) {
+            return NextResponse.json({ error: 'Verify audio durations before adding these tracks to rotation.' }, { status: 409 })
+          }
+        }
         const now = new Date().toISOString()
         await Promise.all(members.filter((member) => member.track_id).map((member) => {
           const enabled = selectedMemberIds.has(member.id)
@@ -800,6 +813,12 @@ export async function PATCH(request: Request) {
         const releaseId = String(body.releaseId || '')
         const enabled = Boolean(body.enabled)
         if (!releaseId) return NextResponse.json({ error: 'releaseId required.' }, { status: 400 })
+        if (enabled) {
+          const tracks = await requiredJson(`tracks?release_id=eq.${encodeURIComponent(releaseId)}&editorial_status=eq.approved&select=duration_sec`) as Array<{ duration_sec?: number | null }>
+          if (!tracks.length || tracks.some((track) => !(Number(track.duration_sec) > 0))) {
+            return NextResponse.json({ error: 'Verify audio durations before adding this release to rotation.' }, { status: 409 })
+          }
+        }
         const result = await patchTable(
           'releases',
           `id=eq.${encodeURIComponent(releaseId)}&editorial_status=eq.approved&is_public=eq.true`,
