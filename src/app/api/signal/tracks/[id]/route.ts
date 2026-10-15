@@ -13,9 +13,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const signal = await getPublicTrackSignal(id, bearerToken(request));
-  if (!signal) return NextResponse.json({ error: "Track unavailable." }, { status: 404 });
-  return NextResponse.json(signal, { headers: { "Cache-Control": "private, no-store" } });
+  const result = await getPublicTrackSignal(id, bearerToken(request));
+  return NextResponse.json(result.body, { status: result.status, headers: { "Cache-Control": "private, no-store", Vary: "Authorization" } });
 }
 
 export async function POST(
@@ -25,5 +24,5 @@ export async function POST(
   const { id } = await params;
   const body = (await request.json().catch(() => ({}))) as { source?: string };
   const result = await catchPublicTrack(request, id, String(body.source || "unknown"));
-  return NextResponse.json(result.body, { status: result.status, headers: { "Cache-Control": "private, no-store" } });
+  return NextResponse.json(result.body, { status: result.status, headers: { "Cache-Control": "private, no-store", Vary: "Authorization" } });
 }

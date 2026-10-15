@@ -1,163 +1,55 @@
-import { NextResponse } from "next/server";
-import { audit, can, editorialIdentity, editorialUrl, serviceHeaders } from "@/lib/editorial-server";
-import { deriveBvsSignal } from "@/lib/bvs-signal";
 
+import { NextResponse } from "next/server";
+import { can, editorialIdentity } from "@/lib/editorial-server";
+import { presentBvsSignal, type BvsSignalSnapshot } from "@/lib/bvs-signal";
+import { signalRpc } from "@/lib/bvs-signal-server";
+import { UUID } from "@/lib/creator-promotion-server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-type SignalConfig = {
-  track_id: string;
-  first_spin_scheduled_at?: string | null;
-  editorial_reason?: string | null;
-  breakout_at?: string | null;
-  updated_at?: string | null;
-};
-
-type SpinProof = {
-  track_id: string;
-  first_spin_played_at?: string | null;
-};
-
-type Track = {
-  id: string;
-  title: string;
-  artist_name: string;
-  artwork_url?: string | null;
-  in_rotation?: boolean | null;
-  rotation_added_at?: string | null;
-  created_at?: string | null;
-};
-
-async function optionalRows<T>(path: string): Promise<{ ok: boolean; rows: T[] }> {
-  const response = await fetch(editorialUrl(path), { headers: serviceHeaders, cache: "no-store" }).catch(() => null);
-  if (!response?.ok) return { ok: false, rows: [] };
-  const data = await response.json().catch(() => []);
-  return { ok: true, rows: Array.isArray(data) ? (data as T[]) : [] };
+const json = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store", Vary: "Authorization" } });
+async function identityFor(request: Request) {
+  const identity = await editorialIdentity(request);
+  return identity && can(identity, "manage_rotation") ? identity : null;
 }
-
-async function currentConfig(trackId: string) {
-  const result = await optionalRows<SignalConfig>(
-    `track_signal_config?track_id=eq.${encodeURIComponent(trackId)}&select=track_id,first_spin_scheduled_at,editorial_reason,breakout_at,updated_at&limit=1`,
-  );
-  return { available: result.ok, config: result.rows[0] || null };
-}
-
-async function upsertConfig(config: SignalConfig & { updated_by: string }) {
-  const response = await fetch(editorialUrl("track_signal_config?on_conflict=track_id"), {
-    method: "POST",
-    headers: { ...serviceHeaders, Prefer: "resolution=merge-duplicates,return=representation" },
-    body: JSON.stringify({ ...config, updated_at: new Date().toISOString() }),
-  }).catch(() => null);
-  if (!response?.ok) return null;
-  const rows = await response.json().catch(() => []);
-  return Array.isArray(rows) ? rows[0] || null : null;
-}
-
-async function requireSignalTrack(trackId: string) {
-  const result = await optionalRows<Track>(
-    `tracks?id=eq.${encodeURIComponent(trackId)}&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,artwork_url,in_rotation,rotation_added_at,created_at&limit=1`,
-  );
-  return result.rows[0] || null;
-}
-
 export async function GET(request: Request) {
-  const identity = await editorialIdentity(request);
-  if (!identity) return NextResponse.json({ error: "Editorial access required." }, { status: 401 });
-  if (!can(identity, "manage_rotation")) return NextResponse.json({ error: "Rotation access required." }, { status: 403 });
-
-  const tracksResult = await optionalRows<Track>(
-    "tracks?is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,artwork_url,in_rotation,rotation_added_at,created_at&order=rotation_added_at.desc.nullslast,created_at.desc&limit=200",
-  );
-  if (!tracksResult.ok) return NextResponse.json({ error: "Could not load published tracks." }, { status: 500 });
-
-  const [configResult, spinsResult, catchesResult] = await Promise.all([
-    optionalRows<SignalConfig>("track_signal_config?select=track_id,first_spin_scheduled_at,editorial_reason,breakout_at,updated_at&limit=1000"),
-    optionalRows<SpinProof>("track_first_station_spin?select=track_id,first_spin_played_at&limit=1000"),
-    optionalRows<{ track_id: string }>("track_catches?select=track_id&limit=10000"),
-  ]);
-  const configs = new Map(configResult.rows.map((row) => [row.track_id, row]));
-  const spins = new Map(spinsResult.rows.map((row) => [row.track_id, row]));
-  const catches = new Map<string, number>();
-  for (const row of catchesResult.rows) catches.set(row.track_id, (catches.get(row.track_id) || 0) + 1);
-
-  const tracks = tracksResult.rows.map((track) => {
-    const config = configs.get(track.id);
-    const spin = spins.get(track.id);
-    const catchCount = catches.get(track.id) || 0;
-    const state = deriveBvsSignal({
-      firstSpinScheduledAt: config?.first_spin_scheduled_at,
-      firstSpinPlayedAt: spin?.first_spin_played_at,
-      breakoutAt: config?.breakout_at,
-      inRotation: Boolean(track.in_rotation),
-      catchCount,
-    });
-    return {
-      ...track,
-      signal: {
-        available: configResult.ok && spinsResult.ok && catchesResult.ok,
-        status: state.status,
-        label: state.label,
-        first_spin_scheduled_at: config?.first_spin_scheduled_at || null,
-        first_spin_played_at: spin?.first_spin_played_at || null,
-        editorial_reason: config?.editorial_reason || null,
-        breakout_at: config?.breakout_at || null,
-        catch_count: catchCount,
-      },
-    };
+  if (!await identityFor(request)) return json({ error: "Rotation access required." }, 403);
+  const rawPage = Number(new URL(request.url).searchParams.get("page") || 0);
+  const page = Number.isSafeInteger(rawPage) && rawPage >= 0 ? Math.min(rawPage, 10000) : 0;
+  type DeskTrack = { id: string; signal: BvsSignalSnapshot };
+  const result = await signalRpc<DeskTrack[]>("bvs_signal_desk", { p_limit: 50, p_offset: page * 50 });
+  if (!result.ok || !Array.isArray(result.data)) return json({ error: "Signal unavailable. Check the trusted-journey migration." }, 503);
+  return json({
+    tracks: result.data.map(track => ({ ...track, signal: presentBvsSignal(track.signal) })),
+    page, hasMore: result.data.length === 50, signalAvailable: true,
+    playoutConfigured: Boolean(process.env.BVS_PLAYOUT_STATION_ID && (process.env.BVS_PLAYOUT_SIGNING_SECRET || "").length >= 32),
   });
-
-  return NextResponse.json({ tracks, signalAvailable: configResult.ok && spinsResult.ok && catchesResult.ok });
 }
-
 export async function PATCH(request: Request) {
-  const identity = await editorialIdentity(request);
-  if (!identity) return NextResponse.json({ error: "Editorial access required." }, { status: 401 });
-  if (!can(identity, "manage_rotation")) return NextResponse.json({ error: "Rotation access required." }, { status: 403 });
-
-  const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const action = String(body.action || "");
-  const trackId = String(body.trackId || "").trim();
-  if (!trackId) return NextResponse.json({ error: "trackId required." }, { status: 400 });
-  const track = await requireSignalTrack(trackId);
-  if (!track) return NextResponse.json({ error: "Publish an approved track before managing Signal." }, { status: 409 });
-
-  const existing = await currentConfig(trackId);
-  if (!existing.available) return NextResponse.json({ error: "Run the BVS Signal database migration first." }, { status: 503 });
-
-  if (action === "set_track_signal") {
-    const rawScheduled = String(body.firstSpinScheduledAt || "").trim();
-    const parsedScheduled = rawScheduled ? Date.parse(rawScheduled) : Number.NaN;
-    if (rawScheduled && !Number.isFinite(parsedScheduled)) {
-      return NextResponse.json({ error: "First Spin schedule is invalid." }, { status: 400 });
+  const identity = await identityFor(request);
+  if (!identity) return json({ error: "Rotation access required." }, 403);
+  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body || typeof body.trackId !== "string" || !UUID.test(body.trackId) ||
+      !Number.isSafeInteger(body.revision) || Number(body.revision) < 0) return json({ error: "Track and current revision required. Refresh the desk." }, 400);
+  if (body.action !== "set_track_signal" && body.action !== "set_track_breakout") return json({ error: "Unknown Signal action." }, 400);
+  if (body.action === "set_track_breakout" && typeof body.breakout !== "boolean") return json({ error: "Breakout must be true or false." }, 400);
+  let scheduled: string | null = null;
+  let reason: string | null = null;
+  if (body.action === "set_track_signal") {
+    if (typeof body.editorialReason !== "string" || body.editorialReason.length > 500) return json({ error: "Selection reason must be at most 500 characters." }, 400);
+    reason = body.editorialReason.trim() || null;
+    if (body.firstSpinScheduledAt != null && body.firstSpinScheduledAt !== "") {
+      if (typeof body.firstSpinScheduledAt !== "string" || !Number.isFinite(Date.parse(body.firstSpinScheduledAt))) return json({ error: "Invalid First Spin time." }, 400);
+      scheduled = new Date(body.firstSpinScheduledAt).toISOString();
+      if (!reason) return json({ error: "Explain why BVS selected this track before scheduling." }, 400);
     }
-    const firstSpinScheduledAt = rawScheduled ? new Date(parsedScheduled).toISOString() : null;
-    const editorialReason = String(body.editorialReason || "").trim().slice(0, 500) || null;
-    const saved = await upsertConfig({
-      track_id: trackId,
-      first_spin_scheduled_at: firstSpinScheduledAt,
-      editorial_reason: editorialReason,
-      breakout_at: existing.config?.breakout_at || null,
-      updated_by: identity.user.id,
-    });
-    if (!saved) return NextResponse.json({ error: "Could not save BVS Signal." }, { status: 500 });
-    await audit(identity.user.id, "track_signal_updated", "track", trackId, { firstSpinScheduledAt, editorialReason });
-    return NextResponse.json({ signal: saved });
   }
-
-  if (action === "set_track_breakout") {
-    const breakout = Boolean(body.breakout);
-    const breakoutAt = breakout ? new Date().toISOString() : null;
-    const saved = await upsertConfig({
-      track_id: trackId,
-      first_spin_scheduled_at: existing.config?.first_spin_scheduled_at || null,
-      editorial_reason: existing.config?.editorial_reason || null,
-      breakout_at: breakoutAt,
-      updated_by: identity.user.id,
-    });
-    if (!saved) return NextResponse.json({ error: "Could not update Breakout state." }, { status: 500 });
-    await audit(identity.user.id, breakout ? "track_signal_breakout" : "track_signal_breakout_removed", "track", trackId);
-    return NextResponse.json({ signal: saved });
-  }
-
-  return NextResponse.json({ error: "Unknown Signal action." }, { status: 400 });
+  const result = await signalRpc("bvs_edit_signal", {
+    p_track_id: body.trackId, p_actor_id: identity.user.id, p_revision: body.revision,
+    p_action: body.action, p_scheduled_at: scheduled, p_reason: reason, p_breakout: body.breakout === true,
+  });
+  if (!result.ok) return json({ error: result.conflict
+    ? "Another editor changed this track. Refresh, review their changes, then save again."
+    : "Could not save. Breakout needs a selection reason and verified broadcast; check service availability." }, result.conflict ? 409 : 503);
+  if (!result.data) return json({ error: "Track is no longer public and approved." }, 409);
+  return json({ signal: result.data });
 }

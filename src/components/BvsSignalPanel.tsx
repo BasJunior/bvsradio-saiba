@@ -1,172 +1,84 @@
+
 "use client";
-
-import { useCallback, useEffect, useState } from "react";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase";
-import { trackEvent } from "@/lib/analytics";
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-type SignalPayload = {
-  available: boolean;
-  trackId: string;
-  status: "selected" | "first_spin_scheduled" | "first_spin" | "in_rotation" | "rising" | "breakout";
-  label: string;
-  inRotation: boolean;
-  rotationAddedAt: string | null;
-  firstSpinScheduledAt: string | null;
-  firstSpinPlayedAt: string | null;
-  editorialReason: string | null;
-  breakoutAt: string | null;
-  catchCount: number;
-  caught: boolean;
-  caughtAt: string | null;
-  catchPosition: number | null;
-};
-
-type SignalSource = "station" | "song" | "share" | "explore";
+import { useBvsSignal } from "@/lib/use-bvs-signal";
+import { signalJourney } from "@/lib/bvs-signal";
+import { openBvsShareCard } from "@/lib/share-card";
 
 function displayTime(value: string) {
   const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  return Number.isFinite(date.getTime()) ? new Intl.DateTimeFormat(undefined, {
+    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZoneName: "short",
+  }).format(date) : "";
 }
-
-function statusTone(status: SignalPayload["status"]) {
-  if (status === "breakout") return "border-brand/35 bg-brand/10 text-brand";
-  if (status === "rising") return "border-emerald-300/25 bg-emerald-300/[.08] text-emerald-200";
-  if (status === "first_spin" || status === "first_spin_scheduled") return "border-violet-300/25 bg-violet-300/[.08] text-violet-200";
-  return "border-white/15 bg-white/[.05] text-white/75";
-}
-
-export default function BvsSignalPanel({
-  trackId,
-  source,
-  compact = false,
-}: {
-  trackId?: string;
-  source: SignalSource;
-  compact?: boolean;
+export default function BvsSignalPanel({ trackId, source, compact = false, title = "This track", artist = "", artwork }: {
+  trackId?: string; source: "station" | "song" | "share" | "explore"; compact?: boolean;
+  title?: string; artist?: string; artwork?: string;
 }) {
-  const [signal, setSignal] = useState<SignalPayload | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState("");
-
-  const load = useCallback(async () => {
-    if (!trackId || !UUID.test(trackId)) {
-      setSignal(null);
-      return;
-    }
-    let token = "";
-    if (isSupabaseConfigured()) {
-      const { data } = await createClient().auth.getSession();
-      token = data.session?.access_token || "";
-    }
-    const response = await fetch(`/api/signal/tracks/${encodeURIComponent(trackId)}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      cache: "no-store",
-    }).catch(() => null);
-    if (!response?.ok) {
-      setSignal(null);
-      return;
-    }
-    setSignal((await response.json()) as SignalPayload);
-  }, [trackId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const catchTrack = async () => {
-    if (!trackId || busy || !isSupabaseConfigured()) return;
-    const supabase = createClient();
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    if (!token) {
-      const next = `${window.location.pathname}${window.location.search}`;
-      window.location.assign(`/auth/login?next=${encodeURIComponent(next)}`);
-      return;
-    }
-    setBusy(true);
-    setMessage("");
-    try {
-      const response = await fetch(`/api/signal/tracks/${encodeURIComponent(trackId)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ source }),
-      });
-      const payload = await response.json().catch(() => ({})) as SignalPayload & { error?: string };
-      if (!response.ok) throw new Error(payload.error || "Could not Catch this track.");
-      setSignal(payload);
-      trackEvent("engagement_action_open", {
-        action: "bvs_signal_catch",
-        track_id: trackId,
-        source,
-        catch_position: payload.catchPosition,
-      });
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Could not Catch this track.");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!signal) return null;
-
-  const caughtLabel = signal.catchPosition ? `Caught #${signal.catchPosition}` : "Caught on BVS";
-  const scheduledIsFuture = Boolean(signal.firstSpinScheduledAt && new Date(signal.firstSpinScheduledAt).getTime() > Date.now());
-
+  const { signal, error, busy, catchTrack, retry } = useBvsSignal(trackId, source);
+  if (!signal) return error ? (
+    <div className="mt-4 border-t border-white/10 pt-3 text-xs text-white/50" role="status">
+      {error} <button type="button" onClick={retry} className="min-h-11 px-3 text-brand">Try again</button>
+    </div>
+  ) : null;
+  const journey = signalJourney(signal);
+  const early = Boolean(signal.caughtAt && signal.firstSpinPlayedAt &&
+    Date.parse(signal.caughtAt) < Date.parse(signal.firstSpinPlayedAt));
+  const share = () => openBvsShareCard({
+    title, text: `I caught ${title}${artist ? ` by ${artist}` : ""} on BVS. Discovery receipt #${signal.catchPosition}.`,
+    path: `/song/${signal.trackId}`, image: artwork, kicker: "Caught on BVS",
+  });
   return (
-    <section
-      data-bvs-signal={signal.status}
-      className={compact
-        ? "mt-4 border-t border-white/10 pt-4"
-        : "mt-6 rounded-2xl border border-white/10 bg-white/[.025] p-4 sm:p-5"}
-      aria-label="BVS Signal"
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[.15em] ${statusTone(signal.status)}`}>
-          {signal.label}
-        </span>
-        {signal.available && signal.catchCount > 0 ? (
-          <span className="text-xs text-white/50">{signal.catchCount} {signal.catchCount === 1 ? "Catch" : "Catches"}</span>
-        ) : null}
+    <section aria-label="BVS Signal" data-bvs-signal={signal.status}
+      className={compact ? "mt-4 border-t border-white/10 pt-4" : "mt-6 border border-white/15 bg-white/[.025] p-4 sm:p-5"}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-white/45">BVS Signal</p>
+          <p className={`mt-1 text-sm font-semibold ${signal.status === "breakout" ? "text-brand" : "text-white/90"}`}>{signal.label}</p>
+        </div>
+        {signal.catchCount > 0 && <p className="text-xs text-white/55">{signal.catchCount} {signal.catchCount === 1 ? "listener caught this" : "listeners caught this"}</p>}
       </div>
-
-      {signal.firstSpinPlayedAt ? (
-        <p className="mt-2 text-xs text-white/55">First played on BVS · {displayTime(signal.firstSpinPlayedAt)}</p>
-      ) : scheduledIsFuture && signal.firstSpinScheduledAt ? (
-        <p className="mt-2 text-xs text-white/55">First Spin scheduled · {displayTime(signal.firstSpinScheduledAt)}</p>
-      ) : null}
-
-      {!compact && signal.editorialReason ? (
-        <div className="mt-4 border-l-2 border-brand/50 pl-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Why BVS selected it</p>
-          <p className="mt-1.5 text-sm leading-relaxed text-white/78">{signal.editorialReason}</p>
+      {signal.status === "rising" && <p className="mt-2 text-xs text-white/55">{signal.recentCatchCount} Catches in the last 7 days · more than the previous 7.</p>}
+      {!signal.firstSpinPlayedAt && signal.firstSpinScheduledAt && (
+        <p className="mt-2 text-xs text-white/55">
+          {signal.status === "awaiting_first_spin" ? "Scheduled time passed. Broadcast confirmation is still pending." : `Scheduled · ${displayTime(signal.firstSpinScheduledAt)}`}
+        </p>
+      )}
+      {signal.editorialReason && (
+        <div className="mt-4 border-l-2 border-brand/70 pl-3">
+          <p className="text-[10px] uppercase tracking-[.15em] text-brand">Why BVS selected it</p>
+          <p className="mt-1 text-sm leading-relaxed text-white/80">{signal.editorialReason}</p>
         </div>
-      ) : null}
-
-      {signal.available ? (
-        <div className="mt-3 flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={catchTrack}
-            disabled={busy || signal.caught}
-            className={`min-h-11 rounded-full border px-4 text-sm font-semibold transition ${signal.caught ? "border-brand/30 bg-brand/10 text-brand" : "border-white/18 bg-white/[.04] text-white hover:border-brand/45 hover:text-brand"} disabled:cursor-default`}
-          >
-            {signal.caught ? `◎ ${caughtLabel}` : busy ? "Catching…" : "◎ Catch"}
-          </button>
-          <span className="max-w-md text-xs leading-relaxed text-white/45">
-            {signal.caught ? "Your discovery time is saved." : "Mark that you discovered this here. Catch never decides editorial rotation."}
-          </span>
-        </div>
-      ) : null}
-      {message ? <p className="mt-2 text-xs text-red-200">{message}</p> : null}
+      )}
+      {!compact && journey.length > 0 && (
+        <details className="mt-4 border-t border-white/10 pt-3">
+          <summary className="min-h-11 cursor-pointer text-xs text-white/60">This song’s BVS journey</summary>
+          <ol className="space-y-3 border-l border-white/15 pl-4">
+            {journey.map(item => <li key={item.label} className="text-xs">
+              <p className="font-medium text-white/80">{item.label}</p>
+              <time dateTime={item.at} className="mt-1 block text-white/45">{displayTime(item.at)}</time>
+            </li>)}
+          </ol>
+        </details>
+      )}
+      <div className={`mt-4 border p-3 ${signal.caught ? "border-brand/30 bg-brand/[.06]" : "border-white/10"}`}>
+        {signal.caught ? (
+          <div aria-live="polite">
+            <p className="text-sm font-semibold text-brand">{early ? "You caught this before its First Spin." : "You caught this on BVS."}</p>
+            <p className="mt-1 text-xs text-white/55">Discovery receipt #{signal.catchPosition} · {signal.caughtAt ? displayTime(signal.caughtAt) : ""}</p>
+            <button type="button" onClick={share} className="mt-2 min-h-11 border border-brand/40 px-4 text-xs font-semibold text-brand">Share your discovery ↗</button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => void catchTrack()} disabled={busy} aria-busy={busy}
+              className="min-h-11 border border-brand/50 bg-brand px-4 text-sm font-semibold text-black disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
+              {busy ? "Saving your Catch…" : "Catch this track"}
+            </button>
+            <p className="max-w-xs text-xs leading-relaxed text-white/55">Found something? Keep a dated receipt that you discovered it here.</p>
+          </div>
+        )}
+      </div>
+      {!compact && <p className="mt-3 text-[11px] leading-relaxed text-white/40">Catch saves your discovery, not a vote. Rotation and BVS Breakout stay editorial.</p>}
+      {error && <p role="alert" className="mt-3 text-xs text-red-200">{error}</p>}
     </section>
   );
 }

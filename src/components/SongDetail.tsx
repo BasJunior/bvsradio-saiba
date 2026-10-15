@@ -27,7 +27,7 @@ export default async function SongDetail({ id, surface }: { id: string; surface?
       {image ? <Image src={image} alt={`${track.title} artwork`} width={640} height={640} unoptimized className="aspect-square w-full rounded-3xl object-cover" /> : null}
       <div><h1 className="text-4xl font-semibold">{track.title}</h1><p className="mt-3 text-xl text-text-secondary">{track.artist_name}</p>
         <div className="mt-6"><AppCreatorPlayback creatorId={track.user_id} creatorName={track.artist_name || 'Artist'} startTrackId={track.id} surface={surface} compact /></div>
-        <BvsSignalPanel trackId={track.id} source="song" />
+        <BvsSignalPanel trackId={track.id} source="song" title={track.title} artist={track.artist_name} artwork={image || undefined} />
         <div className="mt-5"><LibraryAction item={{ id: track.id, kind: 'track', title: track.title, subtitle: track.artist_name || '', href: surface ? `/app/${surface}${path}` : path, image: image || undefined }} /></div>
         {track.profiles?.username ? <Link className="mt-5 inline-flex min-h-11 items-center text-brand" href={surface ? `/app/${surface}/creator/${encodeURIComponent(track.user_id)}` : `/artist/${encodeURIComponent(track.profiles.username)}`}>Follow {track.artist_name}</Link> : null}
         <div className="mt-4"><AppShareButton title={track.title} text="Hear where this track is moving on BVS Radio" path={path} image={image || undefined} kicker="BVS Signal" /></div>

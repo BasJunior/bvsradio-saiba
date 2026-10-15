@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "test:bvs-signal": "node scripts/bvs-signal-tests.mjs",
     "prebuild": "node scripts/newsletter-tests.mjs",
     "prevercel-build": "node scripts/newsletter-tests.mjs",
     "dev": "next dev",
@@ -78,14 +79,15 @@
     "next": "16.3.0",
     "nodemailer": "^9.0.3",
     "paynow": "^2.2.2",
+    "pdf-lib": "^1.17.1",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "stripe": "^22.3.1",
-    "pdf-lib": "^1.17.1"
+    "stripe": "^22.3.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.2",
+    "@electric-sql/pglite": "0.5.10",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/nodemailer": "^8.0.1",
@@ -93,6 +95,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "react-test-renderer": "19.2.4",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
