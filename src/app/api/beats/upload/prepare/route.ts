@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import {
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
     }
 
     const uid = identity.user.id
-    const ts = Date.now()
+    const ts = `${Date.now()}-${randomUUID()}`
     const slots: Record<string, { path: string; signedUrl: string; contentType: string } | null> = {
       preview: null,
       master: null,
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
         }
       }
       if (kind === 'artwork') {
+        if (!Number.isFinite(file.size) || Number(file.size) <= 0 || Number(file.size) > 8 * 1024 * 1024) throw new Error('Cover art must be 8MB or smaller.')
         const ext = extOf(name)
         if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
           throw new Error('Artwork must be JPG, PNG, or WebP.')

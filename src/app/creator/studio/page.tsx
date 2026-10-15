@@ -7,6 +7,7 @@ import { isSupabaseConfigured } from "@/lib/supabase";
 import { useBrowserSession } from "@/lib/use-browser-session";
 import { useAccountJson } from "@/lib/use-account-json";
 import { trackEvent } from "@/lib/analytics";
+import BeatCrateChallenge from '@/components/BeatCrateChallenge';
 import CreatorGrowthPanel from '@/components/CreatorGrowthPanel';
 
 type WorkspaceData = {
@@ -175,6 +176,8 @@ export default function CreatorStudioHome() {
       <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary sm:text-base">
         Start with the job. BVS will bring in rights, marketplace, distribution and money tools only when they are needed.
       </p>
+
+      {producer && <BeatCrateChallenge />}
 
       {artist && uploadStatus.active.length > 0 && <SubmissionStatusPanel sessions={uploadStatus.active} />}
       {artist && <ArtistActivationPanel activity={activity} />}

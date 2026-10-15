@@ -169,7 +169,7 @@ export default function LoginPage() {
 
         <div className="mt-8 text-center text-sm text-text-secondary">
           Don&apos;t have an account?{' '}
-          <Link href="/auth/signup" className="text-brand hover:underline">
+          <Link href={`/auth/signup?next=${encodeURIComponent(nextPath)}`} className="text-brand hover:underline">
             Join for free
           </Link>
         </div>
