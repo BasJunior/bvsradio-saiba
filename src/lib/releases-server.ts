@@ -145,6 +145,22 @@ export async function materializeReleaseTracks(releaseId: string, options: {
   );
   if (!members?.length) return { ok: false, error: "Release has no tracks" };
 
+  // Use the completed probe for this exact audio, never the display duration label.
+  const probes = await restGet<Array<{ release_track_id: string; source_path: string; duration_seconds: number }>>(
+    `media_processing_jobs?release_id=eq.${releaseId}&status=eq.ready&duration_seconds=gt.0&select=release_track_id,source_path,duration_seconds&order=completed_at.desc`,
+  );
+  const durations = new Map<string, number>();
+  for (const member of members) {
+    const fileUrl = member.file_url || fileUrlForPath(member.audio_path);
+    const probe = probes?.find((row) => row.release_track_id === member.id
+      && fileUrlForPath(row.source_path) === fileUrl);
+    const duration = Number(probe?.duration_seconds);
+    if (Number.isFinite(duration) && duration > 0) durations.set(member.id, duration);
+  }
+  if (options.publish && members.some((member) => !durations.has(member.id))) {
+    return { ok: false, error: "Audio duration verification is incomplete. Run media preflight before publication." };
+  }
+
   const now = new Date().toISOString();
   const status = options.publish ? "approved" : release.editorial_status;
   const selectedRotationIds = options.rotationReleaseTrackIds
@@ -177,6 +193,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         genre: release.genre || "Other",
         description: release.description || "",
         file_url: fileUrl,
+        duration_sec: durations.get(member.id) ?? null,
         artwork_url: release.cover_url || "/assets/images/default-artwork.jpg",
         editorial_status: status,
         is_public: options.publish,
@@ -197,6 +214,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         description: release.description || "",
         artist_name: release.artist_name,
         file_url: fileUrl,
+        duration_sec: durations.get(member.id) ?? null,
         artwork_url: release.cover_url || "/assets/images/default-artwork.jpg",
         is_public: options.publish,
         is_featured: false,

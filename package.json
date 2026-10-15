@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "test:bvs-signal": "node scripts/bvs-signal-tests.mjs",
-    "test:bvs-station-host": "node scripts/bvs-station-host-tests.mjs",
+    "test:bvs-station-host": "node scripts/bvs-station-host-tests.mjs && node scripts/release-duration-tests.mjs",
     "prebuild": "node scripts/newsletter-tests.mjs",
     "prevercel-build": "node scripts/newsletter-tests.mjs",
     "dev": "next dev",
