@@ -66,7 +66,7 @@
     "test:library-beat-resume": "node scripts/library-beat-resume-tests.mjs",
     "test:beat-crate": "node scripts/beat-crate-tests.mjs && NODE_ENV=test node scripts/beat-crate-client-tests.mjs",
     "test:shared-listen-gaps": "NODE_ENV=test node scripts/shared-listen-gap-tests.mjs",
-    "test:bvs-trending": "node scripts/bvs-trending-tests.mjs && node scripts/bvs-trending-ui-tests.mjs"
+    "test:bvs-trending": "node scripts/bvs-trending-tests.mjs && node scripts/bvs-trending-ui-tests.mjs && node scripts/bvs-trending-rpc-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",
