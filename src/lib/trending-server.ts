@@ -9,7 +9,9 @@ export async function trendingRpc<T>(name: string, body: Record<string, unknown>
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.NEXT_PUBLIC_SUPABASE_URL) throw new Error('Trending storage unavailable')
   const response = await fetch(creatorUrl(`rpc/${name}`), { method: 'POST', headers: creatorHeaders, body: JSON.stringify(body), cache: 'no-store', signal: AbortSignal.timeout(15000) })
   if (!response.ok) throw new Error('Trending storage unavailable')
-  return response.json() as Promise<T>
+  // PostgREST returns an empty response for void RPCs (event writes and refresh).
+  const responseBody = await response.text()
+  return (responseBody ? JSON.parse(responseBody) : null) as T
 }
 export async function trendingIdentity(request: Request) {
   const secret = process.env.TRENDING_IDENTITY_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
