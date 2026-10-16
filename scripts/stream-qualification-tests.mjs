@@ -13,6 +13,11 @@ for (let second = 1; second <= QUALIFIED_STREAM_SECONDS; second += 1) {
 assert.equal(steady.qualified, true);
 assert.equal(steady.listenedSeconds, QUALIFIED_STREAM_SECONDS);
 
+for (let second = 31; second <= 160; second++) accumulateListening(steady, second, second * 1000);
+assert.equal(steady.listenedSeconds, 160, 'media progress continues after qualification for completion tracking');
+accumulateListening(steady, 200, 161_000);
+assert.equal(steady.listenedSeconds, 160, 'seeking after qualification cannot manufacture completion');
+
 const seek = createQualificationState("00000000-0000-4000-8000-000000000002", 0, 0);
 accumulateListening(seek, 1, 1000);
 accumulateListening(seek, 31, 2000);

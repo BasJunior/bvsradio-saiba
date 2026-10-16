@@ -87,6 +87,9 @@ export function setAnalyticsIdentity(userId: string, token: string) {
   authenticatedIdentity = cleanUserId && cleanToken ? { userId: cleanUserId, token: cleanToken } : null
 }
 
+/** Verified by the server on every request; never use the cached user id as authorization. */
+export function getAnalyticsAccessToken() { return authenticatedIdentity?.token || '' }
+
 export function clearAnalyticsIdentity() {
   authenticatedIdentity = null
 }

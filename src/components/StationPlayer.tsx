@@ -1,5 +1,6 @@
 "use client";
 
+import { trendingEvent, trendingPlayback } from "@/lib/trending-client";
 import Link from "next/link";
 import { Capacitor } from "@capacitor/core";
 import { runRemoteTrackCommand } from "@/lib/remote-music-transport";
@@ -195,7 +196,16 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const startedAt = useRef<number | null>(null);
   const countedStarts = useRef(new Set<string>());
   const qualification = useRef<StreamQualificationState | null>(null);
+  useEffect(() => {
+    const saved = (event: Event) => {
+      const detail = (event as CustomEvent<{ section?: string; saved?: boolean; item?: { kind?: string; id?: string } }>).detail;
+      if (detail?.section === 'favourites' && detail.saved && detail.item?.kind === 'track' && detail.item.id) void trendingEvent('save', detail.item.id);
+    };
+    window.addEventListener('bvs:library-mutation', saved);
+    return () => window.removeEventListener('bvs:library-mutation', saved);
+  }, []);
   const qualificationSent = useRef(false);
+  const trendingState = useRef({ playId: "", complete: false });
   const playbackAttempt = useRef<PlaybackAttemptState | null>(null);
   const lastPlaybackFailure = useRef<{ at: number; stage: string; trackId: string; attemptId: string | null } | null>(null);
   const pendingPlaybackTrigger = useRef<{ trigger: string; intent: boolean } | null>(null);
@@ -439,7 +449,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   useEffect(() => {
     qualificationSent.current = false;
     qualification.current =
-      flowV2Flags.qualifiedStreams && current?.id
+      current?.id
         ? createQualificationState(current.id, audio.current?.currentTime || 0)
         : null;
   }, [current?.id, current?.src]);
@@ -908,7 +918,6 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     }
 
     if (
-      !flowV2Flags.qualifiedStreams ||
       !current?.id ||
       !isPlaying ||
       el.paused ||
@@ -925,10 +934,20 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       return;
     }
 
+    if (trendingState.current.playId !== state.playInstanceId) {
+      trendingState.current = { playId: state.playInstanceId, complete: false };
+      trendingPlayback("start", state.trackId, state.playInstanceId);
+    }
     accumulateListening(state, el.currentTime || 0);
+    if (state.qualified && !qualificationSent.current) trendingPlayback("listen", state.trackId, state.playInstanceId, state.listenedSeconds);
+    if (state.qualified && !trendingState.current.complete && Number.isFinite(el.duration) && el.duration >= 30 && state.listenedSeconds >= Math.ceil(el.duration * 0.8)) {
+      trendingState.current.complete = true;
+      trendingPlayback("complete", state.trackId, state.playInstanceId, state.listenedSeconds);
+    }
     if (!state.qualified || qualificationSent.current) return;
 
     qualificationSent.current = true;
+    if (!flowV2Flags.qualifiedStreams) return;
     const source = modeRef.current === "station" ? "station" : "ondemand";
     trackEvent("stream_qualified_30s", {
       ...(playbackAttempt.current?.trackKey === trackKey(current) ? { attempt_id: playbackAttempt.current.id } : {}),
@@ -1561,6 +1580,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     if (repeatRef.current === "one") {
       const el = audio.current;
       if (el) {
+        qualification.current = null;
+        qualificationSent.current = false;
         el.currentTime = 0;
         window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
         void el.play().catch(() => setPlaying(false));

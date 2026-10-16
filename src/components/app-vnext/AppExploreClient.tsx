@@ -1,5 +1,7 @@
 "use client";
 
+import TrendingBadge from "@/components/TrendingBadge";
+import TrendingBoard from "@/components/TrendingBoard";
 import { matchesDiscoveryQuery } from "@/lib/discovery-search";
 
 import DiscoverMoreActions from "@/components/DiscoverMoreActions";
@@ -228,6 +230,7 @@ export default function AppExploreClient({
         </div>
       ) : null}
 
+      {discoveryHome ? <TrendingBoard surface={surface} preview /> : null}
       <details className="bvs-discover-filters mt-2"><summary className="min-h-11 cursor-pointer text-sm text-white/60">Filters{kind !== "all" ? ` · ${kind}` : ""}{genre ? ` · ${genre}` : ""}</summary>
       <div className="mt-2 flex gap-2 overflow-x-auto pb-2" aria-label="Filter discovery results">
         {(["all", "music", "artists", "producers", "beats"] as ExploreKind[]).map((value) => (
@@ -292,6 +295,7 @@ export default function AppExploreClient({
                       <p className="truncate text-sm text-white/48">{item.artist}</p>
                       <p className="mt-1 text-xs text-white/30">{item.genre || item.project || "BVS release"}</p>
                     </button>
+                    <TrendingBadge trackId={item.id} surface={surface} />
                     <DiscoverMoreActions title={item.title}>
                       <button type="button" aria-pressed={isLiked} aria-label={`${isLiked ? "Unsave" : "Save"} ${item.title}`} onClick={() => toggleLike(item)} className={`min-h-9 rounded-full border px-3 text-xs font-semibold ${isLiked ? "border-brand/35 bg-brand/10 text-brand" : "border-white/12 text-white/45"}`}>{isLiked ? "♥ Saved" : "♡ Save"}</button>
                       <AppPlaylistPicker trackId={item.id} compact />

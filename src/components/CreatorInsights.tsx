@@ -1,5 +1,6 @@
 'use client'
 
+import CreatorTrending from '@/components/CreatorTrending'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type MetricKey = 'plays' | 'saves' | 'minutes'
@@ -97,6 +98,7 @@ export default function CreatorInsights({ token }: { token: string }) {
 
   return (
     <section className="mt-10 rounded-3xl border border-white/10 bg-white/[.015] p-5 sm:p-7">
+      <CreatorTrending token={token} />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[.22em] text-brand">Your insights</p>
