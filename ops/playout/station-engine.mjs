@@ -5,6 +5,7 @@ import {
   ffmpegIcecastArgs,
   icecastSourceUrl,
   localAudioFile,
+  hostSessionAt,
   planExtension,
   redactStreamUrl,
   safeError,
@@ -48,6 +49,9 @@ async function settleOnAir(item, ctx) {
     await ctx.store.finish(ctx.programmeId, item.id);
     return;
   }
+  const beat = setInterval(() => {
+    ctx.store.heartbeat(ctx.programmeId, ctx.engineId, ctx.output.mode, ctx.output.livePublicUrl || null).catch(() => {});
+  }, 5000);
   try {
     await ctx.output.untilEnd({ ...item, durationSeconds: remainingMs / 1000 }, abortContext(item, ctx));
     await ctx.store.finish(ctx.programmeId, item.id);
@@ -55,6 +59,8 @@ async function settleOnAir(item, ctx) {
     if (item.kind === "music") await ctx.store.finish(ctx.programmeId, item.id);
     else await ctx.store.fail(ctx.programmeId, item.id, error?.code === "HOST_STOPPED" ? "host_stopped" : "playback_failed");
     ctx.log(safeError(error));
+  } finally {
+    clearInterval(beat);
   }
 }
 
@@ -71,10 +77,20 @@ function abortContext(item, ctx) {
 
 async function playScheduled(item, ctx) {
   if (item.kind !== "music") {
-    const control = (await ctx.store.view(ctx.programmeId)).control || {};
+    const view = await ctx.store.view(ctx.programmeId);
+    const control = view.control || {};
     if (!control.enabled || control.hostStopped) {
       await ctx.store.fail(ctx.programmeId, item.id, control.hostStopped ? "host_stopped" : "host_disabled");
       return;
+    }
+    // A queued link may cross a show boundary before it reaches playback.
+    if (item.kind === "ai_voice" && control.roster?.length) {
+      const session = hostSessionAt(ctx.now(), control.roster);
+      const segment = (view.segments || []).find((row) => row.id === item.segmentId);
+      if (!segment || segment.voiceId !== session.voiceId) {
+        await ctx.store.fail(ctx.programmeId, item.id, "host_session_changed");
+        return;
+      }
     }
   }
   try {
@@ -105,6 +121,9 @@ async function playScheduled(item, ctx) {
       startedAt: begun.startedAt,
     }, ctx.log);
   }
+  const beat = setInterval(() => {
+    ctx.store.heartbeat(ctx.programmeId, ctx.engineId, ctx.output.mode, ctx.output.livePublicUrl || null).catch(() => {});
+  }, 5000);
   try {
     await ctx.output.untilEnd(item, abortContext(item, ctx));
     await ctx.store.finish(ctx.programmeId, item.id);
@@ -112,6 +131,8 @@ async function playScheduled(item, ctx) {
     if (item.kind === "music") await ctx.store.finish(ctx.programmeId, item.id);
     else await ctx.store.fail(ctx.programmeId, item.id, error?.code === "HOST_STOPPED" ? "host_stopped" : "playback_failed");
     ctx.log(safeError(error));
+  } finally {
+    clearInterval(beat);
   }
 }
 
@@ -131,6 +152,7 @@ export async function runStationEngine({
   if (!store || !output) throw new Error("Playout engine needs a store and an output.");
   const ctx = { programmeId, engineId, store, output, reporter, now, sleep, signal, log };
   let steps = 0;
+  let lastMusicTrackId = null;
   while (steps < maxSteps && !signal?.aborted) {
     steps += 1;
     try {
@@ -141,12 +163,19 @@ export async function runStationEngine({
     let view = await store.view(programmeId);
     for (const pending of view?.undelivered || []) await deliver(reporter, store, programmeId, pending, log);
     if (view?.onAir?.id) {
+      if (view.onAir.kind === "music") lastMusicTrackId = view.onAir.trackId;
       await settleOnAir(view.onAir, ctx);
       continue;
     }
     if ((view?.scheduled || []).length < 2) {
+      const queueTail = (view?.scheduled || []).filter((item) => item.kind === "music").at(-1)?.trackId || lastMusicTrackId;
+      const rotation = view?.rotation || [];
+      const nextIndex = rotation.findIndex((track) => track.id === queueTail) + 1;
+      const orderedRotation = nextIndex > 0
+        ? [...rotation.slice(nextIndex), ...rotation.slice(0, nextIndex)]
+        : rotation;
       const items = planExtension({
-        rotation: view?.rotation || [],
+        rotation: orderedRotation,
         segments: view?.segments || [],
         pronunciations: view?.pronunciations || [],
         musicSinceVoice: view?.musicSinceVoice,
@@ -155,7 +184,7 @@ export async function runStationEngine({
         settings: view?.control,
         usedSegmentIds: view?.usedSegmentIds || [],
         horizon,
-        now: now(),
+        now: new Date(now().getTime() + (view?.scheduled || []).reduce((sum, item) => sum + Math.max(0, Number(item.durationSeconds) || 0) * 1000, 0)),
       });
       if (items.length) await store.plan(programmeId, items);
       view = await store.view(programmeId);
@@ -166,13 +195,47 @@ export async function runStationEngine({
       continue;
     }
     await playScheduled(nextItem, ctx);
+    if (nextItem.kind === "music") lastMusicTrackId = nextItem.trackId;
   }
   return { steps };
 }
 
+let databasePool = null;
+
+function restCredentials(env) {
+  const url = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const key = env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!url || !key || url.includes("SENSITIVE") || key.includes("SENSITIVE")) return null;
+  return { url, key };
+}
+
+async function databaseCall(env, sql, params) {
+  if (!databasePool) {
+    const { default: Pg } = await import("pg");
+    databasePool = new Pg.Pool({ connectionString: env.DATABASE_URL, max: 2, ssl: { rejectUnauthorized: false } });
+  }
+  const result = await databasePool.query(sql, params);
+  const payload = result.rows[0]?.payload;
+  if (payload == null) throw new Error("Station store rejected a playout call.");
+  return payload;
+}
+
 export function supabaseStore(env = process.env, fetchImpl = fetch) {
-  const url = env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = env.SUPABASE_SERVICE_ROLE_KEY;
+  const rest = restCredentials(env);
+  if (!rest && env.DATABASE_URL) {
+    return {
+      view: (programmeId) => databaseCall(env, "select public.bvs_station_engine_view($1::text) as payload", [programmeId]),
+      plan: (programmeId, items) => databaseCall(env, "select public.bvs_station_plan_items($1::text, $2::jsonb) as payload", [programmeId, JSON.stringify(items)]),
+      begin: (programmeId, itemId, engineId, startedAt) => databaseCall(env, "select public.bvs_station_begin_item($1::text, $2::uuid, $3::text, $4::timestamptz) as payload", [programmeId, itemId, engineId, startedAt]),
+      finish: (programmeId, itemId) => databaseCall(env, "select public.bvs_station_finish_item($1::text, $2::uuid) as payload", [programmeId, itemId]),
+      fail: (programmeId, itemId, reason) => databaseCall(env, "select public.bvs_station_fail_item($1::text, $2::uuid, $3::text) as payload", [programmeId, itemId, reason]),
+      heartbeat: (programmeId, engineId, outputMode, liveUrl) => databaseCall(env, "select public.bvs_station_heartbeat($1::text, $2::text, $3::text, $4::text) as payload", [programmeId, engineId, outputMode, liveUrl]),
+      markDelivered: (programmeId, eventId) => databaseCall(env, "select public.bvs_station_mark_delivered($1::text, $2::text) as payload", [programmeId, eventId]),
+      noteDelivery: (programmeId, eventId, error) => databaseCall(env, "select public.bvs_station_note_delivery($1::text, $2::text, $3::text) as payload", [programmeId, eventId, error]),
+    };
+  }
+  const url = rest?.url;
+  const key = rest?.key;
   if (!url || !key) throw new Error("Supabase service role is not configured.");
   async function rpc(name, body) {
     const response = await fetchImpl(`${String(url).replace(/\/$/, "")}/rest/v1/rpc/${name}`, {
@@ -211,6 +274,7 @@ function wait(ms, signal) {
 async function clockUntilEnd(item, ctx, sleep) {
   let left = Math.max(0, Number(item.durationSeconds) * 1000);
   while (left > 0) {
+    const stepStarted = Date.now();
     if (ctx?.signal?.aborted && item.kind !== "music") {
       const error = new Error("Host stopped");
       error.code = "HOST_STOPPED";
@@ -223,7 +287,8 @@ async function clockUntilEnd(item, ctx, sleep) {
     }
     const slice = Math.min(200, left);
     await sleep(slice);
-    left -= slice;
+    // Include control-query latency so spoken links do not acquire silent gaps.
+    left -= Math.max(slice, Date.now() - stepStarted);
   }
 }
 

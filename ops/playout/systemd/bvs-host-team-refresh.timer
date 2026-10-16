@@ -1,0 +1,10 @@
+[Unit]
+Description=Keep BVS host voice supply fresh every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitInactiveSec=5min
+Unit=bvs-host-team-refresh.service
+
+[Install]
+WantedBy=timers.target

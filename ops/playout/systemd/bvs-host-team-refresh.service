@@ -1,0 +1,15 @@
+[Unit]
+Description=Replenish BVS Lily and George programme voices
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=admin
+Group=admin
+WorkingDirectory=/opt/bvsradio
+ExecStart=/usr/bin/flock -n /home/admin/.openclaw/ops/bvs-host-team-refresh.lock /usr/bin/node /opt/bvsradio/ops/playout/host-team-refresh.mjs --limit 6
+Nice=10
+TimeoutStartSec=12min
+StandardOutput=journal
+StandardError=journal

@@ -47,9 +47,10 @@ const rotation = ["Ama", "Bantu", "Chiedza", "Dudu"].map((artist, index) => ({
   title: `Song ${index + 1}`, artistName: artist, audioRef: `https://media.example/${index}.mp3`, durationSeconds: 180,
 }));
 const segment = {
-  id: "00000000-0000-4000-8000-000000000099", status: "approved", kind: "ai_voice", trackId: rotation[0].id,
+  voiceId: host.hostSessionAt(new Date()).voiceId,
+  id: "00000000-0000-4000-8000-000000000099", status: "approved", kind: "ai_voice", trackId: rotation[3].id,
   audioKey: "station-host/00000000-0000-4000-8000-000000000099.mp3", durationSeconds: 10,
-  factFingerprint: host.factFingerprint(host.factSheet(rotation[0])),
+  factFingerprint: host.factFingerprint(host.factSheet(rotation[3])),
 };
 const planned = host.planExtension({ rotation, segments: [segment], settings: { enabled: true, minGap: 3, maxGap: 5 }, horizon: 8 });
 assert.deepEqual(planned.map((item) => item.kind).slice(0, 5), ["music", "music", "music", "ai_voice", "music"]);
@@ -78,7 +79,7 @@ const clip = (track, id, voiceId) => ({
   audioKey: `station-host/${id}.mp3`, durationSeconds: 10,
   factFingerprint: host.factFingerprint(host.factSheet(track)),
 });
-const ara = clip(rotation[0], "00000000-0000-4000-8000-000000000091", "ara");
+const ara = clip(rotation[3], "00000000-0000-4000-8000-000000000091", "ara");
 const rex = clip(rotation[1], "00000000-0000-4000-8000-000000000092", "rex");
 const eveningPlan = host.planExtension({
   rotation, segments: [ara, rex], settings: { enabled: true, minGap: 3, maxGap: 3 }, horizon: 8, now: "2026-10-16T14:30:00.000Z",
@@ -89,9 +90,9 @@ assert.equal(eveningVoices.every((item) => item.segmentId === rex.id && item.tit
 const kept = host.planExtension({
   rotation, segments: [ara], settings: { enabled: true, minGap: 3, maxGap: 3 }, horizon: 6, now: "2026-10-16T14:30:00.000Z",
 });
-assert.equal(kept.find((item) => item.kind !== "music")?.title, "Ara");
+assert.equal(kept.some((item) => item.kind !== "music"), false);
 const handover = host.planExtension({
-  rotation, segments: [ara, rex], settings: { enabled: true, minGap: 3, maxGap: 3 }, horizon: 8, now: "2026-10-16T13:50:00.000Z",
+  rotation, segments: [ara, rex], settings: { enabled: true, minGap: 3, maxGap: 3 }, horizon: 12, now: "2026-10-16T13:50:00.000Z",
 });
 const handoverTitles = handover.filter((item) => item.kind !== "music").map((item) => item.title);
 assert.equal(handoverTitles.includes("Ara"), true);
@@ -261,7 +262,7 @@ try {
   const items = host.planExtension({
     rotation: view.rotation, segments: view.segments, pronunciations: view.pronunciations,
     musicSinceVoice: view.musicSinceVoice, voiceSlotIndex: view.voiceSlotIndex, nextPosition: view.nextPosition,
-    settings: view.control, usedSegmentIds: view.usedSegmentIds, horizon: 6,
+    settings: view.control, usedSegmentIds: view.usedSegmentIds, horizon: 9, now: "2026-10-16T08:00:00.000Z",
   });
   assert.equal(items.some((item) => item.segmentId === segmentId), true);
   const desk = await rpc("bvs_station_desk", ["bvs-main"]);

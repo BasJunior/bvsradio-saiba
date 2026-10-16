@@ -281,6 +281,7 @@ export function planExtension({
   const tracks = (rotation || []).filter((track) => track?.id && track.title && track.artistName && track.audioRef);
   if (!tracks.length || horizon <= 0) return [];
   const items = [];
+  const playedTracks = new Set();
   let since = Number(musicSinceVoice) || 0;
   let slot = Number(voiceSlotIndex) || 0;
   let position = Number(nextPosition) || 1;
@@ -289,28 +290,35 @@ export function planExtension({
   let guard = 0;
   let at = asDate(now);
   const matchesTrack = (pool, entry) => {
-    const candidate = pool.find((segment) => segment.trackId === entry.id && !used.has(segment.id));
-    if (!candidate) return null;
     const entryFacts = factSheet(entry, pronunciationFor(entry.artistName, pronunciations));
-    if (!entryFacts || candidate.factFingerprint !== factFingerprint(entryFacts)) return null;
-    return candidate;
+    if (!entryFacts) return null;
+    const fingerprint = factFingerprint(entryFacts);
+    return pool.find((segment) => segment.trackId === entry.id && !used.has(segment.id)
+      && segment.factFingerprint === fingerprint) || null;
   };
   while (plannedMusic < horizon && guard < horizon * 4) {
     guard += 1;
     let track = tracks[cursor % tracks.length];
     cursor += 1;
+    if (playedTracks.size === tracks.length) playedTracks.clear();
+    if (playedTracks.has(track.id)) continue;
     if (items.at(-1)?.trackId === track.id && tracks.length > 1) continue;
-    if (enabled && since >= voiceGap(slot, settings)) {
-      const session = hostSessionAt(at, roster);
+    const session = hostSessionAt(at, roster);
+    // Overnight links leave longer uninterrupted music runs.
+    const gapSettings = session.voiceId === "eleven-lily-night"
+      ? { ...settings, minGap: 5, maxGap: 5 }
+      : settings;
+    if (enabled && since >= voiceGap(slot, gapSettings)) {
       const floating = usable.find((entry) => !entry.trackId && entry.kind !== "ai_voice" && !used.has(entry.id));
       const sessionClips = usable.filter((entry) => entry.kind === "ai_voice" && entry.voiceId === session.voiceId);
-      const aiPool = sessionClips.length ? sessionClips : usable.filter((entry) => entry.kind === "ai_voice");
+      // Missing speech means music, never an out-of-show voice.
+      const aiPool = sessionClips;
       const tied = usable.filter((entry) => entry.kind !== "ai_voice" && entry.trackId);
       const pool = [...tied, ...aiPool];
       let voice = floating || matchesTrack(pool, track);
       if (!voice) {
-        const intro = tracks.find((entry) => entry.id !== items.at(-1)?.trackId && matchesTrack(pool, entry))
-          || tracks.find((entry) => matchesTrack(pool, entry));
+        const intro = tracks.find((entry) => !playedTracks.has(entry.id) && entry.id !== items.at(-1)?.trackId && matchesTrack(pool, entry))
+          || tracks.find((entry) => !playedTracks.has(entry.id) && matchesTrack(pool, entry));
         if (intro) {
           track = intro;
           voice = matchesTrack(pool, intro);
@@ -336,7 +344,7 @@ export function planExtension({
         slot += 1;
         since = 0;
         at = advance(at, voice.durationSeconds);
-      } else since = 0;
+      }
     }
     const musicId = itemId();
     const musicDuration = Number(track.durationSeconds) > 0 ? Number(track.durationSeconds) : 180;
@@ -353,6 +361,7 @@ export function planExtension({
       durationSeconds: musicDuration,
     });
     position += 1;
+    playedTracks.add(track.id);
     since += 1;
     plannedMusic += 1;
     at = advance(at, musicDuration);
