@@ -6,6 +6,10 @@ import { usePathname } from "next/navigation";
 const EditorialCommandCenter = dynamic(() => import("@/components/EditorialCommandCenter"), { ssr: false });
 const EditorialWorkBridge = dynamic(() => import("@/components/EditorialWorkBridge"), { ssr: false });
 const EditorialWorkspaceNav = dynamic(() => import("@/components/EditorialWorkspaceNav"), { ssr: false });
+const EditorialRotationDurationVerifier = dynamic(
+  () => import("@/components/editorial/EditorialRotationDurationVerifier"),
+  { ssr: false },
+);
 
 function isEditorialPath(pathname: string | null) {
   return Boolean(
@@ -22,6 +26,7 @@ export default function DeferredEditorialTools() {
 
   return (
     <>
+      <EditorialRotationDurationVerifier />
       <EditorialCommandCenter />
       <EditorialWorkBridge />
       <EditorialWorkspaceNav />
