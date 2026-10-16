@@ -1,5 +1,6 @@
 "use client";
 
+import { trendingEvent } from "@/lib/trending-client";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { shareBvs } from "@/lib/app-native";
@@ -367,6 +368,10 @@ export default function AppShareButton({
     };
   }, [open, onDismiss]);
 
+  const recordTrendingShare = () => {
+    const match = path.match(/^\/song\/([0-9a-f-]{36})$/i);
+    if (match) void trendingEvent('share', match[1]);
+  };
   const share = async () => {
     if (sharing || !card || card.format !== format) return;
     setSharing(true);
@@ -378,6 +383,7 @@ export default function AppShareButton({
         const pending = navigator.share({ title: `${title} · BVS`, text: `${shareText}\n${url}`, url, files: [storyCard] });
         setOpen(false);
         await pending;
+        recordTrendingShare();
         onDismiss?.();
       } else {
         setMessage("Save the card, then add it to Instagram or WhatsApp. Use Copy link for a Story link sticker.");
@@ -392,7 +398,7 @@ export default function AppShareButton({
 
   const shareLink = async () => {
     setOpen(false);
-    await shareBvs({ title: `${title} · BVS`, text: text || kicker, url });
+    if (await shareBvs({ title: `${title} · BVS`, text: text || kicker, url })) recordTrendingShare();
     onDismiss?.();
   };
 
@@ -425,6 +431,7 @@ export default function AppShareButton({
         }
       });
       if (!result.success) throw new Error(result.error || "Instagram could not open the Story editor.");
+      recordTrendingShare();
       close();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Instagram could not open the Story editor.");
@@ -443,6 +450,7 @@ export default function AppShareButton({
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url);
+      recordTrendingShare();
       setCopied(true);
       setMessage(format === "story" ? "Link copied. In Instagram, choose Stickers → Link, paste it and label it Listen on BVS." : "Link copied. Paste it into your post or message.");
       window.setTimeout(() => setCopied(false), 1600);

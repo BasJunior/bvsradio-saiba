@@ -1,5 +1,6 @@
 'use client'
 
+import TrendingBadge from '@/components/TrendingBadge'
 import Image from 'next/image'
 import Link from 'next/link'
 import DiscoverMoreActions from '@/components/DiscoverMoreActions'
@@ -57,6 +58,7 @@ export default function DiscoverShelves({ shelves, round, onMore, onBrowse, onDe
             <p className="mt-3 text-[10px] font-semibold uppercase tracking-wider text-brand">{item.badge || (item.onBvs ? 'On BVS radio' : item.kind)}</p>
             {item.detail ? <button type="button" onClick={() => onDetails(item)} className="mt-1 block w-full text-left"><h3 className="line-clamp-2 text-sm font-semibold text-white sm:text-base">{item.title}</h3></button> : <Link href={item.href} className="mt-1 block"><h3 className="line-clamp-2 text-sm font-semibold text-white sm:text-base">{item.title}</h3></Link>}
             <p className="mt-1 line-clamp-2 text-xs leading-5 text-text-secondary">{item.subtitle}</p>
+            {item.kind === 'track' ? <TrendingBadge trackId={item.id} /> : null}
             {creator || playable ? <DiscoverMoreActions title={item.title}>
               {creator || item.kind === 'track' || item.kind === 'beat' ? <LibraryAction item={{ ...item, kind: creator ? 'artist' : item.kind as 'track' | 'beat' }} section={creator ? 'follows' : 'favourites'} compact analyticsSource="discover" /> : null}
               {item.kind === 'track' ? <SongShareButton id={item.id} title={item.title} artist={item.subtitle} image={item.image} compact /> : null}

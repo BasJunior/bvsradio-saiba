@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import TrendingBadge from '@/components/TrendingBadge'
+import TrendingBoard from '@/components/TrendingBoard'
 import LibraryAction from '@/components/LibraryAction'
 import ExploreItemDetails, { type ExploreDetail } from '@/components/ExploreItemDetails'
 import { matchesDiscoveryQuery } from '@/lib/discovery-search'
@@ -367,7 +369,7 @@ export default function SearchPage() {
     <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Discover BVS</p>
     <h1 className="bvs-directory-title">{mode === 'playlists' ? 'Playlists' : mode === 'fresh' ? 'Releases' : mode === 'beats' ? 'Beats & tools' : activeMode.label}</h1>
     <p className="mt-3 max-w-2xl text-text-secondary">{activeMode.description}</p>
-    <div className="mt-5 flex flex-wrap gap-3 text-sm"><Link href="/feed" className="text-brand hover:underline">Community Feed →</Link><Link href="/radio" className="text-brand hover:underline">Live radio →</Link></div>
+    <div className="mt-5 flex flex-wrap gap-3 text-sm"><Link href="/trending" className="text-brand hover:underline">Trending →</Link><Link href="/feed" className="text-brand hover:underline">Community Feed →</Link><Link href="/radio" className="text-brand hover:underline">Live radio →</Link></div>
     <label className="mt-5 block max-w-3xl"><span className="sr-only">Search BVS</span><input value={query} onChange={event => { setQuery(event.target.value); setResultLimit(40) }} placeholder="Search for an artist, track, beat or sound" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
     {flowV2Flags.exploreModes && !query.trim() ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${mode === item.value ? 'bg-brand text-black' : 'border border-white/10 bg-white/[.03] text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
     {query.trim() || filter !== 'all' ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter results">{filters.map(item => <button key={item.value} onClick={() => { setFilter(item.value); setResultLimit(40) }} aria-pressed={filter === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${filter === item.value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
@@ -375,6 +377,7 @@ export default function SearchPage() {
     {sounds.length ? <details className="bvs-discover-filters mt-4"><summary className="min-h-11 cursor-pointer text-sm text-text-secondary">Filter by sound{genre ? ` · ${genre}` : ''}</summary><div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Browse by sound"><span className="mr-1 text-xs text-text-secondary">Browse by sound</span><button type="button" aria-pressed={!genre} onClick={() => setGenre('')} className={`min-h-10 rounded-full border px-3 text-xs ${!genre ? 'border-brand/50 text-brand' : 'border-white/15 text-text-secondary'}`}>All sounds</button>{sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(sound.key); setRound(0) }} className={`min-h-10 rounded-full border px-3 text-xs ${genre === sound.key ? 'border-brand/50 bg-brand/10 text-brand' : 'border-white/15 text-text-secondary hover:text-white'}`}>{sound.label}</button>)}</div></details> : null}
     {genre && !sounds.some(sound => sound.key === genre) ? <button type="button" onClick={() => setGenre('')} className="mt-3 min-h-10 text-sm text-brand">Clear sound filter: {genre}</button> : null}
     {unavailable ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/15 p-3 text-sm text-text-secondary"><span>Some discoveries could not be loaded. You can still explore what is here.</span><button type="button" onClick={() => { setLoaded(false); setUnavailable(false); setLoadAttempt(value => value + 1) }} className="min-h-10 rounded-full border border-white/20 px-4 text-white">Retry loading</button></div> : null}
+    {discoveryHome ? <TrendingBoard preview /> : null}
     {discoveryHome && shelves.length ? <DiscoverShelves shelves={shelves} round={round} onMore={() => { setRound(value => value + 1); trackEvent('explore_rail_open', { genre: genre || 'all' }) }} onBrowse={browseShelf} onDetails={openResult} /> : null}
     {!discoveryHome && (!query.trim() && filter === 'all' ? <section className="mt-10" aria-label="Explore published BVS content"><h2 className="text-3xl font-semibold">{flowV2Flags.exploreModes ? activeMode.label : 'Discover now'}</h2><p className="mt-2 text-text-secondary">{flowV2Flags.exploreModes ? activeMode.description : 'Published and editorially visible BVS content.'}</p></section> : <h2 className="mt-10 text-3xl font-semibold">{query.trim() ? `Results for “${query.trim()}”` : headings[filter as SearchKind]}</h2>)}
     <div className="mt-7 space-y-12">
@@ -402,6 +405,7 @@ export default function SearchPage() {
                 <p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
               </Link>
             )}
+            {item.kind === 'track' ? <TrendingBadge trackId={item.id} /> : null}
             {['track','artist','producer','beat'].includes(item.kind) ? <DiscoverMoreActions title={item.title}>
               <LibraryAction item={{ ...item, kind: item.kind === 'beat' ? 'beat' : item.kind === 'track' ? 'track' : 'artist' }} section={item.kind === 'artist' || item.kind === 'producer' ? 'follows' : 'favourites'} compact />
               {item.detail ? <button type="button" onClick={() => openResult(item)} className="min-h-11 text-left text-sm text-brand">View details</button> : <Link {...flowDetailProps(item)} href={item.href} className="inline-flex min-h-11 items-center text-sm text-brand">View details →</Link>}

@@ -34,7 +34,6 @@ export function accumulateListening(
   mediaSeconds: number,
   wallMs = performance.now(),
 ) {
-  if (state.qualified) return state;
 
   const wallDelta = Math.max(0, (wallMs - state.lastWallMs) / 1000);
   const mediaDelta = Math.max(0, mediaSeconds - state.lastMediaSeconds);
