@@ -27,6 +27,7 @@ export const analyticsEvents = [
   "checkout_started",
   "checkout_redirect",
   "checkout_complete",
+  "checkout_cart_recovered",
   "studio_open",
   "create_intent_selected",
   "create_form_started",
