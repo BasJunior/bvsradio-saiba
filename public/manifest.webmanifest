@@ -12,22 +12,10 @@
   "categories": ["music", "entertainment"],
   "icons": [
     {
-      "src": "/bvs-icon-v2-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/bvs-icon-v2-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/bvs-icon-v2-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "src": "/branding/bvs-monogram-v2.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
@@ -36,13 +24,13 @@
       "short_name": "Listen",
       "description": "Open the BVS player",
       "url": "/radio?source=pwa-shortcut",
-      "icons": [{ "src": "/bvs-icon-v2-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/branding/bvs-monogram-v2.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "Catalogue",
       "short_name": "Music",
       "url": "/catalogue?source=pwa-shortcut",
-      "icons": [{ "src": "/bvs-icon-v2-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/branding/bvs-monogram-v2.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]
 }
