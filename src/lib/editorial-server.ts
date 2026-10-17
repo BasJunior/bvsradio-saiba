@@ -160,5 +160,12 @@ export async function audit(
 }
 
 export function editorialUrl(path: string) {
-  return `${url}/rest/v1/${path}`
+  // Editorial surfaces resolve wallet owners and other records by profile ID. The dashboard
+  // historically requested only the newest 200 profiles, which caused older valid artists to
+  // render as UUID prefixes. Keep that legacy request compatible while the dataset is larger.
+  const normalizedPath =
+    path.startsWith('profiles?') && path.includes('order=created_at.desc') && path.includes('limit=200')
+      ? path.replace('limit=200', 'limit=1000')
+      : path
+  return `${url}/rest/v1/${normalizedPath}`
 }
