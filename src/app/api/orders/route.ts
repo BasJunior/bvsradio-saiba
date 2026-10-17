@@ -591,14 +591,28 @@ export async function GET(req: Request) {
   }
   return NextResponse.json({
     reference: order.reference,
+    createdAt: order.createdAt,
     status: order.status,
     deliveryStatus: order.deliveryStatus,
     subtotal: order.subtotal,
     taxAmount: order.taxAmount || 0,
     taxRate: order.taxRate || 0,
     taxLabel: order.taxLabel,
+    taxCountry: order.taxCountry,
+    taxNote: order.taxNote,
     total: order.total,
     currency: order.currency || "USD",
     paymentMethod: order.paymentMethod,
+    items: order.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      artist: item.artist,
+      type: item.type,
+      price: item.price,
+      quantity: item.quantity,
+      delivery: item.delivery,
+      sourceUrl: item.sourceUrl,
+      licence_option_id: item.licence_option_id,
+    })),
   });
 }

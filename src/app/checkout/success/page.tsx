@@ -61,11 +61,6 @@ function SuccessBody() {
   const [polls, setPolls] = useState(0);
   const [error, setError] = useState("");
 
-  // Clear cart on landing (Paynow/Stripe return path)
-  useEffect(() => {
-    clearCartLines();
-  }, []);
-
   useEffect(() => {
     if (!ref) return;
     let cancelled = false;
@@ -84,7 +79,7 @@ function SuccessBody() {
         setError("");
         const st = String(data.status || "").toLowerCase();
         const paid = st === "paid" || st === "fulfilled";
-        // Poll a few times while Paynow webhook catches up
+        // Poll a few times while Paynow/Stripe callbacks catch up.
         if (!paid && polls < 12) {
           timer = setTimeout(() => setPolls((p) => p + 1), 2500);
         }
@@ -105,6 +100,25 @@ function SuccessBody() {
     return st === "paid" || st === "fulfilled";
   }, [order?.status]);
 
+  // A provider redirect is not a sale. Only remove the basket after the
+  // server has reconciled a paid/fulfilled order.
+  useEffect(() => {
+    if (!paid || !ref) return;
+    clearCartLines();
+    try {
+      const raw = window.localStorage.getItem("bvs_last_order");
+      if (!raw) return;
+      const last = JSON.parse(raw) as { reference?: string; [key: string]: unknown };
+      if (last.reference !== ref) return;
+      window.localStorage.setItem(
+        "bvs_last_order",
+        JSON.stringify({ ...last, status: "paid", settledAt: Date.now() }),
+      );
+    } catch {
+      // Clearing the paid cart is the important path; metadata is best effort.
+    }
+  }, [paid, ref]);
+
   const currency = order?.currency || "USD";
   const paymentMethod = order?.paymentMethod || order?.payment_method || "—";
   const delivery = order?.deliveryStatus || order?.delivery_status || (paid ? "paid processing" : "awaiting payment");
@@ -122,9 +136,9 @@ function SuccessBody() {
         </h1>
         <p className="mx-auto mb-8 max-w-lg text-text-secondary">
           {paid
-            ? "Thanks — BVS has marked this order paid. Your cart is cleared."
+            ? "Thanks — BVS has marked this order paid. Your purchased cart is cleared."
             : ref
-              ? "If you just paid on Paynow, status updates automatically in a few seconds."
+              ? "Payment is not confirmed yet. Your cart stays saved so you can return and try again without losing the order."
               : "Save your confirmation for your records."}
         </p>
       </div>
@@ -221,14 +235,22 @@ function SuccessBody() {
             <p className="mt-5 text-sm leading-relaxed text-text-secondary">
               {paid
                 ? "Digital downloads unlock on your order page when files are staged. Studio services are confirmed by BVS on WhatsApp or email."
-                : "Complete Paynow if the window is still open. This page refreshes status automatically."}
+                : "No payment has been confirmed. Return to checkout to retry Paynow or choose card; this page keeps checking for a provider callback."}
             </p>
           </div>
         </div>
       )}
 
       <div className="flex flex-col justify-center gap-3 sm:flex-row">
-        {ref && (
+        {!paid && (
+          <Link
+            href="/checkout"
+            className="rounded-full bg-brand px-6 py-3 text-center font-semibold text-black"
+          >
+            Return to checkout
+          </Link>
+        )}
+        {ref && paid && (
           <Link
             href={`/account/orders/${encodeURIComponent(ref)}`}
             className="rounded-full bg-brand px-6 py-3 text-center font-semibold text-black"
