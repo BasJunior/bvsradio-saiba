@@ -156,11 +156,11 @@ function SignupPageInner() {
             aria-label="BVS Radio home"
           >
             <Image
-              src="/branding/bvs-logo.png"
+              src="/branding/bvs-logo-star-16x9.svg"
               alt="BVS Radio"
-              width={1032}
-              height={552}
-              className="h-14 w-auto rounded-md object-contain"
+              width={1920}
+              height={1080}
+              className="h-14 w-auto rounded-none object-contain"
               priority
             />
           </Link>

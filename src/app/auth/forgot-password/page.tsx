@@ -44,13 +44,13 @@ export default function ForgotPasswordPage() {
     <div className="min-h-[85vh] flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
-          <Link href="/" className="inline-flex items-center gap-2 mb-6">
+          <Link href="/" className="inline-flex items-center justify-center mb-6" aria-label="BVS Radio home">
             <Image
-              src="/branding/bvs-logo.png"
+              src="/branding/bvs-logo-star-16x9.svg"
               alt="BVS Radio"
-              width={1032}
-              height={552}
-              className="h-14 w-auto rounded-md object-contain"
+              width={1920}
+              height={1080}
+              className="h-14 w-auto rounded-none object-contain"
               priority
             />
           </Link>

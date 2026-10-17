@@ -1,7 +1,7 @@
 /* BVS offline shell: never persist account HTML, RSC payloads, API or audio. */
-const SHELL_CACHE = "bvs-shell-v2";
-const ASSET_CACHE = "bvs-assets-v2";
-const PRECACHE = ["/offline.html", "/manifest.webmanifest", "/bvs-icon-v2-192.png", "/bvs-icon-v2-512.png", "/branding/bvs-logo.png"];
+const SHELL_CACHE = "bvs-shell-v3";
+const ASSET_CACHE = "bvs-assets-v3";
+const PRECACHE = ["/offline.html", "/manifest.webmanifest", "/branding/bvs-monogram-v2.svg", "/branding/bvs-logo-star-16x9.svg"];
 const MAX_ASSETS = 120;
 
 self.addEventListener("install", (event) => {
