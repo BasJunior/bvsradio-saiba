@@ -12,7 +12,7 @@ import {
   detectBrowserCountry,
   type TaxBreakdown,
 } from "@/lib/tax";
-import { clearCartLines, writeCartLines } from "@/lib/cart-client";
+import { writeCartLines } from "@/lib/cart-client";
 import { MARKETPLACE_BASKET_TARGET_USD } from "@/lib/marketplace-economics";
 
 interface CartItem {
@@ -51,6 +51,13 @@ interface OrderResult {
   taxNote?: string;
   total?: number;
 }
+
+type RecoverableOrder = {
+  reference?: string;
+  status?: string;
+  createdAt?: string;
+  items?: CartItem[];
+};
 
 /** Live checkout rails only — no WhatsApp cosplay methods. */
 const paymentMethodsBase = [
@@ -138,6 +145,7 @@ export default function CheckoutPage() {
   const [result, setResult] = useState<OrderResult | null>(null);
   const [error, setError] = useState("");
   const [cancelled, setCancelled] = useState(false);
+  const [recoveredOrderRef, setRecoveredOrderRef] = useState("");
 
   useEffect(() => {
     const queryItem = serviceFromQuery();
@@ -161,6 +169,44 @@ export default function CheckoutPage() {
       setCancelled(new URLSearchParams(window.location.search).has("cancelled"));
       setHydrated(true);
     });
+
+    // Recovery for the old redirect flow that cleared the cart before the
+    // external payment actually succeeded. The server order is authoritative.
+    if (initial.length === 0) {
+      const lastOrderRaw = window.localStorage.getItem("bvs_last_order");
+      if (lastOrderRaw) {
+        try {
+          const lastOrder = JSON.parse(lastOrderRaw) as { reference?: string };
+          if (lastOrder.reference) {
+            fetch(`/api/orders?ref=${encodeURIComponent(lastOrder.reference)}`, {
+              cache: "no-store",
+            })
+              .then(async (response) => {
+                if (!response.ok) return null;
+                return (await response.json()) as RecoverableOrder;
+              })
+              .then((order) => {
+                if (!order || order.status !== "pending_payment") return;
+                const createdAt = Date.parse(String(order.createdAt || ""));
+                const fresh =
+                  Number.isFinite(createdAt) && Date.now() - createdAt < 24 * 60 * 60 * 1000;
+                if (!fresh || !Array.isArray(order.items) || order.items.length === 0)
+                  return;
+                const recovered = order.items.map(normalizeItem);
+                setItems(recovered);
+                setRecoveredOrderRef(order.reference || "");
+                trackEvent("checkout_cart_recovered", {
+                  reference: order.reference || "",
+                  item_count: recovered.length,
+                });
+              })
+              .catch(() => null);
+          }
+        } catch {
+          // Ignore malformed legacy localStorage and continue with an empty cart.
+        }
+      }
+    }
 
     fetch("/api/checkout/config")
       .then((r) => r.json())
@@ -300,9 +346,12 @@ export default function CheckoutPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Checkout failed.");
 
-      window.localStorage.setItem("bvs_last_order", JSON.stringify(data));
-      clearCartLines();
-      setItems([]);
+      // Keep the cart until the payment provider confirms success. A redirect
+      // only means a payment attempt was created; it is not a completed sale.
+      window.localStorage.setItem(
+        "bvs_last_order",
+        JSON.stringify({ ...data, savedAt: Date.now() }),
+      );
 
       if (data.checkoutUrl) {
         trackEvent("checkout_redirect", {
@@ -353,8 +402,14 @@ export default function CheckoutPage() {
         </p>
         {cancelled && (
           <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Card payment was cancelled. Your cart is still here — try card again
-            or Paynow.
+            Payment was not completed. Your cart is still here — try again or
+            choose another payment method.
+          </p>
+        )}
+        {recoveredOrderRef && (
+          <p className="mt-4 rounded-xl border border-brand/30 bg-brand/10 px-4 py-3 text-sm text-brand">
+            We restored the cart from unfinished order {recoveredOrderRef}. No
+            payment was recorded for that order.
           </p>
         )}
         <ol
