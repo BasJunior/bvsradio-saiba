@@ -50,14 +50,9 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: [
-      { url: "/favicon-v2.ico", sizes: "16x16 32x32 48x48", type: "image/x-icon" },
-      { url: "/bvs-favicon-v2-48.png", sizes: "48x48", type: "image/png" },
-      { url: "/bvs-icon-v2-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/bvs-icon-v2-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    shortcut: [{ url: "/favicon-v2.ico", type: "image/x-icon" }],
-    apple: [{ url: "/bvs-apple-touch-v2.png", sizes: "180x180", type: "image/png" }],
+    icon: [{ url: "/branding/bvs-monogram-v2.svg", sizes: "any", type: "image/svg+xml" }],
+    shortcut: [{ url: "/branding/bvs-monogram-v2.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/branding/bvs-monogram-v2.svg", sizes: "any", type: "image/svg+xml" }],
   },
   manifest: "/manifest.webmanifest",
   openGraph: {
@@ -66,13 +61,13 @@ export const metadata: Metadata = {
     siteName: "BVS Radio",
     title: "BVS Radio | Best Virtual Sound",
     description: "Listen to BVS Radio anywhere — live rotation, catalogue, and culture.",
-    images: [{ url: "/logo.png", width: 1024, height: 1024, alt: "BVS Radio" }],
+    images: [{ url: "/branding/bvs-share-logo.png", alt: "BVS Radio" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "BVS Radio",
     description: "Best Virtual Sound — studio music rooted in Zimbabwe, on mobile or web.",
-    images: ["/logo.png"],
+    images: ["/branding/bvs-share-logo.png"],
   },
   other: {
     "mobile-web-app-capable": "yes",
