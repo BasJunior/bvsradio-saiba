@@ -94,7 +94,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-10">
           <Link href="/" className="inline-flex items-center justify-center mb-6" aria-label="BVS Radio home">
-            <Image src="/branding/bvs-logo.png" alt="BVS Radio" width={1032} height={552} className="h-14 w-auto rounded-md object-contain" priority />
+            <Image src="/branding/bvs-logo-star-16x9.svg" alt="BVS Radio" width={1920} height={1080} className="h-14 w-auto rounded-none object-contain" priority />
           </Link>
           <h1 className="text-3xl font-bold">Welcome back</h1>
           <p className="text-text-secondary mt-1">
