@@ -151,9 +151,8 @@ export async function materializeReleaseTracks(releaseId: string, options: {
   );
   const durations = new Map<string, number>();
   for (const member of members) {
-    const fileUrl = member.file_url || fileUrlForPath(member.audio_path);
     const probe = probes?.find((row) => row.release_track_id === member.id
-      && fileUrlForPath(row.source_path) === fileUrl);
+      && fileUrlForPath(row.source_path) === fileUrlForPath(member.audio_path));
     const duration = Number(probe?.duration_seconds);
     if (Number.isFinite(duration) && duration > 0) durations.set(member.id, duration);
   }

@@ -6,7 +6,7 @@ import ts from 'typescript';
 const code = ts.transpileModule(readFileSync('src/lib/releases-server.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-async function publish({ existing = false, source = 'audio/song.mp3', duration = 130.4555, unavailable = false, failPath = null, emptyPath = null } = {}) {
+async function publish({ existing = false, source = 'audio/song.mp3', playbackUrl = null, duration = 130.4555, unavailable = false, failPath = null, emptyPath = null } = {}) {
   const writes = [];
   const exports = {};
   const response = (value, status = 200) => new Response(JSON.stringify(value), { status });
@@ -28,7 +28,7 @@ async function publish({ existing = false, source = 'audio/song.mp3', duration =
         return response(['tracks', 'release_tracks', 'releases'].includes(path) ? [{ id: 'catalogue-id' }] : {});
       }
       if (path === 'releases') return response([{ id: 'release', user_id: 'owner', artist_name: 'Artist', title: 'Release' }]);
-      if (path === 'release_tracks') return response([{ id: 'member', title: 'Song', audio_path: 'audio/song.mp3', track_id: existing ? 'catalogue-id' : null }]);
+      if (path === 'release_tracks') return response([{ id: 'member', title: 'Song', audio_path: 'audio/song.mp3', file_url: playbackUrl, track_id: existing ? 'catalogue-id' : null }]);
       if (path === 'media_processing_jobs') return unavailable ? response({}, 503) : response([{ release_track_id: 'member', source_path: source, duration_seconds: duration }]);
       return response([]);
     },
@@ -41,6 +41,11 @@ for (const existing of [false, true]) {
   const track = writes.find(write => write.path === 'tracks').body;
   assert.equal(track.duration_sec, 130.4555, 'both insert and update must retain measured precision');
   assert.equal(track.in_rotation, true);
+}
+{
+  const { result, writes } = await publish({ existing: true, playbackUrl: '/api/media/audio/song-browser.flac' });
+  assert.equal(result.ok, true, 'a verified source may use a browser-compatible playback copy');
+  assert.equal(writes.find(write => write.path === 'tracks').body.file_url, '/api/media/audio/song-browser.flac');
 }
 for (const options of [{ source: 'audio/old-version.mp3' }, { duration: 0 }, { duration: null }, { unavailable: true }]) {
   const { result, writes } = await publish(options);
