@@ -152,7 +152,8 @@ export async function listBeatsForProducer(userId: string) {
   }))
 }
 
-export async function listPublishedBeats(limit = 48) {
+export async function listPublishedBeats(limit = 48, producerUserId?: string) {
+  const producerFilter = producerUserId ? `&producer_user_id=eq.${encodeURIComponent(producerUserId)}` : ''
   if (!url || !service) {
     console.warn("listPublishedBeats: missing Supabase env — returning no beats")
     return []
@@ -161,7 +162,7 @@ export async function listPublishedBeats(limit = 48) {
   // before returning public marketplace results. Producer dashboards stay newest-first.
   const withLicences = await fetch(
     creatorUrl(
-      `beats?is_public=eq.true&status=eq.published&rights_confirmed=eq.true&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,pack_id,pack_position,created_at,published_at,beat_licence_options(id,licence_code,licence_name,price_usd,currency,is_active,is_sold_out)&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
+      `beats?is_public=eq.true&status=eq.published&rights_confirmed=eq.true${producerFilter}&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,pack_id,pack_position,created_at,published_at,beat_licence_options(id,licence_code,licence_name,price_usd,currency,is_active,is_sold_out)&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
     ),
     { headers: creatorHeaders, next: { revalidate: 60 } },
   )
@@ -184,7 +185,7 @@ export async function listPublishedBeats(limit = 48) {
 
   const plain = await fetch(
     creatorUrl(
-      `beats?is_public=eq.true&status=eq.published&rights_confirmed=eq.true&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,pack_id,pack_position,created_at,published_at&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
+      `beats?is_public=eq.true&status=eq.published&rights_confirmed=eq.true${producerFilter}&select=id,title,slug,description,genre,mood,bpm,musical_key,artwork_path,preview_path,producer_user_id,pack_id,pack_position,created_at,published_at&order=published_at.desc.nullslast,created_at.desc&limit=${limit}`,
     ),
     { headers: creatorHeaders, next: { revalidate: 60 } },
   )

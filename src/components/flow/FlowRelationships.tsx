@@ -105,7 +105,7 @@ export default function FlowRelationships({ kind, id, compact = false, view = "a
       setGraphState({ id, payload });
       if (kind !== "creator") return;
 
-      const beatResponse = await fetch("/api/beats", { cache: "no-store" }).catch(() => null);
+      const beatResponse = await fetch(`/api/beats?producer_user_id=${encodeURIComponent(id)}`, { cache: "no-store" }).catch(() => null);
       if (beatResponse?.ok) {
         const beatPayload = (await beatResponse.json()) as { beats?: PublicBeat[] };
         if (active) setBeatsState({ id, beats: (beatPayload.beats || []).filter((beat) => beat.producer_user_id === id) });

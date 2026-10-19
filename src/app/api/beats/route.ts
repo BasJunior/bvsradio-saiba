@@ -15,7 +15,7 @@ import {
 } from '@/lib/beatstore-server'
 // beat licence templates: src/lib/beat-licences.ts
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
-import { creatorPublicName } from '@/lib/public-name'
+import { creatorPublicName, publicHandleAccountCandidates } from '@/lib/public-name'
 import { r2Configured, r2ObjectExists } from '@/lib/r2-storage'
 import { resolveProducerBeatEntitlements } from '@/lib/producer-entitlements'
 import { licenceOptionSeed } from '@/lib/beat-licences'
@@ -69,7 +69,23 @@ export async function GET(request: Request) {
   }
 
   // public published beats for catalogue / BeatStore
-  const beats = await listPublishedBeats(publicLimit)
+  // Scope in the database before the global newest-first window is applied.
+  // Filtering the first 120 beats in the browser silently hid older catalogues.
+  let producerUserId = searchParams.get('producer_user_id')?.trim() || undefined
+  const producerHandle = searchParams.get('producer')?.trim()
+  if (producerUserId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(producerUserId)) {
+    return NextResponse.json({ error: 'Invalid producer.' }, { status: 400 })
+  }
+  if (!producerUserId && producerHandle) {
+    for (const candidate of publicHandleAccountCandidates(producerHandle)) {
+      const response = await fetch(beatUrl(`profiles?username=ilike.${encodeURIComponent(candidate.replace(/[%*]/g, ''))}&select=id&limit=1`), { headers: beatHeaders, next: { revalidate: 60 } })
+      if (!response.ok) return NextResponse.json({ error: 'Catalogue temporarily unavailable.' }, { status: 503 })
+      const profiles = await response.json() as Array<{ id: string }>
+      if (profiles[0]) { producerUserId = profiles[0].id; break }
+    }
+    if (!producerUserId) return NextResponse.json({ beats: [], count: 0 }, { headers: { 'Cache-Control': PUBLIC_CACHE } })
+  }
+  const beats = await listPublishedBeats(publicLimit, producerUserId)
   const producerIds = [...new Set(beats.map(beat => beat.producer_user_id))]
   const producerResponse = producerIds.length
     ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status`), { headers: beatHeaders, next: { revalidate: 60 } })

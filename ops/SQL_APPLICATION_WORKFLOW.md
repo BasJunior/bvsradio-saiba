@@ -181,3 +181,7 @@ CapCut stays a **parallel marketing track** (launch intro / how-to-submit videos
 ---
 
 *Rewritten agent-first 2026-07-23.*
+
+## Track duration precision (2026-10-19)
+
+Pack `track-duration-precision` widens `tracks.duration_sec` from integer to numeric, preserving measured fractional seconds. Apply before publication writes. Idempotent and lossless for existing values.

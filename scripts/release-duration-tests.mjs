@@ -6,7 +6,7 @@ import ts from 'typescript';
 const code = ts.transpileModule(readFileSync('src/lib/releases-server.ts', 'utf8'), {
   compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
 }).outputText;
-async function publish({ existing = false, source = 'audio/song.mp3', duration = 130.4555, unavailable = false } = {}) {
+async function publish({ existing = false, source = 'audio/song.mp3', duration = 130.4555, unavailable = false, failPath = null, emptyPath = null } = {}) {
   const writes = [];
   const exports = {};
   const response = (value, status = 200) => new Response(JSON.stringify(value), { status });
@@ -23,7 +23,9 @@ async function publish({ existing = false, source = 'audio/song.mp3', duration =
       const path = new URL(url).pathname.split('/').at(-1);
       if (init.method === 'PATCH' || init.method === 'POST') {
         writes.push({ path, body: JSON.parse(init.body) });
-        return response(path === 'tracks' ? [{ id: 'catalogue-id' }] : {});
+        if (path === failPath) return response({ message: 'database write failure' }, 400);
+        if (path === emptyPath) return response([]);
+        return response(['tracks', 'release_tracks', 'releases'].includes(path) ? [{ id: 'catalogue-id' }] : {});
       }
       if (path === 'releases') return response([{ id: 'release', user_id: 'owner', artist_name: 'Artist', title: 'Release' }]);
       if (path === 'release_tracks') return response([{ id: 'member', title: 'Song', audio_path: 'audio/song.mp3', track_id: existing ? 'catalogue-id' : null }]);
@@ -45,4 +47,13 @@ for (const options of [{ source: 'audio/old-version.mp3' }, { duration: 0 }, { d
   assert.equal(result.ok, false, 'missing or stale probes must block publication');
   assert.equal(writes.some(write => write.path === 'tracks'), false);
 }
-console.log('Release duration publication tests passed.');
+for (const existing of [false, true]) {
+  for (const failPath of ['tracks', ...(existing ? [] : ['release_tracks']), 'releases']) {
+    const { result, writes } = await publish({ existing, failPath });
+    assert.equal(result.ok, false, `${failPath} failure must never report successful publication`);
+    if (failPath !== 'releases') assert.equal(writes.some(write => write.path === 'releases'), false);
+  }
+  const { result } = await publish({ existing, emptyPath: 'tracks' });
+  assert.equal(result.ok, false, 'zero-row track writes must not publish');
+}
+console.log('Release duration and publication failure tests passed.');

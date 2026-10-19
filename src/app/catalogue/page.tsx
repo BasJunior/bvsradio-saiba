@@ -408,7 +408,7 @@ function CataloguePageContent() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/beats?scope=public", { cache: "no-store" })
+    fetch(`/api/beats?scope=public${producerFilter ? `&producer=${encodeURIComponent(producerFilter)}` : ""}`, { cache: "no-store" })
       .then(async (res) => {
         if (!res.ok) return;
         const payload = await res.json().catch(() => ({}));
@@ -467,7 +467,7 @@ function CataloguePageContent() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [producerFilter]);
 
   useEffect(() => {
     let cancelled = false;

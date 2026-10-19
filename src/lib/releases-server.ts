@@ -187,7 +187,7 @@ export async function materializeReleaseTracks(releaseId: string, options: {
     const inRotation = shouldRotate(member.id);
     const isrc = isrcByReleaseTrackId.get(member.id) || undefined;
     if (member.track_id) {
-      await restPatch(`tracks?id=eq.${member.track_id}`, {
+      const updated = await restPatch<Array<{ id: string }>>(`tracks?id=eq.${member.track_id}`, {
         title: member.title,
         artist_name: release.artist_name,
         genre: release.genre || "Other",
@@ -206,6 +206,10 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         user_id: release.user_id,
         ...(isrc ? { isrc } : {}),
       });
+      if (!updated.ok || !Array.isArray(updated.data) || updated.data.length !== 1) {
+        console.error("Release track update failed", { releaseId, memberId: member.id, status: updated.status, detail: updated.text });
+        return { ok: false, error: "A track could not be saved. Publication was not completed. Please retry." };
+      }
     } else {
       const inserted = await restPost<Array<{ id: string }>>("tracks", {
         user_id: release.user_id,
@@ -234,16 +238,22 @@ export async function materializeReleaseTracks(releaseId: string, options: {
         ...(isrc ? { isrc } : {}),
       });
       const trackId = Array.isArray(inserted.data) ? inserted.data[0]?.id : null;
-      if (trackId) {
-        await restPatch(`release_tracks?id=eq.${member.id}`, {
-          track_id: trackId,
-          file_url: fileUrl,
-        });
+      if (!inserted.ok || !trackId) {
+        console.error("Release track creation failed", { releaseId, memberId: member.id, status: inserted.status, detail: inserted.text });
+        return { ok: false, error: "A track could not be saved. Publication was not completed. Please retry." };
+      }
+      const linked = await restPatch<Array<{ id: string }>>(`release_tracks?id=eq.${member.id}`, {
+        track_id: trackId,
+        file_url: fileUrl,
+      });
+      if (!linked.ok || !Array.isArray(linked.data) || linked.data.length !== 1) {
+        console.error("Release track link failed", { releaseId, memberId: member.id, status: linked.status, detail: linked.text });
+        return { ok: false, error: "A track could not be linked. Publication was not completed. Please retry." };
       }
     }
   }
 
-  await restPatch(`releases?id=eq.${releaseId}`, {
+  const published = await restPatch<Array<{ id: string }>>(`releases?id=eq.${releaseId}`, {
     editorial_status: status,
     is_public: options.publish,
     in_rotation: options.publish && (selectedRotationIds ? selectedRotationIds.size > 0 : options.inRotation),
@@ -253,6 +263,11 @@ export async function materializeReleaseTracks(releaseId: string, options: {
     track_count: members.length,
     updated_at: now,
   });
+
+  if (!published.ok || !Array.isArray(published.data) || published.data.length !== 1) {
+    console.error("Release publication failed", { releaseId, status: published.status, detail: published.text });
+    return { ok: false, error: "The release could not be published. Please retry." };
+  }
 
   // Full path: BVS publish first; multi-platform only if Premium distribution enabled.
   // Private partner code stays internal — never surface aggregator brands on public UI.

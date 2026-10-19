@@ -48,6 +48,18 @@ export async function getPublicReleases(releaseId?: string, limit = 100): Promis
   if (!tracksResponse.ok) return []
   const members = await tracksResponse.json() as Array<Record<string, unknown>>
   const trackIds = members.map((member) => String(member.track_id || '')).filter(Boolean)
+  const publicTracksResponse = trackIds.length
+    ? await fetch(
+        `${setup.url}/rest/v1/tracks?id=in.(${trackIds.join(',')})&is_public=eq.true&editorial_status=eq.approved&select=id`,
+        { headers: setup.headers, next: { revalidate: 60 } },
+      )
+    : null
+  if (publicTracksResponse && !publicTracksResponse.ok) return []
+  const publicTrackIds = new Set(
+    publicTracksResponse
+      ? (await publicTracksResponse.json() as Array<{ id: string }>).map((track) => track.id)
+      : [],
+  )
   const creditsResponse = trackIds.length
     ? await fetch(
         `${setup.url}/rest/v1/track_credits?track_id=in.(${trackIds.join(',')})&is_verified=eq.true&select=track_id,person_name,credit_role&order=credit_role.asc`,
@@ -69,7 +81,7 @@ export async function getPublicReleases(releaseId?: string, limit = 100): Promis
     publishedAt: release.published_at ? String(release.published_at) : undefined,
     copyrightYear: release.copyright_year ? Number(release.copyright_year) : undefined,
     tracks: members
-      .filter((member) => String(member.release_id) === String(release.id))
+      .filter((member) => String(member.release_id) === String(release.id) && publicTrackIds.has(String(member.track_id || '')))
       .map((member) => ({
         id: String(member.track_id || member.id),
         title: String(member.title || 'Untitled track'),
