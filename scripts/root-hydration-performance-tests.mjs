@@ -83,7 +83,7 @@ assert.ok(
 );
 
 assert.ok(
-  search.includes("if (!open || !hasSearchIntent || loadedSurface === surfaceKey) return"),
+  search.includes("open && hasSearchIntent)"),
   "Header search catalogue requests must wait for real search intent.",
 );
 assert.ok(

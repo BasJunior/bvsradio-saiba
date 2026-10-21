@@ -1,7 +1,8 @@
+import type { StationTrack } from '@/lib/station'
 import type { ExploreDetail } from '@/components/ExploreItemDetails'
 import { fairCreatorDailyOrder } from '@/lib/fair-discovery-order'
 
-export type SearchKind = 'track' | 'release' | 'playlist' | 'artist' | 'producer' | 'beat' | 'show' | 'story' | 'service'
+export type SearchKind = 'track' | 'release' | 'playlist' | 'artist' | 'producer' | 'beat' | 'show' | 'story' | 'service' | 'product'
 export type SearchItem = {
   id: string
   kind: SearchKind
@@ -10,9 +11,13 @@ export type SearchItem = {
   href: string
   image?: string
   tags?: string[]
+  beatCount?: number
+  creatorUsername?: string
+  genres?: string[]
   badge?: string
   publishedAt?: string
   onBvs?: boolean
+  playback?: Partial<StationTrack>
   detail?: ExploreDetail
 }
 
@@ -21,7 +26,7 @@ export function soundKey(value?: string) {
   return (value || '').trim().toLowerCase().replace(/hip[ -]?hop/g, 'hip-hop').replace(/r\s*&\s*b|rnb/g, 'r&b')
 }
 export function itemSounds(item: SearchItem) {
-  const genres = item.detail?.genre ? [item.detail.genre] : item.kind === 'artist' || item.kind === 'producer' ? item.tags || [] : []
+  const genres = item.genres || (item.detail?.genre ? [item.detail.genre] : item.kind === 'artist' || item.kind === 'producer' ? item.tags || [] : [])
   return genres.flatMap(value => value.split(/[,/|]/)).map(soundKey).filter(Boolean)
 }
 export function discoverySounds(items: SearchItem[]) {
@@ -39,7 +44,7 @@ export function toDiscoveryTrack(item: SearchItem) {
   const detail = item.detail
   if ((item.kind !== 'track' && item.kind !== 'beat') || !detail?.src) return null
   const downloadPrice = item.kind === 'track' && detail.streamOnly !== true && typeof detail.price === 'number' && Number.isFinite(detail.price) && detail.price > 0 ? detail.price : null
-  return { isDownloadable: downloadPrice !== null, downloadPrice, id: detail.id, title: item.title, artist: detail.artist, src: detail.src, artwork: item.image, genre: detail.genre, project: item.kind === 'beat' ? 'BVS BeatStore' : detail.collection || 'Discover BVS' }
+  return { ...item.playback, isDownloadable: downloadPrice !== null, downloadPrice, id: detail.id, title: item.title, artist: detail.artist, src: detail.src, artwork: item.image, genre: detail.genre, project: item.kind === 'beat' ? 'BVS BeatStore' : detail.collection || 'Discover BVS' }
 }
 export type DiscoveryShelf = { id: string; title: string; description: string; kind: SearchKind; items: SearchItem[] }
 const date = (value?: string) => { const parsed = Date.parse(value || ''); return Number.isFinite(parsed) ? parsed : 0 }

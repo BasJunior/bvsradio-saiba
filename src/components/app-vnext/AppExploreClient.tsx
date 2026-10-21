@@ -2,7 +2,7 @@
 
 import TrendingBadge from "@/components/TrendingBadge";
 import TrendingBoard from "@/components/TrendingBoard";
-import { matchesDiscoveryQuery } from "@/lib/discovery-search";
+import { useDiscoverySearch } from "@/lib/use-discovery-search";
 
 import DiscoverMoreActions from "@/components/DiscoverMoreActions";
 import Image from "next/image";
@@ -60,13 +60,6 @@ export default function AppExploreClient({
   const [query, setQuery] = useState(initialQuery);
   const [kind, setKind] = useState<ExploreKind>(initialKind);
   const [mode, setMode] = useState<ExploreMode>("fresh");
-  const [tracks, setTracks] = useState<CatalogueTrack[]>([]);
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [producers, setProducers] = useState<Producer[]>([]);
-  const [beats, setBeats] = useState<Beat[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [unavailable, setUnavailable] = useState(false);
-  const [loadAttempt, setLoadAttempt] = useState(0);
   const [genre, setGenre] = useState("");
   const [round, setRound] = useState(0);
   const [limit, setLimit] = useState(24);
@@ -87,27 +80,16 @@ export default function AppExploreClient({
     return () => window.removeEventListener("popstate", sync);
   }, []);
 
-  useEffect(() => {
-    let alive = true;
-    const controller = new AbortController();
-    const sources: Array<{ url: string; apply: (data: Record<string, unknown>) => void }> = [
-      { url:`/api/station/tracks?surface=${surface}`, apply:data => setTracks(((data.tracks || []) as CatalogueTrack[]).filter(track => Boolean(track.src))) },
-      { url:"/api/artists", apply:data => setArtists((data.artists || []) as Artist[]) },
-      { url:"/api/producers", apply:data => setProducers((data.producers || []) as Producer[]) },
-      { url:"/api/beats", apply:data => setBeats((data.beats || []) as Beat[]) },
-    ];
-    void Promise.allSettled(sources.map(async source => {
-      const response = await fetch(source.url, { cache:"no-store", signal:controller.signal });
-      if (!response.ok) throw new Error("Discovery source unavailable");
-      const data = await response.json();
-      if (alive) source.apply(data);
-    })).then(outcomes => {
-      if (!alive) return;
-      setUnavailable(outcomes.some(outcome => outcome.status === "rejected"));
-      setLoading(false);
-    });
-    return () => { alive = false; controller.abort(); };
-  }, [surface, loadAttempt]);
+  const apiKind = { all: 'all', music: 'track', artists: 'artist', producers: 'producer', beats: 'beat' }[kind];
+  const search = useDiscoverySearch({ q: query, type: apiKind, genre, surface, limit });
+  const { loading } = search;
+  const unavailable = search.unavailable.length > 0;
+  const tracks = useMemo<CatalogueTrack[]>(() => search.items.filter(item => item.kind === 'track' && item.detail?.src).map(item => ({
+    ...item.playback, id: item.detail!.id, title: item.title, artist: item.detail!.artist, src: item.detail!.src!, artwork: item.image, genre: item.detail!.genre, project: item.detail!.collection,
+  })), [search.items]);
+  const artists = useMemo<Artist[]>(() => search.items.filter(item => item.kind === 'artist').map(item => ({ id: item.id.replace(/^artist-/, ''), name: item.title, username: item.creatorUsername || '', image: item.image, role: item.subtitle, genres: item.genres || [] })), [search.items]);
+  const producers = useMemo<Producer[]>(() => search.items.filter(item => item.kind === 'producer').map(item => ({ id: item.id.replace(/^producer-/, ''), name: item.title, username: item.creatorUsername || '', image: item.image, genres: item.genres || [], beatCount: item.beatCount })), [search.items]);
+  const beats = useMemo<Beat[]>(() => search.items.filter(item => item.kind === 'beat').map(item => ({ id: item.detail!.id, title: item.title, producer: item.detail!.artist, producer_username: item.creatorUsername, genre: item.detail!.genre, mood: item.detail!.mood, artworkUrl: item.image, previewUrl: item.detail!.src, bpm: Number(item.detail!.bpm) || undefined, startingPrice: item.detail!.price ?? undefined })), [search.items]);
 
   useEffect(() => {
     const sync = () => setLiked(new Set(tracks.filter((track) => hasLibraryItem("favourites", track.id)).map((track) => track.id)));
@@ -117,24 +99,8 @@ export default function AppExploreClient({
   }, [tracks]);
 
   const needle = query.trim().toLowerCase();
-  const sounds = useMemo(() => {
-    const counts = new Map<string, number>();
-    const values = [...tracks.map(item => item.genre), ...beats.map(item => item.genre), ...artists.flatMap(item => item.genres || []), ...producers.flatMap(item => item.genres || [])];
-    for (const value of values) for (const part of (value || "").split(/[,/|]/)) {
-      const key = soundKey(part); if (key) counts.set(key, (counts.get(key) || 0) + 1);
-    }
-    return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 10).map(([key]) => ({ key, label:key === "hip-hop" ? "Hip-Hop" : key === "r&b" ? "R&B" : key.replace(/\b\w/g, c => c.toUpperCase()) }));
-  }, [tracks, beats, artists, producers]);
-  const matched = useMemo(() => {
-    const matches = (parts: Array<string | undefined | string[]>) => matchesDiscoveryQuery(needle, parts.flat());
-    const matchesGenre = (genres: Array<string | undefined>) => !genre || genres.flatMap(value => (value || "").split(/[,/|]/)).some(value => soundKey(value) === genre);
-    return {
-      tracks:tracks.filter(i => matches([i.title, i.artist, i.genre, i.project]) && matchesGenre([i.genre])),
-      artists:artists.filter(i => matches([i.name, i.username, i.role, i.genres]) && matchesGenre(i.genres || [])),
-      producers:producers.filter(i => matches([i.name, i.username, i.genres]) && matchesGenre(i.genres || [])),
-      beats:beats.filter(i => matches([i.title, i.producer, i.genre, i.mood]) && matchesGenre([i.genre])),
-    };
-  }, [artists, beats, genre, needle, producers, tracks]);
+  const sounds = search.sounds;
+  const matched = useMemo(() => ({ tracks, artists, producers, beats }), [tracks, artists, producers, beats]);
   const filtered = useMemo(() => {
     function picks<T extends { id:string }>(pool:T[], scope:string, creator:(item:T)=>string, size:number) {
       if (needle || kind !== "all") return pool.slice(0, limit);
@@ -208,7 +174,8 @@ export default function AppExploreClient({
         <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-lg text-white/35" aria-hidden="true">⌕</span>
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          maxLength={160}
+          onChange={(e) => { setQuery(e.target.value); setLimit(24); }}
           placeholder="Search music, artists, producers, beats"
           className="min-h-14 w-full rounded-[1.25rem] border border-white/[.08] bg-white/[.035] pl-12 pr-5 text-base outline-none backdrop-blur-xl transition focus:border-brand/40 focus:bg-white/[.05]"
         />
@@ -231,6 +198,7 @@ export default function AppExploreClient({
       ) : null}
 
       {discoveryHome ? <TrendingBoard surface={surface} preview /> : null}
+      {genre || kind !== 'all' ? <div className="mt-3 flex flex-wrap gap-2" aria-label="Active search filters">{genre ? <button type="button" onClick={() => { setGenre(''); setLimit(24); }} className="min-h-11 border border-brand/40 px-3 text-sm text-brand">Sound: {genre} ×</button> : null}{kind !== 'all' ? <button type="button" onClick={() => { setKind('all'); setLimit(24); }} className="min-h-11 border border-brand/40 px-3 text-sm text-brand">{kind} ×</button> : null}</div> : null}
       <details className="bvs-discover-filters mt-2"><summary className="min-h-11 cursor-pointer text-sm text-white/60">Filters{kind !== "all" ? ` · ${kind}` : ""}{genre ? ` · ${genre}` : ""}</summary>
       <div className="mt-2 flex gap-2 overflow-x-auto pb-2" aria-label="Filter discovery results">
         {(["all", "music", "artists", "producers", "beats"] as ExploreKind[]).map((value) => (
@@ -250,9 +218,9 @@ export default function AppExploreClient({
         <button type="button" aria-pressed={!genre} onClick={() => { setGenre(""); setLimit(24); }} className={`min-h-10 shrink-0 rounded-full border px-3 text-xs ${!genre ? "border-brand/50 text-brand" : "border-white/15 text-white/50"}`}>All sounds</button>
         {sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(sound.key); setRound(0); setLimit(24); }} className={`min-h-10 shrink-0 rounded-full border px-3 text-xs ${genre === sound.key ? "border-brand/50 bg-brand/10 text-brand" : "border-white/15 text-white/50"}`}>{sound.label}</button>)}
       </div> : null}
-      {genre && !sounds.some(sound => sound.key === genre) ? <button type="button" onClick={() => setGenre("")} className="mt-3 min-h-10 text-sm text-brand">Clear sound filter: {genre}</button> : null}
+      {genre ? <button type="button" onClick={() => setGenre("")} className="mt-3 min-h-10 text-sm text-brand">Clear sound filter: {genre}</button> : null}
       </details>
-      {unavailable ? <div role="status" className="mt-4 rounded-xl border border-white/15 p-3 text-sm text-white/50"><p>Some discoveries could not be loaded. You can still explore what is here.</p><button type="button" onClick={() => { setLoading(true); setUnavailable(false); setLoadAttempt(value => value + 1); }} className="mt-2 min-h-10 rounded-full border border-white/20 px-4 text-white">Retry loading</button></div> : null}
+      {unavailable ? <div role="status" className="mt-4 rounded-xl border border-white/15 p-3 text-sm text-white/50"><p>Search is incomplete because some content could not be loaded. Retry to search everything.</p><button type="button" onClick={() => { search.retry(); }} className="mt-2 min-h-10 rounded-full border border-white/20 px-4 text-white">Retry loading</button></div> : null}
       {!query.trim() && kind === "all" ? <section className="mt-5 rounded-2xl border border-brand/20 bg-brand/[.035] p-4">
         <p className="font-semibold">{activeMode.description}</p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -307,7 +275,7 @@ export default function AppExploreClient({
               );
             })}
           </div>
-          {matched.tracks.length > filtered.tracks.length ? <button type="button" onClick={() => { setKind("music"); setLimit(value => kind === "music" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more music →</button> : null}
+          {(search.counts.track || 0) > filtered.tracks.length ? <button type="button" onClick={() => { setKind("music"); setLimit(value => kind === "music" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more music →</button> : null}
         </section>
       ) : null}
 
@@ -328,7 +296,7 @@ export default function AppExploreClient({
               );
             })}
           </div>
-          {matched.artists.length > filtered.artists.length ? <button type="button" onClick={() => { setKind("artists"); setLimit(value => kind === "artists" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more artists →</button> : null}
+          {(search.counts.artist || 0) > filtered.artists.length ? <button type="button" onClick={() => { setKind("artists"); setLimit(value => kind === "artists" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more artists →</button> : null}
         </section>
       ) : null}
 
@@ -346,7 +314,7 @@ export default function AppExploreClient({
               </Link>
             ))}
           </div>
-          {matched.producers.length > filtered.producers.length ? <button type="button" onClick={() => { setKind("producers"); setLimit(value => kind === "producers" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more producers →</button> : null}
+          {(search.counts.producer || 0) > filtered.producers.length ? <button type="button" onClick={() => { setKind("producers"); setLimit(value => kind === "producers" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more producers →</button> : null}
         </section>
       ) : null}
 
@@ -383,11 +351,11 @@ export default function AppExploreClient({
               </article>
             ))}
           </div>
-          {matched.beats.length > filtered.beats.length ? <button type="button" onClick={() => { setKind("beats"); setLimit(value => kind === "beats" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more beats →</button> : null}
+          {(search.counts.beat || 0) > filtered.beats.length ? <button type="button" onClick={() => { setKind("beats"); setLimit(value => kind === "beats" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more beats →</button> : null}
         </section>
       ) : null}
 
-      {!loading && !(show("music") && filtered.tracks.length) && !(show("artists") && filtered.artists.length) && !(show("producers") && filtered.producers.length) && !(show("beats") && filtered.beats.length) ? (
+      {!loading && !unavailable && !(show("music") && filtered.tracks.length) && !(show("artists") && filtered.artists.length) && !(show("producers") && filtered.producers.length) && !(show("beats") && filtered.beats.length) ? (
         <div className="mt-10 rounded-[1.5rem] border border-dashed border-white/12 p-10 text-center">
           <h2 className="text-xl font-semibold">Nothing matched that yet.</h2>
           <p className="mt-2 text-sm text-white/38">Try another title, artist, producer, genre or mood.</p><button type="button" onClick={() => { setQuery(""); setGenre(""); setKind("all"); setMode("fresh"); setLimit(24); }} className="mt-4 min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black">Start discovering</button>

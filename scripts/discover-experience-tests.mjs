@@ -45,6 +45,7 @@ const fair = pure('src/lib/fair-discovery-order.ts');
 const discovery = pure('src/lib/discovery-experience.ts',{'@/lib/fair-discovery-order':fair});
 const now = new Date('2026-10-03T09:00:00Z');
 const music = Array.from({length:18},(_,i)=>({id:`track-${i}`,kind:'track',title:`Song ${i}`,subtitle:`Artist ${i % 9}`,href:`/catalogue?q=Song${i}`,tags:[i%2?'Hip Hop':'Gospel'],publishedAt:`2026-09-${String(10+i).padStart(2,'0')}T00:00:00Z`,detail:{id:`${i}`,kind:'track',title:`Song ${i}`,artist:`Artist ${i%9}`,genre:i%2?'Hip Hop':'Gospel',src:`/api/media/track${i}.mp3`,href:'/catalogue'}}));
+music.forEach((item, i) => { item.playback = { creatorId: `creator-${i % 9}`, isDownloadable: true, downloadPrice: 2 }; });
 assert.equal(discovery.discoveryCreatorKey('REVO, ft. Nigel, Chesa'),'revo');
 assert.equal(discovery.discoveryCreatorKey('REVO ft. Lavish'),'revo');
 assert.equal(discovery.discoveryCreatorKey('REVO'),'revo');
@@ -95,7 +96,7 @@ const playerSource=readFileSync('src/components/StationPlayer.tsx','utf8');
 assert.match(playerSource, /variant="compact" className="inline-flex min-h-10/,'Compact Buy must not be hidden on mobile');
 assert.equal(discovery.buildDiscoveryShelves(pool,0,'missing',now).length,0,'An empty genre must not show unrelated picks');
 
-let finishBeats, opened = 0, played = [], saved = [];
+let searchFailed = false, opened = 0, played = [], saved = [];
 const nativeTracks = music.map(i=>({id:i.detail.id,title:i.title,artist:i.detail.artist,src:i.detail.src,genre:i.detail.genre}));
 const player = {current:null,isPlaying:false,playNow:(item,opts)=>played.push({item,opts}),playAll:items=>played.push({items}),setQueueOpen(){},openNowPlaying(){opened++;},toggle(){}};
 const imports = {
@@ -110,23 +111,23 @@ const imports = {
   '@/lib/analytics':{trackEvent(){}},
   '@/lib/library':{hasLibraryItem:()=>false,recordListening:item=>saved.push(item),toggleLibraryItem:()=>true},
 };
-const fetches = [];
+const searchCalls = [];
+imports['@/lib/use-discovery-search'] = { useDiscoverySearch(params) {
+  searchCalls.push(params);
+  const items = music.filter(item => pure('src/lib/discovery-search.ts').matchesDiscoveryQuery(params.q, [item.title, item.subtitle])).filter(item => !params.genre || discovery.matchesSound(item, params.genre));
+  return { items, counts: { track: items.length }, sounds: discovery.discoverySounds(music), loading: false, unavailable: searchFailed ? ['beats'] : [], retry() { searchFailed = false; } };
+} };
 const render = harness('src/components/app-vnext/AppExploreClient.tsx',imports,{
-  AbortController,
   window:{location:{search:''},history:{state:{},replaceState(){}},setTimeout:()=>0,clearTimeout(){},addEventListener(){},removeEventListener(){}},
-  fetch:async url=>{
-    fetches.push(url);
-    if(url==='/api/beats') return await new Promise(resolve=>{finishBeats=resolve;});
-    return {ok:true,json:async()=>url.startsWith('/api/station')?{tracks:nativeTracks}:url==='/api/artists'?{artists:[{id:'c1',username:'one',name:'One',genres:['Hip-Hop']}]}:{producers:[]}};
-  },
 });
 const props={surface:'ios'};
 render(props); await settle(); let tree=render(props);
-assert.ok(fetches.includes('/api/station/tracks?surface=ios'),'Native music must retain surface rights filtering');
+assert.equal(searchCalls.at(-1).surface, 'ios', 'Native search must retain surface rights filtering');
 assert.equal(nodes(tree).filter(n=>n.type==='article').length,6,'Music must appear before a slow beat request finishes');
-finishBeats({ok:false}); await settle(); tree=render(props);
+searchFailed = true; tree=render(props);
 assert.ok(button(tree,'Retry loading'),'Partial failures must offer recovery');
 assert.equal(nodes(tree).filter(n=>n.type==='article').length,6,'One failed source must not wipe music');
+button(tree,'Retry loading').props.onClick(); tree=render(props);
 button(tree,'Hip-Hop').props.onClick(); tree=render(props);
 button(tree,'▶ Play discoveries').props.onClick();
 assert.ok(played.at(-1).items.every(i=>discovery.soundKey(i.genre)==='hip-hop'),'Native discovery queue must respect the selected genre');
@@ -137,9 +138,11 @@ assert.ok(nodes(tree).some(n=>n.type==='more-actions'),'Secondary native utiliti
 assert.ok(nodes(tree).some(n=>n.type==='song-share'),'Song sharing must remain reachable through the native More menu');
 firstPlay.props.onClick();
 assert.equal(opened,0,'Starting a discovery track must keep the browsing screen open');
+assert.ok(played.at(-1).item.creatorId, 'Search playback must preserve creator navigation');
+assert.equal(played.at(-1).item.downloadPrice, 2, 'Search playback must preserve the download offer');
 assert.equal(saved.at(-1).href,'/app/ios','Native listening history must stay in the app namespace');
 button(tree,'Show more music →').props.onClick(); tree=render(props);
 assert.equal(nodes(tree).filter(n=>n.type==='article').length,9,'Browse more must expose the full matched pool');
 const search=nodes(tree).find(n=>n.type==='input');search.props.onChange({target:{value:'no-match'}});tree=render(props);
 assert.ok(button(tree,'Start discovering'),'Empty native views must offer a reset');
-console.log('Discover behavior passed: diverse rotating picks, genre matching, real playback, fresh order, independent native loading, rights-scoped queue, browse-more, song sharing and empty-state recovery.');
+console.log('Discover behavior passed: diverse rotating picks, genre matching, real playback, fresh order, shared native loading, rights-scoped queue, browse-more, song sharing and empty-state recovery.');
