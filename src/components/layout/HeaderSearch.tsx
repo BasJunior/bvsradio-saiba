@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useId, useMemo, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { flushSync } from "react-dom";
 import { useAppSurface } from "@/components/app/AppSurfaceProvider";
-import { buildSearchSuggestions, filterSearchSuggestions, searchPageHref, type SearchSurface } from "@/lib/header-search";
+import { searchPageHref, type SearchSurface } from "@/lib/header-search";
+
+import { useDiscoverySearch } from "@/lib/use-discovery-search";
 
 export default function HeaderSearch({ iconOnly = false, surface: explicitSurface }: { iconOnly?: boolean; surface?: Exclude<SearchSurface, null> }) {
   const router = useRouter();
@@ -17,12 +19,11 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
   const listId = useId();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [catalogue, setCatalogue] = useState<Parameters<typeof buildSearchSuggestions>[0]>({});
-  const [loadedSurface, setLoadedSurface] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
-  const surfaceKey = surface || "web";
   const hasSearchIntent = query.trim().length >= 2;
-  const loading = open && hasSearchIntent && loadedSurface !== surfaceKey;
+  const search = useDiscoverySearch({ q: query, surface: surface || 'web', view: 'suggestions', limit: 8 }, open && hasSearchIntent);
+  const loading = search.loading;
+  const failed = search.unavailable.length > 0;
+  const suggestions = search.items;
 
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
   useEffect(() => {
@@ -50,33 +51,6 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
     return () => document.removeEventListener("pointerdown", outside);
   }, [open]);
 
-  useEffect(() => {
-    if (!open || !hasSearchIntent || loadedSurface === surfaceKey) return;
-    const controller = new AbortController();
-    let partialFailure = false;
-    const read = async (path: string) => {
-      try {
-        const response = await fetch(path, { signal: controller.signal, cache: "no-store" });
-        if (!response.ok) throw new Error("Catalogue unavailable");
-        return await response.json();
-      } catch {
-        partialFailure = true;
-        return {};
-      }
-    };
-    Promise.all([
-      read("/api/artists"), read("/api/producers"), read("/api/beats"),
-      read(`/api/station/tracks${surface ? `?surface=${surface}` : ""}`),
-    ]).then(([artists, producers, beats, tracks]) => {
-      if (controller.signal.aborted) return;
-      setCatalogue({ artists: artists.artists, producers: producers.producers, beats: beats.beats, tracks: tracks.tracks });
-      setFailed(partialFailure);
-      setLoadedSurface(surfaceKey);
-    });
-    return () => controller.abort();
-  }, [open, hasSearchIntent, loadedSurface, surface, surfaceKey]);
-
-  const suggestions = useMemo(() => loadedSurface === surfaceKey ? filterSearchSuggestions(buildSearchSuggestions(catalogue, surface), query) : [], [catalogue, query, surface, loadedSurface, surfaceKey]);
   const close = () => { setOpen(false); if (iconOnly) triggerRef.current?.focus(); };
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -108,7 +82,7 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
       {(!iconOnly || open) ? <form onSubmit={submit} role="search" aria-label="Search BVS" className={iconOnly ? "fixed inset-x-3 top-[calc(env(safe-area-inset-top)+4.25rem)] z-[80] mx-auto max-w-xl rounded-2xl border border-white/15 bg-bg-primary p-3 shadow-2xl" : "relative w-40 md:w-64"}>
         <div className="flex min-h-11 items-center rounded-full border border-white/15 bg-white/5 focus-within:border-brand/50">
           <span className="pl-4 text-lg text-text-secondary" aria-hidden="true">⌕</span>
-          <input ref={inputRef} value={query} onChange={(event) => setQuery(event.target.value)} onFocus={() => setOpen(true)} placeholder="Search BVS" aria-label="Search music, artists, producers and beats" aria-controls={open ? listId : undefined} autoComplete="off" maxLength={160} className="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-text-primary outline-none" />
+          <input ref={inputRef} maxLength={160} value={query} onChange={(event) => setQuery(event.target.value)} onFocus={() => setOpen(true)} placeholder="Search BVS" aria-label="Search music, artists, producers and beats" aria-controls={open ? listId : undefined} autoComplete="off" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-base text-text-primary outline-none" />
           {query ? <button type="button" onClick={() => { setQuery(""); inputRef.current?.focus(); }} className="mr-1 h-9 w-9 shrink-0 rounded-full text-text-secondary" aria-label="Clear search">×</button> : null}
           {iconOnly ? <button type="button" onClick={close} className="mr-3 text-xs text-brand">Close</button> : null}
         </div>
@@ -122,7 +96,7 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
               </Link>
             </li>)}</ul>
             {!loading && !suggestions.length ? <p role="status" className="px-3 py-4 text-sm text-text-secondary">{failed ? "Some suggestions are unavailable. Try again or search all BVS." : "No quick matches. Try another name or search all BVS."}</p> : null}
-            {failed && !loading ? <button type="button" onClick={() => setLoadedSurface(null)} className="px-3 py-2 text-sm text-brand">Retry suggestions</button> : null}
+            {failed && !loading ? <button type="button" onClick={() => search.retry()} className="px-3 py-2 text-sm text-brand">Retry suggestions</button> : null}
             <button type="submit" className="mt-1 w-full rounded-xl border-t border-white/10 px-3 py-3 text-left text-sm font-medium text-brand hover:bg-white/[.07]">Search all BVS for “{query.trim()}” →</button>
           </>}
         </div> : null}
