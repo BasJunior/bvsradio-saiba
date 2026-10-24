@@ -10,6 +10,9 @@ const shell = read("src/components/StudioProductionShell.tsx");
 const beats = read("src/components/MyBeatStore.tsx");
 const money = read("src/components/StudioMoneySummary.tsx");
 const orders = read("src/components/CreatorServiceOrders.tsx");
+const payouts = read("src/app/creator/studio/payouts/page.tsx");
+const editorialNav = read("src/components/EditorialWorkspaceNav.tsx");
+const editorialPayouts = read("src/app/admin/editorial/finance/payouts/page.tsx");
 
 for (const accent of ["core", "beats", "marketplace", "insights", "shows", "money"]) {
   assert(css.includes(`[data-studio-accent="${accent}"]`), `Studio palette includes ${accent}`);
@@ -38,6 +41,17 @@ assert(beats.includes('data-studio-accent="beats"'), "BeatStore surface uses pur
 assert(beats.includes('data-studio-accent="insights"'), "Beat review conversation uses teal");
 assert(beats.includes("border-amber-400/40"), "capacity warnings keep warning semantics");
 assert(money.includes('data-studio-accent="money"'), "wallet summary keeps money identity");
+assert(money.includes('href="/creator/studio/payouts"'), "Studio money summary exposes the dedicated payout path");
 assert(orders.includes('data-studio-accent="marketplace"'), "service orders keep marketplace identity");
+
+assert(payouts.includes("fetch('/api/artist/payouts'"), "creator payout workspace uses protected payout API");
+assert(payouts.includes("fetch('/api/artist/payout-methods'"), "creator payout workspace uses protected method API");
+assert(payouts.includes('Reserved for payouts'), "creator payout workspace explains reserved balance");
+assert(payouts.includes('Withdrawable now'), "creator payout workspace shows actual withdrawable balance");
+assert(!payouts.includes('bank_transfer'), "creator payout form does not collect raw bank-account paths before encrypted storage exists");
+assert(editorialNav.includes('href="/admin/editorial/finance/payouts"'), "Editorial workspace exposes payout queue navigation");
+assert(editorialPayouts.includes("fetch('/api/admin/editorial/payouts'"), "Editorial payout queue uses protected staff API");
+assert(editorialPayouts.includes('Mark paid + post debit'), "Editorial payout queue makes final ledger posting explicit");
+assert(editorialPayouts.includes('External payment reference'), "Editorial payout queue requires a real transfer reference before paid");
 
 console.log("studio UI regression checks passed");

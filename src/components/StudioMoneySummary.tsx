@@ -119,12 +119,20 @@ export default function StudioMoneySummary({ token }: { token: string }) {
             so a later plan change does not rewrite an older fee snapshot.
           </p>
         </div>
-        <Link
-          href="/artists"
-          className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm"
-        >
-          Full wallet & payouts
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/creator/studio/payouts"
+            className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm font-semibold"
+          >
+            Payouts
+          </Link>
+          <Link
+            href="/artists"
+            className="rounded-full border border-white/15 px-4 py-2 text-sm"
+          >
+            Full wallet
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

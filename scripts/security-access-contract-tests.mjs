@@ -17,6 +17,10 @@ const nonApiMigration = await readFile(
   new URL("../supabase/migrations/20260927231000_browser_non_api_privileges.sql", import.meta.url),
   "utf8",
 );
+const payoutMigration = await readFile(
+  new URL("../supabase/migrations/20261024090000_artist_payout_transaction_paths.sql", import.meta.url),
+  "utf8",
+);
 const orders = await readFile(new URL("../src/lib/orders.ts", import.meta.url), "utf8");
 const analytics = await readFile(new URL("../src/app/api/analytics/route.ts", import.meta.url), "utf8");
 const trackPlay = await readFile(new URL("../src/app/api/tracks/play/route.ts", import.meta.url), "utf8");
@@ -27,6 +31,10 @@ const beatServer = await readFile(new URL("../src/lib/beatstore-server.ts", impo
 const creatorServer = await readFile(new URL("../src/lib/creator-server.ts", import.meta.url), "utf8");
 const releaseRoute = await readFile(new URL("../src/app/api/releases/route.ts", import.meta.url), "utf8");
 const trackUploadRoute = await readFile(new URL("../src/app/api/tracks/upload/route.ts", import.meta.url), "utf8");
+const payoutServer = await readFile(new URL("../src/lib/artist-payouts.ts", import.meta.url), "utf8");
+const payoutRoute = await readFile(new URL("../src/app/api/artist/payouts/route.ts", import.meta.url), "utf8");
+const payoutMethodRoute = await readFile(new URL("../src/app/api/artist/payout-methods/route.ts", import.meta.url), "utf8");
+const editorialPayoutRoute = await readFile(new URL("../src/app/api/admin/editorial/payouts/route.ts", import.meta.url), "utf8");
 
 for (const kind of ["tables", "sequences", "functions"]) {
   assert.ok(
@@ -149,8 +157,6 @@ assert.ok(
   "Anonymous public-artist rendering must stay within public profile fields.",
 );
 
-console.log("security access contract gates passed");
-
 for (const table of ["tracks", "releases", "release_tracks", "beats"]) {
   assert.ok(
     catalogueMigration.includes(`revoke insert, update, delete on table public.${table} from anon, authenticated`),
@@ -208,3 +214,58 @@ for (const kind of ["tables", "sequences", "functions"]) {
     `Project-postgres future ${kind} must default to browser-denied.`,
   );
 }
+
+// Payouts: every mutation is server-mediated and every paid request posts one ledger debit.
+for (const table of ["artist_payout_methods", "artist_payout_requests"]) {
+  assert.ok(
+    payoutMigration.includes(`revoke insert, update, delete on table public.${table} from anon, authenticated`),
+    `${table} direct browser mutation must be revoked.`,
+  );
+}
+assert.ok(
+  payoutMigration.includes("artist_ledger_one_payout_debit_per_request") &&
+    payoutMigration.includes("where payout_request_id is not null and entry_type = 'payout_debit'"),
+  "Payout ledger must guarantee at most one payout debit per request.",
+);
+assert.ok(
+  payoutMigration.includes("status in ('requested', 'approved', 'processing')") &&
+    payoutMigration.includes("insufficient_withdrawable_balance"),
+  "Payout requests must reserve active requests before allowing another withdrawal.",
+);
+assert.ok(
+  payoutMigration.includes("pg_advisory_xact_lock") && payoutMigration.includes("request_artist_payout"),
+  "Payout request creation must serialize balance reservations per artist.",
+);
+assert.ok(
+  payoutMigration.includes("p_status = 'paid'") &&
+    payoutMigration.includes("payout_reference_required") &&
+    payoutMigration.includes("'payout_debit'"),
+  "Paid transition must require a real reference and atomically create the payout debit.",
+);
+for (const fn of ["request_artist_payout", "cancel_artist_payout", "transition_artist_payout"]) {
+  assert.ok(
+    payoutMigration.includes(`grant execute on function public.${fn}`) && payoutMigration.includes("to service_role"),
+    `${fn} must be executable only through trusted server credentials.`,
+  );
+}
+assert.ok(
+  payoutServer.includes("import 'server-only'") && payoutServer.includes("SUPABASE_SERVICE_ROLE_KEY"),
+  "Payout helper must remain server-only and service-role mediated.",
+);
+assert.ok(
+  payoutRoute.includes("payoutRpc<Record<string, unknown>>('request_artist_payout'") &&
+    payoutRoute.includes("payoutRpc<Record<string, unknown>>('cancel_artist_payout'"),
+  "Creator payout API must use transactional RPCs instead of direct request-table writes.",
+);
+assert.ok(
+  payoutMethodRoute.includes("details: {}") && !payoutMethodRoute.includes("bank_transfer"),
+  "Creator payout method API must avoid raw bank details until encrypted storage exists.",
+);
+assert.ok(
+  editorialPayoutRoute.includes("can(identity, 'manage_artist_wallet')") &&
+    editorialPayoutRoute.includes("transition_artist_payout") &&
+    editorialPayoutRoute.includes("audit(identity.user.id"),
+  "Editorial payout transitions must require wallet permission, use the transaction RPC, and be audited.",
+);
+
+console.log("security access contract gates passed");
