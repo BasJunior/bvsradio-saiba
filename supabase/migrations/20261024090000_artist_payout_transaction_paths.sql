@@ -13,10 +13,15 @@ create index if not exists artist_payout_requests_active_reservation_idx
 revoke insert, update, delete on table public.artist_payout_methods from anon, authenticated;
 revoke insert, update, delete on table public.artist_payout_requests from anon, authenticated;
 
+-- A beta RPC already used this legacy signature. Remove only the newer alternate
+-- signature if it ever existed, then replace the legacy signature in place so
+-- PostgREST never has ambiguous overloads with the same named parameters.
+drop function if exists public.request_artist_payout(uuid, uuid, numeric, text);
+
 create or replace function public.request_artist_payout(
   p_artist_user_id uuid,
-  p_payout_method_id uuid,
-  p_requested_amount numeric,
+  p_requested_amount numeric default null,
+  p_payout_method_id uuid default null,
   p_artist_note text default null
 )
 returns public.artist_payout_requests
@@ -269,10 +274,10 @@ begin
 end;
 $$;
 
-revoke all on function public.request_artist_payout(uuid, uuid, numeric, text) from public, anon, authenticated;
+revoke all on function public.request_artist_payout(uuid, numeric, uuid, text) from public, anon, authenticated;
 revoke all on function public.cancel_artist_payout(uuid, uuid) from public, anon, authenticated;
 revoke all on function public.transition_artist_payout(uuid, uuid, text, text, text) from public, anon, authenticated;
 
-grant execute on function public.request_artist_payout(uuid, uuid, numeric, text) to service_role;
+grant execute on function public.request_artist_payout(uuid, numeric, uuid, text) to service_role;
 grant execute on function public.cancel_artist_payout(uuid, uuid) to service_role;
 grant execute on function public.transition_artist_payout(uuid, uuid, text, text, text) to service_role;
