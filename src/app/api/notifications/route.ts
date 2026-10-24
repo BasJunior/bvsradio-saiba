@@ -1,3 +1,4 @@
+import { rolePermissions, type EditorialRole } from '@/lib/editorial'
 import { operationNotificationEnabled } from '@/lib/notification-categories'
 import { NextResponse } from 'next/server'
 
@@ -93,6 +94,12 @@ export async function GET(request: Request) {
       ...orders.map(item => ({ id: `order-${item.reference}-${item.status}-${item.delivery_status}`, title: 'Order updated', detail: `${item.reference} · ${String(item.status).replaceAll('_', ' ')} · ${String(item.delivery_status).replaceAll('_', ' ')}`, created_at: String(item.updated_at), href: `/account/orders/${item.reference}`, kind: 'order' })),
     ]
   }
+
+  // Payout messages are private finance data: ordinary editorial roles must not see them.
+  const staffRole = String(staff[0]?.role || '') as EditorialRole
+  const walletStaff = String(profile?.role) === 'admin' || Boolean(rolePermissions[staffRole]?.includes('manage_artist_wallet'))
+  const payoutMessages = await rows(`artist_payout_messages?${walletStaff ? `or=(author_kind.eq.creator,and(artist_user_id.eq.${user.id},author_kind.eq.staff))` : `artist_user_id=eq.${user.id}&author_kind=eq.staff`}&select=id,payout_request_id,author_kind,created_at&order=created_at.desc&limit=30`)
+  events.push(...payoutMessages.map(item => ({ id: `payout-message-${item.id}`, title: item.author_kind === 'creator' ? 'Creator payout reply' : 'Message from BVS Finance', detail: 'Open your private payout conversation to read and reply.', created_at: String(item.created_at), href: `${item.author_kind === 'creator' ? '/admin/editorial/finance/payouts' : '/creator/studio/payouts'}#payout-${item.payout_request_id}`, kind: 'payout' })))
 
   events = events.filter(event => operationNotificationEnabled(event.kind, preferences[0] || {})).filter(event => event.created_at && event.created_at !== 'undefined')
     .sort((a, b) => b.created_at.localeCompare(a.created_at))

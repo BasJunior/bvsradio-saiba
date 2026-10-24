@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import PayoutConversation from '@/components/PayoutConversation'
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
@@ -208,6 +209,15 @@ export default function CreatorPayoutsPage() {
       <h2 className="text-2xl font-semibold">Payout methods</h2>
       {data.methods.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2">{data.methods.map((method) => <div key={method.id} className="rounded-xl border border-white/10 bg-white/[.025] p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{method.label}</p><p className="mt-1 text-sm text-text-secondary">{label(method.methodType)} · {method.destinationSummary || 'No destination summary'}</p></div>{method.isDefault && method.status === 'active' ? <span className="rounded-full border border-brand/30 px-2 py-1 text-[10px] uppercase text-brand">Default</span> : null}</div><div className="mt-4 flex gap-2">{method.status === 'active' && !method.isDefault ? <button disabled={busy} onClick={() => void methodAction(method.id, 'default')} type="button" className="rounded-full border border-white/15 px-3 py-1.5 text-xs">Make default</button> : null}{method.status === 'active' ? <button disabled={busy} onClick={() => void methodAction(method.id, 'disable')} type="button" className="rounded-full border border-red-400/25 px-3 py-1.5 text-xs text-red-200">Disable</button> : <span className="text-xs capitalize text-text-secondary">{label(method.status)}</span>}</div></div>)}</div> : <p className="mt-4 text-sm text-text-secondary">No payout method yet.</p>}
     </section>
+
+    {data.requests.length > 0 && <section className="mt-10 space-y-4" aria-label="Payout conversations">
+      <h2 className="text-2xl font-semibold">Payout messages</h2>
+      {data.requests.map(request => <article key={request.id} className="rounded-2xl border border-white/10 p-4">
+        <h3 className="font-semibold">{money(request.requestedAmount, request.currency)} · {label(request.status)}</h3>
+        <p className="mt-1 text-xs text-text-secondary">Requested {request.requestedAt ? new Date(request.requestedAt).toLocaleString() : '—'}</p>
+        <PayoutConversation requestId={request.id} token={token} active={['requested', 'approved', 'processing'].includes(request.status)} />
+      </article>)}
+    </section>}
 
     <section className="mt-10 rounded-2xl border border-white/10 p-6">
       <h2 className="text-2xl font-semibold">Payout history</h2>

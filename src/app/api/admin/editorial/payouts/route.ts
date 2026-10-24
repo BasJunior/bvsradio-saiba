@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { payoutMessageRows } from '@/lib/payout-conversations'
 import { audit, can, editorialIdentity } from '@/lib/editorial-server'
 import {
   payoutConfigured,
@@ -31,6 +32,8 @@ async function loadQueue() {
       : Promise.resolve([]),
   ])
 
+  const unreadReplies = requests.length ? await payoutMessageRows(`artist_payout_messages?payout_request_id=in.(${requests.map(row => encodeURIComponent(String(row.id))).join(',')})&author_kind=eq.creator&recipient_read_at=is.null&select=payout_request_id&limit=5000`) : []
+  const hasReply = new Set(unreadReplies.map(row => String(row.payout_request_id)))
   const profileById = new Map(profiles.map((row) => [String(row.id), row]))
   const methodById = new Map(methods.map((row) => [String(row.id), row]))
 
@@ -42,6 +45,7 @@ async function loadQueue() {
     return {
       ...publicPayoutRequest(row),
       artistUserId: artistId,
+      hasCreatorReply: hasReply.has(String(row.id)),
       artist: {
         displayName: profile?.display_name ? String(profile.display_name) : null,
         username: profile?.username ? String(profile.username) : null,

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import PayoutConversation from '@/components/PayoutConversation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
@@ -13,6 +14,9 @@ type QueueItem = {
   status: string
   artistNote: string | null
   staffNote: string | null
+  confirmedAccountHolderName: string | null
+  holderConfirmedAt: string | null
+  hasCreatorReply: boolean
   requestedAt: string | null
   approvedAt: string | null
   paidAt: string | null
@@ -39,12 +43,13 @@ function human(value: string) {
 }
 
 export default function EditorialPayoutQueuePage() {
+  const configured = isSupabaseConfigured()
   const [token, setToken] = useState('')
   const [queue, setQueue] = useState<QueueItem[]>([])
   const [role, setRole] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(configured)
   const [busyId, setBusyId] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState(configured ? '' : 'Supabase is not configured.')
   const [message, setMessage] = useState('')
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [references, setReferences] = useState<Record<string, string>>({})
@@ -61,18 +66,14 @@ export default function EditorialPayoutQueuePage() {
   }, [])
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setError('Supabase is not configured.')
-      setLoading(false)
-      return
-    }
+    if (!configured) return
     createClient().auth.getSession().then(async ({ data }) => {
       const accessToken = data.session?.access_token
       if (!accessToken) throw new Error('Sign in with an Editorial wallet account.')
       setToken(accessToken)
       await load(accessToken)
     }).catch((caught) => setError(caught instanceof Error ? caught.message : 'Could not load payout queue.')).finally(() => setLoading(false))
-  }, [load])
+  }, [configured, load])
 
   const counts = useMemo(() => ({
     requested: queue.filter((item) => item.status === 'requested').length,
@@ -152,9 +153,12 @@ export default function EditorialPayoutQueuePage() {
               <p className="font-semibold">{item.method?.label || 'Payout method unavailable'}</p>
               <p className="mt-1 capitalize text-text-secondary">{item.method ? human(item.method.methodType) : '—'}</p>
               <p className="mt-1 text-text-secondary">{item.method?.destinationSummary || 'No destination summary'}</p>
-              {item.method?.accountHolderName && <p className="mt-1 text-xs text-text-secondary">Holder: {item.method.accountHolderName}</p>}
+              {item.confirmedAccountHolderName && <p className="mt-2 font-semibold text-brand">Confirmed for this payout: {item.confirmedAccountHolderName}</p>}
+              {item.method?.accountHolderName && <p className="mt-1 text-xs text-text-secondary">Saved method holder: {item.method.accountHolderName}</p>}
             </div>
           </div>
+
+          <PayoutConversation requestId={item.id} token={token} staff hasNewReply={item.hasCreatorReply} onRead={() => { void load(token).catch(() => {}) }} />
 
           {item.artistNote && <p className="mt-4 rounded-xl border border-white/10 p-3 text-sm text-text-secondary"><span className="font-semibold text-text-primary">Creator note:</span> {item.artistNote}</p>}
 

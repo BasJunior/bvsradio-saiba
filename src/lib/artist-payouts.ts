@@ -29,6 +29,8 @@ export type PayoutRequestPublic = {
   approvedAt: string | null
   paidAt: string | null
   payoutReference: string | null
+  confirmedAccountHolderName: string | null
+  holderConfirmedAt: string | null
 }
 
 export function payoutConfigured() {
@@ -134,6 +136,8 @@ export function publicPayoutRequest(row: Record<string, unknown>): PayoutRequest
     approvedAt: row.approved_at ? String(row.approved_at) : null,
     paidAt: row.paid_at ? String(row.paid_at) : null,
     payoutReference: row.payout_reference ? String(row.payout_reference) : null,
+    confirmedAccountHolderName: row.confirmed_account_holder_name ? String(row.confirmed_account_holder_name) : null,
+    holderConfirmedAt: row.holder_confirmed_at ? String(row.holder_confirmed_at) : null,
   }
 }
 
