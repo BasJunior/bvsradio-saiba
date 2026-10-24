@@ -18,8 +18,8 @@ const SERVICE = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 /**
  * Start Paynow checkout for Artist Premium (prepaid month/year).
- * ZVSJQ hard-fix: durable Supabase order must exist BEFORE Paynow payment is created.
- * Body: { planId?: 'founding'|'standard'|..., interval?: 'month'|'year', email?: string }
+ * Durable Supabase order must exist BEFORE Paynow payment is created.
+ * New public checkout uses artist_annual/year; legacy plan IDs remain readable for existing clients/members.
  */
 export async function POST(req: Request) {
   const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
@@ -41,9 +41,10 @@ export async function POST(req: Request) {
   };
 
   const requested = normalizeArtistPlanId(body.planId);
-  const interval: BillingInterval = normalizeInterval(body.interval);
+  const requestedInterval: BillingInterval = normalizeInterval(body.interval);
   const resolved = await resolveCheckoutPlan(requested);
   const planId = resolved.planId;
+  const interval: BillingInterval = planId === "artist_annual" ? "year" : requestedInterval;
   const amount = artistPremiumPriceUsd(planId, interval);
   const sku = artistPremiumSku(planId, interval);
   const reference = premiumReference();
@@ -64,7 +65,9 @@ export async function POST(req: Request) {
   const title =
     planId === "artist_founding"
       ? `BVS Founding Artist Premium (${interval})`
-      : `BVS Artist Premium (${interval})`;
+      : planId === "artist_annual"
+        ? "BVS Artist Premium Annual (year)"
+        : `BVS Artist Premium (${interval})`;
 
   const order: StoredOrder = {
     reference,
@@ -85,8 +88,6 @@ export async function POST(req: Request) {
     source: "artist_premium",
   };
 
-  // Fail closed (ZVSJQ): save the durable order BEFORE creating a Paynow payment.
-  // saveOrderToSupabase returns {saved} and does not throw on HTTP failure.
   try {
     await saveOrderLocal(order);
   } catch (error) {
@@ -168,6 +169,8 @@ export async function POST(req: Request) {
     redirectUrl,
     pollUrl,
     returnUrl: paynow.returnUrl,
-    message: "Complete Paynow payment for Artist Premium. This prepaid period does not auto-renew.",
+    message: planId === "artist_annual"
+      ? "Complete Paynow payment for one year of Artist Premium. This prepaid period does not auto-renew."
+      : "Complete Paynow payment for Artist Premium. This prepaid period does not auto-renew.",
   });
 }

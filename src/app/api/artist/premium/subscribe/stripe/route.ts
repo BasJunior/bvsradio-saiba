@@ -3,7 +3,6 @@ import { authUserId } from "@/lib/storage-upload";
 import { getStripe, siteUrl } from "@/lib/stripe";
 import {
   artistPremiumPriceUsd,
-  normalizeInterval,
   getArtistPremiumStatus,
 } from "@/lib/premium-billing";
 
@@ -20,9 +19,8 @@ export async function POST(req: Request) {
   const user = await authUserId(SUPABASE_URL, SERVICE, token);
   if (!user?.id || !user.email) return NextResponse.json({ error: "Session expired." }, { status: 401 });
 
-  const body = (await req.json().catch(() => ({}))) as { interval?: string };
-  const interval = normalizeInterval(body.interval);
-  const planId = "artist_standard" as const;
+  const planId = "artist_annual" as const;
+  const interval = "year" as const;
   const amount = artistPremiumPriceUsd(planId, interval);
   const current = await getArtistPremiumStatus(user.id);
   const paidThrough = current.premiumUntil ? Math.floor(new Date(current.premiumUntil).getTime() / 1000) : 0;
@@ -41,10 +39,10 @@ export async function POST(req: Request) {
       price_data: {
         currency: "usd",
         unit_amount: Math.round(amount * 100),
-        recurring: { interval: interval === "year" ? "year" : "month" },
+        recurring: { interval: "year" },
         product_data: {
-          name: "BVS Artist Premium",
-          description: "Ongoing distribution access for approved releases while the membership remains active.",
+          name: "BVS Artist Premium Annual",
+          description: "One year of ongoing distribution access for approved releases.",
         },
       },
     }],
@@ -59,6 +57,7 @@ export async function POST(req: Request) {
     ok: true,
     redirectUrl: session.url,
     planId,
+    interval,
     amountUsd: amount,
     trialEndsAt: trialEnd ? new Date(trialEnd * 1000).toISOString() : null,
   });

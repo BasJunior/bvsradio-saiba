@@ -18,11 +18,12 @@ const headers = {
 /** Founding cohort hard cap (financial plan). */
 export const ARTIST_FOUNDING_SEAT_CAP = Number(process.env.BVS_FOUNDING_SEAT_CAP || 50);
 
-export type ArtistPremiumPlanId = "artist_founding" | "artist_standard";
+export type ArtistPremiumPlanId = "artist_founding" | "artist_standard" | "artist_annual";
 export type BillingInterval = "month" | "year";
 
 export function normalizeArtistPlanId(raw?: string | null): ArtistPremiumPlanId {
   const v = String(raw || "").toLowerCase();
+  if (v === "annual" || v === "artist_annual") return "artist_annual";
   if (v === "standard" || v === "artist_standard") return "artist_standard";
   return "artist_founding";
 }
@@ -32,6 +33,7 @@ export function normalizeInterval(raw?: string | null): BillingInterval {
 }
 
 export function artistPremiumPriceUsd(planId: ArtistPremiumPlanId, interval: BillingInterval): number {
+  if (planId === "artist_annual") return 29;
   if (planId === "artist_standard") return interval === "year" ? 120 : 12;
   return interval === "year" ? 90 : 9;
 }
@@ -87,7 +89,6 @@ export async function getFoundingSeatsUsed(): Promise<number> {
     "bvs_membership_counters?key=eq.artist_founding_seats_used&select=value&limit=1",
   );
   if (rows?.[0]?.value != null) return Number(rows[0].value) || 0;
-  // Fallback: count founding memberships
   const mem = await restGet<Array<{ id: string }>>(
     "bvs_memberships?founding_seat=eq.true&status=in.(active,trialing)&select=id",
   );
@@ -105,10 +106,6 @@ export type FoundingEligibility = {
   available: boolean;
 };
 
-/**
- * Canonical Founding Artist gate: calendar window AND seat cap.
- * Public copy and checkout must both use this (or the pure date helpers in premium-catalog).
- */
 export async function foundingEligibility(at: Date = new Date()): Promise<FoundingEligibility> {
   const used = await getFoundingSeatsUsed();
   const cap = ARTIST_FOUNDING_SEAT_CAP;
@@ -161,9 +158,9 @@ export async function resolveCheckoutPlan(
   const founding = await foundingEligibility();
   if (requested === "artist_founding" && !founding.eligible) {
     return {
-      planId: "artist_standard",
+      planId: "artist_annual",
       founding,
-      reason: `${founding.reason} Offering Standard Artist Premium.`,
+      reason: `${founding.reason} Offering Artist Premium Annual.`,
     };
   }
   return { planId: requested, founding };
@@ -182,10 +179,9 @@ export async function activatePaidArtistPremium(input: {
   if (!input.userId) return { ok: false, reason: "missing_user" };
 
   const endsAt = input.endsAt || periodEndIso(input.interval);
-  const ents = entitlementsForPlan(input.planId);
+  const ents = entitlementsForPlan(input.planId === "artist_annual" ? "artist_standard" : input.planId);
   const foundingSeat = input.planId === "artist_founding";
 
-  // Idempotent: already active on this provider_ref
   const existing = await restGet<Array<{ id: string; status: string }>>(
     `bvs_memberships?provider_ref=eq.${encodeURIComponent(input.reference)}&select=id,status&limit=1`,
   );
@@ -221,11 +217,9 @@ export async function activatePaidArtistPremium(input: {
     premium_until: endsAt,
     distribution_enabled: true,
     premium_plan_id: input.planId,
-    role: "artist",
   });
   if (!profilePatch.ok) return { ok: false, reason: "profile_patch_failed" };
 
-  // Cancel other active artist memberships for this user (period replaced)
   await restPatch(
     `bvs_memberships?user_id=eq.${input.userId}&family=eq.artist&status=in.(active,trialing,shell)`,
     { status: "canceled", cancel_at: new Date().toISOString(), notes: `Superseded by ${input.reference}` },
@@ -246,13 +240,11 @@ export async function activatePaidArtistPremium(input: {
     notes: `Paid Artist Premium ${input.planId} ${input.interval} · US$${input.amountUsd} · ${input.reference}`,
   });
   if (!mem.ok) {
-    // Profile already on; membership row best-effort
     console.error("premium membership insert failed", mem.status);
   }
 
   if (foundingSeat) {
     const used = await getFoundingSeatsUsed();
-    // Only bump if this payment is new founding (not already counted via membership)
     const countRows = await restGet<Array<{ value: number }>>(
       "bvs_membership_counters?key=eq.artist_founding_seats_used&select=value&limit=1",
     );
@@ -303,7 +295,6 @@ export type DistributionJobSummary = {
 };
 
 const LIVE_DSP_STATUS = "live_on_dsp";
-/** Non-live jobs that should stop progressing when Premium ends immediately. */
 const CANCELABLE_DISTRO_STATUSES = new Set([
   "eligible",
   "not_eligible",
@@ -419,7 +410,7 @@ export async function cancelArtistPremium(
   >(
     `bvs_memberships?user_id=eq.${userId}&family=eq.artist&status=in.(active,trialing,shell)&order=starts_at.desc&select=id,ends_at,plan_id,status,provider,provider_ref`,
   );
-  const active = mems?.[0];
+  const active = mems?.find((membership) => !membership.ends_at || Date.parse(membership.ends_at) > Date.now());
   const now = new Date().toISOString();
   const jobs = await listArtistDistributionJobs(userId);
 
@@ -460,7 +451,6 @@ export async function cancelArtistPremium(
     };
   }
 
-  // period_end: keep access until ends_at — do not touch distribution jobs yet
   const endsAt = active?.ends_at || now;
   if (active) {
     await restPatch(`bvs_memberships?id=eq.${active.id}`, {
@@ -512,7 +502,7 @@ export async function getArtistPremiumStatus(userId: string) {
   >(
     `bvs_memberships?user_id=eq.${userId}&family=eq.artist&status=in.(active,trialing,shell)&order=starts_at.desc&select=*&limit=3`,
   );
-  const membership = mems?.[0] || null;
+  const membership = mems?.find((row) => !row.ends_at || Date.parse(row.ends_at) > Date.now()) || null;
   const founding = await foundingEligibility();
   const until = membership?.ends_at || profile.premium_until || null;
   const stillValid = Boolean(profile.premium_active) && (!until || new Date(until).getTime() > Date.now());
@@ -541,9 +531,9 @@ export function parsePremiumOrderItem(items: Array<{ type?: string; id?: string 
       const sku = id.includes(":") ? id : String(item.title || "");
       let planId: ArtistPremiumPlanId = "artist_founding";
       let interval: BillingInterval = "month";
-      if (sku.includes("standard")) planId = "artist_standard";
+      if (sku.includes("annual")) planId = "artist_annual";
+      else if (sku.includes("standard")) planId = "artist_standard";
       if (sku.includes("year")) interval = "year";
-      // parse premium:artist_founding:month
       const parts = id.split(":");
       if (parts[0] === "premium" && parts[1]) planId = normalizeArtistPlanId(parts[1]);
       if (parts[2]) interval = normalizeInterval(parts[2]);

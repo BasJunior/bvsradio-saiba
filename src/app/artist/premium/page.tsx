@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 
@@ -16,6 +16,7 @@ type PremiumState = {
   provider?: string | null
   stripeEnabled?: boolean
   paynowEnabled?: boolean
+  annualPriceUsd: number
   standardMonthlyUsd: number
   standardYearlyUsd: number
   instantPriceUsd: number
@@ -29,7 +30,6 @@ function ArtistPremiumInner() {
   const [token, setToken] = useState('')
   const [error, setError] = useState(configured ? '' : 'Account service not configured.')
   const [busy, setBusy] = useState(false)
-  const [interval, setInterval] = useState<'month' | 'year'>('month')
   const [info, setInfo] = useState(() => {
     const checkout = searchParams.get('checkout')
     if (checkout === 'stripe-success') return 'Stripe checkout completed. Premium status updates after verified payment confirmation.'
@@ -61,11 +61,6 @@ function ArtistPremiumInner() {
     }).catch((caught) => setError(caught instanceof Error ? caught.message : 'Could not open Artist Premium.'))
   }, [configured, load])
 
-  const standardPrice = useMemo(
-    () => interval === 'year' ? `US$${data?.standardYearlyUsd ?? 120}/year` : `US$${data?.standardMonthlyUsd ?? 12}/month`,
-    [data, interval],
-  )
-
   const subscribe = async (provider: 'stripe' | 'paynow') => {
     if (!token) return
     setBusy(true)
@@ -75,7 +70,7 @@ function ArtistPremiumInner() {
       const response = await fetch(provider === 'stripe' ? '/api/artist/premium/subscribe/stripe' : '/api/artist/premium/subscribe', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId: 'standard', interval }),
+        body: JSON.stringify({ planId: 'annual', interval: 'year' }),
       })
       const payload = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(payload.error || 'Could not start checkout.')
@@ -112,9 +107,14 @@ function ArtistPremiumInner() {
 
   const activePlanName = data?.planId?.includes('founding')
     ? 'Founding Artist Premium (grandfathered)'
-    : data?.planId?.includes('standard')
-      ? 'Artist Premium'
-      : 'Artist Premium'
+    : data?.planId === 'artist_annual'
+      ? 'Artist Premium Annual'
+      : data?.planId?.includes('standard')
+        ? 'Standard Artist Premium (legacy)'
+        : 'Artist Premium'
+
+  const annualPrice = data?.annualPriceUsd ?? 29
+  const fiveInstant = ((data?.instantPriceUsd ?? 5.99) * 5).toFixed(2)
 
   return (
     <main className="mx-auto max-w-4xl px-5 py-12 sm:px-6 sm:py-14">
@@ -138,6 +138,9 @@ function ArtistPremiumInner() {
           {data.planId?.includes('founding') && (
             <p className="mt-3 text-sm text-brand">Your founding rate is grandfathered. The founding offer is closed to new purchases.</p>
           )}
+          {data.planId?.includes('standard') && (
+            <p className="mt-3 text-sm text-brand">Your existing Standard subscription keeps its current terms. The new US$29 annual plan is for new purchases.</p>
+          )}
           <div className="mt-5 flex flex-wrap gap-2">
             <button disabled={busy} onClick={() => void cancel('period_end')} className="min-h-11 rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">Cancel at period end</button>
             <button disabled={busy} onClick={() => void cancel('immediate')} className="min-h-11 rounded-full border border-red-400/40 px-5 py-2 text-sm text-red-200 disabled:opacity-40">Cancel now</button>
@@ -149,7 +152,7 @@ function ArtistPremiumInner() {
         <article className="flex flex-col rounded-3xl border border-brand/40 bg-brand/[.06] p-6">
           <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Premium Instant</p>
           <h2 className="mt-3 text-3xl font-semibold">US$5.99 per release</h2>
-          <p className="mt-2 text-sm font-medium">One-time release fee. No monthly subscription.</p>
+          <p className="mt-2 text-sm font-medium">One-time release fee. No subscription.</p>
           <p className="mt-4 flex-1 text-sm leading-6 text-text-secondary">
             Best when you release occasionally. Choose one BVS-approved release and pay only for that release to enter the wider distribution path.
           </p>
@@ -165,26 +168,25 @@ function ArtistPremiumInner() {
         </article>
 
         <article className="flex flex-col rounded-3xl border border-white/15 bg-white/[.025] p-6">
-          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Artist Premium</p>
-          <h2 className="mt-3 text-3xl font-semibold">US$12/month</h2>
-          <p className="mt-2 text-sm font-medium">Ongoing distribution access for artists releasing regularly.</p>
+          <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Artist Premium Annual</p>
+          <h2 className="mt-3 text-3xl font-semibold">US${annualPrice}/year</h2>
+          <p className="mt-2 text-sm font-medium">One simple yearly plan for artists releasing regularly.</p>
           <p className="mt-4 flex-1 text-sm leading-6 text-text-secondary">
-            Keep distribution eligibility active across approved releases while your membership remains active. Annual billing is US$120/year.
+            Keep distribution eligibility active across approved releases for a full year. Five separate Premium Instant releases would cost US${fiveInstant}, so the annual plan is already cheaper at the fifth release.
           </p>
+          <ul className="mt-5 list-disc space-y-2 pl-5 text-sm text-text-secondary">
+            <li>Approved-release distribution access for one year</li>
+            <li>Royalty and payout reporting support</li>
+            <li>Existing Founding and Standard subscriptions keep their current terms</li>
+            <li>No paid editorial influence, chart position or guaranteed streams</li>
+          </ul>
           {!data?.premiumActive && (
-            <>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button type="button" onClick={() => setInterval('month')} className={`min-h-11 rounded-full px-4 py-2 text-sm ${interval === 'month' ? 'bg-brand text-black' : 'border border-white/20'}`}>Monthly</button>
-                <button type="button" onClick={() => setInterval('year')} className={`min-h-11 rounded-full px-4 py-2 text-sm ${interval === 'year' ? 'bg-brand text-black' : 'border border-white/20'}`}>Yearly · US$120</button>
-              </div>
-              <p className="mt-4 text-sm text-text-secondary"><strong className="text-text-primary">Selected:</strong> {standardPrice}</p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <button disabled={busy || !token || data?.stripeEnabled === false} onClick={() => void subscribe('stripe')} className="min-h-11 rounded-full bg-brand px-5 py-2 font-semibold text-black disabled:opacity-40">{busy ? 'Starting…' : `Subscribe ${standardPrice}`}</button>
-                <button disabled={busy || !token || data?.paynowEnabled === false} onClick={() => void subscribe('paynow')} className="min-h-11 rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">Pay prepaid with Paynow</button>
-              </div>
-            </>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <button disabled={busy || !token || data?.stripeEnabled === false} onClick={() => void subscribe('stripe')} className="min-h-11 rounded-full bg-brand px-5 py-2 font-semibold text-black disabled:opacity-40">{busy ? 'Starting…' : `Subscribe — US$${annualPrice}/year`}</button>
+              <button disabled={busy || !token || data?.paynowEnabled === false} onClick={() => void subscribe('paynow')} className="min-h-11 rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">Pay one year with Paynow</button>
+            </div>
           )}
-          {data?.premiumActive && <p className="mt-5 rounded-xl border border-white/10 p-4 text-sm text-text-secondary">Your current membership already provides ongoing distribution eligibility; you do not need a new subscription checkout.</p>}
+          {data?.premiumActive && <p className="mt-5 rounded-xl border border-white/10 p-4 text-sm text-text-secondary">Your current membership already provides ongoing distribution eligibility; you do not need a new checkout.</p>}
         </article>
       </section>
 

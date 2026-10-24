@@ -21,8 +21,7 @@ const FAMILIES: MembershipFamily[] = [
   "brand",
 ];
 
-type DisplayPlan = CatalogPlan & { priceUnit?: "month" | "release" };
-
+type DisplayPlan = CatalogPlan & { priceUnit?: "month" | "release" | "year" };
 type PremiumAccent = "instant" | MembershipFamily;
 
 function premiumAccentFor(family: MembershipFamily, planId?: string): PremiumAccent {
@@ -43,9 +42,31 @@ const PREMIUM_INSTANT_PLAN: DisplayPlan = {
   summary: "Pay only when one approved release is ready for wider distribution.",
   includes: [
     "US$5.99 per approved release",
-    "One-time release fee — no monthly subscription",
+    "One-time release fee — no subscription",
     "Distribution entitlement applies to the selected release only",
     "No duplicate fee once that release is already eligible or moving through delivery",
+    "Payment never buys editorial approval, rotation, charts or guaranteed streams",
+  ],
+};
+
+const ARTIST_ANNUAL_PLAN: DisplayPlan = {
+  id: "artist_annual",
+  family: "artist",
+  name: "Artist Premium Annual",
+  monthlyUsd: 29,
+  yearlyUsd: 29,
+  badge: "Best for regular releases",
+  status: "live",
+  featured: true,
+  commissionPercent: 15,
+  priceUnit: "year",
+  summary: "One full year of ongoing distribution access for approved releases.",
+  includes: [
+    "US$29 for one year",
+    "Approved-release distribution access throughout the active year",
+    "Royalty and payout reporting support",
+    "Five Premium Instant releases cost US$29.95 — Annual is cheaper from release five",
+    "Existing Founding and Standard subscribers keep their current terms",
     "Payment never buys editorial approval, rotation, charts or guaranteed streams",
   ],
 };
@@ -57,8 +78,11 @@ function statusClass(status: CatalogPlan["status"]) {
 }
 
 function visiblePlansFor(family: MembershipFamily): DisplayPlan[] {
-  const base = PREMIUM_CATALOG.filter((plan) => plan.family === family && plan.id !== "artist_founding") as DisplayPlan[];
-  return family === "artist" ? [PREMIUM_INSTANT_PLAN, ...base] : base;
+  const hiddenLegacyArtistPlans = new Set(["artist_founding", "artist_standard", "artist_plus"]);
+  const base = PREMIUM_CATALOG.filter(
+    (plan) => plan.family === family && !(family === "artist" && hiddenLegacyArtistPlans.has(plan.id)),
+  ) as DisplayPlan[];
+  return family === "artist" ? [PREMIUM_INSTANT_PLAN, ARTIST_ANNUAL_PLAN, ...base] : base;
 }
 
 export default function PremiumEcosystemPage() {
@@ -80,23 +104,29 @@ export default function PremiumEcosystemPage() {
         BVS Radio listening, editorial submission and approved rotation remain separate from paid distribution. Premium adds wider commercial delivery plus royalty and payout reporting support without buying editorial influence.
       </p>
 
-      <div className="mt-8 grid gap-4 md:grid-cols-2">
+      <div className="mt-8 grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-white/10 p-6">
+          <p className="text-xs uppercase tracking-wider text-text-secondary">Artist Free</p>
+          <p className="mt-2 text-3xl font-semibold">US$0</p>
+          <p className="mt-2 text-sm text-text-secondary">Submit, publish, rotate on BVS and keep your artist home base without paying for off-platform distribution.</p>
+          <Link href="/auth/signup" className="mt-5 inline-flex min-h-11 items-center rounded-full border border-white/20 px-5 py-2.5 text-sm font-semibold">Start free</Link>
+        </div>
         <div data-premium-accent="instant" className="bvs-premium-accent-card rounded-2xl border p-6">
           <p className="bvs-premium-accent-label text-xs uppercase tracking-wider">Premium Instant</p>
           <p className="mt-2 text-3xl font-semibold">US$5.99 per release</p>
-          <p className="mt-2 text-sm text-text-secondary">One-time release fee. No monthly subscription. Best for artists releasing occasionally.</p>
+          <p className="mt-2 text-sm text-text-secondary">One-time release fee. No subscription. Best for occasional releases.</p>
           <Link href="/artist/premium/instant" className="bvs-premium-accent-button mt-5 inline-flex min-h-11 items-center rounded-full border px-5 py-2.5 text-sm font-semibold">Choose an approved release</Link>
         </div>
         <div data-premium-accent="artist" className="bvs-premium-accent-card rounded-2xl border p-6">
-          <p className="bvs-premium-accent-label text-xs uppercase tracking-wider">Artist Premium</p>
-          <p className="mt-2 text-3xl font-semibold">US$12/month</p>
-          <p className="mt-2 text-sm text-text-secondary">Or US$120/year. Ongoing distribution access, royalty reporting support and payout readiness for artists releasing regularly.</p>
-          <Link href="/artist/premium" className="bvs-premium-accent-button mt-5 inline-flex min-h-11 items-center rounded-full border px-5 py-2.5 text-sm font-semibold">Open Artist Premium</Link>
+          <p className="bvs-premium-accent-label text-xs uppercase tracking-wider">Artist Premium Annual</p>
+          <p className="mt-2 text-3xl font-semibold">US$29/year</p>
+          <p className="mt-2 text-sm text-text-secondary">A full year of ongoing approved-release distribution access. Five one-off releases cost US$29.95.</p>
+          <Link href="/artist/premium" className="bvs-premium-accent-button mt-5 inline-flex min-h-11 items-center rounded-full border px-5 py-2.5 text-sm font-semibold">Get Annual</Link>
         </div>
       </div>
 
       <p className="mt-4 rounded-xl border border-white/10 bg-white/[.02] p-4 text-sm text-text-secondary">
-        The Founding Artist Premium offer closed on 27 August 2026. Existing founding members keep their grandfathered plan while continuously eligible; new purchases use Premium Instant or Artist Premium.
+        Existing Founding and Standard Artist Premium subscriptions keep their current terms while valid. Those legacy plans are not repriced or converted automatically; new ongoing purchases use Artist Premium Annual at US$29/year.
       </p>
 
       <div className="mt-10 overflow-x-auto pb-2" aria-label="Membership families">
@@ -119,6 +149,13 @@ export default function PremiumEcosystemPage() {
       <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {plans.map((plan) => {
           const unit = plan.priceUnit || "month";
+          const displayPrice = plan.id === "artist_annual"
+            ? "US$29"
+            : plan.quoteOnly || plan.monthlyUsd == null
+              ? "Quote"
+              : plan.monthlyUsd === 0
+                ? "US$0"
+                : `US$${plan.monthlyUsd}`;
           return (
             <article key={plan.id} data-premium-accent={premiumAccentFor(plan.family, plan.id)} className="bvs-premium-accent-card flex flex-col rounded-2xl border p-5">
               <div className="flex items-start justify-between gap-2">
@@ -126,12 +163,12 @@ export default function PremiumEcosystemPage() {
                 <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${statusClass(plan.status)}`}>{plan.status}</span>
               </div>
               <p className="mt-3 text-3xl font-semibold tracking-tight">
-                {plan.quoteOnly || plan.monthlyUsd == null ? "Quote" : plan.monthlyUsd === 0 ? "US$0" : `US$${plan.monthlyUsd}`}
+                {displayPrice}
                 {plan.monthlyUsd != null && plan.monthlyUsd > 0 && !plan.quoteOnly && (
                   <span className="text-sm font-normal text-text-secondary">/{unit}</span>
                 )}
               </p>
-              {plan.yearlyUsd != null && plan.yearlyUsd > 0 && <p className="text-xs text-text-secondary">or US${plan.yearlyUsd}/year</p>}
+              {plan.yearlyUsd != null && plan.yearlyUsd > 0 && plan.id !== "artist_annual" && <p className="text-xs text-text-secondary">or US${plan.yearlyUsd}/year</p>}
               <p className="bvs-premium-accent-label mt-1 text-[11px] uppercase tracking-wide">{plan.badge}</p>
               <p className="mt-3 text-sm text-text-secondary">{plan.summary}</p>
               {plan.commissionPercent != null && <p className="mt-2 text-xs text-amber-100/90">Marketplace fee: {plan.commissionPercent}%</p>}
@@ -141,8 +178,8 @@ export default function PremiumEcosystemPage() {
               <div className="mt-5">
                 {plan.id === "artist_instant" ? (
                   <Link href="/artist/premium/instant" className="bvs-premium-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Choose a release</Link>
-                ) : plan.id === "artist_standard" ? (
-                  <Link href="/artist/premium" className="bvs-premium-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Open desk</Link>
+                ) : plan.id === "artist_annual" ? (
+                  <Link href="/artist/premium" className="bvs-premium-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Get Annual</Link>
                 ) : plan.quoteOnly ? (
                   <Link href="/contact" className="inline-flex min-h-11 items-center rounded-full border border-white/20 px-4 py-2 text-sm">Contact sales</Link>
                 ) : plan.status === "live" || plan.status === "pilot" ? (
@@ -161,7 +198,7 @@ export default function PremiumEcosystemPage() {
       <section data-premium-accent="artist" className="mt-14">
         <h2 className="text-2xl font-semibold">Where Artist distribution can take your music</h2>
         <p className="mt-2 max-w-3xl text-sm text-text-secondary">
-          Both Premium Instant and active Artist Premium use the same approved-release distribution path. Premium also prepares royalty and payout reporting for eligible BVS sales and future partner statements. Store availability varies by clearance, territory and delivery readiness.
+          Both Premium Instant and active Artist Premium Annual use the same approved-release distribution path. Store availability varies by clearance, territory and delivery readiness.
         </p>
         <ul className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
           {PREMIUM_DISTRIBUTION_STORES.map((store) => <li key={store} className="bvs-premium-accent-card rounded-xl border px-3 py-2 text-sm">{store}</li>)}
@@ -180,8 +217,9 @@ export default function PremiumEcosystemPage() {
         </div>
         <div data-premium-accent="artist" className="bvs-premium-accent-card rounded-2xl border p-6">
           <h2 className="bvs-premium-accent-label text-xl font-semibold">Which artist option?</h2>
+          <p className="mt-3 text-sm text-text-secondary"><strong className="text-text-primary">Just BVS:</strong> stay on Artist Free.</p>
           <p className="mt-3 text-sm text-text-secondary"><strong className="text-text-primary">Occasional releases:</strong> Premium Instant at US$5.99 per release.</p>
-          <p className="mt-3 text-sm text-text-secondary"><strong className="text-text-primary">Regular releases:</strong> Artist Premium at US$12/month or US$120/year.</p>
+          <p className="mt-3 text-sm text-text-secondary"><strong className="text-text-primary">Five or more distributed releases/year:</strong> Artist Premium Annual at US$29/year.</p>
         </div>
       </section>
     </main>
