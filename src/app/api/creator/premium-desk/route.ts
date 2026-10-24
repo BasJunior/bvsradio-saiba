@@ -26,8 +26,41 @@ type MembershipRow = {
   notes: string | null;
 };
 
+const ANNUAL_ARTIST_PLAN: CatalogPlan = {
+  id: "artist_annual",
+  family: "artist",
+  name: "Artist Premium Annual",
+  monthlyUsd: null,
+  yearlyUsd: 29,
+  badge: "Annual",
+  status: "live",
+  summary: "A full year of approved-release distribution access for US$29.",
+  commissionPercent: 15,
+  includes: [
+    "Approved-release distribution access for one year",
+    "Release status in the artist desk",
+    "Royalty and payout reporting support",
+    "15% BVS fee on eligible BVS music sales",
+  ],
+};
+
 function planMeta(planId: string): CatalogPlan | undefined {
+  if (planId === ANNUAL_ARTIST_PLAN.id) return ANNUAL_ARTIST_PLAN;
   return PREMIUM_CATALOG.find((p) => p.id === planId);
+}
+
+function membershipIsCurrent(membership: Pick<MembershipRow, "ends_at">, now = Date.now()) {
+  if (!membership.ends_at) return true;
+  const endsAt = Date.parse(membership.ends_at);
+  return Number.isFinite(endsAt) && endsAt > now;
+}
+
+function profilePremiumIsCurrent(profile: Record<string, unknown>, now = Date.now()) {
+  if (!Boolean(profile.premium_active) && !Boolean(profile.distribution_enabled)) return false;
+  const raw = typeof profile.premium_until === "string" ? profile.premium_until : "";
+  if (!raw) return true;
+  const endsAt = Date.parse(raw);
+  return Number.isFinite(endsAt) && endsAt > now;
 }
 
 /** Human desk sections derived from plan + entitlements. */
@@ -59,7 +92,9 @@ function deskSectionsFor(
         `Target destinations: ${PREMIUM_DISTRIBUTION_STORES.length}+ stores (Spotify, Apple Music, Boomplay, …)`,
         planId.includes("founding")
           ? `Founding rate (join by ${FOUNDING_WINDOW_LABEL}) while continuously subscribed`
-          : "Standard Artist Premium path",
+          : planId === "artist_annual"
+            ? "Artist Premium Annual · US$29/year"
+            : "Standard Artist Premium path",
         String(ents.release_analytics_level || "basic") === "advanced"
           ? "Advanced release analytics (when live)"
           : "Basic release packaging support",
@@ -85,8 +120,7 @@ function deskSectionsFor(
     const tier = String(ents.beatstore_tier || "free");
     const limit = ents.beat_live_limit;
     const bps = ents.marketplace_commission_bps;
-    const liveCount =
-      typeof ents.live_count === "number" ? Number(ents.live_count) : null;
+    const liveCount = typeof ents.live_count === "number" ? Number(ents.live_count) : null;
     const usageLine =
       limit == null
         ? liveCount != null
@@ -195,16 +229,12 @@ export async function GET(req: Request) {
       `${SUPABASE_URL}/rest/v1/bvs_memberships?user_id=eq.${user.id}&status=in.(active,trialing,shell)&order=starts_at.desc&select=*`,
       { headers: serviceHeaders(SERVICE), cache: "no-store" },
     );
-    if (mRes.ok) memberships = await mRes.json();
+    if (mRes.ok) memberships = ((await mRes.json()) as MembershipRow[]).filter((membership) => membershipIsCurrent(membership));
   } catch {
     memberships = [];
   }
 
-  // Synthesize artist membership from legacy profile flags if table empty
-  if (
-    memberships.length === 0 &&
-    (Boolean(profile.premium_active) || Boolean(profile.distribution_enabled))
-  ) {
+  if (memberships.length === 0 && profilePremiumIsCurrent(profile)) {
     const planId =
       typeof profile.premium_plan_id === "string" && profile.premium_plan_id
         ? String(profile.premium_plan_id)
@@ -215,20 +245,17 @@ export async function GET(req: Request) {
         plan_id: planId.startsWith("artist_") ? planId : `artist_${planId}`,
         family: "artist",
         status: "shell",
-        billing_interval: "month",
+        billing_interval: planId === "artist_annual" ? "year" : "month",
         starts_at: new Date().toISOString(),
         ends_at: (profile.premium_until as string) || null,
         founding_seat: String(planId).includes("founding"),
-        entitlements: entitlementsForPlan(
-          planId.startsWith("artist_") ? planId : `artist_${planId}`,
-        ),
+        entitlements: entitlementsForPlan(planId === "artist_annual" ? "artist_standard" : planId.startsWith("artist_") ? planId : `artist_${planId}`),
         provider: "profile",
         notes: "Derived from profiles.premium_* until membership row exists",
       },
     ];
   }
 
-  // Producer tier from profile without membership row
   if (
     !memberships.some((m) => m.family === "producer" || String(m.plan_id).startsWith("producer")) &&
     profile.beatstore_tier &&
@@ -277,7 +304,7 @@ export async function GET(req: Request) {
       String(m.plan_id).startsWith("producer") ||
       String(m.plan_id).includes("creator_complete");
     const ents = {
-      ...entitlementsForPlan(m.plan_id),
+      ...entitlementsForPlan(m.plan_id === "artist_annual" ? "artist_standard" : m.plan_id),
       ...(m.entitlements || {}),
       ...(isProducerish
         ? {
@@ -314,9 +341,9 @@ export async function GET(req: Request) {
     displayName: profile.display_name || null,
     role: profile.role || null,
     profileFlags: {
-      premiumActive: Boolean(profile.premium_active),
+      premiumActive: profilePremiumIsCurrent(profile),
       premiumUntil: profile.premium_until || null,
-      distributionEnabled: Boolean(profile.distribution_enabled),
+      distributionEnabled: Boolean(profile.distribution_enabled) && profilePremiumIsCurrent(profile),
       premiumPlanId: profile.premium_plan_id || null,
       beatstoreTier: profile.beatstore_tier || "free",
       supporterActive: Boolean(profile.supporter_active),
