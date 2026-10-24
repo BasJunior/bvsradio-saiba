@@ -16,6 +16,9 @@ const editorialArtworkShortcut = read('src/components/EditorialArtworkShortcut.t
 const editorialArtworkQueue = read('src/components/EditorialArtworkQueue.tsx')
 const premiumPage = read('src/app/artist/premium/page.tsx')
 const premiumOverview = read('src/app/premium/page.tsx')
+const premiumApi = read('src/app/api/artist/premium/route.ts')
+const premiumBilling = read('src/lib/premium-billing.ts')
+const premiumDesk = read('src/app/api/creator/premium-desk/route.ts')
 const instantApi = read('src/app/api/artist/premium/instant/route.ts')
 const instantLib = read('src/lib/premium-instant.ts')
 const stripeWebhook = read('src/app/api/webhooks/stripe/route.ts')
@@ -55,10 +58,25 @@ assert.match(editorialArtworkQueue, /Approve & apply/, 'Editorial artwork queue 
 assert.match(editorialArtworkQueue, /\/api\/admin\/editorial\/artwork-changes/, 'Editorial artwork queue must use the protected approval API')
 
 assert.match(premiumPage, /US\$5\.99 per release/, 'Artist Premium must advertise Premium Instant per release')
-assert.match(premiumPage, /One-time release fee\. No monthly subscription\./, 'Premium Instant must be clearly non-recurring')
-assert.match(premiumPage, /US\$12\/month/, 'ongoing Artist Premium must remain clearly priced')
-assert.match(premiumOverview, /The Founding Artist Premium offer closed on 27 August 2026/, 'public Premium page must mark Founding as closed')
-assert.doesNotMatch(premiumOverview, /href=\{`\/artist\/premium\?tier=founding/, 'public Premium page must not offer a founding checkout')
+assert.match(premiumPage, /US\$\$\{annualPrice\}\/year/, 'Artist Premium must advertise the new annual price')
+assert.match(premiumPage, /planId: 'annual', interval: 'year'/, 'new Artist Premium checkout must request annual/year')
+assert.match(premiumPage, /Five separate Premium Instant releases would cost/, 'Artist Premium must explain the five-release break-even')
+assert.match(premiumOverview, /US\$29\/year/, 'public Premium page must advertise US$29/year')
+assert.match(premiumOverview, /Five one-off releases cost US\$29\.95/, 'public Premium page must compare annual with five instant releases')
+assert.match(premiumOverview, /Existing Founding and Standard Artist Premium subscriptions keep their current terms/, 'legacy subscriptions must be explicitly preserved')
+assert.match(premiumOverview, /hiddenLegacyArtistPlans/, 'legacy artist plans must stay out of new-purchase catalogue cards')
+assert.match(premiumApi, /annualPriceUsd: 29/, 'Premium status API must expose the annual price')
+assert.match(premiumApi, /legacyStandard/, 'Premium API must retain legacy Standard metadata for existing subscriptions')
+
+assert.match(premiumBilling, /"artist_annual"/, 'billing must support a distinct annual plan id')
+assert.match(premiumBilling, /planId === "artist_annual"\) return 29/, 'annual price must be fixed server-side at US$29')
+assert.match(premiumBilling, /input\.planId === "artist_annual" \? "artist_standard"/, 'annual plan must inherit Standard distribution entitlements')
+assert.doesNotMatch(premiumBilling, /role:\s*"artist"/, 'Premium activation must never overwrite the creator role')
+assert.match(premiumBilling, /mems\?\.find\(\(row\) => !row\.ends_at \|\| Date\.parse\(row\.ends_at\) > Date\.now\(\)\)/, 'Premium status must ignore expired membership rows')
+assert.match(premiumBilling, /sku\.includes\("annual"\)/, 'Paynow line-item parsing must recover annual memberships')
+assert.match(premiumDesk, /membershipIsCurrent/, 'Premium Desk must filter dated memberships by expiry')
+assert.match(premiumDesk, /profilePremiumIsCurrent/, 'Premium Desk must not synthesize expired profile memberships')
+assert.match(premiumDesk, /Artist Premium Annual · US\$29\/year/, 'Premium Desk must label the new annual membership')
 
 assert.match(instantApi, /assertPremiumInstantRelease\(user\.id, releaseId\)/, 'Instant checkout must verify the selected release server-side')
 assert.match(instantApi, /mode: "payment"/, 'Stripe Premium Instant must be a one-time payment')
@@ -78,21 +96,19 @@ assert.match(paynowWebhook, /recoverPremiumOrderFromPaynow/, 'Paynow webhook mus
 assert.match(paynowWebhook, /Premium order not stored yet\. Retry\./, 'missing Premium refs must 503 for retry, not terminal 404')
 assert.match(paynowWebhook, /\^BVS-PREM-\/i/, 'Paynow recovery path must key off BVS-PREM references')
 
-// ZVSJQ hard-fix: durable order BEFORE Paynow payment create.
 assert.match(paynowSubscription, /saveOrderToSupabase\(order\)/, 'Paynow Premium subscribe must save durable order')
 assert.match(paynowSubscription, /premium_order_save_failed/, 'Paynow Premium subscribe must fail closed when order save fails')
 assert.match(paynowSubscription, /No payment was taken/, 'Paynow Premium subscribe must refuse payment start if order was not saved')
-assert.match(paynowSubscription, /resolveCheckoutPlan\(requested\)/, 'Paynow Premium subscribe must resolve founding vs standard server-side')
-assert.match(paynowSubscription, /normalizeArtistPlanId\(body\.planId\)/, 'Paynow Premium subscribe must accept planId and normalize it')
-// Source order: save path must appear before paynow.send
+assert.match(paynowSubscription, /resolveCheckoutPlan\(requested\)/, 'Paynow Premium subscribe must resolve plan server-side')
+assert.match(paynowSubscription, /planId === "artist_annual" \? "year" : requestedInterval/, 'annual Paynow checkout must always cover one year')
 {
   const saveAt = paynowSubscription.indexOf('saveOrderToSupabase(order)')
   const sendAt = paynowSubscription.indexOf('paynow.send(payment)')
   assert.ok(saveAt >= 0 && sendAt > saveAt, 'durable order save must happen before Paynow payment create')
 }
-assert.match(stripeSubscription, /const planId = "artist_standard" as const/, 'new Stripe subscriptions must use Standard, not Founding')
-assert.doesNotMatch(stripeSubscription, /Founding Artist Premium/, 'new Stripe purchase copy must not advertise Founding')
-// Founding remains a server-resolved checkout option while seats/window allow; public marketing is closed.
-assert.match(paynowSubscription, /Founding Artist Premium/, 'Paynow title may still name Founding when resolveCheckoutPlan returns founding')
+assert.match(stripeSubscription, /const planId = "artist_annual" as const/, 'new Stripe subscriptions must use the distinct annual plan')
+assert.match(stripeSubscription, /const interval = "year" as const/, 'new Stripe subscriptions must be yearly only')
+assert.match(stripeSubscription, /recurring: \{ interval: "year" \}/, 'Stripe recurring cadence must be yearly')
+assert.doesNotMatch(stripeSubscription, /artist_standard/, 'new Stripe checkout must not create a legacy Standard subscription')
 
-console.log('web artwork + Premium Instant assertions passed')
+console.log('web artwork + Premium Annual assertions passed')
