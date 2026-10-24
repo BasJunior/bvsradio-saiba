@@ -6,6 +6,8 @@ import { useBrowserSession } from "@/lib/use-browser-session";
 import { isAllowedAudioFile } from "@/lib/audio-formats";
 import { trackEvent } from "@/lib/analytics";
 import {
+  CRATE_CHALLENGE_ACTIVE,
+  currentCratePayload,
   crateValidation,
   newCrateItem,
   newCratePayload,
@@ -44,21 +46,21 @@ export default function BeatCrateUploadForm({
   if (!session)
     return (
       <section className="border border-white/15 p-6">
-        <h2 className="text-2xl font-semibold">Your next 25 starts here.</h2>
+        <h2 className="text-2xl font-semibold">Build your beat crate.</h2>
         <p className="mt-3 text-sm text-text-secondary">
-          Create a producer profile, add your picture, then upload your original
+          Create a producer profile, then upload your original
           beats. Free producers can publish up to 25 beats.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             className={button}
-            href="/auth/signup?role=producer&next=%2Fcreator%2Fstudio%2Fcreate%2Fbeat%3Fchallenge%3Dcrate"
+            href="/auth/signup?role=producer&next=%2Fcreator%2Fstudio%2Fcreate%2Fbeat"
           >
             Create producer account
           </Link>
           <Link
             className={button}
-            href="/auth/login?next=%2Fcreator%2Fstudio%2Fcreate%2Fbeat%3Fchallenge%3Dcrate"
+            href="/auth/login?next=%2Fcreator%2Fstudio%2Fcreate%2Fbeat"
           >
             Sign in
           </Link>
@@ -168,7 +170,7 @@ function CrateEditor({
             : latest;
         if (chosen) {
           setDraftId(chosen.id);
-          setPayload(chosen.payload);
+          setPayload(currentCratePayload(chosen.payload));
           setMessage(
             "Unfinished crate restored. Completed uploads are kept; reselect any files marked missing.",
           );
@@ -189,6 +191,7 @@ function CrateEditor({
             setReceived({ ...receivedRef.current });
           }
         } else if (
+          CRATE_CHALLENGE_ACTIVE &&
           new URLSearchParams(window.location.search).get("challenge") ===
           "crate"
         )
@@ -334,7 +337,7 @@ function CrateEditor({
     setMessage("");
     setDone(0);
     controller.current = new AbortController();
-    let next: CratePayload = structuredClone(payload);
+    let next: CratePayload = currentCratePayload(structuredClone(payload));
     try {
       // Reject invalid metadata before moving large files; paths are validated after upload.
       const validation = crateValidation(
@@ -456,7 +459,7 @@ function CrateEditor({
         } catch {}
         setDone(d.result.count);
         setMessage(
-          `${d.result.count} beat${d.result.count === 1 ? "" : "s"} received for editorial review. They will count toward the challenge once approved.`,
+          `${d.result.count} beat${d.result.count === 1 ? "" : "s"} received for editorial review. ${next.challenge ? "They will count toward the challenge once approved." : "Track their status in your catalogue."}`,
         );
         trackEvent("create_submission_complete", {
           intent: "beat",
@@ -542,7 +545,7 @@ function CrateEditor({
     );
   return (
     <div className="space-y-5" data-studio-accent="beats">
-      {progress ? (
+      {CRATE_CHALLENGE_ACTIVE && progress ? (
         <CrateProgressCard
           progress={progress}
           instagram={instagram}
@@ -583,10 +586,10 @@ function CrateEditor({
                   setMessage("");
                   edit({
                     challenge:
-                      payload.challenge ||
+                      CRATE_CHALLENGE_ACTIVE && (payload.challenge ||
                       new URLSearchParams(window.location.search).get(
                         "challenge",
-                      ) === "crate",
+                      ) === "crate"),
                   });
                 }}
               >
@@ -623,11 +626,11 @@ function CrateEditor({
                     .then((v) => {
                       receivedRef.current = v.drafts[0]?.received || {};
                       setReceived({ ...receivedRef.current });
-                      setPayload({ ...d.payload });
+                      setPayload(currentCratePayload(d.payload));
                     })
                     .catch((e) => setError(e.message));
                   setDraftId(d.id);
-                  setPayload(d.payload);
+                  setPayload(currentCratePayload(d.payload));
                   receivedRef.current = d.received || {};
                   setReceived({ ...receivedRef.current });
                   setFiles({});
@@ -912,7 +915,7 @@ function CrateEditor({
               Start another crate
             </button>
           </div>
-          <label className="flex items-start gap-3 border border-purple-300/20 p-4 text-sm">
+          {CRATE_CHALLENGE_ACTIVE && <label className="flex items-start gap-3 border border-purple-300/20 p-4 text-sm">
             <input
               type="checkbox"
               className="mt-1"
@@ -926,7 +929,7 @@ function CrateEditor({
                 All beats must pass editorial review.
               </span>
             </span>
-          </label>
+          </label>}
           <label className="flex items-start gap-3 border border-white/15 p-4 text-sm">
             <input
               type="checkbox"

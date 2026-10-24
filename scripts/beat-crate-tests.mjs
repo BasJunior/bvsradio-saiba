@@ -14,7 +14,10 @@ payload.items=Array.from({length:25},(_,n)=>({...lib.newCrateItem(),title:`Beat 
 assert.equal(lib.crateValidation(payload,true),null)
 assert.match(lib.crateValidation({...payload,items:[...payload.items,lib.newCrateItem()]},true),/1–25/)
 assert.match(lib.crateValidation({...payload,rights:false},true),/rights/)
-assert.match(lib.crateValidation({...payload,challenge:true},true),/cover art/)
+assert.equal(lib.CRATE_CHALLENGE_ACTIVE,false)
+assert.equal(lib.crateValidation({...payload,challenge:true},true),null,'archived draft has no campaign-only artwork requirement')
+assert.equal(lib.currentCratePayload({...payload,challenge:true}).challenge,false)
+assert.equal(lib.currentCratePayload({...payload,challenge:true}).items,payload.items,'archiving preserves every beat')
 assert.match(lib.crateValidation({...payload,items:[{...payload.items[0],price:'NaN'}]},true),/price/)
 assert.match(lib.crateValidation({...payload,items:[{...payload.items[0],bpm:'Infinity'}]},true),/BPM/)
 assert.equal(lib.validInstagram('@basjunior'),true);assert.equal(lib.validInstagram('https://instagram.com/user'),false)
@@ -78,6 +81,7 @@ const noAuth=route({'@/lib/beatstore-server':{...imports['@/lib/beatstore-server
 assert.equal((await noAuth.GET(new Request('https://bvsradio.com/api/beats/crate'))).status,401)
 const foreignPayload={...payload,items:[{...payload.items[0],previewPath:`beats/${other}/stolen.mp3`}]}
 assert.equal((await route().PUT(new Request('https://bvsradio.com/api/beats/crate',{method:'PUT',body:JSON.stringify({id:randomUUID(),payload:foreignPayload})}))).status,400)
+assert.equal((await route().PUT(new Request('https://bvsradio.com/api/beats/crate',{method:'PUT',body:JSON.stringify({instagram:'producer'})}))).status,410,'closed campaign cannot accept Instagram entries')
 let mutations=0
 const stale=route({},async(path,init)=>{if(init.method)mutations++;return {ok:true,json:async()=>[{state:'draft',updated_at:'new-version'}]}})
 const ownPayload={...payload,items:[{...payload.items[0],previewPath:`beats/${owner}/own.mp3`}]}

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useBrowserSession } from "@/lib/use-browser-session";
-import { validInstagram, type CrateProgress } from "@/lib/beat-crate";
+import { CRATE_CHALLENGE_ACTIVE, validInstagram, type CrateProgress } from "@/lib/beat-crate";
 
 export function CrateProgressCard({
   progress,
@@ -17,6 +17,7 @@ export function CrateProgressCard({
   onSave: () => void;
   busy?: boolean;
 }) {
+  if (!CRATE_CHALLENGE_ACTIVE) return null;
   return (
     <section
       data-studio-accent="beats"
@@ -96,7 +97,7 @@ export function CrateProgressCard({
 }
 export default function BeatCrateChallenge() {
   const { session } = useBrowserSession();
-  return session ? (
+  return CRATE_CHALLENGE_ACTIVE && session ? (
     <ChallengeData key={session.user.id} token={session.access_token} />
   ) : null;
 }

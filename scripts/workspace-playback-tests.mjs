@@ -22,6 +22,7 @@ const studio = load('src/app/creator/studio/page.tsx', {
   '@/lib/use-account-json': { useAccountJson: () => ({ data: null, error: '', reload() {} }) },
   '@/lib/supabase': { isSupabaseConfigured: () => false }, '@/lib/analytics': { trackEvent: () => {} },
   '@/components/CreatorGrowthPanel': { default: 'creator-growth' },
+  '@/lib/beat-crate': { CRATE_CHALLENGE_ACTIVE: false },
   '@/components/BeatCrateChallenge': { default: 'beat-crate-challenge' },
 }, { window: { location: { hash: '#insights' } } })
 studio.default(); effects.forEach(fn => fn())

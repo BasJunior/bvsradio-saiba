@@ -35,13 +35,18 @@ const Form=load('src/components/BeatCrateUploadForm.tsx',{
  '@/lib/audio-formats':{isAllowedAudioFile:()=>({ok:true})},'@/lib/analytics':{trackEvent:()=>{}},'@/lib/beat-crate':lib,
  '@/lib/beat-crate-client':{audioFingerprint:async file=>file.name.padEnd(64,'0'),retryCrateFile:async(slot,file)=>{transfers.push(file.name);if(file.name==='Beat24.mp3' && failAt24){failAt24=false;throw new Error('Connection dropped at beat 24')}uploaded.add(slot.path)}},
  '@/components/BeatCrateChallenge':{CrateProgressCard:()=>React.createElement('aside')},
-},{fetch:apiFetch,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},window:{location:{search:'',reload(){}},addEventListener(){},removeEventListener(){}},setTimeout:()=>1,clearTimeout(){}}).default
+},{fetch:apiFetch,localStorage:{getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v),removeItem:k=>storage.delete(k)},window:{location:{search:'?challenge=crate',reload(){}},addEventListener(){},removeEventListener(){}},setTimeout:()=>1,clearTimeout(){}}).default
+// Restore an old campaign draft through a legacy challenge link.
+storage.set(`bvs.crate-draft.v1:${owner}`,JSON.stringify({id:randomUUID(),payload:{...lib.newCratePayload(),challenge:true},at:Date.now()}))
 let tree
 await act(async()=>{tree=TestRenderer.create(React.createElement(Form));for(let i=0;i<10;i++)await Promise.resolve()})
+assert.equal(tree.root.findAllByType('aside').length,0,'campaign progress is hidden')
+assert.doesNotMatch(JSON.stringify(tree.toJSON()),/25 Beat Crate Challenge|Instagram username/)
 await act(async()=>tree.root.findAllByType('input').find(i=>i.props.multiple).props.onChange({target:{files:Array.from({length:25},(_,i)=>({name:`Beat${i+1}.mp3`,size:100,type:'audio/mpeg'})),value:''}}))
 await act(async()=>tree.root.findAllByType('input').filter(i=>i.props.type==='checkbox').at(-1).props.onChange({target:{checked:true}}))
 async function submit(){await act(async()=>{tree.root.findByType('form').props.onSubmit({preventDefault(){}});for(let i=0;i<1800;i++)await Promise.resolve()})}
 await submit()
+assert.equal(saved.payload.challenge,false,'old campaign drafts resume as ordinary crates')
 assert.equal(transfers.length,24);assert.equal(uploaded.size,23)
 assert.match(JSON.stringify(tree.toJSON()),/Connection dropped at beat 24/)
 await submit()

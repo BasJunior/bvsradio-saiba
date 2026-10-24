@@ -8,6 +8,7 @@ import { useBrowserSession } from "@/lib/use-browser-session";
 import { useAccountJson } from "@/lib/use-account-json";
 import { trackEvent } from "@/lib/analytics";
 import BeatCrateChallenge from '@/components/BeatCrateChallenge';
+import { CRATE_CHALLENGE_ACTIVE } from '@/lib/beat-crate';
 import CreatorGrowthPanel from '@/components/CreatorGrowthPanel';
 
 type WorkspaceData = {
@@ -177,7 +178,7 @@ export default function CreatorStudioHome() {
         Start with the job. BVS will bring in rights, marketplace, distribution and money tools only when they are needed.
       </p>
 
-      {producer && <BeatCrateChallenge />}
+      {CRATE_CHALLENGE_ACTIVE && producer && <BeatCrateChallenge />}
 
       {artist && uploadStatus.active.length > 0 && <SubmissionStatusPanel sessions={uploadStatus.active} />}
       {artist && <ArtistActivationPanel activity={activity} />}
