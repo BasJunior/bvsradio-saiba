@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     legacyFounding: Boolean(status.planId?.includes("founding")),
     paynowEnabled: paynowEnabled(),
     stripeEnabled: stripeEnabled(),
+    annualPriceUsd: 29,
     standardMonthlyUsd: 12,
     standardYearlyUsd: 120,
     instantPriceUsd: PREMIUM_INSTANT_PRICE_USD,
@@ -46,17 +47,25 @@ export async function GET(req: Request) {
         note: "One-time release fee. No monthly subscription.",
         href: "/artist/premium/instant",
       },
-      standard: {
-        name: "Artist Premium",
+      annual: {
+        name: "Artist Premium Annual",
+        yearlyUsd: 29,
+        billing: "subscription_yearly",
+        label: "US$29/year",
+        note: "Ongoing distribution access for approved releases for one year.",
+      },
+      legacyStandard: {
+        name: "Legacy Standard Artist Premium",
         monthlyUsd: 12,
         yearlyUsd: 120,
-        billing: "subscription",
-        note: "Ongoing distribution access for approved releases while membership is active.",
+        billing: "legacy_subscription",
+        note: "Existing subscriptions keep their current terms; this plan is not offered to new purchases.",
       },
     },
     guardrails: [
-      "Founding Artist Premium is closed to new purchases; existing founding memberships remain grandfathered while valid.",
+      "Existing Founding and Standard Artist Premium subscriptions keep their current terms while valid.",
       "Premium Instant applies to one selected approved release only.",
+      "New ongoing Artist Premium purchases use the US$29/year annual plan.",
       "Payment never guarantees editorial approval, BVS rotation, charts or streams.",
     ],
   });
@@ -64,7 +73,7 @@ export async function GET(req: Request) {
 
 export async function POST() {
   return NextResponse.json(
-    { error: "Use the Standard subscription or Premium Instant checkout endpoints." },
+    { error: "Use the Artist Premium Annual or Premium Instant checkout endpoints." },
     { status: 400 },
   );
 }
