@@ -1,5 +1,10 @@
 export const CRATE_LIMIT = 25;
 export const CRATE_CHALLENGE = "25-beat-crate-2026";
+// Archived campaign. Keep uploads independent; see docs/archive/beat-crate-challenge.md.
+export const CRATE_CHALLENGE_ACTIVE = false;
+export function currentCratePayload(payload: CratePayload): CratePayload {
+  return { ...payload, challenge: CRATE_CHALLENGE_ACTIVE && payload.challenge };
+}
 export type CrateItem = {
   id: string;
   title: string;
@@ -111,7 +116,7 @@ export function crateValidation(
     )
       return `${label}: BPM must be between 1 and 999.`;
     if (!item.previewPath) return `${label}: upload a tagged preview.`;
-    if (payload.challenge && !(item.artworkPath || payload.artworkPath))
+    if (CRATE_CHALLENGE_ACTIVE && payload.challenge && !(item.artworkPath || payload.artworkPath))
       return `${label}: add cover art for your challenge entry.`;
   }
   const hashes = payload.items.map((i) => i.audioHash).filter(Boolean);

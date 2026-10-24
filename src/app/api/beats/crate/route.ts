@@ -9,6 +9,7 @@ import {
 import { r2ObjectExists } from "@/lib/r2-storage";
 import { licenceOptionSeed } from "@/lib/beat-licences";
 import {
+  CRATE_CHALLENGE_ACTIVE,
   crateProgress,
   crateValidation,
   instagramHandle,
@@ -145,6 +146,8 @@ export async function PUT(req: Request) {
       );
     const body = JSON.parse(raw);
     if (body.instagram !== undefined) {
+      if (!CRATE_CHALLENGE_ACTIVE)
+        return NextResponse.json({ error: "This challenge is archived." }, { status: 410 });
       const handle = instagramHandle(String(body.instagram));
       if (!validInstagram(handle))
         return NextResponse.json(
@@ -182,7 +185,7 @@ export async function PUT(req: Request) {
       description: String(p.description || "").slice(0, 4000),
       genre: String(p.genre || "").slice(0, 80),
       rights: p.rights === true,
-      challenge: p.challenge === true,
+      challenge: CRATE_CHALLENGE_ACTIVE && p.challenge === true,
       artworkPath: p.artworkPath ? String(p.artworkPath).slice(0, 500) : null,
       artworkName: String(p.artworkName || "").slice(0, 255),
       items: p.items.map((i) => ({
@@ -270,7 +273,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, result: d.result, recovered: true });
     const invalid = crateValidation(d.payload, true);
     if (invalid) return NextResponse.json({ error: invalid }, { status: 400 });
-    if (d.payload.challenge) {
+    if (CRATE_CHALLENGE_ACTIVE && d.payload.challenge) {
       const [p] = await db(
         `profiles?id=eq.${a.userId}&select=avatar_url&limit=1`,
       );
