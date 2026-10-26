@@ -1,10 +1,10 @@
-import BvsStar from "@/components/branding/BvsStar";
 import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import { Suspense } from "react";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
 import SharedListenButton from "@/components/SharedListenButton";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
+import HomeMediaStage from "@/components/home/HomeMediaStage";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
 
@@ -48,32 +48,17 @@ export default function HomePage() {
       />
 
       <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:pt-14">
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,.88fr)_minmax(0,1.12fr)] lg:items-center lg:gap-10">
-          <div className="min-w-0 lg:pr-4">
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[.18em] text-brand sm:text-xs">
-              <span>Best Virtual Sound</span>
-              <span className="h-px w-7 bg-brand/50" aria-hidden="true" />
-              <span className="text-text-secondary">Built in Zimbabwe · Open to the world</span>
-            </div>
-
-            <div className="bvs-culture-sticker mt-5"><BvsStar /> Your next obsession</div>
-            <h1 className="bvs-poster-title mt-5 max-w-3xl text-balance text-4xl font-semibold leading-[1.03] tracking-[-0.04em] sm:text-5xl lg:text-[3.65rem]">
-              Music moves differently here.
-            </h1>
-            <p className="mt-4 max-w-xl text-pretty text-base leading-relaxed text-text-secondary sm:text-lg">
-              New sounds. Real people. Your next favourite. Tap into the rotation, discover artists and make your own noise.
-            </p>
-
-            <div className="mt-6 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
-              <SharedListenButton className="rounded-full bg-brand px-6 py-3 text-center text-sm font-semibold text-black shadow-[0_14px_38px_rgba(212,175,55,.20)] hover:bg-brand-dark disabled:opacity-60" />
-              <Link href="/search" data-home-accent="discover" className="bvs-home-accent-button rounded-full border px-6 py-3 text-center text-sm font-semibold backdrop-blur-sm">
-                Discover music
-              </Link>
-              <Link href="/creator/studio" data-home-accent="studio" className="bvs-home-accent-button rounded-full border px-5 py-3 text-center text-sm font-semibold">
-                Creator Studio →
-              </Link>
-            </div>
-          </div>
+        <div className="grid gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:items-start lg:gap-8">
+          <HomeMediaStage
+            eyebrow="BVS Original"
+            title="BVS for artists"
+            description="A quick look inside BVS for artists, creators and the people building what comes next."
+            src="/media/bvs-home-stage-loop.mp4"
+            actions={[
+              { href: "/creator/studio", label: "Open Creator Studio", accent: "studio" },
+              { href: "/search", label: "Discover music", accent: "discover" },
+            ]}
+          />
 
           <div id="listen" className="bvs-culture-listen min-w-0 scroll-mt-24 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-2 shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur-sm sm:p-3">
             <HomeListenPanel />
