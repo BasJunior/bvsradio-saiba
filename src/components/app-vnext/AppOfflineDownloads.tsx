@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { useStationPlayer } from "@/components/StationPlayer";
@@ -15,6 +15,7 @@ import {
   type OfflineManifest,
 } from "@/lib/app-offline-native";
 import { emitAppTelemetry } from "@/lib/app-telemetry";
+import { withAuthTimeout } from "@/lib/auth-client-flow";
 import { recordListening } from "@/lib/library";
 
 export default function AppOfflineDownloads({ surface }: { surface: AppSurface }) {
@@ -23,23 +24,38 @@ export default function AppOfflineDownloads({ surface }: { surface: AppSurface }
   const [items, setItems] = useState<OfflineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
   const [playingId, setPlayingId] = useState("");
+  const refreshVersion = useRef(0);
+  const invalidateRefreshes = useCallback(() => { ++refreshVersion.current; }, []);
 
   const refresh = useCallback(async () => {
-    setItems(await listOffline());
-    setLoading(false);
+    const request = ++refreshVersion.current;
+    await Promise.resolve();
+    setLoading(true);
+    setError("");
+    try {
+      const offline = await withAuthTimeout(listOffline(), 12000, "Download loading took too long. Please try again.");
+      if (request === refreshVersion.current) setItems(offline);
+    } catch (caught) {
+      if (request === refreshVersion.current) setError(caught instanceof Error ? caught.message : "Downloads could not be loaded from this device.");
+    } finally {
+      if (request === refreshVersion.current) setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    void refresh();
+    const timer = window.setTimeout(() => void refresh(), 0);
     const sync = () => void refresh();
     window.addEventListener("bvs:offline-change", sync);
     window.addEventListener("bvs:app-resume", sync);
     return () => {
+      window.clearTimeout(timer);
+      invalidateRefreshes();
       window.removeEventListener("bvs:offline-change", sync);
       window.removeEventListener("bvs:app-resume", sync);
     };
-  }, [refresh]);
+  }, [invalidateRefreshes, refresh]);
 
   async function play(item: OfflineItem) {
     if (!offlineLicenseValid(item)) return setNotice("Reconnect to renew this download before playing it offline.");
@@ -116,6 +132,8 @@ export default function AppOfflineDownloads({ surface }: { surface: AppSurface }
         <div className="mt-5 rounded-[1.25rem] border border-white/[.07] bg-white/[.022] p-4 text-sm leading-6 text-white/38">Downloads are available in the installed BVS app.</div>
       ) : loading ? (
         <div className="mt-5 h-20 animate-pulse rounded-[1.25rem] bg-white/[.035]" />
+      ) : error ? (
+        <div role="alert" className="mt-5 rounded-[1.25rem] border border-red-400/20 bg-red-500/[.06] p-4 text-sm text-red-200"><p>{error}</p><button type="button" onClick={() => void refresh()} className="mt-2 min-h-10 font-semibold text-brand underline">Try again</button></div>
       ) : items.length ? (
         <div className="mt-5 space-y-2">
           {items.map((item) => {
