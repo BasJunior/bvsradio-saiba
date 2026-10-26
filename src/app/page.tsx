@@ -54,8 +54,10 @@ export default function HomePage() {
             title="BVS for artists"
             description="A quick look inside BVS for artists, creators and the people building what comes next."
             src="/media/bvs-home-stage-loop.mp4"
-            href="/creator/studio"
-            ctaLabel="Open Creator Studio"
+            actions={[
+              { href: "/creator/studio", label: "Open Creator Studio", accent: "studio" },
+              { href: "/search", label: "Discover music", accent: "discover" },
+            ]}
           />
 
           <div id="listen" className="bvs-culture-listen min-w-0 scroll-mt-24 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-2 shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur-sm sm:p-3">
