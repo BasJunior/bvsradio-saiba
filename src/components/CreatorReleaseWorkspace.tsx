@@ -62,7 +62,8 @@ type DistributionJob = {
 
 type TrackRequest = {
   id: string;
-  track_id: string;
+  track_id?: string | null;
+  release_id?: string | null;
   request_type: string;
   status: string;
   message?: string;
@@ -83,6 +84,7 @@ type Workspace = {
 };
 
 const field = "w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand";
+const wholeReleaseTarget = "__release__";
 
 export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: string }) {
   const { session, loading: sessionLoading } = useBrowserSession();
@@ -133,7 +135,11 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
       ? `/artist/${encodeURIComponent(data.profile.username)}#track-${publicTrack.id}`
       : null;
     const trackIds = new Set(relatedTracks.map((track) => track.id));
-    const requests = (data?.trackRequests || []).filter((request) => trackIds.has(request.track_id));
+    const requests = (data?.trackRequests || []).filter((request) =>
+      release
+        ? request.release_id === release.id || (request.track_id ? trackIds.has(request.track_id) : false)
+        : request.track_id ? trackIds.has(request.track_id) : false,
+    );
     return { release, standaloneTrack, relatedTracks, submissionTracks, latestJob, progress, publicTrack, publicPath, requests };
   }, [data, releaseKey]);
 
@@ -176,34 +182,42 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
   const trackCount = isRelease ? (resolved.submissionTracks.length || tracks.length || 1) : (tracks.length || 1);
   const plays = tracks.reduce((sum, track) => sum + Number(track.play_count || 0), 0);
   const likes = tracks.reduce((sum, track) => sum + Number(track.like_count || 0), 0);
-  const selectedTrackId = targetTrackId || tracks[0]?.id || "";
-  const selectedTrack = tracks.find((track) => track.id === selectedTrackId);
+  const selectedTarget = targetTrackId || (isRelease ? wholeReleaseTarget : tracks[0]?.id || "");
+  const selectedTrack = tracks.find((track) => track.id === selectedTarget);
   const artworkHref = isRelease
     ? `/creator/studio/artwork?release=${encodeURIComponent(item.id)}#studio-release-cover-change`
     : `/creator/studio/artwork?track=${encodeURIComponent(item.id)}#studio-release-cover-change`;
-  const editorialSupportHref = `/contact?topic=music&release=${encodeURIComponent(item.id)}&releaseTitle=${encodeURIComponent(title)}`;
-  const correctionHref = tracks.length ? "#corrections" : editorialSupportHref;
 
   const submitCorrection = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!session?.access_token || !selectedTrackId) return;
+    if (!session?.access_token) return;
+    if (!isRelease && !selectedTarget) return;
     setSaving(true);
     setSaved("");
     setFormError("");
     try {
-      const context = isRelease ? `Release: ${title} (${item.id})` : `Track: ${title} (${item.id})`;
-      const response = await fetch("/api/creator/workspace", {
+      const wholeRelease = isRelease && selectedTarget === wholeReleaseTarget;
+      const context = wholeRelease
+        ? `Release: ${title} (${item.id})`
+        : `Track: ${selectedTrack?.title || title} (${selectedTarget || item.id})`;
+      const response = await fetch(wholeRelease ? "/api/creator/release-requests" : "/api/creator/workspace", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          action: "track_request",
-          trackId: selectedTrackId,
-          requestType,
-          message: `${context}\n${message.trim()}`,
-        }),
+        body: JSON.stringify(wholeRelease
+          ? {
+              releaseId: item.id,
+              requestType,
+              message: `${context}\n${message.trim()}`,
+            }
+          : {
+              action: "track_request",
+              trackId: selectedTarget,
+              requestType,
+              message: `${context}\n${message.trim()}`,
+            }),
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Could not send this correction request.");
@@ -238,8 +252,8 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
 
         <CreatorReleaseProgressDetails
           progress={resolved.progress}
-          actionHref={correctionHref}
-          actionLabel={tracks.length ? "Open correction flow" : "Contact editorial"}
+          actionHref="#corrections"
+          actionLabel="Open correction flow"
         />
 
         {item.editorial_notes ? (
@@ -296,13 +310,14 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
       <section id="corrections" className="mt-8 scroll-mt-24 rounded-3xl border border-white/10 p-5 sm:p-6" aria-labelledby="release-corrections-heading">
         <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Corrections</p>
         <h2 id="release-corrections-heading" className="mt-1 text-2xl font-semibold">Fix the existing release without starting over.</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Editorial approval remains required before metadata, rights or takedown changes affect the public catalogue.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Editorial approval remains required before metadata, rights or takedown changes affect the public catalogue. Album and EP requests can target the whole release before public track records exist.</p>
 
-        {tracks.length ? (
+        {(isRelease || tracks.length > 0) ? (
           <form onSubmit={submitCorrection} className="mt-5 grid gap-3 lg:max-w-2xl">
-            {tracks.length > 1 ? (
-              <select value={selectedTrackId} onChange={(event) => setTargetTrackId(event.target.value)} className={field}>
-                {tracks.map((track) => <option key={track.id} value={track.id}>{track.title}</option>)}
+            {isRelease ? (
+              <select value={selectedTarget} onChange={(event) => setTargetTrackId(event.target.value)} className={field}>
+                <option value={wholeReleaseTarget}>Whole release · {title}</option>
+                {tracks.map((track) => <option key={track.id} value={track.id}>Track · {track.title}</option>)}
               </select>
             ) : null}
             <select value={requestType} onChange={(event) => setRequestType(event.target.value)} className={field}>
@@ -311,33 +326,28 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
               <option value="takedown">Takedown / unpublish</option>
               <option value="other">Other editorial change</option>
             </select>
-            <textarea required minLength={10} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={selectedTrack ? `What should BVS change for ${selectedTrack.title}?` : "What should BVS change?"} className={`${field} min-h-32`} />
+            <textarea required minLength={10} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={selectedTrack ? `What should BVS change for ${selectedTrack.title}?` : `What should BVS change for ${title}?`} className={`${field} min-h-32`} />
             {formError ? <p role="alert" className="text-sm text-red-200">{formError}</p> : null}
             {saved ? <p role="status" className="text-sm text-brand">{saved}</p> : null}
             <button disabled={saving} className="min-h-11 justify-self-start rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black disabled:opacity-50">{saving ? "Sending…" : "Send correction request"}</button>
           </form>
-        ) : isRelease && resolved.submissionTracks.length ? (
-          <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/[.04] p-4 sm:p-5">
-            <p className="font-semibold text-amber-100">This release is still pre-publication.</p>
-            <p className="mt-2 text-sm leading-6 text-text-secondary">BVS has the submitted release files, but public track records do not exist yet, so a track-level correction request would be invalid. Contact editorial from this release and the form will carry the release reference automatically.</p>
-            <p className="mt-2 break-all text-xs text-text-secondary">Release reference: {item.id}</p>
-            <Link href={editorialSupportHref} className="mt-4 inline-flex min-h-11 items-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Contact editorial</Link>
-          </div>
         ) : (
-          <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-sm text-text-secondary">There is not yet a valid track target for an owned correction request. Contact editorial with this release reference instead of creating a duplicate submission.</p>
-            <Link href={editorialSupportHref} className="mt-4 inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold">Contact editorial</Link>
-          </div>
+          <p className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-text-secondary">This Studio item has no valid correction target yet. Refresh the workspace or open the catalogue if the item was recently moved.</p>
         )}
 
         {resolved.requests.length ? (
           <div className="mt-6 space-y-2">
             <h3 className="font-semibold">Request history</h3>
-            {resolved.requests.slice(0, 8).map((request) => (
-              <div key={request.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-text-secondary">
-                <span className="text-text-primary">{request.request_type.replaceAll("_", " ")}</span> · {request.status} · {new Date(request.created_at).toLocaleDateString()}
-              </div>
-            ))}
+            {resolved.requests.slice(0, 8).map((request) => {
+              const target = request.release_id === item.id
+                ? "Whole release"
+                : tracks.find((track) => track.id === request.track_id)?.title || "Track";
+              return (
+                <div key={request.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-text-secondary">
+                  <span className="text-text-primary">{request.request_type.replaceAll("_", " ")}</span> · {target} · {request.status} · {new Date(request.created_at).toLocaleDateString()}
+                </div>
+              );
+            })}
           </div>
         ) : null}
       </section>
