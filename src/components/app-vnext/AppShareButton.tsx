@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { shareBvs } from "@/lib/app-native";
 import { canonicalBvsShareUrl } from "@/lib/share-url";
+import { containModalTab, focusFirstElement, lockPageScroll, registerModalLayer, restoreFocus } from "@/lib/modal-layer";
 
 export type AppShareButtonProps = {
   title: string;
@@ -324,56 +325,61 @@ export default function AppShareButton({
   const [sharing, setSharing] = useState(false);
   const url = canonicalBvsShareUrl(path);
   const [format, setFormat] = useState<ShareCardFormat>("story");
-  const [card, setCard] = useState<{ file: File; preview: string; format: ShareCardFormat } | null>(null);
+  const cardRequestKey = JSON.stringify([title, text, kicker, image, format]);
+  const [card, setCard] = useState<{ file: File; preview: string; format: ShareCardFormat; requestKey: string } | null>(null);
   const [message, setMessage] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
-  const close = () => { setOpen(false); onDismiss?.(); };
+  const onDismissRef = useRef(onDismiss);
+  useEffect(() => { onDismissRef.current = onDismiss; }, [onDismiss]);
+  const close = () => { setOpen(false); onDismissRef.current?.(); };
   const canShareInstagramStory = typeof window !== "undefined" && Boolean(instagramStoryBridge());
+  const cardReady = Boolean(card && card.requestKey === cardRequestKey);
 
   useEffect(() => {
     if (!open) return;
     let active = true;
     let preview = "";
-    setCard(null);
-    setMessage("");
     void makeStoryCard({ title, text, kicker, image, format }).then(file => {
       if (!active) return;
       if (!file) { setMessage("Couldn’t prepare the card. You can still share the link."); return; }
       preview = URL.createObjectURL(file);
-      setCard({ file, preview, format });
+      setCard({ file, preview, format, requestKey: cardRequestKey });
+      setMessage("");
     }).catch(() => { if (active) setMessage("Couldn’t prepare the card. You can still share the link."); });
     return () => { active = false; if (preview) URL.revokeObjectURL(preview); };
-  }, [open, title, text, kicker, image, format]);
+  }, [open, title, text, kicker, image, format, cardRequestKey]);
 
   useEffect(() => {
     if (!open) return;
-    const previousOverflow = document.body.style.overflow;
     const previousFocus = document.activeElement as HTMLElement | null;
-    dialogRef.current?.querySelector<HTMLElement>("button")?.focus();
-    document.body.style.overflow = "hidden";
+    const unlockPage = lockPageScroll();
+    const modalLayer = registerModalLayer();
+    focusFirstElement(dialogRef.current);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") { setOpen(false); onDismiss?.(); }
-      if (event.key === "Tab") {
-        const elements = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled),a[href]') || []);
-        const first = elements[0], last = elements[elements.length - 1];
-        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
-        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      if (!modalLayer.isTop()) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        onDismissRef.current?.();
+        return;
       }
+      containModalTab(event, dialogRef.current);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
-      previousFocus?.focus();
+      unlockPage();
+      modalLayer.release();
+      restoreFocus(previousFocus);
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [open, onDismiss]);
+  }, [open]);
 
   const recordTrendingShare = () => {
     const match = path.match(/^\/song\/([0-9a-f-]{36})$/i);
     if (match) void trendingEvent('share', match[1]);
   };
   const share = async () => {
-    if (sharing || !card || card.format !== format) return;
+    if (sharing || !card || !cardReady) return;
     setSharing(true);
     const storyCard = card.file;
     const shareText = text || `${title} on BVS Radio`;
@@ -384,7 +390,7 @@ export default function AppShareButton({
         setOpen(false);
         await pending;
         recordTrendingShare();
-        onDismiss?.();
+        onDismissRef.current?.();
       } else {
         setMessage("Save the card, then add it to Instagram or WhatsApp. Use Copy link for a Story link sticker.");
       }
@@ -392,19 +398,19 @@ export default function AppShareButton({
       if (!(error instanceof DOMException && error.name === "AbortError")) {
         setOpen(true);
         setMessage("Sharing didn’t open. Save the card or share the link instead.");
-      } else onDismiss?.();
+      } else onDismissRef.current?.();
     } finally { setSharing(false); }
   };
 
   const shareLink = async () => {
     setOpen(false);
     if (await shareBvs({ title: `${title} · BVS`, text: text || kicker, url })) recordTrendingShare();
-    onDismiss?.();
+    onDismissRef.current?.();
   };
 
   const shareInstagramStory = async () => {
     const bridge = instagramStoryBridge();
-    if (sharing || !bridge || !card || card.format !== "story") return;
+    if (sharing || !bridge || !card || !cardReady || format !== "story") return;
     setSharing(true);
     setMessage("");
     try {
@@ -439,7 +445,7 @@ export default function AppShareButton({
   };
 
   const save = () => {
-    if (!card || card.format !== format) return;
+    if (!card || !cardReady) return;
     const anchor = document.createElement("a");
     anchor.href = card.preview;
     anchor.download = card.file.name;
@@ -461,13 +467,17 @@ export default function AppShareButton({
     <div
       className="fixed inset-0 z-[1000] flex items-end justify-center bg-black/75 backdrop-blur-md sm:items-center sm:p-6"
       role="presentation"
-      onMouseDown={(event) => event.target === event.currentTarget && close()}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (event.target === event.currentTarget) close();
+      }}
     >
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label={`Share ${title}`}
+        tabIndex={-1}
         className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-[30px] border border-white/10 bg-[#090b09]/95 p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:rounded-[30px] sm:pb-5"
       >
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
@@ -480,16 +490,16 @@ export default function AppShareButton({
         </div>
 
         <div className="mt-4 flex gap-2 rounded-2xl bg-white/[.035] p-1.5" aria-label="Card format">
-          {(["story", "square"] as const).map(value => <button key={value} type="button" aria-pressed={format === value} onClick={() => setFormat(value)} className={`min-h-10 flex-1 rounded-xl border px-4 text-xs font-medium transition ${format === value ? "border-[#bbff65]/70 bg-[#bbff65]/12 text-[#bbff65]" : "border-transparent text-white/55"}`}>{value === "story" ? "Story · 9:16" : "Post · 1:1"}</button>)}
+          {(["story", "square"] as const).map(value => <button key={value} type="button" aria-pressed={format === value} onClick={() => { setMessage(""); setFormat(value); }} className={`min-h-10 flex-1 rounded-xl border px-4 text-xs font-medium transition ${format === value ? "border-[#bbff65]/70 bg-[#bbff65]/12 text-[#bbff65]" : "border-transparent text-white/55"}`}>{value === "story" ? "Story · 9:16" : "Post · 1:1"}</button>)}
         </div>
-        <div className="mt-4 flex min-h-52 justify-center rounded-3xl border border-white/[.06] bg-white/[.025] p-3" aria-busy={!card || card.format !== format}>
-          {card && card.format === format ? <img src={card.preview} alt={`${title} ${format} share card`} className={`max-h-[40dvh] w-auto rounded-2xl ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`} /> : <p className="self-center text-sm text-white/50">Preparing your card…</p>}
+        <div className="mt-4 flex min-h-52 justify-center rounded-3xl border border-white/[.06] bg-white/[.025] p-3" aria-busy={!cardReady}>
+          {card && cardReady ? <img src={card.preview} alt={`${title} ${format} share card`} className={`max-h-[40dvh] w-auto rounded-2xl ${format === "story" ? "aspect-[9/16]" : "aspect-square"}`} /> : <p className="self-center text-sm text-white/50">Preparing your card…</p>}
         </div>
         <p className="mt-2 text-center text-[11px] text-white/45">The preview is the exact image you’ll share.</p>
-        {canShareInstagramStory && format === "story" ? <button type="button" disabled={sharing || !card || card.format !== "story"} onClick={() => void shareInstagramStory()} className="mt-4 min-h-12 w-full rounded-2xl bg-[#bbff65] px-5 text-sm font-bold text-black shadow-[0_0_32px_rgba(187,255,101,.12)] disabled:opacity-50">{sharing ? "Opening Instagram…" : "Share to Instagram Story"}</button> : null}
-        <button type="button" disabled={sharing || !card || card.format !== format} onClick={() => void share()} className={`${canShareInstagramStory && format === "story" ? "mt-2 border border-white/10 bg-white/[.025] text-white" : "mt-4 bg-[#bbff65] text-black shadow-[0_0_32px_rgba(187,255,101,.12)]"} min-h-12 w-full rounded-2xl px-5 text-sm font-bold disabled:opacity-50`}>{sharing ? "Opening share…" : "Share card…"}</button>
+        {canShareInstagramStory && format === "story" ? <button type="button" disabled={sharing || !cardReady} onClick={() => void shareInstagramStory()} className="mt-4 min-h-12 w-full rounded-2xl bg-[#bbff65] px-5 text-sm font-bold text-black shadow-[0_0_32px_rgba(187,255,101,.12)] disabled:opacity-50">{sharing ? "Opening Instagram…" : "Share to Instagram Story"}</button> : null}
+        <button type="button" disabled={sharing || !cardReady} onClick={() => void share()} className={`${canShareInstagramStory && format === "story" ? "mt-2 border border-white/10 bg-white/[.025] text-white" : "mt-4 bg-[#bbff65] text-black shadow-[0_0_32px_rgba(187,255,101,.12)]"} min-h-12 w-full rounded-2xl px-5 text-sm font-bold disabled:opacity-50`}>{sharing ? "Opening share…" : "Share card…"}</button>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button type="button" disabled={!card || card.format !== format} onClick={save} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm disabled:opacity-40">Save image</button>
+          <button type="button" disabled={!cardReady} onClick={save} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm disabled:opacity-40">Save image</button>
           <button type="button" onClick={() => void copy()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">{copied ? "Link copied ✓" : format === "story" ? "Copy Story link" : "Copy link"}</button>
           <a href={`https://wa.me/?text=${encodeURIComponent(`${title}\n${text || kicker}\n${url}`)}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[.025] text-sm">WhatsApp link ↗</a>
           <button type="button" onClick={() => void shareLink()} className="min-h-11 rounded-2xl border border-white/10 bg-white/[.025] text-sm">Share link…</button>
@@ -505,7 +515,7 @@ export default function AppShareButton({
     <>
       {!hideTrigger && <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={() => { setMessage(""); setOpen(true); }}
         className={compact ? "min-h-9 rounded-full border border-white/10 px-3 text-xs" : "min-h-10 rounded-full border border-white/15 px-4 text-sm"}
       >
         {triggerLabel}
