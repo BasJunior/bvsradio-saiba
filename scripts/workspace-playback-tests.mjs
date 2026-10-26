@@ -16,12 +16,15 @@ function load(path, imports, globals = {}) {
 }
 let effects = [], destinations = [], events = []
 const react = { useState: value => [typeof value === 'function' ? value() : value, () => {}], useEffect: fn => effects.push(fn), useMemo: fn => fn() }
+const creatorReleaseProgress = load('src/lib/creator-release-progress.ts', {})
 const studio = load('src/app/creator/studio/page.tsx', {
   react, 'next/link': { default: 'link' }, 'next/navigation': { useRouter: () => ({ replace: href => destinations.push(href) }) },
   '@/lib/use-browser-session': { useBrowserSession: () => ({ session: null, loading: false }) },
   '@/lib/use-account-json': { useAccountJson: () => ({ data: null, error: '', reload() {} }) },
   '@/lib/supabase': { isSupabaseConfigured: () => false }, '@/lib/analytics': { trackEvent: () => {} },
   '@/components/CreatorGrowthPanel': { default: 'creator-growth' },
+  '@/components/CreatorReleaseProgress': { CreatorReleaseWorkCounts: 'creator-release-work-counts' },
+  '@/lib/creator-release-progress': creatorReleaseProgress,
   '@/lib/beat-crate': { CRATE_CHALLENGE_ACTIVE: false },
   '@/components/BeatCrateChallenge': { default: 'beat-crate-challenge' },
 }, { window: { location: { hash: '#insights' } } })
