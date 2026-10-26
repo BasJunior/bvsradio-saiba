@@ -137,8 +137,9 @@ const releaseUi = await readFile(new URL("../src/components/app-vnext/AppStudioR
 const studioUi = await readFile(new URL("../src/components/app-vnext/AppStudioClient.tsx", import.meta.url), "utf8");
 const webStudio = await readFile(new URL("../src/app/creator/studio/page.tsx", import.meta.url), "utf8");
 const releaseWorkspace = await readFile(new URL("../src/components/CreatorReleaseWorkspace.tsx", import.meta.url), "utf8");
+const releaseRequestApi = await readFile(new URL("../src/app/api/creator/release-requests/route.ts", import.meta.url), "utf8");
+const releaseRequestMigration = await readFile(new URL("../supabase/migrations/20261026111500_release_level_editorial_requests.sql", import.meta.url), "utf8");
 const artistProfile = await readFile(new URL("../src/app/artist/[slug]/page.tsx", import.meta.url), "utf8");
-const contactForm = await readFile(new URL("../src/app/contact/ContactForm.tsx", import.meta.url), "utf8");
 
 for (const label of ["action_required", "in_progress", "history"]) {
   assert.ok(releaseUi.includes(`id: "${label}"`), `release UI includes ${label} group`);
@@ -157,14 +158,20 @@ assert.ok(webStudio.includes("/creator/studio/releases/${encodeURIComponent(prog
 assert.ok(webStudio.includes("#track-${publishedTrack.id}"), "live proof targets the creator's published track");
 assert.ok(!webStudio.includes('{ href: "/artists", label: "View live proof"'), "live proof no longer falls back to the general artist directory");
 assert.ok(releaseWorkspace.includes('action: "track_request"'), "materialized tracks use the existing owned-track correction flow");
+assert.ok(releaseWorkspace.includes('fetch(wholeRelease ? "/api/creator/release-requests"'), "whole-release corrections use the release-level API");
+assert.ok(releaseWorkspace.includes("Whole release · {title}"), "release correction target can be the whole release");
+assert.ok(releaseWorkspace.includes("Album and EP requests can target the whole release before public track records exist"), "pre-publication release corrections remain self-service without inventing track rows");
 assert.ok(releaseWorkspace.includes("Editorial approval remains required"), "correction copy preserves editorial approval");
 assert.ok(releaseWorkspace.includes("releaseTracks?: ReleaseSubmissionTrack[]"), "release workspace reads pre-publication release_tracks");
-assert.ok(releaseWorkspace.includes("This release is still pre-publication."), "pre-publication releases do not pretend a track-level request is valid");
-assert.ok(releaseWorkspace.includes("releaseTitle=${encodeURIComponent(title)}"), "pre-publication editorial handoff carries exact release context");
 assert.ok(releaseWorkspace.includes("AppShareButton"), "promotion stays attached to the release workspace");
 assert.ok(releaseWorkspace.includes("Playback starts"), "release results stay visible in the same workspace");
-assert.ok(contactForm.includes("Creator Studio release correction"), "music contact flow prefills the release correction context");
-assert.ok(contactForm.includes("search.get('release')"), "music contact flow reads the exact release reference");
+assert.ok(releaseRequestApi.includes("releases?id=eq.${encodeURIComponent(releaseId)}&user_id=eq.${userId}"), "release request API verifies release ownership");
+assert.ok(releaseRequestApi.includes("track_id: null"), "release-level request does not fake a track target");
+assert.ok(releaseRequestApi.includes("release_id: releaseId"), "release-level request persists its release target");
+assert.ok(releaseRequestMigration.includes("alter column track_id drop not null"), "request schema allows a release target without a track row");
+assert.ok(releaseRequestMigration.includes("track_review_requests_exactly_one_target"), "request schema requires exactly one track-or-release target");
+assert.ok(releaseRequestMigration.includes("revoke all on table public.track_review_requests from anon, authenticated"), "editorial request grants are tightened before least-privilege grants are restored");
+assert.ok(releaseRequestMigration.includes("for insert\n  to authenticated"), "creator insert policy is explicitly scoped to authenticated users");
 assert.ok(artistProfile.includes('id={`track-${track.id}`}'), "published tracks expose stable anchors for Studio proof links");
 
 const webManage = await readFile(new URL("../src/app/creator/studio/manage/page.tsx", import.meta.url), "utf8");
