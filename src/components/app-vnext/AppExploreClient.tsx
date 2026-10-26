@@ -18,14 +18,12 @@ import { fairCreatorDailyOrder } from "@/lib/fair-discovery-order";
 import { soundKey, discoveryCreatorKey } from "@/lib/discovery-experience";
 import { trackEvent } from "@/lib/analytics";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
+import { appExploreStatePath, readAppExploreState, type AppExploreKind as ExploreKind, type AppExploreMode as ExploreMode, type AppExploreState } from "@/lib/discovery-continuity";
 
 type CatalogueTrack = { id: string; title: string; artist: string; src: string; genre?: string; artwork?: string; project?: string; playCount?: number };
 type Artist = { id: string; username: string; name: string; role?: string; image?: string; genres?: string[] };
 type Producer = { id: string; username: string; name: string; image?: string; genres?: string[]; beatCount?: number };
 type Beat = { id: string; title: string; producer?: string; producer_username?: string; genre?: string; mood?: string; artworkUrl?: string; previewUrl?: string; bpm?: number; startingPrice?: number };
-type ExploreKind = "all" | "music" | "artists" | "producers" | "beats";
-type ExploreMode = "fresh" | "rotation" | "creators" | "beats";
-
 const exploreModes: Array<{ value: ExploreMode; label: string; description: string }> = [
   { value: "fresh", label: "Discover", description: "A rotating selection of sounds and people to explore." },
   { value: "rotation", label: "Music", description: "Music available to play instantly in the app." },
@@ -49,31 +47,27 @@ function ExploreArtwork({ src, label, sizes = "(max-width: 640px) 45vw, 240px" }
 
 export default function AppExploreClient({
   surface,
-  initialQuery = "",
-  initialKind = "all",
+  initialState = { query: "", kind: "all", genre: "", mode: "fresh" },
 }: {
   surface: AppSurface;
-  initialQuery?: string;
-  initialKind?: ExploreKind;
+  initialState?: AppExploreState;
 }) {
   const player = useStationPlayer();
-  const [query, setQuery] = useState(initialQuery);
-  const [kind, setKind] = useState<ExploreKind>(initialKind);
-  const [mode, setMode] = useState<ExploreMode>("fresh");
-  const [genre, setGenre] = useState("");
+  const [query, setQuery] = useState(initialState.query);
+  const [kind, setKind] = useState<ExploreKind>(initialState.kind);
+  const [mode, setMode] = useState<ExploreMode>(initialState.mode);
+  const [genre, setGenre] = useState(soundKey(initialState.genre));
   const [round, setRound] = useState(0);
   const [limit, setLimit] = useState(24);
   const [liked, setLiked] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const sync = () => {
-      const params = new URLSearchParams(window.location.search);
-      setQuery(params.get("q") || "");
-      const nextKind = params.get("kind");
-      setKind((["all", "music", "artists", "producers", "beats"] as string[]).includes(nextKind || "") ? nextKind as ExploreKind : "all");
-      setGenre(soundKey(params.get("genre") || ""));
-      const nextMode = params.get("mode") as ExploreMode | null;
-      setMode(nextMode && exploreModes.some((item) => item.value === nextMode) ? nextMode : "fresh");
+      const state = readAppExploreState(new URLSearchParams(window.location.search));
+      setQuery(state.query);
+      setKind(state.kind);
+      setGenre(soundKey(state.genre));
+      setMode(state.mode);
     };
     sync();
     window.addEventListener("popstate", sync);
@@ -129,12 +123,8 @@ export default function AppExploreClient({
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const params = new URLSearchParams();
-      if (query.trim()) params.set("q", query.trim());
-      if (kind !== "all") params.set("kind", kind);
-      if (genre) params.set("genre", genre);
-      if (!query.trim() && mode !== "fresh") params.set("mode", mode);
-      window.history.replaceState(window.history.state, "", `/app/${surface}/explore${params.size ? `?${params}` : ""}`);
+      const path = appExploreStatePath(surface, { query, kind, genre, mode }, new URLSearchParams(window.location.search));
+      window.history.replaceState(window.history.state, "", path);
     }, 180);
     return () => window.clearTimeout(timer);
   }, [kind, mode, query, surface, genre]);
@@ -156,6 +146,7 @@ export default function AppExploreClient({
 
   const toggleLike = (item: CatalogueTrack) => {
     const saved = toggleLibraryItem("favourites", { id: item.id, kind: "track", title: item.title, subtitle: item.artist, href: `/app/${surface}`, image: item.artwork });
+    if (saved) trackEvent("track_save", { track_id: item.id, source: "discover" });
     setLiked((current) => {
       const next = new Set(current);
       if (saved) next.add(item.id); else next.delete(item.id);
