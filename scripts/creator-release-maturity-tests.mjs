@@ -146,7 +146,13 @@ for (const label of ["action_required", "in_progress", "history"]) {
   assert.ok(releaseUi.includes(`id: "${label}"`), `release UI includes ${label} group`);
 }
 assert.ok(releaseUi.includes("CreatorReleaseProgressDetails"), "release cards use the shared truthful progress model");
-assert.ok(releaseUi.includes("/support?topic=music"), "native release action links to the supported contact path");
+assert.ok(releaseUi.includes('id={`release-${release.id}`}'), "native release cards expose exact stable release anchors");
+assert.ok(releaseUi.includes('actionHref={`#release-correction-${release.id}`}'), "native action-required status opens the correction flow on the exact release");
+assert.ok(releaseUi.includes('fetch(wholeRelease ? "/api/creator/release-requests"'), "native whole-release correction uses the release-level API");
+assert.ok(releaseUi.includes('action: "track_request"'), "native materialized track correction keeps the owned track request flow");
+assert.ok(releaseUi.includes("Whole release · {release.title}"), "native release correction can target the whole release before public track rows exist");
+assert.ok(releaseUi.includes("Editorial approval remains required"), "native correction flow preserves editorial approval");
+assert.ok(!releaseUi.includes("existing releases cannot be edited or resubmitted on this screen"), "native release screen no longer claims corrections are unavailable");
 assert.ok(!releaseUi.includes("cannot move until you complete"), "native group copy does not imply an unsupported self-service edit");
 assert.ok(!studioUi.includes('["open", "reviewing", "information_requested"'), "passive artist requests stay out of Action inbox");
 assert.ok(!studioUi.includes("const approved = Boolean("), "public playback must not silently complete the editorial step");
