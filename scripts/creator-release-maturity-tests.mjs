@@ -140,6 +140,7 @@ const releaseWorkspace = await readFile(new URL("../src/components/CreatorReleas
 const releaseRequestApi = await readFile(new URL("../src/app/api/creator/release-requests/route.ts", import.meta.url), "utf8");
 const releaseRequestMigration = await readFile(new URL("../supabase/migrations/20261026111500_release_level_editorial_requests.sql", import.meta.url), "utf8");
 const artistProfile = await readFile(new URL("../src/app/artist/[slug]/page.tsx", import.meta.url), "utf8");
+const editorialSearch = await readFile(new URL("../src/app/api/admin/editorial/search/route.ts", import.meta.url), "utf8");
 
 for (const label of ["action_required", "in_progress", "history"]) {
   assert.ok(releaseUi.includes(`id: "${label}"`), `release UI includes ${label} group`);
@@ -173,6 +174,10 @@ assert.ok(releaseRequestMigration.includes("track_review_requests_exactly_one_ta
 assert.ok(releaseRequestMigration.includes("revoke all on table public.track_review_requests from anon, authenticated"), "editorial request grants are tightened before least-privilege grants are restored");
 assert.ok(releaseRequestMigration.includes("for insert\n  to authenticated"), "creator insert policy is explicitly scoped to authenticated users");
 assert.ok(artistProfile.includes('id={`track-${track.id}`}'), "published tracks expose stable anchors for Studio proof links");
+assert.ok(editorialSearch.includes("select=id,track_id,release_id,artist_user_id"), "Editorial search reads the release request target");
+assert.ok(editorialSearch.includes("const release = releaseById.get(text(review.release_id))"), "Editorial search resolves the target release title");
+assert.ok(editorialSearch.includes("kind: 'release'"), "whole-release correction search opens a release work item instead of a fake track request");
+assert.ok(editorialSearch.includes("'Whole-release request'"), "Editorial search clearly labels whole-release requests");
 
 const webManage = await readFile(new URL("../src/app/creator/studio/manage/page.tsx", import.meta.url), "utf8");
 assert.ok(webManage.includes('actionHref="#release-request"'), "legacy full Studio still links to the existing editorial request form");
