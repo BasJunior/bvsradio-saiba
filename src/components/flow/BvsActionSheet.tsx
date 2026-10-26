@@ -10,6 +10,7 @@ import { trackEvent } from "@/lib/analytics";
 import { canonicalBvsShareUrl } from "@/lib/share-url";
 import { openBvsShareCard } from "@/lib/share-card";
 import { clearCurrentTransientLayer, currentTransientLayer, dismissTransientLayer, openTransientLayer } from "@/lib/transient-navigation";
+import { containModalTab, focusFirstElement, lockPageScroll, registerModalLayer, restoreFocus } from "@/lib/modal-layer";
 
 const IOS_ROOT = "/app/ios";
 
@@ -69,50 +70,47 @@ export default function BvsActionSheet({
 }) {
   const router = useRouter();
   const panelRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
 
   const dismiss = useCallback(() => {
     // Close immediately, including in WebViews where history traversal can be
     // delayed or unavailable. Back still consumes the transient history entry.
     dismissTransientLayer("action-sheet");
-    onClose();
-  }, [onClose]);
+    onCloseRef.current();
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     openTransientLayer("action-sheet");
     trackEvent("flow_action_sheet_open", { object_id: object.id, object_kind: object.kind });
-    const previousOverflow = document.body.style.overflow;
     const focusTarget = returnFocus?.current;
-    document.body.style.overflow = "hidden";
-    const first = window.setTimeout(() => panelRef.current?.querySelector<HTMLElement>("button,a")?.focus(), 0);
+    const unlockPage = lockPageScroll();
+    const modalLayer = registerModalLayer();
+    const first = window.setTimeout(() => focusFirstElement(panelRef.current), 0);
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") dismiss();
-      if (event.key !== "Tab" || !panelRef.current) return;
-      const focusable = [...panelRef.current.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')];
-      if (!focusable.length) return;
-      const firstItem = focusable[0];
-      const lastItem = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === firstItem) {
+      if (!modalLayer.isTop()) return;
+      if (event.key === "Escape") {
         event.preventDefault();
-        lastItem.focus();
-      } else if (!event.shiftKey && document.activeElement === lastItem) {
-        event.preventDefault();
-        firstItem.focus();
+        dismiss();
+        return;
       }
+      containModalTab(event, panelRef.current);
     };
     window.addEventListener("keydown", onKeyDown);
     const onPopState = (event: PopStateEvent) => {
-      if (currentTransientLayer(event.state) !== "action-sheet") onClose();
+      if (currentTransientLayer(event.state) !== "action-sheet") onCloseRef.current();
     };
     window.addEventListener("popstate", onPopState);
     return () => {
       window.clearTimeout(first);
-      document.body.style.overflow = previousOverflow;
+      unlockPage();
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("popstate", onPopState);
-      focusTarget?.focus({ preventScroll: true });
+      modalLayer.release();
+      restoreFocus(focusTarget);
     };
-  }, [dismiss, object.id, object.kind, onClose, open, returnFocus]);
+  }, [dismiss, object.id, object.kind, open, returnFocus]);
 
   if (!open || typeof document === "undefined") return null;
   const actions = [object.primaryAction, ...(object.overflowActions || [])].filter((action, index, all): action is BvsAction => Boolean(action) && all.findIndex(candidate => candidate?.id === action?.id) === index);
@@ -123,7 +121,7 @@ export default function BvsActionSheet({
         recordFlowOpen(object);
         trackEvent("flow_object_open", { object_id: object.id, object_kind: object.kind, source: "action_sheet" });
         clearCurrentTransientLayer("action-sheet");
-        onClose();
+        onCloseRef.current();
         if (openOutsideNativeIosShell(action.href)) return;
         router.push(action.href);
         return;
@@ -147,13 +145,17 @@ export default function BvsActionSheet({
       data-bvs-transient-overlay="action-sheet"
       className="fixed inset-0 z-[110] flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-6"
       role="presentation"
-      onMouseDown={(event) => event.target === event.currentTarget && dismiss()}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (event.target === event.currentTarget) dismiss();
+      }}
     >
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`bvs-actions-${object.id}`}
+        tabIndex={-1}
         className="max-h-[calc(100dvh-0.75rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-[2rem] border border-white/10 bg-bg-primary px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-2xl sm:max-h-[85dvh] sm:rounded-[2rem] sm:p-6"
       >
         <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
