@@ -21,6 +21,7 @@ assert(reads[0].url.includes('is_public=eq.true&status=eq.published&rights_confi
 assert(!JSON.stringify(result.body).includes('master-secret'),'Preview endpoint cannot expose master audio');
 
 const library=load('src/lib/library.ts');
+const continuity=load('src/lib/discovery-continuity.ts');
 const old={id:'beat-'+id,kind:'track',title:'ALL MEANS',subtitle:'Wolf Bridges',href:'/radio'};
 const normalized=library.libraryItemsFromSnapshot(JSON.stringify([old]))[0];assert.equal(normalized.kind,'beat');assert.equal(normalized.href,'/beat/'+id);
 
@@ -46,6 +47,7 @@ const imports={react,'react/jsx-runtime':{jsx,jsxs:jsx},'next/image':{default:'i
  '@/lib/use-local-library':{useLocalLibrary:section=>section==='history'?[old]:[]},
  '@/lib/use-account-json':{useAccountJson:()=>({data:null,loading:false,reload(){}})},
  '@/lib/auth-client-flow':{withAuthTimeout:p=>p,safeAuthDestination:path=>path},
+ '@/lib/discovery-continuity':continuity,
  '@/lib/use-library-playback':{libraryPlaybackId:resolver.libraryPlaybackId,useLibraryPlayback:()=>({byId:new Map([[id,result.body.tracks[0]],['beat-'+id,result.body.tracks[0]]]),loading:false,error:'',retry(){}})},
 };
 const Component=load('src/components/app-vnext/AppLibraryClient.tsx',imports).default;
