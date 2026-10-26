@@ -10,6 +10,7 @@ import { trackEvent } from "@/lib/analytics";
 import BeatCrateChallenge from '@/components/BeatCrateChallenge';
 import { CRATE_CHALLENGE_ACTIVE } from '@/lib/beat-crate';
 import CreatorGrowthPanel from '@/components/CreatorGrowthPanel';
+import { buildCreatorReleaseProgress, latestDistributionJob, type ReleaseWorkGroup } from "@/lib/creator-release-progress";
 
 type WorkspaceData = {
   profile: {
@@ -21,10 +22,12 @@ type WorkspaceData = {
     id: string;
     title?: string;
     editorial_status?: string;
+    editorial_notes?: string | null;
     is_public?: boolean;
     in_rotation?: boolean;
     play_count?: number;
     like_count?: number;
+    release_id?: string | null;
   }>;
   releases?: Array<{
     id: string;
@@ -32,8 +35,9 @@ type WorkspaceData = {
     editorial_status?: string;
     is_public?: boolean;
     in_rotation?: boolean;
+    editorial_notes?: string | null;
   }>;
-  distributionJobs?: Array<{ id: string; status?: string }>;
+  distributionJobs?: Array<{ id: string; release_id?: string | null; status?: string; updated_at?: string; created_at?: string }>;
   uploadSessions?: Array<{
     id: string;
     submissionType: "track" | "release";
@@ -102,9 +106,24 @@ export default function CreatorStudioHome() {
     const tracks = data?.tracks || [];
     const releases = data?.releases || [];
     const jobs = data?.distributionJobs || [];
-    const pending = [...tracks, ...releases].filter((item) =>
-      ["submitted", "in_review", "changes_requested"].includes(item.editorial_status || ""),
-    ).length;
+    const counts: Record<ReleaseWorkGroup, number> = { action_required: 0, in_progress: 0, history: 0 };
+    const releaseItems = [
+      ...releases.map((release) => ({
+        ...release,
+        distributionStatus: latestDistributionJob(jobs.filter((job) => job.release_id === release.id))?.status,
+      })),
+      ...tracks.filter((track) => !track.release_id).map((track) => ({ ...track, distributionStatus: undefined })),
+    ];
+    for (const item of releaseItems) {
+      const progress = buildCreatorReleaseProgress({
+        editorialStatus: item.editorial_status,
+        editorialNotes: item.editorial_notes,
+        isPublic: item.is_public,
+        inRotation: item.in_rotation,
+        distributionStatus: item.distributionStatus,
+      });
+      counts[progress.group] += 1;
+    }
     const published = [...tracks, ...releases].filter((item) => item.is_public).length;
     const inRotation = [...tracks, ...releases].filter((item) => item.in_rotation).length;
     const plays = tracks.reduce((sum, track) => sum + Number(track.play_count || 0), 0);
@@ -112,7 +131,7 @@ export default function CreatorStudioHome() {
     const distributing = jobs.filter((job) =>
       ["queued", "submitted", "processing", "delivering"].includes(job.status || ""),
     ).length;
-    return { catalogue: tracks.length + releases.length, pending, published, inRotation, plays, likes, distributing };
+    return { catalogue: tracks.length + releases.length, ...counts, published, inRotation, plays, likes, distributing };
   }, [data]);
 
   if (error && !data) {
@@ -212,10 +231,10 @@ export default function CreatorStudioHome() {
           <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" accent="marketplace" />
           <ManageLink href="/creator/studio/services" label="Profile & storefront" detail="Advanced setup" accent="marketplace" />
         </div>
-        {(activity.pending > 0 || activity.distributing > 0) && (
+        {(activity.action_required > 0 || activity.in_progress > 0) && (
           <div className="mt-5 flex flex-wrap gap-2 text-xs text-text-secondary">
-            {activity.pending > 0 && <span className="rounded-full border border-white/10 px-3 py-1.5">{activity.pending} awaiting editorial action</span>}
-            {activity.distributing > 0 && <span className="rounded-full border border-white/10 px-3 py-1.5">{activity.distributing} moving through distribution</span>}
+            {activity.action_required > 0 && <span className="rounded-full border border-amber-300/25 bg-amber-300/[.05] px-3 py-1.5 text-amber-100">{activity.action_required} need your action</span>}
+            {activity.in_progress > 0 && <span className="rounded-full border border-sky-300/20 bg-sky-300/[.04] px-3 py-1.5 text-sky-100">{activity.in_progress} in progress — no action now</span>}
           </div>
         )}
       </section>
@@ -319,14 +338,17 @@ function SubmissionStatusPanel({
   );
 }
 
-function ArtistActivationPanel({ activity }: { activity: { catalogue: number; pending: number; published: number; inRotation: number; plays: number; likes: number } }) {
+function ArtistActivationPanel({ activity }: { activity: { catalogue: number; action_required: number; in_progress: number; history: number; published: number; inRotation: number; plays: number; likes: number } }) {
   const needsFirstSubmit = activity.catalogue === 0;
-  const needsFix = activity.pending > 0;
+  const needsFix = activity.action_required > 0;
+  const isMoving = activity.in_progress > 0;
   const hasProof = activity.published > 0 || activity.inRotation > 0;
   const primary = needsFirstSubmit
     ? { href: "/creator/studio/create/release", label: "Submit first track", detail: "Start the one-release path and give editorial something real to publish." }
     : needsFix
-      ? { href: "/creator/studio/manage#releases", label: "Track review", detail: "Keep the release moving through editorial within the 48h control window." }
+      ? { href: "/creator/studio/manage#releases", label: "Review editorial note", detail: "A release needs your attention. Read the note, then use the linked editorial-request form for this existing submission." }
+      : isMoving
+        ? { href: "/creator/studio/manage#releases", label: "View progress", detail: "Your release is moving with BVS or the stores. Nothing is required from you right now." }
       : hasProof
         ? { href: "/artists", label: "View live proof", detail: "Check what listeners can see, play and share." }
         : { href: "/creator/studio/manage#releases", label: "Open catalogue", detail: "Review status and prepare the next release." };
@@ -345,9 +367,9 @@ function ArtistActivationPanel({ activity }: { activity: { catalogue: number; pe
       </div>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <ProofMetric label="Catalogue" value={activity.catalogue} />
-        <ProofMetric label="Awaiting review" value={activity.pending} />
-        <ProofMetric label="Live on BVS" value={activity.published} />
-        <ProofMetric label="In rotation" value={activity.inRotation} />
+        <ProofMetric label="Action required" value={activity.action_required} />
+        <ProofMetric label="In progress" value={activity.in_progress} />
+        <ProofMetric label="History" value={activity.history} />
         <ProofMetric label="Total plays" value={activity.plays} />
         <ProofMetric label="Saves/likes" value={activity.likes} />
       </div>
