@@ -1,22 +1,23 @@
 import { notFound } from "next/navigation";
 import AppExploreClient from "@/components/app-vnext/AppExploreClient";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
-
-const allowedKinds = new Set(["all", "music", "artists", "producers", "beats"]);
+import { readAppExploreState } from "@/lib/discovery-continuity";
 
 export default async function AppExplorePage({
   params,
   searchParams,
 }: {
   params: Promise<{ surface: string }>;
-  searchParams?: Promise<{ q?: string | string[]; kind?: string | string[] }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const raw = (await params).surface;
   if (raw !== "ios" && raw !== "android") notFound();
   const queryParams = searchParams ? await searchParams : {};
-  const qRaw = Array.isArray(queryParams.q) ? queryParams.q[0] : queryParams.q;
-  const kindRaw = Array.isArray(queryParams.kind) ? queryParams.kind[0] : queryParams.kind;
-  const initialQuery = String(qRaw || "").slice(0, 160);
-  const initialKind = allowedKinds.has(String(kindRaw || "")) ? String(kindRaw) : "all";
-  return <AppExploreClient key={`${raw}:${initialQuery}:${initialKind}`} surface={raw as AppSurface} initialQuery={initialQuery} initialKind={initialKind as "all" | "music" | "artists" | "producers" | "beats"} />;
+  const serialized = new URLSearchParams();
+  for (const [key, value] of Object.entries(queryParams)) {
+    const first = Array.isArray(value) ? value[0] : value;
+    if (first) serialized.set(key, first);
+  }
+  const initial = readAppExploreState(serialized);
+  return <AppExploreClient key={`${raw}:${initial.query}:${initial.kind}:${initial.genre}:${initial.mode}`} surface={raw as AppSurface} initialState={initial} />;
 }

@@ -33,6 +33,8 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const searchParams = useSearchParams();
   const { isCreator } = useAppSession();
   const base = `/app/${surface}`;
+  const search = searchParams.toString();
+  const currentRoute = `${pathname}${search ? `?${search}` : ""}`;
   const roleDestination = isCreator
     ? { href: `${base}/studio`, label: "Studio", icon: "create" as const, active: pathname.startsWith(`${base}/studio`) }
     : { href: `${base}/explore?kind=beats`, label: "Beats", icon: "beats" as const, active: (pathname === `${base}/explore` && searchParams.get("kind") === "beats") || pathname.startsWith(`${base}/beat/`) };
@@ -68,10 +70,14 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
                 event.altKey
               ) return;
               event.preventDefault();
+              if (item.href === currentRoute) {
+                window.scrollTo({ top: 0, left: 0 });
+                return;
+              }
               router.push(item.href);
             }}
             aria-current={item.active ? "page" : undefined}
-            className={`relative flex min-w-0 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-all sm:text-[11px] ${item.active ? "text-white" : "text-white/46 hover:text-white/82"}`}
+            className={`relative flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-medium transition-[color,transform] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:text-[11px] ${item.active ? "text-white" : "text-white/46 hover:text-white/82"}`}
           >
             <span
               className={`grid h-8 w-11 place-items-center rounded-full leading-none transition-all ${item.active ? "bg-brand/14 text-brand shadow-[0_0_22px_rgba(227,189,88,.12)]" : ""}`}

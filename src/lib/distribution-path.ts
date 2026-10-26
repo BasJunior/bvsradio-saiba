@@ -175,14 +175,18 @@ export function buildArtistPathSteps(input: {
   distroStatus?: string | null;
 }): PathStep[] {
   const premiumOn = Boolean(input.premiumActive && input.distributionEnabled);
-  const submitted = Boolean(input.hasSubmission);
-  const reviewing =
-    submitted &&
-    ["submitted", "in_review"].includes(String(input.bvsStatus || "").toLowerCase());
-  const approved = String(input.bvsStatus || "").toLowerCase() === "approved";
-  const rejected = String(input.bvsStatus || "").toLowerCase() === "rejected";
-  const onBvs = Boolean(input.isPublic && approved);
-  const distro = String(input.distroStatus || "");
+  const normalizedBvsStatus = String(input.bvsStatus || "").toLowerCase();
+  const reviewing = ["submitted", "in_review", "pending", "under_review"].includes(normalizedBvsStatus);
+  const approved = ["approved", "published", "live"].includes(normalizedBvsStatus);
+  const rejected = ["rejected", "changes_requested", "information_requested", "action_required", "needs_action"].includes(normalizedBvsStatus);
+  const editorialKnown = !normalizedBvsStatus || normalizedBvsStatus === "draft" || reviewing || approved || rejected;
+  const editorialUnknown = Boolean(normalizedBvsStatus) && !editorialKnown;
+  // Public availability is the proof of BVS playback. Approval or rotation alone is not.
+  const onBvs = input.isPublic === true;
+  // A public release necessarily passed submission, but an unknown editorial value
+  // must not be used as evidence that submission or review is complete.
+  const submitted = onBvs || reviewing || approved || rejected;
+  const distro = String(input.distroStatus || "").trim().toLowerCase();
 
   const premium: PathStep = {
     id: "premium",
@@ -196,8 +200,14 @@ export function buildArtistPathSteps(input: {
   const submit: PathStep = {
     id: "submit",
     label: "Submit release",
-    detail: submitted ? "Release received" : "Upload single / EP / album with rights confirmed",
-    state: submitted ? "done" : premiumOn || true ? "current" : "upcoming",
+    detail: submitted
+      ? "Release received"
+      : input.hasSubmission
+        ? editorialUnknown
+          ? `Submission status pending (${normalizedBvsStatus.replaceAll("_", " ")})`
+          : "Draft created — not submitted"
+        : "Upload single / EP / album with rights confirmed",
+    state: submitted ? "done" : "current",
   };
 
   let bvsReview: PathStep = {
@@ -214,10 +224,16 @@ export function buildArtistPathSteps(input: {
     };
   } else if (approved) {
     bvsReview = { ...bvsReview, detail: "Approved", state: "done" };
-  } else if (reviewing || submitted) {
+  } else if (editorialUnknown) {
     bvsReview = {
       ...bvsReview,
-      detail: reviewing ? "In review" : "Waiting for review",
+      detail: `Status pending: ${normalizedBvsStatus.replaceAll("_", " ")} — BVS must clarify`,
+      state: "current",
+    };
+  } else if (reviewing) {
+    bvsReview = {
+      ...bvsReview,
+      detail: "In review",
       state: "current",
     };
   }
@@ -229,7 +245,7 @@ export function buildArtistPathSteps(input: {
       ? input.inRotation
         ? "Published + in continuous rotation"
         : "Published on BVS catalogue"
-      : "After approve + publish",
+      : "After approval and publication",
     state: onBvs ? "done" : approved ? "current" : "upcoming",
   };
 
@@ -301,7 +317,9 @@ export function buildArtistPathSteps(input: {
   } else if (premiumOn && onBvs) {
     distroQueue = {
       ...distroQueue,
-      detail: "Creating distribution job…",
+      detail: distro
+        ? `Status pending: ${distro.replaceAll("_", " ")} — BVS must clarify`
+        : "Creating distribution job…",
       state: "current",
     };
   }

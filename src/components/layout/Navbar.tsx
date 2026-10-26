@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
+import { createPortal } from 'react-dom'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import HeaderSearch from '@/components/layout/HeaderSearch'
@@ -13,6 +14,7 @@ import { appHome, isAppPrimaryRoot, primaryAppDestinations } from '@/lib/app-sur
 import { readFlowBackTarget } from '@/lib/flow-session'
 import { webDestinations, isWebDestinationActive } from '@/lib/web-navigation'
 import { BVS_CART_EVENT, BVS_CART_KEY, cartItemCount } from '@/lib/cart-client'
+import { containModalTab, focusFirstElement, lockPageScroll, registerModalLayer, restoreFocus } from '@/lib/modal-layer'
 type Access = {
   artist: boolean
   creator: boolean
@@ -66,6 +68,10 @@ export default function Navbar() {
   const router = useRouter()
   const { surface, appChrome } = useAppSurface()
   const appHeaderRef = useAppShellMeasurement<HTMLElement>('--bvs-app-header-height-measured', appChrome)
+  const menuButtonRef = useRef<HTMLButtonElement>(null)
+  const menuPanelRef = useRef<HTMLDivElement>(null)
+  const restoreMenuFocusRef = useRef(true)
+  const menuId = useId()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [access, setAccess] = useState<Access | null>(null)
@@ -73,6 +79,45 @@ export default function Navbar() {
   const [notificationCount, setNotificationCount] = useState(0)
   const [authToken, setAuthToken] = useState<string | null>(null)
   const [cartCount, setCartCount] = useState(0)
+
+  useEffect(() => {
+    const closeTimer = window.setTimeout(() => setIsMenuOpen(false), 0)
+    return () => window.clearTimeout(closeTimer)
+  }, [pathname])
+
+  useEffect(() => {
+    if (!isMenuOpen) return
+    restoreMenuFocusRef.current = true
+    const returnFocus = menuButtonRef.current
+    const openedAt = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    const unlockPage = lockPageScroll()
+    const modalLayer = registerModalLayer()
+    const focusTimer = window.setTimeout(() => focusFirstElement(menuPanelRef.current), 0)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!modalLayer.isTop()) return
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setIsMenuOpen(false)
+        return
+      }
+      containModalTab(event, menuPanelRef.current)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      window.removeEventListener('keydown', onKeyDown)
+      modalLayer.release()
+      unlockPage()
+      if (restoreMenuFocusRef.current && `${window.location.pathname}${window.location.search}${window.location.hash}` === openedAt) restoreFocus(returnFocus)
+    }
+  }, [isMenuOpen])
+
+  const closeMenuForNavigation = (href: string) => {
+    const destination = new URL(href, window.location.href)
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    restoreMenuFocusRef.current = `${destination.pathname}${destination.search}${destination.hash}` === current
+    setIsMenuOpen(false)
+  }
 
   useEffect(() => {
     if (!isSupabaseConfigured()) return
@@ -233,6 +278,7 @@ export default function Navbar() {
     setAuthToken(null)
     setAccess(null)
     setPremium(null)
+    restoreMenuFocusRef.current = false
     setIsMenuOpen(false)
     router.push('/')
     router.refresh()
@@ -255,7 +301,7 @@ export default function Navbar() {
       : null
   const openNotifications = () => {
     window.localStorage.setItem(`bvs_notifications_seen_at:${user?.id}`, new Date().toISOString())
-    setIsMenuOpen(false)
+    closeMenuForNavigation('/notifications')
   }
   const notificationBadge = notificationCount > 0 ? (
     <Link
@@ -317,7 +363,7 @@ export default function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center" onClick={() => setIsMenuOpen(false)} aria-label="BVS Radio home">
+        <Link href="/" className="flex items-center" onClick={() => closeMenuForNavigation('/')} aria-label="BVS Radio home">
           <Image
             src="/branding/bvs-logo-star-16x9.svg"
             alt="BVS Radio"
@@ -375,7 +421,7 @@ export default function Navbar() {
             href="/checkout"
             aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
             className="relative flex h-9 w-9 items-center justify-center rounded-lg text-text-secondary transition hover:bg-white/5 hover:text-brand"
-            onClick={() => setIsMenuOpen(false)}
+            onClick={() => closeMenuForNavigation('/checkout')}
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l3-8H6.4M7 13 5.4 5M7 13l-1.2 6h12.4M10 21a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm8 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
@@ -390,17 +436,20 @@ export default function Navbar() {
             <Link
               href="/auth/signup"
               className="bvs-join-button rounded-full px-3.5 py-1.5 text-xs font-semibold tracking-wide transition active:scale-[0.98]"
-              onClick={() => setIsMenuOpen(false)}
+              onClick={() => closeMenuForNavigation('/auth/signup')}
             >
               Join
             </Link>
           )}
           <button
+            ref={menuButtonRef}
             type="button"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="rounded-lg p-2 text-text-secondary transition hover:bg-white/5 hover:text-brand"
+            onClick={() => setIsMenuOpen((open) => !open)}
+            className="grid h-11 w-11 place-items-center rounded-lg text-text-secondary transition hover:bg-white/5 hover:text-brand"
             aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMenuOpen}
+            aria-haspopup="dialog"
+            aria-controls={isMenuOpen ? menuId : undefined}
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               {isMenuOpen ? (
@@ -414,15 +463,20 @@ export default function Navbar() {
       </div>
 
       {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain border-t border-white/10 bg-bg-primary/95 pb-[calc(7rem+env(safe-area-inset-bottom))] backdrop-blur md:hidden">
-          <div className="px-4 py-4 space-y-1">
+      {isMenuOpen && typeof document !== 'undefined' ? createPortal(
+        <div className="fixed inset-x-0 bottom-0 top-16 z-[100] bg-black/65 backdrop-blur-sm md:hidden" role="presentation" onClick={(event) => {
+          event.stopPropagation()
+          if (event.target === event.currentTarget) setIsMenuOpen(false)
+        }}>
+          <div ref={menuPanelRef} id={menuId} role="dialog" aria-modal="true" aria-label="BVS navigation menu" tabIndex={-1} className="max-h-full overflow-y-auto overscroll-contain border-t border-white/10 bg-bg-primary/98 pb-[calc(7rem+env(safe-area-inset-bottom))] shadow-2xl">
+          <div className="space-y-1 px-4 py-4">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
+                data-menu-initial={link === navLinks[0] ? true : undefined}
                 className="block py-2.5 text-text-secondary hover:text-brand transition-colors"
-                onClick={() => setIsMenuOpen(false)}
+                onClick={() => closeMenuForNavigation(link.href)}
               >
                 {link.label}
               </Link>
@@ -430,14 +484,14 @@ export default function Navbar() {
             <div className="pt-2">
               <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">BVS Services</div>
               {serviceLinks.map((link) => (
-                <Link key={link.href} href={link.href} className="block py-2 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
+                <Link key={link.href} href={link.href} className="block py-2 text-text-secondary hover:text-brand" onClick={() => closeMenuForNavigation(link.href)}>
                   <span className="block">{link.label}</span>
                   <span className="block text-xs text-text-secondary/70">{link.detail}</span>
                 </Link>
               ))}
             </div>
-            <Link href="/premium" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Premium</Link>
-            <Link href="/checkout" className="flex items-center justify-between py-2.5 text-text-secondary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
+            <Link href="/premium" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => closeMenuForNavigation('/premium')}>Premium</Link>
+            <Link href="/checkout" className="flex items-center justify-between py-2.5 text-text-secondary hover:text-brand" onClick={() => closeMenuForNavigation('/checkout')}>
               <span>Cart</span>
               {cartCount > 0 && (
                 <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{cartCount > 9 ? '9+' : cartCount}</span>
@@ -451,14 +505,14 @@ export default function Navbar() {
                     <Link
                       href="/artist/premium"
                       className="block rounded-xl border border-brand/30 bg-brand/10 px-3 py-2 text-sm font-semibold text-brand"
-                      onClick={() => setIsMenuOpen(false)}
+                      onClick={() => closeMenuForNavigation('/artist/premium')}
                     >
                       {premiumBadge}
                     </Link>
                   )}
-                  <Link href="/account" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Account Centre</span>{!showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
-                  {showEditorial && <Link href="/editorial" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}><span>Editorial dashboard</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
-                  {showEditorial && <Link href="/admin/creator-workflows" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>Writing &amp; research review</Link>}
+                  <Link href="/account" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => closeMenuForNavigation('/account')}><span>Account Centre</span>{!showEditorial && notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
+                  {showEditorial && <Link href="/editorial" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={() => closeMenuForNavigation('/editorial')}><span>Editorial dashboard</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>}
+                  {showEditorial && <Link href="/admin/creator-workflows" className="py-2 text-text-primary hover:text-brand" onClick={() => closeMenuForNavigation('/admin/creator-workflows')}>Writing &amp; research review</Link>}
                   <Link href="/notifications" className="flex items-center justify-between py-2 text-text-primary hover:text-brand" onClick={openNotifications}><span>Notifications</span>{notificationCount > 0 && <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-black">{notificationCount > 9 ? '9+' : notificationCount}</span>}</Link>
                   <button type="button" onClick={signOut} className="py-2 text-left text-text-primary hover:text-brand">
                     Sign out
@@ -466,18 +520,20 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                  <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => setIsMenuOpen(false)}>
+                  <Link href="/auth/login" className="py-2 text-text-primary hover:text-brand" onClick={() => closeMenuForNavigation('/auth/login')}>
                     Sign in
                   </Link>
-                  <Link href="/auth/signup" className="bvs-join-button py-2.5 text-center font-medium rounded-full" onClick={() => setIsMenuOpen(false)}>
+                  <Link href="/auth/signup" className="bvs-join-button py-2.5 text-center font-medium rounded-full" onClick={() => closeMenuForNavigation('/auth/signup')}>
                     Join
                   </Link>
                 </>
               )}
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        </div>,
+        document.body,
+      ) : null}
     </nav>
   )
 }

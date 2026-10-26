@@ -7,6 +7,13 @@ import { useMemo } from "react";
 import { useAccountJson } from "@/lib/use-account-json";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
+import { CreatorReleaseWorkCounts } from "@/components/CreatorReleaseProgress";
+import {
+  buildCreatorReleaseProgress,
+  isCreatorReleaseActionRequired,
+  latestDistributionJob,
+  type ReleaseWorkGroup,
+} from "@/lib/creator-release-progress";
 
 const roles = [
   ["Artist", "Release music, follow review, see what is live and understand what happens next.", "core"],
@@ -17,7 +24,7 @@ const roles = [
 
 type WorkspaceTrack = { id: string; title: string; editorial_status?: string; editorial_notes?: string; in_rotation?: boolean; is_public?: boolean; release_id?: string | null };
 type WorkspaceRelease = { id: string; title: string; editorial_status?: string; editorial_notes?: string; is_public?: boolean; in_rotation?: boolean };
-type DistributionJob = { id: string; release_id?: string | null; status?: string; public_note?: string; updated_at?: string };
+type DistributionJob = { id: string; release_id?: string | null; status?: string; updated_at?: string; created_at?: string };
 type WorkflowItem = { id: string; title?: string; topic?: string; status?: string; editor_notes?: string; review_notes?: string; request_type?: string; staff_notes?: string; message?: string };
 type Workspace = {
   tracks?: WorkspaceTrack[];
@@ -48,26 +55,38 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
     if (!workspace) return [];
     const out: Task[] = [];
     for (const release of workspace.releases || []) {
-      if (needsCreatorAction(release.editorial_status)) out.push({ id: `release-${release.id}`, eyebrow: "Release review", title: release.title, note: release.editorial_notes || "Editorial needs an update before this release can move forward.", href: `/app/${surface}/studio/release`, tone: "urgent" });
+      if (isCreatorReleaseActionRequired(release.editorial_status)) {
+        const progress = buildCreatorReleaseProgress({
+          editorialStatus: release.editorial_status,
+          editorialNotes: release.editorial_notes,
+          isPublic: release.is_public,
+          inRotation: release.in_rotation,
+        });
+        out.push({ id: `release-${release.id}`, eyebrow: "Release review", title: release.title, note: release.editorial_notes || progress.nextStep, href: `/app/${surface}/studio/release`, tone: "urgent" });
+      }
     }
     for (const track of workspace.tracks || []) {
-      if (needsCreatorAction(track.editorial_status)) out.push({ id: `track-${track.id}`, eyebrow: "Track review", title: track.title, note: track.editorial_notes || "This track needs your attention.", href: `/app/${surface}/studio/release`, tone: "urgent" });
+      if (isCreatorReleaseActionRequired(track.editorial_status)) {
+        const progress = buildCreatorReleaseProgress({
+          editorialStatus: track.editorial_status,
+          editorialNotes: track.editorial_notes,
+          isPublic: track.is_public,
+          inRotation: track.in_rotation,
+        });
+        out.push({ id: `track-${track.id}`, eyebrow: "Track review", title: track.title, note: track.editorial_notes || progress.nextStep, href: `/app/${surface}/support?topic=music`, tone: "urgent" });
+      }
     }
     for (const request of workspace.trackRequests || []) {
       const status = normalize(request.status);
-      if (!["open", "reviewing", "information_requested", "changes_requested", "action_required"].includes(status)) continue;
-      const urgent = needsCreatorAction(status);
+      if (!["information_requested", "changes_requested", "action_required", "needs_action"].includes(status)) continue;
       out.push({
         id: `request-${request.id}`,
-        eyebrow: urgent ? "Artist request · action needed" : "Artist request",
+        eyebrow: "Artist request · action needed",
         title: String(request.request_type || "Track request").replaceAll("_", " "),
-        note: request.staff_notes || (status === "reviewing" ? "BVS is reviewing your request." : request.message || `Status: ${status.replaceAll("_", " ")}.`),
+        note: request.staff_notes || request.message || `Status: ${status.replaceAll("_", " ")}.`,
         href: `/app/${surface}/studio/release`,
-        tone: urgent ? "urgent" : "normal",
+        tone: "urgent",
       });
-    }
-    for (const job of workspace.distributionJobs || []) {
-      if (needsCreatorAction(job.status)) out.push({ id: `distribution-${job.id}`, eyebrow: "Store delivery", title: "Distribution action required", note: job.public_note || "Store delivery needs attention.", href: `/app/${surface}/studio/release`, tone: "urgent" });
     }
     for (const brief of workspace.briefs || []) {
       if (["assigned", "changes_requested"].includes(String(brief.status || ""))) out.push({ id: `brief-${brief.id}`, eyebrow: "Editorial brief", title: brief.title || brief.topic || "Research brief", note: brief.editor_notes || brief.review_notes || "Open the brief and continue the assigned work.", href: `/app/${surface}/studio` });
@@ -90,24 +109,31 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
       ...(focalRelease ? [normalize(focalRelease.editorial_status)] : []),
       ...relatedTracks.map((item) => normalize(item.editorial_status)),
     ].filter(Boolean);
+    const focalItems = [focalRelease, ...relatedTracks].filter(Boolean);
     const hasWork = Boolean(focalRelease || focalTrack);
-    const hasAction = [focalRelease, ...relatedTracks].filter(Boolean).some((item) => needsCreatorAction(item?.editorial_status));
-    const submitted = focalStatuses.some((status) => status !== "draft");
+    const hasAction = focalItems.some((item) => isCreatorReleaseActionRequired(item?.editorial_status));
+    const hasDraft = focalStatuses.some((status) => status === "draft");
+    const live = Boolean(focalRelease?.is_public || focalTrack?.is_public);
+    const hasUnknownEditorial = focalItems.some((item) => {
+      const status = normalize(item?.editorial_status);
+      return !status || !["draft", "submitted", "in_review", "pending", "under_review", "approved", "published", "live", "changes_requested", "information_requested", "rejected", "action_required", "needs_action"].includes(status);
+    });
+    const submitted = live || focalStatuses.some((status) => ["submitted", "in_review", "pending", "under_review", "approved", "published", "live", "changes_requested", "information_requested", "rejected", "action_required", "needs_action"].includes(status));
     const approved = focalStatuses.some((status) => ["approved", "published", "live"].includes(status));
-    const reviewInProgress = focalStatuses.some((status) => ["submitted", "in_review"].includes(status));
-    const live = Boolean(focalRelease?.is_public || focalRelease?.in_rotation || focalTrack?.is_public || focalTrack?.in_rotation || focalStatuses.some((status) => ["published", "live"].includes(status)));
-    const focalJob = focalRelease ? jobs.find((job) => job.release_id === focalRelease.id) : undefined;
+    const reviewInProgress = focalStatuses.some((status) => ["submitted", "in_review", "pending", "under_review"].includes(status));
+    const focalJob = focalRelease ? latestDistributionJob(jobs.filter((job) => job.release_id === focalRelease.id)) : undefined;
     const distro = normalize(focalJob?.status);
-    const distributionDelivered = ["live_on_dsp", "live", "delivered", "complete", "completed", "distributed"].includes(distro);
-    const distributionInFlight = ["queued", "submitted"].includes(distro);
+    const distributionDelivered = distro === "live_on_dsp";
+    const distributionInFlight = ["queued", "submitted", "processing", "delivering"].includes(distro);
     const distributionEligible = distro === "eligible";
-    const distributionBlocked = ["not_eligible", "failed", "cancelled"].includes(distro);
-    const distributionNote = distributionDelivered ? "Live on stores" : distributionInFlight ? "Store review" : distributionEligible ? "Eligible" : distributionBlocked ? "BVS live only" : "Store path";
+    const distributionBlocked = ["not_eligible", "cancelled"].includes(distro);
+    const distributionUnknown = Boolean(distro) && !distributionDelivered && !distributionInFlight && !distributionEligible && !distributionBlocked && distro !== "failed";
+    const distributionNote = distributionDelivered ? "Live on stores" : distro === "failed" ? "Needs attention" : distributionInFlight ? "Store review" : distributionEligible ? "Eligible" : distributionBlocked ? "BVS live only" : distributionUnknown ? `Status: ${distro.replaceAll("_", " ")}` : "Not started";
 
     const raw = [
       { label: "Create", note: "Music + rights prepared", href: `/app/${surface}/studio/release`, done: hasWork },
-      { label: "Submit", note: "Sent to editorial", href: `/app/${surface}/studio/release`, done: submitted },
-      { label: "Review", note: hasAction ? "Changes needed" : reviewInProgress ? "Editorial checking" : "Editorial checks", href: `/app/${surface}/studio/release`, done: approved },
+      { label: "Submit", note: hasDraft ? "Existing draft · contact BVS" : "Sent to editorial", href: `/app/${surface}/studio/release`, done: submitted },
+      { label: "Review", note: hasDraft ? "After BVS confirms next step" : hasAction ? "Changes needed" : hasUnknownEditorial ? "Status needs clarification" : reviewInProgress ? "Editorial checking" : "Editorial checks", href: `/app/${surface}/studio/release`, done: approved },
       { label: "Approved", note: "Cleared to publish", href: `/app/${surface}/studio/release`, done: approved },
       { label: "Live", note: "Visible / playable", href: `/app/${surface}/studio/release`, done: live },
       { label: "Distribution", note: distributionNote, href: `/app/${surface}/studio/release`, done: distributionDelivered },
@@ -119,18 +145,37 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
     const steps = raw.map<PathStep>((step, index) => ({ label: step.label, note: step.note, href: step.href, state: step.done ? "done" : index === firstOpen ? "current" : "next" }));
 
     let next = { title: "Start your first release", copy: "Upload your music, add the ownership details BVS needs and send it into review.", href: `/app/${surface}/studio/release`, cta: "Start release" };
-    if (hasAction) next = { title: "A change is needed", copy: "Open the release, read the review note and make the requested update.", href: `/app/${surface}/studio/release`, cta: "Resolve review" };
+    if (hasAction) next = { title: "This release needs attention", copy: "Open the release, read the status note, then use Contact editorial for this existing submission. Editing and resubmission are not available on the status screen.", href: `/app/${surface}/studio/release`, cta: "Review next step" };
+    else if (hasUnknownEditorial) next = { title: "BVS is checking the editorial status", copy: live ? "BVS playback is live, but the editorial state is not recognized as complete. BVS must clarify it; nothing is required from you right now." : "The editorial state is not mapped to a creator action. BVS must clarify it; nothing is required from you right now.", href: `/app/${surface}/studio/release`, cta: "View status" };
     else if (hasWork && !submitted) next = { title: "Finish your draft", copy: "Your release is still being prepared and has not entered review yet.", href: `/app/${surface}/studio/release`, cta: "Continue release" };
     else if (submitted && !approved) next = { title: "Your release is in review", copy: "You’re done for now. Any request from editorial will appear here and in your Inbox.", href: `/app/${surface}/studio/release`, cta: "View status" };
     else if (approved && !live) next = { title: "Approved — publishing is next", copy: "Editorial approval is complete. BVS publication and wider store delivery remain separate so you always know what is actually live.", href: `/app/${surface}/studio/release`, cta: "Open release" };
     else if (live && distributionInFlight) next = { title: "Wider delivery is moving", copy: "Your release is already live on BVS. Store delivery is now in the queue or review stage.", href: `/app/${surface}/studio/release`, cta: "Track delivery" };
     else if (live && distributionEligible) next = { title: "Ready for wider delivery", copy: "Your release is live on BVS and eligible to enter the store-delivery path.", href: `/app/${surface}/studio/release`, cta: "View distribution" };
+    else if (live && distro === "failed") next = { title: "BVS is checking store delivery", copy: "BVS playback is still live. BVS must confirm the delivery issue and share a specific correction before anything is required from you.", href: `/app/${surface}/studio/release`, cta: "View status" };
+    else if (live && distributionUnknown) next = { title: "BVS is checking the store status", copy: `BVS playback is live. The store status “${distro.replaceAll("_", " ")}” is not a confirmed live state, so BVS must clarify it.`, href: `/app/${surface}/studio/release`, cta: "View status" };
     else if (live && distributionBlocked) next = { title: "Your release is live on BVS", copy: "Listening is active here. Wider store delivery is a separate optional path and is not active for this release right now.", href: `/app/${surface}/studio/release`, cta: "View release" };
     else if (live && distributionDelivered) next = { title: "You’re live. Now see what it’s doing.", copy: "Open Insights for listening activity, then Money for balances and settlements.", href: `/app/${surface}/studio/insights`, cta: "Open Insights" };
     else if (live) next = { title: "Your release is live", copy: "People can listen on BVS now. Wider delivery will appear separately if and when it starts.", href: `/app/${surface}/studio/release`, cta: "View release" };
 
     return { steps, next, focusTitle: focalRelease?.title || focalTrack?.title || "Your next release" };
   }, [access?.artist, surface, workspace]);
+
+  const releaseCounts = useMemo(() => {
+    const counts: Record<ReleaseWorkGroup, number> = { action_required: 0, in_progress: 0, history: 0 };
+    for (const release of workspace?.releases || []) {
+      const job = latestDistributionJob((workspace?.distributionJobs || []).filter((item) => item.release_id === release.id));
+      const progress = buildCreatorReleaseProgress({
+        editorialStatus: release.editorial_status,
+        editorialNotes: release.editorial_notes,
+        isPublic: release.is_public,
+        inRotation: release.in_rotation,
+        distributionStatus: job?.status,
+      });
+      counts[progress.group] += 1;
+    }
+    return counts;
+  }, [workspace]);
 
   if (loading) return <div className="mx-auto max-w-5xl px-4 pt-8"><div className="h-48 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
 
@@ -200,6 +245,7 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
             <h3 className="mt-2 text-lg font-semibold">{artistPath.next.title}</h3>
             <p className="mt-2 text-sm leading-6 text-white/65">{artistPath.next.copy}</p>
           </div>
+          {(workspace?.releases || []).length ? <div className="mt-4"><CreatorReleaseWorkCounts counts={releaseCounts} /></div> : null}
         </section>
       ) : null}
 

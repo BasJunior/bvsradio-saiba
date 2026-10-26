@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
+import { withAuthTimeout } from "@/lib/auth-client-flow";
 
 export type AppPlaylist = {
   id: string;
@@ -24,17 +25,50 @@ export default function AppPlaylists({ surface }: { surface: AppSurface }) {
   const [isPublic, setIsPublic] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [error, setError] = useState("");
+  const loadVersion = useRef(0);
+  const invalidateLoads = useCallback(() => { ++loadVersion.current; }, []);
 
   const load = useCallback(async () => {
-    if (!token) return setPlaylists([]);
-    const response = await fetch("/api/app/playlists", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" }).catch(() => null);
-    if (!response?.ok) return;
-    const payload = (await response.json()) as { playlists?: AppPlaylist[] };
-    setPlaylists(payload.playlists || []);
+    const request = ++loadVersion.current;
+    await Promise.resolve();
+    if (!token) {
+      if (request === loadVersion.current) { setPlaylists([]); setLoading(false); setLoadError(""); }
+      return;
+    }
+    setLoading(true);
+    setLoadError("");
+    let result: { response: Response; payload: { playlists?: AppPlaylist[]; error?: string } };
+    try {
+      result = await withAuthTimeout(
+        fetch("/api/app/playlists", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" })
+          .then(async (response) => ({ response, payload: await response.json().catch(() => ({})) as { playlists?: AppPlaylist[]; error?: string } })),
+        12000,
+        "Playlist loading took too long. Please try again.",
+      );
+    } catch (caught) {
+      if (request === loadVersion.current) {
+        setLoadError(caught instanceof Error ? caught.message : "Could not load playlists.");
+        setLoading(false);
+      }
+      return;
+    }
+    if (request !== loadVersion.current) return;
+    if (!result.response.ok) {
+      setLoadError(result.payload.error || "Could not load playlists.");
+      setLoading(false);
+      return;
+    }
+    setPlaylists(result.payload.playlists || []);
+    setLoading(false);
   }, [token]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void load(), 0);
+    return () => { window.clearTimeout(timer); invalidateLoads(); };
+  }, [invalidateLoads, load]);
   useEffect(() => {
     const sync = () => void load();
     window.addEventListener("bvs:playlists-change", sync);
@@ -45,20 +79,24 @@ export default function AppPlaylists({ surface }: { surface: AppSurface }) {
     const name = title.trim();
     if (!name || !token) return;
     setBusy(true); setError("");
-    const response = await fetch("/api/app/playlists", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ title: name, description: description.trim(), isPublic }),
-    }).catch(() => null);
-    if (!response?.ok) {
-      const payload = await response?.json().catch(() => ({})) as { error?: string } | undefined;
-      setError(payload?.error || "Could not create playlist.");
-    } else {
-      setTitle(""); setDescription(""); setIsPublic(false); setShowCreate(false);
-      await load();
-      window.dispatchEvent(new CustomEvent("bvs:playlists-change"));
+    try {
+      const response = await withAuthTimeout(fetch("/api/app/playlists", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ title: name, description: description.trim(), isPublic }),
+      }), 12000, "Playlist creation took too long. Please try again.");
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { error?: string };
+        setError(payload.error || "Could not create playlist.");
+      } else {
+        setTitle(""); setDescription(""); setIsPublic(false); setShowCreate(false);
+        window.dispatchEvent(new CustomEvent("bvs:playlists-change"));
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Could not create playlist.");
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   };
 
   if (!signedIn) return null;
@@ -86,7 +124,11 @@ export default function AppPlaylists({ surface }: { surface: AppSurface }) {
         </div>
       ) : null}
 
-      {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
+      {loadError ? <div role="alert" className="mt-4 rounded-[1rem] border border-red-400/20 bg-red-500/[.06] p-4 text-sm text-red-200"><p>{loadError}</p><button type="button" onClick={() => void load()} className="mt-2 min-h-10 font-semibold text-brand underline">Try again</button></div> : null}
+
+      {error ? <p role="alert" className="mt-3 text-sm text-red-300">{error}</p> : null}
+
+      {loading ? <div className="mt-5 h-20 animate-pulse rounded-[1rem] bg-white/[.035]" aria-label="Loading playlists" /> : null}
 
       <div className="mt-5 grid gap-2 sm:grid-cols-2">
         {playlists.map((playlist) => {
@@ -99,7 +141,7 @@ export default function AppPlaylists({ surface }: { surface: AppSurface }) {
         })}
       </div>
 
-      {!playlists.length ? <p className="mt-5 rounded-[1rem] border border-dashed border-white/10 p-4 text-sm text-white/38">Create a playlist, then add music or beats from Discover.</p> : null}
+      {!loading && !loadError && !playlists.length ? <p className="mt-5 rounded-[1rem] border border-dashed border-white/10 p-4 text-sm text-white/38">Create a playlist, then add music or beats from Discover.</p> : null}
     </section>
   );
 }

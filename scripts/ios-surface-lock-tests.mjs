@@ -86,7 +86,9 @@ for (const rel of [
 const libraryRoute = read("src/app/app/[surface]/library/page.tsx");
 assert(libraryRoute.includes("AppLibraryClient"), "app Library route must use vNext Library client");
 const library = read("src/components/app-vnext/AppLibraryClient.tsx");
-assert(library.includes('useState<ActiveSection>("all")'), "Library must default to All");
+const continuity = read("src/lib/discovery-continuity.ts");
+assert(library.includes('initialSection = "all"') && continuity.includes('params.get("section"), "all"'), "Library must default to All while restoring a valid section URL");
+assert(library.includes("appLibrarySectionPath") && library.includes('addEventListener("popstate", sync)'), "Library sections must survive detail navigation and Back");
 assert(library.includes('{ id: "all", label: "All" }'), "Library must expose All");
 assert(library.includes('{ id: "liked", label: "Liked" }'), "Library must expose Liked");
 assert(library.includes('{ id: "playlists", label: "Playlists" }'), "Library must expose Playlists");

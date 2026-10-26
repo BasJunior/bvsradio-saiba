@@ -58,6 +58,7 @@ export default function MobileFlowNav() {
   const navRef = useAppShellMeasurement<HTMLElement>("--bvs-app-bottom-nav-height-measured", appChrome);
   const destinations = primaryAppDestinations(appChrome ? surface : null);
   const search = searchParams.toString();
+  const currentRoute = `${pathname}${search ? `?${search}` : ""}`;
   const feedHref = appChrome && surface ? `/app/${surface}/feed` : "/feed";
   const feedActive = pathname === "/feed" || Boolean(surface && pathname.startsWith(`/app/${surface}/feed`));
 
@@ -69,8 +70,12 @@ export default function MobileFlowNav() {
           return <Link key={item.id} href={item.href} replace onClick={event => {
             if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
             event.preventDefault();
+            if (item.href === currentRoute) {
+              window.scrollTo({ top: 0, left: 0 });
+              return;
+            }
             router.replace(item.href);
-          }} data-bvs-web-studio={item.id === 'studio' ? 'mobile' : undefined} aria-current={active ? 'page' : undefined} className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors ${active ? 'text-brand' : 'text-text-secondary hover:text-white'}`}>
+          }} data-bvs-web-studio={item.id === 'studio' ? 'mobile' : undefined} aria-current={active ? 'page' : undefined} className={`flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand ${active ? 'text-brand' : 'text-text-secondary hover:text-white'}`}>
             <span className={`grid h-7 w-10 place-items-center rounded-full ${active ? 'bg-brand/15' : ''}`}><Icon id={item.id} active={active} /></span><span>{item.label}</span>
           </Link>;
         })}
@@ -97,10 +102,14 @@ export default function MobileFlowNav() {
                   event.altKey
                 ) return;
                 event.preventDefault();
+                if (item.href === currentRoute) {
+                  window.scrollTo({ top: 0, left: 0 });
+                  return;
+                }
                 router.replace(item.href);
               }}
               aria-current={active ? "page" : undefined}
-              className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${active ? "text-brand" : "text-text-secondary hover:text-white"}`}
+              className={`flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand ${active ? "text-brand" : "text-text-secondary hover:text-white"}`}
             >
               <span className={`grid h-7 w-10 place-items-center rounded-full ${active ? "bg-brand/15" : ""}`}>
                 <Icon id={item.id} active={active} />
@@ -124,10 +133,14 @@ export default function MobileFlowNav() {
                   event.altKey
                 ) return;
                 event.preventDefault();
+                if (feedHref === currentRoute) {
+                  window.scrollTo({ top: 0, left: 0 });
+                  return;
+                }
                 router.push(feedHref);
               }}
               aria-current={feedActive ? "page" : undefined}
-              className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors ${feedActive ? "text-brand" : "text-text-secondary hover:text-white"}`}
+              className={`flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand ${feedActive ? "text-brand" : "text-text-secondary hover:text-white"}`}
             >
               <span className={`grid h-7 w-10 place-items-center rounded-full ${feedActive ? "bg-brand/15" : ""}`}><FeedIcon /></span>
               <span>Feed</span>

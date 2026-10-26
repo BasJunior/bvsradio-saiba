@@ -38,11 +38,12 @@ function button(tree, label) { return nodes(tree).find(n => n.type === 'button' 
 function pure(path, imports = {}) {
   const exports = {};
   const code = ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.CommonJS} }).outputText;
-  vm.runInNewContext(code,{exports,require:name=>imports[name] || (()=>{throw Error(name)})(),Intl,Date,Map,Set});
+  vm.runInNewContext(code,{exports,require:name=>imports[name] || (()=>{throw Error(name)})(),Intl,Date,Map,Set,URLSearchParams});
   return exports;
 }
 const fair = pure('src/lib/fair-discovery-order.ts');
 const discovery = pure('src/lib/discovery-experience.ts',{'@/lib/fair-discovery-order':fair});
+const continuity = pure('src/lib/discovery-continuity.ts');
 const now = new Date('2026-10-03T09:00:00Z');
 const music = Array.from({length:18},(_,i)=>({id:`track-${i}`,kind:'track',title:`Song ${i}`,subtitle:`Artist ${i % 9}`,href:`/catalogue?q=Song${i}`,tags:[i%2?'Hip Hop':'Gospel'],publishedAt:`2026-09-${String(10+i).padStart(2,'0')}T00:00:00Z`,detail:{id:`${i}`,kind:'track',title:`Song ${i}`,artist:`Artist ${i%9}`,genre:i%2?'Hip Hop':'Gospel',src:`/api/media/track${i}.mp3`,href:'/catalogue'}}));
 music.forEach((item, i) => { item.playback = { creatorId: `creator-${i % 9}`, isDownloadable: true, downloadPrice: 2 }; });
@@ -96,8 +97,7 @@ const playerSource=readFileSync('src/components/StationPlayer.tsx','utf8');
 assert.match(playerSource, /variant="compact" className="inline-flex min-h-10/,'Compact Buy must not be hidden on mobile');
 assert.equal(discovery.buildDiscoveryShelves(pool,0,'missing',now).length,0,'An empty genre must not show unrelated picks');
 
-let searchFailed = false, opened = 0, played = [], saved = [];
-const nativeTracks = music.map(i=>({id:i.detail.id,title:i.title,artist:i.detail.artist,src:i.detail.src,genre:i.detail.genre}));
+let searchFailed = false, opened = 0, played = [], saved = [], analytics = [], nextSavedState = true;
 const player = {current:null,isPlaying:false,playNow:(item,opts)=>played.push({item,opts}),playAll:items=>played.push({items}),setQueueOpen(){},openNowPlaying(){opened++;},toggle(){}};
 const imports = {
   '@/components/DiscoverMoreActions':{default:'more-actions'},
@@ -108,8 +108,9 @@ const imports = {
   '@/components/app-vnext/AppPlaylistPicker':{default:'playlist'},
   '@/components/StationPlayer':{useStationPlayer:()=>player},
   '@/lib/fair-discovery-order':fair,'@/lib/discovery-experience':discovery,
-  '@/lib/analytics':{trackEvent(){}},
-  '@/lib/library':{hasLibraryItem:()=>false,recordListening:item=>saved.push(item),toggleLibraryItem:()=>true},
+  '@/lib/analytics':{trackEvent:(event, properties)=>analytics.push({event, properties})},
+  '@/lib/library':{hasLibraryItem:()=>false,recordListening:item=>saved.push(item),toggleLibraryItem:()=>{const next=nextSavedState;nextSavedState=!nextSavedState;return next;}},
+  '@/lib/discovery-continuity':continuity,
 };
 const searchCalls = [];
 imports['@/lib/use-discovery-search'] = { useDiscoverySearch(params) {
@@ -141,6 +142,18 @@ assert.equal(opened,0,'Starting a discovery track must keep the browsing screen 
 assert.ok(played.at(-1).item.creatorId, 'Search playback must preserve creator navigation');
 assert.equal(played.at(-1).item.downloadPrice, 2, 'Search playback must preserve the download offer');
 assert.equal(saved.at(-1).href,'/app/ios','Native listening history must stay in the app namespace');
+const saveButton = nodes(tree).find(n=>n.type==='button'&&n.props['aria-label']?.startsWith('Save Song'));
+assert.ok(saveButton,'Native discovery music must expose a labelled save action');
+saveButton.props.onClick(); tree=render(props);
+const savedTitle = saveButton.props['aria-label'].slice(5);
+const savedTrack = music.find(item=>item.title===savedTitle);
+const saveEvent = analytics.filter(item=>item.event==='track_save').at(-1);
+assert.equal(saveEvent.properties.track_id,savedTrack.detail.id,'Native discovery saves must identify the saved track');
+assert.equal(saveEvent.properties.source,'discover','Native discovery saves must use the established discovery source');
+const unsaveButton = nodes(tree).find(n=>n.type==='button'&&n.props['aria-label']===`Unsave ${savedTitle}`);
+assert.ok(unsaveButton,'A saved discovery track must become removable');
+unsaveButton.props.onClick();
+assert.equal(analytics.filter(item=>item.event==='track_save').length,1,'Removing a discovery save must not emit track_save');
 button(tree,'Show more music →').props.onClick(); tree=render(props);
 assert.equal(nodes(tree).filter(n=>n.type==='article').length,9,'Browse more must expose the full matched pool');
 const search=nodes(tree).find(n=>n.type==='input');search.props.onChange({target:{value:'no-match'}});tree=render(props);

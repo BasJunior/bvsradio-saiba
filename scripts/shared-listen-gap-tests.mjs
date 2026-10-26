@@ -26,17 +26,19 @@ player={...player,isPlaying:true};path='/app/ios';await act(async()=>tree.update
 assert.equal(tree.root.findByType('a').props.href,'/app/ios/radio')
 await act(async()=>tree.unmount())
 const source=readFileSync('src/components/StationPlayer.tsx','utf8')
-const extract=(start,end,name)=>{const s=source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)));return s.slice(s.indexOf('async () => {')+'async () => {'.length,s.lastIndexOf('}, ['))}
-const playBody=extract('  const play = useCallback','  const pause =','play')
+const extract=(start,end)=>{const s=source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)));return s.slice(s.indexOf('async () => {')+'async () => {'.length,s.lastIndexOf('}, ['))}
+const playBody=extract('  const play = useCallback','  const pause =')
 let joins=0,audioPlays=0
 const playCtx={sharedItemRef:{current:'song'},leftSharedRef:{current:false},modeRef:{current:'station'},joinSharedProgramme:async()=>{joins++},audio:{current:{play(){audioPlays++}}}}
 await run(`(async()=>{${playBody}})()`,playCtx)
 assert.equal(joins,1);assert.equal(audioPlays,0,'shared resume must fetch/join the current clock instead of replaying the paused position')
-const joinBody=extract('  const joinSharedProgramme = useCallback','  const play =','join')
+const joinBody=extract('  const joinSharedProgramme = useCallback','  const play =')
 let switched=0,flushed=0,decisionSeen
-const joinCtx={sharedJoinRequest:{current:0},sharedItemRef:{current:null},sharedSeekRef:{current:null},leftSharedRef:{current:true},setError(){},setNotice(){},setMode(){switched++},setProgrammeEpoch(){},setSharedProgramme(){},setProgrammeNote(){},setPlayingFrom(){},setNowPlaying(){},setPlaying(){},flushListening(){flushed++},makeQueueItem:x=>x,fetch:async()=>({ok:true,json:async()=>({})}),followSharedProgramme:args=>{decisionSeen=args;return {action:'follow',itemId:'current',seekSeconds:87,note:'Shared',title:'Current',artist:'Artist',src:'/current.mp3'}},AbortSignal}
+const joinCtx={sharedJoinRequest:{current:0},sharedItemRef:{current:null},sharedSeekRef:{current:null},sharedRecoveryTimer:{current:null},sharedRecoveryStreak:{current:2},forceSharedRefresh:{current:true},reloadSharedAudio:{current:true},leftSharedRef:{current:true},setError(){},setNotice(){},setMode(){switched++},setProgrammeEpoch(){},setSharedProgramme(){},setProgrammeNote(){},setPlayingFrom(){},setNowPlaying(){},setPlaying(){},flushListening(){flushed++},makeQueueItem:x=>x,fetch:async()=>({ok:true,json:async()=>({})}),followSharedProgramme:args=>{decisionSeen=args;return {action:'follow',itemId:'current',seekSeconds:87,note:'Shared',title:'Current',artist:'Artist',src:'/current.mp3'}},AbortSignal}
 assert.equal(await run(`(async()=>{${joinBody}})()`,joinCtx),true)
 assert.equal(joinCtx.sharedSeekRef.current,87);assert.equal(joinCtx.leftSharedRef.current,false);assert.equal(switched,1);assert.equal(flushed,1)
+assert.equal(decisionSeen.previousItemId,null);assert.equal(decisionSeen.leftStation,false)
+assert.equal(joinCtx.sharedRecoveryStreak.current,0);assert.equal(joinCtx.forceSharedRefresh.current,false);assert.equal(joinCtx.reloadSharedAudio.current,false)
 let resolveFetch
 const pending={...joinCtx,sharedJoinRequest:{current:0},fetch:()=>new Promise(resolve=>resolveFetch=resolve),setNowPlaying(){throw new Error('stale join must not replace selection')}}
 const late=run(`(async()=>{${joinBody}})()`,pending)

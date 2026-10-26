@@ -8,7 +8,7 @@ const events = [];
 const slots = []; let index = 0;
 const react = {
   useState(initial) { const i=index++; if (!(i in slots)) slots[i]=initial; return [slots[i], value=>slots[i]=value]; },
-  useRef() { index++; return {current:null}; },
+  useRef(initial=null) { const i=index++; if (!(i in slots)) slots[i]={current:initial}; return slots[i]; },
 };
 const exports = {};
 const imports = {
@@ -49,8 +49,13 @@ assert.ok(posts.indexOf('FeedMoreActions title')<posts.indexOf('toggle("repost")
 assert.ok(posts.includes('removePost()')&&posts.includes('setEditing'),'Owner actions must remain available');
 const sheetExports = {};
 let closed = 0, historyDismissed = 0;
+const sheetSlots = []; let sheetIndex = 0;
 const sheetImports = {
-  react:{useCallback:fn=>fn,useEffect(){},useRef:()=>({current:null})},
+  react:{
+    useCallback(fn) { const i=sheetIndex++; if (!(i in sheetSlots)) sheetSlots[i]=fn; return sheetSlots[i]; },
+    useEffect() { sheetIndex++; },
+    useRef(initial=null) { const i=sheetIndex++; if (!(i in sheetSlots)) sheetSlots[i]={current:initial}; return sheetSlots[i]; },
+  },
   'react/jsx-runtime':{jsx,jsxs:jsx}, 'react-dom':{createPortal:node=>node},
   '@capacitor/core':{Capacitor:{}}, 'next/navigation':{useRouter:()=>({})},
   '@/lib/flow-session':{}, '@/lib/analytics':{}, '@/lib/share-url':{}, '@/lib/share-card':{},
@@ -59,6 +64,7 @@ const sheetImports = {
 vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/components/flow/BvsActionSheet.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText,{
   exports:sheetExports,require:name=>sheetImports[name],window:{},document:{body:{}},
 });
+sheetIndex = 0;
 const liveSheet = sheetExports.default({object,open:true,onClose:()=>closed++});
 nodes(liveSheet).find(node=>node.props?.['aria-label']==='Close actions').props.onClick();
 assert.equal(historyDismissed,1,'Close must consume transient history');
