@@ -8,7 +8,7 @@ type OfflinePlugin={download(options:{manifest:OfflineManifest}):Promise<{item:O
 const BvsOfflineMedia=registerPlugin<OfflinePlugin>("BvsOfflineMedia");
 export function offlineMediaAvailable(){return isNativeRuntime()}
 export async function downloadOffline(manifest:OfflineManifest){if(!isNativeRuntime())throw new Error("Offline downloads require the installed BVS app.");const result=await BvsOfflineMedia.download({manifest});return result.item}
-export async function listOffline():Promise<OfflineItem[]>{if(!isNativeRuntime())return[];try{return(await BvsOfflineMedia.list()).items||[]}catch{return[]}}
+export async function listOffline():Promise<OfflineItem[]>{if(!isNativeRuntime())return[];return(await BvsOfflineMedia.list()).items||[]}
 export async function removeOffline(trackId:string){if(!isNativeRuntime())return;await BvsOfflineMedia.remove({trackId})}
 export async function renewOffline(manifest:OfflineManifest){if(!isNativeRuntime())throw new Error("Offline renewal requires the installed BVS app.");return(await BvsOfflineMedia.renew({manifest})).item}
 export async function offlinePlaybackSource(trackId:string){if(!isNativeRuntime())throw new Error("Offline playback requires the installed BVS app.");const result=await BvsOfflineMedia.playbackSource({trackId});if(!result?.uri)throw new Error("The private offline file is unavailable.");return{item:result.item,src:Capacitor.convertFileSrc(result.uri)}}
