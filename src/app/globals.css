@@ -95,6 +95,25 @@ body {
   display: none;
 }
 
+/* Fixed shell controls must not cover the final footer links or focused item. */
+@media (max-width: 767px) {
+  .bvs-app-bottom-spacer {
+    display: block;
+    height: calc(var(--bvs-app-bottom-nav-height) + 1rem);
+  }
+
+  body:has(.bvs-persistent-player) .bvs-app-bottom-spacer {
+    height: calc(var(--bvs-app-bottom-stack-height) + 1rem);
+  }
+}
+
+@media (min-width: 768px) {
+  body:has(.bvs-persistent-player) .bvs-app-bottom-spacer {
+    display: block;
+    height: calc(var(--bvs-app-player-height) + 1rem);
+  }
+}
+
 html[data-bvs-surface] {
   scroll-padding-top: calc(var(--bvs-app-header-height) + 1rem);
   scroll-padding-bottom: calc(var(--bvs-app-bottom-stack-height) + 1rem);
@@ -174,6 +193,19 @@ h2, .text-2xl {
 
 p, .text-base {
   line-height: 1.5;
+}
+
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 3px;
+}
+
+:where(button, [role="button"]):not(:disabled) {
+  cursor: pointer;
+}
+
+:where(button, input, select, textarea):disabled {
+  cursor: not-allowed;
 }
 
 .text-sm {
