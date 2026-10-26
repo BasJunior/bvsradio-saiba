@@ -38,6 +38,7 @@ import BuyTrackButton from "@/components/BuyTrackButton";
 import LibraryAction from "@/components/LibraryAction";
 import MusicVideoWatch from "@/components/MusicVideoWatch";
 import PlayerSongShareAction, { PlayerMoreMenu } from "@/components/PlayerSongShareAction";
+import { previousPlaybackPlan, sharedPlaybackRecoveryDelay } from "@/lib/playback-continuity";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -210,6 +211,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const lastPlaybackFailure = useRef<{ at: number; stage: string; trackId: string; attemptId: string | null } | null>(null);
   const pendingPlaybackTrigger = useRef<{ trigger: string; intent: boolean } | null>(null);
   const failStreak = useRef(0);
+  const sharedRecoveryStreak = useRef(0);
+  const sharedRecoveryTimer = useRef<number | null>(null);
+  const reloadSharedAudio = useRef(false);
   const hydrated = useRef(false);
   const [tracks, setTracks] = useState<StationTrack[]>(initialTracks);
 
@@ -274,6 +278,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const sharedJoinRequest = useRef(0);
   const sharedItemRef = useRef<string | null>(null);
   const sharedSeekRef = useRef<number | null>(null);
+  const forceSharedRefresh = useRef(false);
   const [autoplay, setAutoplay] = useState(true);
   const [queueOpen, setQueueOpenState] = useState(false);
   const [nowPlayingOpen, setNowPlayingOpenState] = useState(false);
@@ -657,6 +662,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const leaveSharedProgramme = useCallback((message: string) => {
     sharedJoinRequest.current += 1;
+    if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+    sharedRecoveryTimer.current = null;
+    sharedRecoveryStreak.current = 0;
+    forceSharedRefresh.current = false;
+    reloadSharedAudio.current = false;
     leftSharedRef.current = true;
     sharedItemRef.current = null;
     sharedSeekRef.current = null;
@@ -675,14 +685,16 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         if (!response.ok) return;
         const snapshot = await response.json() as ProgrammeSnapshot;
         if (controller.signal.aborted) return;
+        const recovering = forceSharedRefresh.current;
         const decision = followSharedProgramme({
           mode: modeRef.current,
           leftStation: leftSharedRef.current,
           snapshot,
-          previousItemId: sharedItemRef.current,
-          liveSrc: audio.current?.currentSrc || audio.current?.src || null,
+          previousItemId: forceSharedRefresh.current ? null : sharedItemRef.current,
+          liveSrc: forceSharedRefresh.current ? null : audio.current?.currentSrc || audio.current?.src || null,
         });
         if (decision.action === "local") {
+          forceSharedRefresh.current = false;
           if (!leftSharedRef.current && sharedItemRef.current) {
             sharedItemRef.current = null;
             sharedSeekRef.current = null;
@@ -695,6 +707,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         setSharedProgramme(true);
         setProgrammeNote(decision.note);
         if (!decision.replaceAudio) return;
+        forceSharedRefresh.current = false;
+        if (recovering) reloadSharedAudio.current = true;
         sharedItemRef.current = decision.itemId;
         sharedSeekRef.current = decision.seekSeconds;
         setMode("station");
@@ -706,6 +720,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
           src: decision.src,
           artwork: decision.artwork,
         }, "station"));
+        if (recovering) setPlaying(true);
       } catch {
         /* A missed poll leaves the current audio playing. It does not invent a First Spin. */
       }
@@ -728,6 +743,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       if (!owner || owner === "station" || !audio.current) return;
       if (owner === "editorial") editorialHoldRef.current = true;
       playRequest.current += 1;
+      if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+      sharedRecoveryTimer.current = null;
+      forceSharedRefresh.current = false;
+      reloadSharedAudio.current = false;
       audio.current.pause();
       if (isPlaying) flushListening();
       setPlaying(false);
@@ -760,6 +779,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       );
       pendingPlaybackTrigger.current = null;
       window.dispatchEvent(new CustomEvent("bvs:audio-claim", { detail: { owner: "station" } }));
+      if (reloadSharedAudio.current) {
+        reloadSharedAudio.current = false;
+        audio.current.load();
+      }
       const seekAt = sharedSeekRef.current;
       if (seekAt != null && audio.current) {
         const media = audio.current;
@@ -776,6 +799,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         .then(() => {
           if (cancelled || request !== playRequest.current || audio.current?.paused) return;
           failStreak.current = 0;
+          if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+          sharedRecoveryTimer.current = null;
           if (startedAt.current === null) {
             startedAt.current = Date.now();
             const trackId = current.id || `rotation-${current.src}`;
@@ -828,6 +853,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     };
   }, [flushListening]);
 
+  useEffect(() => () => {
+    if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+  }, []);
+
   const onTimeUpdate = useCallback(() => {
     const el = audio.current;
     if (!el) return;
@@ -838,6 +867,9 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       !editorialHoldRef.current &&
       !isEditorialPlay(nowRef.current.track);
     const rawElapsed = el.currentTime || 0;
+    if (sharedRecoveryStreak.current > 0 && !el.paused && el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      sharedRecoveryStreak.current = 0;
+    }
     const elapsedCap = guestPreview ? Math.min(rawElapsed, GUEST_BEAT_PREVIEW_SECONDS) : rawElapsed;
     setElapsed(elapsedCap);
     if (el.duration && Number.isFinite(el.duration)) {
@@ -983,6 +1015,47 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const advance = useCallback(
     (direction: 1 | -1, opts?: { autoSkip?: boolean; userSkip?: boolean; skipReason?: string }) => {
+      if (direction === -1) {
+        const el = audio.current;
+        const previous = previousPlaybackPlan(
+          el?.currentTime ?? 0,
+          history.length,
+          Boolean(opts?.userSkip && sharedItemRef.current && !leftSharedRef.current),
+        );
+        // Resolve availability before cancelling or leaving the shared clock.
+        if (previous.action === "unavailable") return;
+        if (opts?.userSkip) sharedJoinRequest.current += 1;
+        if (previous.leaveSharedProgramme) {
+          leaveSharedProgramme("You left the shared programme. This browser is on its own rotation.");
+        }
+        if (previous.action === "restart") {
+          if (opts?.userSkip) recordPlaybackSkip(opts.skipReason || "previous_restart");
+          if (el) el.currentTime = 0;
+          setError(null);
+          if (!previous.leaveSharedProgramme) setNotice(null);
+          setElapsed(0);
+          return;
+        }
+        const prev = history[0];
+        if (opts?.userSkip) recordPlaybackSkip(opts.skipReason || "previous");
+        flushListening();
+        setError(null);
+        if (!previous.leaveSharedProgramme) setNotice(null);
+        setElapsed(0);
+        setDuration(0);
+        const item = makeQueueItem(prev, "user");
+        pendingPlaybackTrigger.current = {
+          trigger: opts?.userSkip ? "user_previous" : "history_previous",
+          intent: Boolean(opts?.userSkip),
+        };
+        setNowPlaying((cur) => {
+          if (cur) setUpNext((q) => [cur, ...q].slice(0, UP_NEXT_TARGET + 5));
+          return item;
+        });
+        setHistory((h) => h.slice(1));
+        return;
+      }
+
       if (opts?.userSkip) sharedJoinRequest.current += 1;
       const leavingShared = Boolean(opts?.userSkip && sharedItemRef.current && !leftSharedRef.current);
       if (leavingShared) {
@@ -994,34 +1067,12 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         isEditorialPlay(nowRef.current?.track) ||
         editorialHoldRef.current;
       if (!pool.length && !upNextRef.current.length && !inBeat) return;
+
       flushListening();
       setError(null);
       if (!opts?.autoSkip && !leavingShared) setNotice(null);
       setElapsed(0);
       setDuration(0);
-
-      if (direction === -1) {
-        const el = audio.current;
-        if (el && el.currentTime > 3) {
-          el.currentTime = 0;
-          setElapsed(0);
-          return;
-        }
-        const prev = history[0];
-        if (prev) {
-          const item = makeQueueItem(prev, "user");
-          pendingPlaybackTrigger.current = {
-            trigger: opts?.userSkip ? "user_previous" : "history_previous",
-            intent: Boolean(opts?.userSkip),
-          };
-          setNowPlaying((cur) => {
-            if (cur) setUpNext((q) => [cur, ...q].slice(0, UP_NEXT_TARGET + 5));
-            return item;
-          });
-          setHistory((h) => h.slice(1));
-          return;
-        }
-      }
 
       if (repeatRef.current === "one" && direction === 1 && !opts?.autoSkip) {
         const el = audio.current;
@@ -1071,12 +1122,10 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   );
 
   const handleMediaError = useCallback(() => {
-    if (sharedItemRef.current && !leftSharedRef.current) {
-      setNotice("This browser lost the audio. The shared programme continues.");
-      return;
-    }
     flushListening();
-    failStreak.current += 1;
+    const sharedFailure = Boolean(sharedItemRef.current && !leftSharedRef.current);
+    if (sharedFailure) sharedRecoveryStreak.current += 1;
+    else failStreak.current += 1;
     const media = audio.current;
     const attempt = playbackAttempt.current;
     markPlaybackFailure("media", current);
@@ -1085,7 +1134,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       track_id: current ? trackLibraryId(current) : "unknown",
       stage: "media",
       proof_version: "v2",
-      fail_streak: failStreak.current,
+      fail_streak: sharedFailure ? sharedRecoveryStreak.current : failStreak.current,
       media_error_code: media?.error?.code ?? null,
       media_error_message: media?.error?.message?.slice(0, 160) || null,
       media_src_host: (() => {
@@ -1108,6 +1157,27 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       ready_state: media?.readyState ?? null,
       current_time: Math.round(media?.currentTime || 0),
     });
+    if (sharedFailure) {
+      const retryDelay = sharedPlaybackRecoveryDelay(sharedRecoveryStreak.current);
+      setPlaying(false);
+      if (retryDelay === null) {
+        setError("The live audio could not reconnect. Tap Play to try again.");
+        setNotice(null);
+        return;
+      }
+      setError(null);
+      setNotice(`Live audio interrupted. Reconnecting (${sharedRecoveryStreak.current}/3)…`);
+      if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+      sharedRecoveryTimer.current = window.setTimeout(() => {
+        sharedRecoveryTimer.current = null;
+        if (!sharedItemRef.current || leftSharedRef.current) return;
+        // Force the station clock poll to refresh the source and seek position
+        // before playback resumes, without ever advancing the local queue.
+        forceSharedRefresh.current = true;
+        setProgrammeEpoch((value) => value + 1);
+      }, retryDelay);
+      return;
+    }
     if (failStreak.current >= Math.min(8, Math.max(3, tracks.length || 3))) {
       setPlaying(false);
       setError("Several tracks failed. Check your connection and try Play again.");
@@ -1121,6 +1191,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
 
   const joinSharedProgramme = useCallback(async () => {
     const request = ++sharedJoinRequest.current;
+    if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+    sharedRecoveryTimer.current = null;
+    sharedRecoveryStreak.current = 0;
+    forceSharedRefresh.current = false;
+    reloadSharedAudio.current = false;
     setError(null);
     setNotice(null);
     try {
@@ -1185,10 +1260,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       await el.play();
       if (request !== playRequest.current || el.paused) return;
       failStreak.current = 0;
+      if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+      sharedRecoveryTimer.current = null;
       setPlaying(true);
       setError(null);
       setNotice(null);
-      pushHistory(current);
       recordListening({
         id: trackLibraryId(current),
         kind: isBeatTrack(current) ? "beat" : "track",
@@ -1213,13 +1289,17 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       });
       setError(details.error_name === "NotAllowedError" ? "Tap Play to start audio." : "Playback could not start. Please try again.");
     }
-  }, [beginPlaybackAttempt, current, joinSharedProgramme, markPlaybackFailure, pushHistory]);
+  }, [beginPlaybackAttempt, current, joinSharedProgramme, markPlaybackFailure]);
 
   const pause = useCallback(() => {
     const el = audio.current;
     if (!el) return;
     playRequest.current += 1;
     sharedJoinRequest.current += 1;
+    if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+    sharedRecoveryTimer.current = null;
+    forceSharedRefresh.current = false;
+    reloadSharedAudio.current = false;
     const wasPlaying = !el.paused && !el.ended;
     el.pause();
     if (playbackAttempt.current) playbackAttempt.current.lastMediaTime = null;
@@ -1431,15 +1511,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setMode("ondemand");
       sharedJoinRequest.current += 1;
       setPlayingFrom(opts?.from || tagged.project || tagged.artist || "On demand");
-      if (nowRef.current) pushHistory(nowRef.current.track);
+      const replacingTrack = Boolean(nowRef.current && trackKey(nowRef.current.track) !== trackKey(tagged));
+      if (replacingTrack && nowRef.current) pushHistory(nowRef.current.track);
       const source = guestBeat ? "preview" : "user";
       const item = makeQueueItem(tagged, source);
-      if (
-        audio.current &&
-        !audio.current.paused &&
-        nowRef.current &&
-        trackKey(nowRef.current.track) !== trackKey(tagged)
-      ) {
+      if (audio.current && !audio.current.paused && replacingTrack) {
         recordPlaybackSkip("play_now");
       }
       beginPlaybackAttempt(tagged, "play_now", { forceNew: true, intent: true });
@@ -1548,6 +1624,11 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
   const backToStation = useCallback(() => {
     const pool = tracksRef.current;
     if (!pool.length) return;
+    if (sharedRecoveryTimer.current !== null) window.clearTimeout(sharedRecoveryTimer.current);
+    sharedRecoveryTimer.current = null;
+    sharedRecoveryStreak.current = 0;
+    forceSharedRefresh.current = false;
+    reloadSharedAudio.current = false;
     leftSharedRef.current = false;
     sharedItemRef.current = null;
     setProgrammeEpoch((value) => value + 1);
