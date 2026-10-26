@@ -15,6 +15,7 @@ import { buildCreatorReleaseProgress, latestDistributionJob, type ReleaseWorkGro
 type WorkspaceData = {
   profile: {
     role: string;
+    username?: string;
     display_name?: string;
     is_producer?: boolean;
   };
@@ -109,12 +110,25 @@ export default function CreatorStudioHome() {
     const counts: Record<ReleaseWorkGroup, number> = { action_required: 0, in_progress: 0, history: 0 };
     const releaseItems = [
       ...releases.map((release) => ({
-        ...release,
+        id: release.id,
+        workspaceKey: release.id,
+        editorial_status: release.editorial_status,
+        editorial_notes: release.editorial_notes,
+        is_public: release.is_public,
+        in_rotation: release.in_rotation,
         distributionStatus: latestDistributionJob(jobs.filter((job) => job.release_id === release.id))?.status,
       })),
-      ...tracks.filter((track) => !track.release_id).map((track) => ({ ...track, distributionStatus: undefined })),
+      ...tracks.filter((track) => !track.release_id).map((track) => ({
+        id: track.id,
+        workspaceKey: `track-${track.id}`,
+        editorial_status: track.editorial_status,
+        editorial_notes: track.editorial_notes,
+        is_public: track.is_public,
+        in_rotation: track.in_rotation,
+        distributionStatus: undefined,
+      })),
     ];
-    for (const item of releaseItems) {
+    const progressRows = releaseItems.map((item) => {
       const progress = buildCreatorReleaseProgress({
         editorialStatus: item.editorial_status,
         editorialNotes: item.editorial_notes,
@@ -123,7 +137,11 @@ export default function CreatorStudioHome() {
         distributionStatus: item.distributionStatus,
       });
       counts[progress.group] += 1;
-    }
+      return { item, progress };
+    });
+    const actionItem = progressRows.find((row) => row.progress.group === "action_required");
+    const progressItem = progressRows.find((row) => row.progress.group === "in_progress");
+    const publishedTrack = tracks.find((track) => track.is_public);
     const published = [...tracks, ...releases].filter((item) => item.is_public).length;
     const inRotation = [...tracks, ...releases].filter((item) => item.in_rotation).length;
     const plays = tracks.reduce((sum, track) => sum + Number(track.play_count || 0), 0);
@@ -131,7 +149,20 @@ export default function CreatorStudioHome() {
     const distributing = jobs.filter((job) =>
       ["queued", "submitted", "processing", "delivering"].includes(job.status || ""),
     ).length;
-    return { catalogue: tracks.length + releases.length, ...counts, published, inRotation, plays, likes, distributing };
+    return {
+      catalogue: tracks.length + releases.length,
+      ...counts,
+      published,
+      inRotation,
+      plays,
+      likes,
+      distributing,
+      actionHref: actionItem ? `/creator/studio/releases/${encodeURIComponent(actionItem.item.workspaceKey)}` : undefined,
+      progressHref: progressItem ? `/creator/studio/releases/${encodeURIComponent(progressItem.item.workspaceKey)}` : undefined,
+      proofHref: publishedTrack && data?.profile.username
+        ? `/artist/${encodeURIComponent(data.profile.username)}#track-${publishedTrack.id}`
+        : undefined,
+    };
   }, [data]);
 
   if (error && !data) {
@@ -338,19 +369,19 @@ function SubmissionStatusPanel({
   );
 }
 
-function ArtistActivationPanel({ activity }: { activity: { catalogue: number; action_required: number; in_progress: number; history: number; published: number; inRotation: number; plays: number; likes: number } }) {
+function ArtistActivationPanel({ activity }: { activity: { catalogue: number; action_required: number; in_progress: number; history: number; published: number; inRotation: number; plays: number; likes: number; actionHref?: string; progressHref?: string; proofHref?: string } }) {
   const needsFirstSubmit = activity.catalogue === 0;
-  const needsFix = activity.action_required > 0;
-  const isMoving = activity.in_progress > 0;
-  const hasProof = activity.published > 0 || activity.inRotation > 0;
+  const needsFix = activity.action_required > 0 && Boolean(activity.actionHref);
+  const isMoving = activity.in_progress > 0 && Boolean(activity.progressHref);
+  const hasProof = Boolean(activity.proofHref);
   const primary = needsFirstSubmit
     ? { href: "/creator/studio/create/release", label: "Submit first track", detail: "Start the one-release path and give editorial something real to publish." }
     : needsFix
-      ? { href: "/creator/studio/manage#releases", label: "Review editorial note", detail: "A release needs your attention. Read the note, then use the linked editorial-request form for this existing submission." }
+      ? { href: activity.actionHref!, label: "Review editorial note", detail: "Open the exact release that needs your attention, then send the correction against that existing submission." }
       : isMoving
-        ? { href: "/creator/studio/manage#releases", label: "View progress", detail: "Your release is moving with BVS or the stores. Nothing is required from you right now." }
+        ? { href: activity.progressHref!, label: "View progress", detail: "Open the exact release moving with BVS or the stores. Nothing is required from you right now." }
       : hasProof
-        ? { href: "/artists", label: "View live proof", detail: "Check what listeners can see, play and share." }
+        ? { href: activity.proofHref!, label: "View live proof", detail: "Open the published track listeners can actually see, play and share." }
         : { href: "/creator/studio/manage#releases", label: "Open catalogue", detail: "Review status and prepare the next release." };
 
   return (

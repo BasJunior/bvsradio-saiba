@@ -187,7 +187,8 @@ export default async function ArtistPage({
                 {profile.tracks.map((track) => (
                   <article
                     key={track.id}
-                    className="rounded-xl border border-white/10 p-3"
+                    id={`track-${track.id}`}
+                    className="scroll-mt-24 rounded-xl border border-white/10 p-3"
                     data-flow-focus-id={`track:${track.id}`}
                     tabIndex={-1}
                   >

@@ -104,8 +104,8 @@ export function buildCreatorReleaseProgress(input: CreatorReleaseInput): Creator
     } else {
       statusLabel = "Editorial update required";
       nextStep = input.editorialNotes
-        ? "Read the editorial note, then contact BVS about this existing release. Editing and resubmission are not available here."
-        : "Contact BVS about this existing release so editorial can confirm the correction. Editing and resubmission are not available here.";
+        ? "Read the editorial note, then send a correction request for this existing release. Editorial approval remains required before public metadata changes."
+        : "Send a correction request for this existing release so editorial can confirm the update. Editorial approval remains required before public metadata changes.";
     }
   } else if (distributionFailed) {
     group = "in_progress";

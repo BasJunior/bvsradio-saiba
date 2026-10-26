@@ -20,9 +20,21 @@ export default function ContactForm() {
   const [success, setSuccess] = useState('')
 
   useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get('topic')?.replaceAll('-', '_')
-    if (requested && topicOptions.some(([value]) => value === requested)) {
-      queueMicrotask(() => setForm((current) => ({ ...current, topic: requested })))
+    const search = new URLSearchParams(window.location.search)
+    const requested = search.get('topic')?.replaceAll('-', '_')
+    const releaseId = (search.get('release') || '').trim().slice(0, 120)
+    const releaseTitle = (search.get('releaseTitle') || '').trim().slice(0, 200)
+    const requestedTopic = requested && topicOptions.some(([value]) => value === requested) ? requested : null
+    const releaseContext = releaseId
+      ? `Creator Studio release correction\nRelease: ${releaseTitle || 'Untitled release'}\nRelease ID: ${releaseId}\n\nRequested change: `
+      : ''
+
+    if (requestedTopic || releaseContext) {
+      queueMicrotask(() => setForm((current) => ({
+        ...current,
+        topic: requestedTopic || current.topic,
+        message: releaseContext && !current.message ? releaseContext : current.message,
+      })))
     }
   }, [])
 
