@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     rows('releases?select=id,title,artist_name,release_type,editorial_status,is_public,created_at&order=created_at.desc&limit=200'),
     rows('profiles?select=id,username,display_name,role,is_producer,is_verified,is_published,creator_public_name,creator_name_status,producer_public_name,producer_name_status,created_at&order=created_at.desc&limit=300'),
     rows('programmes?select=id,slug,title,host,status,day_label,start_time,timezone&order=title.asc&limit=150'),
-    rows('track_review_requests?select=id,track_id,artist_user_id,request_type,message,status,created_at&order=created_at.desc&limit=150'),
+    rows('track_review_requests?select=id,track_id,release_id,artist_user_id,request_type,message,status,created_at&order=created_at.desc&limit=150'),
     rows('artwork_change_requests?select=id,requester_user_id,target_kind,target_id,request_type,message,status,created_at&order=created_at.desc&limit=150'),
     rows('profile_role_applications?select=id,user_id,requested_role,status,message,updated_at&order=updated_at.desc&limit=150'),
     rows('editorial_audit_log?select=id,action,entity_type,entity_id,created_at&order=created_at.desc&limit=80'),
@@ -157,7 +157,6 @@ export async function GET(request: Request) {
     const name = creatorName(profile)
     const baseKeywords = [text(profile.username), text(profile.display_name), text(profile.role), text(profile.id), name]
 
-    // Separate identity work objects so staff can triage artist vs producer names independently.
     if (artistStatus && artistStatus !== 'not_submitted') {
       items.push({
         id: `${text(profile.id)}:artist-name`,
@@ -214,12 +213,30 @@ export async function GET(request: Request) {
 
   for (const review of trackRequests) {
     const track = trackById.get(text(review.track_id))
+    const release = releaseById.get(text(review.release_id))
     const profile = profileById.get(text(review.artist_user_id))
     const status = text(review.status)
+    const requestType = text(review.request_type).replaceAll('_', ' ') || 'Editorial request'
+    const releaseId = text(review.release_id)
+    if (releaseId) {
+      const releaseTitle = text(release?.title) || `release ${releaseId.slice(0, 8)}`
+      items.push({
+        id: releaseId,
+        kind: 'release',
+        title: `${requestType} · ${releaseTitle}`,
+        subtitle: [creatorName(profile), 'Whole-release request', text(review.message)].filter(Boolean).join(' · '),
+        status,
+        section: 'ed-requests',
+        createdAt: text(review.created_at) || undefined,
+        priority: statusPriority(status, 'request'),
+        keywords: [releaseTitle, text(release?.artist_name), text(profile?.username), text(review.request_type), text(review.message), status, text(review.id), releaseId, 'whole release'],
+      })
+      continue
+    }
     items.push({
       id: text(review.id),
       kind: 'request',
-      title: `${text(review.request_type).replaceAll('_', ' ') || 'Track request'} · ${text(track?.title) || 'track'}`,
+      title: `${requestType} · ${text(track?.title) || 'track'}`,
       subtitle: [creatorName(profile), text(review.message)].filter(Boolean).join(' · '),
       status,
       section: 'ed-requests',
