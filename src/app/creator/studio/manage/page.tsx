@@ -4,7 +4,6 @@ import {
   type ReactNode,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from "react";
 import Link from "next/link";
@@ -16,7 +15,9 @@ import DistributionPathTimeline from "@/components/DistributionPathTimeline";
 import FullAccessAudioPlayer from "@/components/FullAccessAudioPlayer";
 import CreatorNextMoveCard from "@/components/CreatorNextMoveCard";
 import CreatorNextMovePrompt from "@/components/CreatorNextMovePrompt";
+import { CreatorReleaseProgressDetails, CreatorReleaseWorkCounts } from "@/components/CreatorReleaseProgress";
 import { artistReleaseNextMove } from "@/lib/creator-next-move";
+import { buildCreatorReleaseProgress, latestDistributionJob, type ReleaseWorkGroup } from "@/lib/creator-release-progress";
 import { CreatorMarketplaceDesk } from "@/components/CreatorMarketplaceDesk";
 import CreatorServiceOrders from "@/components/CreatorServiceOrders";
 import {
@@ -761,14 +762,12 @@ function ArtistPathBoard({ data }: { data: Data }) {
   const releases = data.releases || [];
   const jobs = data.distributionJobs || [];
   const tracks = data.tracks || [];
-  const focus = useMemo(() => {
-    const release = releases[0];
-    const track = tracks[0];
-    const job = release
-      ? jobs.find((j) => j.release_id === release.id)
-      : undefined;
-    return { release, track, job };
-  }, [releases, tracks, jobs]);
+  const release = releases[0];
+  const track = tracks[0];
+  const job = release
+    ? latestDistributionJob(jobs.filter((item) => item.release_id === release.id))
+    : undefined;
+  const focus = { release, track, job };
   const steps = buildArtistPathSteps({
     premiumActive: flags.premiumActive,
     distributionEnabled: flags.distributionEnabled,
@@ -875,7 +874,25 @@ function ArtistReleases({
     e.preventDefault();
     void act({ action: "track_request", trackId, requestType, message });
   };
-  const jobByRelease = new Map(jobs.map((j) => [j.release_id, j]));
+  const jobByRelease = new Map<string, DistJob>();
+  for (const releaseId of new Set(jobs.map((job) => job.release_id))) {
+    const latest = latestDistributionJob(jobs.filter((job) => job.release_id === releaseId));
+    if (latest) jobByRelease.set(releaseId, latest);
+  }
+  const progressForRelease = (release: AlbumRelease) => buildCreatorReleaseProgress({
+    editorialStatus: release.editorial_status,
+    editorialNotes: release.editorial_notes,
+    isPublic: release.is_public,
+    inRotation: release.in_rotation,
+    distributionStatus: jobByRelease.get(release.id)?.status,
+  });
+  const releaseCounts = releases.reduce<Record<ReleaseWorkGroup, number>>(
+    (counts, release) => {
+      counts[progressForRelease(release).group] += 1;
+      return counts;
+    },
+    { action_required: 0, in_progress: 0, history: 0 },
+  );
   const nextMoveForRelease = (release: AlbumRelease) =>
     artistReleaseNextMove({
       releaseId: release.id,
@@ -919,6 +936,7 @@ function ArtistReleases({
           </div>
         ))}
       </div>
+      {releases.length > 0 && <div className="mt-4"><CreatorReleaseWorkCounts counts={releaseCounts} /></div>}
       {releases.length > 0 && (
         <div className="mt-8">
           <h2 className="text-2xl">Album / EP path</h2>
@@ -926,6 +944,7 @@ function ArtistReleases({
             {releases.map((release) => {
               const job = jobByRelease.get(release.id);
               const nextMove = nextMoveForRelease(release);
+              const progress = progressForRelease(release);
               return (
                 <article
                   key={release.id}
@@ -947,6 +966,11 @@ function ArtistReleases({
                       {publicDistributionStatusLabel(job?.status)}
                     </p>
                   </div>
+                  <CreatorReleaseProgressDetails
+                    progress={progress}
+                    actionHref="#release-request"
+                    actionLabel="Request editorial help"
+                  />
                   {release.editorial_notes && (
                     <p className="mt-3 text-sm text-text-secondary">
                       Editor: {release.editorial_notes}
@@ -1024,8 +1048,9 @@ function ArtistReleases({
           </div>
         </div>
         <form
+          id="release-request"
           onSubmit={submit}
-          className="rounded-xl border border-white/10 p-4"
+          className="scroll-mt-24 rounded-xl border border-white/10 p-4"
         >
           <h2 className="text-xl">Request a change</h2>
           <p className="mt-1 text-sm text-text-secondary">
