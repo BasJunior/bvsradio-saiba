@@ -42,6 +42,15 @@ type Track = {
   spotify_url?: string | null;
 };
 
+type ReleaseSubmissionTrack = {
+  id: string;
+  release_id: string;
+  position?: number;
+  title: string;
+  file_url?: string | null;
+  audio_path?: string | null;
+};
+
 type DistributionJob = {
   id: string;
   release_id?: string | null;
@@ -68,15 +77,12 @@ type Workspace = {
   };
   releases?: Release[];
   tracks?: Track[];
+  releaseTracks?: ReleaseSubmissionTrack[];
   distributionJobs?: DistributionJob[];
   trackRequests?: TrackRequest[];
 };
 
 const field = "w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand";
-
-function workspaceKeyForTrack(id: string) {
-  return `track-${id}`;
-}
 
 export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: string }) {
   const { session, loading: sessionLoading } = useBrowserSession();
@@ -96,6 +102,7 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
   const resolved = useMemo(() => {
     const tracks = data?.tracks || [];
     const releases = data?.releases || [];
+    const releaseTracks = data?.releaseTracks || [];
     const jobs = data?.distributionJobs || [];
     const standaloneTrackId = releaseKey.startsWith("track-") ? releaseKey.slice("track-".length) : "";
     const standaloneTrack = standaloneTrackId ? tracks.find((track) => track.id === standaloneTrackId) : undefined;
@@ -105,6 +112,9 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
       : standaloneTrack
         ? [standaloneTrack]
         : [];
+    const submissionTracks = release
+      ? releaseTracks.filter((track) => track.release_id === release.id).sort((a, b) => Number(a.position || 0) - Number(b.position || 0))
+      : [];
     const latestJob = release
       ? latestDistributionJob(jobs.filter((job) => job.release_id === release.id))
       : undefined;
@@ -124,7 +134,7 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
       : null;
     const trackIds = new Set(relatedTracks.map((track) => track.id));
     const requests = (data?.trackRequests || []).filter((request) => trackIds.has(request.track_id));
-    return { release, standaloneTrack, relatedTracks, latestJob, progress, publicTrack, publicPath, requests };
+    return { release, standaloneTrack, relatedTracks, submissionTracks, latestJob, progress, publicTrack, publicPath, requests };
   }, [data, releaseKey]);
 
   const error = !isSupabaseConfigured()
@@ -162,14 +172,17 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
 
   const title = item.title || "Untitled release";
   const tracks = resolved.relatedTracks;
+  const isRelease = Boolean(resolved.release);
+  const trackCount = isRelease ? (resolved.submissionTracks.length || tracks.length || 1) : (tracks.length || 1);
   const plays = tracks.reduce((sum, track) => sum + Number(track.play_count || 0), 0);
   const likes = tracks.reduce((sum, track) => sum + Number(track.like_count || 0), 0);
   const selectedTrackId = targetTrackId || tracks[0]?.id || "";
   const selectedTrack = tracks.find((track) => track.id === selectedTrackId);
-  const isRelease = Boolean(resolved.release);
   const artworkHref = isRelease
     ? `/creator/studio/artwork?release=${encodeURIComponent(item.id)}#studio-release-cover-change`
     : `/creator/studio/artwork?track=${encodeURIComponent(item.id)}#studio-release-cover-change`;
+  const editorialSupportHref = `/contact?topic=music&release=${encodeURIComponent(item.id)}&releaseTitle=${encodeURIComponent(title)}`;
+  const correctionHref = tracks.length ? "#corrections" : editorialSupportHref;
 
   const submitCorrection = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -225,8 +238,8 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
 
         <CreatorReleaseProgressDetails
           progress={resolved.progress}
-          actionHref="#corrections"
-          actionLabel="Open correction flow"
+          actionHref={correctionHref}
+          actionLabel={tracks.length ? "Open correction flow" : "Contact editorial"}
         />
 
         {item.editorial_notes ? (
@@ -238,7 +251,7 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
       </section>
 
       <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-label="Release results">
-        <Metric label="Tracks" value={tracks.length || 1} />
+        <Metric label="Tracks" value={trackCount} />
         <Metric label="Playback starts" value={plays} />
         <Metric label="Saves / likes" value={likes} />
         <Metric label="Requests" value={resolved.requests.length} />
@@ -253,7 +266,17 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
           <Link href={artworkHref} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-4 py-2 text-sm font-semibold">Change cover</Link>
         </div>
         <div className="mt-5 space-y-3">
-          {tracks.map((track, index) => (
+          {isRelease && resolved.submissionTracks.length ? resolved.submissionTracks.map((track, index) => {
+            const audioSrc = track.file_url || track.audio_path || "";
+            return (
+              <article key={track.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-xs text-text-secondary">{resolved.submissionTracks.length > 1 ? `Track ${track.position || index + 1}` : "Recording"}</p>
+                <h3 className="mt-1 font-semibold">{track.title}</h3>
+                <p className="mt-1 text-xs capitalize text-text-secondary">Submission file · {item.editorial_status?.replaceAll("_", " ") || "status pending"}</p>
+                {audioSrc ? <div className="mt-3"><FullAccessAudioPlayer accessId={`studio-release-submission:${track.id}`} title={track.title} artist={item.artist_name || "Your submission"} src={audioSrc} sourceLabel={`Studio · ${title} · submission file`} genre={item.genre} compact /></div> : null}
+              </article>
+            );
+          }) : tracks.map((track, index) => (
             <article key={track.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -266,14 +289,14 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
               {track.file_url ? <div className="mt-3"><FullAccessAudioPlayer accessId={`studio-release-workspace:${track.id}`} title={track.title} artist={track.artist_name || item.artist_name || "Your submission"} src={track.file_url} artwork={track.artwork_url} sourceLabel={`Studio · ${title} · full submission`} genre={track.genre} compact /></div> : null}
             </article>
           ))}
-          {!tracks.length ? <p className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">BVS has the release record, but no track-level file is available in this workspace yet.</p> : null}
+          {!resolved.submissionTracks.length && !tracks.length ? <p className="rounded-2xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">BVS has the release record, but no submitted audio file is available in this workspace yet.</p> : null}
         </div>
       </section>
 
       <section id="corrections" className="mt-8 scroll-mt-24 rounded-3xl border border-white/10 p-5 sm:p-6" aria-labelledby="release-corrections-heading">
         <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Corrections</p>
         <h2 id="release-corrections-heading" className="mt-1 text-2xl font-semibold">Fix the existing release without starting over.</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Send the correction against this release. BVS editorial still approves metadata, rights and takedown changes before public catalogue data changes.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Editorial approval remains required before metadata, rights or takedown changes affect the public catalogue.</p>
 
         {tracks.length ? (
           <form onSubmit={submitCorrection} className="mt-5 grid gap-3 lg:max-w-2xl">
@@ -293,8 +316,18 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
             {saved ? <p role="status" className="text-sm text-brand">{saved}</p> : null}
             <button disabled={saving} className="min-h-11 justify-self-start rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black disabled:opacity-50">{saving ? "Sending…" : "Send correction request"}</button>
           </form>
+        ) : isRelease && resolved.submissionTracks.length ? (
+          <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-300/[.04] p-4 sm:p-5">
+            <p className="font-semibold text-amber-100">This release is still pre-publication.</p>
+            <p className="mt-2 text-sm leading-6 text-text-secondary">BVS has the submitted release files, but public track records do not exist yet, so a track-level correction request would be invalid. Contact editorial from this release and the form will carry the release reference automatically.</p>
+            <p className="mt-2 break-all text-xs text-text-secondary">Release reference: {item.id}</p>
+            <Link href={editorialSupportHref} className="mt-4 inline-flex min-h-11 items-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black">Contact editorial</Link>
+          </div>
         ) : (
-          <p className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-300/[.04] p-4 text-sm text-amber-100">No track target is available for the correction form yet. Open the full Studio request desk so editorial can attach the request safely.</p>
+          <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-sm text-text-secondary">There is not yet a valid track target for an owned correction request. Contact editorial with this release reference instead of creating a duplicate submission.</p>
+            <Link href={editorialSupportHref} className="mt-4 inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 py-2.5 text-sm font-semibold">Contact editorial</Link>
+          </div>
         )}
 
         {resolved.requests.length ? (
@@ -332,5 +365,3 @@ function Metric({ label, value }: { label: string; value: number }) {
     </div>
   );
 }
-
-export { workspaceKeyForTrack };
