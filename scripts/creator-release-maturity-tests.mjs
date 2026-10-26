@@ -19,8 +19,8 @@ const changes = buildCreatorReleaseProgress({
 assert.equal(changes.group, "action_required");
 assert.equal(changes.nextOwner, "You");
 assert.equal(changes.stages.find((stage) => stage.id === "editorial")?.state, "action_required");
-assert.match(changes.nextStep, /contact BVS/i);
-assert.match(changes.nextStep, /Editing and resubmission are not available here/i);
+assert.match(changes.nextStep, /correction request/i);
+assert.match(changes.nextStep, /Editorial approval remains required/i);
 assert.doesNotMatch(changes.nextStep, /make the requested change, then resubmit/i);
 
 const draft = buildCreatorReleaseProgress({ editorialStatus: "draft" });
@@ -136,6 +136,8 @@ assert.equal(latest?.id, "newer", "release progress must use the latest job upda
 const releaseUi = await readFile(new URL("../src/components/app-vnext/AppStudioReleaseClient.tsx", import.meta.url), "utf8");
 const studioUi = await readFile(new URL("../src/components/app-vnext/AppStudioClient.tsx", import.meta.url), "utf8");
 const webStudio = await readFile(new URL("../src/app/creator/studio/page.tsx", import.meta.url), "utf8");
+const releaseWorkspace = await readFile(new URL("../src/components/CreatorReleaseWorkspace.tsx", import.meta.url), "utf8");
+const artistProfile = await readFile(new URL("../src/app/artist/[slug]/page.tsx", import.meta.url), "utf8");
 
 for (const label of ["action_required", "in_progress", "history"]) {
   assert.ok(releaseUi.includes(`id: "${label}"`), `release UI includes ${label} group`);
@@ -149,9 +151,18 @@ assert.ok(studioUi.includes('const distributionDelivered = distro === "live_on_d
 assert.ok(!studioUi.includes('"delivered", "complete", "completed", "distributed"'), "delivery-like aliases are not upgraded to store-live proof");
 assert.ok(webStudio.includes("in progress — no action now"), "web Studio distinguishes passive progress from creator action");
 assert.ok(!webStudio.includes("48h control window"), "web Studio does not invent a review deadline");
+assert.ok(webStudio.includes("/creator/studio/releases/${encodeURIComponent(actionItem.item.workspaceKey)}"), "action-required state opens the exact release workspace");
+assert.ok(webStudio.includes("/creator/studio/releases/${encodeURIComponent(progressItem.item.workspaceKey)}"), "in-progress state opens the exact release workspace");
+assert.ok(webStudio.includes("#track-${publishedTrack.id}"), "live proof targets the creator's published track");
+assert.ok(!webStudio.includes('{ href: "/artists", label: "View live proof"'), "live proof no longer falls back to the general artist directory");
+assert.ok(releaseWorkspace.includes('action: "track_request"'), "release workspace sends corrections through the existing owned-track request flow");
+assert.ok(releaseWorkspace.includes("Editorial approval remains required"), "correction copy preserves editorial approval");
+assert.ok(releaseWorkspace.includes("AppShareButton"), "promotion stays attached to the release workspace");
+assert.ok(releaseWorkspace.includes("Playback starts"), "release results stay visible in the same workspace");
+assert.ok(artistProfile.includes('id={`track-${track.id}`}'), "published tracks expose stable anchors for Studio proof links");
 
 const webManage = await readFile(new URL("../src/app/creator/studio/manage/page.tsx", import.meta.url), "utf8");
-assert.ok(webManage.includes('actionHref="#release-request"'), "web release action links to the existing editorial request form");
+assert.ok(webManage.includes('actionHref="#release-request"'), "legacy full Studio still links to the existing editorial request form");
 assert.ok(webManage.includes('id="release-request"'), "editorial request form exposes a stable action target");
 
 console.log("creator release maturity checks passed");
