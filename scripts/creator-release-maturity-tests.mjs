@@ -138,6 +138,7 @@ const studioUi = await readFile(new URL("../src/components/app-vnext/AppStudioCl
 const webStudio = await readFile(new URL("../src/app/creator/studio/page.tsx", import.meta.url), "utf8");
 const releaseWorkspace = await readFile(new URL("../src/components/CreatorReleaseWorkspace.tsx", import.meta.url), "utf8");
 const artistProfile = await readFile(new URL("../src/app/artist/[slug]/page.tsx", import.meta.url), "utf8");
+const contactForm = await readFile(new URL("../src/app/contact/ContactForm.tsx", import.meta.url), "utf8");
 
 for (const label of ["action_required", "in_progress", "history"]) {
   assert.ok(releaseUi.includes(`id: "${label}"`), `release UI includes ${label} group`);
@@ -155,10 +156,15 @@ assert.ok(webStudio.includes("/creator/studio/releases/${encodeURIComponent(acti
 assert.ok(webStudio.includes("/creator/studio/releases/${encodeURIComponent(progressItem.item.workspaceKey)}"), "in-progress state opens the exact release workspace");
 assert.ok(webStudio.includes("#track-${publishedTrack.id}"), "live proof targets the creator's published track");
 assert.ok(!webStudio.includes('{ href: "/artists", label: "View live proof"'), "live proof no longer falls back to the general artist directory");
-assert.ok(releaseWorkspace.includes('action: "track_request"'), "release workspace sends corrections through the existing owned-track request flow");
+assert.ok(releaseWorkspace.includes('action: "track_request"'), "materialized tracks use the existing owned-track correction flow");
 assert.ok(releaseWorkspace.includes("Editorial approval remains required"), "correction copy preserves editorial approval");
+assert.ok(releaseWorkspace.includes("releaseTracks?: ReleaseSubmissionTrack[]"), "release workspace reads pre-publication release_tracks");
+assert.ok(releaseWorkspace.includes("This release is still pre-publication."), "pre-publication releases do not pretend a track-level request is valid");
+assert.ok(releaseWorkspace.includes("releaseTitle=${encodeURIComponent(title)}"), "pre-publication editorial handoff carries exact release context");
 assert.ok(releaseWorkspace.includes("AppShareButton"), "promotion stays attached to the release workspace");
 assert.ok(releaseWorkspace.includes("Playback starts"), "release results stay visible in the same workspace");
+assert.ok(contactForm.includes("Creator Studio release correction"), "music contact flow prefills the release correction context");
+assert.ok(contactForm.includes("search.get('release')"), "music contact flow reads the exact release reference");
 assert.ok(artistProfile.includes('id={`track-${track.id}`}'), "published tracks expose stable anchors for Studio proof links");
 
 const webManage = await readFile(new URL("../src/app/creator/studio/manage/page.tsx", import.meta.url), "utf8");
