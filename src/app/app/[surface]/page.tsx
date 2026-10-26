@@ -1,20 +1,19 @@
-import BvsStar from "@/components/branding/BvsStar";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
+import HomeMediaStage from "@/components/home/HomeMediaStage";
 import AppJoinCard from "@/components/app-vnext/AppJoinCard";
 import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
 import AppHomeDiscoverySections from "@/components/app-vnext/AppHomeDiscoverySections";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
-import SharedListenButton from "@/components/SharedListenButton";
 import type { MobileSurface } from "@/lib/station-library";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "BVS — Best Virtual Sound",
-  description: "Listen, discover and create across BVS.",
+  description: "Music moves differently here. Listen, discover and create across BVS.",
 };
 
 function HomeDiscoveryFallback() {
@@ -40,40 +39,16 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
 
   return (
     <div className="bvs-square-home mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
-      <section className="bvs-app-home-hero relative isolate overflow-hidden rounded-[2.2rem] border border-white/[.08] bg-[#111113]/72 px-5 py-7 shadow-[0_28px_90px_rgba(0,0,0,.35)] backdrop-blur-2xl [clip-path:inset(0_round_2.2rem)] [contain:paint] sm:px-9 sm:py-10">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden="true">
-          <div className="absolute -right-24 -top-32 h-80 w-80 rounded-full bg-brand/[.13] blur-3xl" />
-          <div className="absolute -bottom-24 left-[18%] h-56 w-56 rounded-full bg-indigo-500/[.07] blur-3xl" />
-        </div>
-        <div className="relative z-[1]">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[.22em]">
-            <span className="text-brand">Best Virtual Sound</span>
-            <span className="text-white/22">•</span>
-            <span className="text-white/45">Built in Zimbabwe · Open to the world</span>
-          </div>
-
-          <div className="bvs-culture-sticker mt-5"><BvsStar /> Your next obsession</div>
-          <h1 className="bvs-poster-title mt-5 max-w-4xl text-[2.8rem] font-semibold leading-[.98] tracking-[-.05em] sm:text-7xl">
-            Music moves differently here.
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-white/58 sm:text-lg">
-            New sounds. Real people. Your next favourite. Tap into the rotation, discover artists and make your own noise.
-          </p>
-
-          <div className="mt-7 flex flex-wrap gap-2.5">
-            <SharedListenButton className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black transition hover:bg-brand-dark disabled:opacity-60" />
-            <Link href={`${base}/explore`} data-home-accent="discover" className="bvs-home-accent-button inline-flex min-h-11 items-center rounded-full border px-5 text-sm font-semibold">
-              Discover music
-            </Link>
-          </div>
-
-          <div className="mt-7 flex flex-wrap gap-x-5 gap-y-2 text-xs text-white/42">
-            <span><strong className="font-semibold text-white/76">Live</strong> BVS rotation ready</span>
-            <span>One identity from listener to creator</span>
-            <span>Offline-ready where rights allow</span>
-          </div>
-        </div>
-      </section>
+      <HomeMediaStage
+        eyebrow="BVS Original"
+        title="BVS for artists"
+        description="A quick look inside BVS for artists, creators and the people building what comes next."
+        src="/media/bvs-home-stage-loop.mp4"
+        actions={[
+          { href: `${base}/studio`, label: "Open Creator Studio", accent: "studio" },
+          { href: `${base}/explore`, label: "Discover music", accent: "discover" },
+        ]}
+      />
 
       <div className="mt-5">
         <AppHomeStationCard />
