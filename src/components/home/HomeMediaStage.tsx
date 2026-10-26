@@ -1,13 +1,18 @@
 import Link from "next/link";
 
+type HomeMediaStageAction = {
+  href: string;
+  label: string;
+  accent?: "listen" | "discover" | "feed" | "beats" | "studio" | "marketplace" | "shows";
+};
+
 type HomeMediaStageProps = {
   eyebrow: string;
   title: string;
   description?: string;
   src: string;
   poster?: string;
-  href?: string;
-  ctaLabel?: string;
+  actions?: HomeMediaStageAction[];
   live?: boolean;
 };
 
@@ -17,8 +22,7 @@ export default function HomeMediaStage({
   description,
   src,
   poster,
-  href,
-  ctaLabel,
+  actions = [],
   live = false,
 }: HomeMediaStageProps) {
   return (
@@ -64,13 +68,19 @@ export default function HomeMediaStage({
           ) : null}
         </div>
 
-        {href && ctaLabel ? (
-          <Link
-            href={href}
-            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-black transition hover:bg-brand-dark"
-          >
-            {ctaLabel} →
-          </Link>
+        {actions.length ? (
+          <div className="flex flex-wrap gap-2 lg:justify-end">
+            {actions.map((action) => (
+              <Link
+                key={`${action.href}-${action.label}`}
+                href={action.href}
+                data-home-accent={action.accent}
+                className="bvs-home-accent-button inline-flex min-h-11 items-center justify-center rounded-full border px-5 py-2.5 text-sm font-semibold backdrop-blur-sm"
+              >
+                {action.label} →
+              </Link>
+            ))}
+          </div>
         ) : null}
       </div>
     </article>
