@@ -3,6 +3,7 @@ import fs from 'node:fs'
 const read = (path) => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8')
 const share = read('src/components/app-vnext/AppShareButton.tsx')
 const home = read('src/app/app/[surface]/page.tsx')
+const mediaStage = read('src/components/home/HomeMediaStage.tsx')
 const appBeat = read('src/app/app/[surface]/beat/[id]/page.tsx')
 const appTopBar = read('src/components/app-vnext/AppTopBar.tsx')
 const appExperience = read('src/components/app-vnext/AppExperienceStyle.tsx')
@@ -25,8 +26,9 @@ assert(share.includes('const pending = navigator.share') && !share.includes('awa
 assert(share.includes('navigator.canShare?.({ files: [storyCard] })'), 'story-card sharing must remain progressive-enhancement only')
 assert(share.includes('await shareBvs({ title:'), 'share must fall back to the normal system/link share path')
 
-assert(home.includes('[clip-path:inset(0_round_2.2rem)]'), 'Home hero glow must hard-clip to its rounded iOS boundary')
-assert(home.includes('absolute inset-0 overflow-hidden rounded-[inherit]'), 'Home hero decoration must live inside an inner clipping layer')
+assert(home.includes('<HomeMediaStage'), 'App home must use the reusable BVS media stage')
+assert(mediaStage.includes('overflow-hidden rounded-[1.75rem]'), 'Home media stage shell must clip to its rounded iOS boundary')
+assert(mediaStage.includes('relative aspect-video overflow-hidden bg-black'), 'Home media must remain clipped inside its video viewport')
 assert(appTopBar.includes('overflow-hidden rounded-xl'), 'app logo must be visibly clipped to rounded corners')
 assert(appExperience.includes('html[data-bvs-app-shell="true"] {'), 'app experience must target the root shell')
 assert(appExperience.includes('overscroll-behavior-y: none'), 'app shell must suppress elastic top/bottom overscroll')
@@ -48,4 +50,4 @@ assert(purchaseServer.includes('is_public=eq.true&status=eq.published&rights_con
 assert(purchaseServer.includes('licence.is_sold_out === true'), 'beat Buy must reject sold-out licences')
 assert(legacyBeatBuy.includes('/buy?beat='), 'old BeatStore deep links must recover through the stable handoff')
 
-console.log('Share overlay, hero clipping, fixed chrome, iOS input zoom guard, Now Playing top edge and purchase handoff assertions passed.')
+console.log('Share overlay, media stage clipping, fixed chrome, iOS input zoom guard, Now Playing top edge and purchase handoff assertions passed.')
