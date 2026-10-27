@@ -69,7 +69,7 @@ export default function AppSignupClient({ surface, nextPath }: { surface: AppSur
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, email, username, fullName, next, attribution }),
+        body: JSON.stringify({ ...form, next }),
       });
       const payload = await response.json().catch(() => ({})) as { error?: string; message?: string; needsConfirmation?: boolean };
       if (!response.ok) throw new Error(payload.error || "Could not create your BVS account.");
