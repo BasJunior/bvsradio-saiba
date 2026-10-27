@@ -87,7 +87,7 @@ export default function HomeSignupPrompt() {
       <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <Link
           href="/auth/signup?ref=home_signup_prompt"
-          onClick={() => trackSignupFunnel("join_cta_clicked", { source: "home_popup" })}
+          data-signup-source="home_popup"
           className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full bg-brand px-5 font-semibold text-black transition hover:bg-white"
         >
           Sign up free
