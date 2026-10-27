@@ -63,7 +63,7 @@ export default function HomeSignupPrompt() {
       role="dialog"
       aria-modal="false"
       aria-labelledby="home-signup-title"
-      className="fixed inset-x-3 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-md rounded-[1.6rem] border border-brand/20 bg-[#11130f]/95 p-5 shadow-[0_24px_80px_rgba(0,0,0,.55)] backdrop-blur-xl sm:inset-x-auto sm:bottom-6 sm:right-6 sm:mx-0"
+      className="fixed inset-x-3 bottom-[calc(10.5rem+env(safe-area-inset-bottom))] z-[80] mx-auto max-w-md rounded-[1.6rem] border border-brand/20 bg-[#11130f]/95 p-5 shadow-[0_24px_80px_rgba(0,0,0,.55)] backdrop-blur-xl sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-20 sm:mx-0"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
