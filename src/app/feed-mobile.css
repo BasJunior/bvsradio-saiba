@@ -1,0 +1,40 @@
+/* Mobile Feed controls must not compete with the persistent player and bottom nav. */
+@media (max-width: 639px) {
+  [data-bvs-section="feed"] [aria-label="Feed controls"] {
+    position: static;
+  }
+
+  [data-bvs-section="feed"] [aria-label="Feed lanes"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .25rem;
+  }
+
+  [data-bvs-section="feed"] [aria-label="Feed lanes"] .bvs-feed-lane {
+    grid-column: auto !important;
+    min-height: 40px;
+    padding-inline: .5rem;
+    font-size: .7rem;
+    line-height: 1rem;
+  }
+
+  [data-feed-account-context] {
+    padding: .625rem .75rem !important;
+  }
+
+  [data-feed-account-context] > div:first-child {
+    align-items: center;
+  }
+
+  [data-feed-account-context] p {
+    display: none;
+  }
+
+  [data-feed-account-context] > div:last-child {
+    display: none;
+  }
+
+  [data-feed-account-context] a {
+    min-height: 36px;
+    padding: .5rem .75rem;
+  }
+}
