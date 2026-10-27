@@ -41,20 +41,23 @@ export default function ConfirmedPage() {
 
   useEffect(() => {
     const finishConfirmation = async () => {
-      trackSignupFunnel('confirmation_started')
       try {
         const supabase = createClient()
         const url = new URL(window.location.href)
         const params = url.searchParams
         const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''))
         const requestedDestination = safeRequestedDestination(params.get('next') || hashParams.get('next'))
+        const surfaceMatch = requestedDestination.match(/^\/app\/(ios|android)(?:\/|$)/)
+        const appSurface = surfaceMatch?.[1] as AppSurface | undefined
+        const funnelSurface = appSurface || 'web'
+        trackSignupFunnel('confirmation_started', { app_surface: funnelSurface })
 
         const error = params.get('error') || hashParams.get('error')
         const errorCode = params.get('error_code') || hashParams.get('error_code')
         const errorDescription = params.get('error_description') || hashParams.get('error_description')
 
         if (error || errorCode) {
-          trackSignupFunnel('confirmation_failed', { reason: errorCode || error || 'provider_error' })
+          trackSignupFunnel('confirmation_failed', { reason: errorCode || error || 'provider_error', app_surface: funnelSurface })
           setDetail(friendlyAuthError(errorCode, errorDescription))
           setStatus('error')
           window.history.replaceState({}, '', '/auth/confirmed')
@@ -83,7 +86,7 @@ export default function ConfirmedPage() {
         const { data, error: sessionError } = await supabase.auth.getSession()
         if (sessionError) throw sessionError
         if (!data.session) {
-          trackSignupFunnel('confirmation_failed', { reason: 'no_active_session' })
+          trackSignupFunnel('confirmation_failed', { reason: 'no_active_session', app_surface: funnelSurface })
           setDetail('No active session after opening the link. Try signing in, or request a new confirmation email from signup.')
           setStatus('error')
           return
@@ -110,7 +113,7 @@ export default function ConfirmedPage() {
 
         setDestination(requestedDestination || profileDestination || '/')
         trackMilestone('account_confirmed')
-        trackSignupFunnel('account_confirmed', { role })
+        trackSignupFunnel('account_confirmed', { role, app_surface: funnelSurface })
 
         if (window.location.hash || params.has('code') || params.has('token_hash') || params.has('next')) {
           window.history.replaceState({}, '', '/auth/confirmed')
