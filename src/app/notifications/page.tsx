@@ -1,6 +1,6 @@
 'use client'
 
-import { acknowledgeNotificationInbox, loadNotificationInbox, mergeNotificationInbox } from '@/lib/notification-inbox'
+import { loadNotificationInbox, mergeNotificationInbox } from '@/lib/notification-inbox'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
@@ -47,10 +47,6 @@ export default function NotificationsPage() {
         if (!alive) return
         setEvents(current => mergeNotificationInbox(current, result.loaded))
         setError(result.failed === result.total ? 'Could not load notifications. Please retry.' : result.failed ? 'Some updates could not be loaded. Available updates are shown below.' : '')
-        if (data.session?.user.id) {
-          const acknowledged = await acknowledgeNotificationInbox(token, data.session.user.id, result.loaded, controller.signal)
-          if (alive && !acknowledged) setError('Your updates loaded, but their seen status could not be saved. Please refresh to retry.')
-        }
       } catch { if (alive) setError('Could not load notifications. Please retry.') }
       finally { pending = false; if (alive) { setLoading(false); setRefreshing(false) } }
     }
@@ -61,14 +57,6 @@ export default function NotificationsPage() {
     const { data } = createClient().auth.onAuthStateChange(() => { setEvents([]); void refresh() })
     return () => { alive = false; controller.abort(); window.clearInterval(timer); document.removeEventListener('visibilitychange', onRefresh); data.subscription.unsubscribe() }
   }, [configured, reload])
-
-  async function markRead(event: NotificationEvent) {
-    if (!event.notificationId) return
-    const { data } = await createClient().auth.getSession()
-    if (!data.session) return
-    const response = await fetch('/api/app/participation/notifications', { method: 'PATCH', headers: {Authorization: `Bearer ${data.session.access_token}`, 'Content-Type':'application/json'}, body:JSON.stringify({ids:[event.notificationId],read:true}) })
-    if (response.ok) { setEvents(current => current.map(item => item.id === event.id ? { ...item, read_at: new Date().toISOString() } : item)); window.dispatchEvent(new Event('bvs:notifications-seen')) }
-  }
 
   async function replyToMarketplace(event: NotificationEvent) {
     const message = (replies[event.id] || '').trim()
@@ -98,12 +86,12 @@ export default function NotificationsPage() {
   return <main className="mx-auto min-h-[70vh] max-w-4xl px-6 py-12">
     <p className="text-xs uppercase tracking-[.22em] text-brand">Your BVS</p>
     <h1 className="mt-2 text-4xl font-semibold">Notifications</h1>
-    <p className="mt-3 text-text-secondary">Review messages, approvals, submissions, orders and creator workflow updates appear here.</p>
+    <p className="mt-3 text-text-secondary">Review messages, approvals, submissions, orders and creator workflow updates appear here. Opening them on the web does not clear their app notification state.</p>
     <button type="button" disabled={refreshing} onClick={() => setReload(current => current + 1)} className="mt-5 min-h-10 rounded-full border border-white/10 px-4 text-sm disabled:opacity-50">{refreshing ? 'Refreshing…' : 'Refresh inbox'}</button>
     {loading && <p className="mt-10 text-text-secondary">Loading notifications…</p>}
     {error && <div className="mt-8 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}<div className="mt-3"><Link href="/auth/login?next=/notifications" className="text-brand">Sign in →</Link></div></div>}
     {!loading && <div className="mt-8 space-y-3">{events.map(event => <article key={event.id} className="rounded-2xl border border-white/10 bg-white/[.025] p-5 hover:border-brand/40">
-      <Link onClick={() => void markRead(event)} href={event.href || '/account'} aria-label={`${event.read_at || !event.notificationId ? '' : 'Unread: '}${event.title}`} className="block">
+      <Link href={event.href || '/account'} aria-label={event.title} className="block">
         <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-xs uppercase tracking-wider text-brand">{event.kind.replaceAll('_', ' ')}</p><h2 className="mt-1 font-semibold">{event.title}</h2><p className="mt-2 whitespace-pre-wrap text-sm text-text-secondary">{event.detail}</p></div><time className="text-xs text-text-secondary" dateTime={event.created_at}>{new Date(event.created_at).toLocaleString()}</time></div>
       </Link>
       {event.canReply && event.marketplaceEntity && event.marketplaceEntityId ? <div className="mt-4 border-t border-white/10 pt-4">
