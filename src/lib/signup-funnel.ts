@@ -26,6 +26,13 @@ function signupSurface(path: string) {
   return match?.[1] || "web";
 }
 
+function requestedSurface(properties: SignupFunnelProperties, path: string) {
+  const override = properties.app_surface || properties.surface;
+  return override === "ios" || override === "android" || override === "web"
+    ? override
+    : signupSurface(path);
+}
+
 function funnelId() {
   if (typeof window === "undefined") return "";
   try {
@@ -51,7 +58,7 @@ export function trackSignupFunnel(step: SignupFunnelStep, properties: SignupFunn
   const path = window.location.pathname;
   const body = JSON.stringify({
     step,
-    surface: signupSurface(path),
+    surface: requestedSurface(properties, path),
     path,
     funnelId: funnelId(),
     properties: cleanProperties,
