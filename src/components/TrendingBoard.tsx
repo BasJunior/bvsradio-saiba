@@ -8,7 +8,7 @@ import { useStationPlayer } from '@/components/StationPlayer'
 import { rankMovement, type TrendingBoard as Board, type TrendingWindow } from '@/lib/trending'
 
 export default function TrendingBoard({ surface, preview = false }: { surface?: 'ios' | 'android'; preview?: boolean }) {
-  const [window, setWindow] = useState<TrendingWindow>('now')
+  const [window, setWindow] = useState<TrendingWindow>(preview ? 'week' : 'now')
   const [result, setResult] = useState<{ key: string; board: Board | null; error: boolean; receivedAt: number } | null>(null)
   const [retry, setRetry] = useState(0)
   const player = useStationPlayer()
@@ -34,7 +34,7 @@ export default function TrendingBoard({ surface, preview = false }: { surface?: 
     <div className="mt-5 flex gap-2" aria-label="Trending period">{([['now', 'Trending Now'], ['week', 'This Week']] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={window === key} onClick={() => setWindow(key)} className={`min-h-11 border px-4 text-sm ${window === key ? 'border-brand bg-brand/10 text-brand' : 'border-white/15 text-text-secondary'}`}>{label}</button>)}</div>
     <p className="mt-3 text-xs text-text-secondary">{window === 'now' ? 'Last 24 hours' : 'Last 7 days'} · Updated hourly · Listener momentum</p>
     {board?.generatedAt ? <p className="mt-1 text-xs text-text-secondary">{stale ? 'Last available chart' : 'Chart updated'} {new Date(board.generatedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}{board.hasPrevious ? ' · Movement since the previous chart' : ' · First chart'}</p> : null}
-    {error ? <div role="status" className="mt-5 text-sm text-text-secondary">Trending couldn’t load. <button type="button" onClick={() => setRetry(x => x + 1)} className="min-h-11 px-2 text-brand">Try again</button></div> : !board ? <p role="status" className="py-8 text-sm text-text-secondary">Loading the chart…</p> : !entries.length ? <div className="py-8"><p className="font-semibold">The next wave is still building.</p><p className="mt-2 text-sm text-text-secondary">A track needs activity from several different listeners to enter the chart. Listen, save what you love, and check back.</p></div> : <ol className="mt-5 divide-y divide-white/10">{entries.map(entry => {
+    {error ? <div role="status" className="mt-5 text-sm text-text-secondary">Trending couldn’t load. <button type="button" onClick={() => setRetry(x => x + 1)} className="min-h-11 px-2 text-brand">Try again</button></div> : !board ? <p role="status" className="py-8 text-sm text-text-secondary">Loading the chart…</p> : !entries.length ? <div className="py-8"><p className="font-semibold">The next wave is still building.</p><p className="mt-2 text-sm text-text-secondary">This period does not have enough distinct listener momentum yet. BVS keeps the chart honest rather than filling it with weak signals.</p>{window === 'now' ? <button type="button" onClick={() => setWindow('week')} className="mt-3 min-h-11 border border-brand/30 px-4 text-sm font-semibold text-brand">See what’s moving this week →</button> : null}</div> : <ol className="mt-5 divide-y divide-white/10">{entries.map(entry => {
       const songPath = `${surface ? `/app/${surface}` : ''}/song/${entry.id}`
       const active = player.current?.id === entry.id
       const movement = rankMovement(entry.rank, entry.previousRank, board!.hasPrevious)
