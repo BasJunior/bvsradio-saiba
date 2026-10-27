@@ -20,19 +20,19 @@ const allowedSteps = new Set([
 
 const allowedSurfaces = new Set(["web", "ios", "android"]);
 
-function cleanProperties(value: unknown) {
+type CleanValue = string | number | boolean | null;
+type CleanProperties = Record<string, CleanValue>;
+
+function cleanProperties(value: unknown): CleanProperties {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .slice(0, 10)
-      .flatMap(([key, item]) => {
-        if (!/^[a-z][a-z0-9_]{0,39}$/i.test(key)) return [];
-        if (typeof item === "string") return [[key, item.slice(0, 120)]];
-        if (typeof item === "number" && Number.isFinite(item)) return [[key, item]];
-        if (typeof item === "boolean" || item === null) return [[key, item]];
-        return [];
-      }),
-  );
+  const output: CleanProperties = {};
+  for (const [key, item] of Object.entries(value as Record<string, unknown>).slice(0, 10)) {
+    if (!/^[a-z][a-z0-9_]{0,39}$/i.test(key)) continue;
+    if (typeof item === "string") output[key] = item.slice(0, 120);
+    else if (typeof item === "number" && Number.isFinite(item)) output[key] = item;
+    else if (typeof item === "boolean" || item === null) output[key] = item;
+  }
+  return output;
 }
 
 export async function POST(request: Request) {
