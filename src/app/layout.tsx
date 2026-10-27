@@ -10,6 +10,7 @@ import WebVitalsReporter from "@/components/WebVitalsReporter";
 import MobileIosBoundary from "@/components/MobileIosBoundary";
 import PremiumInstantPromoBanner from "@/components/PremiumInstantPromoBanner";
 import { PersistentPlayer, StationPlayerProvider } from "@/components/StationPlayer";
+import SharedProgrammeExitNormalizer from "@/components/SharedProgrammeExitNormalizer";
 import NowPlayingSwipeGestures from "@/components/NowPlayingSwipeGestures";
 import { LibrarySyncProvider } from "@/components/LibrarySyncProvider";
 import FlowNavigationProvider from "@/components/flow/FlowNavigationProvider";
@@ -109,6 +110,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <Suspense fallback={null}>
                   <RootMobileFlowNav />
                 </Suspense>
+                <SharedProgrammeExitNormalizer />
                 <PersistentPlayer />
                 <NowPlayingSwipeGestures />
               </FlowNavigationProvider>
