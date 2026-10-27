@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import PostSignupPremiumOptions from "@/components/auth/PostSignupPremiumOptions";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
+import { getFirstTouchAttribution, trackEvent } from "@/lib/analytics";
+import { trackSignupFunnel } from "@/lib/signup-funnel";
 import { SIGNUP_ROLES, type SignupRole } from "@/lib/signup-roles";
 
 type FormState = { email: string; password: string; fullName: string; username: string; role: SignupRole | "" };
@@ -19,36 +22,101 @@ export default function AppSignupClient({ surface, nextPath }: { surface: AppSur
   const [confirmationEmail, setConfirmationEmail] = useState("");
   const [notice, setNotice] = useState("");
 
+  useEffect(() => {
+    trackSignupFunnel("signup_page_viewed", { source: "app_join", role: "listener", app_surface: surface });
+  }, [surface]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setLoading(true); setError(""); setNotice("");
+
+    const email = form.email.trim().toLowerCase();
+    const username = form.username.trim();
+    const fullName = form.fullName.trim();
+    if (!form.role) {
+      trackSignupFunnel("validation_failed", { reason: "role_required", app_surface: surface });
+      setError("Choose what you want to do first."); setLoading(false); return;
+    }
+    if (!fullName) {
+      trackSignupFunnel("validation_failed", { reason: "full_name_required", role: form.role, app_surface: surface });
+      setError("Enter your name."); setLoading(false); return;
+    }
+    if (!/^[a-zA-Z0-9._-]{2,32}$/.test(username)) {
+      trackSignupFunnel("validation_failed", { reason: "username_invalid", role: form.role, app_surface: surface });
+      setError("Username: 2–32 characters, letters/numbers/._- only (no spaces)."); setLoading(false); return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      trackSignupFunnel("validation_failed", { reason: "email_invalid", role: form.role, app_surface: surface });
+      setError("Enter a valid email address."); setLoading(false); return;
+    }
+    if (form.password.length < 8) {
+      trackSignupFunnel("validation_failed", { reason: "password_too_short", role: form.role, app_surface: surface });
+      setError("Password must be at least 8 characters."); setLoading(false); return;
+    }
+
+    const attribution = getFirstTouchAttribution();
+    const eventAttribution = {
+      utm_source: attribution.utm_source || null,
+      utm_medium: attribution.utm_medium || null,
+      utm_campaign: attribution.utm_campaign || null,
+      utm_content: attribution.utm_content || null,
+      ref: attribution.ref || null,
+    };
+    trackSignupFunnel("submit_attempted", { role: form.role, app_surface: surface });
+    trackEvent("signup_started", { role: form.role, surface, ...eventAttribution });
+
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, next }),
       });
-      const payload = await response.json().catch(() => ({})) as { error?: string; message?: string };
+      const payload = await response.json().catch(() => ({})) as { error?: string; message?: string; needsConfirmation?: boolean };
       if (!response.ok) throw new Error(payload.error || "Could not create your BVS account.");
-      setConfirmationEmail(form.email.trim().toLowerCase());
+
+      trackEvent("signup_completed", {
+        role: form.role,
+        surface,
+        needs_confirmation: payload.needsConfirmation !== false,
+        ...eventAttribution,
+      });
+      trackSignupFunnel("account_created", {
+        role: form.role,
+        app_surface: surface,
+        needs_confirmation: payload.needsConfirmation !== false,
+      });
+      setConfirmationEmail(email);
       setNotice(payload.message || "Check your email to confirm your account.");
+      trackSignupFunnel("confirmation_email_shown", { role: form.role, app_surface: surface });
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Could not create your BVS account.");
+      const message = issue instanceof Error ? issue.message : "Could not create your BVS account.";
+      trackSignupFunnel("submit_failed", { role: form.role, app_surface: surface, reason: message.slice(0, 100) });
+      setError(message);
     } finally { setLoading(false); }
   };
 
   const resend = async () => {
     if (!confirmationEmail) return;
     setNotice("Sending a fresh confirmation…"); setError("");
-    const response = await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: confirmationEmail, resendOnly: true, next }) });
-    const payload = await response.json().catch(() => ({})) as { error?: string; message?: string };
-    if (!response.ok) setError(payload.error || "Could not resend confirmation.");
-    else setNotice(payload.message || "Fresh confirmation sent.");
+    try {
+      const response = await fetch("/api/auth/signup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: confirmationEmail, resendOnly: true, next }) });
+      const payload = await response.json().catch(() => ({})) as { error?: string; message?: string };
+      if (!response.ok) {
+        trackSignupFunnel("submit_failed", { source: "confirmation_resend", role: form.role, app_surface: surface });
+        setError(payload.error || "Could not resend confirmation.");
+      } else {
+        trackSignupFunnel("confirmation_resent", { role: form.role, app_surface: surface });
+        setNotice(payload.message || "Fresh confirmation sent.");
+      }
+    } catch {
+      trackSignupFunnel("submit_failed", { source: "confirmation_resend", role: form.role, app_surface: surface });
+      setError("Could not resend confirmation.");
+    }
   };
 
   if (confirmationEmail) {
     return (
-      <div className="mx-auto max-w-xl px-4 pb-12 pt-8 sm:px-6">
+      <div className="mx-auto max-w-3xl px-4 pb-12 pt-8 sm:px-6">
         <div className="rounded-[2rem] border border-brand/18 bg-gradient-to-br from-brand/[.065] to-white/[.02] p-6 text-center sm:p-8">
           <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Almost there</p>
           <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">Check your email.</h1>
@@ -59,6 +127,7 @@ export default function AppSignupClient({ surface, nextPath }: { surface: AppSur
             <button type="button" onClick={() => void resend()} className="min-h-11 rounded-full bg-white px-5 font-semibold text-black transition hover:bg-brand">Resend</button>
             <button type="button" onClick={() => setConfirmationEmail("")} className="min-h-11 rounded-full border border-white/[.1] px-5 text-white/58">Use another email</button>
           </div>
+          <PostSignupPremiumOptions role={form.role || "listener"} surface={surface} />
         </div>
       </div>
     );
@@ -70,7 +139,7 @@ export default function AppSignupClient({ surface, nextPath }: { surface: AppSur
       <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Start with what you want from music today.</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-white/42 sm:text-base">Everyone can listen. Your starting role simply shapes the first workspace you see; the same identity can grow with you later.</p>
 
-      <form onSubmit={submit} className="mt-8 space-y-6">
+      <form onSubmit={submit} noValidate className="mt-8 space-y-6">
         <fieldset>
           <legend className="font-semibold">What do you want to do first?</legend>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">

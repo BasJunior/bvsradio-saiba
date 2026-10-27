@@ -2,11 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import PostSignupPremiumOptions from '@/components/auth/PostSignupPremiumOptions'
 import { createClient } from '@/lib/supabase'
 import { trackMilestone } from '@/lib/analytics'
+import { trackSignupFunnel } from '@/lib/signup-funnel'
 import type { EmailOtpType } from '@supabase/supabase-js'
 
 type Status = 'loading' | 'ready' | 'error'
+type AppSurface = 'ios' | 'android'
 
 function safeRequestedDestination(value: string | null) {
   if (!value) return ''
@@ -34,6 +37,7 @@ export default function ConfirmedPage() {
   const [status, setStatus] = useState<Status>('loading')
   const [detail, setDetail] = useState<string | null>(null)
   const [destination, setDestination] = useState('/')
+  const [confirmedRole, setConfirmedRole] = useState('listener')
 
   useEffect(() => {
     const finishConfirmation = async () => {
@@ -43,12 +47,17 @@ export default function ConfirmedPage() {
         const params = url.searchParams
         const hashParams = new URLSearchParams(url.hash.replace(/^#/, ''))
         const requestedDestination = safeRequestedDestination(params.get('next') || hashParams.get('next'))
+        const surfaceMatch = requestedDestination.match(/^\/app\/(ios|android)(?:\/|$)/)
+        const appSurface = surfaceMatch?.[1] as AppSurface | undefined
+        const funnelSurface = appSurface || 'web'
+        trackSignupFunnel('confirmation_started', { app_surface: funnelSurface })
 
         const error = params.get('error') || hashParams.get('error')
         const errorCode = params.get('error_code') || hashParams.get('error_code')
         const errorDescription = params.get('error_description') || hashParams.get('error_description')
 
         if (error || errorCode) {
+          trackSignupFunnel('confirmation_failed', { reason: errorCode || error || 'provider_error', app_surface: funnelSurface })
           setDetail(friendlyAuthError(errorCode, errorDescription))
           setStatus('error')
           window.history.replaceState({}, '', '/auth/confirmed')
@@ -77,10 +86,18 @@ export default function ConfirmedPage() {
         const { data, error: sessionError } = await supabase.auth.getSession()
         if (sessionError) throw sessionError
         if (!data.session) {
+          trackSignupFunnel('confirmation_failed', { reason: 'no_active_session', app_surface: funnelSurface })
           setDetail('No active session after opening the link. Try signing in, or request a new confirmation email from signup.')
           setStatus('error')
           return
         }
+
+        const role = String(
+          data.session.user.user_metadata?.account_type ||
+          data.session.user.user_metadata?.role ||
+          'listener',
+        )
+        setConfirmedRole(role)
 
         const profileDestination = '/start'
         const profileRes = await fetch('/api/auth/profile', {
@@ -96,6 +113,7 @@ export default function ConfirmedPage() {
 
         setDestination(requestedDestination || profileDestination || '/')
         trackMilestone('account_confirmed')
+        trackSignupFunnel('account_confirmed', { role, app_surface: funnelSurface })
 
         if (window.location.hash || params.has('code') || params.has('token_hash') || params.has('next')) {
           window.history.replaceState({}, '', '/auth/confirmed')
@@ -103,6 +121,7 @@ export default function ConfirmedPage() {
 
         setStatus('ready')
       } catch (err: unknown) {
+        trackSignupFunnel('confirmation_failed', { reason: 'confirmation_exception' })
         const message = err instanceof Error ? err.message : 'Confirmation failed'
         setDetail(friendlyAuthError(null, message))
         setStatus('error')
@@ -113,12 +132,14 @@ export default function ConfirmedPage() {
   }, [])
 
   const returningToBeat = /^\/app\/(ios|android)\/beat\//.test(destination)
+  const surfaceMatch = destination.match(/^\/app\/(ios|android)(?:\/|$)/)
+  const surface = surfaceMatch?.[1] as AppSurface | undefined
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-xl items-center px-6 py-16 text-center">
+    <main className="mx-auto flex min-h-[70vh] max-w-4xl items-center px-6 py-16 text-center">
       <div className="w-full rounded-3xl border border-white/10 bg-bg-card/50 p-8">
         {status === 'loading' && <><h1 className="text-3xl font-semibold">Confirming your account…</h1><p className="mt-3 text-text-secondary">This should only take a moment.</p></>}
-        {status === 'ready' && <><p className="text-xs uppercase tracking-[.2em] text-brand">Email confirmed</p><h1 className="mt-3 text-3xl font-semibold">Welcome to BVS Radio</h1><p className="mt-3 text-text-secondary">Your account is ready and you are signed in.</p><Link href={destination} className="mt-7 inline-block rounded-full bg-brand px-7 py-3 font-semibold text-black">{returningToBeat ? 'Return to this beat' : destination === '/start' ? 'Start with BVS' : 'Continue'}</Link></>}
+        {status === 'ready' && <><p className="text-xs uppercase tracking-[.2em] text-brand">Email confirmed</p><h1 className="mt-3 text-3xl font-semibold">Welcome to BVS Radio</h1><p className="mt-3 text-text-secondary">Your account is ready and you are signed in. Choose Free or Premium now, or continue into BVS.</p><PostSignupPremiumOptions role={confirmedRole} surface={surface} /><Link href={destination} className="mt-7 inline-block rounded-full bg-brand px-7 py-3 font-semibold text-black">{returningToBeat ? 'Return to this beat' : destination === '/start' ? 'Start with BVS' : 'Continue'}</Link></>}
         {status === 'error' && <><h1 className="text-3xl font-semibold">We could not confirm this link</h1><p className="mt-3 text-left text-text-secondary">{detail}</p><ol className="mt-4 list-decimal space-y-2 px-4 text-left text-sm text-text-secondary"><li>Open signup again and use Resend confirmation (or sign up with the same email).</li><li>Use the newest email only — older links stay expired.</li><li>Open the link in a real browser tab (not the mail app preview pane).</li></ol><div className="mt-7 flex flex-wrap justify-center gap-3"><Link href="/auth/signup" className="rounded-full bg-brand px-6 py-3 font-semibold text-black">Resend confirmation</Link><Link href="/auth/login" className="rounded-full border border-white/20 px-6 py-3">Sign in</Link></div></>}
       </div>
     </main>

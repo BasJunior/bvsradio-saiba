@@ -1,12 +1,14 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import PostSignupPremiumOptions from "@/components/auth/PostSignupPremiumOptions";
 import { safeAuthDestination } from "@/lib/auth-client-flow";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getFirstTouchAttribution, trackEvent } from "@/lib/analytics";
+import { trackSignupFunnel } from "@/lib/signup-funnel";
 
 function destinationForRole(role: string) {
   return role === "listener" ? "/radio" : "/creator/studio";
@@ -18,12 +20,13 @@ function SignupPageInner() {
   const nextPath = safeAuthDestination(params.get("next"), "");
   const producerIntent =
     params.get("role") === "producer" || nextPath.includes("/create/beat");
+  const initialRole = producerIntent ? "producer" : "listener";
   const [form, setForm] = useState({
     email: "",
     password: "",
     fullName: "",
     username: "",
-    role: producerIntent ? "producer" : "listener",
+    role: initialRole,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +35,13 @@ function SignupPageInner() {
   );
   const [resendMessage, setResendMessage] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    trackSignupFunnel("signup_page_viewed", {
+      source: params.get("ref") || "direct",
+      role: initialRole,
+    });
+  }, [initialRole, params]);
 
   const resendConfirmation = async () => {
     if (!verificationEmail) return;
@@ -49,13 +59,16 @@ function SignupPageInner() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setResendMessage(data.error || "Could not resend confirmation email.");
+        trackSignupFunnel("submit_failed", { source: "confirmation_resend", role: form.role });
         return;
       }
+      trackSignupFunnel("confirmation_resent", { role: form.role });
       setResendMessage(
         data.message ||
           "A new confirmation link was sent. Check inbox and Spam.",
       );
     } catch {
+      trackSignupFunnel("submit_failed", { source: "confirmation_resend", role: form.role });
       setResendMessage("Could not resend confirmation email.");
     }
   };
@@ -67,12 +80,14 @@ function SignupPageInner() {
     setInfo(null);
 
     if (!isSupabaseConfigured()) {
+      trackSignupFunnel("validation_failed", { reason: "account_service_unconfigured", role: form.role });
       setError("Account service is not configured. Please try again later.");
       setLoading(false);
       return;
     }
 
     if (form.password.length < 8) {
+      trackSignupFunnel("validation_failed", { reason: "password_too_short", role: form.role });
       setError("Password must be at least 8 characters.");
       setLoading(false);
       return;
@@ -80,6 +95,7 @@ function SignupPageInner() {
 
     const email = form.email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      trackSignupFunnel("validation_failed", { reason: "email_invalid", role: form.role });
       setError(
         "Enter a valid email address (must include @ and a domain), e.g. you@gmail.com.",
       );
@@ -89,6 +105,7 @@ function SignupPageInner() {
 
     const username = form.username.trim();
     if (!/^[a-zA-Z0-9._-]{2,32}$/.test(username)) {
+      trackSignupFunnel("validation_failed", { reason: "username_invalid", role: form.role });
       setError(
         "Username: 2–32 characters, letters/numbers/._- only (no spaces).",
       );
@@ -104,6 +121,7 @@ function SignupPageInner() {
       utm_content: attribution.utm_content || null,
       ref: attribution.ref || null,
     };
+    trackSignupFunnel("submit_attempted", { role: form.role });
     trackEvent("signup_started", { role: form.role, ...eventAttribution });
 
     try {
@@ -130,17 +148,24 @@ function SignupPageInner() {
         needs_confirmation: data.needsConfirmation !== false,
         ...eventAttribution,
       });
+      trackSignupFunnel("account_created", {
+        role: form.role,
+        needs_confirmation: data.needsConfirmation !== false,
+      });
 
       if (data.needsConfirmation !== false) {
         setVerificationEmail(email);
         setInfo(null);
+        trackSignupFunnel("confirmation_email_shown", { role: form.role });
         return;
       }
 
       setInfo(data.message || "Account created.");
       router.push(`/auth/login?next=${encodeURIComponent(nextPath || destinationForRole(form.role))}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Signup failed");
+      const message = err instanceof Error ? err.message : "Signup failed";
+      trackSignupFunnel("submit_failed", { role: form.role, reason: message.slice(0, 100) });
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -148,7 +173,7 @@ function SignupPageInner() {
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center px-6 py-12">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-3xl">
         <div className="text-center mb-8">
           <Link
             href="/"
@@ -219,9 +244,10 @@ function SignupPageInner() {
                 {resendMessage}
               </p>
             )}
+            <PostSignupPremiumOptions role={form.role} />
           </div>
         ) : (
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="mx-auto max-w-md space-y-4">
             <label className="block text-sm font-medium">
               I am joining as
               <select
@@ -311,7 +337,7 @@ function SignupPageInner() {
           </form>
         )}
 
-        <p className="text-center mt-6 text-sm text-text-secondary">
+        <p className="mx-auto max-w-md text-center mt-6 text-sm text-text-secondary">
           Already have an account?{" "}
           <Link href="/auth/login" className="text-brand hover:underline">
             Sign in
