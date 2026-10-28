@@ -1,10 +1,11 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import Link from 'next/link'
 
 const topicOptions = [
   ['general', 'General inquiry'],
-  ['music', 'Music submission / collaboration'],
+  ['music', 'Artist support / collaboration (not submissions)'],
   ['business', 'Business or advertising'],
   ['press', 'Press or interview request'],
   ['technical', 'Technical issue'],
@@ -13,7 +14,7 @@ const topicOptions = [
   ['other', 'Other'],
 ]
 
-export default function ContactForm() {
+export default function ContactForm({ submissionHref = '/upload' }: { submissionHref?: string }) {
   const [form, setForm] = useState({ name: '', email: '', topic: 'general', message: '', website: '' })
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -100,6 +101,11 @@ export default function ContactForm() {
           {topicOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </div>
+
+      <p className="rounded-xl border border-brand/20 bg-brand/5 p-3 text-sm text-text-secondary">
+        This form is for questions and support, not music submissions. To enter the editorial review queue,{' '}
+        <Link href={submissionHref} className="font-semibold text-brand hover:underline">submit music through your BVS profile</Link>.
+      </p>
 
       <div>
         <label className="text-sm mb-1.5 block">Message</label>
