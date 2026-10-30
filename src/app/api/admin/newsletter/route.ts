@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { audit, can, editorialIdentity } from '@/lib/editorial-server';
 import { creatorHeaders, creatorUrl, creatorJson } from '@/lib/creator-server';
-import { newsletterAllRows, newsletterRows, newsletterToken, newsletterMailReady } from '@/lib/newsletter-server';
-import { escapeEmail, newsletterAudiences, newsletterBody, newsletterDestination, newsletterPath, type NewsletterCampaign } from '@/lib/newsletter';
-import { sendBvsEmail, wrapBvsEmailHtml } from '@/lib/mailer';
+import { newsletterAllRows, newsletterRows, newsletterMailReady } from '@/lib/newsletter-server';
+import { newsletterAudiences, newsletterBody, newsletterDestination, newsletterPath, type NewsletterCampaign } from '@/lib/newsletter';
+import { deliverNewsletterBatch } from '@/lib/newsletter-delivery';
 export const runtime='nodejs';
 export const maxDuration=60;
 const uuid=(value:unknown)=>typeof value==='string'&&/^[a-f0-9-]{36}$/.test(value);
@@ -27,23 +27,9 @@ export async function POST(request:Request){const identity=await identityFor(req
  if(action==='start'){
  if(body.confirmed!==true||!Number.isInteger(body.reviewedCount)||body.reviewedCount<1||body.reviewedCount>10000)throw new Error('Review the campaign preview and recipient count first.');
  await creatorJson(await fetch(creatorUrl('rpc/queue_newsletter_campaign'),{method:'POST',headers:creatorHeaders,body:JSON.stringify({campaign:body.campaignId,revision:body.revision,reviewed_count:body.reviewedCount})}));
- await audit(identity.user.id,'newsletter_queued','newsletter_campaign',body.campaignId,{recipients:body.reviewedCount});return NextResponse.json({ok:true,message:'Campaign queued. Use Send next batch to deliver it.'});
+ await audit(identity.user.id,'newsletter_queued','newsletter_campaign',body.campaignId,{recipients:body.reviewedCount});return NextResponse.json({ok:true,message:'Campaign queued. Automatic delivery will begin within one minute.'});
  }
  if(action!=='batch')throw new Error('Unknown newsletter action.');
- const [campaign]=await newsletterRows<NewsletterCampaign>(`newsletter_campaigns?id=eq.${body.campaignId}&select=*`);
- if(!campaign||campaign.status!=='sending')throw new Error('Campaign is not queued for sending.');
- const queued=await newsletterRows<{id:string;subscriber_id:string}>(`newsletter_deliveries?campaign_id=eq.${campaign.id}&status=eq.queued&select=id,subscriber_id&order=created_at.asc&limit=3`);
- let sent=0,suppressed=0,uncertain=0;
- for(const delivery of queued){
- const claimed=await newsletterRows(`newsletter_deliveries?id=eq.${delivery.id}&status=eq.queued`,{method:'PATCH',body:JSON.stringify({status:'sending'})});if(!claimed.length)continue;
- const [subscriber]=await newsletterRows<{email:string;is_active:boolean;audience:string}>(`newsletter_subscribers?id=eq.${delivery.subscriber_id}&select=email,is_active,audience`);
- if(!subscriber?.is_active||(campaign.audience!=='all'&&subscriber.audience!==campaign.audience)){await newsletterRows(`newsletter_deliveries?id=eq.${delivery.id}`,{method:'PATCH',body:JSON.stringify({status:'suppressed'})});suppressed++;continue;}
- const unsub=`https://bvsradio.com/newsletter/unsubscribe?id=${delivery.subscriber_id}&token=${newsletterToken(delivery.subscriber_id)}`;
- const click=`https://bvsradio.com/newsletter/click?id=${delivery.id}&token=${newsletterToken(delivery.id)}`;
- try{await sendBvsEmail({to:subscriber.email,subject:campaign.subject,unsubscribeUrl:unsub,timeoutMs:5000,text:`${campaign.body}\n\n${campaign.cta_label}: ${click}\n\nUnsubscribe: ${unsub}`,html:wrapBvsEmailHtml({title:escapeEmail(campaign.subject),bodyHtml:newsletterBody(campaign,click,unsub)})});await newsletterRows(`newsletter_deliveries?id=eq.${delivery.id}`,{method:'PATCH',body:JSON.stringify({status:'sent',sent_at:new Date().toISOString()})});sent++;}
- catch{await newsletterRows(`newsletter_deliveries?id=eq.${delivery.id}`,{method:'PATCH',body:JSON.stringify({status:'uncertain',error:'Delivery could not be confirmed. Check provider logs before retrying.'})});uncertain++;}
- }
- const pending=await newsletterRows(`newsletter_deliveries?campaign_id=eq.${campaign.id}&status=in.(queued,sending)&select=id&limit=1`);
- if(!pending.length)await newsletterRows(`newsletter_campaigns?id=eq.${campaign.id}`,{method:'PATCH',body:JSON.stringify({status:'sent',updated_at:new Date().toISOString()})});
- await audit(identity.user.id,'newsletter_batch','newsletter_campaign',campaign.id,{sent,suppressed,uncertain});return NextResponse.json({ok:true,message:`${sent} sent, ${suppressed} suppressed, ${uncertain} uncertain. Unconfirmed deliveries are never automatically retried.`});
+ const {sent,suppressed,uncertain}=await deliverNewsletterBatch(body.campaignId);
+ await audit(identity.user.id,'newsletter_batch','newsletter_campaign',body.campaignId,{sent,suppressed,uncertain});return NextResponse.json({ok:true,message:`${sent} sent, ${suppressed} suppressed, ${uncertain} uncertain. Unconfirmed deliveries are never automatically retried.`});
  }catch(error){return failure(error);}}

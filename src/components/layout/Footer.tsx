@@ -14,6 +14,7 @@ export default function Footer() {
           <Link href="/privacy">Privacy</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/contact">Support</Link>
+          <Link href="/newsletter">Newsletter</Link>
           {!isNative && <button type="button" onClick={exitAppChrome} className="text-brand hover:underline">Full website</button>}
         </div>
         <p className="mt-4">&copy; {new Date().getFullYear()} BVS Radio</p>
@@ -51,6 +52,7 @@ export default function Footer() {
           <div>
             <h4 className="text-sm font-semibold text-text-primary mb-3">Company &amp; social</h4>
             <div className="flex flex-col gap-2">
+              <Link href="/newsletter" className="text-sm text-text-secondary hover:text-brand transition-colors">BVS Newsletter</Link>
               <Link href="/about" className="text-sm text-text-secondary hover:text-brand transition-colors">About</Link>
               <Link href="/faq" className="text-sm text-text-secondary hover:text-brand transition-colors">FAQ</Link>
               <Link href="/contact" className="text-sm text-text-secondary hover:text-brand transition-colors">Contact</Link>
