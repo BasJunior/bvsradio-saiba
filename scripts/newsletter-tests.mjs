@@ -11,7 +11,7 @@ const campaign={id:'example',subject:'Music',body:'<img src=x onerror=alert(1)>\
 const destination=new URL(exports.newsletterDestination(campaign));
 assert.equal(destination.origin,'https://bvsradio.com');assert.equal(destination.searchParams.get('mode'),'fresh');assert.equal(destination.searchParams.get('utm_campaign'),'example');assert.equal(destination.hash,'#music');
 const html=exports.newsletterBody(campaign,'https://bvsradio.com/radio','https://bvsradio.com/newsletter');assert(!html.includes('<img'));assert(html.includes('&lt;img'));assert(html.includes('Unsubscribe'));
-const api=read('src/app/api/admin/newsletter/route.ts');assert(api.includes("can(identity,'manage_staff')"));assert(api.includes('subscriber?.is_active'));assert(api.includes("status=eq.queued"));assert(api.includes("status:'uncertain'"));assert(api.includes('escapeEmail(campaign.subject)'));
+const api=read('src/app/api/admin/newsletter/route.ts');const delivery=read('src/lib/newsletter-delivery.ts');assert(api.includes("can(identity,'manage_staff')"));assert(delivery.includes('subscriber?.is_active'));assert(delivery.includes("status=eq.queued"));assert(delivery.includes("status:'uncertain'"));assert(delivery.includes('escapeEmail(campaign.subject)'));
 const sql=read('supabase/migrations/20261008154021_newsletter_workflow.sql');assert(sql.includes('security invoker'));assert(sql.includes('for update'));assert(sql.includes('n<>reviewed_count'));assert(sql.includes('enable row level security'));assert(sql.includes('from anon,authenticated'));
 const unsubscribe=read('src/app/newsletter/unsubscribe/route.ts');assert(unsubscribe.includes('export async function POST'));assert(!unsubscribe.split('export async function POST')[0].includes("method:'PATCH'"));
 console.log('Newsletter: safe destination, campaign attribution, escaped content, opt-in suppression, owner access, atomic queue and confirmation unsubscribe passed.');
@@ -21,12 +21,27 @@ const id='12345678-1234-1234-1234-123456789abc', token=server.newsletterToken(id
 assert(server.validNewsletterToken(id,token));assert(!server.validNewsletterToken(id,token.slice(1)));assert(!server.validNewsletterToken('bad',token));assert(!server.validNewsletterToken(id,'0'.repeat(64)));
 // The helper's pagination is also checked in source because its fetch uses the private Data API.
 assert(read('src/lib/newsletter-server.ts').includes('offset+=1000'));
-const route={};let allowed=false,mailCalls=0,mutations=[];
-const mockRows=async(path,init)=>{if(path.startsWith('newsletter_campaigns?'))return [{...campaign,status:'sending'}];if(path.includes('status=eq.queued')&&init)return [{id}];if(path.includes('status=eq.queued'))return [{id,subscriber_id:id}];if(path.startsWith('newsletter_subscribers?'))return [{email:'test@example.invalid',is_active:false,audience:'listener'}];if(init)mutations.push(JSON.parse(init.body));return [];};
-vm.runInNewContext(ts.transpileModule(api,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports:route,require:name=>({'next/server':{NextResponse:{json:(data,init)=>({data,status:init?.status||200})}},'@/lib/editorial-server':{editorialIdentity:async()=>allowed?{user:{id}}:null,can:()=>allowed,audit:async()=>{}},'@/lib/newsletter-server':{newsletterRows:mockRows,newsletterToken:()=>token,newsletterMailReady:()=>true},'@/lib/newsletter':exports,'@/lib/creator-server':{},'@/lib/mailer':{sendBvsEmail:async()=>{mailCalls++},wrapBvsEmailHtml:()=>''}}[name]),Date,Number,JSON,Promise,Error});
+const route={};let allowed=false,mailCalls=0,mutations=[],active=false,claimed=true,failMail=false;
+const mockRows=async(path,init)=>{if(path.startsWith('newsletter_campaigns?')&&!init)return [{...campaign,audience:'all',status:'sending'}];if(path.includes('status=eq.queued')&&init)return claimed?[{id}]:[];if(path.includes('status=eq.queued'))return [{id,subscriber_id:id}];if(path.startsWith('newsletter_subscribers?'))return [{email:'test@example.invalid',is_active:active,audience:'listener'}];if(init)mutations.push(JSON.parse(init.body));return [];};
+const worker={};
+vm.runInNewContext(ts.transpileModule(delivery,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports:worker,require:name=>({'@/lib/newsletter-server':{newsletterRows:mockRows,newsletterToken:()=>token,newsletterMailReady:()=>true},'@/lib/newsletter':exports,'@/lib/mailer':{sendBvsEmail:async()=>{mailCalls++;if(failMail)throw new Error('timeout');},wrapBvsEmailHtml:()=>''}}[name]||{}),Date,Error});
+vm.runInNewContext(ts.transpileModule(api,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports:route,require:name=>({'next/server':{NextResponse:{json:(data,init)=>({data,status:init?.status||200})}},'@/lib/editorial-server':{editorialIdentity:async()=>allowed?{user:{id}}:null,can:()=>allowed,audit:async()=>{}},'@/lib/newsletter-server':{newsletterRows:mockRows,newsletterToken:()=>token,newsletterMailReady:()=>true},'@/lib/newsletter':exports,'@/lib/creator-server':{},'@/lib/newsletter-delivery':worker,'@/lib/mailer':{sendBvsEmail:async()=>{mailCalls++},wrapBvsEmailHtml:()=>''}}[name]),Date,Number,JSON,Promise,Error});
 assert.equal((await route.POST({json:async()=>({action:'batch',campaignId:id})})).status,403);
 allowed=true;
 assert.equal((await route.POST({json:async()=>({action:'start',campaignId:id,confirmed:false,reviewedCount:1})})).status,400);
 assert.equal((await route.POST({json:async()=>({action:'batch',campaignId:id})})).status,200);
 assert.equal(mailCalls,0,'Opted-out recipient must never reach SMTP');assert(mutations.some(m=>m.status==='suppressed'));
 console.log('Newsletter tokens reject tampering; owner gate, review gate and runtime opt-out suppression passed without sending email.');
+
+active=true;claimed=false;
+await worker.deliverNewsletterBatch(id);assert.equal(mailCalls,0,'Already claimed delivery must not send again');
+claimed=true;
+await worker.deliverNewsletterBatch(id);assert.equal(mailCalls,1);assert(mutations.some(m=>m.status==='sent'));
+failMail=true;
+await worker.deliverNewsletterBatch(id);assert(mutations.some(m=>m.status==='uncertain'),'SMTP timeout is held, never automatically retried');
+const cron={};let owned=true,dbCalls=0;
+vm.runInNewContext(ts.transpileModule(read('src/app/api/cron/newsletter/route.ts'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports:cron,process:{env:{CRON_SECRET:'cron-test'}},require:name=>({'next/server':{NextResponse:{json:(data,init)=>({data,status:init?.status||200})}},'@/lib/participation-worker-owner':{isParticipationWorkerOwner:()=>owned},'@/lib/newsletter-server':{newsletterMailReady:()=>true,newsletterRows:async()=>{dbCalls++;return [];}},'@/lib/newsletter-delivery':worker}[name])});
+assert.equal((await cron.GET({headers:{get:()=>null}})).status,401);assert.equal(dbCalls,0);
+owned=false;await cron.GET({headers:{get:()=> 'Bearer cron-test'}});assert.equal(dbCalls,0,'Preview and other projects cannot drain production');
+owned=true;assert.equal((await cron.GET({headers:{get:()=> 'Bearer cron-test'}})).status,200);assert.equal(dbCalls,1);
+console.log('Automatic newsletter delivery: claim deduplication, SMTP success/uncertainty, cron authentication and production ownership passed.');
