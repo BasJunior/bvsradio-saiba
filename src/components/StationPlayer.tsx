@@ -39,6 +39,9 @@ import LibraryAction from "@/components/LibraryAction";
 import MusicVideoWatch from "@/components/MusicVideoWatch";
 import PlayerSongShareAction, { PlayerMoreMenu } from "@/components/PlayerSongShareAction";
 import { previousPlaybackPlan, sharedPlaybackRecoveryDelay } from "@/lib/playback-continuity";
+import { containModalTab, focusFirstElement, lockPageScroll, registerModalLayer, restoreFocus } from "@/lib/modal-layer";
+import { playbackShortcut } from "@/lib/playback-shortcuts";
+import { SLEEP_MINUTES, useSleepTimer } from "@/components/player/useSleepTimer";
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -1845,16 +1848,27 @@ function ProgressLine({
   const pct = duration > 0 ? Math.min(100, (elapsed / duration) * 100) : 0;
   return (
     <div
-      className={`h-1 w-full cursor-pointer bg-white/15 ${className}`}
-      role="progressbar"
+      className={`h-1 w-full cursor-pointer bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand ${className}`}
+      role={onSeek ? "slider" : "progressbar"}
+      tabIndex={onSeek && duration > 0 ? 0 : undefined}
       aria-valuemin={0}
       aria-valuemax={Math.round(duration || 0)}
       aria-valuenow={Math.round(elapsed)}
       aria-label="Playback progress"
+      aria-valuetext={`${formatTime(elapsed)} of ${formatTime(duration)}`}
+      onKeyDown={(event) => {
+        if (!onSeek || duration <= 0) return;
+        const seconds = event.key === "ArrowRight" || event.key === "ArrowUp" ? elapsed + 5
+          : event.key === "ArrowLeft" || event.key === "ArrowDown" ? elapsed - 5
+          : event.key === "Home" ? 0 : event.key === "End" ? duration : null;
+        if (seconds === null) return;
+        event.preventDefault();
+        onSeek(Math.max(0, Math.min(1, seconds / duration)));
+      }}
       onClick={(event) => {
         if (!onSeek || duration <= 0) return;
         const rect = event.currentTarget.getBoundingClientRect();
-        onSeek((event.clientX - rect.left) / rect.width);
+        if (rect.width > 0) onSeek(Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)));
       }}
     >
       <div className="h-full bg-white transition-[width] duration-100 ease-linear" style={{ width: `${pct}%` }} />
@@ -2132,28 +2146,57 @@ export function PersistentPlayer() {
   const { appChrome } = useAppSurface();
   const playerRef = useAppShellMeasurement<HTMLElement>("--bvs-app-player-height-measured", appChrome);
   const { nowPlayingOpen, closeNowPlaying } = player;
+  const nowPlayingRef = useRef<HTMLElement>(null);
+  const sleep = useSleepTimer(player.pause);
+  const { current: shortcutTrack, toggle: togglePlayback, next: nextTrack, previous: previousTrack } = player;
   const art = player.current?.artwork;
   const repeatLabel = player.repeat === "off" ? "Repeat off" : player.repeat === "all" ? "Repeat all" : "Repeat one";
 
   useEffect(() => {
     if (!nowPlayingOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const trigger = document.activeElement as HTMLElement | null;
+    const unlock = lockPageScroll();
+    const layer = registerModalLayer();
+    focusFirstElement(nowPlayingRef.current);
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeNowPlaying();
+      if (!layer.isTop()) return;
+      if (containModalTab(event, nowPlayingRef.current)) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeNowPlaying();
+      }
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
-      document.body.style.overflow = previous;
+      layer.release();
+      unlock();
+      restoreFocus(trigger);
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [nowPlayingOpen, closeNowPlaying]);
 
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!shortcutTrack) return;
+      const action = playbackShortcut(event);
+      if (!action) return;
+      event.preventDefault();
+      if (action === "toggle") togglePlayback();
+      else if (action === "next") nextTrack();
+      else previousTrack();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [shortcutTrack, togglePlayback, nextTrack, previousTrack]);
+
   return (
     <>
       <QueueSheet />
+      <span className="sr-only" role="status">{sleep.message}</span>
       {nowPlayingOpen && (
         <section
+          ref={nowPlayingRef}
+          tabIndex={-1}
           className="fixed inset-0 z-[70] overflow-y-auto overscroll-y-contain bg-[#090909] text-white"
           role="dialog"
           aria-modal="true"
@@ -2208,6 +2251,22 @@ export function PersistentPlayer() {
                   <button type="button" onClick={() => player.toggleLike("now_playing")} aria-pressed={player.liked} className={`min-h-11 rounded-[4px] px-4 text-sm font-semibold ${player.liked ? "bg-brand/15 text-brand" : "border border-white/12 text-white/70 hover:border-brand/35 hover:text-white"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥ Saved" : "♡ Save"}</button>
                   <PlayerSongShareAction track={player.current} />
                 </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/70">
+                  <label className="flex min-h-11 items-center gap-2">
+                    Sleep timer
+                    <select
+                      className="min-h-11 rounded border border-white/15 bg-[#141414] px-3 text-white focus-visible:outline-2 focus-visible:outline-brand"
+                      value={sleep.timer?.minutes || 0}
+                      onChange={(event) => sleep.setMinutes(Number(event.target.value))}
+                    >
+                      <option value={0}>Off</option>
+                      {SLEEP_MINUTES.map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}
+                    </select>
+                  </label>
+                  {sleep.timer ? <span>Pauses at {new Date(sleep.timer.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span> : null}
+                </div>
+                <p className="mt-2 hidden text-xs text-white/50 sm:block">Keyboard: Space to play or pause · Shift + ← / → to change tracks</p>
 
                 <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2">
                   <BuyTrackButton

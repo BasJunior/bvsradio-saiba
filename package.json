@@ -68,7 +68,8 @@
     "test:beat-crate": "node scripts/producer-catalogue-tests.mjs && node scripts/beat-crate-tests.mjs && NODE_ENV=test node scripts/beat-crate-client-tests.mjs",
     "test:shared-listen-gaps": "NODE_ENV=test node scripts/shared-listen-gap-tests.mjs",
     "test:bvs-trending": "node scripts/bvs-trending-tests.mjs && node scripts/bvs-trending-ui-tests.mjs && node scripts/bvs-trending-rpc-tests.mjs",
-    "test:product-maturity": "node scripts/playback-continuity-tests.mjs && node scripts/discovery-library-continuity-tests.mjs && node scripts/creator-release-maturity-tests.mjs && node scripts/shell-accessibility-tests.mjs"
+    "test:product-maturity": "node scripts/playback-continuity-tests.mjs && node scripts/discovery-library-continuity-tests.mjs && node scripts/creator-release-maturity-tests.mjs && node scripts/shell-accessibility-tests.mjs && npm run test:modern-playback",
+    "test:modern-playback": "NODE_ENV=test node scripts/modern-playback-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",
@@ -82,14 +83,14 @@
     "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.110.2",
     "ai": "^6.0.226",
-    "next": "16.3.0",
-    "nodemailer": "^9.0.3",
+    "next": "16.4.4",
+    "nodemailer": "^10.3.1",
     "paynow": "^2.2.2",
     "pdf-lib": "^1.17.1",
     "qrcode.react": "^4.2.0",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "stripe": "^22.3.1"
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "stripe": "22.3.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.4.2",
@@ -100,8 +101,8 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.3.0",
-    "react-test-renderer": "19.2.4",
+    "eslint-config-next": "16.4.4",
+    "react-test-renderer": "19.3.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
