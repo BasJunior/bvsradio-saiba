@@ -109,6 +109,10 @@ export default function BeatStoreCardLayout() {
           detailsButton.tabIndex = -1;
         }
 
+        card.querySelectorAll<HTMLElement>("span,div,p,button").forEach((node) => {
+          if (normalize(node.textContent) === "standard lease") node.remove();
+        });
+
         const playButton = Array.from(card.querySelectorAll("button")).find((button) => {
           const label = button.textContent?.trim();
           return label === "Play" || label === "Pause" || label === "▶" || label === "Ⅱ";
@@ -274,7 +278,7 @@ export default function BeatStoreCardLayout() {
         });
 
         priceNode.textContent = exactPrice !== null ? `From $${exactPrice.toFixed(2)}` : "From —";
-        priceNode.className = "font-extrabold";
+        priceNode.className = "text-[10px] uppercase tracking-wider";
         Object.assign(priceNode.style, {
           display: "inline-flex",
           alignItems: "center",
@@ -283,7 +287,7 @@ export default function BeatStoreCardLayout() {
           flexShrink: "0",
           textAlign: "right",
           color: "rgb(192 132 252)",
-          fontWeight: "800",
+          fontWeight: "400",
           background: "rgba(216, 180, 254, 0.08)",
           border: "0",
           borderRadius: "0",
