@@ -121,9 +121,9 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
     <div className="bvs-creator-band-inner">
       <div className="bvs-creator-band-header">
         <div>{!kickerBelowTitle && <p className="bvs-creator-kicker">{kicker}</p>}<Heading id={`${id}-heading`} className={headingLevel === 1 ? "bvs-directory-title" : undefined}>{title}</Heading>{kickerBelowTitle && <p className="bvs-creator-kicker mt-3">{kicker}</p>}</div>
-        {allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>}
+        {!autoScroll && (allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>)}
       </div>
-      {items.length ? <>{layout === "rail" ? <div className="bvs-creator-scroll-guide">
+      {items.length ? <>{layout === "rail" ? <div className={`bvs-creator-scroll-guide${autoScroll ? " justify-end" : ""}`}>
         {!autoScroll && <p id={`${id}-hint`}>Swipe or scroll sideways <span aria-hidden="true">→</span></p>}
         <div className="bvs-creator-scroll-controls">
           <button type="button" aria-label={`Scroll ${title.toLowerCase()} left`} aria-controls={`${id}-rail`} disabled={!edges.previous} onClick={() => move(-1)}>←</button>
