@@ -2,7 +2,7 @@
    Remove them for this BeatStore section only. */
 .bvs-catalogue-page.bvs-square-marketplace > #beatstore {
   border-top: 0;
-  padding-top: 0;
+  padding-top: 1rem;
 }
 
 /* The global catalogue rail uses negative margins; align it with the hero h1. */
@@ -13,7 +13,7 @@
   margin-inline: 0;
 }
 
-/* Keep the gap from the hero buttons to the producer heading under 1 cm. */
+/* Match the breathing room above and below the BeatStore buttons. */
 .bvs-catalogue-page #beatstore .bvs-creator-band-inner {
   padding: 0;
   max-width: none;
