@@ -120,7 +120,7 @@ export function primaryAppDestinations(surface: AppSurface | null) {
   return [
     { href: "/", label: "Home", id: "home" as const },
     { href: "/search", label: "Explore", id: "explore" as const },
-    { href: "/catalogue?type=beat#beatstore", label: "Beats", id: "beats" as const },
+    { href: "/catalogue?type=beat", label: "Beats", id: "beats" as const },
     { href: "/library", label: "Library", id: "library" as const },
   ];
 }
