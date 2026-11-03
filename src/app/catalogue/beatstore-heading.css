@@ -1,8 +1,16 @@
-/* BeatStore producer showcase has no outer frame or inset divider. */
+/* The global marketplace section rule adds a divider and 1.5rem top padding.
+   Remove them for this BeatStore section only. */
+.bvs-catalogue-page.bvs-square-marketplace > #beatstore {
+  border-top: 0;
+  padding-top: 0;
+}
+
+/* The global catalogue rail uses negative margins; align it with the hero h1. */
 .bvs-catalogue-page #beatstore > .bvs-creator-band {
   border-top: 0;
   padding-top: 0;
   background: transparent;
+  margin-inline: 0;
 }
 
 /* Keep the gap from the hero buttons to the producer heading under 1 cm. */
