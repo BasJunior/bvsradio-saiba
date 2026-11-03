@@ -16,12 +16,17 @@ const homePage = await readFile(new URL("../src/app/page.tsx", import.meta.url),
 const deferredHome = await readFile(new URL("../src/components/home/DeferredHomeSections.tsx", import.meta.url), "utf8");
 const homeShows = await readFile(new URL("../src/components/home/HomeShowsSection.tsx", import.meta.url), "utf8");
 
-for (const route of [releasesRoute, beatsRoute, playlistsRoute]) {
+for (const route of [releasesRoute, beatsRoute]) {
   assert.ok(
     route.includes("s-maxage=60") && route.includes("stale-while-revalidate=300"),
     "Cache-safe public Home discovery APIs must retain short CDN caching.",
   );
 }
+assert.ok(
+  playlistsRoute.includes('const PUBLIC_CACHE = "private, no-store"') &&
+    playlistsRoute.includes('cache: "no-store"'),
+  "Public playlists must stay fresh so ordering and cover changes are visible immediately.",
+);
 assert.ok(
   artistsRoute.includes("'Cache-Control': 'no-store'"),
   "Artist route must preserve fresh daily fair ordering rather than freezing an old order at the CDN.",
@@ -54,9 +59,8 @@ assert.ok(
 );
 assert.ok(
   releasesLib.includes("next: { revalidate: 60 }") &&
-    beatServer.includes("next: { revalidate: 60 }") &&
-    playlistsRoute.includes("next: { revalidate: 60 }"),
-  "Public Supabase reads used by Home must retain server revalidation.",
+    beatServer.includes("next: { revalidate: 60 }"),
+  "Cached public Supabase reads used by Home must retain server revalidation where freshness is not interaction-critical.",
 );
 assert.ok(
   releasesLib.includes("safeLimit") &&
