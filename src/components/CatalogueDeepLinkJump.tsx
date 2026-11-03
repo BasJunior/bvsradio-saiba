@@ -22,6 +22,14 @@ export default function CatalogueDeepLinkJump() {
     let observer: MutationObserver | null = null
     let frame = 0
     let timeout = 0
+    const topTimers: number[] = []
+
+    const clearTopTimers = () => {
+      while (topTimers.length) {
+        const timer = topTimers.pop()
+        if (timer) window.clearTimeout(timer)
+      }
+    }
 
     const stop = () => {
       if (frame) window.cancelAnimationFrame(frame)
@@ -30,22 +38,41 @@ export default function CatalogueDeepLinkJump() {
       observer = null
     }
 
-    const forceBeatStoreTop = () => {
-      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-      window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }))
-      window.setTimeout(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }), 60)
+    const scrollToBeatStoreHeading = () => {
+      const heading = Array.from(document.querySelectorAll<HTMLElement>('h1')).find(
+        node => node.textContent?.trim().toLowerCase() === 'beatstore',
+      )
+      if (!heading) {
+        window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+        return
+      }
+
+      const headerOffset = 80
+      const top = Math.max(0, heading.getBoundingClientRect().top + window.scrollY - headerOffset)
+      window.scrollTo({ top, left: 0, behavior: 'auto' })
+    }
+
+    const forceBeatStoreHeading = () => {
+      clearTopTimers()
+      scrollToBeatStoreHeading()
+      window.requestAnimationFrame(scrollToBeatStoreHeading)
+      ;[80, 180, 360, 700].forEach(delay => {
+        topTimers.push(window.setTimeout(scrollToBeatStoreHeading, delay))
+      })
     }
 
     const jump = () => {
       stop()
       const targetId = currentHashTarget()
       const params = new URLSearchParams(window.location.search)
+      const producer = params.get('producer') || ''
+      const pack = params.get('pack') || ''
 
-      if (params.get('type') === 'beat' && (!targetId || targetId === 'beatstore')) {
+      if (params.get('type') === 'beat' && !producer && !pack && (!targetId || targetId === 'beatstore')) {
         if (targetId === 'beatstore') {
           window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
         }
-        forceBeatStoreTop()
+        forceBeatStoreHeading()
         return
       }
 
@@ -76,12 +103,13 @@ export default function CatalogueDeepLinkJump() {
 
       const destination = new URL(target.href, window.location.href)
       if (!isBeatStoreRoute(destination)) return
+      if (destination.searchParams.get('producer') || destination.searchParams.get('pack')) return
 
       const current = new URL(window.location.href)
       if (isBeatStoreRoute(current)) {
         event.preventDefault()
         window.history.replaceState({}, '', `${destination.pathname}${destination.search}`)
-        forceBeatStoreTop()
+        forceBeatStoreHeading()
       }
     }
 
@@ -91,6 +119,7 @@ export default function CatalogueDeepLinkJump() {
     window.addEventListener('popstate', jump)
     return () => {
       stop()
+      clearTopTimers()
       document.removeEventListener('click', onDocumentClick, true)
       window.removeEventListener('hashchange', jump)
       window.removeEventListener('popstate', jump)
