@@ -1485,6 +1485,14 @@ function CataloguePageContent() {
                     src={track.artwork}
                     alt={track.title}
                     fill
+                    sizes="(min-width: 1024px) 200px, (min-width: 768px) 30vw, 45vw"
+                    onError={(event) => {
+                      const image = event.currentTarget;
+                      if (image.dataset.fallback) return;
+                      image.dataset.fallback = "true";
+                      image.srcset = "";
+                      image.src = "/branding/bvs-share-logo.png";
+                    }}
                     unoptimized={/^https?:\/\//i.test(track.artwork)}
                     className="object-cover transition duration-300 group-hover:scale-[1.02]"
                   />
