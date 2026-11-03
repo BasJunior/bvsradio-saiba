@@ -303,10 +303,6 @@ function CataloguePageContent() {
     return new URLSearchParams(window.location.search).get("q") || "";
   });
   const [genreFilter, setGenreFilter] = useState("All");
-  type BeatFilterFields = {
-    query: string; producer: string; genre: string; bpm: string;
-    vibe: string; price: string; sort: "newest" | "oldest" | "popular";
-  };
   const defaultBeatFilters: BeatFilterFields = {
     query: "", producer: "", genre: "All", bpm: "", vibe: "", price: "", sort: "newest",
   };
