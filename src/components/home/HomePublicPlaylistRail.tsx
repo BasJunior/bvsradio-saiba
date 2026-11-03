@@ -9,7 +9,7 @@ export default function HomePublicPlaylistRail() {
   const [playlists, setPlaylists] = useState<PublicPlaylist[]>([])
   useEffect(() => {
     const controller = new AbortController()
-    fetch('/api/playlists/public?limit=6', { signal: controller.signal })
+    fetch('/api/playlists/public?limit=24', { signal: controller.signal })
       .then(response => response.ok ? response.json() : Promise.reject())
       .then((payload: { playlists?: PublicPlaylist[] }) => { if (!controller.signal.aborted) setPlaylists(payload.playlists || []) })
       .catch(() => undefined)
