@@ -1285,6 +1285,26 @@ function CataloguePageContent() {
       )}
 
       <section id="browse" className="scroll-mt-24">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[2px] text-brand">
+              {beatsMode ? "Beat licences" : "Music catalogue"}
+            </p>
+            <h2 className="bvs-catalogue-section-title mt-1">
+              {producerFilter
+                ? `Producer catalogue · ${producerLabel.startsWith("@") ? producerLabel : `@${producerLabel}`}`
+                : search
+                  ? `Results for “${search}”`
+                  : beatsMode
+                    ? "Browse beats"
+                    : "Browse music"}
+            </h2>
+          </div>
+          <span className="flex-shrink-0 text-sm text-text-secondary">
+            {filteredTracks.length}{" "}
+            {filteredTracks.length === 1 ? "result" : "results"}
+          </span>
+        </div>
         <div className="mb-5 rounded-none border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-3 shadow-2xl shadow-black/20 md:p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <label className="group relative min-w-0 flex-1">
@@ -1404,26 +1424,6 @@ function CataloguePageContent() {
               View cart · {cart.length}
             </Link>
           </div>
-        </div>
-        <div className="mb-5 flex items-end justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[2px] text-brand">
-              {beatsMode ? "Beat licences" : "Music catalogue"}
-            </p>
-            <h2 className="bvs-catalogue-section-title mt-1">
-              {producerFilter
-                ? `Producer catalogue · ${producerLabel.startsWith("@") ? producerLabel : `@${producerLabel}`}`
-                : search
-                  ? `Results for “${search}”`
-                  : beatsMode
-                    ? "Browse beats"
-                    : "Browse music"}
-            </h2>
-          </div>
-          <span className="flex-shrink-0 text-sm text-text-secondary">
-            {filteredTracks.length}{" "}
-            {filteredTracks.length === 1 ? "result" : "results"}
-          </span>
         </div>
       </section>
 
