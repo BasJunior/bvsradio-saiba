@@ -709,10 +709,11 @@ function CataloguePageContent() {
     }
     const canonical = new Map<string, string>();
     for (const track of scopeTracks) {
-      const genre = (track.genre || "").trim().replace(/\\s+/g, " ");
+      const genre = (track.genre || "").trim().replace(/\s+/g, " ");
       const key = genre.toLocaleLowerCase();
       if (!key || key === "all" || canonical.has(key)) continue;
-      canonical.set(key, genre.replace(/\\b\\p{L}/gu, (letter) => letter.toLocaleUpperCase()).replace(/\\p{L}+/gu, (word) => word[0] + word.slice(1).toLocaleLowerCase()));
+      const display = genre.toLocaleLowerCase().replace(/(^|[\s/-])\p{L}/gu, (match) => match.toLocaleUpperCase());
+      canonical.set(key, display);
     }
     return ["All", ...Array.from(canonical.values()).sort((a, b) => a.localeCompare(b))];
   }, [scopeTracks, typeFilter]);
@@ -866,8 +867,8 @@ function CataloguePageContent() {
         );
       const matchesGenre = genreFilter === "All" ||
         (typeFilter === "beat"
-          ? (track.genre || "").trim().replace(/\\s+/g, " ").toLocaleLowerCase() ===
-            genreFilter.trim().replace(/\\s+/g, " ").toLocaleLowerCase()
+          ? (track.genre || "").trim().replace(/\s+/g, " ").toLocaleLowerCase() ===
+            genreFilter.trim().replace(/\s+/g, " ").toLocaleLowerCase()
           : track.genre === genreFilter);
       const matchesProducer = !producerFilter ||
         producerKeysMatch(producerFilter, track.producerUsername, track.artist);
