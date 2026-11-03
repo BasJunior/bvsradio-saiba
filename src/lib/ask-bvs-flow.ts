@@ -358,14 +358,15 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
   const followUp = /\b(more like|similar to|something similar|slower|faster|more of these|show me more|more please)\b/.test(q)
   const anchorRef = context.previousResults?.[0]
   const anchor = anchorRef ? candidates.find(item => item.id === anchorRef.id && item.kind === anchorRef.kind) : undefined
-  const discovery = /\b(recommend|suggest|find|looking for|show me)\b/.test(q) && /\b(beats?|instrumentals?|tracks?|songs?|music|artists?|producers?|creators?|shows?)\b/.test(q)
+  const preference = /^(?:i (?:like|love|prefer|enjoy)|i m into|im into|play me|i want to hear)\b/.test(q)
+  const discovery = preference || /\b(recommend|suggest|find|looking for|show me)\b/.test(q) && /\b(beats?|instrumentals?|tracks?|songs?|music|artists?|producers?|creators?|shows?)\b/.test(q)
   if (followUp || discovery) {
     const links = [{ label: 'Explore music', href: '/search' }, { label: 'Browse beats', href: '/catalogue?type=beat' }]
     if (followUp && !anchor) return { reply: 'Which track or beat should I use as the starting point? Tell me its title or ask for a few picks first.', objects: [], links, mode: 'flow', reason: 'followup_needs_reference' }
     const slower = /\bslower\b/.test(q), faster = /\bfaster\b/.test(q)
     if ((slower || faster) && !anchor?.bpm) return { reply: `I don’t have a verified BPM for ${anchor?.title || 'that selection'}, so I can’t compare its tempo reliably. Ask for beats at a specific BPM instead.`, objects: [], links, mode: 'flow', reason: 'tempo_unknown' }
     const kind = followUp ? anchor?.kind : /\b(beats?|instrumentals?)\b/.test(q) ? 'beat' : /\b(artists?|producers?|creators?)\b/.test(q) ? 'creator' : /\bshows?\b/.test(q) ? 'show' : 'track'
-    const ignored = new Set('recommend suggest find looking for show me please some a an the bvs music track tracks song songs beat beats instrumental instrumentals something want i to listen hear with and by at around of in that are can you give us to me artist artists producer producers creator creators shows show'.split(' '))
+    const ignored = new Set('like love prefer enjoy m im into play recommend suggest find looking for show me please some a an the bvs music track tracks song songs beat beats instrumental instrumentals something want i to listen hear with and by at around of in that are can you give us to me artist artists producer producers creator creators shows show'.split(' '))
     const terms = q.split(' ').filter(word => !ignored.has(word))
     const bpmMatch = q.match(/\b(\d{2,3})\s*bpm\b/)
     const textTerms = terms.filter(word => word !== 'bpm' && !/^\d+$/.test(word))
@@ -382,7 +383,7 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
       ...item,
       matchReason: followUp ? slower || faster ? `${item.bpm} BPM — ${slower ? 'slower' : 'faster'} than ${anchor!.title} (${anchor!.bpm} BPM)` : anchor?.genre && normalize(item.genre) === normalize(anchor.genre) ? `Same listed genre: ${item.genre}` : `Same listed creator: ${item.artist}` : [item.genre, item.mood, item.bpm ? `${item.bpm} BPM` : undefined].filter(Boolean).join(' · ') || 'Published catalogue selection',
     }))
-    return { reply: picks.length ? `${picks.length === 1 ? 'Try' : 'Start with'} ${picks[0].title}${picks[0].subtitle ? ` by ${picks[0].artist || picks[0].subtitle}` : ''}. ${followUp ? 'These suggestions use listed creator, genre or BPM data—not an audio similarity analysis.' : 'These published selections match the details you asked for; they are not a popularity ranking.'}` : followUp ? 'I couldn’t find another published match with the verified details available. Try a different genre or creator.' : 'I couldn’t find a published match for all those details. Try a genre, producer name or an exact BPM, such as “find beats at 120 BPM”.', objects: picks, links: picks.length ? [] : links, mode: 'flow', reason: 'discovery_picks' }
+    return { reply: picks.length ? `${picks.length === 1 ? 'Try' : 'Start with'} ${picks[0].title}${picks[0].subtitle ? ` by ${picks[0].artist || picks[0].subtitle}` : ''}. ${followUp ? 'Here are more picks based on the listed genre, creator or tempo.' : 'Explore the picks below.'}` : followUp ? 'I couldn’t find another published match with the verified details available. Try a different genre or creator.' : `I couldn’t find published BVS ${kind === 'beat' ? 'beats' : 'music'} matching ${textTerms.length ? '“' + textTerms.join(' ') + '”' : 'those details'}. Would you like to try another genre or explore the latest releases?`, objects: picks, links: picks.length ? [] : links, mode: 'flow', reason: 'discovery_picks' }
   }
   const ranked = candidates.map((candidate) => ({ candidate, score: score(message, candidate) })).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score)
   const best = ranked[0]?.candidate
@@ -460,9 +461,14 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
     const reply =
       best.kind === 'creator'
         ? `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}. Open the profile card below${relatedCreators[0] ? `, or explore another matching creator` : ''}.`
-        : `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}.`
+        : best.kind === 'track' && normalize(best.title) !== q && normalize(best.title).includes(q)
+          ? `I found a song titled “${best.title}” by ${best.artist || 'the listed artist'}. This is a title match for “${message.trim()}”, rather than a confirmed artist match.`
+          : `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}.`
     return { reply, objects, links, mode: 'flow', reason: 'entity_match' }
   }
 
+  if (q.split(' ').length <= 5 && !/\b(how|where|help|submit|upload|account|radio|listen|studio|mix|master|password|login)\b/.test(q)) {
+    return { reply: `I couldn’t find a published BVS catalogue match for “${message.trim()}”. If that’s an artist, I don’t currently have a confirmed listing for them. Try another name or tell me a genre you enjoy.`, objects: [], links: [{ label: 'Search BVS', href: `/search?q=${encodeURIComponent(message.trim())}` }], mode: 'flow', reason: 'catalogue_not_found' }
+  }
   return guide(message)
 }

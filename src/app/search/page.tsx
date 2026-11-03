@@ -91,7 +91,7 @@ export default function SearchPage() {
       if (query.trim()) params.set('q', query.trim())
       if (filter !== 'all') params.set('type', filter)
       if (genre) params.set('genre', genre)
-      if (flowV2Flags.exploreModes && !query.trim() && filter === 'all') params.set('mode', mode)
+      if (flowV2Flags.exploreModes && mode !== 'all') params.set('mode', mode)
       window.history.replaceState(window.history.state, '', `/search${params.size ? `?${params}` : ''}`)
     }, 180)
     return () => window.clearTimeout(timer)
@@ -133,20 +133,36 @@ export default function SearchPage() {
   const activeMode = exploreModes.find(item => item.value === mode) || exploreModes[0]
 
   return <main className="bvs-square-discover mx-auto min-h-[70vh] max-w-7xl px-4 pb-12 pt-8 sm:px-6">
-    <p className="mb-3 text-xs uppercase tracking-[0.25em] text-brand">Discover BVS</p>
-    <h1 className="bvs-directory-title">{mode === 'playlists' ? 'Playlists' : mode === 'fresh' ? 'Releases' : mode === 'beats' ? 'Beats & tools' : activeMode.label}</h1>
-    <p className="mt-3 max-w-2xl text-text-secondary">{activeMode.description}</p>
-    <div className="mt-5 flex flex-wrap gap-3 text-sm"><Link href="/trending" className="text-brand hover:underline">Trending →</Link><Link href="/feed" className="text-brand hover:underline">Community Feed →</Link><Link href="/radio" className="text-brand hover:underline">Live radio →</Link></div>
-    <label className="mt-5 block max-w-3xl"><span className="sr-only">Search BVS</span><input value={query} onChange={event => { setQuery(event.target.value); setResultLimit(40) }} maxLength={160} placeholder="Search for an artist, track, beat or sound" className="w-full rounded-2xl border border-white/15 bg-white/5 px-5 py-4 text-lg outline-none transition placeholder:text-text-secondary focus:border-brand" /></label>
-    {flowV2Flags.exploreModes && !query.trim() ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${mode === item.value ? 'bg-brand text-black' : 'border border-white/10 bg-white/[.03] text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
-    {query.trim() || filter !== 'all' ? <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Filter results">{filters.map(item => <button key={item.value} onClick={() => { setFilter(item.value); setResultLimit(40) }} aria-pressed={filter === item.value} className={`min-h-11 shrink-0 rounded-full px-4 py-2 text-sm ${filter === item.value ? 'bg-brand text-black' : 'bg-white/5 text-text-secondary hover:text-white'}`}>{item.label}</button>)}</div> : null}
+    {/* DISCOVER HEADER — one entry point for listening, people and creator tools. */}
+    <header className="discover-masthead">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[.22em] text-brand">Independent sound · Open to discovery</p>
+        <h1 className="bvs-directory-title mt-4">{mode === 'all' ? 'Find your next favourite.' : activeMode.label}</h1>
+        <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/65 sm:text-base">{activeMode.description}</p>
+      </div>
+      <div className="discover-quick-links" aria-label="Discover shortcuts">
+        <Link href="/radio"><span className="text-brand">●</span> Listen live <span aria-hidden="true">↗</span></Link>
+        <Link href="/catalogue?type=beat#beatstore">Find a beat <span aria-hidden="true">↗</span></Link>
+        <Link href="/library">Your Library <span aria-hidden="true">↗</span></Link>
+      </div>
+    </header>
 
-    {genre || filter !== 'all' ? <div className="mt-3 flex flex-wrap gap-2" aria-label="Active search filters">{genre ? <button type="button" onClick={() => setGenre('')} className="min-h-11 border border-brand/40 px-3 text-sm text-brand">Sound: {genre} ×</button> : null}{filter !== 'all' ? <button type="button" onClick={() => setFilter('all')} className="min-h-11 border border-brand/40 px-3 text-sm text-brand">{headings[filter]} ×</button> : null}</div> : null}
-    {sounds.length ? <details className="bvs-discover-filters mt-4"><summary className="min-h-11 cursor-pointer text-sm text-text-secondary">Filter by sound{genre ? ` · ${genre}` : ''}</summary><div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Browse by sound"><span className="mr-1 text-xs text-text-secondary">Browse by sound</span><button type="button" aria-pressed={!genre} onClick={() => setGenre('')} className={`min-h-10 rounded-full border px-3 text-xs ${!genre ? 'border-brand/50 text-brand' : 'border-white/15 text-text-secondary'}`}>All sounds</button>{sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(sound.key); setRound(0) }} className={`min-h-10 rounded-full border px-3 text-xs ${genre === sound.key ? 'border-brand/50 bg-brand/10 text-brand' : 'border-white/15 text-text-secondary hover:text-white'}`}>{sound.label}</button>)}</div></details> : null}
-    {genre && !sounds.some(sound => sound.key === genre) ? <button type="button" onClick={() => setGenre('')} className="mt-3 min-h-10 text-sm text-brand">Clear sound filter: {genre}</button> : null}
+    {/* SEARCH & FILTERS — category and sound combine with the active browsing mode. */}
+    <section className="discover-search-panel" aria-label="Search and browse BVS">
+      <form role="search" onSubmit={event => { event.preventDefault(); document.getElementById('discover-results')?.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }) }}>
+        <label className="min-w-0 flex-1"><span className="sr-only">Search BVS</span><input type="search" value={query} onChange={event => { setQuery(event.target.value); setResultLimit(40) }} maxLength={160} placeholder="Search songs, artists, beats and more" /></label>
+        <button type="submit" className="discover-search-submit">Search <span aria-hidden="true">↗</span></button>
+      </form>
+      <div className="discover-filter-row">
+        <label><span>Category</span><select value={filter} onChange={event => { setFilter(event.target.value as 'all' | SearchKind); setResultLimit(40) }}>{filters.filter(item => item.value === 'all' || mode === 'all' || activeMode.kinds.includes(item.value as SearchKind)).map(item => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
+        <label><span>Sound</span><select value={genre} onChange={event => { setGenre(event.target.value); setRound(0); setResultLimit(40) }}><option value="">All sounds</option>{genre && !sounds.some(sound => sound.key === genre) ? <option value={genre}>{genre}</option> : null}{sounds.map(sound => <option key={sound.key} value={sound.key}>{sound.label}</option>)}</select></label>
+        <div className="discover-filter-summary"><span role="status">{loaded ? `${search.total} ${search.total === 1 ? 'result' : 'results'}${unavailable ? ' · partial results' : ''}` : 'Finding your next sound…'}</span>{query || genre || filter !== 'all' || mode !== 'all' ? <button type="button" onClick={() => { setQuery(''); setGenre(''); setFilter('all'); setMode('all'); setResultLimit(40) }}>Clear filters ×</button> : <span>Listen. Save. Follow.</span>}</div>
+      </div>
+    </section>
+    {flowV2Flags.exploreModes ? <nav className="discover-mode-nav" aria-label="Explore modes">{exploreModes.map(item => <button key={item.value} type="button" onClick={() => { setMode(item.value); setFilter('all'); setResultLimit(40); trackEvent('explore_mode_change', { mode: item.value }) }} aria-pressed={mode === item.value}>{item.label}</button>)}</nav> : null}
+    <div id="discover-results" className="scroll-mt-32" />
     {unavailable ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/15 p-3 text-sm text-text-secondary"><span>Search is incomplete because some content could not be loaded. Retry to search everything.</span><button type="button" onClick={() => { search.retry() }} className="min-h-10 rounded-full border border-white/20 px-4 text-white">Retry loading</button></div> : null}
-    {discoveryHome ? <TrendingBoard preview /> : null}
-    {discoveryHome && shelves.length ? <DiscoverShelves shelves={shelves} round={round} onMore={() => { setRound(value => value + 1); trackEvent('explore_rail_open', { genre: genre || 'all' }) }} onBrowse={browseShelf} onDetails={openResult} /> : null}
+    {discoveryHome && shelves.length ? <DiscoverShelves trending={<TrendingBoard preview discover />} shelves={shelves} round={round} onMore={() => { setRound(value => value + 1); trackEvent('explore_rail_open', { genre: genre || 'all' }) }} onBrowse={browseShelf} onDetails={openResult} /> : null}
     {!discoveryHome && (!query.trim() && filter === 'all' ? <section className="mt-10" aria-label="Explore published BVS content"><h2 className="text-3xl font-semibold">{flowV2Flags.exploreModes ? activeMode.label : 'Discover now'}</h2><p className="mt-2 text-text-secondary">{flowV2Flags.exploreModes ? activeMode.description : 'Published and editorially visible BVS content.'}</p></section> : <h2 className="mt-10 text-3xl font-semibold">{query.trim() ? `Results for “${query.trim()}”` : headings[filter as SearchKind]}</h2>)}
     <div className="mt-7 space-y-12">
       {!discoveryHome && grouped.map(group => <section key={group.kind} aria-labelledby={`search-${group.kind}`}>
@@ -155,10 +171,10 @@ export default function SearchPage() {
           {filter === 'all' && (counts[group.kind] || 0) > 8 ? <button onClick={() => { setFilter(group.kind); setResultLimit(40) }} className="min-h-11 text-sm text-brand">View all →</button> : null}
         </div>
         <div className="grid gap-3 md:grid-cols-2">
-          {group.items.map(item => <article key={item.id} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-3 transition hover:border-brand/35">
-            {toDiscoveryTrack(item) ? <button type="button" onClick={() => playResult(item)} aria-label={`${player.current?.id === toDiscoveryTrack(item)?.id && player.isPlaying ? 'Pause' : item.kind === 'beat' ? 'Preview' : 'Play'} ${item.title}`} className="relative shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
-<span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/25 text-white">{player.current?.id === toDiscoveryTrack(item)?.id && player.isPlaying ? 'Ⅱ' : '▶'}</span></button> : item.detail ? <button type="button" onClick={() => openResult(item)} aria-label={`Details for ${item.title}`} className="shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
-</button> : <Link href={item.href} aria-label={`Open ${item.title}`} className="shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image)} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
+          {group.items.map(item => <article key={item.id} className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[.03] p-3 transition hover:border-brand/35">
+            {toDiscoveryTrack(item) ? <button type="button" onClick={() => playResult(item)} aria-label={`${player.current?.id === toDiscoveryTrack(item)?.id && player.isPlaying ? 'Pause' : item.kind === 'beat' ? 'Preview' : 'Play'} ${item.title}`} className="relative shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image) || item.image.startsWith('/api/media/')} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
+<span aria-hidden="true" className={`absolute inset-0 grid place-items-center bg-black/25 text-white transition-opacity ${player.current?.id === toDiscoveryTrack(item)?.id && player.isPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100'}`}>{player.current?.id === toDiscoveryTrack(item)?.id && player.isPlaying ? 'Ⅱ' : '▶'}</span></button> : item.detail ? <button type="button" onClick={() => openResult(item)} aria-label={`Details for ${item.title}`} className="shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image) || item.image.startsWith('/api/media/')} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
+</button> : <Link href={item.href} aria-label={`Open ${item.title}`} className="shrink-0">            <span className="relative block h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-white/5">{item.image ? <Image src={item.image} alt="" fill unoptimized={/^https?:\/\//.test(item.image) || item.image.startsWith('/api/media/')} className="object-cover" /> : <span className="absolute inset-0 grid place-items-center text-xs font-bold text-brand">BVS</span>}</span>
 </Link>}
             {item.detail ? (
               <button type="button" onClick={() => openResult(item)} className="min-w-0 flex-1 rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/70">

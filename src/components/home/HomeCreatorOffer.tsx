@@ -1,9 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useOfferRotation } from "./useOfferRotation";
 import Link from "next/link";
-
-const ROTATION_INTERVAL_MS = 10_000;
 
 const offers = [
   {
@@ -30,18 +28,13 @@ const offers = [
 ] as const;
 
 export default function HomeCreatorOffer() {
-  const [activeIndex, setActiveIndex] = useState(0);
+  const rotation = useOfferRotation(offers.length);
+  const activeIndex = rotation.index;
   const offer = offers[activeIndex];
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % offers.length);
-    }, ROTATION_INTERVAL_MS);
-    return () => window.clearInterval(timer);
-  }, []);
 
   return (
     <section
+      {...rotation.sectionProps}
       aria-labelledby="creator-offer-title"
       data-home-accent="studio"
       className="h-full rounded-2xl border border-purple-300/30 bg-gradient-to-br from-purple-200/[.09] via-white/[.035] to-transparent p-5 shadow-[0_18px_50px_rgba(0,0,0,.18)] sm:p-6"
@@ -64,10 +57,11 @@ export default function HomeCreatorOffer() {
             type="button"
             aria-label={`Show ${item.title}`}
             aria-current={index === activeIndex ? "true" : undefined}
-            onClick={() => setActiveIndex(index)}
-            className={`h-2.5 rounded-full transition-all ${index === activeIndex ? "w-8 bg-purple-200" : "w-2.5 bg-white/30 hover:bg-white/60"}`}
-          />
+            onClick={() => rotation.select(index)}
+            className="grid h-11 w-9 place-items-center"
+          ><span aria-hidden="true" className={`h-2 rounded-full ${index === activeIndex ? "w-7 bg-purple-200" : "w-2 bg-white/30"}`} /></button>
         ))}
+        <button type="button" onClick={rotation.toggle} aria-label={rotation.paused ? "Resume creator offers" : "Pause creator offers"} aria-pressed={rotation.paused} className="ml-auto min-h-11 px-2 text-xs text-text-secondary">{rotation.paused ? "Resume" : "Pause"}</button>
         <span className="ml-1 text-xs text-text-secondary">Offer {activeIndex + 1} of {offers.length}</span>
       </div>
     </section>

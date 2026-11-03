@@ -14,7 +14,7 @@ export default function PublishedAlbumsShelf() {
       .catch(() => undefined)
     return () => controller.abort()
   }, [])
-  return <CreatorPortraitRail title="Releases" kicker="Albums, EPs and new arrivals" tone="charcoal" allHref="/search?mode=fresh" items={releases.map(release => ({
+  return <CreatorPortraitRail autoScroll retainBrowseLink title="Releases" kicker="Albums, EPs and new arrivals" tone="charcoal" allHref="/search?mode=fresh" items={releases.map(release => ({
     id: release.id, name: release.title, image: release.cover, href: `/album/${release.id}`, detail: `${release.artist} · ${release.releaseType} · ${release.tracks.length} tracks`,
   }))} />
 }

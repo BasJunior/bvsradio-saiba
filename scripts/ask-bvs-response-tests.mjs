@@ -37,3 +37,7 @@ result=await answer('more like this',{previousResults:[{id:'forged',kind:'beat',
 result=await answer('recommend purple underwater beats');assert.equal(result.objects.length,0);assert(result.reply.includes('couldn’t find'));
 result=await answer('recommend shows');assert.equal(result.objects[0].title,'Studio Stories');
 console.log('Ask BVS passed: factual discovery filters, producer matching, BPM comparisons, explained follow-ups, no repeats, unknown tempo and untrusted references.');
+
+result=await answer('i like country music');assert.equal(result.objects.length,0);assert(result.reply.includes('country'));assert.equal(result.reason,'discovery_picks');
+result=await answer('i like jazz music');assert.equal(result.objects[0].id,'track');
+result=await answer('lady gaga');assert.equal(result.reason,'catalogue_not_found');assert(result.reply.includes('lady gaga'));

@@ -17,12 +17,14 @@ type Playlist = {
 export default function WebPlaylists({ embedded = false }: { embedded?: boolean }) {
   const [token, setToken] = useState('')
   const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState('saved')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [isPublic, setIsPublic] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [loaded, setLoaded] = useState(() => !isSupabaseConfigured())
   const [error, setError] = useState('')
 
   const load = useCallback(async (accessToken: string) => {
@@ -42,7 +44,7 @@ export default function WebPlaylists({ embedded = false }: { embedded?: boolean 
   }, [])
 
   useEffect(() => {
-    if (!isSupabaseConfigured()) return setLoaded(true)
+    if (!isSupabaseConfigured()) return
     let active = true
     const supabase = createClient()
     supabase.auth.getSession().then(({ data }) => {
@@ -91,6 +93,9 @@ export default function WebPlaylists({ embedded = false }: { embedded?: boolean 
     setBusy(false)
   }
 
+  const visiblePlaylists = playlists.filter(playlist => `${playlist.title} ${playlist.description || ''}`.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
+  if (sort === 'title') visiblePlaylists.sort((a, b) => a.title.localeCompare(b.title));
+
   const content = <div className={embedded ? '' : 'rounded-[1.7rem] border border-white/10 bg-white/[.025] p-5 sm:p-6'}>
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
@@ -101,6 +106,8 @@ export default function WebPlaylists({ embedded = false }: { embedded?: boolean 
       {token ? <button type="button" onClick={() => setShowCreate(value => !value)} className="min-h-10 rounded-full border border-brand/30 px-4 text-sm font-semibold text-brand hover:bg-brand/10">{showCreate ? 'Cancel' : '+ New playlist'}</button> : null}
     </div>
 
+    {playlists.length ? <div className="library-collection-toolbar mt-5"><label><span className="sr-only">Search your playlists</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search your playlists" maxLength={160} /></label><label><span className="sr-only">Sort playlists</span><select aria-label="Sort playlists" value={sort} onChange={event => setSort(event.target.value)}><option value="saved">Saved order</option><option value="title">Title A–Z</option></select></label><span role="status" className="text-xs text-text-secondary">{visiblePlaylists.length} playlists</span></div> : null}
+    {playlists.length > 0 && !visiblePlaylists.length ? <p className="mt-5 text-sm text-text-secondary">No playlists match. <button type="button" onClick={() => setQuery('')} className="min-h-11 text-brand">Clear search ×</button></p> : null}
     {!loaded ? <p className="mt-5 text-sm text-text-secondary">Loading playlists…</p> : null}
     {loaded && !token ? <div className="mt-5 rounded-2xl border border-dashed border-white/15 p-5"><p className="text-sm text-text-secondary">Sign in to create playlists that stay with your BVS account.</p><Link href="/auth/login?next=%2Flibrary%3Fsection%3Dplaylists" className="mt-3 inline-flex rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">Sign in</Link></div> : null}
 
@@ -114,7 +121,7 @@ export default function WebPlaylists({ embedded = false }: { embedded?: boolean 
     {error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
 
     {token && playlists.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">
-      {playlists.map(playlist => {
+      {visiblePlaylists.map(playlist => {
         const itemCount = playlist.itemCount ?? playlist.trackCount ?? 0
         return <Link key={playlist.id} href={`/playlist/${playlist.id}`} className="rounded-2xl border border-white/10 bg-black/10 p-4 transition hover:border-brand/30 hover:bg-white/[.03]"><div className="flex items-center justify-between gap-3"><h3 className="truncate font-semibold">{playlist.title}</h3><span className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-text-secondary">{playlist.is_public ? 'Public' : 'Private'}</span></div>{playlist.description ? <p className="mt-2 line-clamp-2 text-sm text-text-secondary">{playlist.description}</p> : null}<div className="mt-3 flex items-center justify-between text-sm"><span className="text-text-secondary">{itemCount} item{itemCount === 1 ? '' : 's'}</span><span className="font-semibold text-brand">Open →</span></div></Link>
       })}

@@ -38,7 +38,7 @@ export default function HomePublicPlaylistRail() {
     .sort((a, b) => playlistPriority(a.playlist) - playlistPriority(b.playlist) || a.index - b.index)
     .map(({ playlist }) => playlist), [playlists])
 
-  return <CreatorPortraitRail data-home-accent="feed" title="Playlists" kicker="Made by BVS listeners and creators" tone="charcoal" allHref="/search?mode=playlists" items={orderedPlaylists.map(playlist => ({
+  return <CreatorPortraitRail autoScroll retainBrowseLink data-home-accent="feed" title="Playlists" kicker="Made by BVS listeners and creators" tone="charcoal" allHref="/search?mode=playlists" items={orderedPlaylists.map(playlist => ({
     id: playlist.id, name: playlist.title, image: playlist.coverUrl || '/branding/bvs-share-logo.png', href: `/playlist/${playlist.id}`, detail: `${playlist.creator} · ${playlist.trackCount} ${playlist.trackCount === 1 ? 'track' : 'tracks'}`,
   }))} />
 }

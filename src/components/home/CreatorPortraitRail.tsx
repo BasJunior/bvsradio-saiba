@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export type CreatorPortrait = { id: string; name: string; image: string; href: string; detail: string; accent?: string };
 
-export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, headingLevel = 2, accent = "green", kicker = "The people behind the sound", kickerBelowTitle = false, autoScroll = false, children, layout = "rail", "data-home-accent": homeAccent }: {
+export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, headingLevel = 2, accent = "green", kicker = "The people behind the sound", kickerBelowTitle = false, autoScroll = false, retainBrowseLink = false, children, layout = "rail", "data-home-accent": homeAccent }: {
   title: string;
   tone: "charcoal" | "ink";
   items: CreatorPortrait[];
@@ -20,6 +20,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
   kicker?: string;
   kickerBelowTitle?: boolean;
   autoScroll?: boolean;
+  retainBrowseLink?: boolean;
   children?: ReactNode;
   layout?: "rail" | "grid";
   "data-home-accent"?: string;
@@ -28,6 +29,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
   const Heading = headingLevel === 1 ? "h1" : "h2";
   const railRef = useRef<HTMLDivElement>(null);
   const manualPauseUntil = useRef(0);
+  const [paused, setPaused] = useState(false);
   const [edges, setEdges] = useState({ previous: false, next: false });
   useEffect(() => {
     const rail = railRef.current;
@@ -42,11 +44,14 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
 
 
   // Opt-in only: the BeatStore rail moves gently, seamlessly and indefinitely.
-  // The homepage rails retain their existing manual-only behaviour.
+  // Home portrait rails opt in; grids and custom commerce cards stay manual.
   useEffect(() => {
     const rail = railRef.current;
     if (!rail || !autoScroll || layout !== "rail" || children || !items.length) return;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let visible = false;
+    const visibility = new IntersectionObserver(entries => { visible = entries.some(entry => entry.isIntersecting); });
+    visibility.observe(rail);
     let pointerOver = false;
     let focused = false;
     let touching = false;
@@ -78,7 +83,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
       const dt = last ? Math.min(now - last, 48) : 0;
       last = now;
       if (
-        !reducedMotion.matches && !document.hidden &&
+        !paused && visible && !reducedMotion.matches && !document.hidden &&
         !pointerOver && !focused && !touching &&
         now >= manualPauseUntil.current
       ) {
@@ -97,6 +102,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
     frame = window.requestAnimationFrame(tick);
     return () => {
       window.cancelAnimationFrame(frame);
+      visibility.disconnect();
       rail.removeEventListener("pointerenter", onEnter);
       rail.removeEventListener("pointerleave", onLeave);
       rail.removeEventListener("focusin", onFocusIn);
@@ -106,7 +112,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
       rail.removeEventListener("wheel", onManualScroll);
       rail.removeEventListener("pointerdown", onManualScroll);
     };
-  }, [autoScroll, children, items.length, layout]);
+  }, [autoScroll, children, items.length, layout, paused]);
 
   function move(direction: number) {
     const rail = railRef.current;
@@ -121,11 +127,12 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
     <div className="bvs-creator-band-inner">
       <div className="bvs-creator-band-header">
         <div>{!kickerBelowTitle && <p className="bvs-creator-kicker">{kicker}</p>}<Heading id={`${id}-heading`} className={headingLevel === 1 ? "bvs-directory-title" : undefined}>{title}</Heading>{kickerBelowTitle && <p className="bvs-creator-kicker mt-3">{kicker}</p>}</div>
-        {!autoScroll && (allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>)}
+        {(!autoScroll || retainBrowseLink) && (allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>)}
       </div>
       {items.length ? <>{layout === "rail" ? <div className={`bvs-creator-scroll-guide${autoScroll ? " justify-end" : ""}`}>
         {!autoScroll && <p id={`${id}-hint`}>Swipe or scroll sideways <span aria-hidden="true">→</span></p>}
         <div className="bvs-creator-scroll-controls">
+          {autoScroll ? <button type="button" onClick={() => setPaused(value => !value)} aria-pressed={paused} aria-label={`${paused ? "Resume" : "Pause"} ${title.toLowerCase()} scrolling`}>{paused ? "▶" : "Ⅱ"}</button> : null}
           <button type="button" aria-label={`Scroll ${title.toLowerCase()} left`} aria-controls={`${id}-rail`} disabled={!edges.previous} onClick={() => move(-1)}>←</button>
           <button type="button" aria-label={`Scroll ${title.toLowerCase()} right`} aria-controls={`${id}-rail`} disabled={!edges.next} onClick={() => move(1)}>→</button>
         </div>

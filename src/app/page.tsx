@@ -1,3 +1,5 @@
+import HomeFeaturedOffer from "@/components/home/HomeFeaturedOffer";
+import HomeCreatorOffer from "@/components/home/HomeCreatorOffer";
 import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -23,9 +25,9 @@ export default function HomePage() {
       <HomeSignupPrompt />
 
       {/* HERO / LISTENING AREA — max-w controls width; px, pt and pb control outer spacing. */}
-      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:pt-10">
+      <section className="relative mx-auto max-w-7xl px-4 pb-4 pt-8 sm:px-6 sm:pb-5 sm:pt-12 lg:pt-10">
         {/* Desktop columns: adjust lg:grid-cols widths here; gap-x / gap-y set card spacing. */}
-        <div className="grid gap-x-8 gap-y-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(24rem,.85fr)] lg:items-start">
+        <div className="grid gap-x-8 gap-y-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(24rem,.85fr)] lg:items-stretch">
           {/* INTRO — brand label, main heading, description and navigation buttons are edited here. */}
           <div className="min-w-0 lg:pt-3">
             <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[.2em] text-white/70 sm:text-xs">
@@ -55,6 +57,8 @@ export default function HomePage() {
             <HomeTopFive />
           </div>
 
+          {/* LEFT COLUMN — video and offers fill the space beside the taller listening room. */}
+          <div className="bvs-home-media flex min-w-0 flex-col gap-5">
           {/* BVS ORIGINAL VIDEO — change src to replace the clip in public/media.
               aspect-video sets the frame ratio; object-cover crops the clip to fill it.
               The text below the video element is its overlaid label. */}
@@ -75,7 +79,25 @@ export default function HomePage() {
                 BVS Original
               </div>
             </div>
+            {/* RESTORED VIDEO CONTEXT — edit this introduction and the two links here. */}
+            <div className="border-t border-white/15 p-5 sm:p-6">
+              <h2 className="text-xl font-semibold">BVS for artists</h2>
+              <p className="mt-2 text-sm leading-relaxed text-text-secondary">A quick look inside BVS for artists, creators and the people building what comes next.</p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Link href="/creator/studio" className="inline-flex min-h-11 items-center border border-purple-200/30 px-4 py-2 text-sm font-semibold text-purple-200">Open Creator Studio →</Link>
+                <Link href="/search" className="inline-flex min-h-11 items-center px-2 py-2 text-sm text-brand">Discover music →</Link>
+              </div>
+            </div>
           </article>
+
+            {/* RESTORED OFFERS — stacked below the video to balance the player column.
+                Audio packages: home/HomeFeaturedOffer.tsx; creator messages: home/HomeCreatorOffer.tsx.
+                Both pause on hover/focus and have manual selection and pause controls. */}
+            <div id="home-offers" className="grid flex-1 scroll-mt-28 gap-4">
+              <HomeFeaturedOffer />
+              <HomeCreatorOffer />
+            </div>
+          </div>
 
           {/* LISTENING ROOM — playback controls and track information: components/HomeListenPanel.tsx.
               Keep id="listen" aligned with the Listen live button's href="#listen" above. */}

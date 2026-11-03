@@ -7,7 +7,7 @@ import SongShareButton from '@/components/SongShareButton'
 import { useStationPlayer } from '@/components/StationPlayer'
 import { rankMovement, type TrendingBoard as Board, type TrendingWindow } from '@/lib/trending'
 
-export default function TrendingBoard({ surface, preview = false }: { surface?: 'ios' | 'android'; preview?: boolean }) {
+export default function TrendingBoard({ surface, preview = false, discover = false }: { surface?: 'ios' | 'android'; preview?: boolean; discover?: boolean }) {
   const [window, setWindow] = useState<TrendingWindow>(preview ? 'week' : 'now')
   const [result, setResult] = useState<{ key: string; board: Board | null; error: boolean; receivedAt: number } | null>(null)
   const [retry, setRetry] = useState(0)
@@ -26,9 +26,9 @@ export default function TrendingBoard({ surface, preview = false }: { surface?: 
   const error = currentResult?.error
   const entries = board?.entries.slice(0, preview ? 5 : 20) || []
   const stale = board?.generatedAt && (currentResult?.receivedAt || 0) - Date.parse(board.generatedAt) > 3 * 60 * 60 * 1000
-  return <section className="mt-8 border-t border-white/15 pt-6" aria-label="BVS Trending">
+  return <section className={`mt-8 border-t border-white/15 pt-6 ${discover ? 'discover-momentum' : ''}`} aria-label="BVS Trending">
     <div className="flex flex-wrap items-end justify-between gap-3">
-      <div><p className="text-xs uppercase tracking-[.2em] text-brand">BVS Trending</p><h2 className="mt-2 text-2xl font-semibold">Hear what’s picking up.</h2><p className="mt-2 max-w-xl text-sm text-text-secondary">The songs listeners are discovering, saving and coming back to.</p></div>
+      <div><p className="text-xs uppercase tracking-[.2em] text-brand">BVS Trending</p><h2 className="mt-2 text-2xl font-semibold">{discover ? "What’s moving." : "Hear what’s picking up."}</h2><p className="mt-2 max-w-xl text-sm text-text-secondary">The songs listeners are discovering, saving and coming back to.</p></div>
       {preview ? <Link href={path} className="inline-flex min-h-11 items-center text-sm text-brand">Full Top 20 →</Link> : null}
     </div>
     <div className="mt-5 flex gap-2" aria-label="Trending period">{([['now', 'Trending Now'], ['week', 'This Week']] as const).map(([key, label]) => <button type="button" key={key} aria-pressed={window === key} onClick={() => setWindow(key)} className={`min-h-11 border px-4 text-sm ${window === key ? 'border-brand bg-brand/10 text-brand' : 'border-white/15 text-text-secondary'}`}>{label}</button>)}</div>
@@ -41,14 +41,14 @@ export default function TrendingBoard({ surface, preview = false }: { surface?: 
       return <li key={entry.id} className={`py-4 ${active ? 'bg-brand/[.06]' : ''}`}>
         <div className="flex items-center gap-3 sm:gap-5">
           <div className="w-10 shrink-0 text-center"><span className="block text-xl font-semibold tabular-nums">{entry.rank}</span><span aria-label={movement === '—' ? 'No rank change' : movement === 'NEW' ? 'New entry' : movement.startsWith('↑') ? `Up ${movement.slice(1)} places` : `Down ${movement.slice(1)} places`} className={`text-[10px] font-semibold ${movement.startsWith('↓') ? 'text-text-secondary' : 'text-brand'}`}>{movement}</span></div>
-          <button type="button" aria-label={`${active && player.isPlaying ? 'Pause' : 'Play'} ${entry.title}`} onClick={() => active ? player.toggle() : player.playNow({ id: entry.id, title: entry.title, artist: entry.artist, src: entry.src, artwork: entry.artwork, project: 'BVS Trending' }, { from: 'BVS Trending', related: board!.entries.map(row => ({ id: row.id, title: row.title, artist: row.artist, src: row.src, artwork: row.artwork, project: 'BVS Trending' })) })} className="relative h-16 w-16 shrink-0 overflow-hidden bg-white/5">
-            {entry.artwork ? <Image src={entry.artwork} alt="" fill unoptimized className="object-cover" /> : null}<span className="absolute inset-0 grid place-items-center bg-black/30 text-white" aria-hidden="true">{active && player.isPlaying ? 'Ⅱ' : '▶'}</span>
+          <button type="button" aria-label={`${active && player.isPlaying ? 'Pause' : 'Play'} ${entry.title}`} onClick={() => active ? player.toggle() : player.playNow({ id: entry.id, title: entry.title, artist: entry.artist, src: entry.src, artwork: entry.artwork, project: 'BVS Trending' }, { from: 'BVS Trending', related: board!.entries.map(row => ({ id: row.id, title: row.title, artist: row.artist, src: row.src, artwork: row.artwork, project: 'BVS Trending' })) })} className="group relative h-16 w-16 shrink-0 overflow-hidden bg-white/5">
+            {entry.artwork ? <Image src={entry.artwork} alt="" fill unoptimized className="object-cover" /> : null}<span className={`absolute inset-0 grid place-items-center bg-black/30 text-white ${discover && !(active && player.isPlaying) ? 'opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100' : ''}`} aria-hidden="true">{active && player.isPlaying ? 'Ⅱ' : '▶'}</span>
           </button>
           <div className="min-w-0 flex-1"><Link href={songPath} className="block truncate font-semibold hover:text-brand">{entry.title}</Link><p className="truncate text-sm text-text-secondary">{entry.artist}</p><p className="mt-1 hidden text-xs text-text-secondary sm:block">{entry.reason}</p></div>
         </div>
         <div className="ml-[3.25rem] mt-3 flex flex-wrap items-center gap-3 sm:ml-[4rem]">
           <LibraryAction rectangular compact analyticsSource="trending" item={{ id: entry.id, title: entry.title, subtitle: entry.artist, image: entry.artwork, kind: 'track', href: songPath }} />
-          <SongShareButton id={entry.id} title={entry.title} artist={entry.artist} image={entry.artwork} />
+          {!discover ? <SongShareButton id={entry.id} title={entry.title} artist={entry.artist} image={entry.artwork} /> : null}
         </div>
       </li>
     })}</ol>}

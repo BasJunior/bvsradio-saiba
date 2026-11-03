@@ -65,7 +65,7 @@ const topics: Topic[] = [
   {
     words: ["premium", "membership", "plan"],
     answer: {
-      reply: "BVS Premium is the creator membership area. Open the current Premium page for the plans and benefits available now.",
+      reply: "Ask BVS Premium requires an active paid membership, starting with the listener plan. Use the Premium button in this conversation to check access or view the offer. Premium Instant covers an individual release and does not include this access.",
       links: [{ label: "BVS Premium", href: "/premium" }],
     },
   },
@@ -106,7 +106,7 @@ const defaultAnswer: Omit<Answer, "mode"> = {
 
 function guideAnswer(message: string): Answer {
   const normalized = message.toLowerCase();
-  const match = topics.find(({ words }) => words.some((word) => normalized.includes(word)));
+  const match = topics.find(({ words }) => words.some((word) => ` ${normalized.replace(/[^a-z0-9]+/g, " ")} `.includes(` ${word} `)));
   const answer = match?.answer ?? defaultAnswer;
   return { ...answer, links: answer.links.slice(0, 2), mode: "guide" };
 }
@@ -147,9 +147,24 @@ export async function POST(request: Request) {
 
   if (!message) return NextResponse.json({ error: "Message is required" }, { status: 400 });
 
-  // Navigation questions can be answered directly without loading the entire catalogue.
-  if (/^(how|where|open|can i|help me)\b/i.test(message) && /lyrics pad|playlist|library|creator studio|submit|upload|sign in|sign up|password|contact|premium|mixing|mastering/i.test(message)) {
-    return NextResponse.json(guideAnswer(message), { headers: { "Cache-Control": "no-store" } });
+  // Resolve help and product questions before catalogue scoring: ordinary words
+  // such as “what” must not turn a capabilities question into a song match.
+  const respond = (answer: Answer) => NextResponse.json(answer, { headers: { "Cache-Control": "no-store" } });
+  if (/^(?:hi|hello|hey|thanks|thank you)[!.?\s]*$/i.test(message)) return respond({
+    reply: /thank/i.test(message) ? "You’re welcome. What would you like to explore next?" : "Hi—tell me what you’re looking for. I can find BVS music and beats, suggest shows, or help you use the platform.",
+    links: [], mode: "guide",
+  });
+  if (/\b(?:what can you do|what do you do|how can you help|what is ask bvs|who are you)\b/i.test(message)) return respond({
+    reply: "I can find published BVS songs, beats, artists and shows, explain producer credits, and guide you through saving music or submitting a release. Try ‘find dark hip hop beats’, then ‘something slower’. Premium adds creative writing and production help when available.",
+    links: [{ label: "Explore BVS", href: "/search" }], mode: "guide",
+  });
+  if (/\b(?:save|like|collect|bookmark)\b.*\b(?:song|track|music|beat)\b|\b(?:song|track|music|beat)\b.*\b(?:save|like|collect|bookmark)\b/i.test(message) && /^(?:how|where|can i|help)/i.test(message)) return respond({
+    reply: "Use the heart or Save control on a song or beat to keep it in your Library. Sign in to keep your collection with your account, then open Library to return to it.",
+    links: [{ label: "Open Library", href: "/library" }], mode: "guide",
+  });
+  if (/\b(?:premium|membership)\b/i.test(message)) return respond(guideAnswer("premium"));
+  if (/^(how|where|open|can i|help me)\b/i.test(message) && /lyrics pad|playlist|library|creator studio|submit|upload|sign in|sign up|password|contact|mixing|mastering/i.test(message)) {
+    return respond(guideAnswer(message));
   }
 
   try {

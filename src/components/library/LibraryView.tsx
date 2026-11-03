@@ -57,6 +57,8 @@ const sectionMeta: Array<{ id: ActiveSection; label: string; copy: string }> = [
   { id: "licensed-beats", label: "Licensed Beats", copy: "Beat licences you have purchased through BVS." },
 ];
 
+const emptyItems: DiscoveryItem[] = [];
+
 const primarySections: ActiveSection[] = ["all", "liked", "playlists", "downloads"];
 const secondarySections: ActiveSection[] = ["following", "recent"];
 const creatorSections: ActiveSection[] = ["saved-beats", "licensed-beats"];
@@ -102,6 +104,9 @@ function AccountLibraryView({ session }: { session: Session | null }) {
   const selected = initialSection(location);
   const alive = useRef(true);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const [collectionQuery, setCollectionQuery] = useState("");
+  const [collectionSort, setCollectionSort] = useState("saved");
+  const [collectionLayout, setCollectionLayout] = useState<"list" | "grid">("list");
   const [openingBeat, setOpeningBeat] = useState("");
   const [actionError, setOwnedError] = useState("");
   const { state, syncNow } = useLibrarySync();
@@ -138,6 +143,7 @@ function AccountLibraryView({ session }: { session: Session | null }) {
   const savedBeats = useMemo(() => favourites.filter(item => item.kind === "beat"), [favourites]);
 
   const changeSection = (section: ActiveSection) => {
+    setCollectionQuery(""); setCollectionSort("saved");
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("section", section);
@@ -181,15 +187,15 @@ function AccountLibraryView({ session }: { session: Session | null }) {
 
   const renderItems = (items: DiscoveryItem[], kind: "liked" | "following" | "recent" | "saved-beats") => {
     if (!items.length) return null;
-    return <div className="space-y-3">
+    return <div className={webOnly ? `library-item-list library-item-list--${collectionLayout}` : "space-y-3"}>
       {items.map(item => {
         const trackId = rawTrackId(item);
         const track = playback.byId.get(item.id) || playback.byId.get(libraryPlaybackId(item));
-        return <div key={item.id} className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-4">
-          {track ? <button type="button" aria-label={`Play ${item.title}`} onClick={() => player.playNow(track, { from: "Library" })} className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden border border-white/20 bg-white/5 text-brand">
-            {item.image ? <Image src={item.image} alt="" fill unoptimized className="object-cover" /> : null}<span className="relative grid h-full w-full place-items-center bg-black/25">▶</span>
-          </button> : null}
-          {track ? <button type="button" onClick={() => player.playNow(track, { from: "Library" })} aria-label={`Play ${item.title}`} className="min-w-0 flex-1 text-left">
+        return <div key={item.id} className="library-collection-item group flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-white/[.02] p-4">
+          {track ? <button type="button" aria-label={`${player.current?.id === track.id && player.isPlaying ? "Pause" : "Play"} ${item.title}`} onClick={() => player.current?.id === track.id ? player.toggle() : player.playNow(track, { from: "Library" })} className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden border border-white/20 bg-white/5 text-brand">
+            {item.image ? <Image src={item.image} alt="" fill unoptimized className="object-cover" /> : null}<span aria-hidden="true" className={`relative grid h-full w-full place-items-center bg-black/25 ${webOnly && !(player.current?.id === track.id && player.isPlaying) ? "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" : ""}`}>{player.current?.id === track.id && player.isPlaying ? "Ⅱ" : "▶"}</span>
+          </button> : webOnly ? <Link href={item.href} aria-label={`Open ${item.title}`} className="relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden border border-white/15 bg-white/5 text-brand">{item.image ? <Image src={item.image} alt="" fill unoptimized className="object-cover" /> : <span aria-hidden="true">{item.title.slice(0, 2).toUpperCase()}</span>}</Link> : null}
+          {track ? <button type="button" onClick={() => player.current?.id === track.id ? player.toggle() : player.playNow(track, { from: "Library" })} aria-label={`${player.current?.id === track.id && player.isPlaying ? "Pause" : "Play"} ${item.title}`} className="min-w-0 flex-1 text-left">
             <p className="text-[10px] font-semibold uppercase tracking-[.14em] text-brand">{track.kind === "beat" ? "Beat" : "track"}</p>
             <h2 className="truncate font-medium">{item.title}</h2><p className="truncate text-sm text-text-secondary">{item.subtitle}</p>
           </button> : <Link href={item.href} className="min-w-0 flex-1">
@@ -208,7 +214,16 @@ function AccountLibraryView({ session }: { session: Session | null }) {
   };
 
   const activeMeta = metaFor(active);
-  const activeItems = active === "liked" ? likedMusic : active === "following" ? following : active === "recent" ? history : active === "saved-beats" ? savedBeats : [];
+  const activeItems = active === "liked" ? likedMusic : active === "following" ? following : active === "recent" ? history : active === "saved-beats" ? savedBeats : emptyItems;
+
+  const visibleItems = useMemo(() => {
+    const term = collectionQuery.trim().toLocaleLowerCase();
+    const items = activeItems.filter(item => !term || `${item.title} ${item.subtitle}`.toLocaleLowerCase().includes(term));
+    if (collectionSort === "title") items.sort((a, b) => a.title.localeCompare(b.title));
+    if (collectionSort === "creator") items.sort((a, b) => a.subtitle.localeCompare(b.subtitle));
+    return items;
+  }, [activeItems, collectionQuery, collectionSort]);
+  const playableItems = visibleItems.flatMap(item => { const track = playback.byId.get(item.id) || playback.byId.get(libraryPlaybackId(item)); return track ? [track] : []; });
 
   const countFor = (section: ActiveSection) => {
     if (section === "liked") return likedMusic.length;
@@ -222,7 +237,7 @@ function AccountLibraryView({ session }: { session: Session | null }) {
   };
 
   return (
-    <div className="bvs-square-library mx-auto min-h-[60vh] max-w-6xl px-4 py-8 sm:px-6 sm:py-12">
+    <div className={`bvs-square-library ${webOnly ? "bvs-web-library" : ""} mx-auto min-h-[60vh] max-w-6xl px-4 py-8 sm:px-6 sm:py-12`}>
       {playback.error ? <p role="status" className="mb-4 text-sm text-red-200">{playback.error} <button type="button" onClick={playback.retry} className="min-h-11 px-3 underline">Retry previews</button></p> : null}
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
@@ -249,7 +264,7 @@ function AccountLibraryView({ session }: { session: Session | null }) {
 
       <div className="sticky top-16 z-30 -mx-4 mt-5 border-y border-white/10 bg-bg-primary/90 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6">
         <nav className="flex gap-2 overflow-x-auto pb-1" aria-label="Primary library sections">
-          {primarySections.map(section => {
+          {(webOnly ? [...primarySections, ...secondarySections, ...creatorSections] : primarySections).map(section => {
             const meta = metaFor(section);
             const count = countFor(section);
             return <button key={section} type="button" onClick={() => changeSection(section)} className="bvs-library-accent-button shrink-0 rounded-full border px-4 py-2 text-sm font-semibold" data-library-accent={libraryAccent(section)} aria-pressed={active === section}>
@@ -257,10 +272,10 @@ function AccountLibraryView({ session }: { session: Session | null }) {
             </button>;
           })}
         </nav>
-        <details className="mt-2"><summary className="min-h-11 cursor-pointer py-3 text-sm text-text-secondary">More collections{!primarySections.includes(active) ? ` · ${metaFor(active).label}` : ""}</summary><nav className="flex flex-wrap gap-2 pb-2" aria-label="More library sections">
+        {!webOnly ? <details className="mt-2"><summary className="min-h-11 cursor-pointer py-3 text-sm text-text-secondary">More collections{!primarySections.includes(active) ? ` · ${metaFor(active).label}` : ""}</summary><nav className="flex flex-wrap gap-2 pb-2" aria-label="More library sections">
           {secondarySections.map(section => <button key={section} type="button" onClick={() => changeSection(section)} className="bvs-library-accent-button shrink-0 rounded-full border px-3 py-1.5 text-xs" data-library-accent={libraryAccent(section)} aria-pressed={active === section}>{metaFor(section).label}{typeof countFor(section) === "number" ? ` · ${countFor(section)}` : ""}</button>)}
           {webOnly ? creatorSections.map(section => <button key={section} type="button" onClick={() => changeSection(section)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs transition ${active === section ? "bg-white/10 text-brand" : "text-text-secondary hover:text-text-primary"}`}>{metaFor(section).label}{typeof countFor(section) === "number" ? ` · ${countFor(section)}` : ""}</button>) : null}
-        </nav></details>
+        </nav></details> : null}
       </div>
 
       {active === "all" ? <section className="mt-6" aria-labelledby="library-all-heading">
@@ -276,7 +291,7 @@ function AccountLibraryView({ session }: { session: Session | null }) {
           <QuickAccessCard accent="library" label="Recently Played" count={history.length} detail="Continue listening" symbol="◷" onClick={() => changeSection("recent")} />
         </div>
 
-        {history.length ? <LibraryShelf title="Continue listening" actionLabel="See recent" onAction={() => changeSection("recent")} items={history.slice(0, 4)} byId={playback.byId} onPlay={track => player.playNow(track, { from: "Continue listening" })} /> : null}
+        {history.length ? <LibraryShelf artwork={webOnly} title="Continue listening" actionLabel="See recent" onAction={() => changeSection("recent")} items={history.slice(0, 4)} byId={playback.byId} onPlay={track => player.playNow(track, { from: "Continue listening" })} /> : null}
 
         <div className="mt-6 grid gap-4 lg:grid-cols-2">
           <div data-library-panel="playlists" data-library-accent="library" className="rounded-3xl border border-white/10 bg-white/[.02] p-5">
@@ -317,7 +332,15 @@ function AccountLibraryView({ session }: { session: Session | null }) {
             </div>)}
           </div> : null}
 
-          {!["downloads", "licensed-beats"].includes(active) ? renderItems(activeItems, active === "liked" ? "liked" : active === "following" ? "following" : active === "recent" ? "recent" : "saved-beats") : null}
+          {webOnly && !["downloads", "licensed-beats"].includes(active) && activeItems.length > 0 ? <div className="library-collection-toolbar">
+            <label><span className="sr-only">Search this collection</span><input type="search" value={collectionQuery} onChange={event => setCollectionQuery(event.target.value)} placeholder={`Search ${activeMeta.label.toLowerCase()}`} maxLength={160} /></label>
+            <label><span className="sr-only">Sort collection</span><select aria-label="Sort collection" value={collectionSort} onChange={event => setCollectionSort(event.target.value)}><option value="saved">{active === "recent" ? "Recently played" : "Saved order"}</option><option value="title">Title A–Z</option><option value="creator">Creator A–Z</option></select></label>
+            <div className="flex gap-1" aria-label="Collection layout"><button type="button" aria-pressed={collectionLayout === "list"} onClick={() => setCollectionLayout("list")}>List</button><button type="button" aria-pressed={collectionLayout === "grid"} onClick={() => setCollectionLayout("grid")}>Grid</button></div>
+            {playableItems.length > 0 ? <button type="button" className="library-play-all" onClick={() => player.playAll(playableItems, { from: activeMeta.label })}>▶ Play {playableItems.length}</button> : null}
+            <p role="status" className="library-collection-count">{visibleItems.length} of {activeItems.length} items</p>
+          </div> : null}
+          {webOnly && activeItems.length > 0 && visibleItems.length === 0 && !["downloads", "licensed-beats"].includes(active) ? <div className="py-10 text-center"><h3>No matches in this collection</h3><button type="button" onClick={() => setCollectionQuery("")} className="mt-3 min-h-11 text-brand">Clear search ×</button></div> : null}
+          {!["downloads", "licensed-beats"].includes(active) ? renderItems(webOnly ? visibleItems : activeItems, active === "liked" ? "liked" : active === "following" ? "following" : active === "recent" ? "recent" : "saved-beats") : null}
 
           {!["downloads", "licensed-beats"].includes(active) && activeItems.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 p-9 text-center"><h3 className="text-lg">Nothing here yet</h3><p className="mt-2 text-sm text-text-secondary">{activeMeta.copy}</p><Link href={active === "saved-beats" ? "/catalogue?type=beat#beatstore" : discoverHref} className="mt-5 inline-block rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">{active === "saved-beats" ? "Find beats" : "Discover BVS"}</Link></div> : null}
           {active === "licensed-beats" && webOnly && !ownedLoading && !ownedError && ownedBeats.length === 0 ? <div className="rounded-2xl border border-dashed border-white/15 p-9 text-center"><h3 className="text-lg">No licensed beats yet</h3><p className="mt-2 text-sm text-text-secondary">When you purchase a BVS beat licence, it will appear here with your writing workspace.</p><Link href="/catalogue?type=beat#beatstore" className="mt-5 inline-block rounded-full bg-brand px-5 py-2 text-sm font-semibold text-black">Explore BeatStore</Link></div> : null}
@@ -335,12 +358,12 @@ function QuickAccessCard({ accent, label, count, detail, symbol, onClick }: { ac
   </button>;
 }
 
-function LibraryShelf({ title, actionLabel, onAction, items, byId, onPlay }: { title: string; actionLabel: string; onAction: () => void; items: DiscoveryItem[]; byId?: Map<string, StationTrack>; onPlay?: (track: StationTrack) => void }) {
+function LibraryShelf({ artwork = false, title, actionLabel, onAction, items, byId, onPlay }: { artwork?: boolean; title: string; actionLabel: string; onAction: () => void; items: DiscoveryItem[]; byId?: Map<string, StationTrack>; onPlay?: (track: StationTrack) => void }) {
   return <section className="mt-6 rounded-3xl border border-white/10 bg-white/[.02] p-5">
     <div className="flex items-center justify-between gap-3"><h3 className="text-lg font-semibold">{title}</h3><button type="button" onClick={onAction} className="text-sm font-semibold text-brand">{actionLabel} →</button></div>
     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{items.map(item => {
       const track = byId?.get(item.id) || byId?.get(libraryPlaybackId(item));
-      const caption = <><p className="truncate font-medium">{item.title}</p><p className="mt-1 truncate text-xs text-text-secondary">{item.subtitle}</p></>;
+      const caption = <>{artwork && item.image ? <span className="library-resume-art relative mb-3 block aspect-square overflow-hidden bg-white/5"><Image src={item.image} alt="" fill unoptimized className="object-cover" /></span> : null}<p className="truncate font-medium">{item.title}</p><p className="mt-1 truncate text-xs text-text-secondary">{item.subtitle}</p></>;
       return track && onPlay ? <button key={item.id} type="button" onClick={() => onPlay(track)} aria-label={`Play ${item.title}`} className="min-w-0 rounded-2xl border border-white/10 p-3 text-left transition hover:border-brand/35">{caption}</button> : <Link key={item.id} href={item.href} className="min-w-0 rounded-2xl border border-white/10 p-3 transition hover:border-brand/35">{caption}</Link>;
     })}</div>
   </section>;
