@@ -36,6 +36,18 @@
   align-self: flex-end;
 }
 
+/* Explicitly pin the manual arrows to the far right of the BeatStore rail. */
+.bvs-catalogue-page #beatstore .bvs-creator-scroll-guide {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.bvs-catalogue-page #beatstore .bvs-creator-scroll-controls {
+  margin-left: auto;
+  margin-right: 0;
+}
+
 /* BeatStore only: put its browse headline in the portrait rail's heading position.
    The shared producer rail on the homepage retains its original typography. */
 .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
