@@ -6,7 +6,7 @@ import SharedListenButton from "@/components/SharedListenButton";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
 import HomeMediaStage from "@/components/home/HomeMediaStage";
 import HomeSignupPrompt from "@/components/home/HomeSignupPrompt";
-import TrendingBoard from "@/components/TrendingBoard";
+import HomeTopFive from "@/components/home/HomeTopFive";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
 
@@ -63,14 +63,15 @@ export default function HomePage() {
             ]}
           />
 
-          <div id="listen" className="bvs-culture-listen min-w-0 scroll-mt-24 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-2 shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur-sm sm:p-3">
-            <HomeListenPanel />
+          <div className="min-w-0 space-y-4">
+            <HomeTopFive />
+            <div id="listen" className="bvs-culture-listen min-w-0 scroll-mt-24 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-2 shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur-sm sm:p-3">
+              <HomeListenPanel />
+            </div>
           </div>
         </div>
 
         <HomeContinueListening />
-
-        <TrendingBoard preview />
 
         <div className="mt-8 grid gap-3 sm:mt-10 md:grid-cols-3">
           {paths.map((item) => item.accent === "listen" ? (
