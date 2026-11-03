@@ -41,10 +41,10 @@ assert.ok(
   "Home BeatStore must request only eight beats and avoid an explicit no-store fetch.",
 );
 assert.ok(
-  playlistShelf.includes("/api/playlists/public?limit=6") &&
+  playlistShelf.includes("/api/playlists/public?limit=24") &&
     playlistShelf.includes('CreatorPortraitRail') &&
     (await readFile(new URL("../src/components/home/CreatorPortraitRail.tsx", import.meta.url), "utf8")).includes('loading="lazy" decoding="async"'),
-  "Home playlists must request only visible rows and lazy-load below-fold artwork.",
+  "Home playlists must request a bounded public shelf and lazy-load below-fold artwork.",
 );
 
 assert.ok(
