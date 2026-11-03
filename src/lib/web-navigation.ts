@@ -2,7 +2,7 @@ export const webDestinations = [
   { href: '/', label: 'Home', id: 'home' },
   { href: '/feed', label: 'Feed', id: 'feed' },
   { href: '/search', label: 'Discover', id: 'explore' },
-  { href: '/catalogue?type=beat#beatstore', label: 'BeatStore', id: 'beats' },
+  { href: '/catalogue?type=beat', label: 'BeatStore', id: 'beats' },
   { href: '/library', label: 'Library', id: 'library' },
   { href: '/creator/studio', label: 'Studio', id: 'studio' },
 ] as const;
