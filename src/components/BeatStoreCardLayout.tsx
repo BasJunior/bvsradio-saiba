@@ -109,6 +109,17 @@ export default function BeatStoreCardLayout() {
           detailsButton.tabIndex = -1;
         }
 
+        const beatBadge = Array.from(card.querySelectorAll<HTMLElement>("span")).find(
+          (node) => normalize(node.textContent) === "beat",
+        );
+        if (beatBadge) {
+          Object.assign(beatBadge.style, {
+            color: "rgb(192 132 252)",
+            background: "rgba(216, 180, 254, 0.08)",
+            borderColor: "rgba(216, 180, 254, 0.2)",
+          });
+        }
+
         const playButton = Array.from(card.querySelectorAll("button")).find((button) => {
           const label = button.textContent?.trim();
           return label === "Play" || label === "Pause" || label === "▶" || label === "Ⅱ";
@@ -282,9 +293,9 @@ export default function BeatStoreCardLayout() {
           marginLeft: "auto",
           flexShrink: "0",
           textAlign: "right",
-          color: "rgb(192 132 252)",
+          color: "rgb(163 230 53)",
           fontWeight: "400",
-          background: "rgba(216, 180, 254, 0.08)",
+          background: "rgba(163, 230, 53, 0.08)",
           border: "0",
           borderRadius: "0",
           padding: "0.18rem 0.42rem",
