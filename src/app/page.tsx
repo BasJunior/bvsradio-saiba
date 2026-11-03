@@ -6,7 +6,6 @@ import HomeContinueListening from "@/components/home/HomeContinueListening";
 import HomeSignupPrompt from "@/components/home/HomeSignupPrompt";
 import HomeTopFive from "@/components/home/HomeTopFive";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
-import HomeNewThisWeek from "@/components/home/HomeNewThisWeek";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
 
 export default function HomePage() {
@@ -73,8 +72,6 @@ export default function HomePage() {
       <DeferredHomeCreatorBands />
 
       <DeferredPublishedAlbumsShelf />
-
-      <HomeNewThisWeek />
 
       <DeferredHomeEngagementHub />
 
