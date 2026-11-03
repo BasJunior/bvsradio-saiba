@@ -275,3 +275,22 @@ p, .text-base {
 /* Custom player gestures own only their axis; content and pinch zoom remain free. */
 [data-np-swipe-track] { touch-action: pan-y pinch-zoom; }
 [data-np-dismiss-zone] { touch-action: pan-x pinch-zoom; }
+/* Visible keyboard navigation across the web and native shells. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 4px;
+}
+.bvs-skip-link {
+  position: fixed;
+  left: 1rem;
+  top: calc(env(safe-area-inset-top, 0px) + .75rem);
+  z-index: 10000;
+  transform: translateY(-200%);
+  background: var(--color-brand);
+  color: #09090b;
+  padding: .75rem 1.25rem;
+  font-weight: 700;
+  border-radius: .5rem;
+}
+.bvs-skip-link:focus { transform: translateY(0); }
+#bvs-main-content { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 5rem); }

@@ -37,7 +37,9 @@ import {
 import BuyTrackButton from "@/components/BuyTrackButton";
 import LibraryAction from "@/components/LibraryAction";
 import MusicVideoWatch from "@/components/MusicVideoWatch";
-import PlayerSongShareAction, { PlayerMoreMenu } from "@/components/PlayerSongShareAction";
+import PlayerSongShareAction from "@/components/PlayerSongShareAction";
+import PlaylistQuickAdd from "@/components/library/PlaylistQuickAdd";
+import SaveQueueAsPlaylist from "@/components/library/SaveQueueAsPlaylist";
 import { previousPlaybackPlan, sharedPlaybackRecoveryDelay } from "@/lib/playback-continuity";
 import { containModalTab, focusFirstElement, lockPageScroll, registerModalLayer, restoreFocus } from "@/lib/modal-layer";
 import { playbackShortcut } from "@/lib/playback-shortcuts";
@@ -103,6 +105,7 @@ type PlayerContextValue = {
   playNow: (track: StationTrack, opts?: { from?: string; related?: StationTrack[]; review?: boolean }) => void;
   playNext: (track: StationTrack) => void;
   addToQueue: (track: StationTrack) => void;
+  buildMix: (track: StationTrack) => void;
   playAll: (list: StationTrack[], opts?: { from?: string; startIndex?: number }) => void;
   removeFromQueue: (key: string) => void;
   clearQueue: () => void;
@@ -1579,6 +1582,16 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
     trackEvent("queue_add", { track_id: trackLibraryId(track) });
   }, []);
 
+  const buildMix = useCallback((track: StationTrack) => {
+    if (!track?.src) return;
+    const related = pickSimilar(track, tracksRef.current, new Set([trackKey(track)]), 12);
+    if (!related.length) {
+      setNotice("No similar tracks available yet.");
+      return;
+    }
+    playNow(track, { from: `${track.title} mix`, related });
+  }, [playNow]);
+
   const playAll = useCallback(
     (list: StationTrack[], opts?: { from?: string; startIndex?: number }) => {
       const playable = list.filter((t) => t.src);
@@ -1747,6 +1760,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       playNow,
       playNext,
       addToQueue,
+      buildMix,
       playAll,
       removeFromQueue,
       clearQueue,
@@ -1791,6 +1805,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       playNow,
       playNext,
       addToQueue,
+      buildMix,
       playAll,
       removeFromQueue,
       clearQueue,
@@ -1890,7 +1905,7 @@ function NowPlayingVisual({
   }
 
   return (
-    <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-[8px] border border-white/15 bg-[#141414] sm:max-h-none">
+    <div className="relative mx-auto aspect-square w-full overflow-hidden bg-[#141414] sm:max-h-none">
       {art ? (
         // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
         <img
@@ -1981,6 +1996,7 @@ function QueueSheet() {
               Clear
             </button>
           )}
+          {player.mode === "ondemand" ? <SaveQueueAsPlaylist items={player.upNext} /> : null}
           <button type="button" onClick={() => player.setQueueOpen(false)} className="rounded-full px-2 py-1 text-sm text-text-secondary hover:text-white" aria-label="Close queue">
             ✕
           </button>
@@ -2115,9 +2131,11 @@ function CreatorLink({
 function CreatorFollowAction({
   track,
   analyticsSource = "now_playing",
+  rectangular = true,
 }: {
   track: StationTrack | undefined;
   analyticsSource?: string;
+  rectangular?: boolean;
 }) {
   const { surface, appChrome } = useAppSurface();
   if (!track?.creatorId) return null;
@@ -2126,7 +2144,7 @@ function CreatorFollowAction({
     <LibraryAction
       section="follows"
       compact
-      rectangular
+      rectangular={rectangular}
       analyticsSource={analyticsSource}
       item={{
         id: `artist-${track.creatorId}`,
@@ -2205,19 +2223,24 @@ export function PersistentPlayer() {
           style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}
         >
           <div className="relative mx-auto flex min-h-[100dvh] max-w-6xl flex-col px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-8 sm:pb-12 sm:pt-[max(1.25rem,env(safe-area-inset-top))]">
-            <header data-np-dismiss-zone="true" className="sticky top-0 z-10 -mx-4 border-b border-white/10 bg-[#090909]/95 px-4 pb-3 sm:static sm:mx-0 sm:bg-transparent sm:px-0 sm:pb-0">
+            <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] opacity-80" aria-hidden="true" style={{ background: "radial-gradient(circle at 18% 8%, rgba(196,243,67,.12), transparent 28%), radial-gradient(circle at 82% 18%, rgba(143,111,255,.16), transparent 32%)" }} />
+            <header data-np-dismiss-zone="true" className="sticky top-0 z-10 -mx-4 border-b border-white/10 bg-[#090909]/90 px-4 pb-3 backdrop-blur-xl sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:backdrop-blur-none">
               <div className="mx-auto mb-2 flex justify-center sm:mb-3" aria-hidden="true">
                 <span className="h-1.5 w-12 rounded-full bg-white/35" />
               </div>
               <div className="flex items-center justify-between gap-3">
-                <button type="button" onClick={player.closeNowPlaying} className="grid h-11 w-11 place-items-center rounded-[4px] border border-white/15 bg-white/5 text-xl backdrop-blur" aria-label="Close Now Playing">⌄</button>
+                <button type="button" onClick={player.closeNowPlaying} className="inline-flex h-11 items-center gap-2 rounded-[4px] border border-white/15 bg-white/[.06] px-3 text-xs font-semibold text-white/80 backdrop-blur transition hover:border-brand/50 hover:bg-white/10 hover:text-white" aria-label="Close player">
+                  <span className="text-lg leading-none" aria-hidden="true">←</span>
+                  <span className="hidden sm:inline">Close player</span>
+                </button>
                 <div className="min-w-0 flex-1 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Now Playing</p>
                   <p className="mt-1 truncate text-xs text-white/60">{player.playingFrom || "BVS Radio"}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => player.setQueueOpen(true)} className="grid h-11 min-w-11 place-items-center rounded-[4px] border border-white/15 bg-white/5 px-3 text-xs backdrop-blur" aria-label="Open queue">Queue</button>
-                  <PlayerMoreMenu key={player.current?.id || "no-track"} track={player.current} />
+                <div className="flex min-w-11 items-center justify-end">
+                  <span className="hidden rounded-[4px] border border-white/10 bg-white/[.04] px-3 py-2 text-[10px] font-semibold uppercase tracking-[.16em] text-white/45 sm:inline">
+                    BVS Radio
+                  </span>
                 </div>
               </div>
             </header>
@@ -2225,11 +2248,12 @@ export function PersistentPlayer() {
             <div className="grid flex-1 content-center gap-5 py-4 sm:gap-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_minmax(20rem,.78fr)] lg:items-center lg:gap-16">
               <div data-np-swipe-track="true" className="mx-auto w-full max-w-[min(100%,42vh)] sm:max-w-[28rem] lg:max-w-[34rem]">
                 <NowPlayingVisual track={player.current} art={art} />
-                <ProgressLine elapsed={progress.elapsed} duration={progress.duration} onSeek={player.seek} className="mt-5 overflow-hidden rounded-none sm:mt-7" />
+                <ProgressLine elapsed={progress.elapsed} duration={progress.duration} onSeek={player.seek} className="mt-5 overflow-hidden rounded-full sm:mt-7" />
                 <div className="mt-2 flex justify-between text-xs tabular-nums text-white/50"><span>{formatTime(progress.elapsed)}</span><span>{formatTime(progress.duration)}</span></div>
               </div>
 
               <div className="mx-auto w-full max-w-xl">
+                <div className="p-5 sm:p-6">
                 <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand sm:text-xs">{player.current?.project || "Continuous rotation"}</p>
                 <h2 className="mt-2 text-[1.75rem] font-semibold leading-tight tracking-tight sm:mt-3 sm:text-4xl lg:text-5xl">{player.current?.title || "BVS Radio rotation"}</h2>
                 <div className="mt-2 flex flex-wrap items-center gap-2 sm:mt-3">
@@ -2240,52 +2264,93 @@ export function PersistentPlayer() {
                 </div>
 
                 <div className="mt-6 flex items-center justify-between gap-2 sm:mt-8 sm:justify-start sm:gap-6">
-                  <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-[4px] px-2 text-xs sm:px-4 sm:text-sm ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60"}`}>Shuffle</button>
-                  <button type="button" onClick={player.previous} className="grid h-12 w-12 shrink-0 place-items-center rounded-[4px] text-xl hover:bg-white/10" aria-label="Previous recording">◀</button>
+                  <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-[4px] px-3 text-xs transition sm:px-4 sm:text-sm ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60 hover:bg-white/10"}`}>Shuffle</button>
+                  <button type="button" onClick={player.previous} className="grid h-12 w-12 shrink-0 place-items-center rounded-[4px] text-xl transition hover:bg-white/10" aria-label="Previous recording">◀</button>
                   <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-14 w-14 place-items-center rounded-full bg-brand text-xl font-bold text-black disabled:opacity-40 sm:h-16 sm:w-16" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
-                  <button type="button" onClick={player.next} className="grid h-12 w-12 shrink-0 place-items-center rounded-[4px] text-xl hover:bg-white/10" aria-label="Next recording">▶</button>
-                  <button type="button" onClick={player.cycleRepeat} aria-label={repeatLabel} className={`grid h-11 w-11 shrink-0 place-items-center rounded-[4px] text-xl ${player.repeat !== "off" ? "bg-brand/15 text-brand" : "text-white/60"}`}>{player.repeat === "one" ? "1↻" : "↻"}</button>
+                  <button type="button" onClick={player.next} className="grid h-12 w-12 shrink-0 place-items-center rounded-[4px] text-xl transition hover:bg-white/10" aria-label="Next recording">▶</button>
+                  <button type="button" onClick={player.cycleRepeat} aria-label={repeatLabel} className={`grid h-11 w-11 shrink-0 place-items-center rounded-[4px] text-xl transition ${player.repeat !== "off" ? "bg-brand/15 text-brand" : "text-white/60 hover:bg-white/10"}`}>{player.repeat === "one" ? "1↻" : "↻"}</button>
                 </div>
 
-                <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4" aria-label="Track actions">
-                  <button type="button" onClick={() => player.toggleLike("now_playing")} aria-pressed={player.liked} className={`min-h-11 rounded-[4px] px-4 text-sm font-semibold ${player.liked ? "bg-brand/15 text-brand" : "border border-white/12 text-white/70 hover:border-brand/35 hover:text-white"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥ Saved" : "♡ Save"}</button>
+                <div className="mt-6 flex flex-wrap items-center gap-2" aria-label="Track actions">
+                  <button type="button" onClick={() => player.toggleLike("now_playing")} aria-pressed={player.liked} className={`min-h-11 rounded-[4px] px-4 text-sm font-semibold transition ${player.liked ? "bg-brand/15 text-brand" : "border border-white/12 text-white/70 hover:border-brand/35 hover:text-white"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥ Saved" : "♡ Save"}</button>
                   <PlayerSongShareAction track={player.current} />
+                  <button type="button" onClick={() => player.setQueueOpen(true)}                   className="min-h-11 rounded-[4px] border border-white/12 px-4 text-sm font-semibold text-white/70 transition hover:border-brand/35 hover:text-white">
+                    Open queue
+                  </button>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-white/70">
-                  <label className="flex min-h-11 items-center gap-2">
-                    Sleep timer
-                    <select
-                      className="min-h-11 rounded border border-white/15 bg-[#141414] px-3 text-white focus-visible:outline-2 focus-visible:outline-brand"
-                      value={sleep.timer?.minutes || 0}
-                      onChange={(event) => sleep.setMinutes(Number(event.target.value))}
-                    >
-                      <option value={0}>Off</option>
-                      {SLEEP_MINUTES.map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}
-                    </select>
-                  </label>
-                  {sleep.timer ? <span>Pauses at {new Date(sleep.timer.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span> : null}
-                </div>
-                <p className="mt-2 hidden text-xs text-white/50 sm:block">Keyboard: Space to play or pause · Shift + ← / → to change tracks</p>
+                <details className="mt-4 pt-3 text-sm text-white/70">
+                  <summary className="cursor-pointer list-none text-xs font-medium text-white/55 transition hover:text-white">
+                    <span className="mr-2 text-brand">+</span> Playback settings
+                  </summary>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <PlaylistQuickAdd
+                      trackId={player.current?.kind === "track" ? player.current.id : undefined}
+                      beatId={player.current?.kind === "beat" ? player.current.id : undefined}
+                      compact
+                      rectangular
+                    />
+                    {player.current?.id ? (
+                      <Link
+                        href={`/feed?compose=track&track=${encodeURIComponent(player.current.id)}&kind=${encodeURIComponent(player.current.kind === "beat" ? "beat" : "track")}&title=${encodeURIComponent(player.current.title)}&artist=${encodeURIComponent(player.current.artist)}${player.current.artwork ? `&artwork=${encodeURIComponent(player.current.artwork)}` : ""}`}
+                        className="inline-flex min-h-11 items-center rounded-[4px] border border-white/15 px-4 text-sm font-semibold text-white/75 transition hover:border-brand/40 hover:text-white"
+                      >
+                        Comment in Feed
+                      </Link>
+                    ) : null}
+                    {player.current ? (
+                      <>
+                        <button type="button" onClick={() => player.playNext(player.current!)} className="min-h-11 rounded-[4px] border border-white/15 px-4 text-sm font-semibold text-white/75 transition hover:border-brand/40 hover:text-white">
+                          Play next
+                        </button>
+                        <button type="button" onClick={() => player.addToQueue(player.current!)} className="min-h-11 rounded-[4px] border border-white/15 px-4 text-sm font-semibold text-white/75 transition hover:border-brand/40 hover:text-white">
+                          Add to queue
+                        </button>
+                        <button type="button" onClick={() => player.buildMix(player.current!)} className="min-h-11 rounded-[4px] border border-white/15 px-4 text-sm font-semibold text-white/75 transition hover:border-brand/40 hover:text-white">
+                          Build a mix
+                        </button>
+                      </>
+                    ) : null}
+                    <CreatorLink track={player.current} entryPoint="now_playing_settings" className="inline-flex min-h-11 items-center rounded-[4px] border border-white/15 px-4 text-sm font-semibold text-white/75 transition hover:border-brand/40 hover:text-white">
+                      Explore creator
+                    </CreatorLink>
+                    <label className="flex min-h-11 items-center gap-3 rounded-[4px] border border-white/10 bg-black/15 px-4">
+                      <span className="text-xs font-medium text-white/70">Sleep timer</span>
+                      <select
+                        className="min-h-9 rounded-[4px] border border-white/15 bg-[#141414] px-3 text-xs text-white focus-visible:outline-2 focus-visible:outline-brand"
+                        value={sleep.timer?.minutes || 0}
+                        onChange={(event) => sleep.setMinutes(Number(event.target.value))}
+                      >
+                        <option value={0}>Off</option>
+                        {SLEEP_MINUTES.map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}
+                      </select>
+                    </label>
+                    {sleep.timer ? <span className="text-xs text-brand">Pauses at {new Date(sleep.timer.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span> : null}
+                    <p className="w-full text-xs text-white/45">Keyboard: Space to play or pause · Shift + ← / → to change tracks</p>
+                  </div>
+                </details>
 
-                <div className="mt-6 grid gap-3 sm:mt-10 sm:grid-cols-2">
+                <div className="mt-6 grid gap-3 border-t border-white/10 pt-5 sm:mt-8 sm:grid-cols-2">
                   <BuyTrackButton
                     track={player.current}
                     variant="full"
                     className="sm:col-span-2"
                     onAfterAdd={player.closeNowPlaying}
                   />
-                  <CreatorLink track={player.current} entryPoint="now_playing_card" onClick={player.closeNowPlaying} className="rounded-none border border-white/10 bg-[#141414] p-4 hover:border-brand/40">
+                  <CreatorLink track={player.current} entryPoint="now_playing_card" onClick={player.closeNowPlaying} className="rounded-[4px] border border-white/10 bg-[#141414] p-4 transition hover:border-brand/40 hover:bg-white/[.04]">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Artist</span>
                     <span className="mt-1 block font-medium">
                       {player.current?.creatorId ? `Open ${player.current.artist}` : "Find artist and credits"}
                     </span>
+                    <span className="mt-1 block text-xs text-white/45">Explore the creator behind this track</span>
                   </CreatorLink>
-                  <button type="button" onClick={() => player.setQueueOpen(true)} className="rounded-none border border-white/10 bg-[#141414] p-4 text-left hover:border-brand/40">
+                  <button type="button" onClick={() => player.setQueueOpen(true)} className="rounded-[4px] border border-white/10 bg-[#141414] p-4 text-left transition hover:border-brand/40 hover:bg-white/[.04]">
                     <span className="text-[10px] uppercase tracking-[.18em] text-brand">Coming next</span><span className="mt-1 block font-medium">Open queue · {player.upNext.length} tracks</span>
+                    <span className="mt-1 block text-xs text-white/45">See what BVS will play next</span>
                   </button>
                 </div>
                 <p className="mt-5 text-sm leading-relaxed text-white/50 sm:mt-6">Playback stays continuous while you move through artists, credits, stories and BeatStore.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -2298,7 +2363,7 @@ export function PersistentPlayer() {
             {player.error || player.notice}
           </p>
         )}
-        <div className="bvs-persistent-player-inner mx-auto flex h-[4.5rem] max-w-7xl items-center gap-1.5 sm:h-20 sm:gap-4">
+        <div className="bvs-persistent-player-inner mx-auto flex h-[4.5rem] max-w-7xl items-center gap-1.5 px-3 sm:h-20 sm:gap-4 sm:px-6 lg:px-0">
           <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
             <button
               type="button"
@@ -2324,7 +2389,7 @@ export function PersistentPlayer() {
                   {player.current?.artist || "BVS Radio"}
                 </CreatorLink>
                 <span className="hidden sm:inline-flex">
-                  <CreatorFollowAction track={player.current} analyticsSource="persistent_player" />
+                  <CreatorFollowAction track={player.current} analyticsSource="persistent_player" rectangular={false} />
                 </span>
                 {progress.duration > 0 && (
                   <span className="hidden shrink-0 tabular-nums text-white/50 sm:inline">
@@ -2377,12 +2442,12 @@ export function PersistentPlayer() {
             type="button"
             onClick={player.toggle}
             disabled={!player.current}
-            className="grid h-12 w-12 place-items-center rounded-full bg-brand font-bold text-black disabled:opacity-40"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand font-bold text-black disabled:opacity-40 sm:h-12 sm:w-12"
             aria-label={player.isPlaying ? "Pause" : "Play"}
           >
             {player.isPlaying ? "Ⅱ" : "▶"}
           </button>
-          <button type="button" onClick={player.next} className="rounded-full p-2 hover:bg-white/10" aria-label="Next recording">
+          <button type="button" onClick={player.next} disabled={!player.current} className="grid h-10 w-10 shrink-0 place-items-center rounded-full p-0 hover:bg-white/10 disabled:opacity-40" aria-label="Next recording">
             ▶
           </button>
           <button

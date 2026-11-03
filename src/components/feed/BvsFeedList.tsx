@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import LibraryAction from "@/components/LibraryAction";
-import FeedComposer from "@/components/feed/FeedComposer";
+import FeedComposer, { type FeedAttachmentOption } from "@/components/feed/FeedComposer";
 import FeedParticipation, { type ParticipationSummary } from "@/components/feed/FeedParticipation";
 import ParticipationPostCard from "@/components/feed/ParticipationPostCard";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
@@ -104,6 +104,25 @@ export default function BvsFeedList({
   const pullStart = useRef<{ x: number; y: number } | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [initialAttachment, setInitialAttachment] = useState<FeedAttachmentOption | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.location) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("compose") !== "track") return;
+    const id = params.get("track");
+    const title = params.get("title");
+    if (!id || !title) return;
+    setInitialAttachment({
+      kind: params.get("kind") === "beat" ? "beat" : "track",
+      id,
+      title,
+      subtitle: params.get("artist") || "BVS artist",
+      artwork: params.get("artwork"),
+      href: `/catalogue?q=${encodeURIComponent(title)}`,
+    });
+    window.history.replaceState({}, "", `${window.location.pathname}${window.location.hash}`);
+  }, []);
 
   useEffect(() => {
     const sync = () => {
@@ -415,7 +434,7 @@ export default function BvsFeedList({
         </div>
       </div>
 
-      <FeedComposer key={session.user?.id || "guest"} surface={surface} enabled={participationEnabled} onCreated={addPost} />
+      <FeedComposer key={session.user?.id || "guest"} surface={surface} enabled={participationEnabled} initialAttachment={initialAttachment} onCreated={addPost} />
 
       <div className="sticky top-[var(--bvs-app-header-height,4rem)] z-20 -mx-4 mt-4 border-y border-white/[.06] bg-[#08080a]/94 px-4 py-3 backdrop-blur-2xl sm:static sm:mx-0 sm:rounded-[1.4rem] sm:border sm:bg-white/[.02]" aria-label="Feed controls">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">

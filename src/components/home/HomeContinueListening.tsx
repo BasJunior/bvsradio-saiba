@@ -64,7 +64,7 @@ export default function HomeContinueListening() {
   return (
     <section
       data-home-accent="listen"
-      className="mt-5 overflow-hidden rounded-[1.55rem] border border-white/[.08] bg-white/[.025] p-4 sm:p-5"
+      className="mt-4 overflow-hidden rounded-[1.55rem] border border-white/[.08] bg-white/[.025] p-4 sm:p-5"
       aria-labelledby="home-continue-listening-title"
     >
       <div className="flex flex-wrap items-end justify-between gap-3">

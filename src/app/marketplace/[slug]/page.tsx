@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import OfferAnalytics from "@/components/OfferAnalytics";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -156,7 +157,7 @@ export default function MarketplaceStorefrontPage() {
                 const bookingHref = `/marketplace/${provider.slug}/book?service=${encodeURIComponent(service.id)}`;
                 const packageCheckout = service.bookingMode === "checkout" && !service.listingId && Boolean(service.packages?.length);
                 return (
-                  <article id={`service-${service.id}`} key={service.id} className={`rounded-2xl border p-5 ${active ? "border-brand/60 bg-brand/[.06]" : "border-white/10 bg-white/[.025]"}`}>
+                  <OfferAnalytics key={service.id} id={service.listingId || `${provider.slug}:${service.id}`} kind="service" source="marketplace_storefront"><article id={`service-${service.id}`} key={service.id} className={`rounded-2xl border p-5 ${active ? "border-brand/60 bg-brand/[.06]" : "border-white/10 bg-white/[.025]"}`}>
                     {service.artworkImage ? <img src={service.artworkImage} alt="" loading="lazy" className="mb-4 aspect-[16/10] w-full rounded-xl object-cover" /> : null}
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -179,7 +180,7 @@ export default function MarketplaceStorefrontPage() {
                             </div>
                             {packageCheckout ? (
                               <button
-                                type="button"
+                                data-offer-action type="button"
                                 onClick={() => checkoutService(service, packageIndex)}
                                 className="mt-3 inline-flex min-h-10 items-center rounded-full bg-brand px-4 text-xs font-semibold text-black"
                               >
@@ -193,16 +194,16 @@ export default function MarketplaceStorefrontPage() {
                     {service.turnaroundDays ? <p className="mt-3 text-xs text-text-secondary">Target turnaround: {service.turnaroundDays} days</p> : null}
                     <div className="mt-5">
                       {service.bookingMode === "calendar" ? (
-                        <Link href={bookingHref} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">See availability &amp; book</Link>
+                        <Link data-offer-action href={bookingHref} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">See availability &amp; book</Link>
                       ) : service.bookingMode === "checkout" && !packageCheckout ? (
-                        <button type="button" onClick={() => checkoutService(service)} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">
+                        <button data-offer-action type="button" onClick={() => checkoutService(service)} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">
                           {service.listingType === "digital_product" ? "Buy now" : "Continue to checkout"}
                         </button>
                       ) : service.bookingMode === "enquiry" ? (
                         <Link href="/marketplace" className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-text-secondary">Compare providers</Link>
                       ) : null}
                     </div>
-                  </article>
+                  </article></OfferAnalytics>
                 );
               })}
             </div>

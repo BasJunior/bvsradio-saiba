@@ -65,3 +65,15 @@ failures = false; result.retry(); recovery.render({ q: 'beat', limit: 8 }); awai
 assert.equal(recovery.render({ q: 'beat', limit: 8 }).items[0].id, 'recovered');
 await settle();
 console.log('Search client passed: intent gating, debounce cleanup, stale-response cancellation, appended pagination past 100, failure state and retry.');
+
+const timeout = harness((_url, options) => new Promise((_resolve, reject) => {
+  options.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+}));
+timeout.render({ q: 'slow', limit: 8 });
+const hanging = timeout.flush();
+await timeout.flush();
+await hanging;
+const timedOut = timeout.render({ q: 'slow', limit: 8 });
+assert.equal(timedOut.loading, false, 'A stalled API must stop showing a spinner after the deadline');
+assert.equal(timedOut.unavailable[0], 'search', 'Timeout must expose the existing retry UI');
+console.log('Search deadline and recovery passed.');

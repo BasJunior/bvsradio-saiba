@@ -22,6 +22,7 @@ function harness(path, imports, globals = {}) {
   const code = ts.transpileModule(readFileSync(path, 'utf8'), { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText;
   vm.runInNewContext(code, { exports, queueMicrotask, URLSearchParams, console, require(name) {
     if (name === '@/components/TrendingBoard' || name === '@/components/TrendingBadge') return { default: 'Trending' };
+    if (name === '@/components/OfferAnalytics') return { default: ({ children }) => children };
     if (name === '@/lib/discovery-search') return pure('src/lib/discovery-search.ts');
     if (name === 'react') return react;
     if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: 'fragment' };

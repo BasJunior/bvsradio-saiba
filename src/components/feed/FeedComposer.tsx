@@ -8,7 +8,7 @@ import type { AppSurface } from "@/lib/app-surface";
 import type { ParticipationIntent, ParticipationObjectKind, ParticipationPost } from "@/lib/participation-server";
 import { trackEvent } from "@/lib/analytics";
 
-type AttachmentOption = {
+export type FeedAttachmentOption = {
   kind: ParticipationObjectKind;
   id: string;
   title: string;
@@ -20,7 +20,7 @@ type AttachmentOption = {
 type Draft = {
   intent: ParticipationIntent;
   body: string;
-  attachment: AttachmentOption | null;
+  attachment: FeedAttachmentOption | null;
   mentions: MentionProfile[];
   clientKey: string;
 };
@@ -53,10 +53,12 @@ function parseDraft(value: string | null): Draft | null {
 export default function FeedComposer({
   surface,
   enabled,
+  initialAttachment,
   onCreated,
 }: {
   surface: AppSurface | null;
   enabled: boolean;
+  initialAttachment?: FeedAttachmentOption | null;
   onCreated: (post: ParticipationPost) => void;
 }) {
   const session = useAppSession();
@@ -66,9 +68,9 @@ export default function FeedComposer({
   const [expanded, setExpanded] = useState(false);
   const [intent, setIntent] = useState<ParticipationIntent>("update");
   const [body, setBody] = useState("");
-  const [attachment, setAttachment] = useState<AttachmentOption | null>(null);
+  const [attachment, setAttachment] = useState<FeedAttachmentOption | null>(null);
   const [attachmentQuery, setAttachmentQuery] = useState("");
-  const [attachmentResults, setAttachmentResults] = useState<AttachmentOption[]>([]);
+  const [attachmentResults, setAttachmentResults] = useState<FeedAttachmentOption[]>([]);
   const [mentions, setMentions] = useState<MentionProfile[]>([]);
   const [clientKey, setClientKey] = useState(newClientKey);
   const [submitting, setSubmitting] = useState(false);
@@ -93,7 +95,11 @@ export default function FeedComposer({
     setRulesAccepted(false);
     setError("");
     setStatus("");
-  }, [enabled, owner]);
+    if (initialAttachment && !draft?.attachment) {
+      setAttachment(initialAttachment);
+      setExpanded(true);
+    }
+  }, [enabled, initialAttachment, owner]);
 
   useEffect(() => {
     if (!enabled || typeof window === "undefined" || draftOwner !== owner || hydratedOwner.current !== owner) return;
@@ -110,7 +116,7 @@ export default function FeedComposer({
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
       void fetch(`/api/app/participation/attachments?q=${encodeURIComponent(attachmentQuery.trim())}${surface ? `&surface=${surface}` : ""}`, { signal: controller.signal })
-        .then(async (response) => response.ok ? await response.json() as { items?: AttachmentOption[] } : { items: [] })
+        .then(async (response) => response.ok ? await response.json() as { items?: FeedAttachmentOption[] } : { items: [] })
         .then((payload) => setAttachmentResults(payload.items || []))
         .catch(() => null);
     }, 220);

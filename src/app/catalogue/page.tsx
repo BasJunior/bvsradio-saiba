@@ -13,6 +13,7 @@ import {
   rightsSummary as pricingRightsSummary,
 } from "@/lib/catalogue-pricing";
 import { rankCollections, type CollectionCard } from "@/lib/catalogue-trending";
+import OfferAnalytics from "@/components/OfferAnalytics";
 import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedProducersShelf from "@/components/PublishedProducersShelf";
@@ -1609,7 +1610,7 @@ function CataloguePageContent() {
                   {selectedTrack.description}
                 </p>
 
-                <div className="mt-5 rounded-none border border-brand/20 bg-brand/5 p-4">
+                <OfferAnalytics id={String(selectedTrack.id)} kind={selectedTrack.type === "beat" ? "beat_licence" : "download"} source="catalogue_detail"><div className="mt-5 rounded-none border border-brand/20 bg-brand/5 p-4">
                   <div className="mb-1 text-xs font-semibold uppercase tracking-[2px] text-brand">
                     {offerLabel(selectedTrack)}
                   </div>
@@ -1709,6 +1710,7 @@ function CataloguePageContent() {
                       )}
                       <button
                         type="button"
+                        data-offer-action
                         onClick={() => addToCart(selectedTrack)}
                         className="flex-1 rounded-none border border-white/25 px-5 py-3 text-sm font-semibold hover:bg-white/5"
                       >
@@ -1722,6 +1724,7 @@ function CataloguePageContent() {
                       </button>
                       <Link
                         href="/checkout"
+                        data-offer-action
                         onClick={() => addToCart(selectedTrack)}
                         className="flex flex-1 items-center justify-center rounded-none bg-white px-5 py-3 text-center text-sm font-semibold text-black hover:bg-white/90"
                       >
@@ -1731,6 +1734,7 @@ function CataloguePageContent() {
                   )}
                 </div>
 
+                </OfferAnalytics>
                 <div className="mt-5">
                   <CollapsibleCollection
                     tracks={collectionTracks}

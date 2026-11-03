@@ -90,6 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" data-theme="dark" style={{ colorScheme: "dark" }}>
       <body className="bg-bg-primary text-text-primary min-h-screen font-sans">
+        <a href="#bvs-main-content" className="bvs-skip-link">Skip to content</a>
         <LibrarySyncProvider>
           <StationPlayerProvider tracks={[]}>
             <AppSurfaceProvider>
@@ -97,7 +98,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <FlowNavigationProvider>
                 <RootNavbar />
                 <AuthLinkRescue />
-                <main className="bvs-page-main pt-16 pb-44 md:pb-28">
+                <main id="bvs-main-content" tabIndex={-1} className="bvs-page-main pt-16 pb-44 md:pb-28">
                   <PremiumInstantPromoBanner />
                   <DeferredEditorialTools />
                   <BvsSectionScope>{children}</BvsSectionScope>

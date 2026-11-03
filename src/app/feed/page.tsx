@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BvsFeedPage() {
-  const items = await getBvsFeed({ limit: 90 });
+  const items = await getBvsFeed({ limit: 1000 });
 
   return (
     <main className="bvs-square-feed mx-auto min-h-screen max-w-4xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10">

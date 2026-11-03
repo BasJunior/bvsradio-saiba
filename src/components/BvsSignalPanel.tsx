@@ -27,6 +27,30 @@ export default function BvsSignalPanel({ trackId, source, compact = false, title
     title, text: `I caught ${title}${artist ? ` by ${artist}` : ""} on BVS. Discovery receipt #${signal.catchPosition}.`,
     path: `/song/${signal.trackId}`, image: artwork, kicker: "Caught on BVS",
   });
+  if (compact) {
+    return (
+      <section aria-label="BVS Signal" data-bvs-signal={signal.status} className="mt-4 rounded-xl border border-white/10 bg-black/15 px-3 py-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" aria-hidden="true" />
+            <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-white/45">BVS Signal</span>
+            <span className={`truncate text-sm font-semibold ${signal.status === "breakout" ? "text-brand" : "text-white/85"}`}>{signal.label}</span>
+            {signal.catchCount > 0 ? <span className="text-xs text-white/45">· {signal.catchCount} caught</span> : null}
+          </div>
+          {signal.caught ? (
+              <button type="button" onClick={share} className="min-h-9 rounded-full border border-brand/35 px-3 text-xs font-semibold text-brand">
+                Share discovery
+              </button>
+            ) : (
+              <button type="button" onClick={() => void catchTrack()} disabled={busy} aria-busy={busy}
+                className="min-h-9 rounded-full bg-brand px-3 text-xs font-semibold text-black disabled:opacity-50">
+                {busy ? "Saving…" : "Catch this song"}
+              </button>
+            )}
+        </div>
+      </section>
+    );
+  }
   return (
     <section aria-label="BVS Signal" data-bvs-signal={signal.status}
       className={compact ? "mt-4 border-t border-white/10 pt-4" : "mt-6 border border-white/15 bg-white/[.025] p-4 sm:p-5"}>
@@ -49,7 +73,7 @@ export default function BvsSignalPanel({ trackId, source, compact = false, title
           <p className="mt-1 text-sm leading-relaxed text-white/80">{signal.editorialReason}</p>
         </div>
       )}
-      {!compact && journey.length > 0 && (
+      {journey.length > 0 && (
         <details className="mt-4 border-t border-white/10 pt-3">
           <summary className="min-h-11 cursor-pointer text-xs text-white/60">This song’s BVS journey</summary>
           <ol className="space-y-3 border-l border-white/15 pl-4">

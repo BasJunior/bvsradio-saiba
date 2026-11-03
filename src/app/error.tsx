@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useAppSurface } from "@/components/app/AppSurfaceProvider";
 
 export default function RouteError({
   retry,
@@ -8,6 +9,8 @@ export default function RouteError({
   error: Error & { digest?: string };
   retry: () => void;
 }) {
+  const { surface, appChrome } = useAppSurface();
+  const home = appChrome && surface ? `/app/${surface}` : "/";
   return (
     <section data-bvs-route-error className="mx-auto flex min-h-[55dvh] max-w-xl items-center px-4 py-16">
       <div role="alert" className="w-full rounded-3xl border border-white/10 bg-white/[.035] p-6 shadow-2xl sm:p-8">
@@ -20,7 +23,7 @@ export default function RouteError({
           <button type="button" onClick={retry} className="min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black">
             Try again
           </button>
-          <Link href="/" className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-text-primary hover:border-brand/50">
+          <Link href={home} className="inline-flex min-h-11 items-center rounded-full border border-white/15 px-5 text-sm font-semibold text-text-primary hover:border-brand/50">
             Back to BVS
           </Link>
         </div>

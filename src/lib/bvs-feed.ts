@@ -181,11 +181,11 @@ function trackRoute(title: string, surface?: AppSurface) {
 
 export async function getBvsFeed(options: { surface?: AppSurface; limit?: number } = {}): Promise<BvsFeedItem[]> {
   const surface = options.surface;
-  const limit = Math.min(120, Math.max(12, options.limit || 72));
+  const limit = Math.min(1000, Math.max(12, options.limit || 1000));
   const trackSelect = "id,user_id,title,artist_name,file_url,artwork_url,genre,release_id,rotation_added_at,created_at";
   const trackPath = surface
-    ? `tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&mobile_distribution_clearances!inner(surface,status)&mobile_distribution_clearances.surface=eq.${surface}&mobile_distribution_clearances.status=eq.cleared&select=${trackSelect},mobile_distribution_clearances(surface,status)&order=rotation_added_at.desc.nullslast,created_at.desc&limit=40`
-    : `tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=${trackSelect}&order=rotation_added_at.desc.nullslast,created_at.desc&limit=40`;
+    ? `tracks?is_public=eq.true&editorial_status=eq.approved&mobile_distribution_clearances!inner(surface,status)&mobile_distribution_clearances.surface=eq.${surface}&mobile_distribution_clearances.status=eq.cleared&select=${trackSelect},mobile_distribution_clearances(surface,status)&order=rotation_added_at.desc.nullslast,created_at.desc&limit=1000`
+    : `tracks?is_public=eq.true&editorial_status=eq.approved&select=${trackSelect}&order=rotation_added_at.desc.nullslast,created_at.desc&limit=1000`;
 
   const [tracks, releases, profiles, programmes, showEvents, marketplaceListings, beats, episodes] = await Promise.all([
     rows<TrackRow>(trackPath),

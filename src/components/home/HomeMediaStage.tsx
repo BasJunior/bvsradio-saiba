@@ -26,7 +26,7 @@ export default function HomeMediaStage({
   live = false,
 }: HomeMediaStageProps) {
   return (
-    <article className="overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/35 shadow-[0_24px_80px_rgba(0,0,0,.32)]">
+    <article className="h-full overflow-hidden rounded-[1.75rem] border border-white/20 bg-[#181b1f] shadow-[0_24px_80px_rgba(0,0,0,.28)]">
       <div className="relative aspect-video overflow-hidden bg-black">
         <video
           className="h-full w-full object-cover"
@@ -53,14 +53,14 @@ export default function HomeMediaStage({
         </div>
       </div>
 
-      <div className="grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+      <div className="grid gap-4 border-t border-white/10 bg-gradient-to-b from-white/[.035] to-transparent p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand sm:text-xs">
             {live ? "Now playing" : eyebrow}
           </p>
-          <h1 className="mt-1.5 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
+          <h2 className="mt-1.5 text-balance text-2xl font-semibold tracking-tight sm:text-3xl">
             {title}
-          </h1>
+          </h2>
           {description ? (
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-text-secondary sm:text-base">
               {description}

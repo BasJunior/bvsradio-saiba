@@ -1,0 +1,18 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "BVS: local preview",
+      "type": "shell",
+      "command": "npm run dev -- --port 3100",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "BVS: verify changes",
+      "type": "shell",
+      "command": "npm run typecheck && npm run test:listener-experience && npm run test:explore-discovery && npm run test:web-offers && npm run test:marketplace-storefront && node scripts/commerce-offer-tests.mjs",
+      "problemMatcher": []
+    }
+  ]
+}

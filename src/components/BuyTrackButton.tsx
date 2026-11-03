@@ -1,5 +1,6 @@
 "use client";
 
+import OfferAnalytics from "@/components/OfferAnalytics";
 import { useState } from "react";
 import { isBeatTrack, isEditorialPlay } from "@/lib/beat-playback";
 import { trackEvent } from "@/lib/analytics";
@@ -53,7 +54,7 @@ export default function BuyTrackButton({
           trackEvent("beat_licence_view", { beat_id: beatId, source: "player_buy_cta", variant });
         }}
         className={variant === "compact"
-          ? `inline-flex min-h-10 items-center justify-center shrink-0 rounded-none bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`
+          ? `inline-flex min-h-9 items-center justify-center shrink-0 rounded-full border border-white/20 bg-white/[.08] px-3 py-1 text-[11px] font-semibold text-white transition hover:border-brand/60 hover:bg-white/[.12] sm:text-xs ${className}`
           : `block rounded-2xl border border-brand/50 bg-brand px-4 py-4 text-left text-black transition hover:brightness-110 ${className}`}
         aria-label={`Buy a licence for ${track.title} on BVS web`}
       >
@@ -101,7 +102,7 @@ export default function BuyTrackButton({
           prepareWebCart();
           if (event.defaultPrevented) setBusy(false);
         }}
-        className={`inline-flex min-h-10 items-center justify-center shrink-0 rounded-none bg-white px-3 py-1.5 text-[11px] font-semibold text-black hover:bg-white/90 sm:text-xs ${className}`}
+        className={`inline-flex min-h-9 items-center justify-center shrink-0 rounded-full border border-white/20 bg-white/[.08] px-3 py-1 text-[11px] font-semibold text-white transition hover:border-brand/60 hover:bg-white/[.12] sm:text-xs ${className}`}
         aria-label={`Buy ${track.title} for $${price.toFixed(2)} on BVS web checkout`}
       >
         {busy ? "Opening…" : <><span className="sm:hidden">Buy</span><span className="hidden sm:inline">{label}</span></>}
@@ -110,7 +111,7 @@ export default function BuyTrackButton({
   }
 
   return (
-    <a
+    <OfferAnalytics id={trackId} kind="download" source="player_buy_cta"><a data-offer-action
       href={purchaseHref}
       onClick={(event) => { prepareWebCart(); if (event.defaultPrevented) setBusy(false); }}
       className={`block rounded-2xl border border-brand/50 bg-brand px-4 py-4 text-left text-black shadow-[0_0_0_1px_rgba(0,0,0,.2)] transition hover:brightness-110 ${className}`}
@@ -125,7 +126,7 @@ export default function BuyTrackButton({
       <span className="mt-1 block text-xs text-black/65">
         Keep streaming free — buy a personal download when you want to own it.
       </span>
-    </a>
+    </a></OfferAnalytics>
   );
 }
 

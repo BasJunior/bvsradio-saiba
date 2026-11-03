@@ -1,44 +1,21 @@
+import HomeFeaturedOffer from "@/components/home/HomeFeaturedOffer";
+import HomeCreatorOffer from "@/components/home/HomeCreatorOffer";
 import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import { Suspense } from "react";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
-import SharedListenButton from "@/components/SharedListenButton";
+import HomeTopFive from "@/components/home/HomeTopFive";
+import HomePathways from "@/components/home/HomePathways";
+import HomeNewThisWeek from "@/components/home/HomeNewThisWeek";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
 import HomeMediaStage from "@/components/home/HomeMediaStage";
 import HomeSignupPrompt from "@/components/home/HomeSignupPrompt";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
 
-const paths = [
-  {
-    eyebrow: "Listen",
-    title: "Start with the sound",
-    copy: "Drop into the live rotation and keep listening while you move through BVS.",
-    href: "/radio",
-    cta: "Listen now",
-    accent: "listen",
-  },
-  {
-    eyebrow: "Discover",
-    title: "Find what is moving next",
-    copy: "Explore artists, releases, playlists, beats and the people connected to the music.",
-    href: "/search",
-    cta: "Discover BVS",
-    accent: "discover",
-  },
-  {
-    eyebrow: "Create",
-    title: "Take your music further",
-    copy: "Submit a track, follow its review path and build from the same creator workspace.",
-    href: "/creator/studio",
-    cta: "Open Studio",
-    accent: "studio",
-  },
-];
-
 export default function HomePage() {
   return (
-    <div className="bvs-square-home relative overflow-hidden bg-bg-primary text-text-primary">
+    <div className="bvs-square-home relative overflow-hidden bg-[#111315] text-text-primary">
       <HomeSignupPrompt />
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] opacity-80"
@@ -49,8 +26,32 @@ export default function HomePage() {
         }}
       />
 
-      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:pt-14">
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:items-start lg:gap-8">
+      <section aria-labelledby="home-title" className="relative mx-auto max-w-7xl px-4 pb-8 pt-7 sm:px-6 sm:pb-12 sm:pt-12">
+        <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:gap-8">
+          <div className="max-w-3xl">
+            <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[.2em] text-text-secondary">
+              <span className="rounded-full border border-brand/30 bg-brand/[.07] px-3 py-1 text-brand">BVS Radio</span>
+              <span>Sound · culture · creator tools</span>
+            </div>
+            <h1 id="home-title" className="mt-4 max-w-3xl text-balance text-4xl font-semibold tracking-[-.045em] sm:text-5xl lg:text-[4.25rem]">
+              Listen closer. Build what comes next.
+            </h1>
+            <p className="mt-4 max-w-2xl text-base leading-relaxed text-text-secondary sm:text-lg">
+              Discover sound from everywhere, support independent creators and move from inspiration to your next release in one place.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2.5">
+              <Link href="/radio" className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black shadow-[0_12px_30px_rgba(196,243,67,.16)]">
+                Listen live
+              </Link>
+              <Link href="/search" className="inline-flex min-h-11 items-center rounded-full border border-white/15 bg-white/[.04] px-5 font-semibold hover:border-white/30 hover:bg-white/[.07]">
+                Explore BVS
+              </Link>
+            </div>
+          </div>
+          <HomeTopFive />
+        </div>
+
+        <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:gap-6">
           <HomeMediaStage
             eyebrow="BVS Original"
             title="BVS for artists"
@@ -61,45 +62,29 @@ export default function HomePage() {
               { href: "/search", label: "Discover music", accent: "discover" },
             ]}
           />
-
-          <div id="listen" className="bvs-culture-listen min-w-0 scroll-mt-24 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-2 shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur-sm sm:p-3">
-            <HomeListenPanel />
+          <div className="grid min-w-0 gap-4 lg:self-start">
+            <div id="listen" className="bvs-culture-listen scroll-mt-24 rounded-[1.75rem] border border-white/15 bg-white/[.045] p-2 shadow-[0_24px_80px_rgba(0,0,0,.24)] backdrop-blur-sm sm:p-3">
+              <HomeListenPanel />
+            </div>
           </div>
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          <HomeFeaturedOffer />
+          <HomeCreatorOffer />
         </div>
 
         <HomeContinueListening />
 
-        <div className="mt-8 grid gap-3 sm:mt-10 md:grid-cols-3">
-          {paths.map((item) => item.accent === "listen" ? (
-            <div
-              key={item.eyebrow}
-              data-home-accent={item.accent}
-              className="bvs-home-accent-card rounded-[1.4rem] border border-white/10 bg-white/[.025] p-5"
-            >
-              <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{item.eyebrow}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight">{item.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-text-secondary">{item.copy}</p>
-              <SharedListenButton idleLabel="Listen now" className="bvs-home-accent-arrow mt-4 text-left text-sm font-semibold" />
-            </div>
-          ) : (
-            <Link
-              key={item.eyebrow}
-              href={item.href}
-              data-home-accent={item.accent}
-              className="bvs-home-accent-card group rounded-[1.4rem] border border-white/10 bg-white/[.025] p-5 hover:-translate-y-0.5"
-            >
-              <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{item.eyebrow}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight">{item.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-text-secondary">{item.copy}</p>
-              <p className="bvs-home-accent-arrow mt-4 text-sm font-semibold">{item.cta} →</p>
-            </Link>
-          ))}
-        </div>
+        <HomePathways />
+
       </section>
 
       <DeferredHomeCreatorBands />
 
       <DeferredPublishedAlbumsShelf />
+
+      <HomeNewThisWeek />
 
       <DeferredHomeEngagementHub />
 

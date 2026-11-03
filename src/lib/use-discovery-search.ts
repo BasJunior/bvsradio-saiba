@@ -15,11 +15,14 @@ export function useDiscoverySearch(params: { q: string; type?: string; genre?: s
   useEffect(() => {
     if (!enabled) return
     const controller = new AbortController()
+    let active = true
+    let deadline: number | undefined
     const previous = completed.current
     const resume = previous?.base === base && previous.limit < limit && !previous.data.unavailable.length
     const initial = resume ? previous.data : empty
     setState({ key, data: initial, loading: true })
     const timer = window.setTimeout(async () => {
+      deadline = window.setTimeout(() => controller.abort(), 12000)
       let data = initial
       try {
         for (let offset = resume ? previous.limit : 0; offset < limit;) {
@@ -27,7 +30,7 @@ export function useDiscoverySearch(params: { q: string; type?: string; genre?: s
           const response = await fetch(`/api/search?${base}&offset=${offset}&limit=${size}`, { signal: controller.signal, cache: 'no-store' })
           if (!response.ok) throw new Error('Search unavailable')
           const page = await response.json() as DiscoverySearchResponse
-          if (!Array.isArray(page.items) || !page.counts || !Array.isArray(page.unavailable)) throw new Error('Invalid search response')
+          if (!page || !Array.isArray(page.items) || !page.counts || !Array.isArray(page.unavailable)) throw new Error('Invalid search response')
           data = { ...page, items: [...new Map([...data.items, ...page.items].map(item => [item.id, item])).values()] }
           offset += size
           if (!page.items.length) break
@@ -37,10 +40,12 @@ export function useDiscoverySearch(params: { q: string; type?: string; genre?: s
           setState({ key, data, loading: false })
         }
       } catch {
-        if (!controller.signal.aborted) setState({ key, data: { ...data, unavailable: ['search'] }, loading: false })
+        if (active) setState({ key, data: { ...data, unavailable: ['search'] }, loading: false })
+      } finally {
+        window.clearTimeout(deadline)
       }
     }, new URLSearchParams(base).get('q')?.trim() ? 200 : 0)
-    return () => { controller.abort(); window.clearTimeout(timer) }
+    return () => { active = false; controller.abort(); window.clearTimeout(timer); window.clearTimeout(deadline) }
   }, [base, key, limit, enabled, attempt])
   const current = state.key === key && enabled ? state : { data: empty, loading: enabled }
   return { ...current.data, loading: current.loading, retry: () => { completed.current = null; setAttempt(value => value + 1) } }

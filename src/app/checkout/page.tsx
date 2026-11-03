@@ -165,6 +165,7 @@ export default function CheckoutPage() {
     }
     queueMicrotask(() => {
       setItems(initial);
+    trackEvent("flow_object_open", { object_kind: "cart", source: "checkout", funnel_stage: "checkout_view", item_count: initial.length });
       setCountryCode(detectBrowserCountry());
       setCancelled(new URLSearchParams(window.location.search).has("cancelled"));
       setHydrated(true);
@@ -300,6 +301,7 @@ export default function CheckoutPage() {
     }
     setIsSubmitting(true);
     trackEvent("checkout_started", {
+      source: "checkout_submit",
       payment_method: paymentMethod,
       item_count: items.length,
       total,
@@ -364,12 +366,8 @@ export default function CheckoutPage() {
       }
 
       setResult(data);
-      trackEvent("checkout_complete", {
-        payment_method: data.paymentMode || paymentMethod,
-        item_count: items.length,
-        total,
-        status: data.status || "pending_payment",
-      });
+      // Only trusted payment reconciliation records checkout_complete.
+
     } catch (caught) {
       trackEvent("payment_error", {
         payment_method: paymentMethod,

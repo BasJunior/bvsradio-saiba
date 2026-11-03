@@ -87,7 +87,7 @@ function beatObject(beat: PublicBeat): BvsObject {
   };
 }
 
-export default function FlowRelationships({ kind, id, compact = false, view = "all" }: { kind: "track" | "creator"; id?: string | null; compact?: boolean; view?: "all" | "connections" | "beats" }) {
+export default function FlowRelationships({ kind, id, compact = false, view = "all", fallbackArtist, fallbackArtwork }: { kind: "track" | "creator"; id?: string | null; compact?: boolean; view?: "all" | "connections" | "beats"; fallbackArtist?: string; fallbackArtwork?: string }) {
   const [graphState, setGraphState] = useState<{ id: string; payload: GraphPayload } | null>(null);
   const [beatsState, setBeatsState] = useState<{ id: string; beats: PublicBeat[] } | null>(null);
   const [producerState, setProducerState] = useState<{ id: string; edges: GraphEdge[] } | null>(null);
@@ -138,10 +138,32 @@ export default function FlowRelationships({ kind, id, compact = false, view = "a
 
   if (!id) return null;
   if (kind === "track") {
-    if (!trackCreators.length) return null;
+    if (!trackCreators.length) {
+      if (!fallbackArtist) return null;
+      return (
+        <section className="mt-4 border-t border-white/10 pt-4" aria-label="Explore this track">
+          <p className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Explore this track</p>
+          <BvsObjectCard
+            object={{
+              id: `artist-${fallbackArtist}`,
+              kind: "creator",
+              route: `/search?q=${encodeURIComponent(fallbackArtist)}`,
+              title: fallbackArtist,
+              subtitle: "Artist in the BVS rotation",
+              artwork: fallbackArtwork,
+              contextLabel: "Current artist",
+              primaryAction: { id: "open", label: "Open", intent: "navigate", href: `/search?q=${encodeURIComponent(fallbackArtist)}` },
+              rightsState: "published",
+            }}
+            variant="relationship-card"
+            relationship="performed_by"
+          />
+        </section>
+      );
+    }
     return (
       <section className="mt-4 border-t border-white/10 pt-4" aria-label="Verified relationships for this track">
-        <p className="mb-3 text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Explore this track</p>
+        <p className="mb-3 px-1 text-[10px] font-semibold uppercase tracking-[.18em] text-brand">Explore this track</p>
         <div className={compact ? "grid gap-2" : "grid gap-3 sm:grid-cols-2"}>
           {trackCreators.map((edge) => <BvsObjectCard key={`${edge.relationship}-${edge.node.id}`} object={creatorObject(edge)} variant="relationship-card" relationship={edge.relationship} />)}
         </div>
