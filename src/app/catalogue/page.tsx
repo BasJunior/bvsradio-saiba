@@ -16,6 +16,7 @@ import { rankCollections, type CollectionCard } from "@/lib/catalogue-trending";
 import OfferAnalytics from "@/components/OfferAnalytics";
 import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
+import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
@@ -1128,6 +1129,18 @@ function CataloguePageContent() {
           </div>
         </div> : null}
       </section>
+
+      {beatsMode && !producerMode && (
+        <section
+          id="beatstore"
+          className="mb-10 scroll-mt-24 rounded-none border border-white/10 bg-bg-card/45 p-5 sm:p-7"
+        >
+          <h2 className="bvs-catalogue-section-title mb-6">
+            Browse beats from your favorite producer.
+          </h2>
+          <PublishedProducersShelf onBrowse={() => {}} />
+        </section>
+      )}
 
       {producerMode && (
         <section
