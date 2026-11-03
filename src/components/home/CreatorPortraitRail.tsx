@@ -7,7 +7,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 export type CreatorPortrait = { id: string; name: string; image: string; href: string; detail: string; accent?: string };
 
-export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, headingLevel = 2, accent = "green", kicker = "The people behind the sound", children, layout = "rail", "data-home-accent": homeAccent }: {
+export default function CreatorPortraitRail({ title, tone, items, allHref, allAction, allLabel = "See all", emptyMessage, headingLevel = 2, accent = "green", kicker = "The people behind the sound", kickerBelowTitle = false, children, layout = "rail", "data-home-accent": homeAccent }: {
   title: string;
   tone: "charcoal" | "ink";
   items: CreatorPortrait[];
@@ -18,6 +18,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
   headingLevel?: 1 | 2;
   accent?: "green" | "purple";
   kicker?: string;
+  kickerBelowTitle?: boolean;
   children?: ReactNode;
   layout?: "rail" | "grid";
   "data-home-accent"?: string;
@@ -48,7 +49,7 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
   return <section data-home-accent={homeAccent} className={`bvs-creator-band bvs-creator-band--${tone} ${accent === "purple" ? "bvs-creator-band--purple" : ""}`} aria-labelledby={`${id}-heading`}>
     <div className="bvs-creator-band-inner">
       <div className="bvs-creator-band-header">
-        <div><p className="bvs-creator-kicker">{kicker}</p><Heading id={`${id}-heading`} className={headingLevel === 1 ? "bvs-directory-title" : undefined}>{title}</Heading></div>
+        <div>{!kickerBelowTitle && <p className="bvs-creator-kicker">{kicker}</p>}<Heading id={`${id}-heading`} className={headingLevel === 1 ? "bvs-directory-title" : undefined}>{title}</Heading>{kickerBelowTitle && <p className="bvs-creator-kicker mt-3">{kicker}</p>}</div>
         {allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>}
       </div>
       {items.length ? <>{layout === "rail" ? <div className="bvs-creator-scroll-guide">
