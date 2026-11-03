@@ -17,7 +17,6 @@ export default function BeatStoreGridEnhancer() {
     if (params.get("type") !== "beat") return;
 
     let disposed = false;
-    let observer: MutationObserver | null = null;
     let beatsByKey = new Map<string, PublicBeat>();
     let beatsByTitle = new Map<string, PublicBeat>();
 
@@ -79,29 +78,22 @@ export default function BeatStoreGridEnhancer() {
         );
         enhance();
       })
-      .catch(() => {
-        enhance();
-      });
+      .catch(() => enhance());
 
-    const startObserver = () => {
-      const directory = document.querySelector<HTMLElement>(
-        'section[data-beat-directory="true"]',
-      );
-      if (!directory || observer) return;
-      observer = new MutationObserver(enhance);
-      observer.observe(directory, { childList: true, subtree: true });
-      enhance();
-    };
+    const observer = new MutationObserver(enhance);
+    observer.observe(document.body, { childList: true, subtree: true });
+    enhance();
 
-    startObserver();
-    const timer = window.setInterval(startObserver, 250);
-    const stopTimer = window.setTimeout(() => window.clearInterval(timer), 5000);
+    const onVisibility = () => enhance();
+    const onPopState = () => enhance();
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("popstate", onPopState);
 
     return () => {
       disposed = true;
-      observer?.disconnect();
-      window.clearInterval(timer);
-      window.clearTimeout(stopTimer);
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("popstate", onPopState);
     };
   }, []);
 
