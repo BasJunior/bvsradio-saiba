@@ -42,6 +42,7 @@ export default function PublishedProducersShelf({
       title={title}
       kicker="The people behind the beats"
       kickerBelowTitle={title !== "Producers"}
+      autoScroll={title !== "Producers"}
       tone="ink"
       accent="purple"
       allHref="/music/producers"
