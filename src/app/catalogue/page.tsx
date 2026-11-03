@@ -1135,10 +1135,10 @@ function CataloguePageContent() {
           id="beatstore"
           className="mb-10 scroll-mt-24 rounded-none border border-white/10 bg-bg-card/45 p-5 sm:p-7"
         >
-          <h2 className="bvs-catalogue-section-title mb-6">
-            Browse beats from your favorite producer.
-          </h2>
-          <PublishedProducersShelf onBrowse={() => {}} />
+          <PublishedProducersShelf
+            title="Browse beats from your favorite producer."
+            onBrowse={() => {}}
+          />
         </section>
       )}
 
