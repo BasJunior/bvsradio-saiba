@@ -2,15 +2,39 @@
 
 import { useEffect } from "react";
 
+type BeatLicence = {
+  licence_code?: string | null;
+  price_usd?: number | string | null;
+  is_active?: boolean | null;
+  is_sold_out?: boolean | null;
+};
+
 type PublicBeat = {
   id?: string;
   title?: string;
   producer?: string;
   bpm?: number | string | null;
+  startingPrice?: number | string | null;
+  licences?: BeatLicence[];
 };
 
 const normalize = (value: string | null | undefined) =>
   String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+const producerPrice = (beat?: PublicBeat) => {
+  if (!beat) return null;
+  const licences = Array.isArray(beat.licences) ? beat.licences : [];
+  const active = licences.filter(
+    (licence) => licence.is_active !== false && licence.is_sold_out !== true,
+  );
+  const standard = active.find((licence) => licence.licence_code === "standard_lease");
+  const selected = standard || active.find((licence) => {
+    const value = Number(licence.price_usd);
+    return Number.isFinite(value) && value > 0;
+  });
+  const value = Number(selected?.price_usd);
+  return Number.isFinite(value) && value > 0 ? value : null;
+};
 
 export default function BeatStoreCardLayout() {
   useEffect(() => {
@@ -132,14 +156,16 @@ export default function BeatStoreCardLayout() {
           bpmNode = document.createElement("span");
           bpmNode.dataset.beatBpm = "true";
         }
-        const bpm = beat?.bpm;
-        bpmNode.textContent = bpm
-          ? `${String(bpm).replace(/\s*BPM$/i, "")} BPM`
-          : "BPM —";
+        const rawBpm = beat?.bpm;
+        const bpmValue = Number(String(rawBpm ?? "").replace(/\s*BPM$/i, ""));
+        const hasBpm = Number.isFinite(bpmValue) && bpmValue > 0;
+        bpmNode.textContent = hasBpm ? `${Math.round(bpmValue)} BPM` : "";
+        bpmNode.style.display = hasBpm ? "inline" : "none";
 
         const priceNode = Array.from(metaRow.children).find(
           (node) => node !== genreNode && node !== bpmNode,
         ) as HTMLElement | undefined;
+        const exactPrice = producerPrice(beat);
 
         metaRow.style.display = "block";
         metaRow.style.marginTop = "0.35rem";
@@ -160,8 +186,12 @@ export default function BeatStoreCardLayout() {
           marginTop: "0.15rem",
           paddingTop: "0",
         });
-        footer.appendChild(bpmNode);
-        if (priceNode) footer.appendChild(priceNode);
+        if (hasBpm) footer.appendChild(bpmNode);
+        if (priceNode) {
+          priceNode.textContent = exactPrice !== null ? `$${exactPrice.toFixed(2)}` : "";
+          priceNode.style.display = exactPrice !== null ? "inline" : "none";
+          footer.appendChild(priceNode);
+        }
 
         Object.assign(bpmNode.style, {
           flexShrink: "0",
@@ -169,6 +199,7 @@ export default function BeatStoreCardLayout() {
           margin: "0",
         });
         if (priceNode) {
+          priceNode.classList.add("text-purple-200", "font-semibold");
           Object.assign(priceNode.style, {
             marginLeft: "auto",
             flexShrink: "0",
