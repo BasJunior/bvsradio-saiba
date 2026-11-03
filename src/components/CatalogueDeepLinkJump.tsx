@@ -29,6 +29,14 @@ export default function CatalogueDeepLinkJump() {
     const jump = () => {
       stop()
       const targetId = currentHashTarget()
+      const params = new URLSearchParams(window.location.search)
+
+      if (params.get('type') === 'beat' && targetId === 'beatstore') {
+        window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}`)
+        window.requestAnimationFrame(() => window.scrollTo({ top: 0, left: 0, behavior: 'auto' }))
+        return
+      }
+
       if (!targetId) return
 
       const tryJump = () => {
