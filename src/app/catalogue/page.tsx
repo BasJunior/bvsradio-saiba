@@ -21,6 +21,7 @@ import BeatStoreFilters, { type BeatFilterFields } from "@/components/BeatStoreF
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 import { beatGenreKey, beatGenreLabel } from "@/lib/beat-genre-normalization";
+import { beatVibeKey, beatVibeLabel, beatVibeTags } from "@/lib/beat-vibe-normalization";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
 import { writeCartLines } from "@/lib/cart-client";
 
@@ -305,7 +306,7 @@ function CataloguePageContent() {
   });
   const [genreFilter, setGenreFilter] = useState("All");
   const defaultBeatFilters: BeatFilterFields = {
-    query: "", producer: "", genre: "All", bpm: "", vibe: "", price: "", sort: "newest",
+    query: "", producers: [], genres: [], bpms: [], vibes: [], prices: [], sort: "newest",
   };
   const [beatDraft, setBeatDraft] = useState<BeatFilterFields>(defaultBeatFilters);
   const [beatApplied, setBeatApplied] = useState<BeatFilterFields>(defaultBeatFilters);
@@ -380,7 +381,7 @@ function CataloguePageContent() {
       setBeatDraft((previous) => ({
         ...previous,
         query: searchParams.get("q") || "",
-        producer: requestedProducer,
+        producers: requestedProducer ? [requestedProducer] : [],
       }));
       setPackFilter(requestedPack);
       if (requestedType === "beat" || requestedPack) {
@@ -722,11 +723,16 @@ function CataloguePageContent() {
       .sort((a, b) => a.localeCompare(b)),
     [allTracks],
   );
-  const beatVibeOptions = useMemo(
-    () => Array.from(new Set(scopeTracks.filter(isBeatListing).map((track) => track.mood?.trim()).filter((v): v is string => Boolean(v))))
-      .sort((a, b) => a.localeCompare(b)),
-    [scopeTracks],
-  );
+  const beatVibeOptions = useMemo(() => {
+    const options = new Map<string, string>();
+    for (const track of scopeTracks.filter(isBeatListing)) {
+      for (const vibe of beatVibeTags(track.mood)) {
+        const key = beatVibeKey(vibe);
+        if (!options.has(key)) options.set(key, beatVibeLabel(vibe));
+      }
+    }
+    return [...options.values()].sort((a, b) => a.localeCompare(b));
+  }, [scopeTracks]);
 
   const trendingCards = useMemo(
     () =>
@@ -864,35 +870,44 @@ function CataloguePageContent() {
         [track.title, track.artist, track.collection, track.genre, track.mood || ""].some(
           (field) => field.toLowerCase().includes(normalizedSearch),
         );
-      const matchesGenre = genreFilter === "All" ||
-        (typeFilter === "beat"
-          ? beatGenreKey(track.genre || "") === beatGenreKey(genreFilter)
-          : track.genre === genreFilter);
-      const matchesProducer = !producerFilter ||
-        producerKeysMatch(producerFilter, track.producerUsername, track.artist);
+      const matchesGenre = genreFilter === "All" &&
+        (!beatOptions?.genres.length || beatOptions.genres.some(
+          (genre) => beatGenreKey(genre) === beatGenreKey(track.genre || ""),
+        )) || (typeFilter !== "beat" && track.genre === genreFilter);
+      const matchesProducer = (!producerFilter ||
+        producerKeysMatch(producerFilter, track.producerUsername, track.artist)) &&
+        (!beatOptions?.producers.length || beatOptions.producers.some(
+          (producer) => producerKeysMatch(producer, track.producerUsername, track.artist),
+        ));
       const matchesPack = !packFilter || track.packId === packFilter;
       const matchesType = typeFilter === "all" || typeFilter === "music" ||
         typeFilter === "beat" || track.type === typeFilter;
       const bpmValue = Number(String(track.bpm || "").replace(/\s*BPM$/i, ""));
-      const matchesBpm = !beatOptions?.bpm || (
+      const matchBpmRange = (range: string) => (
         Number.isFinite(bpmValue) && bpmValue > 0 &&
-        (beatOptions.bpm === "under80" ? bpmValue < 80 :
-         beatOptions.bpm === "80to99" ? bpmValue >= 80 && bpmValue < 100 :
-         beatOptions.bpm === "100to119" ? bpmValue >= 100 && bpmValue < 120 :
-         beatOptions.bpm === "120to139" ? bpmValue >= 120 && bpmValue < 140 :
-         beatOptions.bpm === "140to159" ? bpmValue >= 140 && bpmValue < 160 :
+        (range === "under80" ? bpmValue < 80 :
+         range === "80to99" ? bpmValue >= 80 && bpmValue < 100 :
+         range === "100to119" ? bpmValue >= 100 && bpmValue < 120 :
+         range === "120to139" ? bpmValue >= 120 && bpmValue < 140 :
+         range === "140to159" ? bpmValue >= 140 && bpmValue < 160 :
          bpmValue >= 160)
       );
-      const matchesVibe = !beatOptions?.vibe ||
-        (track.mood || "").toLowerCase() === beatOptions.vibe.toLowerCase();
+      const matchesBpm = !beatOptions?.bpms.length ||
+        beatOptions.bpms.some(matchBpmRange);
+      const matchesVibe = !beatOptions?.vibes.length ||
+        beatVibeTags(track.mood).some((tag) => beatOptions.vibes.some(
+          (vibe) => beatVibeKey(tag) === beatVibeKey(vibe),
+        ));
       const priceValue = Number(track.price);
-      const matchesPrice = !beatOptions?.price || (
-        Number.isFinite(priceValue) && priceValue >= 0 &&
-        (beatOptions.price === "under25" ? priceValue < 25 :
-         beatOptions.price === "25to49" ? priceValue >= 25 && priceValue < 50 :
-         beatOptions.price === "50to99" ? priceValue >= 50 && priceValue < 100 :
+      const matchPriceRange = (range: string) => (
+        track.price != null && Number.isFinite(priceValue) && priceValue >= 0 &&
+        (range === "under25" ? priceValue < 25 :
+         range === "25to49" ? priceValue >= 25 && priceValue < 50 :
+         range === "50to99" ? priceValue >= 50 && priceValue < 100 :
          priceValue >= 100)
       );
+      const matchesPrice = !beatOptions?.prices.length ||
+        beatOptions.prices.some(matchPriceRange);
       return matchesSearch && matchesGenre && matchesProducer && matchesPack &&
         matchesType && matchesBpm && matchesVibe && matchesPrice;
     });
@@ -1384,13 +1399,12 @@ function CataloguePageContent() {
               setBeatDraft(filters);
               setBeatApplied(filters);
               setSearch(filters.query);
-              setProducerFilter(filters.producer);
-              setGenreFilter(filters.genre);
+              setProducerFilter("");
+              setGenreFilter("All");
               setPackFilter("");
               const url = new URL(window.location.href);
               url.searchParams.set("type", "beat");
-              if (filters.producer) url.searchParams.set("producer", filters.producer);
-              else url.searchParams.delete("producer");
+              url.searchParams.delete("producer");
               if (filters.query) url.searchParams.set("q", filters.query);
               else url.searchParams.delete("q");
               url.searchParams.delete("pack");
@@ -1398,8 +1412,7 @@ function CataloguePageContent() {
             }}
             onReset={() => {
               const reset: BeatFilterFields = {
-                query: "", producer: "", genre: "All", bpm: "", vibe: "",
-                price: "", sort: "newest",
+                query: "", producers: [], genres: [], bpms: [], vibes: [], prices: [], sort: "newest",
               };
               setBeatDraft(reset);
               setBeatApplied(reset);
