@@ -50,6 +50,12 @@ const simpleComponents = new Set([
 export function beatGenreKey(raw: string) {
   const normalized = clean(raw || "");
   if (!normalized) return "";
+  // Any Hip-Hop combination belongs under the single Hip-Hop filter.
+  // Includes Hip-Hop/Trap, Hip Hop + Drill, Hiphop R&B, etc.
+  if (/(^|[^a-z0-9])hip[\\s-]*hop(?=$|[^a-z0-9])/.test(normalized) ||
+      /(^|[^a-z0-9])hiphop(?=$|[^a-z0-9])/.test(normalized)) {
+    return "hiphop";
+  }
   // Composite genres written with a separator: Hip-Hop/Trap, Hip Hop + Trap.
   const explicit = normalized.split(/\s*(?:\/|\+)\s*/);
   if (explicit.length > 1) {
