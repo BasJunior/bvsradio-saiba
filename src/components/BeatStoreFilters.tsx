@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 export type BeatFilterFields = {
   query: string;
@@ -27,8 +27,88 @@ type Props = {
   onReset: () => void;
 };
 
-const selectStyle = "h-11 w-full min-w-0 rounded-none border border-white/20 bg-[#101010] px-2 text-sm text-white focus:border-[#c1a7ff]";
-const labelStyle = "min-w-0";
+type MenuOption = { value: string; label: string };
+
+function FilterDropdown({
+  label, value, options, onChange,
+}: {
+  label: string;
+  value: string;
+  options: MenuOption[];
+  onChange: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = options.find((option) => option.value === value)?.label || options[0]?.label || label;
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOutside);
+    return () => document.removeEventListener("pointerdown", closeOutside);
+  }, [open]);
+
+  return (
+    <div
+      ref={rootRef}
+      className="relative min-w-0"
+      onMouseEnter={(event) => {
+        if (event.pointerType !== "touch" && window.matchMedia("(hover: hover)").matches) setOpen(true);
+      }}
+      onMouseLeave={() => setOpen(false)}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          setOpen(false);
+          rootRef.current?.querySelector<HTMLButtonElement>("[data-filter-trigger]")?.focus();
+        }
+      }}
+    >
+      <button
+        type="button"
+        data-filter-trigger
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((previous) => !previous)}
+        className={"flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-none border bg-[#101010] px-3 text-left text-sm text-white outline-none transition-colors " +
+          (open ? "border-[#c1a7ff]" : "border-white/20 hover:border-[#c1a7ff]/70") +
+          " focus-visible:border-[#c1a7ff]"}
+      >
+        <span className="min-w-0 truncate">{current}</span>
+        <span aria-hidden="true" className="shrink-0 text-[#c1a7ff]">⌄</span>
+      </button>
+      {open && (
+        <div
+          role="listbox"
+          aria-label={label}
+          className="absolute left-0 top-full z-50 mt-1 max-h-64 w-full min-w-[11rem] overflow-y-auto border border-[#c1a7ff]/60 bg-[#17131e] py-1 shadow-xl shadow-black/70"
+        >
+          {options.map((option) => (
+            <button
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setOpen(false);
+              }}
+              className={"block w-full px-3 py-2 text-left text-sm hover:bg-[#c1a7ff]/20 focus:bg-[#c1a7ff]/20 focus:outline-none " +
+                (option.value === value ? "text-[#c1a7ff]" : "text-white")}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function BeatStoreFilters({
   value, producers, genres, vibes, count, popularityAvailable, onApply, onReset,
@@ -61,57 +141,36 @@ export default function BeatStoreFilters({
         </button>
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        <label className={labelStyle}>
-          <span className="mb-1 block text-xs text-text-secondary">Producer</span>
-          <select aria-label="Filter beats by producer" value={draft.producer} onChange={(e) => update("producer", e.target.value)} className={selectStyle}>
-            <option value="">All producers</option>
-            {producers.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-        </label>
-        <label className={labelStyle}>
-          <span className="mb-1 block text-xs text-text-secondary">Beat genre</span>
-          <select aria-label="Filter beats by genre" value={draft.genre} onChange={(e) => update("genre", e.target.value)} className={selectStyle}>
-            <option value="All">All genres</option>
-            {genres.filter((name) => name !== "All").map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-        </label>
-        <label className={labelStyle}>
-          <span className="mb-1 block text-xs text-text-secondary">BPM</span>
-          <select aria-label="Filter beats by BPM" value={draft.bpm} onChange={(e) => update("bpm", e.target.value)} className={selectStyle}>
-            <option value="">Any BPM</option>
-            <option value="under80">Under 80</option>
-            <option value="80to99">80–99</option>
-            <option value="100to119">100–119</option>
-            <option value="120to139">120–139</option>
-            <option value="140to159">140–159</option>
-            <option value="160plus">160+</option>
-          </select>
-        </label>
-        <label className={labelStyle}>
-          <span className="mb-1 block text-xs text-text-secondary">Vibe</span>
-          <select aria-label="Filter beats by vibe" value={draft.vibe} onChange={(e) => update("vibe", e.target.value)} className={selectStyle}>
-            <option value="">All vibes</option>
-            {vibes.map((name) => <option key={name} value={name}>{name}</option>)}
-          </select>
-        </label>
-        <label className={labelStyle}>
-          <span className="mb-1 block text-xs text-text-secondary">Starting price</span>
-          <select aria-label="Filter beats by starting price" value={draft.price} onChange={(e) => update("price", e.target.value)} className={selectStyle}>
-            <option value="">Any price</option>
-            <option value="under25">Under $25</option>
-            <option value="25to49">$25–$49</option>
-            <option value="50to99">$50–$99</option>
-            <option value="100plus">$100+</option>
-          </select>
-        </label>
-        <label className={labelStyle}>
-          <span className="mb-1 block text-xs text-text-secondary">Sort by</span>
-          <select aria-label="Sort beats" value={draft.sort} onChange={(e) => update("sort", e.target.value)} className={selectStyle}>
-            <option value="newest">Newest</option>
-            <option value="oldest">Oldest</option>
-            <option value="popular">Popularity (30 days)</option>
-          </select>
-        </label>
+        <FilterDropdown label="Producer" value={draft.producer} onChange={(next) => update("producer", next)}
+          options={[{ value: "", label: "All producers" }, ...producers.map((name) => ({ value: name, label: name }))]}
+        />
+        <FilterDropdown label="Beat genre" value={draft.genre} onChange={(next) => update("genre", next)}
+          options={[{ value: "All", label: "All genres" }, ...genres.filter((name) => name !== "All").map((name) => ({ value: name, label: name }))]}
+        />
+        <FilterDropdown label="BPM" value={draft.bpm} onChange={(next) => update("bpm", next)}
+          options={[
+            { value: "", label: "Any BPM" }, { value: "under80", label: "Under 80 BPM" },
+            { value: "80to99", label: "80–99 BPM" }, { value: "100to119", label: "100–119 BPM" },
+            { value: "120to139", label: "120–139 BPM" }, { value: "140to159", label: "140–159 BPM" },
+            { value: "160plus", label: "160+ BPM" },
+          ]}
+        />
+        <FilterDropdown label="Vibe" value={draft.vibe} onChange={(next) => update("vibe", next)}
+          options={[{ value: "", label: "All vibes" }, ...vibes.map((name) => ({ value: name, label: name }))]}
+        />
+        <FilterDropdown label="Starting price" value={draft.price} onChange={(next) => update("price", next)}
+          options={[
+            { value: "", label: "Any price" }, { value: "under25", label: "Under $25" },
+            { value: "25to49", label: "$25–$49" }, { value: "50to99", label: "$50–$99" },
+            { value: "100plus", label: "$100+" },
+          ]}
+        />
+        <FilterDropdown label="Sort beats" value={draft.sort} onChange={(next) => update("sort", next)}
+          options={[
+            { value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" },
+            { value: "popular", label: "Popularity (30 days)" },
+          ]}
+        />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button type="button" onClick={reset} className="text-xs font-semibold text-[#c1a7ff] underline underline-offset-4">
