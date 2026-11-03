@@ -1455,8 +1455,8 @@ function CataloguePageContent() {
         </div>
       </section>
 
-      {beatsMode ? <p className="mb-4 text-sm text-text-secondary">Swipe or scroll sideways to explore all matching beats.</p> : null}
-      <section data-beat-directory={beatsMode ? true : undefined} role={beatsMode ? "region" : undefined} aria-label={beatsMode ? "BeatStore catalogue — scroll horizontally" : undefined} tabIndex={beatsMode ? 0 : undefined} className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {beatsMode ? <p className="mb-4 text-sm text-text-secondary">All available matching beats are shown below.</p> : null}
+      <section data-beat-directory={beatsMode ? true : undefined} role={beatsMode ? "region" : undefined} aria-label={beatsMode ? "BeatStore catalogue" : undefined} tabIndex={beatsMode ? 0 : undefined} className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {filteredTracks.map((track) => {
           const active = String(player.current?.id) === String(track.id) && player.isPlaying;
 
@@ -1499,6 +1499,7 @@ function CataloguePageContent() {
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-secondary">
                   <span className="truncate">{track.genre}</span>
+                  {track.type === "beat" ? <span className="flex-shrink-0" data-beat-bpm>{track.bpm ? `${track.bpm} BPM` : "BPM —"}</span> : null}
                   <span className="flex-shrink-0">{priceBadge(track)}</span>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
