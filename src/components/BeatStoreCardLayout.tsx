@@ -151,19 +151,26 @@ export default function BeatStoreCardLayout() {
         description.style.minHeight = "0";
 
         const genreNode = metaRow.firstElementChild as HTMLElement | null;
-        let bpmNode = metaRow.querySelector<HTMLElement>("[data-beat-bpm]");
-        if (!bpmNode) {
-          bpmNode = document.createElement("span");
-          bpmNode.dataset.beatBpm = "true";
-        }
+
+        // Remove any pre-existing BPM text/nodes so each card shows BPM exactly once.
+        Array.from(metaRow.children).forEach((node) => {
+          if (node === genreNode) return;
+          const text = node.textContent?.trim() || "";
+          if (/^[-–—]?\s*\d*\s*BPM$/i.test(text) || node instanceof HTMLElement && node.dataset.beatBpm === "true") {
+            node.remove();
+          }
+        });
+        description.querySelectorAll<HTMLElement>('[data-beat-bpm="true"]').forEach((node) => node.remove());
+
+        const bpmNode = document.createElement("span");
+        bpmNode.dataset.beatBpm = "true";
         const rawBpm = beat?.bpm;
         const bpmValue = Number(String(rawBpm ?? "").replace(/\s*BPM$/i, ""));
         const hasBpm = Number.isFinite(bpmValue) && bpmValue > 0;
-        bpmNode.textContent = hasBpm ? `${Math.round(bpmValue)} BPM` : "";
-        bpmNode.style.display = hasBpm ? "inline" : "none";
+        bpmNode.textContent = hasBpm ? `${Math.round(bpmValue)} BPM` : "- BPM";
 
         const priceNode = Array.from(metaRow.children).find(
-          (node) => node !== genreNode && node !== bpmNode,
+          (node) => node !== genreNode,
         ) as HTMLElement | undefined;
         const exactPrice = producerPrice(beat);
 
@@ -186,25 +193,30 @@ export default function BeatStoreCardLayout() {
           marginTop: "0.15rem",
           paddingTop: "0",
         });
-        if (hasBpm) footer.appendChild(bpmNode);
-        if (priceNode) {
-          priceNode.textContent = exactPrice !== null ? `$${exactPrice.toFixed(2)}` : "";
-          priceNode.style.display = exactPrice !== null ? "inline" : "none";
-          footer.appendChild(priceNode);
-        }
+        footer.replaceChildren();
+        footer.appendChild(bpmNode);
 
         Object.assign(bpmNode.style, {
           flexShrink: "0",
           textAlign: "left",
           margin: "0",
         });
+
         if (priceNode) {
-          priceNode.classList.add("text-purple-200", "font-semibold");
+          priceNode.textContent = exactPrice !== null ? `$${exactPrice.toFixed(2)}` : "Price unavailable";
+          priceNode.className = "font-semibold text-purple-200";
           Object.assign(priceNode.style, {
             marginLeft: "auto",
             flexShrink: "0",
             textAlign: "right",
+            color: "rgb(233 213 255)",
+            background: "rgba(216, 180, 254, 0.16)",
+            border: "1px solid rgba(216, 180, 254, 0.38)",
+            borderRadius: "0.45rem",
+            padding: "0.18rem 0.42rem",
+            lineHeight: "1.2",
           });
+          footer.appendChild(priceNode);
         }
       });
     };
