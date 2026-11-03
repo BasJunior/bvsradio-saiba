@@ -17,6 +17,10 @@ function isBeatStoreRoute(url: URL) {
   return url.pathname === '/catalogue' && url.searchParams.get('type') === 'beat'
 }
 
+function isPlainBeatStoreRoute(url: URL) {
+  return isBeatStoreRoute(url) && !url.searchParams.get('producer') && !url.searchParams.get('pack') && !url.searchParams.get('q')
+}
+
 export default function CatalogueDeepLinkJump() {
   useEffect(() => {
     let observer: MutationObserver | null = null
@@ -102,15 +106,13 @@ export default function CatalogueDeepLinkJump() {
       if (!(target instanceof HTMLAnchorElement)) return
 
       const destination = new URL(target.href, window.location.href)
-      if (!isBeatStoreRoute(destination)) return
-      if (destination.searchParams.get('producer') || destination.searchParams.get('pack')) return
+      if (!isPlainBeatStoreRoute(destination)) return
 
-      const current = new URL(window.location.href)
-      if (isBeatStoreRoute(current)) {
-        event.preventDefault()
-        window.history.replaceState({}, '', `${destination.pathname}${destination.search}`)
-        forceBeatStoreHeading()
-      }
+      // A clean navigation resets any retained catalogue filters from the music lane.
+      // Without this, a previous genre/search state can make BeatStore appear to contain
+      // only a handful of beats even though the full beat catalogue is loaded.
+      event.preventDefault()
+      window.location.assign(`${destination.pathname}?type=beat`)
     }
 
     jump()
