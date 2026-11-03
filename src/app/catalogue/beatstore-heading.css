@@ -1,13 +1,20 @@
-/* Keep the BeatStore producer browse headline on one line without changing other catalogue headings. */
-.bvs-catalogue-page #beatstore .bvs-catalogue-section-title {
-  white-space: nowrap;
-  font-size: clamp(1rem, 4.2vw, 3.5rem);
+/* BeatStore only: put its browse headline in the portrait rail's heading position.
+   The shared producer rail on the homepage retains its original typography. */
+.bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
+  font-size: clamp(0.9rem, 2.6vw, 2.6rem);
   letter-spacing: -0.045em;
-  margin-left: -0.35rem;
+  line-height: 1.05;
+  white-space: nowrap;
 }
 
-@media (max-width: 639px) {
-  .bvs-catalogue-page #beatstore .bvs-catalogue-section-title {
-    margin-left: 0;
+@media (max-width: 767px) {
+  .bvs-catalogue-page #beatstore .bvs-creator-band-header {
+    align-items: flex-start;
+  }
+
+  .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
+    font-size: clamp(1.15rem, 4.2vw, 1.65rem);
+    white-space: normal;
+    overflow-wrap: break-word;
   }
 }
