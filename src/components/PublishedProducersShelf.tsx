@@ -6,8 +6,10 @@ import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 
 export default function PublishedProducersShelf({
   onBrowse: _onBrowse,
+  title = "Producers",
 }: {
   onBrowse: (producer: PublishedProducerSummary) => void;
+  title?: string;
 }) {
   const [producers, setProducers] = useState<PublishedProducerSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,7 @@ export default function PublishedProducersShelf({
 
   return (
     <CreatorPortraitRail
-      title="Producers"
+      title={title}
       kicker="The people behind the beats"
       tone="ink"
       accent="purple"
