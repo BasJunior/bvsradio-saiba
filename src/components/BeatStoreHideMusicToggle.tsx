@@ -18,7 +18,7 @@ export default function BeatStoreHideMusicToggle() {
           return;
         }
 
-        const beatMatch = label.match(/^(?:Beats\s*[·°]\s*|All\s+)(\d+)(?:\s+beats?)?$/i);
+        const beatMatch = label.match(/^Beats\s*[·°]\s*(\d+)$/i);
         if (!beatMatch) return;
 
         const count = Number(beatMatch[1]);
@@ -28,31 +28,9 @@ export default function BeatStoreHideMusicToggle() {
         button.style.border = "0";
         button.style.borderRadius = "0";
         button.style.fontWeight = "600";
-        button.style.cursor = "pointer";
         button.setAttribute(
           "aria-label",
-          `Browse all ${count} ${count === 1 ? "beat" : "beats"}`,
-        );
-
-        if (button.dataset.beatBrowseJump === "true") return;
-        button.dataset.beatBrowseJump = "true";
-        button.addEventListener(
-          "click",
-          (event) => {
-            event.preventDefault();
-            event.stopPropagation();
-
-            const browseSection = document.getElementById("browse");
-            if (!browseSection) return;
-
-            browseSection.scrollIntoView({ behavior: "smooth", block: "start" });
-            window.history.replaceState(
-              {},
-              "",
-              `${window.location.pathname}${window.location.search}#browse`,
-            );
-          },
-          true,
+          `Show all ${count} ${count === 1 ? "beat" : "beats"}`,
         );
       });
     };
