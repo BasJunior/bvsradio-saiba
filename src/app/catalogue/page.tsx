@@ -1144,7 +1144,7 @@ function CataloguePageContent() {
           className="mb-10 scroll-mt-24"
         >
           <PublishedProducersShelf
-            title="Browse beats from your favorite producer."
+            title="Find your favorite producer"
             onBrowse={() => {}}
           />
         </section>
