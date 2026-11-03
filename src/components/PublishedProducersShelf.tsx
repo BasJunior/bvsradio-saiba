@@ -41,6 +41,7 @@ export default function PublishedProducersShelf({
     <CreatorPortraitRail
       title={title}
       kicker="The people behind the beats"
+      kickerBelowTitle={title !== "Producers"}
       tone="ink"
       accent="purple"
       allHref="/music/producers"
