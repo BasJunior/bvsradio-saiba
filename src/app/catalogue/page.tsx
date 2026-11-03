@@ -17,6 +17,7 @@ import OfferAnalytics from "@/components/OfferAnalytics";
 import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
 import PublishedProducersShelf from "@/components/PublishedProducersShelf";
+import BeatStoreFilters, { type BeatFilterFields } from "@/components/BeatStoreFilters";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
@@ -1366,6 +1367,45 @@ function CataloguePageContent() {
             {filteredTracks.length === 1 ? "result" : "results"}
           </span>
         </div>
+        {beatsMode ? (
+          <BeatStoreFilters
+            value={beatDraft}
+            producers={beatProducerOptions}
+            genres={genres}
+            vibes={beatVibeOptions}
+            count={filteredTracks.length}
+            popularityAvailable={beatPopularityAvailable}
+            onApply={(filters: BeatFilterFields) => {
+              setBeatDraft(filters);
+              setBeatApplied(filters);
+              setSearch(filters.query);
+              setProducerFilter(filters.producer);
+              setGenreFilter(filters.genre);
+              setPackFilter("");
+              const url = new URL(window.location.href);
+              url.searchParams.set("type", "beat");
+              if (filters.producer) url.searchParams.set("producer", filters.producer);
+              else url.searchParams.delete("producer");
+              if (filters.query) url.searchParams.set("q", filters.query);
+              else url.searchParams.delete("q");
+              url.searchParams.delete("pack");
+              window.history.replaceState({}, "", url.pathname + url.search);
+            }}
+            onReset={() => {
+              const reset: BeatFilterFields = {
+                query: "", producer: "", genre: "All", bpm: "", vibe: "",
+                price: "", sort: "newest",
+              };
+              setBeatDraft(reset);
+              setBeatApplied(reset);
+              setSearch("");
+              setProducerFilter("");
+              setPackFilter("");
+              setGenreFilter("All");
+              window.history.replaceState({}, "", "/catalogue?type=beat");
+            }}
+          />
+        ) : (
         <div className="mb-5 rounded-none border border-white/10 bg-gradient-to-br from-white/[0.07] to-white/[0.02] p-3 shadow-2xl shadow-black/20 md:p-4">
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <label className="group relative min-w-0 flex-1">
@@ -1486,6 +1526,7 @@ function CataloguePageContent() {
             </Link>
           </div>
         </div>
+        )}
       </section>
 
       {beatsMode ? <p className="mb-4 text-sm text-text-secondary">All available matching beats are shown below.</p> : null}
