@@ -985,7 +985,7 @@ function CataloguePageContent() {
 
   return (
     <div className={`bvs-catalogue-page bvs-square-marketplace max-w-7xl mx-auto px-4 sm:px-6 py-10 pb-28 ${beatsMode ? "bvs-beatstore-directory" : ""}`}>
-      <section className="grid lg:grid-cols-[1.1fr_0.9fr] gap-10 items-end mb-10">
+      <section className={`grid ${beatsMode && !producerMode ? "grid-cols-1" : "lg:grid-cols-[1.1fr_0.9fr]"} gap-10 items-end mb-10`}>
         <div>
           <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
             {producerMode
@@ -1001,7 +1001,7 @@ function CataloguePageContent() {
                 ? "BeatStore"
                 : "Catalogue"}
           </h1>
-          <p className="max-w-2xl text-text-secondary text-lg">
+          <p className={`text-text-secondary text-lg ${beatsMode && !producerMode ? "lg:whitespace-nowrap" : "max-w-2xl"}`}>
             {producerMode
               ? `Explore the published beats and packs from ${producerLabel}.`
               : beatsMode
