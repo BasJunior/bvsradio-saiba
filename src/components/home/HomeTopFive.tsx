@@ -25,7 +25,7 @@ export default function HomeTopFive() {
   const entries = board?.entries.slice(0, 5) || []
 
   return (
-    <section className="mt-8 overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[.025] shadow-[0_18px_50px_rgba(0,0,0,.18)]" aria-label="Top 5 songs">
+    <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[.025] shadow-[0_18px_50px_rgba(0,0,0,.18)]" aria-label="Top 5 songs">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-5">
         <h2 className="text-base font-semibold tracking-tight sm:text-lg">Top 5</h2>
         <Link href="/trending" className="text-sm font-medium text-brand hover:underline">See all →</Link>
