@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import CatalogueDeepLinkJump from '@/components/CatalogueDeepLinkJump'
 import BeatStoreCardLayout from '@/components/BeatStoreCardLayout'
 import BeatStoreHideTrending from '@/components/BeatStoreHideTrending'
+import BeatStoreHideMusicToggle from '@/components/BeatStoreHideMusicToggle'
 import './beatstore-heading.css'
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function CatalogueLayout({ children }: { children: React.ReactNod
       <CatalogueDeepLinkJump />
       <BeatStoreCardLayout />
       <BeatStoreHideTrending />
+      <BeatStoreHideMusicToggle />
       {children}
     </>
   )
