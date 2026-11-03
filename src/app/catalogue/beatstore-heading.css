@@ -41,6 +41,11 @@
   display: flex;
   width: 100%;
   justify-content: flex-end;
+  /* Sit the arrow row alongside the subtitle instead of adding a tall empty band. */
+  margin-top: -2.5rem;
+  margin-bottom: 0.5rem;
+  position: relative;
+  z-index: 1;
 }
 
 .bvs-catalogue-page #beatstore .bvs-creator-scroll-controls {
@@ -71,6 +76,11 @@
 }
 
 @media (max-width: 767px) {
+  .bvs-catalogue-page #beatstore .bvs-creator-scroll-guide {
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+  }
+
   .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
     font-size: clamp(1.15rem, 4.2vw, 1.65rem);
     white-space: normal;
