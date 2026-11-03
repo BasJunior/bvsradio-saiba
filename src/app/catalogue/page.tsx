@@ -1141,7 +1141,7 @@ function CataloguePageContent() {
       {beatsMode && !producerMode && (
         <section
           id="beatstore"
-          className="mb-10 scroll-mt-24 rounded-none border border-white/10 bg-bg-card/45 px-5 pb-5 pt-0 sm:px-7 sm:pb-7 sm:pt-0"
+          className="mb-10 scroll-mt-24"
         >
           <PublishedProducersShelf
             title="Browse beats from your favorite producer."
