@@ -1077,6 +1077,14 @@ function CataloguePageContent() {
                 >
                   Beats · {beatCount}
                 </button>
+                {beatsMode && (
+                  <Link
+                    href="/music/producers"
+                    className="inline-flex items-center justify-center rounded-none border border-[#c1a7ff] px-4 py-2 text-sm font-semibold uppercase tracking-wide text-[#c1a7ff] transition-colors hover:bg-[#c1a7ff] hover:text-black"
+                  >
+                    Producers
+                  </Link>
+                )}
               </>
             )}
           </div>
