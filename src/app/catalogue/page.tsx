@@ -29,6 +29,7 @@ interface Track {
   title: string;
   artist: string;
   genre: string;
+  mood?: string;
   collection: string;
   duration: string;
   description: string;
@@ -301,6 +302,17 @@ function CataloguePageContent() {
     return new URLSearchParams(window.location.search).get("q") || "";
   });
   const [genreFilter, setGenreFilter] = useState("All");
+  type BeatFilterFields = {
+    query: string; producer: string; genre: string; bpm: string;
+    vibe: string; price: string; sort: "newest" | "oldest" | "popular";
+  };
+  const defaultBeatFilters: BeatFilterFields = {
+    query: "", producer: "", genre: "All", bpm: "", vibe: "", price: "", sort: "newest",
+  };
+  const [beatDraft, setBeatDraft] = useState<BeatFilterFields>(defaultBeatFilters);
+  const [beatApplied, setBeatApplied] = useState<BeatFilterFields>(defaultBeatFilters);
+  const [beatPopularity, setBeatPopularity] = useState<Record<string, number>>({});
+  const [beatPopularityAvailable, setBeatPopularityAvailable] = useState(false);
   const [producerFilter, setProducerFilter] = useState(() => {
     if (typeof window === "undefined") return "";
     return new URLSearchParams(window.location.search).get("producer") || "";
@@ -332,6 +344,19 @@ function CataloguePageContent() {
   const [dbBeats, setDbBeats] = useState<Track[]>([]);
   const [dbMusic, setDbMusic] = useState<Track[]>([]);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/beats/popularity", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((data: { scores?: Record<string, number>; available?: boolean }) => {
+        if (cancelled) return;
+        setBeatPopularity(data.scores || {});
+        setBeatPopularityAvailable(Boolean(data.available));
+      })
+      .catch(() => { if (!cancelled) setBeatPopularityAvailable(false); });
+    return () => { cancelled = true; };
+  }, []);
+
   const [cart, setCart] = useState<Track[]>(() => {
     if (typeof window === "undefined") {
       return [];
@@ -354,6 +379,11 @@ function CataloguePageContent() {
     queueMicrotask(() => {
       setSearch(searchParams.get("q") || "");
       setProducerFilter(requestedProducer);
+      setBeatDraft((previous) => ({
+        ...previous,
+        query: searchParams.get("q") || "",
+        producer: requestedProducer,
+      }));
       setPackFilter(requestedPack);
       if (requestedType === "beat" || requestedPack) {
         setTypeFilter("beat");
@@ -451,6 +481,7 @@ function CataloguePageContent() {
               title: b.title || "Untitled beat",
               artist: b.producer || "BVS Producer",
               genre: b.genre || "Beat",
+              mood: b.mood || "",
               collection: "Live BeatStore",
               duration: b.bpm ? `${b.bpm} BPM` : "Preview",
               description:
@@ -683,6 +714,17 @@ function CataloguePageContent() {
     [scopeTracks],
   );
 
+  const beatProducerOptions = useMemo(
+    () => Array.from(new Set(allTracks.filter(isBeatListing).map((track) => track.artist).filter(Boolean)))
+      .sort((a, b) => a.localeCompare(b)),
+    [allTracks],
+  );
+  const beatVibeOptions = useMemo(
+    () => Array.from(new Set(scopeTracks.filter(isBeatListing).map((track) => track.mood?.trim()).filter((v): v is string => Boolean(v))))
+      .sort((a, b) => a.localeCompare(b)),
+    [scopeTracks],
+  );
+
   const trendingCards = useMemo(
     () =>
       rankCollections(activeCollectionCards, trendingScores, "trending")
@@ -813,35 +855,53 @@ function CataloguePageContent() {
 
   const filteredTracks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
-
+    const beatOptions = typeFilter === "beat" ? beatApplied : null;
     const rows = scopeTracks.filter((track) => {
-      const matchesSearch =
-        !normalizedSearch ||
-        [track.title, track.artist, track.collection, track.genre].some(
+      const matchesSearch = !normalizedSearch ||
+        [track.title, track.artist, track.collection, track.genre, track.mood || ""].some(
           (field) => field.toLowerCase().includes(normalizedSearch),
         );
-
       const matchesGenre = genreFilter === "All" || track.genre === genreFilter;
-      const matchesProducer =
-        !producerFilter ||
+      const matchesProducer = !producerFilter ||
         producerKeysMatch(producerFilter, track.producerUsername, track.artist);
       const matchesPack = !packFilter || track.packId === packFilter;
-      // typeFilter music/beat already applied in scopeTracks; single/mix narrow further
-      const matchesType =
-        typeFilter === "all" ||
-        typeFilter === "music" ||
-        typeFilter === "beat" ||
-        track.type === typeFilter;
-      return (
-        matchesSearch &&
-        matchesGenre &&
-        matchesProducer &&
-        matchesPack &&
-        matchesType
+      const matchesType = typeFilter === "all" || typeFilter === "music" ||
+        typeFilter === "beat" || track.type === typeFilter;
+      const bpmValue = Number(String(track.bpm || "").replace(/\s*BPM$/i, ""));
+      const matchesBpm = !beatOptions?.bpm || (
+        Number.isFinite(bpmValue) && bpmValue > 0 &&
+        (beatOptions.bpm === "under80" ? bpmValue < 80 :
+         beatOptions.bpm === "80to99" ? bpmValue >= 80 && bpmValue < 100 :
+         beatOptions.bpm === "100to119" ? bpmValue >= 100 && bpmValue < 120 :
+         beatOptions.bpm === "120to139" ? bpmValue >= 120 && bpmValue < 140 :
+         beatOptions.bpm === "140to159" ? bpmValue >= 140 && bpmValue < 160 :
+         bpmValue >= 160)
       );
+      const matchesVibe = !beatOptions?.vibe ||
+        (track.mood || "").toLowerCase() === beatOptions.vibe.toLowerCase();
+      const priceValue = Number(track.price);
+      const matchesPrice = !beatOptions?.price || (
+        Number.isFinite(priceValue) && priceValue >= 0 &&
+        (beatOptions.price === "under25" ? priceValue < 25 :
+         beatOptions.price === "25to49" ? priceValue >= 25 && priceValue < 50 :
+         beatOptions.price === "50to99" ? priceValue >= 50 && priceValue < 100 :
+         priceValue >= 100)
+      );
+      return matchesSearch && matchesGenre && matchesProducer && matchesPack &&
+        matchesType && matchesBpm && matchesVibe && matchesPrice;
     });
     if (packFilter) {
       return [...rows].sort((a, b) => (a.packPosition || 0) - (b.packPosition || 0));
+    }
+    if (typeFilter === "beat") {
+      const date = (track: Track) => Date.parse(track.publishedAt || track.createdAt || "") || 0;
+      return [...rows].sort((a, b) => {
+        if (beatApplied.sort === "popular" && beatPopularityAvailable) {
+          const scoreDiff = (beatPopularity[String(b.id)] || 0) - (beatPopularity[String(a.id)] || 0);
+          if (scoreDiff) return scoreDiff;
+        }
+        return beatApplied.sort === "oldest" ? date(a) - date(b) : date(b) - date(a);
+      });
     }
     if (producerFilter) {
       return [...rows].sort((a, b) => {
@@ -851,7 +911,8 @@ function CataloguePageContent() {
       });
     }
     return rows;
-  }, [scopeTracks, genreFilter, producerFilter, packFilter, search, typeFilter]);
+  }, [scopeTracks, genreFilter, producerFilter, packFilter, search, typeFilter,
+      beatApplied, beatPopularity, beatPopularityAvailable]);
 
   const previewTrack = (track: Track) => {
     if (!track.src) return;
