@@ -5,6 +5,26 @@
   padding-top: 1rem;
 }
 
+/* Keep the next section 1 cm below the producer portraits, with no
+   extra spacing from catalogue section dividers or portrait-band padding. */
+.bvs-catalogue-page.bvs-square-marketplace > #beatstore {
+  margin-bottom: 0;
+}
+
+.bvs-catalogue-page.bvs-square-marketplace > #beatstore > .bvs-creator-band {
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.bvs-catalogue-page.bvs-square-marketplace > #beatstore .bvs-creator-portrait-rail {
+  padding-bottom: 0;
+}
+
+.bvs-catalogue-page.bvs-square-marketplace > #browse {
+  border-top: 0;
+  padding-top: 1cm;
+}
+
 /* The global catalogue rail uses negative margins; align it with the hero h1. */
 .bvs-catalogue-page #beatstore > .bvs-creator-band {
   border-top: 0;
