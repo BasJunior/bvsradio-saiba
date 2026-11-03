@@ -1493,7 +1493,7 @@ function CataloguePageContent() {
                       image.srcset = "";
                       image.src = "/branding/bvs-share-logo.png";
                     }}
-                    unoptimized={/^https?:\/\//i.test(track.artwork)}
+                    unoptimized={/^https?:\/\//i.test(track.artwork) || track.artwork.startsWith("/api/media/")}
                     className="object-cover transition duration-300 group-hover:scale-[1.02]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
