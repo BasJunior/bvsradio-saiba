@@ -78,6 +78,11 @@ function genresInPart(part: string): string[] {
 export function beatGenreKeys(raw: string): string[] {
   const normalized = clean(raw || "");
   if (!normalized) return [];
+  // Generic "every genre you can imagine" is not a searchable genre.
+  // Producer listings carrying this claim belong to Hip-Hop and All Genres only.
+  if (/\bevery\s+genres?\s+you\s+can\s+imagine\b/.test(normalized)) {
+    return ["hiphop"];
+  }
   const sections = normalized.split(/\s*(?:\/|\+|,|\||;|•)\s*|\s+&\s+/g).filter(Boolean);
   const result = new Set<string>();
   for (const section of sections) {
