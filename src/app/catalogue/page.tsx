@@ -1072,7 +1072,7 @@ function CataloguePageContent() {
           </div>
         </div>
 
-        <div className="relative aspect-[16/10] rounded-none overflow-hidden border border-white/10">
+        {(!beatsMode || producerMode) ? <div className="relative aspect-[16/10] rounded-none overflow-hidden border border-white/10">
           <Image
             src={
               producerMode && filteredTracks[0]?.artwork
@@ -1117,7 +1117,7 @@ function CataloguePageContent() {
               Open Radio
             </Link>
           </div>
-        </div>
+        </div> : null}
       </section>
 
       {beatsMode && !producerMode && (

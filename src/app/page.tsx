@@ -74,6 +74,8 @@ export default function HomePage() {
 
       <DeferredPublishedAlbumsShelf />
 
+      <HomeNewThisWeek />
+
       <DeferredHomeEngagementHub />
 
       <DeferredHomeBeatRail />
