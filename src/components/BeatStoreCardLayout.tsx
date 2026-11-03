@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useStationPlayer } from "@/components/StationPlayer";
 
 type BeatLicence = {
   licence_code?: string | null;
@@ -13,7 +14,10 @@ type PublicBeat = {
   id?: string;
   title?: string;
   producer?: string;
+  genre?: string | null;
   bpm?: number | string | null;
+  artworkUrl?: string | null;
+  previewUrl?: string | null;
   startingPrice?: number | string | null;
   licences?: BeatLicence[];
 };
@@ -40,6 +44,8 @@ const producerPrice = (beat?: PublicBeat) => {
 };
 
 export default function BeatStoreCardLayout() {
+  const player = useStationPlayer();
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("type") !== "beat") return;
@@ -139,6 +145,51 @@ export default function BeatStoreCardLayout() {
             pointerEvents: "auto",
           });
 
+          if (beat?.previewUrl && playButton.dataset.beatDirectPlay !== "true") {
+            playButton.dataset.beatDirectPlay = "true";
+            playButton.addEventListener(
+              "click",
+              (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+
+                const currentlyPaused = playButton.textContent?.trim() === "Ⅱ";
+                if (currentlyPaused) {
+                  player.pause();
+                  playButton.textContent = "▶";
+                  playButton.setAttribute("aria-label", `Play ${title}`);
+                  return;
+                }
+
+                directory
+                  .querySelectorAll<HTMLButtonElement>('[data-beat-play-control="true"]')
+                  .forEach((button) => {
+                    button.textContent = "▶";
+                    const buttonTitle = button.closest("article")?.querySelector("h2")?.textContent || "beat";
+                    button.setAttribute("aria-label", `Play ${buttonTitle}`);
+                  });
+
+                player.playNow(
+                  {
+                    id: beat.id,
+                    title: beat.title || title,
+                    artist: beat.producer || producer,
+                    src: beat.previewUrl!,
+                    artwork: beat.artworkUrl || undefined,
+                    project: "BVS BeatStore",
+                    genre: beat.genre || undefined,
+                    kind: "beat",
+                  },
+                  { from: "BeatStore" },
+                );
+                playButton.textContent = "Ⅱ";
+                playButton.setAttribute("aria-label", `Pause ${title}`);
+              },
+              true,
+            );
+          }
+
           const actionRow = playButton.parentElement;
           if (actionRow instanceof HTMLElement) {
             actionRow.style.marginTop = "0";
@@ -223,7 +274,7 @@ export default function BeatStoreCardLayout() {
         });
 
         priceNode.textContent = exactPrice !== null ? `From $${exactPrice.toFixed(2)}` : "From —";
-        priceNode.className = "font-semibold text-purple-100";
+        priceNode.className = "font-extrabold";
         Object.assign(priceNode.style, {
           display: "inline-flex",
           alignItems: "center",
@@ -231,8 +282,9 @@ export default function BeatStoreCardLayout() {
           marginLeft: "auto",
           flexShrink: "0",
           textAlign: "right",
-          color: "rgb(243 232 255)",
-          background: "rgb(126 34 206)",
+          color: "rgb(192 132 252)",
+          fontWeight: "800",
+          background: "rgba(216, 180, 254, 0.08)",
           border: "0",
           borderRadius: "0",
           padding: "0.18rem 0.42rem",
@@ -279,7 +331,7 @@ export default function BeatStoreCardLayout() {
       observer.disconnect();
       window.removeEventListener("resize", onResize);
     };
-  }, []);
+  }, [player]);
 
   return null;
 }
