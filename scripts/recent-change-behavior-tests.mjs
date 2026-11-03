@@ -20,6 +20,7 @@ const fixtureTrack = {
   collection: 'BVS', source: 'track', description: '', genre: 'Rap', artwork: '/logo.png',
 }
 const graph = load('src/lib/ask-bvs-flow.ts', {
+  '@/lib/station-content': { getPublicProgrammes: async () => [] },
   '@/lib/catalogue-curated-tracks': { curatedCatalogueTracks: [] },
   '@/lib/catalogue-listings': { listCatalogueMusicListings: async () => ({ listings: [fixtureTrack] }) },
   '@/lib/artist-content': { getPublishedArtists: async () => [{ id: 'creator-1', name: 'BasJunior', username: 'basjunior', role: 'Artist', genres: [], bio: '' }], getPublishedProducers: async () => [] },
