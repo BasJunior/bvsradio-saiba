@@ -4,16 +4,16 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 
 export type BeatFilterFields = {
   query: string;
-  producer: string;
-  genre: string;
-  bpm: string;
-  vibe: string;
-  price: string;
+  producers: string[];
+  genres: string[];
+  bpms: string[];
+  vibes: string[];
+  prices: string[];
   sort: "newest" | "oldest" | "popular";
 };
 
 export const emptyBeatFilters: BeatFilterFields = {
-  query: "", producer: "", genre: "All", bpm: "", vibe: "", price: "", sort: "newest",
+  query: "", producers: [], genres: [], bpms: [], vibes: [], prices: [], sort: "newest",
 };
 
 type Props = {
@@ -29,30 +29,33 @@ type Props = {
 
 type MenuOption = { value: string; label: string };
 
-function FilterDropdown({
-  label, value, options, onChange,
+function FilterMenu({
+  label, values, options, allLabel, onChange,
 }: {
   label: string;
-  value: string;
+  values: string[];
   options: MenuOption[];
-  onChange: (value: string) => void;
+  allLabel: string;
+  onChange: (values: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const current = options.find((option) => option.value === value)?.label || options[0]?.label || label;
+  const ref = useRef<HTMLDivElement>(null);
+  const selectedNames = options.filter((option) => values.includes(option.value)).map((option) => option.label);
+  const summary = !selectedNames.length ? allLabel :
+    selectedNames.length === 1 ? selectedNames[0] : selectedNames.length + " selected";
 
   useEffect(() => {
     if (!open) return;
-    const closeOutside = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    const outside = (event: PointerEvent) => {
+      if (!ref.current?.contains(event.target as Node)) setOpen(false);
     };
-    document.addEventListener("pointerdown", closeOutside);
-    return () => document.removeEventListener("pointerdown", closeOutside);
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
   }, [open]);
 
   return (
     <div
-      ref={rootRef}
+      ref={ref}
       className="relative min-w-0"
       onMouseEnter={() => {
         if (window.matchMedia("(hover: hover)").matches) setOpen(true);
@@ -64,49 +67,68 @@ function FilterDropdown({
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           setOpen(false);
-          rootRef.current?.querySelector<HTMLButtonElement>("[data-filter-trigger]")?.focus();
+          ref.current?.querySelector<HTMLButtonElement>("[data-filter-trigger]")?.focus();
         }
       }}
     >
       <button
         type="button"
         data-filter-trigger
-        aria-label={label}
-        aria-haspopup="listbox"
+        aria-label={label + ": " + summary}
         aria-expanded={open}
+        aria-haspopup="true"
         onClick={() => setOpen((previous) => !previous)}
-        className={"flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-none border bg-[#101010] px-3 text-left text-sm text-white outline-none transition-colors " +
-          (open ? "border-[#c1a7ff]" : "border-white/20 hover:border-[#c1a7ff]/70") +
-          " focus-visible:border-[#c1a7ff]"}
+        className={"flex h-11 w-full min-w-0 items-center justify-between gap-2 rounded-none border bg-[#101010] px-3 text-left text-sm text-white " +
+          (open ? "border-[#c1a7ff]" : "border-white/20 hover:border-[#c1a7ff]/70")}
       >
-        <span className="min-w-0 truncate">{current}</span>
-        <span aria-hidden="true" className="shrink-0 text-[#c1a7ff]">⌄</span>
+        <span className="min-w-0 truncate">{summary}</span>
+        <span aria-hidden="true" className="text-[#c1a7ff]">⌄</span>
       </button>
       {open && (
-        <div
-          role="listbox"
-          aria-label={label}
-          className="absolute left-0 top-full z-50 max-h-64 w-full min-w-[11rem] overflow-y-auto border border-[#c1a7ff]/60 bg-[#17131e] py-1 shadow-xl shadow-black/70"
-        >
+        <div className="absolute left-0 top-full z-50 max-h-72 w-full min-w-[12rem] overflow-y-auto border border-[#c1a7ff]/60 bg-[#17131e] p-1 shadow-xl shadow-black/70">
+          <button
+            type="button"
+            onClick={() => onChange([])}
+            className={"block w-full px-3 py-2 text-left text-sm hover:bg-[#c1a7ff]/20 " +
+              (!values.length ? "text-[#c1a7ff]" : "text-white")}
+          >
+            {!values.length ? "✓ " : ""}{allLabel}
+          </button>
           {options.map((option) => (
-            <button
-              type="button"
-              role="option"
-              aria-selected={option.value === value}
-              key={option.value}
-              onClick={() => {
-                onChange(option.value);
-                setOpen(false);
-              }}
-              className={"block w-full px-3 py-2 text-left text-sm hover:bg-[#c1a7ff]/20 focus:bg-[#c1a7ff]/20 focus:outline-none " +
-                (option.value === value ? "text-[#c1a7ff]" : "text-white")}
-            >
-              {option.label}
-            </button>
+            <label key={option.value} className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm text-white hover:bg-[#c1a7ff]/20">
+              <input
+                type="checkbox"
+                checked={values.includes(option.value)}
+                onChange={(event) => onChange(event.target.checked ?
+                  [...values, option.value] : values.filter((value) => value !== option.value))}
+                className="h-4 w-4 shrink-0 accent-[#c1a7ff]"
+              />
+              <span>{option.label}</span>
+            </label>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+function SortMenu({
+  value, onChange,
+}: {
+  value: BeatFilterFields["sort"];
+  onChange: (value: BeatFilterFields["sort"]) => void;
+}) {
+  return (
+    <select
+      aria-label="Sort beats"
+      value={value}
+      onChange={(event) => onChange(event.target.value as BeatFilterFields["sort"])}
+      className="h-11 w-full min-w-0 rounded-none border border-white/20 bg-[#101010] px-2 text-sm text-white focus:border-[#c1a7ff]"
+    >
+      <option value="newest">Newest</option>
+      <option value="oldest">Oldest</option>
+      <option value="popular">Popularity (30 days)</option>
+    </select>
   );
 }
 
@@ -115,7 +137,7 @@ export default function BeatStoreFilters({
 }: Props) {
   const [draft, setDraft] = useState<BeatFilterFields>(value);
   useEffect(() => { setDraft(value); }, [value]);
-  const update = (field: keyof BeatFilterFields, next: string) =>
+  const update = <K extends keyof BeatFilterFields>(field: K, next: BeatFilterFields[K]) =>
     setDraft((previous) => ({ ...previous, [field]: next }));
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -141,36 +163,34 @@ export default function BeatStoreFilters({
         </button>
       </div>
       <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-        <FilterDropdown label="Producer" value={draft.producer} onChange={(next) => update("producer", next)}
-          options={[{ value: "", label: "All producers" }, ...producers.map((name) => ({ value: name, label: name }))]}
-        />
-        <FilterDropdown label="Beat genre" value={draft.genre} onChange={(next) => update("genre", next)}
-          options={[{ value: "All", label: "All genres" }, ...genres.filter((name) => name !== "All").map((name) => ({ value: name, label: name }))]}
-        />
-        <FilterDropdown label="BPM" value={draft.bpm} onChange={(next) => update("bpm", next)}
+        <FilterMenu label="Producer" allLabel="All producers" values={draft.producers}
+          onChange={(next) => update("producers", next)}
+          options={producers.map((name) => ({ value: name, label: name }))} />
+        <FilterMenu label="Beat genre" allLabel="All genres" values={draft.genres}
+          onChange={(next) => update("genres", next)}
+          options={genres.filter((name) => name !== "All").map((name) => ({ value: name, label: name }))} />
+        <FilterMenu label="BPM" allLabel="Any BPM" values={draft.bpms}
+          onChange={(next) => update("bpms", next)}
           options={[
-            { value: "", label: "Any BPM" }, { value: "under80", label: "Under 80 BPM" },
-            { value: "80to99", label: "80–99 BPM" }, { value: "100to119", label: "100–119 BPM" },
-            { value: "120to139", label: "120–139 BPM" }, { value: "140to159", label: "140–159 BPM" },
+            { value: "under80", label: "Under 80 BPM" },
+            { value: "80to99", label: "80–99 BPM" },
+            { value: "100to119", label: "100–119 BPM" },
+            { value: "120to139", label: "120–139 BPM" },
+            { value: "140to159", label: "140–159 BPM" },
             { value: "160plus", label: "160+ BPM" },
-          ]}
-        />
-        <FilterDropdown label="Vibe" value={draft.vibe} onChange={(next) => update("vibe", next)}
-          options={[{ value: "", label: "All vibes" }, ...vibes.map((name) => ({ value: name, label: name }))]}
-        />
-        <FilterDropdown label="Starting price" value={draft.price} onChange={(next) => update("price", next)}
+          ]} />
+        <FilterMenu label="Vibe" allLabel="All vibes" values={draft.vibes}
+          onChange={(next) => update("vibes", next)}
+          options={vibes.map((name) => ({ value: name, label: name }))} />
+        <FilterMenu label="Starting price" allLabel="Any price" values={draft.prices}
+          onChange={(next) => update("prices", next)}
           options={[
-            { value: "", label: "Any price" }, { value: "under25", label: "Under $25" },
-            { value: "25to49", label: "$25–$49" }, { value: "50to99", label: "$50–$99" },
+            { value: "under25", label: "Under $25" },
+            { value: "25to49", label: "$25–$49" },
+            { value: "50to99", label: "$50–$99" },
             { value: "100plus", label: "$100+" },
-          ]}
-        />
-        <FilterDropdown label="Sort beats" value={draft.sort} onChange={(next) => update("sort", next)}
-          options={[
-            { value: "newest", label: "Newest" }, { value: "oldest", label: "Oldest" },
-            { value: "popular", label: "Popularity (30 days)" },
-          ]}
-        />
+          ]} />
+        <SortMenu value={draft.sort} onChange={(next) => update("sort", next)} />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <button type="button" onClick={reset} className="text-xs font-semibold text-[#c1a7ff] underline underline-offset-4">
