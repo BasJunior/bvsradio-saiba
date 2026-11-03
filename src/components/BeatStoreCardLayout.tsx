@@ -32,8 +32,11 @@ const producerPrice = (beat?: PublicBeat) => {
     const value = Number(licence.price_usd);
     return Number.isFinite(value) && value > 0;
   });
-  const value = Number(selected?.price_usd);
-  return Number.isFinite(value) && value > 0 ? value : null;
+  const selectedValue = Number(selected?.price_usd);
+  if (Number.isFinite(selectedValue) && selectedValue > 0) return selectedValue;
+
+  const fallback = Number(beat.startingPrice);
+  return Number.isFinite(fallback) && fallback > 0 ? fallback : null;
 };
 
 export default function BeatStoreCardLayout() {
@@ -152,7 +155,6 @@ export default function BeatStoreCardLayout() {
 
         const genreNode = metaRow.firstElementChild as HTMLElement | null;
 
-        // Remove any pre-existing BPM text/nodes so each card shows BPM exactly once.
         Array.from(metaRow.children).forEach((node) => {
           if (node === genreNode) return;
           const text = node.textContent?.trim() || "";
@@ -169,9 +171,6 @@ export default function BeatStoreCardLayout() {
         const hasBpm = Number.isFinite(bpmValue) && bpmValue > 0;
         bpmNode.textContent = hasBpm ? `${Math.round(bpmValue)} BPM` : "- BPM";
 
-        const priceNode = Array.from(metaRow.children).find(
-          (node) => node !== genreNode,
-        ) as HTMLElement | undefined;
         const exactPrice = producerPrice(beat);
 
         metaRow.style.display = "block";
@@ -193,8 +192,14 @@ export default function BeatStoreCardLayout() {
           marginTop: "0.15rem",
           paddingTop: "0",
         });
-        footer.replaceChildren();
-        footer.appendChild(bpmNode);
+
+        let priceNode = footer.querySelector<HTMLElement>('[data-beat-price="true"]');
+        if (!priceNode) {
+          priceNode = document.createElement("span");
+          priceNode.dataset.beatPrice = "true";
+        }
+
+        footer.replaceChildren(bpmNode, priceNode);
 
         Object.assign(bpmNode.style, {
           flexShrink: "0",
@@ -202,22 +207,22 @@ export default function BeatStoreCardLayout() {
           margin: "0",
         });
 
-        if (priceNode) {
-          priceNode.textContent = exactPrice !== null ? `$${exactPrice.toFixed(2)}` : "Price unavailable";
-          priceNode.className = "font-semibold text-purple-200";
-          Object.assign(priceNode.style, {
-            marginLeft: "auto",
-            flexShrink: "0",
-            textAlign: "right",
-            color: "rgb(233 213 255)",
-            background: "rgba(216, 180, 254, 0.16)",
-            border: "1px solid rgba(216, 180, 254, 0.38)",
-            borderRadius: "0.45rem",
-            padding: "0.18rem 0.42rem",
-            lineHeight: "1.2",
-          });
-          footer.appendChild(priceNode);
-        }
+        priceNode.textContent = exactPrice !== null ? `$${exactPrice.toFixed(2)}` : "Price unavailable";
+        priceNode.className = "font-semibold text-purple-200";
+        Object.assign(priceNode.style, {
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginLeft: "auto",
+          flexShrink: "0",
+          textAlign: "right",
+          color: "rgb(233 213 255)",
+          background: "rgba(216, 180, 254, 0.16)",
+          border: "1px solid rgba(216, 180, 254, 0.38)",
+          borderRadius: "0.45rem",
+          padding: "0.18rem 0.42rem",
+          lineHeight: "1.2",
+        });
       });
     };
 
