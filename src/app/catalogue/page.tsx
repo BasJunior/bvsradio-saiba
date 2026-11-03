@@ -16,7 +16,6 @@ import { rankCollections, type CollectionCard } from "@/lib/catalogue-trending";
 import OfferAnalytics from "@/components/OfferAnalytics";
 import { trackEvent } from "@/lib/analytics";
 import PublishedArtistsShelf from "@/components/PublishedArtistsShelf";
-import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
@@ -1129,64 +1128,6 @@ function CataloguePageContent() {
           </div>
         </div> : null}
       </section>
-
-      {beatsMode && !producerMode && (
-        <section
-          id="beatstore"
-          className="mb-10 scroll-mt-24 rounded-none border border-white/10 bg-bg-card/45 p-5 sm:p-7"
-        >
-          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[3px] text-brand">
-                Browse BeatStore
-              </p>
-              <h2 className="bvs-catalogue-section-title mt-2">
-                Browse beats from your favorite producer.
-              </h2>
-              <p className="mt-2 max-w-2xl text-sm text-text-secondary">
-                Published producer crates
-                {liveBeatStats.count
-                  ? ` · ${liveBeatStats.count} beat${liveBeatStats.count === 1 ? "" : "s"} from ${liveBeatStats.producerCount} producer${liveBeatStats.producerCount === 1 ? "" : "s"}${liveBeatStats.minPrice != null ? ` · from $${liveBeatStats.minPrice}` : ""}`
-                  : " · loading…"}
-                .
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={clearProducerFilter}
-              className="rounded-none bg-brand px-5 py-2.5 text-sm font-semibold text-black hover:bg-brand-dark"
-            >
-              Show all beats
-            </button>
-          </div>
-          <PublishedProducersShelf
-            onBrowse={(producer) => {
-              setSearch("");
-              const browseKey =
-                resolvePublicHandle(producer.name.replace(/^@/, "")) ||
-                resolvePublicHandle(producer.username) ||
-                producer.username;
-              setProducerFilter(browseKey);
-              setGenreFilter("All");
-              setTypeFilter("beat");
-              const url = new URL(window.location.href);
-              url.searchParams.set("type", "beat");
-              url.searchParams.set("producer", browseKey);
-              url.searchParams.delete("q");
-              window.history.replaceState(
-                {},
-                "",
-                `${url.pathname}?${url.searchParams.toString()}#browse`,
-              );
-              window.requestAnimationFrame(() => {
-                document
-                  .getElementById("browse")
-                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
-              });
-            }}
-          />
-        </section>
-      )}
 
       {producerMode && (
         <section
