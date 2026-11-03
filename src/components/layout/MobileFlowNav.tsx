@@ -64,7 +64,7 @@ export default function MobileFlowNav() {
 
   if (!appChrome) {
     return <nav ref={navRef} className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/10 bg-bg-primary/95 backdrop-blur-2xl md:hidden" aria-label="Primary">
-      <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-5">
+      <div className="bvs-app-bottom-nav-inner mx-auto grid h-16 max-w-lg grid-cols-6">
         {webDestinations.map(item => {
           const active = isWebDestinationActive(item.id, pathname);
           return <Link key={item.id} href={item.href} replace onClick={event => {
@@ -75,8 +75,8 @@ export default function MobileFlowNav() {
               return;
             }
             router.replace(item.href);
-          }} data-bvs-web-studio={item.id === 'studio' ? 'mobile' : undefined} aria-current={active ? 'page' : undefined} className={`flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl text-[11px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand ${active ? 'text-brand' : 'text-text-secondary hover:text-white'}`}>
-            <span className={`grid h-7 w-10 place-items-center rounded-full ${active ? 'bg-brand/15' : ''}`}><Icon id={item.id} active={active} /></span><span>{item.label}</span>
+          }} data-bvs-web-studio={item.id === 'studio' ? 'mobile' : undefined} aria-current={active ? 'page' : undefined} className={`flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-0.5 rounded-xl text-[10px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand ${active ? 'text-brand' : 'text-text-secondary hover:text-white'}`}>
+            <span className={`grid h-7 w-9 place-items-center rounded-full ${active ? 'bg-brand/15' : ''}`}><Icon id={item.id} active={active} /></span><span className="truncate">{item.label}</span>
           </Link>;
         })}
       </div>
