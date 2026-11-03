@@ -20,10 +20,26 @@
   margin: 0;
 }
 
+/* Give the title the entire row; keep See all below it, at the right. */
+.bvs-catalogue-page #beatstore .bvs-creator-band-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.bvs-catalogue-page #beatstore .bvs-creator-band-header > div {
+  width: 100%;
+  min-width: 0;
+}
+
+.bvs-catalogue-page #beatstore .bvs-creator-band-header > .bvs-creator-directory {
+  align-self: flex-end;
+}
+
 /* BeatStore only: put its browse headline in the portrait rail's heading position.
    The shared producer rail on the homepage retains its original typography. */
 .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
-  font-size: clamp(1.5rem, 3.2vw, 3.25rem);
+  font-size: clamp(1.35rem, 3.4vw, 4rem);
   letter-spacing: -0.075em;
   line-height: 1.05;
   white-space: nowrap;
@@ -43,10 +59,6 @@
 }
 
 @media (max-width: 767px) {
-  .bvs-catalogue-page #beatstore .bvs-creator-band-header {
-    align-items: flex-start;
-  }
-
   .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
     font-size: clamp(1.15rem, 4.2vw, 1.65rem);
     white-space: normal;
