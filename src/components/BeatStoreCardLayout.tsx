@@ -118,7 +118,8 @@ export default function BeatStoreCardLayout() {
           );
           Object.assign(playButton.style, {
             position: "absolute",
-            left: "0.5rem",
+            left: "auto",
+            right: "0.5rem",
             top: `${Math.max(8, artwork.offsetHeight - 27)}px`,
             width: "0.5cm",
             height: "0.5cm",
@@ -135,6 +136,7 @@ export default function BeatStoreCardLayout() {
             fontSize: "15px",
             fontWeight: "900",
             lineHeight: "1",
+            pointerEvents: "auto",
           });
 
           const actionRow = playButton.parentElement;
@@ -158,11 +160,24 @@ export default function BeatStoreCardLayout() {
         Array.from(metaRow.children).forEach((node) => {
           if (node === genreNode) return;
           const text = node.textContent?.trim() || "";
-          if (/^[-–—]?\s*\d*\s*BPM$/i.test(text) || node instanceof HTMLElement && node.dataset.beatBpm === "true") {
+          if (
+            /^[-–—]?\s*\d*\s*BPM$/i.test(text) ||
+            (node instanceof HTMLElement && node.dataset.beatBpm === "true") ||
+            /^from\s+\$?/i.test(text) ||
+            /^standard\s+lease$/i.test(text)
+          ) {
             node.remove();
           }
         });
+
         description.querySelectorAll<HTMLElement>('[data-beat-bpm="true"]').forEach((node) => node.remove());
+        description.querySelectorAll<HTMLElement>("span,div,p").forEach((node) => {
+          if (node === genreNode) return;
+          const text = node.textContent?.trim() || "";
+          if (/^from\s+\$?/i.test(text) || /^standard\s+lease$/i.test(text)) {
+            node.remove();
+          }
+        });
 
         const bpmNode = document.createElement("span");
         bpmNode.dataset.beatBpm = "true";
@@ -207,8 +222,8 @@ export default function BeatStoreCardLayout() {
           margin: "0",
         });
 
-        priceNode.textContent = exactPrice !== null ? `$${exactPrice.toFixed(2)}` : "Price unavailable";
-        priceNode.className = "font-semibold text-purple-200";
+        priceNode.textContent = exactPrice !== null ? `From $${exactPrice.toFixed(2)}` : "From —";
+        priceNode.className = "font-semibold text-purple-100";
         Object.assign(priceNode.style, {
           display: "inline-flex",
           alignItems: "center",
@@ -216,10 +231,10 @@ export default function BeatStoreCardLayout() {
           marginLeft: "auto",
           flexShrink: "0",
           textAlign: "right",
-          color: "rgb(233 213 255)",
-          background: "rgba(216, 180, 254, 0.16)",
-          border: "1px solid rgba(216, 180, 254, 0.38)",
-          borderRadius: "0.45rem",
+          color: "rgb(243 232 255)",
+          background: "rgb(126 34 206)",
+          border: "0",
+          borderRadius: "0",
           padding: "0.18rem 0.42rem",
           lineHeight: "1.2",
         });
