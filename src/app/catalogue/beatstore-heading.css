@@ -1,18 +1,21 @@
-/* The parent BeatStore panel already has a top border; avoid a second inset line. */
+/* BeatStore producer showcase has no outer frame or inset divider. */
 .bvs-catalogue-page #beatstore > .bvs-creator-band {
   border-top: 0;
   padding-top: 0;
+  background: transparent;
 }
 
 /* Keep the gap from the hero buttons to the producer heading under 1 cm. */
 .bvs-catalogue-page #beatstore .bvs-creator-band-inner {
-  padding-top: 0;
+  padding: 0;
+  max-width: none;
+  margin: 0;
 }
 
 /* BeatStore only: put its browse headline in the portrait rail's heading position.
    The shared producer rail on the homepage retains its original typography. */
 .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
-  font-size: clamp(0.9rem, 2.6vw, 2.6rem);
+  font-size: clamp(1.3rem, 3vw, 3rem);
   letter-spacing: -0.045em;
   line-height: 1.05;
   white-space: nowrap;
