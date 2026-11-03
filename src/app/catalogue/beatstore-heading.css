@@ -1,0 +1,6 @@
+/* Keep the BeatStore producer browse headline on one line without changing other catalogue headings. */
+.bvs-catalogue-page #beatstore .bvs-catalogue-section-title {
+  white-space: nowrap;
+  font-size: clamp(1rem, 4.2vw, 3.5rem);
+  letter-spacing: -0.045em;
+}
