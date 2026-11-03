@@ -16,17 +16,20 @@ for (const accent of ["listen", "discover", "feed", "beats", "studio", "marketpl
 }
 assert(css.includes(".bvs-home-accent-button"), "home accent buttons share one restrained treatment");
 assert(css.includes(".bvs-home-accent-card"), "home accent cards share one restrained hover treatment");
-assert(home.includes("<HomeMediaStage"), "home hero is the reusable BVS media stage");
-assert(!home.includes("Music moves differently here."), "root home no longer renders the old static hero headline");
-assert(home.includes('src="/media/bvs-home-stage-loop.mp4"'), "home media stage points at the BVS teaser asset");
-assert(home.includes('{ href: "/search", label: "Discover music", accent: "discover" }'), "media stage keeps the Explore teal discovery action");
-assert(home.includes('{ href: "/creator/studio", label: "Open Creator Studio", accent: "studio" }'), "media stage keeps the Studio blue creator action");
-assert(mediaStage.includes("<video"), "media stage renders an actual video element");
-assert(mediaStage.includes("controls"), "media stage exposes playback controls");
-assert(mediaStage.includes("playsInline"), "media stage stays inline on mobile");
-assert(mediaStage.includes("muted"), "media stage can autoplay without forcing audio");
-assert(mediaStage.includes("loop={!live}"), "non-live media can loop without looping a live source");
-assert(mediaStage.includes('live ? "Live on BVS" : eyebrow'), "live presentation is explicit and data-driven");
+assert(home.includes("Listen closer. Build what comes next."), "root home restores the reference hero headline");
+assert(home.includes("<HomeTopFive"), "home hero includes the visual Top 5 showcase");
+assert(home.includes('src="/media/bvs-home-stage-loop.mp4"'), "home keeps the BVS teaser asset beneath the hero");
+assert(home.includes("<video"), "home reference layout keeps an actual BVS Original video element");
+assert(home.includes("controls"), "home BVS Original video exposes playback controls");
+assert(home.includes("playsInline"), "home BVS Original video stays inline on mobile");
+assert(home.includes("muted"), "home BVS Original video can autoplay without forcing audio");
+assert(home.includes("loop"), "home BVS Original teaser loops");
+assert(mediaStage.includes("<video"), "reusable media stage still renders an actual video element");
+assert(mediaStage.includes("controls"), "reusable media stage still exposes playback controls");
+assert(mediaStage.includes("playsInline"), "reusable media stage stays inline on mobile");
+assert(mediaStage.includes("muted"), "reusable media stage can autoplay without forcing audio");
+assert(mediaStage.includes("loop={!live}"), "non-live reusable media can loop without looping a live source");
+assert(mediaStage.includes('live ? "Live on BVS" : eyebrow'), "live presentation remains explicit and data-driven");
 assert(mediaStage.includes("data-home-accent={action.accent}"), "media-stage actions use the shared restrained home palette");
 assert(shows.includes('data-home-accent="shows"'), "shows CTA uses Shows rose");
 assert(home.includes('data-home-accent="marketplace"'), "marketplace CTA uses Marketplace green");
@@ -35,4 +38,4 @@ assert(engagement.includes('data-home-accent="feed"'), "home ownership CTA uses 
 assert(beats.includes('data-home-accent="beats"'), "BeatStore rail uses BeatStore purple");
 assert(playlists.includes('data-home-accent="feed"'), "playlist rail uses Feed lavender");
 
-console.log("home accent and media-stage regression checks passed");
+console.log("home accent and restored-reference regression checks passed");
