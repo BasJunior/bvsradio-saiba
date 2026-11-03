@@ -703,13 +703,19 @@ function CataloguePageContent() {
     return allTracks;
   }, [allTracks, typeFilter]);
 
-  const genres = useMemo(
-    () => [
-      "All",
-      ...Array.from(new Set(scopeTracks.map((track) => track.genre))),
-    ],
-    [scopeTracks],
-  );
+  const genres = useMemo(() => {
+    if (typeFilter !== "beat") {
+      return ["All", ...Array.from(new Set(scopeTracks.map((track) => track.genre)))];
+    }
+    const canonical = new Map<string, string>();
+    for (const track of scopeTracks) {
+      const genre = (track.genre || "").trim().replace(/\\s+/g, " ");
+      const key = genre.toLocaleLowerCase();
+      if (!key || key === "all" || canonical.has(key)) continue;
+      canonical.set(key, genre.replace(/\\b\\p{L}/gu, (letter) => letter.toLocaleUpperCase()).replace(/\\p{L}+/gu, (word) => word[0] + word.slice(1).toLocaleLowerCase()));
+    }
+    return ["All", ...Array.from(canonical.values()).sort((a, b) => a.localeCompare(b))];
+  }, [scopeTracks, typeFilter]);
 
   const beatProducerOptions = useMemo(
     () => Array.from(new Set(allTracks.filter(isBeatListing).map((track) => track.artist).filter(Boolean)))
@@ -858,7 +864,11 @@ function CataloguePageContent() {
         [track.title, track.artist, track.collection, track.genre, track.mood || ""].some(
           (field) => field.toLowerCase().includes(normalizedSearch),
         );
-      const matchesGenre = genreFilter === "All" || track.genre === genreFilter;
+      const matchesGenre = genreFilter === "All" ||
+        (typeFilter === "beat"
+          ? (track.genre || "").trim().replace(/\\s+/g, " ").toLocaleLowerCase() ===
+            genreFilter.trim().replace(/\\s+/g, " ").toLocaleLowerCase()
+          : track.genre === genreFilter);
       const matchesProducer = !producerFilter ||
         producerKeysMatch(producerFilter, track.producerUsername, track.artist);
       const matchesPack = !packFilter || track.packId === packFilter;
