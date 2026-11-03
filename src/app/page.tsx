@@ -6,6 +6,7 @@ import SharedListenButton from "@/components/SharedListenButton";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
 import HomeMediaStage from "@/components/home/HomeMediaStage";
 import HomeSignupPrompt from "@/components/home/HomeSignupPrompt";
+import TrendingBoard from "@/components/TrendingBoard";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
 
@@ -68,6 +69,8 @@ export default function HomePage() {
         </div>
 
         <HomeContinueListening />
+
+        <TrendingBoard preview />
 
         <div className="mt-8 grid gap-3 sm:mt-10 md:grid-cols-3">
           {paths.map((item) => item.accent === "listen" ? (
