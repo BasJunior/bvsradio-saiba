@@ -2,103 +2,71 @@ import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import { Suspense } from "react";
 import Link from "next/link";
 import HomeListenPanel from "@/components/HomeListenPanel";
-import SharedListenButton from "@/components/SharedListenButton";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
-import HomeMediaStage from "@/components/home/HomeMediaStage";
 import HomeSignupPrompt from "@/components/home/HomeSignupPrompt";
 import HomeTopFive from "@/components/home/HomeTopFive";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
 
-const paths = [
-  {
-    eyebrow: "Listen",
-    title: "Start with the sound",
-    copy: "Drop into the live rotation and keep listening while you move through BVS.",
-    href: "/radio",
-    cta: "Listen now",
-    accent: "listen",
-  },
-  {
-    eyebrow: "Discover",
-    title: "Find what is moving next",
-    copy: "Explore artists, releases, playlists, beats and the people connected to the music.",
-    href: "/search",
-    cta: "Discover BVS",
-    accent: "discover",
-  },
-  {
-    eyebrow: "Create",
-    title: "Take your music further",
-    copy: "Submit a track, follow its review path and build from the same creator workspace.",
-    href: "/creator/studio",
-    cta: "Open Studio",
-    accent: "studio",
-  },
-];
-
 export default function HomePage() {
   return (
     <div className="bvs-square-home relative overflow-hidden bg-bg-primary text-text-primary">
       <HomeSignupPrompt />
-      <div
-        className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] opacity-80"
-        aria-hidden="true"
-        style={{
-          background:
-            "radial-gradient(circle at 20% 4%, rgba(196,243,67,.09), transparent 30%), radial-gradient(circle at 82% 12%, rgba(193,167,255,.12), transparent 28%)",
-        }}
-      />
 
-      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:pt-14">
-        <div className="grid gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:items-start lg:gap-8">
-          <HomeMediaStage
-            eyebrow="BVS Original"
-            title="BVS for artists"
-            description="A quick look inside BVS for artists, creators and the people building what comes next."
-            src="/media/bvs-home-stage-loop.mp4"
-            actions={[
-              { href: "/creator/studio", label: "Open Creator Studio", accent: "studio" },
-              { href: "/search", label: "Discover music", accent: "discover" },
-            ]}
-          />
-
-          <div className="min-w-0 space-y-4">
-            <HomeTopFive />
-            <div id="listen" className="bvs-culture-listen min-w-0 scroll-mt-24 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-2 shadow-[0_24px_80px_rgba(0,0,0,.28)] backdrop-blur-sm sm:p-3">
-              <HomeListenPanel />
+      <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:pt-10">
+        <div className="grid gap-x-8 gap-y-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(24rem,.85fr)] lg:items-start">
+          <div className="min-w-0 lg:pt-3">
+            <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[.2em] text-white/70 sm:text-xs">
+              <span className="border border-brand/70 px-2.5 py-1 text-brand">BVS Radio</span>
+              <span>Sound · Culture · Creator Tools</span>
             </div>
+
+            <h1 className="mt-6 max-w-3xl text-balance text-4xl font-black leading-[.98] tracking-[-0.05em] text-white sm:text-5xl lg:text-[4.4rem]">
+              Listen closer. Build what comes next.
+            </h1>
+            <p className="mt-5 max-w-2xl text-pretty text-sm leading-relaxed text-white/72 sm:text-base lg:text-lg">
+              Discover sound from everywhere, support independent creators and move from inspiration to your next release in one place.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link href="#listen" className="inline-flex min-h-11 items-center justify-center bg-brand px-6 py-3 text-sm font-bold text-black transition hover:bg-brand-dark">
+                Listen live
+              </Link>
+              <Link href="/search" className="inline-flex min-h-11 items-center justify-center border border-white/35 px-6 py-3 text-sm font-semibold text-white transition hover:border-white/60 hover:bg-white/5">
+                Explore BVS
+              </Link>
+            </div>
+          </div>
+
+          <div className="min-w-0">
+            <HomeTopFive />
+          </div>
+
+          <article className="overflow-hidden border border-white/15 bg-black shadow-[0_20px_70px_rgba(0,0,0,.3)]">
+            <div className="relative aspect-video overflow-hidden bg-black">
+              <video
+                className="h-full w-full object-cover"
+                src="/media/bvs-home-stage-loop.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls
+                preload="metadata"
+                aria-label="BVS Original"
+              />
+              <div className="pointer-events-none absolute left-3 top-3 border border-white/15 bg-black/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.18em] text-white backdrop-blur-sm sm:left-4 sm:top-4">
+                BVS Original
+              </div>
+            </div>
+          </article>
+
+          <div id="listen" className="bvs-culture-listen min-w-0 scroll-mt-24 border border-white/15 bg-black/45 p-2 shadow-[0_20px_70px_rgba(0,0,0,.28)] sm:p-3">
+            <HomeListenPanel />
           </div>
         </div>
 
         <HomeContinueListening />
-
-        <div className="mt-8 grid gap-3 sm:mt-10 md:grid-cols-3">
-          {paths.map((item) => item.accent === "listen" ? (
-            <div
-              key={item.eyebrow}
-              data-home-accent={item.accent}
-              className="bvs-home-accent-card rounded-[1.4rem] border border-white/10 bg-white/[.025] p-5"
-            >
-              <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{item.eyebrow}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight">{item.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-text-secondary">{item.copy}</p>
-              <SharedListenButton idleLabel="Listen now" className="bvs-home-accent-arrow mt-4 text-left text-sm font-semibold" />
-            </div>
-          ) : (
-            <Link
-              key={item.eyebrow}
-              href={item.href}
-              data-home-accent={item.accent}
-              className="bvs-home-accent-card group rounded-[1.4rem] border border-white/10 bg-white/[.025] p-5 hover:-translate-y-0.5"
-            >
-              <p className="bvs-home-accent-label text-[10px] font-semibold uppercase tracking-[.18em]">{item.eyebrow}</p>
-              <h2 className="mt-2 text-xl font-semibold tracking-tight">{item.title}</h2>
-              <p className="mt-2 text-sm leading-relaxed text-text-secondary">{item.copy}</p>
-              <p className="bvs-home-accent-arrow mt-4 text-sm font-semibold">{item.cta} →</p>
-            </Link>
-          ))}
-        </div>
       </section>
 
       <DeferredHomeCreatorBands />
