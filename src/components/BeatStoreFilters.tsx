@@ -59,7 +59,7 @@ function FilterDropdown({
       }}
       onMouseLeave={() => setOpen(false)}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
       }}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
@@ -86,7 +86,7 @@ function FilterDropdown({
         <div
           role="listbox"
           aria-label={label}
-          className="absolute left-0 top-full z-50 mt-1 max-h-64 w-full min-w-[11rem] overflow-y-auto border border-[#c1a7ff]/60 bg-[#17131e] py-1 shadow-xl shadow-black/70"
+          className="absolute left-0 top-full z-50 max-h-64 w-full min-w-[11rem] overflow-y-auto border border-[#c1a7ff]/60 bg-[#17131e] py-1 shadow-xl shadow-black/70"
         >
           {options.map((option) => (
             <button
