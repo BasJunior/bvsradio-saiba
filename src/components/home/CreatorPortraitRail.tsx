@@ -124,13 +124,13 @@ export default function CreatorPortraitRail({ title, tone, items, allHref, allAc
         {allAction ? <button type="button" className="bvs-creator-directory" onClick={allAction}>{allLabel} <span aria-hidden="true">↗</span></button> : <Link className="bvs-creator-directory" href={allHref}>{allLabel} <span aria-hidden="true">↗</span></Link>}
       </div>
       {items.length ? <>{layout === "rail" ? <div className="bvs-creator-scroll-guide">
-        <p id={`${id}-hint`}>Swipe or scroll sideways <span aria-hidden="true">→</span></p>
+        {!autoScroll && <p id={`${id}-hint`}>Swipe or scroll sideways <span aria-hidden="true">→</span></p>}
         <div className="bvs-creator-scroll-controls">
           <button type="button" aria-label={`Scroll ${title.toLowerCase()} left`} aria-controls={`${id}-rail`} disabled={!edges.previous} onClick={() => move(-1)}>←</button>
           <button type="button" aria-label={`Scroll ${title.toLowerCase()} right`} aria-controls={`${id}-rail`} disabled={!edges.next} onClick={() => move(1)}>→</button>
         </div>
       </div> : null}
-      <div ref={railRef} id={`${id}-rail`} className={`bvs-creator-portrait-rail${layout === "grid" ? " bvs-creator-portrait-grid" : ""}`} style={autoScroll && layout === "rail" ? { scrollSnapType: "none", scrollBehavior: "auto" } : undefined} role="region" aria-label={`${title} portraits`} aria-describedby={layout === "rail" ? `${id}-hint` : undefined} tabIndex={0}>
+      <div ref={railRef} id={`${id}-rail`} className={`bvs-creator-portrait-rail${layout === "grid" ? " bvs-creator-portrait-grid" : ""}`} style={autoScroll && layout === "rail" ? { scrollSnapType: "none", scrollBehavior: "auto" } : undefined} role="region" aria-label={`${title} portraits`} aria-describedby={layout === "rail" && !autoScroll ? `${id}-hint` : undefined} tabIndex={0}>
         {children || (autoScroll && layout === "rail" ? Array.from({ length: Math.max(3, Math.ceil(16 / items.length)) }, () => items).flat() : items).map((item, index) => <Link key={`${item.id}-${index}`} href={item.href} data-home-accent={item.accent} aria-hidden={autoScroll && index >= items.length ? true : undefined} tabIndex={autoScroll && index >= items.length ? -1 : undefined} className="bvs-creator-portrait">
           <div className="bvs-creator-photo"><Image src={item.image || "/assets/images/default-avatar.png"} alt="" fill loading="lazy" decoding="async" sizes="(max-width: 640px) 160px, (max-width: 1024px) 200px, 240px" unoptimized={shouldBypassImageOptimizer(item.image)} className="object-cover" /></div>
           <div className="bvs-creator-caption"><h3>{item.name}</h3><p>{item.detail}</p></div>
