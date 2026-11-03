@@ -67,6 +67,6 @@ assert(mobileWebNav.includes('M4 16.5h2.5l2-5 3 8 2.5-12 2.5 9H20'), "mobile web
 assert(appYou.includes('Turn on creator access.'), "listener You surface must keep Create as an upgrade option");
 assert(mobileWebNav.includes('grid-cols-5'), "mobile web navigation must make Feed first-class");
 assert(mobileWebNav.includes('href={feedHref}'), "mobile web navigation must link BVS Feed");
-assert(footer.includes('href="/feed"'), "desktop web must expose BVS Feed in discovery navigation");
+assert(footer.includes("['Community Feed', '/feed']"), "desktop web must expose BVS Feed in discovery navigation");
 
 console.log("BVS Feed public-data, session-boundary, all-content hierarchy, social-action, icon and role-aware navigation assertions passed.");
