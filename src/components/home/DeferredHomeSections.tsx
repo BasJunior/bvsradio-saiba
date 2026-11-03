@@ -63,8 +63,8 @@ export function DeferredHomeEngagementHub() {
   );
 }
 
-export function DeferredHomeCreatorBands() {
-  return <DeferredMount name="creator-bands" placeholderClassName="min-h-[36rem]"><HomeCreatorBands /></DeferredMount>;
+export function DeferredHomeCreatorBands({ children }: { children?: ReactNode }) {
+  return <DeferredMount name="creator-bands" placeholderClassName="min-h-[36rem]"><HomeCreatorBands>{children}</HomeCreatorBands></DeferredMount>;
 }
 
 export function DeferredPublishedArtistsShelf({ limit = 6 }: { limit?: number }) {

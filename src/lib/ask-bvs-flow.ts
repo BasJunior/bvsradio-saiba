@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { getPublicProgrammes } from '@/lib/station-content'
 import { curatedCatalogueTracks } from '@/lib/catalogue-curated-tracks'
 import { listCatalogueMusicListings } from '@/lib/catalogue-listings'
 import { getPublishedArtists, getPublishedProducers } from '@/lib/artist-content'
@@ -16,6 +17,7 @@ export type AskBvsObject = {
   subtitle?: string
   route: string
   artwork?: string
+  matchReason?: string
   collection?: string
 }
 
@@ -31,6 +33,8 @@ export type AskBvsClientContext = {
   history?: AskBvsClientItem[]
   recent?: AskBvsClientItem[]
   follows?: AskBvsClientItem[]
+  previousResults?: Array<{ id: string; kind: string }>
+  shownIds?: string[]
 }
 
 export type AskBvsAnswer = {
@@ -42,6 +46,9 @@ export type AskBvsAnswer = {
 }
 
 type Candidate = AskBvsObject & {
+  genre?: string
+  mood?: string
+  bpm?: number
   searchText: string
   artist?: string
   source?: 'live-track' | 'curated' | 'release' | 'beat' | 'creator'
@@ -89,7 +96,7 @@ function normalize(value?: string | null) {
   return (value || '').toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
-function unique(items: AskBvsObject[]) {
+function unique<T extends AskBvsObject>(items: T[]): T[] {
   const seen = new Set<string>()
   return items.filter((item) => {
     const key = `${item.kind}:${item.id}`
@@ -125,7 +132,7 @@ function score(query: string, item: Candidate) {
   if (slug && (slug === q || (q.length >= 3 && slug.includes(q)) || (slug.length >= 3 && q.includes(slug)))) {
     return 780 + Math.min(q.length, slug.length)
   }
-  const qTokens = new Set(q.split(' ').filter((token) => token.length >= 3))
+  const qTokens = new Set(q.split(' ').filter((token) => token.length >= 3 && !['find', 'show', 'music', 'track', 'tracks', 'beat', 'beats', 'song', 'songs', 'please', 'recommend', 'something', 'want', 'looking', 'with', 'some', 'from', 'bvs', 'the', 'for'].includes(token)))
   const titleTokens = title.split(' ').filter((token) => token.length >= 3)
   const titleHits = titleTokens.filter((token) => qTokens.has(token)).length
   if (titleHits && titleHits === titleTokens.length) return 650 + titleHits * 20
@@ -141,6 +148,7 @@ type CatalogueSnapshot = {
   artists: Awaited<ReturnType<typeof getPublishedArtists>>
   producers: Awaited<ReturnType<typeof getPublishedProducers>>
   beats: Candidate[]
+  shows: Awaited<ReturnType<typeof getPublicProgrammes>>
 }
 
 // Catalogue can lag a bit; Pulse/show live state must stay fresher.
@@ -161,8 +169,9 @@ async function loadCatalogueSnapshot(): Promise<CatalogueSnapshot> {
     getPublishedArtists().catch(() => [] as Awaited<ReturnType<typeof getPublishedArtists>>),
     getPublishedProducers().catch(() => [] as Awaited<ReturnType<typeof getPublishedProducers>>),
     loadBeats().catch(() => [] as Candidate[]),
-  ]).then(([catalogue, releases, artists, producers, beats]) => {
-    catalogueSnapshot = { at: Date.now(), catalogue, releases, artists, producers, beats }
+    getPublicProgrammes().catch(() => [] as Awaited<ReturnType<typeof getPublicProgrammes>>),
+  ]).then(([catalogue, releases, artists, producers, beats, shows]) => {
+    catalogueSnapshot = { at: Date.now(), catalogue, releases, artists, producers, beats, shows }
     catalogueInflight = null
     return catalogueSnapshot
   }).catch((error) => {
@@ -209,9 +218,13 @@ async function loadBeats(): Promise<Candidate[]> {
   if (!response?.ok) return []
   const beats = await response.json() as BeatRow[]
   const ids = [...new Set(beats.map((beat) => beat.producer_user_id).filter(Boolean))]
-  const profilesResponse = ids.length
+  let profilesResponse = ids.length
     ? await fetch(`${setup.url}/rest/v1/profiles?id=in.(${ids.join(',')})&select=id,username,creator_public_name,creator_name_status,producer_public_name,producer_name_status`, { headers: setup.headers, cache: 'no-store', signal: AbortSignal.timeout(4000) }).catch(() => null)
     : null
+  // Older databases may not yet expose the optional producer-name columns.
+  if (ids.length && !profilesResponse?.ok) {
+    profilesResponse = await fetch(`${setup.url}/rest/v1/profiles?id=in.(${ids.join(',')})&select=id,username,creator_public_name,creator_name_status`, { headers: setup.headers, cache: 'no-store', signal: AbortSignal.timeout(4000) }).catch(() => null)
+  }
   const profiles = profilesResponse?.ok ? await profilesResponse.json() as ProducerProfile[] : []
   return beats.map((beat) => {
     const profile = profiles.find((row) => row.id === beat.producer_user_id)
@@ -232,6 +245,9 @@ async function loadBeats(): Promise<Candidate[]> {
       collection: 'BVS BeatStore',
       searchText: [beat.title, producer, beat.description, beat.genre, beat.mood, beat.bpm, beat.musical_key].join(' '),
       artist: producer,
+      genre: beat.genre || undefined,
+      mood: beat.mood || undefined,
+      bpm: beat.bpm || undefined,
       source: 'beat',
       creatorId: beat.producer_user_id,
       publishedAt: beat.published_at || beat.created_at || undefined,
@@ -282,7 +298,7 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
       : { reply: 'Your BVS trail is empty on this device so far. Explore a few connected objects and I’ll be able to point you back.', objects: [], links: [{ label: 'Explore BVS', href: '/search' }], mode: 'flow', reason: 'scene_trail' }
   }
 
-  const { catalogue, releases, artists, producers, beats, pulse } = await loadGraphSnapshot()
+  const { catalogue, releases, artists, producers, beats, shows, pulse } = await loadGraphSnapshot()
 
   const creators: Candidate[] = [
     ...artists.map((artist) => ({ id: artist.id, kind: 'creator' as const, title: artist.name, subtitle: artist.role, route: `/artist/${encodeURIComponent(artist.username)}`, artwork: artist.image, searchText: [artist.name, artist.username, artist.role, artist.bio, ...artist.genres].join(' '), source: 'creator' as const, creatorId: artist.id })),
@@ -299,6 +315,7 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
     collection: row.collection,
     searchText: [row.title, row.artist, row.genre, row.collection, row.description].join(' '),
     artist: row.artist,
+    genre: row.genre,
     source: row.source === 'track' ? 'live-track' : 'release',
     releaseId: row.releaseId,
   }))
@@ -329,12 +346,44 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
     collection: 'Published release',
     searchText: [row.title, row.artist, row.genre, row.description, ...row.tracks.map((track) => track.title)].join(' '),
     artist: row.artist,
+    genre: row.genre,
     source: 'release',
     publishedAt: row.publishedAt,
     releaseTracks: row.tracks.map((track) => track.title),
   }))
 
-  const candidates = [...live, ...curated, ...releaseCandidates, ...beats, ...creators]
+  const showCandidates: Candidate[] = shows.map(show => ({ id: show.slug, kind: 'show', title: show.title, subtitle: show.tagline || show.schedule, route: `/shows/${encodeURIComponent(show.slug)}`, artwork: show.image, searchText: [show.title, show.tagline, show.schedule].filter(Boolean).join(' ') }))
+  const candidates = [...live, ...curated, ...releaseCandidates, ...beats, ...creators, ...showCandidates]
+  // Follow-up references are only IDs: resolve facts again from the server catalogue.
+  const followUp = /\b(more like|similar to|something similar|slower|faster|more of these|show me more|more please)\b/.test(q)
+  const anchorRef = context.previousResults?.[0]
+  const anchor = anchorRef ? candidates.find(item => item.id === anchorRef.id && item.kind === anchorRef.kind) : undefined
+  const discovery = /\b(recommend|suggest|find|looking for|show me)\b/.test(q) && /\b(beats?|instrumentals?|tracks?|songs?|music|artists?|producers?|creators?|shows?)\b/.test(q)
+  if (followUp || discovery) {
+    const links = [{ label: 'Explore music', href: '/search' }, { label: 'Browse beats', href: '/catalogue?type=beat' }]
+    if (followUp && !anchor) return { reply: 'Which track or beat should I use as the starting point? Tell me its title or ask for a few picks first.', objects: [], links, mode: 'flow', reason: 'followup_needs_reference' }
+    const slower = /\bslower\b/.test(q), faster = /\bfaster\b/.test(q)
+    if ((slower || faster) && !anchor?.bpm) return { reply: `I don’t have a verified BPM for ${anchor?.title || 'that selection'}, so I can’t compare its tempo reliably. Ask for beats at a specific BPM instead.`, objects: [], links, mode: 'flow', reason: 'tempo_unknown' }
+    const kind = followUp ? anchor?.kind : /\b(beats?|instrumentals?)\b/.test(q) ? 'beat' : /\b(artists?|producers?|creators?)\b/.test(q) ? 'creator' : /\bshows?\b/.test(q) ? 'show' : 'track'
+    const ignored = new Set('recommend suggest find looking for show me please some a an the bvs music track tracks song songs beat beats instrumental instrumentals something want i to listen hear with and by at around of in that are can you give us to me artist artists producer producers creator creators shows show'.split(' '))
+    const terms = q.split(' ').filter(word => !ignored.has(word))
+    const bpmMatch = q.match(/\b(\d{2,3})\s*bpm\b/)
+    const textTerms = terms.filter(word => word !== 'bpm' && !/^\d+$/.test(word))
+    const excluded = new Set(context.shownIds || [])
+    const picks = unique(candidates.filter(item => {
+      if (item.kind !== kind || (!['creator', 'show'].includes(kind || '') && !['live-track', 'beat'].includes(item.source || ''))) return false
+      if (followUp) {
+        if (item.id === anchor?.id || excluded.has(`${item.kind}:${item.id}`)) return false
+        if (slower || faster) return Boolean(item.bpm && (slower ? item.bpm < anchor!.bpm! : item.bpm > anchor!.bpm!))
+        return Boolean((anchor?.genre && normalize(item.genre) === normalize(anchor.genre)) || (anchor?.artist && normalize(item.artist) === normalize(anchor.artist)))
+      }
+      return (!bpmMatch || item.bpm === Number(bpmMatch[1])) && textTerms.every(term => normalize(`${item.title} ${item.artist} ${item.genre} ${item.mood}`).split(' ').includes(term))
+    }).sort((a, b) => followUp && anchor?.bpm ? Math.abs((a.bpm || 0) - anchor.bpm) - Math.abs((b.bpm || 0) - anchor.bpm) : 0)).slice(0, 4).map(item => ({
+      ...item,
+      matchReason: followUp ? slower || faster ? `${item.bpm} BPM — ${slower ? 'slower' : 'faster'} than ${anchor!.title} (${anchor!.bpm} BPM)` : anchor?.genre && normalize(item.genre) === normalize(anchor.genre) ? `Same listed genre: ${item.genre}` : `Same listed creator: ${item.artist}` : [item.genre, item.mood, item.bpm ? `${item.bpm} BPM` : undefined].filter(Boolean).join(' · ') || 'Published catalogue selection',
+    }))
+    return { reply: picks.length ? `${picks.length === 1 ? 'Try' : 'Start with'} ${picks[0].title}${picks[0].subtitle ? ` by ${picks[0].artist || picks[0].subtitle}` : ''}. ${followUp ? 'These suggestions use listed creator, genre or BPM data—not an audio similarity analysis.' : 'These published selections match the details you asked for; they are not a popularity ranking.'}` : followUp ? 'I couldn’t find another published match with the verified details available. Try a different genre or creator.' : 'I couldn’t find a published match for all those details. Try a genre, producer name or an exact BPM, such as “find beats at 120 BPM”.', objects: picks, links: picks.length ? [] : links, mode: 'flow', reason: 'discovery_picks' }
+  }
   const ranked = candidates.map((candidate) => ({ candidate, score: score(message, candidate) })).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score)
   const best = ranked[0]?.candidate
   const bestCreator = ranked.find((entry) => entry.candidate.kind === 'creator')?.candidate
@@ -389,7 +438,7 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
         ? [
             { label: `Open ${best.title} profile`, href: best.route },
             ...(relatedCreators[0]
-              ? [{ label: `Similar creator: ${relatedCreators[0].title}`, href: relatedCreators[0].route }]
+              ? [{ label: `Also matched: ${relatedCreators[0].title}`, href: relatedCreators[0].route }]
               : [{ label: 'Explore creators', href: '/search?mode=creators' }]),
           ]
         : best.kind === 'beat'
@@ -410,7 +459,7 @@ export async function answerAskBvs(message: string, context: AskBvsClientContext
             : []
     const reply =
       best.kind === 'creator'
-        ? `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}. Open the profile card below${relatedCreators[0] ? `, or try a similar creator` : ''}.`
+        ? `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}. Open the profile card below${relatedCreators[0] ? `, or explore another matching creator` : ''}.`
         : `I found ${best.title}${best.subtitle ? ` — ${best.subtitle}` : ''}.`
     return { reply, objects, links, mode: 'flow', reason: 'entity_match' }
   }

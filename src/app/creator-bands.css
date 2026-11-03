@@ -68,12 +68,22 @@
 .bvs-square-home .bvs-home-join-band { text-align: left; max-width: 80rem; margin-inline: auto; }
 .bvs-square-home .bvs-home-join-band :is(h2, p) { margin-inline: 0; }
 .bvs-square-home .bvs-home-join-band > div { justify-content: flex-start; }
+/* Homepage beats: keep artwork square and put Preview / more / Save on one row.
+   Scope these rules here so catalogue and feed cards keep their own layouts. */
+.bvs-home-beat-portrait { position: relative; --color-brand: var(--bvs-culture-lilac); }
 .bvs-home-beat-portrait > article { width: 100%; min-width: 0; border: 0; background: transparent; border-radius: 0; box-shadow: none; }
-.bvs-home-beat-portrait > article > button + div { border-top: 1px solid var(--portrait-line); padding: .85rem .75rem; }
-.bvs-home-beat-portrait > article h3 { font-size: 1rem; font-weight: 800; line-height: 1.2; }
-.bvs-home-beat-portrait > article > div:last-of-type { flex-wrap: wrap; padding-inline: .75rem; }
-.bvs-home-beat-portrait > div { padding: 0 .75rem .75rem; }
-.bvs-home-beat-portrait { --color-brand: var(--bvs-culture-lilac); }
+.bvs-home-beat-portrait > article > :is(button, a) + div { border-top: 1px solid var(--portrait-line); padding: .75rem; }
+/* The section heading already provides context; avoid repeating it on every card. */
+.bvs-home-beat-portrait > article > :is(button, a) + div > :is(button, a) > p:first-child { display: none; }
+.bvs-home-beat-portrait > article h3 { min-height: 2.4em; font-size: 1rem; font-weight: 800; line-height: 1.2; }
+.bvs-home-beat-portrait > article > :is(button, a) + div > :is(button, a) > p { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: 1; }
+.bvs-home-beat-portrait > article > div:last-of-type { flex-wrap: nowrap; padding: 0 .75rem .75rem; gap: .375rem; }
+.bvs-home-beat-portrait > article > div:last-of-type > :is(button, a):first-child { padding-inline: .625rem; font-size: .75rem; }
+.bvs-home-beat-portrait > div { position: absolute; right: .5rem; bottom: .75rem; margin: 0; padding: 0; }
+.bvs-home-beat-portrait > article > div:last-of-type { padding-right: 4.5rem; }
+/* Slightly wider mobile cards leave room for all three actions without wrapping. */
+.bvs-home-beat-portrait.bvs-creator-portrait { flex-basis: 200px; }
+@media (min-width: 1024px) { .bvs-home-beat-portrait.bvs-creator-portrait { flex-basis: 240px; } }
 .bvs-creator-band h2 { overflow-wrap: anywhere; }
 .bvs-square-home .bvs-app-home-hero { border-width: 1px 0; background-color: #0a0a0a; }
 .bvs-square-home section[data-bvs-culture="station"]:not(.bvs-creator-band--charcoal):not(.bvs-home-release-band) { background-color: #1b1b1b; }

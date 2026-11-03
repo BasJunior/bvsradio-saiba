@@ -78,8 +78,7 @@ assert.ok(
   "Below-fold Home client sections must stay code-split and mount only near the viewport.",
 );
 assert.ok(
-  homePage.includes("<DeferredHomeEngagementHub />") &&
-    homePage.includes("<DeferredHomeCreatorBands />") &&
+  homePage.includes("<DeferredHomeCreatorBands>") &&
     homePage.includes("<DeferredPublishedAlbumsShelf />") &&
     homePage.includes("<DeferredHomeBeatRail />") &&
     homePage.includes("<DeferredHomePublicPlaylistRail />") &&
