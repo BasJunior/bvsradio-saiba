@@ -20,7 +20,7 @@ import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import BeatStoreFilters, { type BeatFilterFields } from "@/components/BeatStoreFilters";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
-import { beatGenreKey, beatGenreLabel } from "@/lib/beat-genre-normalization";
+import { beatGenreKey, beatGenreKeys, beatGenreLabel } from "@/lib/beat-genre-normalization";
 import { beatVibeKey, beatVibeLabel, beatVibeTags } from "@/lib/beat-vibe-normalization";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
 import { writeCartLines } from "@/lib/cart-client";
@@ -711,9 +711,10 @@ function CataloguePageContent() {
     }
     const genresByKey = new Map<string, string>();
     for (const track of scopeTracks) {
-      const key = beatGenreKey(track.genre || "");
-      if (!key || key === "all" || genresByKey.has(key)) continue;
-      genresByKey.set(key, beatGenreLabel(key));
+      for (const key of beatGenreKeys(track.genre || "")) {
+        if (!key || key === "all" || genresByKey.has(key)) continue;
+        genresByKey.set(key, beatGenreLabel(key));
+      }
     }
     return ["All", ...Array.from(genresByKey.values()).sort((a, b) => a.localeCompare(b))];
   }, [scopeTracks, typeFilter]);
@@ -871,9 +872,9 @@ function CataloguePageContent() {
           (field) => field.toLowerCase().includes(normalizedSearch),
         );
       const matchesGenre = typeFilter === "beat"
-        ? (genreFilter === "All" || beatGenreKey(track.genre || "") === beatGenreKey(genreFilter)) &&
+        ? (genreFilter === "All" || beatGenreKeys(track.genre || "").includes(beatGenreKey(genreFilter))) &&
           (!beatOptions?.genres.length || beatOptions.genres.some(
-            (genre) => beatGenreKey(genre) === beatGenreKey(track.genre || ""),
+            (genre) => beatGenreKeys(track.genre || "").includes(beatGenreKey(genre)),
           ))
         : genreFilter === "All" || track.genre === genreFilter;
       const matchesProducer = (!producerFilter ||
