@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import CatalogueDeepLinkJump from '@/components/CatalogueDeepLinkJump'
 import BeatStoreCardLayout from '@/components/BeatStoreCardLayout'
 import BeatStoreHideTrending from '@/components/BeatStoreHideTrending'
+import './beatstore-heading.css'
 
 export const metadata: Metadata = {
   title: 'BeatStore & Music Catalogue',
