@@ -20,6 +20,7 @@ import PublishedProducersShelf from "@/components/PublishedProducersShelf";
 import BeatStoreFilters, { type BeatFilterFields } from "@/components/BeatStoreFilters";
 import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
+import { beatGenreKey, beatGenreLabel } from "@/lib/beat-genre-normalization";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
 import { writeCartLines } from "@/lib/cart-client";
 
@@ -707,15 +708,13 @@ function CataloguePageContent() {
     if (typeFilter !== "beat") {
       return ["All", ...Array.from(new Set(scopeTracks.map((track) => track.genre)))];
     }
-    const canonical = new Map<string, string>();
+    const genresByKey = new Map<string, string>();
     for (const track of scopeTracks) {
-      const genre = (track.genre || "").trim().replace(/\s+/g, " ");
-      const key = genre.toLocaleLowerCase();
-      if (!key || key === "all" || canonical.has(key)) continue;
-      const display = genre.toLocaleLowerCase().replace(/(^|[\s/-])\p{L}/gu, (match) => match.toLocaleUpperCase());
-      canonical.set(key, display);
+      const key = beatGenreKey(track.genre || "");
+      if (!key || key === "all" || genresByKey.has(key)) continue;
+      genresByKey.set(key, beatGenreLabel(key));
     }
-    return ["All", ...Array.from(canonical.values()).sort((a, b) => a.localeCompare(b))];
+    return ["All", ...Array.from(genresByKey.values()).sort((a, b) => a.localeCompare(b))];
   }, [scopeTracks, typeFilter]);
 
   const beatProducerOptions = useMemo(
@@ -867,8 +866,7 @@ function CataloguePageContent() {
         );
       const matchesGenre = genreFilter === "All" ||
         (typeFilter === "beat"
-          ? (track.genre || "").trim().replace(/\s+/g, " ").toLocaleLowerCase() ===
-            genreFilter.trim().replace(/\s+/g, " ").toLocaleLowerCase()
+          ? beatGenreKey(track.genre || "") === beatGenreKey(genreFilter)
           : track.genre === genreFilter);
       const matchesProducer = !producerFilter ||
         producerKeysMatch(producerFilter, track.producerUsername, track.artist);
