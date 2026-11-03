@@ -870,10 +870,12 @@ function CataloguePageContent() {
         [track.title, track.artist, track.collection, track.genre, track.mood || ""].some(
           (field) => field.toLowerCase().includes(normalizedSearch),
         );
-      const matchesGenre = genreFilter === "All" &&
-        (!beatOptions?.genres.length || beatOptions.genres.some(
-          (genre) => beatGenreKey(genre) === beatGenreKey(track.genre || ""),
-        )) || (typeFilter !== "beat" && track.genre === genreFilter);
+      const matchesGenre = typeFilter === "beat"
+        ? (genreFilter === "All" || beatGenreKey(track.genre || "") === beatGenreKey(genreFilter)) &&
+          (!beatOptions?.genres.length || beatOptions.genres.some(
+            (genre) => beatGenreKey(genre) === beatGenreKey(track.genre || ""),
+          ))
+        : genreFilter === "All" || track.genre === genreFilter;
       const matchesProducer = (!producerFilter ||
         producerKeysMatch(producerFilter, track.producerUsername, track.artist)) &&
         (!beatOptions?.producers.length || beatOptions.producers.some(
