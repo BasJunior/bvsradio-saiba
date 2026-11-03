@@ -6,6 +6,7 @@ import SharedListenButton from "@/components/SharedListenButton";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
 import HomeMediaStage from "@/components/home/HomeMediaStage";
 import HomeSignupPrompt from "@/components/home/HomeSignupPrompt";
+import HomeBeatRail from "@/components/flow/HomeBeatRail";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomeEngagementHub, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import HomeShowsSection from "@/components/home/HomeShowsSection";
 
@@ -40,6 +41,7 @@ export default function HomePage() {
   return (
     <div className="bvs-square-home relative overflow-hidden bg-bg-primary text-text-primary">
       <HomeSignupPrompt />
+      <HomeBeatRail limit={120} marketplaceShowcase />
       <div
         className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] opacity-80"
         aria-hidden="true"
