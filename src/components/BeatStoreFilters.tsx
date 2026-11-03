@@ -54,8 +54,8 @@ function FilterDropdown({
     <div
       ref={rootRef}
       className="relative min-w-0"
-      onMouseEnter={(event) => {
-        if (event.pointerType !== "touch" && window.matchMedia("(hover: hover)").matches) setOpen(true);
+      onMouseEnter={() => {
+        if (window.matchMedia("(hover: hover)").matches) setOpen(true);
       }}
       onMouseLeave={() => setOpen(false)}
       onBlur={(event) => {
