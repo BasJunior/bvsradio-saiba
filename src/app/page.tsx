@@ -52,6 +52,25 @@ export default function HomePage() {
       />
 
       <section className="relative mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 sm:pb-12 sm:pt-12 lg:pt-14">
+        <div className="mb-7 max-w-3xl lg:mb-9 lg:max-w-[46rem]">
+          <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[.2em] sm:text-xs">
+            <span className="border border-brand/55 px-3 py-1 text-brand">BVS Radio</span>
+            <span className="text-text-secondary">Sound · Culture · Creator tools</span>
+          </div>
+          <h1 className="mt-5 text-balance text-4xl font-semibold leading-[1.02] tracking-[-.04em] sm:text-5xl lg:text-[3.65rem]">
+            Listen closer. Build what comes next.
+          </h1>
+          <p className="mt-4 max-w-2xl text-pretty text-base leading-relaxed text-text-secondary sm:text-lg">
+            Discover sound from everywhere, support independent creators and move from inspiration to your next release in one place.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <SharedListenButton idleLabel="Listen live" className="min-h-11 bg-brand px-6 py-3 text-sm font-semibold text-black" />
+            <Link href="/search" className="inline-flex min-h-11 items-center border border-white/25 px-6 py-3 text-sm font-semibold text-white hover:border-brand/55 hover:text-brand">
+              Explore BVS
+            </Link>
+          </div>
+        </div>
+
         <div className="grid gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:items-start lg:gap-8">
           <HomeMediaStage
             eyebrow="BVS Original"
