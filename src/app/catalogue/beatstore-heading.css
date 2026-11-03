@@ -23,10 +23,23 @@
 /* BeatStore only: put its browse headline in the portrait rail's heading position.
    The shared producer rail on the homepage retains its original typography. */
 .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
-  font-size: clamp(1.3rem, 3vw, 3rem);
-  letter-spacing: -0.045em;
+  font-size: clamp(1.5rem, 3.2vw, 3.25rem);
+  letter-spacing: -0.075em;
   line-height: 1.05;
   white-space: nowrap;
+}
+
+/* The supporting line is deliberately larger, but remains subordinate. */
+.bvs-catalogue-page #beatstore .bvs-creator-kicker {
+  font-size: clamp(0.8rem, 1.05vw, 1rem);
+  letter-spacing: 0.14em;
+  line-height: 1.35;
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
+    white-space: normal;
+  }
 }
 
 @media (max-width: 767px) {
