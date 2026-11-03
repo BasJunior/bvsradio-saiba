@@ -1,3 +1,8 @@
+/* The parent BeatStore panel already has a top border; avoid a second inset line. */
+.bvs-catalogue-page #beatstore > .bvs-creator-band {
+  border-top: 0;
+}
+
 /* BeatStore only: put its browse headline in the portrait rail's heading position.
    The shared producer rail on the homepage retains its original typography. */
 .bvs-catalogue-page #beatstore .bvs-creator-band-header h2 {
