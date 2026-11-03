@@ -52,7 +52,7 @@ export function beatGenreKey(raw: string) {
   if (!normalized) return "";
   // Any Hip-Hop combination belongs under the single Hip-Hop filter.
   // Includes Hip-Hop/Trap, Hip Hop + Drill, Hiphop R&B, etc.
-  if (/(^|[^a-z0-9])hip[\\s-]*hop(?=$|[^a-z0-9])/.test(normalized) ||
+  if (/(^|[^a-z0-9])hip[\s-]*hop(?=$|[^a-z0-9])/.test(normalized) ||
       /(^|[^a-z0-9])hiphop(?=$|[^a-z0-9])/.test(normalized)) {
     return "hiphop";
   }
