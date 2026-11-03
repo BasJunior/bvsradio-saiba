@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import CatalogueDeepLinkJump from '@/components/CatalogueDeepLinkJump'
+import BeatStoreGridEnhancer from '@/components/BeatStoreGridEnhancer'
 
 export const metadata: Metadata = {
   title: 'BeatStore & Music Catalogue',
@@ -11,6 +12,7 @@ export default function CatalogueLayout({ children }: { children: React.ReactNod
   return (
     <>
       <CatalogueDeepLinkJump />
+      <BeatStoreGridEnhancer />
       {children}
     </>
   )
