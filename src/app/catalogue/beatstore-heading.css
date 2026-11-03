@@ -3,4 +3,11 @@
   white-space: nowrap;
   font-size: clamp(1rem, 4.2vw, 3.5rem);
   letter-spacing: -0.045em;
+  margin-left: -0.35rem;
+}
+
+@media (max-width: 639px) {
+  .bvs-catalogue-page #beatstore .bvs-catalogue-section-title {
+    margin-left: 0;
+  }
 }
