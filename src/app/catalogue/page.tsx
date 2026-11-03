@@ -414,6 +414,16 @@ function CataloguePageContent() {
         if (!res.ok) return;
         const payload = await res.json().catch(() => ({}));
         const rows = Array.isArray(payload.beats) ? payload.beats : [];
+        let nextOffset = payload.nextOffset;
+        while (Number.isSafeInteger(nextOffset) && nextOffset > 0 && !cancelled) {
+          const page = await fetch(`/api/beats?scope=public&offset=${nextOffset}${producerFilter ? `&producer=${encodeURIComponent(producerFilter)}` : ""}`, { cache: "no-store" });
+          if (!page.ok) throw new Error("Beat catalogue page unavailable");
+          const more = await page.json();
+          rows.push(...(Array.isArray(more.beats) ? more.beats : []));
+          if (more.nextOffset == null || more.nextOffset <= nextOffset) break;
+          nextOffset = more.nextOffset;
+        }
+
         if (cancelled) return;
         setDbBeats(
           rows.map(
@@ -1499,7 +1509,7 @@ function CataloguePageContent() {
                 </p>
                 <div className="mt-3 flex items-center justify-between gap-2 text-xs text-text-secondary">
                   <span className="truncate">{track.genre}</span>
-                  {track.type === "beat" ? <span className="flex-shrink-0" data-beat-bpm>{track.bpm ? `${track.bpm} BPM` : "BPM —"}</span> : null}
+                  {track.type === "beat" ? <span className="flex-shrink-0" data-beat-bpm>{track.bpm ? `${String(track.bpm).replace(/\s*BPM$/i, "")} BPM` : "BPM —"}</span> : null}
                   <span className="flex-shrink-0">{priceBadge(track)}</span>
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">

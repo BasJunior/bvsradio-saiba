@@ -34,6 +34,8 @@ async function privateMediaUrl(value?: string | null) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const scope = searchParams.get('scope') || 'public'
+  const rawOffset = Number(searchParams.get('offset') || 0)
+  const publicOffset = Number.isSafeInteger(rawOffset) && rawOffset >= 0 ? rawOffset : 0
   const rawLimit = Number(searchParams.get('limit') || 120)
   const publicLimit = Number.isFinite(rawLimit) ? Math.min(120, Math.max(1, Math.floor(rawLimit))) : 120
 
@@ -85,7 +87,7 @@ export async function GET(request: Request) {
     }
     if (!producerUserId) return NextResponse.json({ beats: [], count: 0 }, { headers: { 'Cache-Control': PUBLIC_CACHE } })
   }
-  const beats = await listPublishedBeats(publicLimit, producerUserId)
+  const beats = await listPublishedBeats(publicLimit, producerUserId, publicOffset)
   const producerIds = [...new Set(beats.map(beat => beat.producer_user_id))]
   const producerResponse = producerIds.length
     ? await fetch(beatUrl(`profiles?id=in.(${producerIds.join(',')})&select=id,username,creator_public_name,creator_name_status`), { headers: beatHeaders, next: { revalidate: 60 } })
@@ -134,7 +136,7 @@ export async function GET(request: Request) {
     updatedAt: new Date().toISOString(),
   }
   return NextResponse.json(
-    { beats: shaped, count: shaped.length, summary },
+    { beats: shaped, count: shaped.length, summary, nextOffset: shaped.length === publicLimit ? publicOffset + publicLimit : null },
     { headers: { 'Cache-Control': PUBLIC_CACHE } },
   )
 }

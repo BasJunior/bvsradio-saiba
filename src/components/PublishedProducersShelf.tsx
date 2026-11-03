@@ -5,18 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import type { PublishedProducerSummary } from "@/lib/artist-content";
 
-const beatStoreHeroRemovalStyle = (
-  <style>{`
-    .bvs-beatstore-directory > section:first-of-type {
-      display: block;
-    }
-
-    .bvs-beatstore-directory > section:first-of-type > div:nth-child(2) {
-      display: none;
-    }
-  `}</style>
-);
-
 export default function PublishedProducersShelf({
   onBrowse,
 }: {
@@ -37,7 +25,6 @@ export default function PublishedProducersShelf({
   if (loading)
     return (
       <>
-        {beatStoreHeroRemovalStyle}
         <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">
           Loading published producers…
         </p>
@@ -46,7 +33,6 @@ export default function PublishedProducersShelf({
   if (failed)
     return (
       <>
-        {beatStoreHeroRemovalStyle}
         <p className="rounded-xl border border-dashed border-red-400/20 p-5 text-sm text-red-200">
           Producer profiles could not be loaded. Refresh to try again.
         </p>
@@ -55,16 +41,14 @@ export default function PublishedProducersShelf({
   if (!producers.length)
     return (
       <>
-        {beatStoreHeroRemovalStyle}
         <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">
-          No producers have a published BeatStore listing yet.
+          Browse all published beats below.
         </p>
       </>
     );
 
   return (
     <>
-      {beatStoreHeroRemovalStyle}
       <div>
         <div className="mb-3 flex justify-end">
           <Link href="/music/producers" className="text-sm font-medium text-brand hover:underline">

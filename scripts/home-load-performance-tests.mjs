@@ -53,7 +53,7 @@ assert.ok(
 );
 
 assert.ok(
-  beatsRoute.includes("listPublishedBeats(publicLimit, producerUserId)") &&
+  beatsRoute.includes("listPublishedBeats(publicLimit, producerUserId, publicOffset)") &&
     beatsRoute.includes("'Cache-Control': 'private, no-store'"),
   "Public beat reads may be cached, but creator-owned scope must stay private/no-store.",
 );
