@@ -109,10 +109,6 @@ export default function BeatStoreCardLayout() {
           detailsButton.tabIndex = -1;
         }
 
-        card.querySelectorAll<HTMLElement>("span,div,p,button").forEach((node) => {
-          if (normalize(node.textContent) === "standard lease") node.remove();
-        });
-
         const playButton = Array.from(card.querySelectorAll("button")).find((button) => {
           const label = button.textContent?.trim();
           return label === "Play" || label === "Pause" || label === "▶" || label === "Ⅱ";
@@ -226,7 +222,7 @@ export default function BeatStoreCardLayout() {
         });
 
         description.querySelectorAll<HTMLElement>('[data-beat-bpm="true"]').forEach((node) => node.remove());
-        description.querySelectorAll<HTMLElement>("span,div,p").forEach((node) => {
+        description.querySelectorAll<HTMLElement>("span,p").forEach((node) => {
           if (node === genreNode) return;
           const text = node.textContent?.trim() || "";
           if (/^from\s+\$?/i.test(text) || /^standard\s+lease$/i.test(text)) {
