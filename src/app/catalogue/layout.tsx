@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import CatalogueDeepLinkJump from '@/components/CatalogueDeepLinkJump'
 import BeatStoreCardLayout from '@/components/BeatStoreCardLayout'
-import BeatStoreSortBar from '@/components/BeatStoreSortBar'
 
 export const metadata: Metadata = {
   title: 'BeatStore & Music Catalogue',
@@ -14,7 +13,6 @@ export default function CatalogueLayout({ children }: { children: React.ReactNod
     <>
       <CatalogueDeepLinkJump />
       <BeatStoreCardLayout />
-      <BeatStoreSortBar />
       {children}
     </>
   )
