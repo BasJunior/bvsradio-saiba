@@ -21,7 +21,7 @@ type MembershipRow = { playlist_id: string; track_id?: string | null; beat_id?: 
 type TrackRow = { id: string; artwork_url?: string | null; is_public?: boolean };
 type BeatRow = { id: string; artwork_path?: string | null; is_public?: boolean };
 
-const PUBLIC_CACHE = "public, max-age=0, s-maxage=60, stale-while-revalidate=300";
+const PUBLIC_CACHE = "private, no-store";
 
 function requestedLimit(request: Request) {
   const raw = Number(new URL(request.url).searchParams.get("limit") || 0);
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   const candidateLimit = limit ? Math.min(60, Math.max(limit * 4, limit)) : 60;
   const playlistResponse = await fetch(
     `${url}/rest/v1/playlists?is_public=eq.true&select=id,user_id,title,description,cover_url,created_at,updated_at&order=updated_at.desc&limit=${candidateLimit}`,
-    { headers: serviceHeaders(service), next: { revalidate: 60 } },
+    { headers: serviceHeaders(service), cache: "no-store" },
   );
   if (!playlistResponse.ok) return NextResponse.json({ error: "Could not load public playlists." }, { status: 503 });
   const playlists = (await playlistResponse.json()) as PlaylistRow[];
@@ -48,11 +48,11 @@ export async function GET(request: Request) {
   const [membershipResponse, profileResponse] = await Promise.all([
     fetch(
       `${url}/rest/v1/playlist_tracks?playlist_id=in.(${playlistIds})&select=playlist_id,track_id,beat_id,position,added_at&order=position.asc,added_at.asc`,
-      { headers: serviceHeaders(service), next: { revalidate: 60 } },
+      { headers: serviceHeaders(service), cache: "no-store" },
     ),
     fetch(
       `${url}/rest/v1/profiles?id=in.(${userIds})&select=id,username,display_name,avatar_url`,
-      { headers: serviceHeaders(service), next: { revalidate: 60 } },
+      { headers: serviceHeaders(service), cache: "no-store" },
     ),
   ]);
 
@@ -64,10 +64,10 @@ export async function GET(request: Request) {
   const beatIds = Array.from(new Set(memberships.map((item) => item.beat_id).filter((value): value is string => Boolean(value))));
   const [trackResponse, beatResponse] = await Promise.all([
     trackIds.length
-      ? fetch(`${url}/rest/v1/tracks?id=in.(${trackIds.join(",")})&is_public=eq.true&select=id,artwork_url,is_public`, { headers: serviceHeaders(service), next: { revalidate: 60 } })
+      ? fetch(`${url}/rest/v1/tracks?id=in.(${trackIds.join(",")})&is_public=eq.true&select=id,artwork_url,is_public`, { headers: serviceHeaders(service), cache: "no-store" })
       : null,
     beatIds.length
-      ? fetch(`${url}/rest/v1/beats?id=in.(${beatIds.join(",")})&is_public=eq.true&select=id,artwork_path,is_public`, { headers: serviceHeaders(service), next: { revalidate: 60 } })
+      ? fetch(`${url}/rest/v1/beats?id=in.(${beatIds.join(",")})&is_public=eq.true&select=id,artwork_path,is_public`, { headers: serviceHeaders(service), cache: "no-store" })
       : null,
   ]);
   const tracks = trackResponse?.ok ? ((await trackResponse.json()) as TrackRow[]) : [];
