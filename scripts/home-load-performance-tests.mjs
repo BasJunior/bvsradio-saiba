@@ -36,9 +36,14 @@ assert.ok(
   "Home releases must not fetch the full public release catalogue.",
 );
 assert.ok(
-  beatShelf.includes("/api/beats?limit=8") &&
+  beatShelf.includes("limit = 8") &&
+    beatShelf.includes("Math.min(120, Math.max(1, limit))") &&
     !beatShelf.includes('fetch("/api/beats", { cache: "no-store" })'),
-  "Home BeatStore must request only eight beats and avoid an explicit no-store fetch.",
+  "Home BeatStore must keep the lower shelf at eight by default, cap the marketplace showcase at 120, and avoid explicit no-store fetching.",
+);
+assert.ok(
+  homePage.includes("<HomeBeatRail limit={120} marketplaceShowcase />"),
+  "Home may expose the full published BeatStore window in the dedicated top marketplace showcase.",
 );
 assert.ok(
   playlistShelf.includes("/api/playlists/public?limit=6") &&
@@ -81,7 +86,7 @@ assert.ok(
     homePage.includes("<DeferredHomePublicPlaylistRail />") &&
     !homePage.includes("<HomeEngagementHub />") &&
     !homePage.includes("<HomeBeatRail />"),
-  "Home must keep the first listening screen eager while deferring lower discovery/engagement work.",
+  "Home must keep the first listening screen eager while deferring lower discovery/engagement work apart from the explicit top BeatStore showcase.",
 );
 
 assert.ok(
