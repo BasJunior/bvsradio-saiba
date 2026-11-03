@@ -1,6 +1,12 @@
 /* The parent BeatStore panel already has a top border; avoid a second inset line. */
 .bvs-catalogue-page #beatstore > .bvs-creator-band {
   border-top: 0;
+  padding-top: 0;
+}
+
+/* Keep the gap from the hero buttons to the producer heading under 1 cm. */
+.bvs-catalogue-page #beatstore .bvs-creator-band-inner {
+  padding-top: 0;
 }
 
 /* BeatStore only: put its browse headline in the portrait rail's heading position.
