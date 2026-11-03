@@ -985,7 +985,7 @@ function CataloguePageContent() {
 
   return (
     <div className={`bvs-catalogue-page bvs-square-marketplace max-w-7xl mx-auto px-4 sm:px-6 py-10 pb-28 ${beatsMode ? "bvs-beatstore-directory" : ""}`}>
-      <section className={`grid ${beatsMode && !producerMode ? "grid-cols-1" : "lg:grid-cols-[1.1fr_0.9fr]"} gap-10 items-end mb-10`}>
+      <section className={`grid ${beatsMode && !producerMode ? "grid-cols-1 mb-0" : "lg:grid-cols-[1.1fr_0.9fr] mb-10"} gap-10 items-end`}>
         <div>
           <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
             {producerMode
@@ -1075,7 +1075,7 @@ function CataloguePageContent() {
                   }}
                   className={`rounded-none px-4 py-2 text-sm font-semibold ${beatsMode ? "bg-brand text-black" : "border border-white/15 text-text-secondary hover:bg-white/5"}`}
                 >
-                  Beats · {beatCount}
+                  {beatsMode ? "ALL BEATS" : `Beats · ${beatCount}`}
                 </button>
                 {beatsMode && (
                   <Link
@@ -1141,7 +1141,7 @@ function CataloguePageContent() {
       {beatsMode && !producerMode && (
         <section
           id="beatstore"
-          className="mb-10 scroll-mt-24 rounded-none border border-white/10 bg-bg-card/45 p-5 sm:p-7"
+          className="mb-10 scroll-mt-24 rounded-none border border-white/10 bg-bg-card/45 px-5 pb-5 pt-0 sm:px-7 sm:pb-7 sm:pt-0"
         >
           <PublishedProducersShelf
             title="Browse beats from your favorite producer."
