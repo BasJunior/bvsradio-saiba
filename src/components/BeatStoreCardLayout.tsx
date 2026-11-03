@@ -78,29 +78,35 @@ export default function BeatStoreCardLayout() {
 
         const playButton = Array.from(card.querySelectorAll("button")).find((button) => {
           const label = button.textContent?.trim();
-          return label === "Play" || label === "Pause";
+          return label === "Play" || label === "Pause" || label === "▶" || label === "Ⅱ";
         });
         const artwork = card.querySelector<HTMLElement>("div.relative.aspect-square");
         if (playButton instanceof HTMLButtonElement && artwork) {
           playButton.dataset.beatPlayControl = "true";
-          playButton.textContent = playButton.textContent?.trim() === "Pause" ? "Ⅱ" : "▶";
+          const isPause = playButton.textContent?.trim() === "Pause" || playButton.textContent?.trim() === "Ⅱ";
+          playButton.textContent = isPause ? "Ⅱ" : "▶";
           playButton.setAttribute(
             "aria-label",
-            playButton.textContent === "Ⅱ" ? `Pause ${title}` : `Play ${title}`,
+            isPause ? `Pause ${title}` : `Play ${title}`,
           );
           Object.assign(playButton.style, {
             position: "absolute",
             left: "0.5rem",
-            top: `${Math.max(8, artwork.offsetHeight - 40)}px`,
-            width: "2rem",
-            height: "2rem",
-            minWidth: "2rem",
+            top: `${Math.max(8, artwork.offsetHeight - 27)}px`,
+            width: "0.5cm",
+            height: "0.5cm",
+            minWidth: "0.5cm",
+            minHeight: "0.5cm",
+            maxWidth: "0.5cm",
+            maxHeight: "0.5cm",
+            aspectRatio: "1 / 1",
             padding: "0",
             display: "grid",
             placeItems: "center",
             zIndex: "8",
             borderRadius: "0",
-            fontSize: "11px",
+            fontSize: "15px",
+            fontWeight: "900",
             lineHeight: "1",
           });
 
@@ -118,7 +124,7 @@ export default function BeatStoreCardLayout() {
 
         description.style.display = "flex";
         description.style.flexDirection = "column";
-        description.style.minHeight = "9.5rem";
+        description.style.minHeight = "0";
 
         const genreNode = metaRow.firstElementChild as HTMLElement | null;
         let bpmNode = metaRow.querySelector<HTMLElement>("[data-beat-bpm]");
@@ -136,25 +142,31 @@ export default function BeatStoreCardLayout() {
         ) as HTMLElement | undefined;
 
         metaRow.style.display = "block";
-        metaRow.style.marginTop = "0.5rem";
+        metaRow.style.marginTop = "0.35rem";
         if (genreNode) {
           genreNode.style.display = "block";
           genreNode.style.width = "100%";
+          genreNode.style.marginBottom = "0.2rem";
         }
 
         let footer = description.querySelector<HTMLElement>("[data-beat-card-footer]");
         if (!footer) {
           footer = document.createElement("div");
           footer.dataset.beatCardFooter = "true";
-          footer.className = "mt-auto flex items-end justify-between gap-3 pt-4 text-xs text-text-secondary";
           description.appendChild(footer);
         }
+        footer.className = "flex items-center justify-between gap-2 text-xs text-text-secondary";
+        Object.assign(footer.style, {
+          marginTop: "0.15rem",
+          paddingTop: "0",
+        });
         footer.appendChild(bpmNode);
         if (priceNode) footer.appendChild(priceNode);
 
         Object.assign(bpmNode.style, {
           flexShrink: "0",
           textAlign: "left",
+          margin: "0",
         });
         if (priceNode) {
           Object.assign(priceNode.style, {
