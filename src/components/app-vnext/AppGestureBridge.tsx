@@ -33,7 +33,7 @@ export default function AppGestureBridge({ surface }: { surface: AppSurface }) {
       const target = event.target instanceof Element ? event.target : null;
       // The full Now Playing sheet already has its own gesture owner.
       if (target?.closest("[aria-label='Now Playing World'], [data-now-playing-shell='true']")) return;
-      const mode: TouchStart["mode"] = isMiniPlayerSwipeTarget(target) ? "mini"
+      const mode: TouchStart["mode"] = surface === "ios" && isMiniPlayerSwipeTarget(target) ? "mini"
         : surface === "ios" && !isNativeRuntime() && touch.clientX <= 24 ? "edge" : "other";
       start.current = { x: touch.clientX, y: touch.clientY, at: Date.now(), mode };
     };
