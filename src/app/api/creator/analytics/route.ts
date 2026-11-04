@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { creatorHeaders, creatorIdentity, creatorUrl } from '@/lib/creator-server'
+import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 
 type Row = Record<string, unknown>
 type EventRow = {
@@ -7,6 +8,12 @@ type EventRow = {
   session_id?: string | null
   properties?: Record<string, unknown>
   created_at: string
+}
+
+async function privateMediaUrl(value?: string | null) {
+  if (!value) return value
+  const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
+  return key ? signedR2DownloadUrl(key, 900) : value
 }
 
 async function rows(path: string): Promise<Row[]> {
@@ -49,15 +56,22 @@ export async function GET(request: Request) {
   try {
     const userId = identity.user.id
     const [tracks, beats, events, requests] = await Promise.all([
-      rows(`tracks?user_id=eq.${encodeURIComponent(userId)}&select=id,title,genre,file_url,editorial_status,is_public,in_rotation,play_count,like_count,created_at&limit=2000`),
+      rows(`tracks?user_id=eq.${encodeURIComponent(userId)}&select=id,title,genre,file_url,artwork_url,editorial_status,is_public,in_rotation,play_count,like_count,created_at&limit=2000`),
       identity.profile.is_producer || identity.profile.role === 'admin'
-        ? rows(`beats?producer_user_id=eq.${encodeURIComponent(userId)}&select=id,title,genre,status,is_public,created_at&limit=2000`).catch(() => [])
+        ? rows(`beats?producer_user_id=eq.${encodeURIComponent(userId)}&select=id,title,genre,status,is_public,artwork_path,created_at&limit=2000`).catch(() => [])
         : Promise.resolve([]),
       rows(`analytics_events?created_at=gte.${encodeURIComponent(previousStart.toISOString())}&select=event_name,session_id,properties,created_at&order=created_at.asc&limit=20000`) as Promise<EventRow[]>,
       rows(`track_review_requests?artist_user_id=eq.${encodeURIComponent(userId)}&select=id,status,created_at&limit=500`).catch(() => []),
     ])
 
-    const ownedItems = [...tracks, ...beats]
+    const ownedItems: Array<Row & { artwork: string | null | undefined }> = await Promise.all(
+      ([...tracks, ...beats] as Row[]).map(async (item) => ({
+      ...item,
+      artwork: String(item.artwork_url || item.artwork_path || '')
+        ? await privateMediaUrl(String(item.artwork_url || item.artwork_path))
+        : null,
+      })),
+    )
     const ownedIds = new Set(ownedItems.map((item) => String(item.id)))
     const legacyTrackIds = new Map<string, string>(tracks.flatMap((track) => {
       const fileUrl = String(track.file_url || '')
@@ -68,30 +82,41 @@ export async function GET(request: Request) {
     const currentEvents = ownedEvents.filter((event) => event.created_at >= currentStart.toISOString())
     const previousEvents = ownedEvents.filter((event) => event.created_at < currentStart.toISOString())
     const plays = currentEvents.filter((event) => event.event_name === 'player_start')
+    const premiumPlays = plays.filter((event) => event.properties?.premium_listener === true)
     const previousPlays = previousEvents.filter((event) => event.event_name === 'player_start')
     const saves = currentEvents.filter((event) => event.event_name === 'track_save')
     const durationEvents = currentEvents.filter((event) => event.event_name === 'listening_duration')
     const playbackErrors = currentEvents.filter((event) => event.event_name === 'playback_error').length
+    const submissions = ownedItems.filter((item) => {
+      const createdAt = String(item.created_at || '')
+      return createdAt >= currentStart.toISOString() && createdAt <= now.toISOString()
+    })
+    const likes = tracks.reduce((sum, item) => sum + Number(item.like_count || 0), 0)
     const listeningMinutes = Math.round(durationEvents.reduce((sum, event) => {
       const seconds = Number(event.properties?.seconds_bucket)
       return sum + (Number.isFinite(seconds) ? seconds : 0)
     }, 0) / 60)
 
-    const daily = new Map<string, { plays: number; saves: number; minutes: number }>()
+    const daily = new Map<string, { plays: number; premiumPlays: number; saves: number; minutes: number; submissions: number }>()
     for (let index = 0; index < days; index += 1) {
       const day = new Date(currentStart)
       day.setUTCDate(day.getUTCDate() + index)
-      daily.set(dayKey(day.toISOString()), { plays: 0, saves: 0, minutes: 0 })
+      daily.set(dayKey(day.toISOString()), { plays: 0, premiumPlays: 0, saves: 0, minutes: 0, submissions: 0 })
     }
     currentEvents.forEach((event) => {
       const value = daily.get(dayKey(event.created_at))
       if (!value) return
       if (event.event_name === 'player_start') value.plays += 1
+      if (event.event_name === 'player_start' && event.properties?.premium_listener === true) value.premiumPlays += 1
       if (event.event_name === 'track_save') value.saves += 1
       if (event.event_name === 'listening_duration') {
         const seconds = Number(event.properties?.seconds_bucket)
         value.minutes += Number.isFinite(seconds) ? seconds / 60 : 0
       }
+    })
+    submissions.forEach((item) => {
+      const value = daily.get(dayKey(String(item.created_at)))
+      if (value) value.submissions += 1
     })
 
     const itemPerformance = ownedItems.map((item) => {
@@ -104,6 +129,7 @@ export async function GET(request: Request) {
         plays: itemEvents.filter((event) => event.event_name === 'player_start').length,
         saves: itemEvents.filter((event) => event.event_name === 'track_save').length,
         totalPlays: Number(item.play_count || 0),
+        artwork: item.artwork,
         status: String(item.editorial_status || item.status || 'draft'),
         published: Boolean(item.is_public),
         inRotation: Boolean(item.in_rotation),
@@ -122,11 +148,14 @@ export async function GET(request: Request) {
       rangeDays: days,
       summary: {
         plays: plays.length,
+        premiumPlays: premiumPlays.length,
         previousPlays: previousPlays.length,
         playGrowthPercent: percentChange(plays.length, previousPlays.length),
         uniqueSessions: new Set(plays.map((event) => event.session_id).filter(Boolean)).size,
         listeningMinutes,
         saves: saves.length,
+        likes,
+        submissions: submissions.length,
         saveRate: plays.length ? Math.round((saves.length / plays.length) * 1000) / 10 : 0,
         playbackErrors,
         playbackErrorRate: plays.length ? Math.round((playbackErrors / plays.length) * 1000) / 10 : 0,
@@ -134,6 +163,7 @@ export async function GET(request: Request) {
       catalogue: {
         uploads: tracks.length,
         beats: beats.length,
+        lifetimePlays: tracks.reduce((sum, item) => sum + Number(item.play_count || 0), 0),
         published: ownedItems.filter((item) => item.is_public).length,
         inRotation: tracks.filter((track) => track.in_rotation).length,
         awaitingReview: ownedItems.filter((item) =>
@@ -144,8 +174,10 @@ export async function GET(request: Request) {
       daily: Array.from(daily, ([day, values]) => ({
         day,
         plays: values.plays,
+        premiumPlays: values.premiumPlays,
         saves: values.saves,
         minutes: Math.round(values.minutes * 10) / 10,
+        submissions: values.submissions,
       })),
       topItems: itemPerformance.slice(0, 8),
       genres: Object.entries(genres)

@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import BeatUploadSuggestions from "@/components/BeatUploadSuggestions";
+import { beatGenreSuggestions } from "@/lib/beat-genre-normalization";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase";
 import { useBrowserSession } from "@/lib/use-browser-session";
@@ -700,12 +702,16 @@ function CrateEditor({
               </label>
               <label className="text-sm">
                 Genre
+                <datalist id="bvs-beat-upload-genres">{beatGenreSuggestions.map(genre => <option key={genre} value={genre} />)}</datalist>
                 <input
+                  list="bvs-beat-upload-genres"
+                  placeholder="e.g. Hip-Hop / Trap"
                   value={payload.genre}
                   onChange={(e) => edit({ genre: e.target.value })}
                   maxLength={80}
                   className={field}
                 />
+                <span className="mt-1 block text-xs text-text-secondary">Pick the closest sound, or combine related genres with /, for example Hip-Hop / Trap. Applies to this crate.</span>
               </label>
               <label className="text-sm">
                 Default lease price (USD)
@@ -759,6 +765,7 @@ function CrateEditor({
               <textarea
                 className={field}
                 maxLength={4000}
+                placeholder="Describe the sound, instruments and intended feel. Mention what the buyer receives; avoid rights or licence promises beyond your selected terms."
                 value={payload.description}
                 onChange={(e) => edit({ description: e.target.value })}
               />
@@ -838,6 +845,7 @@ function CrateEditor({
                     <input
                       className={field}
                       inputMode="numeric"
+                      placeholder="e.g. 140"
                       value={item.bpm}
                       onChange={(e) =>
                         itemEdit(item.id, { bpm: e.target.value })
@@ -848,6 +856,7 @@ function CrateEditor({
                     Key
                     <input
                       className={field}
+                      placeholder="e.g. F# minor"
                       value={item.musicalKey}
                       maxLength={20}
                       onChange={(e) =>
@@ -856,9 +865,10 @@ function CrateEditor({
                     />
                   </label>
                   <label className="text-sm">
-                    Mood
+                    Vibes / mood
                     <input
                       className={field}
+                      placeholder="e.g. Dark, Melodic, Night Drive"
                       value={item.mood}
                       maxLength={120}
                       onChange={(e) =>
@@ -867,6 +877,8 @@ function CrateEditor({
                     />
                   </label>
                 </div>
+                <p className="mt-2 text-xs text-text-secondary">BPM and key should match your DAW project. Leave them empty if you are unsure rather than guessing.</p>
+                <BeatUploadSuggestions genre={payload.genre} value={item.mood || ""} onChange={mood => itemEdit(item.id, { mood })} />
                 {payload.items.length > 1 ? (
                   <button
                     type="button"

@@ -128,3 +128,21 @@
 
 /* Cover photography keeps white titles in either site theme. */
 .marketplace-storefront-hero h1, :root[data-theme="light"] .marketplace-storefront-hero h1 { color: #fff; }
+
+/* Marketplace directory: adjust columns here without changing store pages. */
+.bvs-home-directory-destination .bvs-provider-directory-rail { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: visible; gap: 1rem; }
+.bvs-home-directory-destination .bvs-marketplace-provider-card { width: auto; border-radius: 0; display: flex; flex-direction: column; box-shadow: none; }
+.bvs-home-directory-destination .bvs-marketplace-provider-card > div:last-child { display: flex; flex-direction: column; flex: 1; }
+.bvs-home-directory-destination .bvs-marketplace-provider-card > div:last-child > a { margin-top: auto; align-self: flex-start; border-radius: 0; box-shadow: none; }
+.bvs-home-directory-destination .bvs-marketplace-provider-card h2 { font-size: 1.2rem; letter-spacing: -.025em; }
+.bvs-marketplace-projects { display: flex; flex-wrap: wrap; gap: .5rem; margin-block: 1rem; }
+.bvs-marketplace-projects button { min-height: 44px; padding: .65rem 1rem; border: 1px solid rgb(255 255 255 / .15); font-size: .8rem; }
+.bvs-marketplace-projects button[aria-pressed="true"] { background: #c1a7ff15; color: #c1a7ff; border-color: #c1a7ff70; }
+.bvs-marketplace-map { margin-top: 1.5rem; border-block: 1px solid rgb(255 255 255 / .12); }
+.bvs-marketplace-map summary { padding: 1rem 0; cursor: pointer; font-size: .85rem; color: var(--color-text-secondary); }
+.bvs-marketplace-service { display: flex; flex-direction: column; border-radius: 0; box-shadow: none; }
+.bvs-marketplace-service > .bvs-chip { align-self: flex-start; }
+.bvs-marketplace-service-footer { padding-top: 1.5rem; margin-top: auto; }
+.bvs-marketplace-service-footer a { border-radius: 0; min-height: 44px; display: inline-flex; align-items: center; }
+@media (max-width: 1023px) { .bvs-home-directory-destination .bvs-provider-directory-rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 479px) { .bvs-home-directory-destination .bvs-provider-directory-rail { grid-template-columns: 1fr; } .bvs-home-directory-destination .bvs-marketplace-provider-card > a > div:first-child { aspect-ratio: 4 / 3; } }

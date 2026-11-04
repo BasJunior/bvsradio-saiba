@@ -17,6 +17,7 @@ type MarketplacePayload = {
 
 function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
   const wolf = provider.slug === "wolfbridges-studio";
+  const minimumPrice = Math.min(...provider.services.map(service => service.priceUsd).filter(price => price > 0));
   return (
     <article className="bvs-marketplace-provider-card bvs-surface bvs-surface-hover overflow-hidden rounded-[1.65rem] sm:rounded-3xl">
       <Link href={`/marketplace/${provider.slug}`} className="group block">
@@ -42,8 +43,9 @@ function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
       </Link>
       <div className="p-4 sm:p-5">
         <p className="text-sm text-text-secondary">{provider.headline}</p>
+        <p className="mt-3 text-sm font-medium">{provider.services.length} offers{Number.isFinite(minimumPrice) ? ` · From $${minimumPrice}` : ""}</p>
         <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
-          {provider.specialties.slice(0, 5).map((item) => (
+          {provider.specialties.slice(0, 3).map((item) => (
             <span key={item} className="bvs-chip normal-case tracking-normal">
               {item.replaceAll("_", " ")}
             </span>
@@ -53,7 +55,7 @@ function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
           href={`/marketplace/${provider.slug}`}
           className="mt-4 inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black shadow-[0_10px_28px_rgba(212,175,55,.2)] sm:mt-5"
         >
-          {wolf ? "Open Wolf Studio" : `Open ${provider.kind === "official" ? "BVS Studio" : "store"}`}
+          {wolf ? "Open Wolf Studio" : "View services"}
         </Link>
       </div>
     </article>
@@ -70,7 +72,6 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     const controller = new AbortController();
-    setState("loading");
     fetch("/api/marketplace", { cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error("Marketplace unavailable");
@@ -95,7 +96,7 @@ export default function MarketplacePage() {
   const matchingStorefronts = storefronts.filter(provider =>
     (providerKind === "all" || provider.kind === providerKind) &&
     `${provider.name} ${provider.headline} ${provider.specialties.join(" ")} ${provider.services.map(service => service.title).join(" ")}`.toLowerCase().includes(normalizedQuery));
-  const liveProducts = (data.listings || []).filter((item) => item.listing_type === "digital_product");
+  const liveProducts = (data.listings || []).filter((item) => item.listing_type === "digital_product" && matchingStorefronts.some(provider => provider.services.some(service => service.listingId === item.id || service.id === item.id)));
 
   function addProduct(item: (typeof liveProducts)[number]) {
     const current = readCartLines();
@@ -117,13 +118,14 @@ export default function MarketplacePage() {
 
   return (
     <main className="bvs-square-marketplace bvs-home-directory-destination mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
+      {/* Edit the introduction and project shortcuts here. */}
       <section className="max-w-4xl">
         <p className="bvs-section-kicker">BVS Marketplace</p>
         <h1 className="bvs-directory-title mt-3">
           Marketplace
         </h1>
         <p className="mt-4 max-w-3xl text-base text-text-secondary sm:mt-5 sm:text-lg">
-          One marketplace for independent BVS providers and official BVS services. Open a provider store, compare what they offer and book real published studio availability when a calendar is available.
+          Find the people and tools for your next release. Compare studios, production and finishing services from independent creators and BVS.
         </p>
         <div className="mt-6 flex flex-wrap gap-2.5 sm:mt-7 sm:gap-3">
           <a href="#providers" className="rounded-full bg-brand px-5 py-2.5 font-semibold text-black shadow-[0_10px_28px_rgba(212,175,55,.18)]">Studios &amp; engineers</a>
@@ -136,6 +138,9 @@ export default function MarketplacePage() {
       <section className="mt-8 rounded-2xl border border-white/10 bg-white/[.025] p-4 sm:p-5" aria-label="Find a provider">
         <label htmlFor="marketplace-search" className="mb-2 block text-sm font-medium">What do you need for your next project?</label>
         <input id="marketplace-search" type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search studios, mixing, artwork…" className="min-h-12 w-full rounded-xl border border-white/15 bg-black/20 px-4 text-base outline-none focus:border-brand" />
+        <div className="bvs-marketplace-projects" aria-label="Project shortcuts">
+          {[["Recording", "Record a song"], ["Mixing", "Mix & master"], ["production", "Find production"], ["", "All services"]].map(([value, label]) => <button type="button" key={label} onClick={() => { setQuery(value); setProviderKind("all"); }} aria-pressed={query === value} >{label}</button>)}
+        </div>
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Provider type">
           {[["all", "Everyone"], ["studio", "Studios"], ["engineer", "Engineers"], ["producer", "Producers"], ["official", "BVS services"]].map(([value, label]) => <button key={value} aria-pressed={providerKind === value} onClick={() => setProviderKind(value)} className={`min-h-11 rounded-full border px-4 text-sm ${providerKind === value ? "border-brand bg-brand/10 text-brand" : "border-white/10 text-text-secondary"}`}>{label}</button>)}
         </div>
@@ -148,24 +153,24 @@ export default function MarketplacePage() {
           <h2 id="marketplace-providers-title" className="text-3xl font-semibold sm:text-4xl">Studios, engineers and producers</h2>
           <p className="max-w-lg text-sm text-text-secondary">Each provider keeps their services, prices, policies and availability together in one store.</p>
         </div>
-        <p className="mt-4 text-sm text-text-secondary">Swipe or scroll sideways to explore all providers.</p>
-        <div className="bvs-provider-directory-rail mt-5" role="region" aria-label="Provider storefronts — scroll horizontally" tabIndex={0}>
+        <p className="mt-4 text-sm text-text-secondary">Compare providers, then open a store for packages and booking options.</p>
+        <div className="bvs-provider-directory-rail mt-5" role="region" aria-label="Provider storefronts" tabIndex={0}>
           {matchingStorefronts.map((provider) => <ProviderCard key={provider.slug} provider={provider} />)}
         </div>
-        <MarketplaceProviderMap providers={matchingStorefronts} />
+        <details className="bvs-marketplace-map"><summary>Explore providers by location</summary><MarketplaceProviderMap providers={matchingStorefronts} /></details>
       </section>
 
       <section id="services" className="mt-10 sm:mt-16" aria-labelledby="marketplace-services-title">
         <p className="bvs-section-kicker">Services</p>
         <h2 id="marketplace-services-title" className="mt-2 text-3xl font-semibold sm:text-4xl">Browse what providers offer</h2>
         <div className="mt-5 grid gap-3 sm:mt-7 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {matchingStorefronts.flatMap((provider) => provider.services.map((service) => (
-            <article key={`${provider.slug}-${service.id}`} className="bvs-surface bvs-surface-hover rounded-[1.35rem] p-4 sm:rounded-2xl sm:p-5">
-              <p className="bvs-chip bvs-chip-brand">{service.category}</p>
+          {matchingStorefronts.flatMap((provider) => provider.services.filter(service => service.listingType !== "digital_product").map((service) => (
+            <article key={`${provider.slug}-${service.id}`} className="bvs-marketplace-service bvs-surface bvs-surface-hover rounded-[1.35rem] p-4 sm:rounded-2xl sm:p-5">
+              <p className="bvs-chip bvs-chip-brand">{service.category.replaceAll("_", " ")}</p>
               <h3 className="mt-3 text-xl font-semibold">{service.title}</h3>
               <p className="mt-1 text-sm text-text-secondary">by {provider.name}</p>
               <p className="mt-3 text-sm text-text-secondary">{service.description}</p>
-              <div className="mt-4 flex items-center justify-between gap-3 sm:mt-5">
+              <div className="bvs-marketplace-service-footer mt-4 flex items-center justify-between gap-3 sm:mt-5">
                 <strong>{service.priceLabel || `$${service.priceUsd.toFixed(2)}`}</strong>
                 <Link href={`/marketplace/${provider.slug}?service=${encodeURIComponent(service.id)}`} className="rounded-full border border-brand/40 bg-brand/[.05] px-4 py-2 text-sm text-brand">
                   View service
@@ -179,7 +184,7 @@ export default function MarketplacePage() {
       {!matchingStorefronts.length && state !== "loading" ? <div className="mt-6 rounded-2xl border border-dashed border-white/15 p-8 text-center"><h2 className="text-xl font-semibold">No stores match yet</h2><p className="mt-2 text-sm text-text-secondary">Try a different service or browse all providers.</p><button onClick={() => { setQuery(""); setProviderKind("all"); }} className="mt-4 min-h-11 rounded-full border border-brand/40 px-5 text-brand">Clear filters</button></div> : null}
       {state === "error" ? (
         <p className="bvs-surface-quiet mt-8 rounded-[1.35rem] border-dashed p-4 text-sm text-text-secondary sm:mt-12 sm:p-5">
-          Latest creator listings could not load. You can still explore BVS providers. <button onClick={() => setRetry(value => value + 1)} className="ml-2 text-brand underline">Try again</button>
+          Latest creator listings could not load. You can still explore BVS providers. <button onClick={() => { setState("loading"); setRetry(value => value + 1); }} className="ml-2 text-brand underline">Try again</button>
         </p>
       ) : null}
 
@@ -214,7 +219,7 @@ export default function MarketplacePage() {
       <section className="bvs-surface mt-10 rounded-[1.65rem] p-5 sm:mt-16 sm:rounded-3xl sm:p-9">
         <p className="bvs-section-kicker">For providers</p>
         <h2 className="mt-2 text-3xl font-semibold">Your services should live under your name.</h2>
-        <p className="mt-3 max-w-3xl text-text-secondary">Approved studios, engineers and producers can publish service listings from the Creator Marketplace desk. BVS groups those listings into the provider storefront automatically instead of creating another services section.</p>
+        <p className="mt-3 max-w-3xl text-text-secondary">Bring your studio, production or engineering services to BVS. Manage your offers and availability from your creator workspace.</p>
         <Link href="/creator/marketplace" className="mt-5 inline-flex min-h-11 items-center rounded-full border border-brand/45 bg-brand/[.05] px-5 font-semibold text-brand sm:mt-6">Manage provider store →</Link>
       </section>
     </main>

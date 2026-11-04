@@ -4,8 +4,6 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useBrowserSession } from "@/lib/use-browser-session";
-import StudioMoneySummary from "@/components/StudioMoneySummary";
 
 const sectionLinks = [
   { id: "artist-access", label: "Artist", accent: "core" },
@@ -41,8 +39,6 @@ const workspaceLinks: WorkspaceLink[] = [
 
 export default function StudioProductionShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { session } = useBrowserSession();
-  const token = session?.access_token || "";
   const [availableSections, setAvailableSections] = useState<string[]>([]);
 
   useEffect(() => {
@@ -67,8 +63,8 @@ export default function StudioProductionShell({ children }: { children: ReactNod
   );
 
   return (
-    <div className="bvs-square-studio">
-      <div className="sticky top-16 z-40 border-b border-white/10 bg-bg-primary/90 backdrop-blur-xl supports-[backdrop-filter]:bg-bg-primary/80">
+    <div className={`bvs-square-studio bvs-studio-console ${pathname === "/creator/studio" ? "is-overview" : ""}`}>
+      <div className="bvs-studio-workspace-nav sticky top-16 z-40 border-b border-white/10 bg-bg-primary/90 backdrop-blur-xl supports-[backdrop-filter]:bg-bg-primary/80">
         <div className="mx-auto max-w-6xl px-5 py-3 sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -78,15 +74,15 @@ export default function StudioProductionShell({ children }: { children: ReactNod
             <Link href="/marketplace" data-studio-accent="marketplace" className="bvs-studio-accent-button hidden shrink-0 rounded-full border px-4 py-2 text-xs font-semibold sm:inline-flex">Public Marketplace</Link>
           </div>
 
-          <nav aria-label="Creator Studio workspace" className="mt-3 flex flex-wrap items-center gap-2 pb-1">
+          <nav aria-label="Creator Studio workspace" className="bvs-studio-workspace-links mt-3 flex flex-wrap items-center gap-2 pb-1">
             {workspaceLinks.map((item) => {
-              const active = item.match ? pathname === item.match : item.startsWith ? pathname.startsWith(item.startsWith) : false;
+              const active = item.match ? pathname === item.match : item.startsWith ? pathname.startsWith(item.startsWith) || (item.label === "Catalogue" && (pathname.startsWith("/creator/studio/releases/") || pathname.startsWith("/creator/studio/songs/"))) : false;
               return (
                 <div key={item.href} className="contents"><Link href={item.href} data-studio-accent={item.accent} aria-current={active ? "page" : undefined} className={`bvs-studio-accent-button shrink-0 rounded-full border px-3.5 py-2 text-xs font-semibold ${active ? "ring-1 ring-current/25" : ""}`}>
                   {item.label}
                 </Link>
-                {item.match === '/creator/studio' ? <details className="relative">
-                  <summary data-studio-accent="core" aria-current={pathname.startsWith('/creator/studio/create/') ? 'page' : undefined} className="bvs-studio-accent-button cursor-pointer rounded-full border px-3.5 py-2 text-xs font-semibold">Create</summary>
+                {item.match === '/creator/studio' ? <details className="bvs-studio-create-menu relative">
+                  <summary data-studio-accent="core" aria-current={pathname.startsWith('/creator/studio/create/') ? 'page' : undefined} className="bvs-studio-accent-button cursor-pointer rounded-full border px-3.5 py-2 text-xs font-semibold"><span aria-hidden="true">＋</span><span>Create</span><span className="bvs-studio-create-chevron" aria-hidden="true">⌄</span></summary>
                   <div className="absolute left-0 top-full z-50 mt-2 min-w-48 rounded-2xl border border-white/15 bg-bg-primary p-2 shadow-xl">
                     {creationLinks.map(item => <Link key={item.href} href={item.href} data-studio-accent={item.accent} onClick={event => event.currentTarget.closest('details')?.removeAttribute('open')} className="block rounded-xl px-3 py-3 text-sm hover:bg-white/5">{item.label}</Link>)}
                   </div>
@@ -108,23 +104,13 @@ export default function StudioProductionShell({ children }: { children: ReactNod
         </div>
       </div>
 
-      {children}
+      <div className="bvs-studio-console-content">{children}</div>
 
-      {token && pathname !== "/creator/studio/earnings" && (
-        <section id="studio-wallet" className="mx-auto max-w-6xl scroll-mt-48 px-5 pb-16 sm:px-6" aria-labelledby="studio-wallet-heading">
-          <div data-studio-accent="money" className="rounded-2xl border border-white/10 bg-white/[.015] p-5 sm:p-6">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <div>
-                <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Creator business</p>
-                <h2 id="studio-wallet-heading" className="mt-2 text-2xl font-semibold">Money at a glance</h2>
-                <p className="mt-2 max-w-2xl text-sm text-text-secondary">A read-only view of your BVS seller wallet and settlement ledger.</p>
-              </div>
-              <Link href="/creator/studio/earnings" className="bvs-studio-accent-button rounded-full border px-4 py-2 text-sm font-semibold">Open full wallet →</Link>
-            </div>
-            <div className="mt-5 border-t border-white/10 pt-4"><StudioMoneySummary key={session?.user.id} token={token} /></div>
-          </div>
-        </section>
-      )}
+      <footer id="studio-wallet" className="bvs-studio-footer" aria-label="Studio resources">
+        <div><strong>BVS Studio</strong><p>Your work. From first upload to the next release.</p></div>
+        <nav aria-label="Studio business and support"><Link href="/creator/studio/earnings">Earnings &amp; wallet</Link><Link href="/creator/studio/payouts">Payouts</Link><Link href="/contact?topic=studio">Studio support</Link><Link href="/faq">Help &amp; guidance</Link></nav>
+        <p className="bvs-studio-footer-note">Review balances, statements and payout details in Earnings.</p>
+      </footer>
     </div>
   );
 }

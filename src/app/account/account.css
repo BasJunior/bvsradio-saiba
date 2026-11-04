@@ -1,0 +1,38 @@
+.bvs-account-page { --account-accent: #c1ff52; }
+.bvs-account-hero { position: relative; display: flex; min-height: 12rem; align-items: end; justify-content: space-between; gap: 1.5rem; overflow: hidden; background: linear-gradient(110deg, #c1ff5218, #ffffff04 55%, transparent); padding: 1.5rem; }
+.bvs-account-hero::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, #0d0e10aa, #0d0e10 88%); pointer-events: none; }
+.bvs-account-profile-visual, .bvs-account-status { position: relative; z-index: 1; }
+.bvs-account-profile-visual { display: flex; align-items: center; gap: 1rem; }
+.bvs-account-avatar { position: relative; display: grid; width: 7rem; height: 7rem; flex: 0 0 auto; place-items: center; overflow: hidden; border: 3px solid var(--account-accent); border-radius: 999px; background: linear-gradient(145deg, #252922, #101010); box-shadow: 0 0 0 5px #0005, 0 0 32px #c1ff5230; color: var(--account-accent); font-size: 1.8rem; font-weight: 800; letter-spacing: -.08em; }
+.bvs-account-avatar img { z-index: 1; }
+.bvs-account-edit-avatar { display: grid; place-items: center; background: linear-gradient(145deg, #252922, #101010); color: var(--account-accent); font-size: 1.8rem; font-weight: 800; letter-spacing: -.08em; }
+.bvs-account-edit-avatar img { z-index: 1; }
+.bvs-account-eyebrow { color: var(--account-accent); font-size: .68rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+.bvs-account-hero h1 { margin-top: .45rem; font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 700; letter-spacing: -.05em; }
+.bvs-account-handle { margin-top: .45rem; color: #ffffff80; font-size: .85rem; }
+.bvs-account-status { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .45rem; }
+.bvs-account-role, .bvs-account-verified, .bvs-account-premium { padding: .5rem .75rem; font-size: .72rem; }
+.bvs-account-role { border: 1px solid #c1ff5260; color: var(--account-accent); text-transform: capitalize; }
+.bvs-account-verified { background: var(--account-accent); color: #0c0d0f; font-weight: 700; }
+.bvs-account-premium { border: 1px solid #c1ff5260; color: var(--account-accent); }
+.bvs-account-intro { display: flex; align-items: center; justify-content: space-between; gap: 1rem; border-bottom: 1px solid #ffffff12; padding: 1rem 0; }
+.bvs-account-help { color: var(--account-accent); font-size: .8rem; }
+.bvs-account-shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: .65rem; }
+.bvs-account-shortcut { display: grid; grid-template-columns: 2rem minmax(0, 1fr) auto; align-items: start; gap: .75rem; min-height: 7rem; border: 1px solid #ffffff12; background: #ffffff04; padding: .9rem; transition: border-color .2s, transform .2s; }
+.bvs-account-shortcut:hover { border-color: #c1ff5260; transform: translateY(-2px); }
+.bvs-account-shortcut-icon { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid #c1ff5260; color: var(--account-accent); }
+.bvs-account-shortcut h2 { color: white; font-size: .95rem; font-weight: 700; }
+.bvs-account-shortcut p { margin-top: .3rem; color: #ffffff70; font-size: .72rem; line-height: 1.45; }
+.bvs-account-shortcut b { color: var(--account-accent); font-size: .9rem; }
+.bvs-account-panel { border: 1px solid #ffffff12; background: #ffffff04; padding: 1.25rem; }
+.bvs-account-panel h2 { font-size: 1.3rem; font-weight: 700; }
+.bvs-account-panel > p { line-height: 1.5; }
+.bvs-account-orders { border: 1px solid #ffffff12; background: #ffffff04; padding: 1.25rem; }
+.bvs-account-orders h2 { font-size: 1.3rem; font-weight: 700; }
+@media (max-width: 639px) {
+  .bvs-account-page { padding-inline: 1rem; }
+  .bvs-account-hero { align-items: flex-start; flex-direction: column; padding: 1rem; }
+  .bvs-account-avatar { width: 5rem; height: 5rem; }
+  .bvs-account-status { justify-content: flex-start; }
+  .bvs-account-intro { align-items: flex-start; flex-direction: column; }
+}

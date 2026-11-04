@@ -18,6 +18,7 @@ type SellerSettlement = {
 };
 
 type WalletPayload = {
+  earningsBySource?: Array<{ source: string; amount: number }>;
   balances?: {
     available?: number | string;
     pendingEarnings?: number | string;
@@ -50,6 +51,15 @@ function usd(value: number | string | undefined) {
 function statusLabel(value?: string) {
   return String(value || "not settled").replaceAll("_", " ");
 }
+
+const sourceLabels: Record<string, string> = {
+  single_sales: "Music & single sales",
+  beat_sales: "Beat sales",
+  studio_products: "Studio products",
+  studio_services: "Studio services",
+  streams: "Streams",
+  other: "Other credits",
+};
 
 export default function StudioMoneySummary({ token }: { token: string }) {
   const [data, setData] = useState<WalletPayload | null>(null);
@@ -107,6 +117,10 @@ export default function StudioMoneySummary({ token }: { token: string }) {
     ["Net after refunds", usd(data.earnings?.netAfterRefunds)],
   ];
   const bps = latest?.platform_fee_bps == null ? null : Number(latest.platform_fee_bps) || 0;
+  const earningsBySource = (data.earningsBySource || [])
+    .filter((entry) => entry.amount > 0)
+    .sort((a, b) => b.amount - a.amount);
+  const sourceMax = Math.max(1, ...earningsBySource.map((entry) => entry.amount));
 
   return (
     <div data-studio-accent="money" className="space-y-6 py-2">
@@ -143,6 +157,30 @@ export default function StudioMoneySummary({ token }: { token: string }) {
           </div>
         ))}
       </div>
+
+      <section className="bvs-wallet-earnings-chart" aria-labelledby="wallet-earnings-heading">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.18em]">Where you earn</p>
+                <h3 id="wallet-earnings-heading" className="mt-1 text-xl font-semibold">Net earnings by source</h3>
+                <p className="mt-2 text-sm text-text-secondary">Posted creator earnings only. Streams are shown when the listening programme has credited your wallet.</p>
+              </div>
+              <span className="text-xs text-text-secondary">After platform fees · before tax</span>
+            </div>
+            {earningsBySource.length ? (
+              <div className="mt-5 space-y-4">
+                {earningsBySource.map((entry) => (
+                  <div key={entry.source}>
+                    <div className="flex justify-between gap-3 text-sm">
+                      <span>{sourceLabels[entry.source] || entry.source}</span>
+                      <strong className="text-brand">{usd(entry.amount)}</strong>
+                    </div>
+                    <div className="bvs-wallet-bar-track" aria-hidden="true"><span style={{ width: `${Math.max(4, entry.amount / sourceMax * 100)}%` }} /></div>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="mt-5 border border-dashed border-white/15 p-5 text-sm text-text-secondary">Your earnings sources will appear here after a posted sale or stream credit.</p>}
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="rounded-xl border border-white/10 p-4 text-sm">

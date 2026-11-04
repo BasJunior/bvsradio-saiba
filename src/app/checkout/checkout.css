@@ -1,0 +1,18 @@
+/* Checkout presentation; payment and authoritative pricing stay in the order API. */
+.bvs-checkout-kicker { font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .16em; color: #c1a7ff; }
+.bvs-checkout h1 { letter-spacing: -.045em; }
+.bvs-checkout form > section, .bvs-checkout aside > section, .bvs-checkout ol, .bvs-checkout input, .bvs-checkout select, .bvs-checkout textarea, .bvs-checkout button[type="submit"] { border-radius: 0; }
+.bvs-checkout form > section { background: rgb(255 255 255 / .02); }
+.bvs-checkout :is(input, select, textarea) { min-height: 44px; }
+.bvs-checkout :is(a, button, input, select, textarea):focus-visible { outline: 2px solid #c1a7ff; outline-offset: 3px; }
+.bvs-checkout :is(section[id], h2[id]) { scroll-margin-top: 150px; }
+.bvs-checkout aside { align-self: start; position: sticky; top: 100px; }
+.bvs-checkout-empty-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2.5rem; }
+.bvs-checkout-empty-card { display: flex; flex-direction: column; min-height: 250px; padding: 1.5rem; border: 1px solid rgb(255 255 255 / .15); background: rgb(255 255 255 / .025); }
+.bvs-checkout-empty-card > span { color: #c1a7ff; font-size: .75rem; }
+.bvs-checkout-empty-card h2 { margin-top: 2rem; font-size: 1.3rem; font-weight: 600; letter-spacing: -.025em; }
+.bvs-checkout-empty-card p { margin-block: .75rem 1.5rem; font-size: .85rem; color: var(--color-text-secondary); }
+.bvs-checkout-empty-card strong { display: flex; justify-content: space-between; margin-top: auto; font-size: .8rem; color: var(--color-brand); }
+.bvs-checkout-empty-card:hover { border-color: #c1a7ff80; background: #c1a7ff08; }
+@media (max-width: 1023px) { .bvs-checkout aside { position: static; } }
+@media (max-width: 639px) { .bvs-checkout-empty-grid { grid-template-columns: 1fr; } .bvs-checkout-empty-card { min-height: 210px; } .bvs-checkout form > section { padding: 1.25rem; } }

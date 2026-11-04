@@ -1,3 +1,4 @@
+import "./studio-workspace.css";
 import type { ReactNode } from "react";
 import StudioProductionShell from "@/components/StudioProductionShell";
 

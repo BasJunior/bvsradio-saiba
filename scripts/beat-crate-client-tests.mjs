@@ -29,6 +29,8 @@ const apiFetch=async(path,init={})=>{
  const received=Object.fromEntries([...uploaded].map(p=>[p,true]));return {ok:true,json:async()=>({producer:true,progress:{approved:0,pending:0,changes:0,drafts:0,hasPhoto:true,producer:true,instagram:'producer'},drafts:saved && !submitted?[{...saved,received}]:[]})}
 }
 const Form=load('src/components/BeatCrateUploadForm.tsx',{
+ '@/components/BeatUploadSuggestions':{default:()=>null},
+ '@/lib/beat-genre-normalization':{beatGenreSuggestions:['Hip-Hop','Trap']},
  'next/link':{default:props=>React.createElement('a',props)},
  '@/lib/supabase':{createClient:()=>({auth:{getSession:async()=>({data:{session:{access_token:'fixture',user:{id:owner}}}})}})},
  '@/lib/use-browser-session':{useBrowserSession:()=>({loading:false,session:{user:{id:owner},access_token:'fixture'}})},

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
+import './account.css'
 
 type Profile = {
   username: string
@@ -65,6 +66,7 @@ export default function AccountPage() {
   const [message, setMessage] = useState('')
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState('')
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false)
   const [showDeletion, setShowDeletion] = useState(false)
   const [deletionConfirmation, setDeletionConfirmation] = useState('')
   const [deletionReason, setDeletionReason] = useState('')
@@ -247,6 +249,8 @@ export default function AccountPage() {
   }
   const customAvatar = form.avatarUrl && !form.avatarUrl.includes('default-avatar') ? form.avatarUrl : ''
   const currentPhoto = avatarPreview || customAvatar || data?.profile?.display_avatar_url || '/assets/images/default-avatar.png'
+  const profileInitials = (form.displayName || form.username || 'BVS').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
+  useEffect(() => setAvatarLoadFailed(false), [currentPhoto])
   const accountRole = access.admin
     ? 'Administrator'
     : access.editorial
@@ -263,44 +267,36 @@ export default function AccountPage() {
   if (!data?.profile) return <main className="mx-auto min-h-[65vh] max-w-xl px-6 py-20 text-center"><h1 className="text-3xl">Profile unavailable</h1><p className="mt-4 text-text-secondary">{error || 'Your account profile could not be loaded.'}</p></main>
 
   return (
-    <main className="mx-auto max-w-7xl px-6 py-12">
-      <div className="flex flex-wrap items-end justify-between gap-5">
+    <main className="bvs-account-page mx-auto max-w-7xl px-6 py-12">
+      <div className="bvs-account-hero">
+        <div className="bvs-account-profile-visual"><div className="bvs-account-avatar"><span aria-hidden="true">{profileInitials}</span>{!avatarLoadFailed && <Image src={currentPhoto} alt="" fill unoptimized={shouldBypassImageOptimizer(currentPhoto)} className="object-cover" onError={() => setAvatarLoadFailed(true)} />}</div><div><p className="bvs-account-eyebrow">Account Centre</p><h1>Welcome, {data.profile.display_name || data.profile.username}</h1><p className="bvs-account-handle">@{data.profile.username} · {data.user.email}</p></div></div>
+        <div className="bvs-account-status">
+          <span className="bvs-account-role">{accountRole}</span>
+          {data.profile.is_verified && <span className="bvs-account-verified">Verified</span>}
+          {premiumSnap.premiumActive && <Link href="/artist/premium" className="bvs-account-premium">Premium · {premiumSnap.premiumPlanLabel || 'Standard'}</Link>}
+        </div>
+      </div>
+      <div className="bvs-account-intro">
         <div>
-          <p className="text-xs uppercase tracking-[.22em] text-brand">Account Centre</p>
-          <h1 className="mt-2 text-4xl font-semibold">Welcome, {data.profile.display_name || data.profile.username}</h1>
-          <p className="mt-3 text-text-secondary">{data.user.email}</p>
+          <p className="text-sm text-text-secondary">Manage your profile, listening, purchases, creator access, and account security from one place.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-brand/40 px-4 py-2 text-sm capitalize text-brand">{accountRole}</span>
-          {data.profile.is_verified && <span className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">Verified</span>}
-          {premiumSnap.premiumActive && (
-            <Link
-              href="/artist/premium"
-              className="rounded-full border border-brand/50 bg-brand/10 px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/20"
-            >
-              Premium · {premiumSnap.premiumPlanLabel || 'Standard'}
-              {premiumSnap.premiumUntil
-                ? ` · through ${new Date(premiumSnap.premiumUntil).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`
-                : ''}
-            </Link>
-          )}
-        </div>
+        <Link href="/contact?topic=account" className="bvs-account-help">Need account help? ↗</Link>
       </div>
 
       {error && <p className="mt-6 rounded-xl border border-red-400/30 bg-red-500/10 p-4 text-red-200">{error}</p>}
       {message && <p className="mt-6 rounded-xl border border-brand/30 bg-brand/10 p-4 text-brand">{message}</p>}
 
-      <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {shortcuts.map((item) => <Link key={item.href} href={item.href} className="rounded-2xl border border-white/10 bg-white/[.025] p-5 transition hover:border-brand/50"><h2 className="text-lg font-semibold">{item.title}</h2><p className="mt-2 text-sm text-text-secondary">{item.copy}</p></Link>)}
+      <section className="bvs-account-shortcuts mt-8" aria-label="Account shortcuts">
+        {shortcuts.map((item, index) => <Link key={item.href} href={item.href} className="bvs-account-shortcut"><span className="bvs-account-shortcut-icon">{['♫', '▣', '◉', '✉', '✦', '$', '✎', '⌁', '↗'][index] || '→'}</span><span><h2>{item.title}</h2><p>{item.copy}</p></span><b>→</b></Link>)}
       </section>
 
-      <section className="mt-12 grid gap-8 lg:grid-cols-[1.1fr_.9fr]">
-        <form onSubmit={save} className="rounded-2xl border border-white/10 bg-white/[.025] p-6">
+      <section className="bvs-account-settings mt-10 grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+        <form onSubmit={save} className="bvs-account-panel">
           <h2 className="text-2xl font-semibold">Profile</h2>
           <p className="mt-2 text-sm text-text-secondary">Account, member and creator names are kept separate so a private name is never used as an artist name by accident.</p>
           <div className="mt-6 flex flex-wrap items-center gap-5 rounded-2xl border border-white/10 bg-black/20 p-4">
-            <div className="relative h-28 w-28 overflow-hidden rounded-full border border-white/15 bg-white/5">
-              <Image src={currentPhoto} alt={`${form.displayName || form.username} profile`} fill unoptimized={shouldBypassImageOptimizer(currentPhoto)} className="object-cover" />
+            <div className="bvs-account-edit-avatar relative h-28 w-28 overflow-hidden rounded-full border border-white/15 bg-white/5">
+              <span aria-hidden="true">{profileInitials}</span>{!avatarLoadFailed && <Image src={currentPhoto} alt="" fill unoptimized={shouldBypassImageOptimizer(currentPhoto)} className="object-cover" onError={() => setAvatarLoadFailed(true)} />}
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-medium">Profile picture</p>
@@ -335,8 +331,8 @@ export default function AccountPage() {
           <button disabled={saving} className="mt-6 rounded-full bg-brand px-6 py-3 font-semibold text-black disabled:opacity-60">{saving ? 'Saving…' : 'Save profile'}</button>
         </form>
 
-        <div className="space-y-6">
-          <section className="rounded-2xl border border-white/10 bg-white/[.025] p-6">
+        <div className="space-y-4">
+          <section className="bvs-account-panel">
             <h2 className="text-2xl font-semibold">Creator role</h2>
             <p className="mt-2 text-sm text-text-secondary">Apply for creator access. Editorial reviews every request before account permissions change.</p>
             {roleApplication && (
@@ -358,12 +354,12 @@ export default function AccountPage() {
               </form>
             )}
           </section>
-          <section className="rounded-2xl border border-white/10 bg-white/[.025] p-6">
+          <section className="bvs-account-panel">
             <h2 className="text-2xl font-semibold">Security</h2>
             <p className="mt-2 text-sm text-text-secondary">Password changes are confirmed through your account email.</p>
             <Link href="/auth/forgot-password" className="mt-5 inline-block rounded-full border border-white/20 px-5 py-2 text-sm hover:border-brand">Reset password</Link>
           </section>
-          <section className="rounded-2xl border border-white/10 bg-white/[.025] p-6">
+          <section className="bvs-account-panel">
             <h2 className="text-2xl font-semibold">Privacy and account</h2>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/privacy" className="rounded-full border border-white/20 px-5 py-2 text-sm hover:border-brand">Privacy policy</Link>
@@ -373,7 +369,7 @@ export default function AccountPage() {
               <button type="button" onClick={signOut} className="rounded-full border border-white/20 px-5 py-2 text-sm hover:border-brand">Sign out</button>
             </div>
           </section>
-          {showDeletion && <section className="rounded-2xl border border-red-400/30 bg-red-500/[.06] p-6">
+          {showDeletion && <section className="bvs-account-panel border-red-400/30 bg-red-500/[.06]">
             <h2 className="text-2xl font-semibold">Request account deletion</h2>
             <p className="mt-2 text-sm text-text-secondary">This starts an authenticated deletion request. Published creator content and active purchases are reviewed before removal so other people’s purchases and credits are not broken.</p>
             <label className="mt-4 block text-sm font-medium">Reason (optional)<textarea value={deletionReason} onChange={(event) => setDeletionReason(event.target.value)} rows={3} className={field} /></label>
@@ -386,7 +382,7 @@ export default function AccountPage() {
         </div>
       </section>
 
-      <section className="mt-12 rounded-2xl border border-white/10 bg-white/[.025] p-6">
+      <section className="bvs-account-orders mt-10">
         <div className="flex items-end justify-between gap-4"><div><h2 className="text-2xl font-semibold">Orders and purchases</h2><p className="mt-2 text-sm text-text-secondary">Orders placed while signed in appear here.</p></div><Link href="/shop" className="text-sm text-brand">Browse services →</Link></div>
         {data.orders.length ? <div className="mt-5 overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="text-xs uppercase text-text-secondary"><tr><th className="pb-3">Order</th><th className="pb-3">Items</th><th className="pb-3">Status</th><th className="pb-3">Delivery</th><th className="pb-3">Total</th><th className="pb-3">Date</th><th className="pb-3">Receipt</th></tr></thead><tbody>{data.orders.map((order) => <tr key={order.reference} className="border-t border-white/10"><td className="py-4 pr-4 font-medium text-brand">{order.reference}</td><td className="py-4 pr-4 text-text-secondary">{order.items?.map((item) => item.title).filter(Boolean).join(', ') || 'BVS order'}</td><td className="py-4 pr-4 capitalize text-text-secondary">{order.status.replaceAll('_', ' ')}</td><td className="py-4 pr-4 capitalize text-text-secondary">{order.delivery_status?.replaceAll('_', ' ') || 'pending'}</td><td className="py-4 pr-4">${Number(order.total || 0).toFixed(2)}</td><td className="py-4 pr-4 text-text-secondary">{new Date(order.created_at).toLocaleDateString()}</td><td className="py-4"><Link href={`/account/orders/${encodeURIComponent(order.reference)}`} className="text-brand hover:underline">View →</Link></td></tr>)}</tbody></table></div> : <p className="mt-5 rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">No signed-in orders yet.</p>}
       </section>

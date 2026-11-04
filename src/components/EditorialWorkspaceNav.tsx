@@ -10,6 +10,7 @@ export default function EditorialWorkspaceNav() {
   if (!active) return null
 
   return <div className="relative z-30 mx-auto flex w-full max-w-7xl flex-wrap items-center gap-2 px-4 sm:px-6">
+    <Link href="/admin/editorial/distribution" className="inline-flex min-h-10 items-center border border-white/15 px-4 py-2 text-xs font-semibold text-text-secondary">Distribution reports</Link>
     <EditorialArtworkShortcut catalogueHref="/editorial/catalogue" />
     <Link href="/admin/editorial/finance/payouts" className="inline-flex min-h-10 items-center rounded-full border border-white/15 px-4 py-2 text-xs font-semibold text-text-secondary transition hover:border-brand/40 hover:text-brand">
       Payouts

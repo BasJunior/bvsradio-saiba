@@ -1069,8 +1069,8 @@ function CataloguePageContent() {
   const clearProducerFilter = showAllBeats;
 
   return (
-    <div className={`bvs-catalogue-page bvs-square-marketplace max-w-7xl mx-auto px-4 sm:px-6 py-10 pb-28 ${beatsMode ? "bvs-beatstore-directory" : ""}`}>
-      <section className={`grid ${beatsMode && !producerMode ? "grid-cols-1 mb-0" : "lg:grid-cols-[1.1fr_0.9fr] mb-10"} gap-10 items-end`}>
+    <div className={`bvs-catalogue-page bvs-square-marketplace max-w-7xl mx-auto px-4 sm:px-6 py-10 pb-28 ${beatsMode ? "bvs-beatstore-directory" : "bvs-music-directory"}`}>
+      <section className={`grid ${!producerMode ? "grid-cols-1 mb-0" : "lg:grid-cols-[1.1fr_0.9fr] mb-10"} gap-10 items-end`}>
         <div>
           <p className="text-xs tracking-[3px] text-brand uppercase mb-3">
             {producerMode
@@ -1175,7 +1175,7 @@ function CataloguePageContent() {
           </div>
         </div>
 
-        {(!beatsMode || producerMode) ? <div className="relative aspect-[16/10] rounded-none overflow-hidden border border-white/10">
+        {producerMode ? <div className="relative aspect-[16/10] rounded-none overflow-hidden border border-white/10">
           <Image
             src={
               producerMode && filteredTracks[0]?.artwork
@@ -1295,80 +1295,7 @@ function CataloguePageContent() {
       {!beatsMode && <PublishedArtistsShelf />}
       {!beatsMode && <PublishedAlbumsShelf />}
 
-      {!producerMode && trendingCards.length > 0 && (
-        <section className="mb-6 rounded-none border border-white/10 bg-white/[0.025] p-4 sm:p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-xs uppercase tracking-[3px] text-brand">
-                Trending on BVS
-              </p>
-              <h2 className="bvs-catalogue-section-title mt-1">
-                What listeners are opening now.
-              </h2>
-              <p className="mt-1 max-w-2xl text-sm text-text-secondary">
-                What the community is listening to.
-              </p>
-            </div>
-            <span className="rounded-none border border-brand/25 bg-brand/5 px-3 py-1 text-xs font-medium text-brand">
-              Live signal
-            </span>
-          </div>
-
-          <ol className="mt-4 divide-y divide-white/10">
-            {trendingCards.map((collection, index) => {
-              const isActive = collectionJump === collection.name;
-              return (
-                <li key={collection.id || collection.name}>
-                  <button
-                    type="button"
-                    onClick={() => jumpToCollection(collection.name)}
-                    className={`grid w-full grid-cols-[2rem_3rem_minmax(0,1fr)_auto] items-center gap-3 rounded-none px-2 py-2.5 text-left transition hover:bg-white/[0.04] ${isActive ? "bg-brand/[0.06] ring-1 ring-brand/25" : ""}`}
-                  >
-                    <span className="text-center text-lg font-semibold tabular-nums text-white/45">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div className="relative h-12 w-12 overflow-hidden rounded-none border border-white/10">
-                      <Image
-                        src={collection.img}
-                        alt=""
-                        fill
-                        unoptimized={
-                          /^https?:\/\//i.test(collection.img) ||
-                          collection.img.startsWith("/api/media/")
-                        }
-                        sizes="48px"
-                        className="object-cover"
-                      />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-sm font-semibold">
-                          {collection.name}
-                        </span>
-                        {collection.badge && (
-                          <span className="flex-none rounded-none bg-brand px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
-                            {collection.badge}
-                          </span>
-                        )}
-                      </div>
-                      <p className="truncate text-xs text-text-secondary">
-                        {collection.detail}
-                      </p>
-                      {collection.statLine && (
-                        <p className="mt-0.5 text-[11px] text-brand/90">
-                          {collection.statLine}
-                        </p>
-                      )}
-                    </div>
-                    <span className="text-sm text-white/40" aria-hidden="true">→</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
-
+      {/* Catalogue controls: music filters remain separate from BeatStore licensing filters. */}
       <section id="browse" className="scroll-mt-24">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
@@ -1446,13 +1373,20 @@ function CataloguePageContent() {
                 type="search"
                 placeholder="Search tracks, artists, genres or packs"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  setSearch(value);
+                  setCollectionJump("");
+                  const url = new URL(window.location.href);
+                  if (value.trim()) url.searchParams.set("q", value); else url.searchParams.delete("q");
+                  window.history.replaceState({}, "", url.pathname + url.search);
+                }}
                 className="w-full rounded-none border border-white/10 bg-black/35 py-3.5 pl-13 pr-12 text-sm outline-none transition placeholder:text-white/35 hover:border-white/20 focus:border-brand focus:ring-4 focus:ring-brand/10"
               />
               {search && (
                 <button
                   type="button"
-                  onClick={() => setSearch("")}
+                  onClick={() => { setSearch(""); setCollectionJump(""); const url = new URL(window.location.href); url.searchParams.delete("q"); window.history.replaceState({}, "", url.pathname + url.search); }}
                   aria-label="Clear search"
                   className="absolute right-3 top-1/2 -translate-y-1/2 rounded-none px-2 py-1 text-xs text-text-secondary hover:bg-white/10 hover:text-white"
                 >
@@ -1465,12 +1399,13 @@ function CataloguePageContent() {
                 value={collectionJump}
                 onChange={(event) => {
                   if (event.target.value) jumpToCollection(event.target.value);
+                  else { setCollectionJump(""); setSearch(""); setPackFilter(""); const url = new URL(window.location.href); url.searchParams.delete("q"); url.searchParams.delete("pack"); window.history.replaceState({}, "", url.pathname + url.search); }
                 }}
                 aria-label="Jump to a catalogue collection"
                 className="rounded-none border border-white/10 bg-black/35 px-4 py-3.5 text-sm outline-none focus:border-brand"
               >
-                <option value="">Jump to collection</option>
-                {activeCollectionCards.map((collection) => (
+                <option value="">All collections</option>
+                {activeCollectionCards.filter(collection => collection.shelfKind === "music").map((collection) => (
                   <option key={collection.id || collection.name} value={collection.name}>
                     {collection.name} — {collection.detail}
                   </option>
@@ -1539,12 +1474,10 @@ function CataloguePageContent() {
               <option value="mix">Archive & streams</option>
               <option value="beat">Beats only</option>
             </select>
-            <Link
-              href="/checkout"
-              className="rounded-none bg-brand px-5 py-3.5 text-center text-sm font-semibold text-black shadow-lg shadow-brand/10 hover:bg-brand-light"
-            >
-              View cart · {cart.length}
-            </Link>
+            <button type="button" onClick={() => {
+              setSearch(""); setGenreFilter("All"); setTypeFilter("music"); setPackFilter(""); setProducerFilter(""); setCollectionJump("");
+              window.history.replaceState({}, "", "/catalogue");
+            }} className="min-h-11 border border-white/15 px-4 text-sm text-text-secondary hover:text-brand">Reset filters</button>
           </div>
         </div>
         )}
@@ -1558,10 +1491,12 @@ function CataloguePageContent() {
           return (
             <article
               key={track.id}
-              className="group overflow-hidden rounded-none border border-white/10 bg-bg-card/45 transition hover:border-brand/40"
+              className="bvs-catalogue-card group relative overflow-hidden rounded-none border border-white/10 bg-bg-card/45 transition hover:border-brand/40"
             >
+              <div className="relative">
               <button
                 type="button"
+                aria-label={`View ${track.title} by ${track.artist}`}
                 onClick={() => setSelectedTrack(track)}
                 className="block w-full text-left"
               >
@@ -1587,11 +1522,13 @@ function CataloguePageContent() {
                   </span>
                 </div>
               </button>
+              {!beatsMode && track.src ? <button type="button" className={`bvs-catalogue-art-play ${active ? "is-playing" : ""}`} onClick={() => previewTrack(track)} aria-label={`${active ? "Pause" : "Play"} ${track.title}`}><span aria-hidden="true">{active ? "Ⅱ" : "▶"}</span></button> : null}
+              </div>
 
               <div className="p-4">
                 <div className="mb-1 flex items-start justify-between gap-2">
                   <h2 className="min-w-0 truncate text-[15px] font-semibold leading-tight">
-                    {track.title}
+                    <button type="button" onClick={() => setSelectedTrack(track)} className="text-left hover:text-brand">{track.title}</button>
                   </h2>
                   <span className="flex-shrink-0 rounded bg-brand/10 px-1.5 py-px text-[10px] tracking-widest text-brand">
                     {track.type === "beat" ? "BEAT" : "MUSIC"}
@@ -1605,7 +1542,7 @@ function CataloguePageContent() {
                   {track.type === "beat" ? <span className="flex-shrink-0" data-beat-bpm>{track.bpm ? `${String(track.bpm).replace(/\s*BPM$/i, "")} BPM` : "BPM —"}</span> : null}
                   <span className="flex-shrink-0">{priceBadge(track)}</span>
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                {beatsMode ? <div className="mt-4 flex flex-wrap gap-2">
                   {track.streamOnly ? (
                     <>
                       {track.src ? (
@@ -1646,7 +1583,7 @@ function CataloguePageContent() {
                   >
                     Details
                   </button>
-                </div>
+                </div> : !track.src && track.externalUrl ? <a href={track.externalUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-11 items-center text-xs text-brand">Open stream ↗</a> : null}
               </div>
             </article>
           );
@@ -1654,8 +1591,8 @@ function CataloguePageContent() {
 
         {filteredTracks.length === 0 && (
           <div className="col-span-full rounded-none border border-white/10 bg-bg-card/40 px-6 py-12 text-center text-text-secondary">
-            No catalogue matches yet. Clear the search or browse the live radio
-            rotation.
+            <p>No {beatsMode ? "beats" : "music"} match these filters.</p>
+            <button type="button" onClick={() => { setSearch(""); setGenreFilter("All"); setTypeFilter(beatsMode ? "beat" : "music"); setBeatDraft(defaultBeatFilters); setBeatApplied(defaultBeatFilters); setPackFilter(""); setProducerFilter(""); setCollectionJump(""); window.history.replaceState({}, "", beatsMode ? "/catalogue?type=beat" : "/catalogue"); }} className="mt-4 min-h-11 border border-brand/40 px-5 text-brand">Show all {beatsMode ? "beats" : "music"}</button>
           </div>
         )}
       </section>

@@ -7,9 +7,11 @@ import {
   useState,
 } from "react";
 import Link from "next/link";
+import CreatorProfileArtwork from "@/components/CreatorProfileArtwork";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import MyBeatStore from "@/components/MyBeatStore";
 import CreatorInsights from "@/components/CreatorInsights";
+import CreatorDistributionInsights from "@/components/CreatorDistributionInsights";
 import StudioPremiumDesk from "@/components/StudioPremiumDesk";
 import DistributionPathTimeline from "@/components/DistributionPathTimeline";
 import FullAccessAudioPlayer from "@/components/FullAccessAudioPlayer";
@@ -120,6 +122,11 @@ const field =
   "w-full rounded-xl border border-white/10 bg-black/20 p-3 outline-none focus:border-brand";
 
 export default function CreatorStudio() {
+  const [desk, setDesk] = useState("music");
+  useEffect(() => {
+    const sync = () => { const hash = window.location.hash.slice(1); setDesk(["beatstore", "producer-access", "beat-pack-upload", "beat-single-upload"].includes(hash) ? "beats" : ["business", "marketplace-desk", "service-orders", "premium-desk"].includes(hash) ? "business" : hash === "insights" ? "insights" : hash === "writer-work" ? "writing" : hash === "show-work" ? "shows" : "music"); };
+    sync(); window.addEventListener("hashchange", sync); return () => window.removeEventListener("hashchange", sync);
+  }, []);
   const [data, setData] = useState<Data | null>(null),
     [token, setToken] = useState(""),
     [error, setError] = useState(""),
@@ -191,13 +198,14 @@ export default function CreatorStudio() {
   const producer =
     Boolean((data.profile as { is_producer?: boolean }).is_producer) ||
     data.profile.role === "admin";
+  const activeDesk = desk === "music" && !artist ? producer ? "beats" : writer ? "writing" : showCreator ? "shows" : "business" : desk;
   return (
-    <main className="mx-auto max-w-6xl px-5 py-12 sm:px-6">
+    <main data-catalogue-desk={activeDesk} className="bvs-studio-manage mx-auto max-w-6xl px-5 py-8 sm:px-6">
       <p data-studio-accent="core" className="bvs-studio-accent-label text-xs uppercase tracking-[.22em]">
         Creator studio
       </p>
       <h1 className="mt-2 text-4xl font-semibold">
-        Welcome, {data.profile.display_name || "creator"}
+        Your catalogue
       </h1>
       <p className="mt-3 text-text-secondary">
         Manage your public work, submissions and business from one place. BVS
@@ -211,13 +219,10 @@ export default function CreatorStudio() {
       {message && (
         <p className="mt-5 rounded-xl bg-brand/10 p-4 text-brand">{message}</p>
       )}
-      <StudioOverview
-        artist={artist}
-        producer={producer}
-        writer={writer}
-        showCreator={showCreator}
-        trackCount={(data.tracks || []).length}
-      />
+      <nav className="bvs-studio-desk-tabs" aria-label="Catalogue tools">{[
+        artist && ["music", "Music", "releases"], producer && ["beats", "Beats", "beatstore"], (artist || producer) && ["insights", "Insights", "insights"], ["business", "Business", "business"], writer && ["writing", "Writing", "writer-work"], showCreator && ["shows", "Shows", "show-work"],
+      ].filter(Boolean).map(entry => { const [value, label, hash] = entry as string[]; return <a key={value} href={`#${hash}`} aria-current={activeDesk === value ? "page" : undefined} onClick={() => setDesk(value)}>{label}</a>; })}</nav>
+      <details className="bvs-studio-all-tools"><summary>All workspace shortcuts</summary><StudioOverview artist={artist} producer={producer} writer={writer} showCreator={showCreator} trackCount={(data.tracks || []).length} /></details>
       {artist && (
         <section id="artist-access" data-studio-accent="core" className="scroll-mt-24 pt-12" aria-labelledby="artist-access-heading">
           <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Artist access</p>
@@ -248,8 +253,8 @@ export default function CreatorStudio() {
           </CreatorDropDown>
         </div>
       )}
-      {(artist || producer) && <div id="insights" className="scroll-mt-24"><CreatorDropDown label="Performance and editorial insights" accent="insights" defaultOpen><CreatorInsights token={token} /></CreatorDropDown></div>}
-      {producer && <div id="beatstore" className="scroll-mt-24"><CreatorDropDown label="My BeatStore" accent="beats"><MyBeatStore /></CreatorDropDown></div>}
+      {(artist || producer) && <div id="insights" className="scroll-mt-24"><CreatorDropDown label="Performance and editorial insights" accent="insights" defaultOpen><CreatorInsights token={token} /><CreatorDistributionInsights /></CreatorDropDown></div>}
+      {producer && <div id="beatstore" className="scroll-mt-24"><CreatorDropDown label="My BeatStore" accent="beats" defaultOpen><MyBeatStore /></CreatorDropDown></div>}
 
       <section id="business" data-studio-accent="marketplace" className="scroll-mt-24 pt-12" aria-labelledby="business-heading">
         <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Creator business</p>
@@ -867,6 +872,15 @@ function ArtistReleases({
   flags?: ProfileFlags;
   act: (b: Record<string, unknown>) => Promise<void>;
 }) {
+  const [catalogueQuery, setCatalogueQuery] = useState("");
+  const [cataloguePage, setCataloguePage] = useState(1);
+  const matchingTracks = tracks.filter(track => `${track.title} ${track.artist_name || ""}`.toLowerCase().includes(catalogueQuery.trim().toLowerCase()));
+  const matchingReleases = releases.filter(release => release.title.toLowerCase().includes(catalogueQuery.trim().toLowerCase()));
+  const pageCount = Math.max(1, Math.ceil(Math.max(matchingTracks.length, matchingReleases.length) / 6));
+  const currentPage = Math.min(cataloguePage, pageCount);
+  const pageStart = (currentPage - 1) * 6;
+  const visibleTracks = matchingTracks.slice(pageStart, pageStart + 6);
+  const visibleReleases = matchingReleases.slice(pageStart, pageStart + 6);
   const [trackId, setTrack] = useState(""),
     [requestType, setType] = useState("takedown"),
     [message, setMessage] = useState("");
@@ -936,20 +950,23 @@ function ArtistReleases({
           </div>
         ))}
       </div>
+      <div className="bvs-studio-catalogue-controls"><label><span className="sr-only">Search your catalogue</span><input type="search" value={catalogueQuery} placeholder="Find a track or release" onChange={event => { setCatalogueQuery(event.target.value); setCataloguePage(1); }} /></label><span role="status">{matchingTracks.length} tracks · {matchingReleases.length} releases</span><div><button type="button" disabled={currentPage === 1} onClick={() => setCataloguePage(currentPage - 1)}>Previous</button><span>{currentPage} / {pageCount}</span><button type="button" disabled={currentPage >= pageCount} onClick={() => setCataloguePage(currentPage + 1)}>Next</button></div></div>
+      {!matchingTracks.length && !matchingReleases.length ? <p className="my-5 text-sm text-text-secondary">No matching music. Try a different title.</p> : null}
       {releases.length > 0 && <div className="mt-4"><CreatorReleaseWorkCounts counts={releaseCounts} /></div>}
       {releases.length > 0 && (
         <div className="mt-8">
           <h2 className="text-2xl">Album / EP path</h2>
           <div className="mt-4 space-y-3">
-            {releases.map((release) => {
+            {visibleReleases.map((release) => {
               const job = jobByRelease.get(release.id);
               const nextMove = nextMoveForRelease(release);
               const progress = progressForRelease(release);
               return (
                 <article
                   key={release.id}
-                  className="rounded-xl border border-white/10 p-4"
+                  className="bvs-studio-release-card rounded-xl border border-white/10 p-4"
                 >
+                  <div className="bvs-studio-cover"><CreatorProfileArtwork src={tracks.find(track => track.release_id === release.id && track.artwork_url)?.artwork_url} name={release.title} /></div>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <h3 className="font-medium">{release.title}</h3>
@@ -966,6 +983,7 @@ function ArtistReleases({
                       {publicDistributionStatusLabel(job?.status)}
                     </p>
                   </div>
+                  <details className="bvs-studio-release-expanded"><summary>Review progress &amp; recordings</summary>
                   <CreatorReleaseProgressDetails
                     progress={progress}
                     actionHref="#release-request"
@@ -984,60 +1002,32 @@ function ArtistReleases({
                   ))}
                   <CreatorNextMoveCard move={nextMove} className="mt-4" />
                   <Link href={`/creator/studio/artwork?release=${encodeURIComponent(release.id)}#studio-release-cover-change`} aria-label={`Change cover for ${release.title}`} className="bvs-studio-accent-button mt-3 inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Change cover</Link>
+                  </details>
                 </article>
               );
             })}
           </div>
         </div>
       )}
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_22rem]">
+      <div className="bvs-studio-track-desk mt-6">
         <div>
           <h2 className="text-2xl">Your tracks</h2>
           <div className="mt-4 space-y-3">
-            {tracks.map((track) => (
-              <article
-                key={track.id}
-                className="rounded-xl border border-white/10 p-4"
-              >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <h3 className="font-medium">{track.title}</h3>
-                    <p className="mt-1 text-xs capitalize text-text-secondary">
-                      {track.genre || "Music"} ·{" "}
-                      {track.editorial_status.replaceAll("_", " ")} ·{" "}
-                      {track.is_public ? "published" : "not public"} ·{" "}
-                      {track.in_rotation ? "in rotation" : "not in rotation"}
-                    </p>
-                    {(track.isrc || track.spotify_url) && (
-                      <p className="mt-2 text-xs text-text-secondary">
-                        {track.isrc ? `ISRC ${track.isrc}` : ""}
-                        {track.isrc && track.spotify_url ? " · " : ""}
-                        {track.spotify_url ? "Linked on Spotify" : ""}
-                      </p>
-                    )}
-                  </div>
-                  <div className="text-right text-xs text-text-secondary">
-                    <p className="text-lg text-brand">
-                      {Number(track.play_count || 0)}
-                    </p>
-                    <p>playback starts</p>
-                  </div>
-                </div>
-                {track.editorial_notes && (
-                  <p className="mt-3 text-sm text-text-secondary">
-                    Editor: {track.editorial_notes}
-                  </p>
-                )}
-                <div className="mt-3">
+            {visibleTracks.map((track) => (
+              <details key={track.id} className="bvs-studio-compact-track">
+                <summary>
+                  <div className="bvs-studio-cover"><CreatorProfileArtwork src={track.artwork_url} name={track.title} /></div>
+                  <div className="bvs-studio-track-identity"><h3>{track.title}</h3><p>{track.genre || "Music"} · {track.editorial_status.replaceAll("_", " ")} · {track.is_public ? "Published" : "Not public"}{track.in_rotation ? " · In rotation" : ""}</p></div>
+                  <span className="bvs-studio-track-plays"><strong>{Number(track.play_count || 0).toLocaleString()}</strong><small>plays</small></span>
+                  <span className="bvs-studio-track-expand" aria-hidden="true">⌄</span>
+                </summary>
+                <div className="bvs-studio-track-inspector">
+                  <div className="flex flex-wrap items-center justify-between gap-3"><Link href={`/creator/studio/releases/track-${encodeURIComponent(track.id)}`} className="inline-flex min-h-11 items-center text-xs text-brand">Open track workspace ↗</Link><Link href={`/creator/studio/artwork?track=${encodeURIComponent(track.id)}#studio-release-cover-change`} aria-label={`Change cover for ${track.title}`} className="inline-flex min-h-11 items-center text-xs text-text-secondary">Change cover</Link></div>
                   <FullAccessAudioPlayer accessId={`studio-track:${track.id}`} title={track.title} artist={track.artist_name || 'Your submission'} src={track.file_url} artwork={track.artwork_url} sourceLabel="Studio · your full submission" genre={track.genre} compact />
+                  {track.editorial_notes ? <p className="mt-3 text-xs text-text-secondary">Editor: {track.editorial_notes}</p> : null}
+                  <p className="mt-3 text-xs text-text-secondary">{track.isrc ? `ISRC ${track.isrc} · ` : ""}{track.is_downloadable ? `${track.licence_type.replaceAll("_", " ")} · $${Number(track.download_price || 0).toFixed(2)}` : "Not available for download sale"}</p>
                 </div>
-                <Link href={`/creator/studio/artwork?track=${encodeURIComponent(track.id)}#studio-release-cover-change`} aria-label={`Change cover for ${track.title}`} className="bvs-studio-accent-button mt-3 inline-flex min-h-11 items-center rounded-full border px-4 py-2 text-sm font-semibold">Change cover</Link>
-                <p className="mt-3 text-xs text-text-secondary">
-                  {track.is_downloadable
-                    ? `${track.licence_type.replaceAll("_", " ")} · $${Number(track.download_price || 0).toFixed(2)}`
-                    : "Not available for download sale"}
-                </p>
-              </article>
+              </details>
             ))}
             {!tracks.length && (
               <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">
@@ -1047,6 +1037,7 @@ function ArtistReleases({
             )}
           </div>
         </div>
+        <details className="bvs-studio-change-request"><summary>Request an editorial change <span aria-hidden="true">＋</span></summary>
         <form
           id="release-request"
           onSubmit={submit}
@@ -1108,6 +1099,7 @@ function ArtistReleases({
             ))}
           </div>
         </form>
+        </details>
       </div>
     </section>
   );

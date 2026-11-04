@@ -5,6 +5,7 @@ import { useAccountJson } from '@/lib/use-account-json';
 import { creatorGrowth, marketplaceGrowthOpportunity, promotionCaption, type GrowthMetrics, type GrowthRole, type MarketplaceGrowthMetrics, type PromotionItem } from '@/lib/creator-growth';
 import { canonicalBvsShareUrl } from '@/lib/share-url';
 import AppShareButton from '@/components/app-vnext/AppShareButton';
+import CreatorRewards from '@/components/CreatorRewards';
 
 type Data = ReturnType<typeof creatorGrowth> & {
   role: GrowthRole; canProduce: boolean; canMakeMusic: boolean; metrics: GrowthMetrics; items: PromotionItem[];
@@ -58,10 +59,13 @@ export default function CreatorGrowthPanel({ owner, token, surface }: { owner: s
         {marketplaceOpportunity.target > 1 ? <><progress value={Math.min(marketplaceOpportunity.value, marketplaceOpportunity.target)} max={marketplaceOpportunity.target} aria-label={marketplaceOpportunity.label} className="mt-3 h-2 w-full accent-brand" /><p className="mt-2 text-xs text-text-secondary">{marketplaceOpportunity.value}/{marketplaceOpportunity.target} live products</p></> : null}
         <div className="mt-3 flex flex-wrap items-center gap-3"><Link href={marketplaceHref} className="inline-flex min-h-11 items-center text-sm text-brand">View Marketplace workspace →</Link><span className="text-xs text-text-secondary">This does not affect your stars or level.</span></div>
       </aside> : null}
-      <div className="mt-5 flex flex-wrap gap-2" aria-label="Your achievements">{data.badges.map(badge => <span key={badge.badge_id} className="rounded-full border border-brand/25 bg-brand/[.06] px-3 py-2 text-sm text-brand">★ {badgeNames[badge.badge_id] || badge.badge_id}</span>)}</div>
+      <details className="mt-6 border border-white/15 bg-white/[.02]">
+        <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-4 px-4 py-3 text-sm font-semibold text-brand"><span>Explore rewards &amp; badges</span><span className="text-xs font-normal text-text-secondary">{data.badges.length} earned · Open to explore</span></summary>
+        <div className="px-4 pb-5 sm:px-5"><CreatorRewards metrics={data.metrics} role={data.role} earned={data.badges} levels={data.levels} /></div>
+      </details>
       <div className="mt-7 flex flex-wrap items-center justify-between gap-3"><h3 className="text-xl font-semibold">Promote your work</h3><Link href={surface ? `${base}/${data.role === 'producer' ? 'beats' : 'release'}` : `${base}/manage`} className="inline-flex min-h-11 items-center text-sm text-brand">Open catalogue</Link></div>
       {!items.length ? <p className="mt-3 text-sm leading-6 text-text-secondary">Promotion tools unlock when your content is approved and published. Finish your submission or check its review status.</p> : <div className="mt-4 space-y-3">{items.map(item => <PromotionRow key={item.id} item={item} token={token} result={data.results.find(result => result.kind === item.kind && result.itemId === item.id)} onPrepared={reload} />)}</div>}
-      <details className="mt-6 rounded-2xl border border-white/10 p-4"><summary className="cursor-pointer text-sm font-semibold">Levels and rewards</summary><p className="mt-3 text-sm leading-6 text-text-secondary">Launch → Momentum → Breakthrough → Global Stage. Credit rewards and affiliate earnings are not open yet. Amounts, eligibility and payout terms will be published before a paid campaign starts. Global Stage is planned for consideration for international tour support.</p><p className="mt-2 text-sm text-text-secondary">Badges recognise achievements; editorial selection and account verification are separate.</p></details>
+
     </> : null}
   </section>;
 }

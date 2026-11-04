@@ -97,3 +97,9 @@ export function beatGenreLabel(key: string): string {
   if (labels[key]) return labels[key];
   return key.replace(/(^|[\s/-])\p{L}/gu, (match) => match.toLocaleUpperCase());
 }
+
+/** Suggested upload labels use the same spelling as BeatStore filters. */
+export const beatGenreSuggestions = [
+  'Hip-Hop', 'Trap', 'Drill', 'R&B', 'Trap Soul', 'Afrobeats', 'Amapiano',
+  'Dancehall', 'Zimdancehall', 'Soul', 'Lofi', 'Pop', 'Electronic', 'Gospel', 'Jazz',
+];

@@ -1,0 +1,31 @@
+/* Public creator pages: compact identity first, then full-width music and beats. */
+.bvs-creator-profile .creator-profile-name { font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 1; font-weight: 850; letter-spacing: -.05em; overflow-wrap: anywhere; }
+.bvs-creator-profile .creator-profile-hero { padding-bottom: 1.75rem; }
+.bvs-creator-profile .creator-profile-actions :is(a,button) { display: inline-flex; align-items: center; min-height: 44px; }
+.bvs-creator-profile .creator-profile-tabs { padding-block: .75rem; margin-top: 0; border-block: 1px solid rgb(255 255 255 / .18); }
+.bvs-creator-profile .creator-profile-tabs a { min-height: 44px; display: inline-flex; align-items: center; border: 0; color: rgb(255 255 255 / .6); font-size: .85rem; }
+.bvs-creator-profile .creator-profile-tabs a:hover { color: #c1ff52; background: rgb(255 255 255 / .035); }
+.bvs-creator-profile #music { margin-top: 1.75rem; }
+.bvs-creator-profile #music h2 { font-size: 2rem; font-weight: 800; letter-spacing: -.035em; }
+.bvs-creator-profile .creator-profile-tracks { display: grid; gap: .75rem; }
+.bvs-creator-profile .creator-profile-tracks > article { margin: 0; padding: 1rem; border: 1px solid rgb(255 255 255 / .15); background: #101010; }
+.bvs-creator-profile .creator-profile-tracks > article:hover { border-color: rgb(193 167 255 / .4); }
+.bvs-creator-profile .creator-track-connections { margin-top: .75rem; border-top: 1px solid rgb(255 255 255 / .1); padding-top: .25rem; }
+.bvs-creator-profile .creator-track-connections summary { min-height: 44px; cursor: pointer; display: flex; align-items: center; font-size: .75rem; color: rgb(255 255 255 / .45); }
+.bvs-creator-profile .creator-track-connections summary::after { content: '+'; margin-left: auto; }
+.bvs-creator-profile .creator-track-connections[open] summary::after { content: '−'; }
+.bvs-creator-profile .creator-profile-about { display: grid; gap: 1.5rem; margin-top: 2.5rem; border-top: 1px solid rgb(255 255 255 / .18); padding-top: 2rem; padding-bottom: 1rem; }
+.bvs-creator-profile :is(a,button,summary):focus-visible { outline: 2px solid #c1a7ff; outline-offset: 3px; }
+@media (min-width: 1024px) {
+  .bvs-creator-profile .creator-profile-tracks { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  .bvs-creator-profile .creator-profile-about { grid-template-columns: 1fr 2fr; gap: 3rem; }
+}
+@media (max-width: 639px) {
+  .bvs-creator-profile .creator-profile-tracks > article { padding: .75rem; }
+  .bvs-creator-profile .creator-profile-tracks > article > div:first-child { gap: .75rem; }
+  .bvs-creator-profile .creator-profile-tracks > article > div:first-child > div:first-child { width: 56px; height: 56px; }
+  .bvs-creator-profile .creator-profile-tracks h3 { white-space: normal; overflow-wrap: anywhere; }
+}
+@media (min-width: 1024px) {
+  .bvs-creator-profile #beats section > .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

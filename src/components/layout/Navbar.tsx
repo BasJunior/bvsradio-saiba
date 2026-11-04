@@ -71,6 +71,15 @@ export default function Navbar() {
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const menuPanelRef = useRef<HTMLDivElement>(null)
   const restoreMenuFocusRef = useRef(true)
+  const moreRef = useRef<HTMLDetailsElement>(null)
+  useEffect(() => {
+    const close = (event: PointerEvent) => { if (!moreRef.current?.contains(event.target as Node)) moreRef.current?.removeAttribute('open') }
+    const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && moreRef.current?.open) { moreRef.current.removeAttribute('open'); moreRef.current.querySelector('summary')?.focus() } }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', escape)
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', escape) }
+  }, [])
+  useEffect(() => { moreRef.current?.removeAttribute('open') }, [pathname])
   const menuId = useId()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
@@ -361,8 +370,8 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
+    <nav aria-label="Main navigation" className="bvs-web-header fixed top-0 left-0 right-0 z-50 bg-bg-primary/90 backdrop-blur-xl border-b border-white/10">
+      <div className="bvs-web-header-inner max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center" onClick={() => closeMenuForNavigation('/')} aria-label="BVS Radio home">
           <Image
             src="/branding/bvs-logo-star-16x9.svg"
@@ -375,7 +384,7 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center gap-5 text-sm font-medium tracking-wide">
+        <div className="bvs-web-primary hidden md:flex items-center gap-5 text-sm font-medium tracking-wide">
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href} data-bvs-web-studio={link.id === 'studio' ? 'desktop' : undefined} aria-current={isWebDestinationActive(link.id, pathname) ? 'page' : undefined} className={`transition-colors ${isWebDestinationActive(link.id, pathname) ? 'text-brand' : 'text-text-secondary hover:text-brand'}`}>
               {link.label}
@@ -383,8 +392,20 @@ export default function Navbar() {
           ))}
         </div>
 
-        <div className="hidden md:flex items-center gap-2">
-          <HeaderSearch />
+        <div className="bvs-web-account hidden md:flex items-center gap-2">
+          <div className="bvs-header-search-wide"><HeaderSearch /></div>
+          <div className="bvs-header-search-compact"><HeaderSearch iconOnly /></div>
+          <details ref={moreRef} className="bvs-header-more" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) event.currentTarget.removeAttribute('open') }}>
+            <summary aria-label="Browse BVS" title="Browse BVS" className="min-h-11 cursor-pointer list-none px-3 py-3 text-sm text-white/65"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/></svg></summary>
+            <div className="bvs-header-directory">
+              <div className="bvs-header-directory-top"><div><strong>Explore BVS</strong><span>Music, people and tools for your next move.</span></div><button type="button" aria-label="Close navigation directory" onClick={() => { moreRef.current?.removeAttribute('open'); moreRef.current?.querySelector('summary')?.focus() }}>×</button></div>
+              {[
+                { title: 'Listen & discover', links: [['Live Radio', '/radio', 'Drop into the live rotation'], ['Shows', '/shows', 'Programmes and conversations'], ['Trending', '/trending', 'Hear what’s picking up'], ['Community Feed', '/feed', 'Follow the scene']] },
+                { title: 'Create with BVS', links: [['Creator Studio', '/creator/studio', 'Your releases and creative work'], ['Creator Marketplace', '/marketplace', 'Find independent talent'], ['BVS Studio Services', '/shop', 'Mixing, mastering and production'], ['Premium', '/premium', 'Explore membership options']] },
+                { title: 'About & support', links: [['Our story', '/about', 'Rooted in Zimbabwe'], ['Newsletter', '/newsletter', 'Stay close to BVS'], ['FAQ', '/faq', 'Find a quick answer'], ['Contact', '/contact', 'Talk to the BVS team']] },
+              ].map(group => <div key={group.title}><p>{group.title}</p>{group.links.map(([label, href, detail]) => <Link key={href} href={href} onClick={() => moreRef.current?.removeAttribute('open')}><span className="bvs-header-directory-link"><strong>{label}</strong><small>{detail}</small></span><span aria-hidden="true">↗</span></Link>)}</div>)}
+            </div>
+          </details>
           <Link
             href="/checkout"
             aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
@@ -416,7 +437,8 @@ export default function Navbar() {
         </div>
 
         {/* Mobile: keep creator Studio / Join one tap away (not only inside the drawer) */}
-        <div className="flex items-center gap-1.5 md:hidden">
+        <div className="bvs-web-mobile-actions flex items-center gap-1.5 md:hidden">
+          <HeaderSearch iconOnly />
           <Link
             href="/checkout"
             aria-label={cartCount > 0 ? `Cart, ${cartCount} item${cartCount === 1 ? '' : 's'}` : 'Cart'}
@@ -468,13 +490,15 @@ export default function Navbar() {
           event.stopPropagation()
           if (event.target === event.currentTarget) setIsMenuOpen(false)
         }}>
-          <div ref={menuPanelRef} id={menuId} role="dialog" aria-modal="true" aria-label="BVS navigation menu" tabIndex={-1} className="max-h-full overflow-y-auto overscroll-contain border-t border-white/10 bg-bg-primary/98 pb-[calc(7rem+env(safe-area-inset-bottom))] shadow-2xl">
+          <div ref={menuPanelRef} id={menuId} role="dialog" aria-modal="true" aria-label="BVS navigation menu" tabIndex={-1} className="bvs-web-menu max-h-full overflow-y-auto overscroll-contain border-t border-white/10 bg-bg-primary/98 pb-[calc(7rem+env(safe-area-inset-bottom))] shadow-2xl">
           <div className="space-y-1 px-4 py-4">
+            <p className="bvs-mobile-nav-label">Listen & discover</p>
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 data-menu-initial={link === navLinks[0] ? true : undefined}
+                aria-current={isWebDestinationActive(link.id, pathname) ? 'page' : undefined}
                 className="block py-2.5 text-text-secondary hover:text-brand transition-colors"
                 onClick={() => closeMenuForNavigation(link.href)}
               >
@@ -490,6 +514,7 @@ export default function Navbar() {
                 </Link>
               ))}
             </div>
+            <div className="bvs-mobile-support"><p className="bvs-mobile-nav-label">About & support</p><div>{[['Our story', '/about'], ['FAQ', '/faq'], ['Contact', '/contact'], ['Newsletter', '/newsletter']].map(([label, href]) => <Link key={href} href={href} onClick={() => closeMenuForNavigation(href)} className="inline-flex min-h-11 items-center text-sm text-white/65">{label} ↗</Link>)}</div></div>
             <Link href="/premium" className="block py-2.5 text-text-secondary hover:text-brand" onClick={() => closeMenuForNavigation('/premium')}>Premium</Link>
             <Link href="/checkout" className="flex items-center justify-between py-2.5 text-text-secondary hover:text-brand" onClick={() => closeMenuForNavigation('/checkout')}>
               <span>Cart</span>

@@ -7,6 +7,8 @@ const attempts = new Map<string, { count: number; resetAt: number }>()
 const topics = new Set([
   'general',
   'music',
+  'editorial',
+  'studio',
   'business',
   'press',
   'technical',

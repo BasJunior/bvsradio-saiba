@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal, flushSync } from "react-dom";
@@ -86,18 +87,20 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
         {query ? <button type="button" onClick={() => { setQuery(""); inputRef.current?.focus(); }} className="mr-1 h-9 w-9 shrink-0 rounded-full text-text-secondary" aria-label="Clear search">×</button> : null}
         {iconOnly ? <button type="button" onClick={close} className="mr-3 min-h-9 rounded-full px-2 text-xs text-brand">Close</button> : null}
       </div>
-      {open ? <div id={listId} className={iconOnly ? "mt-2 max-h-[min(60dvh,28rem)] overflow-y-auto overscroll-contain" : "absolute right-0 top-14 z-[80] max-h-[60dvh] w-[min(24rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain rounded-2xl border border-white/15 bg-bg-primary p-2 shadow-2xl"}>
+      {open ? <div id={listId} className={iconOnly ? "mt-2 max-h-[min(60dvh,28rem)] overflow-y-auto overscroll-contain" : "bvs-search-suggestions absolute right-0 top-14 z-[80] max-h-[60dvh] w-[min(32rem,calc(100vw-1.5rem))] overflow-y-auto overscroll-contain border border-white/15 bg-bg-primary p-2 shadow-2xl"}>
         {query.trim().length < 2 ? <p className="px-3 py-4 text-sm text-text-secondary">Type at least 2 characters to find music, artists, producers and beats.</p> : <>
           {loading ? <p role="status" className="px-3 py-3 text-sm text-text-secondary">Finding published content…</p> : null}
+          <div className="bvs-search-results-heading"><strong>Quick matches</strong><span>{loading ? "Searching…" : `${suggestions.length} results`}</span></div>
           <ul aria-label="Search suggestions">{suggestions.map((item) => <li key={item.id}>
-            <Link data-search-result href={item.href} prefetch={false} onClick={close} className="flex min-h-14 items-center justify-between gap-3 rounded-xl px-3 py-3 hover:bg-white/[.07] focus:bg-white/[.07] focus:outline-brand">
-              <span className="min-w-0"><span className="block truncate text-sm font-medium text-text-primary">{item.title}</span><span className="block truncate text-xs text-text-secondary">{item.subtitle}</span></span>
-              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-brand">{item.kind}</span>
+            <Link data-search-result href={item.href} prefetch={false} onClick={close} className="bvs-search-result flex min-h-14 items-center gap-3 px-3 py-3 hover:bg-white/[.07] focus:bg-white/[.07] focus:outline-brand">
+              <span className={`bvs-search-result-art ${item.kind === "artist" || item.kind === "producer" ? "is-person" : ""}`} aria-hidden="true">{item.image ? <Image src={item.image} alt="" width={48} height={48} unoptimized onError={event => { event.currentTarget.style.visibility = "hidden"; }} /> : <span>{item.title.slice(0, 1).toUpperCase()}</span>}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-text-primary">{item.title}</span><span className="block truncate text-xs text-text-secondary">{item.subtitle}</span></span>
+              <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-brand">{item.kind === "track" ? "Song" : item.kind}</span>
             </Link>
           </li>)}</ul>
           {!loading && !suggestions.length ? <p role="status" className="px-3 py-4 text-sm text-text-secondary">{failed ? "Some suggestions are unavailable. Try again or search all BVS." : "No quick matches. Try another name or search all BVS."}</p> : null}
           {failed && !loading ? <button type="button" onClick={() => search.retry()} className="min-h-11 rounded-xl px-3 py-2 text-sm text-brand">Retry suggestions</button> : null}
-          <button type="submit" className="mt-1 min-h-11 w-full rounded-xl border-t border-white/10 px-3 py-3 text-left text-sm font-medium text-brand hover:bg-white/[.07]">Search all BVS for “{query.trim()}” →</button>
+          <button type="submit" className="mt-1 min-h-11 w-full rounded-xl border-t border-white/10 px-3 py-3 text-left text-sm font-medium text-brand hover:bg-white/[.07]">View all results for “{query.trim()}”</button>
         </>}
       </div> : null}
     </form>

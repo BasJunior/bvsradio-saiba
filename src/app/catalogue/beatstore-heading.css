@@ -107,3 +107,16 @@
     overflow-wrap: break-word;
   }
 }
+
+/* Music follows the compact BeatStore directory; licensing stays in BeatStore. */
+.bvs-music-directory > section:first-child { margin-bottom: 2rem; }
+.bvs-music-directory #browse { margin-top: 2.5rem; }
+.bvs-music-directory #browse > div:last-child { background: rgb(255 255 255 / .025); box-shadow: none; }
+.bvs-music-directory .bvs-catalogue-card > div:first-child > button > div > span,
+.bvs-music-directory .bvs-catalogue-card .p-4 > div:first-child > span { display: none; }
+.bvs-music-directory .bvs-catalogue-card .p-4 { padding: .85rem; }
+.bvs-catalogue-art-play { position: absolute; right: .65rem; bottom: .65rem; width: 44px; height: 44px; display: grid; place-items: center; background: var(--color-brand); color: #0a0a0a; opacity: 0; transition: opacity .15s; }
+.bvs-catalogue-card:hover .bvs-catalogue-art-play, .bvs-catalogue-card:focus-within .bvs-catalogue-art-play, .bvs-catalogue-art-play.is-playing { opacity: 1; }
+.bvs-music-directory :is(button, a, input, select):focus-visible { outline: 2px solid #c1a7ff; outline-offset: 3px; }
+@media (hover: none) { .bvs-catalogue-art-play { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bvs-catalogue-art-play { transition: none; } }

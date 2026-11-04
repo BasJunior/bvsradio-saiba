@@ -90,3 +90,6 @@ export function beatVibeLabel(value: string): string {
   const key = beatVibeKey(value);
   return MOODS.find((entry) => beatVibeKey(entry.label) === key)?.label || "";
 }
+
+/** One catalogue for filter recognition and upload suggestions. */
+export const beatVibeSuggestions = MOODS.map(mood => mood.label);

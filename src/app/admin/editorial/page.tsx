@@ -295,6 +295,11 @@ export default function EditorialDashboard() {
     ['approved', 'published', 'rejected'].includes(r.editorial_status),
   ).length
   const releaseQueue = releaseNeedsReview  // only badge items needing action
+  const reviewCutoff = Date.now() - 7 * 24 * 60 * 60 * 1000
+  const overdueTracks = data.tracks.filter((track) => ['submitted', 'in_review'].includes(track.editorial_status) && Date.parse(track.created_at) < reviewCutoff).length
+  const overdueReleases = (data.releases || []).filter((release) => ['submitted', 'in_review'].includes(release.editorial_status) && Date.parse(release.created_at) < reviewCutoff).length
+  const overdueBeats = (data.beats || []).filter((beat) => ['submitted', 'in_review'].includes(beat.status) && Date.parse(beat.created_at) < reviewCutoff).length
+  const overdueQueue = overdueTracks + overdueReleases + overdueBeats
 
   const jump = [
     { id: 'ed-overview', label: 'Overview', accent: 'core' },
@@ -357,6 +362,40 @@ export default function EditorialDashboard() {
             <p className="mt-2 text-xs leading-5 text-text-secondary">{item.detail}</p>
           </div>
         ))}
+      </section>
+
+      <section data-editorial-accent="core" className="bvs-editorial-accent-card mt-5 rounded-2xl border border-white/10 bg-white/[.02] p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="bvs-editorial-accent-label text-xs uppercase tracking-[.18em]">Triage board</p>
+            <h2 className="mt-2 text-xl font-semibold">Start with what needs attention</h2>
+            <p className="mt-1 max-w-2xl text-sm text-text-secondary">Prioritise new submissions, changes requested and work waiting longer than seven days. Every shortcut opens the existing audited queue.</p>
+          </div>
+          <span className="rounded-full border border-brand/40 bg-brand/10 px-3 py-1 text-xs font-semibold text-brand">{trackNeedsReview + releaseNeedsReview + beatNeedsReview} open</span>
+        </div>
+        <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: 'Albums & EPs', value: releaseQueue, detail: 'Review releases', href: '#ed-releases', accent: 'releases' },
+            { label: 'Singles', value: trackQueue, detail: 'Review tracks', href: '#ed-tracks', accent: 'releases' },
+            { label: 'BeatStore', value: beatQueue, detail: 'Review beats', href: '#ed-beats', accent: 'beats' },
+            { label: 'Over seven days', value: overdueQueue, detail: 'Clear older work', href: '#ed-overview', accent: overdueQueue ? 'money' : 'core' },
+          ].map((item) => (
+            <Link key={item.label} href={item.href} data-editorial-accent={item.accent} className="bvs-editorial-accent-card rounded-xl border border-white/10 bg-black/10 p-4 transition hover:-translate-y-0.5 hover:border-brand/40">
+              <div className="flex items-start justify-between gap-3"><span className="text-sm text-text-secondary">{item.label}</span><span className="bvs-editorial-accent-label text-2xl font-semibold">{item.value}</span></div>
+              <span className="mt-3 block text-xs font-semibold text-text-secondary">{item.detail} →</span>
+            </Link>
+          ))}
+        </div>
+        <div className="mt-5 flex flex-wrap items-center gap-2 border-t border-white/10 pt-4 text-xs text-text-secondary">
+          <span className="mr-1 uppercase tracking-[.16em]">Workflow</span>
+          {[
+            ['New', 'submitted'],
+            ['In review', 'in_review'],
+            ['Changes requested', 'changes_requested'],
+            ['Approved', 'approved'],
+            ['Published', 'published'],
+          ].map(([label, status], index) => <span key={status} className="inline-flex items-center gap-2"><span className={`rounded-full border px-2.5 py-1 ${statusClass[status] || 'text-text-secondary'}`}>{label}</span>{index < 4 && <span className="text-white/30">→</span>}</span>)}
+        </div>
       </section>
 
       <Link

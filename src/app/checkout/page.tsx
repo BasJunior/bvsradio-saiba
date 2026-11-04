@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import "./checkout.css";
 import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
@@ -64,14 +65,14 @@ const paymentMethodsBase = [
   {
     id: "paynow",
     label: "Paynow (EcoCash, OneMoney & local)",
-    detail: "Primary for Zimbabwe — EcoCash, OneMoney, and local cards on Paynow’s secure page.",
+    detail: "EcoCash, OneMoney and local cards through Paynow.",
     needsPaynow: true,
     primary: true,
   },
   {
     id: "card",
     label: "International card (Stripe)",
-    detail: "Secondary rail — Visa / Mastercard when you are outside local Paynow methods.",
+    detail: "Visa and Mastercard through Stripe’s secure checkout.",
     needsStripe: true,
     primary: false,
   },
@@ -387,16 +388,28 @@ export default function CheckoutPage() {
     );
   }
 
+  if (!items.length && !result) {
+    return <main className="bvs-checkout mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
+      <p className="bvs-checkout-kicker">Your BVS basket</p>
+      <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">Room for your next find.</h1>
+      <p className="mt-4 max-w-xl text-text-secondary">Save a sound, find a beat or bring your next release to life. Your selections will appear here when you’re ready.</p>
+      {cancelled ? <p role="status" className="mt-5 text-sm text-text-secondary">Payment was not completed. No new purchase has been confirmed.</p> : null}
+      <div className="bvs-checkout-empty-grid">
+        {[["01", "Find your sound", "Music and releases from the BVS catalogue.", "/catalogue", "Explore music"], ["02", "Make your next record", "Production and beat licences for your next session.", "/catalogue?type=beat#beatstore", "Browse BeatStore"], ["03", "Bring it together", "Studios, engineers and services from BVS creators.", "/marketplace", "Find a service"]].map(([number, title, detail, href, label]) => <Link key={number} href={href} className="bvs-checkout-empty-card"><span>{number}</span><h2>{title}</h2><p>{detail}</p><strong>{label} <span aria-hidden="true">↗</span></strong></Link>)}
+      </div>
+      <Link href="/library" className="mt-8 inline-flex min-h-11 items-center text-sm text-text-secondary hover:text-brand">Return to your Library</Link>
+    </main>;
+  }
+
   return (
-    <div className="mx-auto max-w-7xl px-6 py-12">
+    <div className="bvs-checkout mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
       <section className="mb-10">
         <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">
-          Buy from BVS
+          Your BVS basket
         </p>
         <h1 className="mb-3 text-4xl font-semibold sm:text-5xl">Checkout</h1>
         <p className="max-w-2xl text-lg text-text-secondary">
-          Beats, tracks, and pro services (mix / master). No ads during playback
-          — you pay for what you buy.
+          Review your selections, add your details and continue to secure payment.
         </p>
         {cancelled && (
           <p className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
@@ -417,26 +430,22 @@ export default function CheckoutPage() {
           {["Review cart", "Your details", "Payment"].map((step, index) => (
             <li
               key={step}
-              className={`flex items-center gap-3 px-3 py-4 sm:px-5 ${index === 0 ? "bg-brand/10" : "border-l border-white/10"}`}
+              className={`flex items-center gap-3 px-3 py-4 sm:px-5 ${index > 0 ? "border-l border-white/10" : ""}`}
             >
               <span
                 className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full text-xs font-bold ${index === 0 ? "bg-brand text-black" : "bg-white/10 text-text-secondary"}`}
               >
                 {index + 1}
               </span>
-              <span
-                className={`hidden text-sm font-medium sm:block ${index === 0 ? "text-white" : "text-text-secondary"}`}
-              >
-                {step}
-              </span>
+              <a href={`#${["checkout-basket", "checkout-details", "checkout-payment"][index]}`} className="text-xs font-medium text-text-secondary sm:text-sm">{step}</a>
             </li>
           ))}
         </ol>
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_0.85fr]">
-        <form onSubmit={submitOrder} className="space-y-6">
-          <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <form id="bvs-checkout-form" onSubmit={submitOrder} className="space-y-6">
+          <section id="checkout-basket" className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-xl font-semibold">Your cart</h2>
               <div className="flex gap-2 text-sm">
@@ -510,10 +519,7 @@ export default function CheckoutPage() {
                   <div className="rounded-xl border border-brand/25 bg-brand/[.06] p-4 text-sm">
                     <strong>Small basket tip:</strong>{" "}
                     <span className="text-text-secondary">
-                      Add another track if you can. Combining low-ticket music
-                      into one checkout spreads fixed payment costs across more
-                      music and leaves more value in the creator economy. BVS is
-                      measuring this before enforcing a hard minimum.
+                      Buying a few tracks together helps more of your purchase reach creators. You can still continue with this basket.
                     </span>
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                       <Link
@@ -546,7 +552,7 @@ export default function CheckoutPage() {
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
-            <h2 className="mb-4 text-xl font-semibold">Your details</h2>
+            <h2 id="checkout-details" className="mb-4 text-xl font-semibold">Your details</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="block text-sm sm:col-span-1">
                 <span className="mb-1.5 block text-text-secondary">Name</span>
@@ -557,6 +563,7 @@ export default function CheckoutPage() {
                     setCustomer({ ...customer, name: e.target.value })
                   }
                   className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
+                  autoComplete="name"
                   placeholder="Your name"
                 />
               </label>
@@ -570,6 +577,7 @@ export default function CheckoutPage() {
                     setCustomer({ ...customer, email: e.target.value })
                   }
                   className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
+                  autoComplete="email"
                   placeholder="you@email.com"
                 />
               </label>
@@ -583,6 +591,8 @@ export default function CheckoutPage() {
                     setCustomer({ ...customer, whatsapp: e.target.value })
                   }
                   className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
+                  type="tel"
+                  autoComplete="tel"
                   placeholder="+263…"
                 />
               </label>
@@ -628,10 +638,10 @@ export default function CheckoutPage() {
           </section>
 
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
-            <h2 className="mb-2 text-xl font-semibold">Payment</h2>
+            <h2 id="checkout-payment" className="mb-2 text-xl font-semibold">Payment</h2>
             <p className="mb-4 text-sm text-text-secondary">
               {paynowReady && stripeReady
-                ? "Primary: Paynow for Zimbabwe (EcoCash & local). International card stays available as backup. Both finish online — no WhatsApp proof step."
+                ? "Choose Paynow for local Zimbabwe payments or Stripe for international cards. You’ll continue to your chosen provider to pay."
                 : paynowReady
                   ? "Pay securely on Paynow (EcoCash, OneMoney, local methods)."
                   : stripeReady
@@ -648,7 +658,7 @@ export default function CheckoutPage() {
                     <input
                       type="radio"
                       name="paymentMethod"
-                      className="sr-only"
+                      className="mr-2 accent-brand"
                       checked={paymentMethod === method.id}
                       onChange={() => setPaymentMethod(method.id)}
                     />
@@ -705,6 +715,7 @@ export default function CheckoutPage() {
               </p>
             ) : null}
             <textarea
+              aria-label={hasCreatorService ? "Project brief" : "Project notes"}
               value={projectNotes}
               onChange={(e) => setProjectNotes(e.target.value)}
               rows={4}
@@ -718,7 +729,7 @@ export default function CheckoutPage() {
           </section>
 
           {error && (
-            <div className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            <div role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
               {error}
             </div>
           )}
@@ -740,7 +751,8 @@ export default function CheckoutPage() {
 
         <aside className="space-y-6">
           <section className="sticky top-24 rounded-2xl border border-white/10 bg-bg-card/45 p-6">
-            <h2 className="mb-4 text-xl font-semibold">Summary</h2>
+            <p className="bvs-checkout-kicker mb-3">At a glance</p>
+            <h2 className="mb-4 text-xl font-semibold">Order summary</h2>
             {items.length > 0 && (
               <div className="mb-4 space-y-2 border-b border-white/10 pb-4">
                 {items.map((item) => (

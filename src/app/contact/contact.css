@@ -1,0 +1,38 @@
+.bvs-contact-page { max-width: 72rem; margin: 0 auto; padding: 3.5rem 1.5rem 6rem; }
+.bvs-contact-hero { display: grid; grid-template-columns: minmax(0, 1fr) 18rem; align-items: end; gap: 2rem; padding-bottom: 2.5rem; border-bottom: 1px solid #ffffff12; }
+.bvs-contact-eyebrow { color: #c1ff52; font-size: .68rem; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; }
+.bvs-contact-hero h1 { margin-top: .55rem; font-size: clamp(2.8rem, 7vw, 5.5rem); font-weight: 700; letter-spacing: -.06em; line-height: .95; }
+.bvs-contact-hero p:not(.bvs-contact-eyebrow) { max-width: 42rem; margin-top: 1rem; color: #ffffff99; font-size: 1.1rem; line-height: 1.55; }
+.bvs-contact-hero-note { border-left: 2px solid #c1ff52; padding: .5rem 0 .5rem 1rem; }
+.bvs-contact-hero-note span, .bvs-contact-hero-note small { display: block; color: #ffffff65; font-size: .75rem; }
+.bvs-contact-hero-note strong { display: block; margin: .35rem 0; color: white; font-size: 1.1rem; }
+.bvs-contact-paths { margin-top: 2rem; }
+.bvs-contact-section-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; }
+.bvs-contact-section-heading h2, .bvs-contact-aside h2 { margin-top: .35rem; font-size: 1.5rem; font-weight: 700; }
+.bvs-contact-section-heading > a { color: #c1ff52; font-size: .8rem; }
+.bvs-contact-path-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin-top: 1rem; }
+.bvs-contact-path { display: flex; min-height: 10rem; flex-direction: column; border: 1px solid #ffffff12; background: #ffffff05; padding: 1rem; transition: border-color .2s, transform .2s; }
+.bvs-contact-path:hover { border-color: #c1ff5260; transform: translateY(-2px); }
+.bvs-contact-path-primary { border-color: #c1ff5245; background: #c1ff520b; }
+.bvs-contact-path-icon { display: grid; width: 2rem; height: 2rem; place-items: center; border: 1px solid #c1ff5260; color: #c1ff52; }
+.bvs-contact-path strong { display: block; margin-top: 1rem; color: white; font-size: 1rem; }
+.bvs-contact-path small { display: block; margin-top: .4rem; color: #ffffff75; font-size: .75rem; line-height: 1.5; }
+.bvs-contact-path b { margin-top: auto; padding-top: 1rem; color: #c1ff52; font-size: .75rem; }
+.bvs-contact-grid { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); gap: 3rem; margin-top: 3rem; }
+.bvs-contact-aside { padding-top: .75rem; }
+.bvs-contact-muted { max-width: 22rem; margin-top: .75rem; color: #ffffff75; font-size: .85rem; line-height: 1.6; }
+.bvs-contact-lines { margin-top: 2rem; }
+.bvs-contact-line { padding: .9rem 0; border-top: 1px solid #ffffff12; }
+.bvs-contact-line span, .bvs-contact-follow > span { display: block; color: #ffffff60; font-size: .7rem; text-transform: uppercase; letter-spacing: .12em; }
+.bvs-contact-line a { display: block; margin-top: .35rem; color: white; font-size: .95rem; }
+.bvs-contact-line a:hover, .bvs-contact-follow a:hover { color: #c1ff52; }
+.bvs-contact-follow { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ffffff12; }
+.bvs-contact-follow div { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: .65rem; }
+.bvs-contact-follow a { color: #c1ff52; font-size: .85rem; }
+.bvs-contact-form-wrap form { border: 1px solid #ffffff12; border-radius: 0; background: #ffffff04; padding: 1.25rem; }
+@media (max-width: 767px) {
+  .bvs-contact-page { padding: 2.5rem 1rem 5rem; }
+  .bvs-contact-hero, .bvs-contact-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .bvs-contact-path-grid { grid-template-columns: 1fr; }
+  .bvs-contact-path { min-height: 8.5rem; }
+}

@@ -132,6 +132,35 @@ export async function GET(request: Request) {
   const pot = parseListenAdPotSettings(potSettings[0]?.value)
   const availableBalance = balance(ledger)
   const otherCreditsAndAdjustments = availableBalance - marketplaceEarnings - radioEarnings - foundingBonus
+  const earningsBySource = new Map<string, number>([
+    ['single_sales', 0],
+    ['beat_sales', 0],
+    ['studio_products', 0],
+    ['studio_services', 0],
+    ['streams', radioEarnings],
+    ['other', foundingBonus + otherCreditsAndAdjustments],
+  ])
+  for (const settlement of postedSettlements) {
+    const lines = Array.isArray((settlement.breakdown as { lines?: unknown[] } | undefined)?.lines)
+      ? (settlement.breakdown as { lines: Array<Record<string, unknown>> }).lines
+      : []
+    const gross = Number(settlement.gross_product_revenue) || 0
+    const net = Number(settlement.seller_net) || 0
+    for (const line of lines) {
+      const type = String(line.productType || '')
+      const key = type === 'beat'
+        ? 'beat_sales'
+        : type === 'creator_service'
+          ? 'studio_services'
+          : type === 'creator_product'
+            ? 'studio_products'
+            : ['single', 'mix', 'album'].includes(type)
+              ? 'single_sales'
+              : 'other'
+      const lineGross = Number(line.gross) || 0
+      earningsBySource.set(key, (earningsBySource.get(key) || 0) + (gross > 0 ? net * lineGross / gross : 0))
+    }
+  }
 
   return NextResponse.json({
     profile: profile[0] || null,
@@ -166,10 +195,14 @@ export async function GET(request: Request) {
       foundingBonus,
       otherCreditsAndAdjustments,
     },
+    earningsBySource: [...earningsBySource].map(([source, amount]) => ({
+      source,
+      amount: Math.round(amount * 100) / 100,
+    })),
     radio: {
       eligiblePlays,
       qualifiedStreams,
-      theoreticalCapUsd: theoreticalStreamLiabilityUsd(Math.max(eligiblePlays, qualifiedStreams)),
+      theoreticalCapUsd: theoreticalStreamLiabilityUsd(eligiblePlays),
       fundedEarnings: radioEarnings,
       settlementStatus: radioEarnings > 0 ? 'credited' : pot.enabled && pot.netListenAdPotUsd > 0 ? 'awaiting_monthly_settlement' : 'awaiting_funded_programme',
       policy: {

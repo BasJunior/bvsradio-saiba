@@ -6,6 +6,8 @@ import Link from 'next/link'
 const topicOptions = [
   ['general', 'General inquiry'],
   ['music', 'Artist support / collaboration (not submissions)'],
+  ['editorial', 'Editorial request / existing submission'],
+  ['studio', 'Creator Studio support'],
   ['business', 'Business or advertising'],
   ['press', 'Press or interview request'],
   ['technical', 'Technical issue'],
@@ -63,7 +65,7 @@ export default function ContactForm({ submissionHref = '/upload' }: { submission
 
   return (
     <form
-      className="space-y-5 bg-bg-card/30 border border-white/10 p-8 rounded-2xl" 
+      className="bvs-contact-form space-y-5 bg-bg-card/30 border border-white/10 p-8 rounded-2xl"
       onSubmit={handleSubmit}
     >
       <label className="sr-only" aria-hidden="true">
@@ -102,7 +104,7 @@ export default function ContactForm({ submissionHref = '/upload' }: { submission
         </select>
       </div>
 
-      <p className="rounded-xl border border-brand/20 bg-brand/5 p-3 text-sm text-text-secondary">
+      <p className="bvs-contact-form-note rounded-xl border border-brand/20 bg-brand/5 p-3 text-sm text-text-secondary">
         This form is for questions and support, not music submissions. To enter the editorial review queue,{' '}
         <Link href={submissionHref} className="font-semibold text-brand hover:underline">submit music through your BVS profile</Link>.
       </p>

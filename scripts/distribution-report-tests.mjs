@@ -1,0 +1,34 @@
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
+import ts from 'typescript';
+import {PGlite} from '@electric-sql/pglite';
+import {validateDistributionReport,summarizeDistributionReport,eligibleDistributionReleaseIds} from '../src/lib/distribution-reports.ts';
+const valid={period_start:'2026-01-01',period_end:'2026-01-02',source_reference:'Release report 01',daily:[{date:'2026-01-01',store:'Spotify',streams:12},{date:'2026-01-01',store:'Apple Music',streams:3},{date:'2026-01-02',store:'Spotify',streams:5}],countries:[{code:'ZW',streams:10},{code:'ZA',streams:8}]};
+const active={premiumActive:true,distributionEnabled:true};
+const jobs=[{release_id:'release-a',status:'live_on_dsp',updated_at:'2026-01-02'},{release_id:'release-b',status:'not_eligible',updated_at:'2026-01-02'}];
+assert.deepEqual(eligibleDistributionReleaseIds(active,jobs),['release-a']);
+assert.deepEqual(eligibleDistributionReleaseIds({...active,premiumActive:false},jobs),[]);
+assert.deepEqual(eligibleDistributionReleaseIds({...active,distributionEnabled:false},jobs),[]);
+assert.deepEqual(eligibleDistributionReleaseIds(active,[]),[]);
+assert.deepEqual(eligibleDistributionReleaseIds(active,[...jobs,{release_id:'release-a',status:'cancelled',updated_at:'2026-01-03'}]),[]);
+const parsed=validateDistributionReport(valid);const summary=summarizeDistributionReport(parsed);
+assert.equal(summary.total,20);assert.equal(summary.daily[0].streams,15);assert.deepEqual(summary.stores,[['Spotify',17],['Apple Music',3]]);
+for(const change of [{period_start:'2026-02-30'},{period_end:'2025-12-31'},{daily:[...valid.daily,valid.daily[0]]},{daily:[{date:'2026-01-01',store:'Spotify',streams:-1}]},{daily:[{date:'2026-01-01',store:'Spotify',streams:'12'}]},{countries:[{code:'ZW',streams:21}]},{countries:[{code:'ZW',streams:1},{code:'ZW',streams:2}]},{source_reference:''}])assert.throws(()=>validateDistributionReport({...valid,...change}));
+const json={json:(data,options)=>Response.json(data,options)};
+function route(path,mocks,fetch){const exports={};vm.runInNewContext(ts.transpileModule(readFileSync(path,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{exports,require:name=>name==='next/server'?{NextResponse:json}:mocks[name],fetch,Request,Response,URL,Date,Set,JSON});return exports;}
+let urls=[];
+let creator=route('src/app/api/creator/distribution-reports/route.ts',{'@/lib/creator-server':{creatorIdentity:async()=>({user:{id:'owner-a'}}),creatorHeaders:{},creatorUrl:path=>path},'@/lib/premium-billing':{getArtistPremiumStatus:async()=>active},'@/lib/distribution-reports':{eligibleDistributionReleaseIds}},async url=>{urls.push(url);return Response.json(url.startsWith('distribution_jobs') ? jobs : []);});
+assert.equal((await creator.GET(new Request('https://bvs.test/api?artist_user_id=owner-b'))).status,200);assert.match(urls[0],/artist_user_id=eq.owner-a/);assert(!urls[0].includes('owner-b'));assert.match(urls[1],/release_id=in.\(release-a\)/);assert.match(urls[1],/artist_user_id=eq.owner-a/);
+let calls=0;
+const denied=route('src/app/api/admin/editorial/distribution-reports/route.ts',{'@/lib/editorial-server':{editorialIdentity:async()=>null,can:()=>false},'@/lib/distribution-reports':{validateDistributionReport}},async()=>{calls++;throw Error();});
+assert.equal((await denied.POST(new Request('https://bvs.test',{method:'POST',body:JSON.stringify(valid)}))).status,403);assert.equal(calls,0);
+const db=new PGlite();await db.exec('create role anon;create role authenticated;create role service_role bypassrls;create table profiles(id uuid primary key);create table releases(id uuid primary key);');
+await db.exec(readFileSync('supabase/migrations/20261103203405_distribution_reports.sql','utf8'));
+const table=await db.query("select relrowsecurity from pg_class where relname='distribution_reports'");assert.equal(table.rows[0].relrowsecurity,true);
+for(const role of ['anon','authenticated']){const permission=await db.query(`select has_table_privilege('${role}','distribution_reports','select') as allowed`);assert.equal(permission.rows[0].allowed,false);}
+const permission=await db.query("select has_table_privilege('service_role','distribution_reports','insert') as allowed, has_table_privilege('service_role','distribution_reports','update') as editing");assert.equal(permission.rows[0].allowed,true);assert.equal(permission.rows[0].editing,false);
+await db.exec("insert into profiles values ('11111111-1111-1111-1111-111111111111');insert into releases values ('22222222-2222-2222-2222-222222222222');");
+await db.query("insert into distribution_reports (release_id,artist_user_id,created_by,period_start,period_end,source,source_reference,daily,countries) values ($1,$2,$2,$3,$4,'amuse',$5,$6,$7)",['22222222-2222-2222-2222-222222222222','11111111-1111-1111-1111-111111111111',valid.period_start,valid.period_end,valid.source_reference,JSON.stringify(valid.daily),JSON.stringify(valid.countries)]);
+const stored=await db.query('select daily,countries from distribution_reports');assert.equal(summarizeDistributionReport(stored.rows[0]).total,20);
+await db.close();console.log('Distribution reports: validation, daily/store aggregation, owner isolation, staff denial and migration permissions passed.');

@@ -294,3 +294,82 @@ p, .text-base {
 }
 .bvs-skip-link:focus { transform: translateY(0); }
 #bvs-main-content { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 5rem); }
+
+/* Web header: the footer's grouped directory, with compact everyday navigation. */
+.bvs-web-header { background: #0b0b0bee; border-color: rgb(255 255 255 / .18); }
+.bvs-web-header-inner { gap: 1rem; }
+.bvs-web-header a[aria-label="BVS Radio home"] { flex-shrink: 0; }
+.bvs-web-header .bvs-web-primary { gap: 1.1rem; }
+.bvs-web-primary > a { display: inline-flex; align-items: center; min-height: 64px; border-bottom: 2px solid transparent; font-size: .8rem; letter-spacing: 0; }
+.bvs-web-primary > a[aria-current="page"] { border-color: #c1ff52; color: #c1ff52; }
+.bvs-web-header .bvs-join-button { display: inline-flex; min-height: 44px; align-items: center; border-radius: 0; font-weight: 700; }
+.bvs-web-account { flex-shrink: 0; }
+.bvs-header-search-wide { width: clamp(170px, 18vw, 250px); }
+.bvs-header-search-wide input { width: 100%; border-radius: 0; border-color: rgb(255 255 255 / .2); background: #151515; }
+.bvs-header-search-wide form { width: 100%; }
+.bvs-header-search-compact { display: none; }
+.bvs-header-more summary::-webkit-details-marker { display: none; }
+.bvs-header-more[open] summary { color: #c1a7ff; }
+.bvs-header-directory { position: absolute; top: 64px; right: max(1.5rem, calc((100vw - 80rem) / 2)); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; width: min(760px, calc(100vw - 3rem)); padding: 1.5rem; background: #101012; border: 1px solid rgb(255 255 255 / .2); box-shadow: 0 24px 60px #0008; }
+.bvs-header-directory p, .bvs-mobile-nav-label { margin-bottom: .75rem; font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: #c1a7ff; }
+.bvs-header-directory a { display: flex; justify-content: space-between; gap: .75rem; align-items: center; min-height: 44px; font-size: .8rem; color: rgb(255 255 255 / .65); border-bottom: 1px solid rgb(255 255 255 / .08); }
+.bvs-header-directory a:hover { color: #c1ff52; }
+.bvs-header-directory a span { color: rgb(255 255 255 / .3); }
+.bvs-mobile-support { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgb(255 255 255 / .15); }
+.bvs-mobile-support > div { display: grid; grid-template-columns: 1fr 1fr; }
+.bvs-web-menu [data-bvs-web-studio], .bvs-web-menu [data-menu-initial] { min-height: 44px; }
+.bvs-web-header :is(a, button, summary):focus-visible { outline: 2px solid #c1a7ff; outline-offset: 3px; }
+@media (min-width: 768px) and (max-width: 1199px) {
+  .bvs-header-search-wide { display: none; }
+  .bvs-header-search-compact { display: block; }
+  .bvs-web-header-inner { gap: .5rem; }
+  .bvs-web-header .bvs-web-primary { gap: .75rem; }
+  .bvs-web-header .bvs-web-account { gap: 0; }
+}
+@media (max-width: 767px) {
+  .bvs-web-header a[aria-label="BVS Radio home"] img { height: 48px; }
+  .bvs-web-mobile-actions > a[aria-label^="Cart"] { width: 44px; height: 44px; }
+}
+.bvs-header-search-wide form > div:first-child { border-radius: 0; background: #151515; }
+
+/* Header refinement: clear hierarchy without adding another navigation row. */
+.bvs-web-header-inner { padding-inline: 1.5rem; }
+.bvs-web-primary > a { font-weight: 600; color: rgb(255 255 255 / .58); transition: color .15s, border-color .15s; }
+.bvs-web-primary > a:hover { color: white; border-bottom-color: rgb(255 255 255 / .25); }
+.bvs-web-primary > a[aria-current="page"] { border-color: #c1ff52; }
+.bvs-web-account > a[href="/auth/login"], .bvs-web-account > span:last-child { border-left: 1px solid rgb(255 255 255 / .15); margin-left: .35rem; padding-left: 1rem; }
+.bvs-header-more summary { display: flex; align-items: center; gap: .45rem; }
+.bvs-header-more summary > span { display: inline-block; transition: transform .15s; }
+.bvs-header-more[open] summary > span { transform: rotate(180deg); }
+.bvs-header-directory { width: min(880px, calc(100vw - 3rem)); gap: 1.5rem; padding: 0 1.5rem 1.5rem; max-height: calc(100dvh - 80px); overflow-y: auto; }
+.bvs-header-directory-top { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.25rem; border-bottom: 1px solid rgb(255 255 255 / .15); }
+.bvs-header-directory-top strong { display: block; font-size: 1.1rem; font-weight: 700; letter-spacing: -.025em; }
+.bvs-header-directory-top div > span { display: block; margin-top: .25rem; font-size: .75rem; color: rgb(255 255 255 / .45); }
+.bvs-header-directory-top button { width: 44px; height: 44px; font-size: 1.5rem; color: rgb(255 255 255 / .6); border: 1px solid rgb(255 255 255 / .15); }
+.bvs-header-directory a { padding: .75rem .5rem; margin-inline: -.5rem; min-height: 65px; }
+.bvs-header-directory a:hover { background: rgb(255 255 255 / .035); }
+.bvs-header-directory .bvs-header-directory-link { color: inherit; }
+.bvs-header-directory-link strong { display: block; font-size: .8rem; font-weight: 600; }
+.bvs-header-directory-link small { display: block; margin-top: .25rem; font-size: .7rem; line-height: 1.5; color: rgb(255 255 255 / .4); }
+.bvs-web-menu a[aria-current="page"] { color: #c1ff52; border-left: 2px solid #c1ff52; padding-left: .75rem; background: rgb(193 255 82 / .035); }
+.bvs-web-menu > div { max-width: 40rem; margin-inline: auto; }
+@media (min-width: 768px) and (max-width: 1023px) {
+  .bvs-web-header .bvs-web-primary > a { font-size: .72rem; }
+  .bvs-web-header .bvs-web-primary { gap: .6rem; }
+  .bvs-web-header a[aria-label="BVS Radio home"] img { height: 44px; }
+  .bvs-web-account > a, .bvs-header-more summary { padding-inline: .5rem; font-size: .75rem; }
+}
+@media (max-width: 767px) { .bvs-web-header-inner { padding-inline: 1rem; } }
+@media (prefers-reduced-motion: reduce) { .bvs-web-primary > a, .bvs-header-more summary > span { transition: none; } }
+
+/* Header discovery: compact trigger and artwork-led quick results. */
+.bvs-header-more summary { border: 0; padding: .75rem; width: 44px; min-height: 44px; justify-content: center; color: rgb(255 255 255 / .65); background: transparent; }
+.bvs-header-more summary:hover, .bvs-header-more[open] summary { border-color: #c1a7ff80; background: #c1a7ff12; color: #c1a7ff; }
+.bvs-header-more summary:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 3px; }
+.bvs-search-suggestions { background: #101012; box-shadow: 0 20px 60px #0009; }
+.bvs-search-results-heading { display: flex; align-items: center; justify-content: space-between; padding: .75rem; font-size: .7rem; color: var(--color-text-secondary); }
+.bvs-search-results-heading strong { text-transform: uppercase; letter-spacing: .1em; font-size: .62rem; }
+.bvs-search-result { border-bottom: 1px solid rgb(255 255 255 / .055); }
+.bvs-search-result-art { position: relative; display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; overflow: hidden; background: #c1a7ff15; color: #c1a7ff; font-size: 1.1rem; }
+.bvs-search-result-art.is-person { border-radius: 50%; }
+.bvs-search-result-art img { width: 100%; height: 100%; object-fit: cover; }

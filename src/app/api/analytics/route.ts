@@ -111,6 +111,19 @@ export async function POST(request: Request) {
       properties.visitor_id = body.visitorId
     }
     const userId = await authenticatedUserId(request, body.userId, url, anon)
+    if (body.event === "player_start" && userId) {
+      const profileResponse = await fetch(
+        `${url}/rest/v1/profiles?id=eq.${encodeURIComponent(userId)}&select=premium_active,premium_until&limit=1`,
+        { headers: { apikey: key, Authorization: "Bearer " + key }, cache: "no-store" },
+      ).catch(() => null)
+      const profile = profileResponse?.ok
+        ? (await profileResponse.json().catch(() => []))[0] as { premium_active?: boolean; premium_until?: string | null } | undefined
+        : undefined
+      properties.premium_listener = Boolean(
+        profile?.premium_active
+        && (!profile.premium_until || new Date(profile.premium_until).getTime() > Date.now()),
+      )
+    }
     await attachPromotion(request, properties, userId).catch(() => { delete properties.promotion_id })
 
     const response = await fetch(`${url}/rest/v1/analytics_events`, {

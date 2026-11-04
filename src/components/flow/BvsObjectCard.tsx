@@ -127,7 +127,7 @@ function ResolvedBvsObjectCard({
       src={object.artwork!}
       alt=""
       fill
-      unoptimized={/^https?:\/\//i.test(object.artwork!)}
+      unoptimized={/^https?:\/\//i.test(object.artwork!) || object.artwork!.startsWith("/api/media/")}
       sizes={feedBeat ? "80px" : feedRow ? "72px" : compact ? "72px" : feature ? "(max-width:768px) 100vw, 50vw" : "(max-width:768px) 78vw, 320px"}
       className="object-cover transition duration-300 group-hover:scale-[1.025] motion-reduce:transform-none motion-reduce:transition-none"
       onError={() => setFailedArtwork(object.artwork || "")}

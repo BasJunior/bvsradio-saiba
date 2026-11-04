@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useBrowserSession } from '@/lib/use-browser-session'
+import { parseReleaseFormDraft, releaseFormDraftKey } from '@/lib/release-form-draft'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import { trackEvent } from '@/lib/analytics'
@@ -75,10 +77,10 @@ type RecoverableReleaseSessionResponse = {
 const PENDING_RELEASE_FINALIZE_KEY = 'bvs.creator.pending-release-finalize.v1'
 const PENDING_RELEASE_FINALIZE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 
-function readPendingReleaseFinalize(): PendingReleaseFinalize | null {
+function readPendingReleaseFinalize(owner: string): PendingReleaseFinalize | null {
   if (typeof window === 'undefined') return null
   try {
-    const raw = window.localStorage.getItem(PENDING_RELEASE_FINALIZE_KEY)
+    const raw = window.localStorage.getItem(`${PENDING_RELEASE_FINALIZE_KEY}:${owner}`)
     if (!raw) return null
     const pending = JSON.parse(raw) as PendingReleaseFinalize
     if (
@@ -88,7 +90,7 @@ function readPendingReleaseFinalize(): PendingReleaseFinalize | null {
       !pending.payload.tracks.length ||
       Date.now() - Number(pending.createdAt || 0) > PENDING_RELEASE_FINALIZE_MAX_AGE_MS
     ) {
-      window.localStorage.removeItem(PENDING_RELEASE_FINALIZE_KEY)
+      window.localStorage.removeItem(`${PENDING_RELEASE_FINALIZE_KEY}:${owner}`)
       return null
     }
     return pending
@@ -97,17 +99,17 @@ function readPendingReleaseFinalize(): PendingReleaseFinalize | null {
   }
 }
 
-function rememberPendingReleaseFinalize(pending: PendingReleaseFinalize) {
+function rememberPendingReleaseFinalize(pending: PendingReleaseFinalize, owner: string) {
   try {
-    window.localStorage.setItem(PENDING_RELEASE_FINALIZE_KEY, JSON.stringify(pending))
+    window.localStorage.setItem(`${PENDING_RELEASE_FINALIZE_KEY}:${owner}`, JSON.stringify(pending))
   } catch {
     // Recovery state must never block the actual submission.
   }
 }
 
-function forgetPendingReleaseFinalize() {
+function forgetPendingReleaseFinalize(owner: string) {
   try {
-    window.localStorage.removeItem(PENDING_RELEASE_FINALIZE_KEY)
+    window.localStorage.removeItem(`${PENDING_RELEASE_FINALIZE_KEY}:${owner}`)
   } catch {
     // Ignore cleanup failures.
   }
@@ -142,7 +144,14 @@ const materialOptions = [
   ['other_third_party', 'Other third-party material'],
 ] as const
 
-export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSuccess?: () => void; songWorkspaceId?: string }) {
+export default function ReleaseSubmitForm(props: { onSuccess?: () => void; songWorkspaceId?: string }) {
+  const {session, loading} = useBrowserSession()
+  if (loading) return <p role="status" className="text-sm text-text-secondary">Opening your saved release…</p>
+  if (!session) return <p className="text-sm text-text-secondary">Sign in to prepare and save your release. <a href="/auth/login?next=/creator/studio/create/release" className="text-brand underline">Sign in</a></p>
+  return <ReleaseEditor key={`${session.user.id}:${props.songWorkspaceId || 'new'}`} owner={session.user.id} {...props} />
+}
+
+function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; onSuccess?: () => void; songWorkspaceId?: string }) {
   const [title, setTitle] = useState('')
   const [genre, setGenre] = useState('')
   const [description, setDescription] = useState('')
@@ -202,9 +211,53 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
   const [error, setError] = useState<string | null>(null)
   const [pendingReleaseFinalize, setPendingReleaseFinalize] = useState<PendingReleaseFinalize | null>(null)
   const [serverReleaseDraft, setServerReleaseDraft] = useState<ServerReleaseDraft | null>(null)
+  const [metadataReady,setMetadataReady] = useState(false)
+  const [draftNotice,setDraftNotice] = useState('')
+  const skipDraft = useRef(false)
+  const draftKey = releaseFormDraftKey(owner, songWorkspaceId)
+  const [retainedFiles,setRetainedFiles] = useState<{fileNames:string[];coverName:string}>({fileNames:[],coverName:''})
+  useEffect(() => {
+    let active=true
+    queueMicrotask(() => {
+      if (!active) return
+      try {
+        const draft=parseReleaseFormDraft(localStorage.getItem(draftKey))
+        if(draft) {
+          setTitle(draft.title); setGenre(draft.genre); setDescription(draft.description); setReleaseType(draft.releaseType)
+          setTrackTitles(draft.trackTitles); setCopyrightYear(draft.copyrightYear); setMasterOwner(draft.masterOwner)
+          setCompositionOwners(draft.compositionOwners); setSongwriters(draft.songwriters); setProducers(draft.producers)
+          setFeaturedArtists(draft.featuredArtists); setMaterialTypes(draft.materialTypes); setEvidenceNotes(draft.evidenceNotes)
+          setRetainedFiles({fileNames:draft.fileNames,coverName:draft.coverName}); setExplicit(draft.explicit)
+          setDraftNotice('Release text restored. Reselect any files that were not uploaded. Review and confirm your rights before submitting.')
+        }
+      } catch { setDraftNotice('Draft saving is unavailable in this browser. Keep this page open until your upload is saved.') }
+      setMetadataReady(true)
+    })
+    return () => {active=false}
+  },[draftKey])
+  const metadataJson=JSON.stringify({title,genre,description,releaseType,explicit,trackTitles,copyrightYear,masterOwner,compositionOwners,songwriters,producers,featuredArtists,materialTypes,evidenceNotes,fileNames:files.length ? files.map(file=>file.name) : retainedFiles.fileNames,coverName:cover?.name || retainedFiles.coverName})
+  useEffect(() => {
+    if(!metadataReady || skipDraft.current) return
+    const metadata=JSON.parse(metadataJson)
+    if(![metadata.title,metadata.genre,metadata.description,metadata.masterOwner,metadata.compositionOwners,metadata.songwriters,metadata.producers,metadata.featuredArtists].some(Boolean) && !metadata.fileNames.length) return
+    const persist=()=>{
+      if(skipDraft.current) return
+      try { localStorage.setItem(draftKey,JSON.stringify({metadata,savedAt:Date.now()})); setDraftNotice('Release text saved on this device. Uploaded files are recovered separately; files not yet uploaded need to be reselected.') }
+      catch {setDraftNotice('Draft could not save on this device. Keep this page open until your upload is saved.')}
+    }
+    persist()
+    window.addEventListener('pagehide',persist)
+    return ()=>window.removeEventListener('pagehide',persist)
+  },[metadataReady,metadataJson,draftKey])
+  const clearFormDraft=()=>{skipDraft.current=true;setRetainedFiles({fileNames:[],coverName:''});try{localStorage.removeItem(draftKey)}catch{ /* Existing server recovery stays intact. */ }setDraftNotice('Release submitted. Your saved form draft was cleared.')}
+  useEffect(()=>{
+    const warn=(event:BeforeUnloadEvent)=>{if(loading || files.length || cover || Object.values(evidenceFiles).some(Boolean)){event.preventDefault();event.returnValue=''}}
+    window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)
+  },[loading,files,cover,evidenceFiles])
+
 
   useEffect(() => {
-    setPendingReleaseFinalize(readPendingReleaseFinalize())
+    queueMicrotask(() => setPendingReleaseFinalize(readPendingReleaseFinalize(owner)))
     if (!isSupabaseConfigured()) return
 
     let cancelled = false
@@ -249,7 +302,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [owner])
 
   const retryServerReleaseDraft = async () => {
     if (!serverReleaseDraft?.readyToFinalize || !isSupabaseConfigured()) return
@@ -267,7 +320,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
         tracks: [],
       })
       if (!result.ok) throw new Error(result.data.error || `Could not recover release (${result.status})`)
-      forgetPendingReleaseFinalize()
+      forgetPendingReleaseFinalize(owner)
       setPendingReleaseFinalize(null)
       setServerReleaseDraft(null)
       trackEvent('upload_complete', {
@@ -278,6 +331,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
         durable_submission: true,
       })
       trackEvent('release_submitted', { recovered_finalize: true, durable_submission: true })
+      clearFormDraft()
       onSuccess?.()
     } catch (err) {
       setError(humanizeUploadError(err))
@@ -325,7 +379,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       if (!session?.access_token) throw new Error('Sign in again, then tap Recover release.')
       const result = await registerReleaseSubmission(session.access_token, pendingReleaseFinalize.payload)
       if (!result.ok) throw new Error(result.data.error || `Could not recover release (${result.status})`)
-      forgetPendingReleaseFinalize()
+      forgetPendingReleaseFinalize(owner)
       setPendingReleaseFinalize(null)
       setServerReleaseDraft(null)
       trackEvent('upload_complete', {
@@ -335,6 +389,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
         recovered_finalize: true,
       })
       trackEvent('release_submitted', { recovered_finalize: true })
+      clearFormDraft()
       onSuccess?.()
     } catch (err) {
       setError(humanizeUploadError(err))
@@ -365,7 +420,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       return
     }
     setFiles(next)
-    setTrackTitles(next.map((f) => f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ')))
+    setTrackTitles(next.map((f,index) => retainedFiles.fileNames[index] === f.name && trackTitles[index] ? trackTitles[index] : f.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ')))
   }
 
   const submit = async (e: React.FormEvent) => {
@@ -638,7 +693,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       // All media/evidence is now safely in storage. Persist the metadata needed to
       // finish registration before making the multi-step database request.
       const pendingFinalize: PendingReleaseFinalize = { createdAt: Date.now(), payload: finalizePayload }
-      rememberPendingReleaseFinalize(pendingFinalize)
+      rememberPendingReleaseFinalize(pendingFinalize, owner)
       setPendingReleaseFinalize(pendingFinalize)
 
       setProgress('Registering release for review…')
@@ -646,7 +701,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       const fin = finResult.data
       if (!finResult.ok) throw new Error(fin.error || 'Submit failed. Your files are saved; use Recover release.')
 
-      forgetPendingReleaseFinalize()
+      forgetPendingReleaseFinalize(owner)
       setPendingReleaseFinalize(null)
       setServerReleaseDraft(null)
       trackEvent('upload_complete', {
@@ -684,6 +739,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
       setGrantCatalogue(false)
       setGrantPromote(false)
       setAccuracyConfirmed(false)
+      clearFormDraft()
       onSuccess?.()
     } catch (err) {
       setError(humanizeUploadError(err))
@@ -694,7 +750,8 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
   }
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-5">
+    <form onSubmit={submit} onChange={() => { skipDraft.current=false }} noValidate className="space-y-5">
+      {draftNotice ? <div className="border border-white/15 p-3 text-xs leading-5 text-text-secondary"><p role="status">{draftNotice}</p>{!files.length && retainedFiles.fileNames.length ? <details className="mt-2"><summary className="min-h-9 cursor-pointer py-2">Files to reselect</summary><ul className="list-disc pl-4">{retainedFiles.fileNames.map((name,index)=><li key={`${index}:${name}`}>{name}</li>)}{retainedFiles.coverName ? <li>Cover: {retainedFiles.coverName}</li> : null}</ul></details> : null}</div> : null}
       {pendingReleaseFinalize && (
         <div className="rounded-xl border border-amber-300/30 bg-amber-300/[.07] p-4 text-sm">
           <p className="font-semibold text-amber-100">Your previous release files are already safely uploaded.</p>
@@ -778,7 +835,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-            placeholder="Album / EP title"
+            placeholder="Your official release title"
           />
         </label>
         <label className="block text-sm">
@@ -810,6 +867,7 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
           ))}
         </select>
       </label>
+      <p className="text-xs leading-5 text-text-secondary">Choose the genre that best represents this release. For a mix of styles, pick the main sound and describe the influences below.</p>
 
       <label className="block text-sm">
         Description
@@ -818,9 +876,11 @@ export default function ReleaseSubmitForm({ onSuccess, songWorkspaceId }: { onSu
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
           className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
-          placeholder="Story, features, language, city…"
+          placeholder="What inspired this release? Mention featured artists, languages, influences or where it was made."
         />
       </label>
+
+      <details className="border border-white/10 p-3 text-xs text-text-secondary"><summary className="min-h-9 cursor-pointer py-2">Help me write my release description</summary><ul className="mt-2 list-disc space-y-2 pl-4"><li>Start with the release’s sound and the story behind it.</li><li>Credit featured artists and producers by their public names.</li><li>Add language, hometown or recording context when it matters.</li><li>Keep release titles clean; put credits and background here rather than promotional claims in the title.</li></ul></details>
 
       <section className="space-y-4 rounded-2xl border border-brand/20 bg-brand/[.03] p-5">
         <div>

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import CreatorProfileArtwork from '@/components/CreatorProfileArtwork'
+import { mediaUrlForStoredValue } from '@/lib/media-url'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import BeatCrateUploadForm from '@/components/BeatCrateUploadForm'
 import FullAccessAudioPlayer from '@/components/FullAccessAudioPlayer'
@@ -57,6 +59,11 @@ export default function MyBeatStore({ creationOnly = false, managementOnly = fal
   const supabaseReady = isSupabaseConfigured()
   const [token, setToken] = useState('')
   const [beats, setBeats] = useState<Beat[]>([])
+  const [beatQuery, setBeatQuery] = useState('')
+  const [beatPage, setBeatPage] = useState(1)
+  const matchingBeats = beats.filter(beat => `${beat.title} ${beat.genre || ''} ${beat.status}`.toLowerCase().includes(beatQuery.trim().toLowerCase()))
+  const beatPages = Math.max(1, Math.ceil(matchingBeats.length / 8))
+  const currentBeatPage = Math.min(beatPage, beatPages)
   const [entitlements, setEntitlements] = useState<BeatEntitlements | null>(null)
   const [error, setError] = useState(supabaseReady ? '' : 'Supabase is not configured.')
   const [message, setMessage] = useState('')
@@ -236,19 +243,20 @@ export default function MyBeatStore({ creationOnly = false, managementOnly = fal
 
       {!creationOnly && <div className="mt-8 space-y-3">
         <h3 className="text-xl">Your beats</h3>
-        {beats.map((beat) => {
+        <div className="bvs-studio-catalogue-controls"><label><span className="sr-only">Search your beats</span><input type="search" value={beatQuery} placeholder="Find a beat or status" onChange={event => { setBeatQuery(event.target.value); setBeatPage(1) }} /></label><span role="status">{matchingBeats.length} beats</span>{beatPages > 1 ? <div><button type="button" disabled={currentBeatPage === 1} onClick={() => setBeatPage(currentBeatPage - 1)}>Previous</button><span>{currentBeatPage} / {beatPages}</span><button type="button" disabled={currentBeatPage === beatPages} onClick={() => setBeatPage(currentBeatPage + 1)}>Next</button></div> : null}</div>
+        {matchingBeats.slice((currentBeatPage - 1) * 8, currentBeatPage * 8).map((beat) => {
           const priceUsd = beat.beat_licence_options?.[0]?.price_usd
           const nextMove = nextMoveForBeat(beat)
           return (
-            <article key={beat.id} className="bvs-studio-accent-card rounded-2xl border border-white/10 bg-white/[.012] p-4 sm:p-5">
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <details key={beat.id} className="bvs-studio-compact-track bvs-studio-compact-beat">
+              <summary>
+                <div className="bvs-studio-cover"><CreatorProfileArtwork src={mediaUrlForStoredValue(beat.artwork_path) || undefined} name={beat.title} /></div>
+                <div className="bvs-studio-track-identity"><h4>{beat.title}</h4><p>{beat.genre || 'Beat'}{beat.bpm ? ` · ${beat.bpm} BPM` : ''} · {beat.status.replaceAll('_', ' ')}{beat.is_public ? ' · Public' : ' · Private'}</p></div>
+                <span className="bvs-studio-track-plays"><strong>{priceUsd != null ? `$${Number(priceUsd).toFixed(2)}` : '—'}</strong><small>{['rejected', 'changes_requested'].includes(beat.status) ? 'Review needed' : beat.status === 'draft' ? 'Draft' : beat.is_public ? 'Live' : 'In review'}</small></span>
+                <span className="bvs-studio-track-expand" aria-hidden="true">⌄</span>
+              </summary>
+              <div className="bvs-studio-track-inspector flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h4 className="font-medium">{beat.title}</h4>
-                  <p className="mt-1 text-xs capitalize text-text-secondary">
-                    {beat.genre || 'Beat'} · {beat.status.replaceAll('_', ' ')}
-                    {beat.is_public ? ' · public' : ' · not public'}
-                    {priceUsd != null ? ` · $${Number(priceUsd).toFixed(2)}` : ''}
-                  </p>
                   {beat.editorial_notes && (
                     <p className="mt-2 text-sm text-text-secondary">Editor: {beat.editorial_notes}</p>
                   )}
@@ -261,7 +269,7 @@ export default function MyBeatStore({ creationOnly = false, managementOnly = fal
                   </Link>
                   <div data-studio-accent="insights" className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3 sm:p-4">
                     <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-wider">Review conversation</p>
-                    <div className="mt-2 space-y-2">
+                    <div className="mt-2 max-h-48 space-y-2 overflow-y-auto">
                       {(beat.beat_review_messages || []).map(item => (
                         <p key={item.id} className="rounded-lg bg-white/5 p-2 text-xs">
                           <span className="font-semibold capitalize">{item.author_kind}:</span> {item.message}
@@ -271,7 +279,7 @@ export default function MyBeatStore({ creationOnly = false, managementOnly = fal
                       {!beat.beat_review_messages?.length && <p className="text-xs text-text-secondary">Editorial messages will appear here.</p>}
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <input value={reviewReplies[beat.id] || ''} onChange={event => setReviewReplies(current => ({ ...current, [beat.id]: event.target.value }))} placeholder="Reply to editorial…" className={`${field} py-2 text-sm`} />
+                      <input aria-label={`Reply to editorial about ${beat.title}`} value={reviewReplies[beat.id] || ''} onChange={event => setReviewReplies(current => ({ ...current, [beat.id]: event.target.value }))} placeholder="Reply to editorial…" className={`${field} py-2 text-sm`} />
                       <button type="button" disabled={busy || !(reviewReplies[beat.id] || '').trim()} onClick={() => void sendReviewMessage(beat.id)} className="bvs-studio-accent-button rounded-full border px-4 py-2 text-xs font-semibold disabled:opacity-40">Send</button>
                     </div>
                   </div>
@@ -287,9 +295,10 @@ export default function MyBeatStore({ creationOnly = false, managementOnly = fal
                   </button>
                 )}
               </div>
-            </article>
+            </details>
           )
         })}
+        {beats.length > 0 && !matchingBeats.length ? <p className="py-5 text-sm text-text-secondary">No beats match. <button type="button" onClick={() => setBeatQuery('')} className="min-h-11 text-brand">Clear search</button></p> : null}
         {!beats.length && (
           <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">
             No beats yet. Add your first listing above.
