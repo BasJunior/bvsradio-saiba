@@ -25,6 +25,7 @@ async function resolveEmailFromUsername(username: string): Promise<string | null
       signal: AbortSignal.timeout(8000),
     },
   )
+  if (profileRes.status >= 500) throw new Error('Username lookup service unavailable')
   if (!profileRes.ok) return null
   const profiles = await profileRes.json()
   if (!Array.isArray(profiles) || profiles.length === 0) return null
@@ -42,6 +43,7 @@ async function resolveEmailFromUsername(username: string): Promise<string | null
     },
     signal: AbortSignal.timeout(8000),
   })
+  if (userRes.status >= 500) throw new Error('User lookup service unavailable')
   if (!userRes.ok) return null
   const user = await userRes.json()
   return typeof user?.email === 'string' ? user.email : null
