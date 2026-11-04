@@ -50,9 +50,10 @@ export default function LoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identifier: id, password }),
-        signal: AbortSignal.timeout(15000),
+        // Username resolution may require two additional bounded upstream calls.
+        signal: AbortSignal.timeout(35000),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(data.error || 'Login failed')
       }
