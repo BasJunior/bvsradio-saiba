@@ -22,6 +22,7 @@ async function resolveEmailFromUsername(username: string): Promise<string | null
         apikey: SUPABASE_SERVICE_KEY,
         Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
       },
+      signal: AbortSignal.timeout(8000),
     },
   )
   if (!profileRes.ok) return null
@@ -39,6 +40,7 @@ async function resolveEmailFromUsername(username: string): Promise<string | null
       apikey: SUPABASE_SERVICE_KEY,
       Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
     },
+    signal: AbortSignal.timeout(8000),
   })
   if (!userRes.ok) return null
   const user = await userRes.json()
@@ -86,8 +88,15 @@ export async function POST(req: Request) {
         apikey: SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(12000),
     })
 
+    // Supabase gateway failures can return plain text (e.g. upstream errors).
+    // Do not turn those into misleading JSON parse failures or bad credentials.
+    const contentType = res.headers.get('content-type') || ''
+    if (res.status >= 500 || !contentType.includes('application/json')) {
+      return NextResponse.json({ error: 'Sign-in service is temporarily unavailable. Please try again shortly.' }, { status: 503, headers: { 'Retry-After': '10' } })
+    }
     const data = await res.json()
 
     if (!res.ok) {
@@ -128,6 +137,6 @@ export async function POST(req: Request) {
     })
   } catch (err: unknown) {
     console.error('Login request failed:', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'Login is temporarily unavailable.' }, { status: 500 })
+    return NextResponse.json({ error: 'Sign-in service is temporarily unavailable. Please try again shortly.' }, { status: 503, headers: { 'Retry-After': '10' } })
   }
 }
