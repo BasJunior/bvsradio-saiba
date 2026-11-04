@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { resolveAppSwipeIntent } from "@/lib/app-gesture-intent";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
@@ -102,6 +103,7 @@ export default function BvsFeedList({
   const [postsError, setPostsError] = useState("");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const pullStart = useRef<{ x: number; y: number } | null>(null);
+  const laneSwipeStart = useRef<{ x: number; y: number; at: number } | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [initialAttachment, setInitialAttachment] = useState<FeedAttachmentOption | null>(null);
@@ -211,12 +213,19 @@ export default function BvsFeedList({
   }, [lane, loadPosts, refreshing, router, surface]);
 
   const handleTouchStart = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
-    if (refreshing || window.scrollY > 0 || !event.touches[0]) {
+    const touch = event.touches[0];
+    const target = event.target instanceof Element ? event.target : null;
+    // Avoid hijacking buttons, composer controls, horizontal carousels and iOS edge navigation.
+    const blocked = Boolean(target?.closest("button, a, input, textarea, select, [role='button'], [role='slider'], [contenteditable='true'], .overflow-x-auto, [data-feed-swipe-ignore]"));
+    laneSwipeStart.current = surface === "ios" && touch && !blocked &&
+      touch.clientX > 28 && touch.clientX < window.innerWidth - 28
+      ? { x: touch.clientX, y: touch.clientY, at: Date.now() } : null;
+    if (refreshing || window.scrollY > 0 || !touch) {
       pullStart.current = null;
       return;
     }
-    pullStart.current = { x: event.touches[0].clientX, y: event.touches[0].clientY };
-  }, [refreshing]);
+    pullStart.current = { x: touch.clientX, y: touch.clientY };
+  }, [refreshing, surface]);
 
   const handleTouchMove = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
     const start = pullStart.current;
@@ -231,12 +240,28 @@ export default function BvsFeedList({
     setPullDistance(Math.min(88, dy * 0.46));
   }, [refreshing]);
 
-  const finishPull = useCallback(() => {
+  const finishPull = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    const swipe = laneSwipeStart.current;
+    laneSwipeStart.current = null;
     pullStart.current = null;
+    const touch = event.changedTouches[0];
+    if (swipe && touch && !refreshing) {
+      const intent = resolveAppSwipeIntent(touch.clientX - swipe.x, touch.clientY - swipe.y, Date.now() - swipe.at, 90);
+      if (intent === "left" || intent === "right") {
+        const available = lanes.filter((item) => participationEnabled || item.id !== "activity");
+        const move = intent === "left" ? 1 : -1;
+        setLane((current) => {
+          const index = available.findIndex((item) => item.id === current);
+          return available[index + move]?.id || current;
+        });
+        setPullDistance(0);
+        return;
+      }
+    }
     if (refreshing) return;
     if (pullDistance >= PULL_REFRESH_TRIGGER) void refreshFeed();
     else setPullDistance(0);
-  }, [pullDistance, refreshFeed, refreshing]);
+  }, [participationEnabled, pullDistance, refreshFeed, refreshing]);
 
   const accountLabel = useMemo(() => {
     if (!session.signedIn) return "Guest";
@@ -413,7 +438,7 @@ export default function BvsFeedList({
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={finishPull}
-      onTouchCancel={() => { pullStart.current = null; setPullDistance(0); }}
+      onTouchCancel={() => { laneSwipeStart.current = null; pullStart.current = null; setPullDistance(0); }}
     >
       <div
         aria-live="polite"
@@ -458,6 +483,7 @@ export default function BvsFeedList({
           <button type="button" disabled={refreshing} onClick={() => void refreshFeed()} className="min-h-11 shrink-0 rounded-full border border-white/15 px-3 text-xs font-semibold text-white/70 hover:text-white disabled:opacity-50" aria-label="Refresh feed">{refreshing ? "Refreshing…" : "Refresh"}</button>
         </div>
 
+        {surface === "ios" ? <p className="mt-2 text-[11px] text-white/45 sm:hidden">Swipe left or right to switch Feed sections · Pull down to refresh</p> : null}
         <div className="mt-3 rounded-[1rem] border border-white/[.075] bg-gradient-to-br from-white/[.04] to-white/[.015] p-3 sm:p-4" data-feed-account-context={accountLabel.toLowerCase().replace(/\s+/g, "-")}>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
