@@ -5,6 +5,7 @@ import Link from "next/link";
 import { discoveryItems } from "@/lib/discovery";
 import type { TrendingBoard } from "@/lib/trending";
 import { useStationPlayer } from "@/components/StationPlayer";
+import type { MobileSurface } from "@/lib/station-library";
 
 const ROTATION_INTERVAL_MS = 6_000;
 
@@ -18,7 +19,7 @@ type Slide = {
   rank?: number;
 };
 
-function fallbackSlides(): Slide[] {
+function fallbackSlides(surface?: MobileSurface): Slide[] {
   return discoveryItems
     .filter((item) => item.kind === "track" && item.image)
     .slice(0, 5)
@@ -27,11 +28,11 @@ function fallbackSlides(): Slide[] {
       title: item.title,
       artist: item.subtitle.split(" · ")[0] || "BVS",
       image: item.image,
-      href: item.href,
+      href: surface ? `/app/${surface}/song/${encodeURIComponent(item.id)}` : item.href,
     }));
 }
 
-export default function HomeTopFive() {
+export default function HomeTopFive({ surface }: { surface?: MobileSurface } = {}) {
   const player = useStationPlayer();
   const [slides, setSlides] = useState<Slide[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -67,18 +68,18 @@ export default function HomeTopFive() {
           artist: entry.artist,
           src: entry.src,
           image: entry.artwork,
-          href: `/song/${encodeURIComponent(entry.id)}`,
+          href: surface ? `/app/${surface}/song/${encodeURIComponent(entry.id)}` : `/song/${encodeURIComponent(entry.id)}`,
           rank: entry.rank,
         })) : [];
         setRanked(Boolean(chartSlides.length));
-        setSlides(chartSlides?.length ? chartSlides : fallbackSlides());
+        setSlides(chartSlides?.length ? chartSlides : fallbackSlides(surface));
       })
       .catch(() => {
-        if (alive) setSlides(fallbackSlides());
+        if (alive) setSlides(fallbackSlides(surface));
       })
       .finally(() => { window.clearTimeout(deadline); if (alive) setSettled(true); });
     return () => { alive = false; window.clearTimeout(deadline); controller.abort(); };
-  }, []);
+  }, [surface]);
 
   useEffect(() => {
     if (slides.length < 2 || paused || hovered || focused || !motionAllowed || !visible) return;
@@ -108,7 +109,7 @@ export default function HomeTopFive() {
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">BVS Discover</p>
           <h2 id="home-top-five-title" className="mt-1 text-lg font-semibold">{ranked || !settled ? "Top 5 this week" : "Discover your next favourite"}</h2>
         </div>
-        <Link href={ranked ? "/trending" : "/search"} className="text-xs font-semibold text-brand hover:underline">{ranked ? "Full chart →" : "Explore →"}</Link>
+      <Link href={ranked ? (surface ? `/app/${surface}/trending` : "/trending") : (surface ? `/app/${surface}/explore` : "/search")} className="text-xs font-semibold text-brand hover:underline">{ranked ? "Full chart →" : "Explore →"}</Link>
       </div>
 
       {slide ? (

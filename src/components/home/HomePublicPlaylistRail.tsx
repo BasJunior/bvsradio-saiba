@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import CreatorPortraitRail from './CreatorPortraitRail'
+import type { MobileSurface } from '@/lib/station-library'
 
 type PublicPlaylist = { id: string; title: string; creator: string; coverUrl?: string | null; trackCount: number }
 
@@ -22,7 +23,7 @@ function playlistPriority(playlist: PublicPlaylist) {
   return 2
 }
 
-export default function HomePublicPlaylistRail() {
+export default function HomePublicPlaylistRail({ surface }: { surface?: MobileSurface } = {}) {
   const [playlists, setPlaylists] = useState<PublicPlaylist[]>([])
   useEffect(() => {
     const controller = new AbortController()
@@ -38,7 +39,7 @@ export default function HomePublicPlaylistRail() {
     .sort((a, b) => playlistPriority(a.playlist) - playlistPriority(b.playlist) || a.index - b.index)
     .map(({ playlist }) => playlist), [playlists])
 
-  return <CreatorPortraitRail autoScroll retainBrowseLink data-home-accent="feed" title="Playlists" kicker="Made by BVS listeners and creators" tone="charcoal" allHref="/search?mode=playlists" items={orderedPlaylists.map(playlist => ({
-    id: playlist.id, name: playlist.title, image: playlist.coverUrl || '/branding/bvs-share-logo.png', href: `/playlist/${playlist.id}`, detail: `${playlist.creator} · ${playlist.trackCount} ${playlist.trackCount === 1 ? 'track' : 'tracks'}`,
+  return <CreatorPortraitRail autoScroll retainBrowseLink data-home-accent="feed" title="Playlists" kicker="Made by BVS listeners and creators" tone="charcoal" allHref={surface ? `/app/${surface}/explore?mode=playlists` : "/search?mode=playlists"} items={orderedPlaylists.map(playlist => ({
+    id: playlist.id, name: playlist.title, image: playlist.coverUrl || '/branding/bvs-share-logo.png', href: surface ? `/app/${surface}/playlist/${playlist.id}` : `/playlist/${playlist.id}`, detail: `${playlist.creator} · ${playlist.trackCount} ${playlist.trackCount === 1 ? 'track' : 'tracks'}`,
   }))} />
 }

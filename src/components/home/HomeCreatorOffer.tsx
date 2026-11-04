@@ -2,6 +2,7 @@
 
 import { useOfferRotation } from "./useOfferRotation";
 import Link from "next/link";
+import type { MobileSurface } from "@/lib/station-library";
 
 const offers = [
   {
@@ -27,10 +28,13 @@ const offers = [
   },
 ] as const;
 
-export default function HomeCreatorOffer() {
+export default function HomeCreatorOffer({ surface }: { surface?: MobileSurface } = {}) {
   const rotation = useOfferRotation(offers.length);
   const activeIndex = rotation.index;
   const offer = offers[activeIndex];
+  const href = surface
+    ? activeIndex === 1 ? `/app/${surface}/explore?kind=beats&mode=beats` : `/app/${surface}/studio`
+    : offer.href;
 
   return (
     <section
@@ -44,7 +48,7 @@ export default function HomeCreatorOffer() {
       <p className="mt-2 text-sm text-text-secondary">{offer.description}</p>
       <div className="mt-4">
         <Link
-          href={offer.href}
+          href={href}
           className="inline-flex min-h-11 items-center rounded-full bg-purple-200 px-5 font-semibold text-black"
         >
           {offer.cta}

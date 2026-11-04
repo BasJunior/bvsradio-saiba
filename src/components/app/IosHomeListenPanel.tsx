@@ -22,25 +22,26 @@ function formatTime(seconds: number) {
 export default function IosHomeListenPanel() {
   const player = useStationPlayer();
   const timeline = useStationPlayerProgress();
-  const pct = timeline.duration > 0 ? Math.min(100, (timeline.elapsed / timeline.duration) * 100) : 0;
+  const duration = Number.isFinite(timeline.duration) ? Math.max(0, timeline.duration) : 0;
+  const elapsed = Number.isFinite(timeline.elapsed) ? Math.max(0, Math.min(duration, timeline.elapsed)) : 0;
   const art = player.current?.artwork;
 
   return (
     <div className="min-w-0 overflow-hidden rounded-3xl border border-white/15 bg-black/65 text-left text-white shadow-2xl backdrop-blur-xl">
-      <div
-        className="h-1 w-full cursor-pointer bg-white/15"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={Math.round(timeline.duration || 0)}
-        aria-valuenow={Math.round(timeline.elapsed)}
-        aria-label="Playback progress"
-        onClick={(event) => {
-          if (timeline.duration <= 0) return;
-          const rect = event.currentTarget.getBoundingClientRect();
-          player.seek((event.clientX - rect.left) / rect.width);
-        }}
-      >
-        <div className="h-full bg-white transition-[width] duration-100 ease-linear" style={{ width: `${pct}%` }} />
+      <div className="px-4 pt-3 sm:px-6">
+        <input
+          type="range"
+          min={0}
+          max={duration || 1}
+          step={0.1}
+          value={elapsed}
+          disabled={duration <= 0}
+          onChange={(event) => player.seek(Number(event.target.value) / duration)}
+          aria-label="Playback position"
+          aria-valuetext={`${formatTime(elapsed)} of ${formatTime(duration)}`}
+          className="block h-6 w-full cursor-pointer accent-brand disabled:cursor-default"
+        />
+        <div className="-mt-1 flex justify-between text-[10px] tabular-nums text-white/45"><span>{formatTime(elapsed)}</span><span>{duration > 0 ? formatTime(duration) : "—"}</span></div>
       </div>
       <div className="p-4 sm:p-6">
         <div className="flex items-center gap-3 sm:gap-4">

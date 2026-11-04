@@ -5,6 +5,7 @@ import CreatorPortraitRail from "@/components/home/CreatorPortraitRail";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import LibraryAction from "@/components/LibraryAction";
 import type { BvsObject } from "@/lib/bvs-object";
+import type { MobileSurface } from "@/lib/station-library";
 
 type PublicBeat = {
   id: string;
@@ -20,7 +21,7 @@ type PublicBeat = {
   startingPrice?: number;
 };
 
-export default function HomeBeatRail() {
+export default function HomeBeatRail({ surface }: { surface?: MobileSurface } = {}) {
   const [beats, setBeats] = useState<PublicBeat[]>([]);
 
   useEffect(() => {
@@ -33,11 +34,13 @@ export default function HomeBeatRail() {
   }, []);
 
   if (!beats.length) return null;
+  const beatHref = (id: string) => surface ? `/app/${surface}/beat/${encodeURIComponent(id)}` : `/beat/${id}`;
+  const discoverHref = surface ? `/app/${surface}/explore?kind=beats&mode=beats` : "/catalogue?type=beat#beatstore";
 
   const objects: BvsObject[] = beats.map((beat) => ({
     id: beat.id,
     kind: "beat",
-    route: `/beat/${beat.id}`,
+    route: beatHref(beat.id),
     title: beat.title,
     subtitle: beat.producer || "BVS producer",
     artwork: beat.artworkUrl,
@@ -45,19 +48,19 @@ export default function HomeBeatRail() {
     metadata: [beat.genre, beat.mood, beat.bpm ? `${beat.bpm} BPM` : undefined, beat.musical_key].filter(Boolean) as string[],
     availabilityLabel: beat.startingPrice ? `Licences from $${beat.startingPrice}` : "Licence options available",
     media: beat.previewUrl ? { src: beat.previewUrl, artist: beat.producer, artwork: beat.artworkUrl, genre: beat.genre, project: "BVS BeatStore" } : undefined,
-    primaryAction: beat.previewUrl ? { id: "preview", label: "Preview", intent: "play" } : { id: "view", label: "View beat", intent: "navigate", href: `/beat/${beat.id}` },
+    primaryAction: beat.previewUrl ? { id: "preview", label: "Preview", intent: "play" } : { id: "view", label: "View beat", intent: "navigate", href: beatHref(beat.id) },
     overflowActions: [
-      { id: "details", label: "View beat", intent: "navigate", href: `/beat/${beat.id}` },
-      { id: "producer", label: "Find producer", intent: "navigate", href: `/search?q=${encodeURIComponent(beat.producer || "")}` },
+      { id: "details", label: "View beat", intent: "navigate", href: beatHref(beat.id) },
+      { id: "producer", label: "Find producer", intent: "navigate", href: surface ? `/app/${surface}/explore?kind=producers&q=${encodeURIComponent(beat.producer || "")}` : `/search?q=${encodeURIComponent(beat.producer || "")}` },
     ],
     rightsState: "published",
   }));
 
   return (
-    <CreatorPortraitRail data-home-accent="beats" title="BeatStore" kicker="Find the sound for your next record" tone="ink" accent="purple" allHref="/catalogue?type=beat#beatstore" items={beats.map(beat => ({ id: beat.id, name: beat.title, image: beat.artworkUrl || "", href: `/beat/${beat.id}`, detail: beat.producer || "BVS producer" }))}>
+    <CreatorPortraitRail data-home-accent="beats" title="BeatStore" kicker="Find the sound for your next record" tone="ink" accent="purple" allHref={discoverHref} items={beats.map(beat => ({ id: beat.id, name: beat.title, image: beat.artworkUrl || "", href: beatHref(beat.id), detail: beat.producer || "BVS producer" }))}>
           {objects.map((object, index) => {
             const beat = beats[index];
-            const href = `/beat/${beat.id}`;
+            const href = beatHref(beat.id);
             return <div key={object.id} className="bvs-home-beat-portrait bvs-creator-portrait">
               <BvsObjectCard object={object} variant="rail-card" />
               <div className="mt-2 flex justify-end">

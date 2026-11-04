@@ -7,8 +7,9 @@ import { seededMarketplaceServiceRef } from "@/lib/marketplace-storefronts";
 import { writeCartLines } from "@/lib/cart-client";
 import OfferAnalytics from "@/components/OfferAnalytics";
 import Link from "next/link";
+import type { MobileSurface } from "@/lib/station-library";
 
-export default function HomeFeaturedOffer() {
+export default function HomeFeaturedOffer({ surface }: { surface?: MobileSurface } = {}) {
   const router = useRouter();
   const offers = [
     { serviceId: "mixing", tierIndex: 0, title: "Get your track professionally mixed" },
@@ -31,11 +32,11 @@ export default function HomeFeaturedOffer() {
       <p className="mt-2 text-sm text-text-secondary">{tier.name}: {tier.desc}. Reference tracks welcome.</p>
       <p className="mt-2 text-xs text-text-secondary">Confirm scheduling with BVS before ordering if you have a release deadline.</p>
       <div className="mt-4 flex flex-wrap items-center gap-4">
-        <button data-offer-action type="button" className="min-h-11 rounded-full bg-brand px-5 font-semibold text-black" onClick={() => {
+        {surface ? <Link data-offer-action href={`/app/${surface}/marketplace?provider=bvs-studio-services&service=${service.id}`} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black">Explore {tier.name} · {tier.price}</Link> : <button data-offer-action type="button" className="min-h-11 rounded-full bg-brand px-5 font-semibold text-black" onClick={() => {
           writeCartLines([{ id, title: `${service.title} — ${tier.name}`, artist: "BVS Studio Services", type: "service", price: service.startingPriceUsd, quantity: 1, delivery: "Project brief and delivery are handled through BVS." }]);
           router.push("/checkout");
-        }}>Book {tier.name} · {tier.price}</button>
-        <Link data-offer-action href={`/marketplace/bvs-studio-services?service=${service.id}#service-${service.id}`} className="text-sm text-brand underline">Compare packages</Link>
+        }}>Book {tier.name} · {tier.price}</button>}
+        <Link data-offer-action href={surface ? `/app/${surface}/marketplace?provider=bvs-studio-services&service=${service.id}` : `/marketplace/bvs-studio-services?service=${service.id}#service-${service.id}`} className="text-sm text-brand underline">Compare packages</Link>
       </div>
       <div className="mt-5 flex items-center gap-2" aria-label="Featured offers">
         {offers.map((offer, index) => (

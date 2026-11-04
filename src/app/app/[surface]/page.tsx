@@ -8,6 +8,11 @@ import AppJoinCard from "@/components/app-vnext/AppJoinCard";
 import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
 import AppHomeDiscoverySections from "@/components/app-vnext/AppHomeDiscoverySections";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
+import HomeTopFive from "@/components/home/HomeTopFive";
+import HomeFeaturedOffer from "@/components/home/HomeFeaturedOffer";
+import HomeCreatorOffer from "@/components/home/HomeCreatorOffer";
+import IosHomeListenPanel from "@/components/app/IosHomeListenPanel";
+import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import type { MobileSurface } from "@/lib/station-library";
 
 export const dynamic = "force-dynamic";
@@ -49,19 +54,101 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
       />
   );
 
+  if (surface === "ios") {
+    return (
+      <div className="bvs-square-home mx-auto max-w-6xl pb-12">
+        <section className="relative px-4 pb-4 pt-5 sm:px-6 sm:pt-8" aria-labelledby="ios-home-title">
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,.86fr)] lg:items-center">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[.2em] text-white/70 sm:text-xs">
+                <span className="border border-brand/70 px-2.5 py-1 text-brand">BVS Radio</span>
+                <span>Sound · Culture · Creator Tools</span>
+              </div>
+              <h1 id="ios-home-title" className="mt-5 max-w-3xl text-balance text-4xl font-black leading-[.98] tracking-[-0.05em] text-white sm:text-5xl">
+                Listen closer. Build what comes next.
+              </h1>
+              <p className="mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-white/72 sm:text-base">
+                Discover sound from everywhere, support independent creators and move from inspiration to your next release in one place.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="#listen" className="inline-flex min-h-11 items-center justify-center rounded-sm bg-brand px-5 py-3 text-sm font-bold text-black">Listen live</Link>
+                <Link href={`${base}/explore`} className="inline-flex min-h-11 items-center justify-center rounded-sm border border-white/25 px-5 py-3 text-sm font-semibold text-white">Explore BVS</Link>
+              </div>
+            </div>
+            <div className="min-w-0"><HomeTopFive surface={surface} /></div>
+          </div>
+
+          <div className="mt-6 grid gap-5 lg:grid-cols-2">
+            <div className="bvs-home-media">{story}</div>
+            <div id="home-offers" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <HomeFeaturedOffer surface={surface} />
+              <HomeCreatorOffer surface={surface} />
+            </div>
+          </div>
+
+          <section id="listen" className="bvs-culture-listen mt-6 scroll-mt-24" aria-labelledby="ios-listening-room-title">
+            <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">The BVS listening room · Press play</p>
+                <h2 id="ios-listening-room-title" className="mt-1 text-2xl font-semibold">Your next favourite is here.</h2>
+                <p className="mt-1 text-sm text-white/55">BVS Radio · Zimbabwe to the world</p>
+              </div>
+              <Link href={`${base}/radio`} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">Explore BVS Radio →</Link>
+            </div>
+            <IosHomeListenPanel />
+          </section>
+
+          <HomeContinueListening />
+        </section>
+
+        <DeferredHomeCreatorBands surface={surface}>
+          <DeferredPublishedAlbumsShelf surface={surface} />
+        </DeferredHomeCreatorBands>
+        <DeferredHomeBeatRail surface={surface} />
+        <DeferredHomePublicPlaylistRail surface={surface} />
+        <Suspense fallback={<div className="min-h-[20rem] border-y border-white/10 bg-white/[.02]" aria-hidden="true" />}>
+          <AppHomeDiscoverySections surface={surface} includeCreators={false} />
+        </Suspense>
+
+        <CreatorPortraitRail data-home-accent="marketplace" title="Marketplace" kicker="The people and services behind your next record" tone="charcoal" allHref={`${base}/marketplace`} items={[
+          { id: "services", name: "Creator services", image: "/images/editorial/audio-engineering-work.webp", href: `${base}/marketplace`, detail: "Explore production, recording, mixing and mastering" },
+          { id: "studio", name: "BVS Studio services", image: "/images/hero-studio.jpg", href: `${base}/marketplace?provider=bvs-studio-services`, detail: "Explore official BVS audio services" },
+        ]} />
+
+        <section aria-labelledby="ios-home-community-title" className="border-t border-white/15 bg-[#141414] px-4 py-10 sm:px-6 sm:py-14">
+          <div className="mx-auto max-w-6xl">
+            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Best Virtual Sound · Rooted in Zimbabwe</p>
+            <h2 id="ios-home-community-title" className="mt-3 max-w-3xl text-balance text-3xl font-bold leading-tight tracking-tight sm:text-4xl">Independent sound. A place to belong.</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65 sm:text-base">BVS Radio brings music, people and ideas together. Listen to the station, discover independent artists, and meet the producers and creators behind your next favourite.</p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Link href={`${base}/library`} className="group border border-white/15 bg-white/[.025] p-5 transition hover:border-brand/50">
+                <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">For the listeners</span>
+                <h3 className="mt-2 text-xl font-semibold">Keep what moves you.</h3>
+                <p className="mt-2 text-sm leading-5 text-white/60">Save the songs you find, build your own playlists and follow the artists you want to hear more from.</p>
+                <span className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-brand">Open your Library <span aria-hidden="true" className="ml-2">→</span></span>
+              </Link>
+              <Link href={`${base}/studio`} className="group border border-white/15 bg-white/[.025] p-5 transition hover:border-purple-200/50">
+                <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-purple-200">For the creators</span>
+                <h3 className="mt-2 text-xl font-semibold">Bring your sound to BVS.</h3>
+                <p className="mt-2 text-sm leading-5 text-white/60">Submit music, build a beat catalogue and follow your releases from one workspace.</p>
+                <span className="mt-4 inline-flex min-h-11 items-center text-sm font-semibold text-purple-200">Explore Creator Studio <span aria-hidden="true" className="ml-2">→</span></span>
+              </Link>
+            </div>
+            <div className="mt-6 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+              <div><h3 className="text-lg font-semibold">Make yourself at home.</h3><p className="mt-1 text-sm text-white/60">Join free to save music, follow creators and start building your BVS collection.</p></div>
+              <Link href={`${base}/join`} className="inline-flex min-h-11 items-center justify-center rounded-sm bg-brand px-5 text-sm font-bold text-black">Join BVS free</Link>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="bvs-square-home mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
-      {surface === "ios" ? (
-        <div className="mb-5">
-          <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Best Virtual Sound</p>
-          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Find your next favourite.</h1>
-          <p className="mt-2 text-sm leading-6 text-white/65">Fresh sounds, independent voices and a place for yours.</p>
-        </div>
-      ) : story}
+      {story}
 
-      <div className={surface === "ios" ? "" : "mt-5"}>
-        <AppHomeStationCard surface={surface} />
-      </div>
+      <div className="mt-5"><AppHomeStationCard surface={surface} /></div>
 
       <HomeContinueListening />
 
@@ -87,9 +174,6 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
       <Suspense fallback={<HomeDiscoveryFallback />}>
         <AppHomeDiscoverySections surface={surface} />
       </Suspense>
-
-      {surface === "ios" ? <div className="mt-8">{story}</div> : null}
-      {surface === "ios" ? <div className="mt-8"><AppJoinCard surface={surface} /></div> : null}
 
       <div className="bvs-app-creator-bands">
         <CreatorPortraitRail title="Your BVS" kicker="Keep listening, collecting and creating" tone="charcoal" allHref={`${base}/library`} items={[

@@ -15,11 +15,12 @@ async function withTimeout<T>(work: Promise<T>, fallback: T): Promise<T> {
   ]);
 }
 
-export default async function AppHomeDiscoverySections({ surface }: { surface: MobileSurface }) {
+export default async function AppHomeDiscoverySections({ surface, includeCreators = true, includeShows = true }: { surface: MobileSurface; includeCreators?: boolean; includeShows?: boolean }) {
+  if (!includeCreators && !includeShows) return null;
   const [artistRows, producerRows, shows] = await Promise.all([
-    withTimeout(getPublishedArtists(), []),
-    withTimeout(getPublishedProducers(), []),
-    withTimeout(getPublicProgrammes(), []),
+    includeCreators ? withTimeout(getPublishedArtists(), []) : Promise.resolve([]),
+    includeCreators ? withTimeout(getPublishedProducers(), []) : Promise.resolve([]),
+    includeShows ? withTimeout(getPublicProgrammes(), []) : Promise.resolve([]),
   ]);
   const artists = fairDailyOrder(artistRows, "artists");
   const producers = fairDailyOrder(producerRows, "producers");
@@ -27,16 +28,16 @@ export default async function AppHomeDiscoverySections({ surface }: { surface: M
 
   return (
     <>
-      <div data-home-accent="discover" className="bvs-app-creator-bands">
+      {includeCreators ? <div data-home-accent="discover" className="bvs-app-creator-bands">
         <CreatorPortraitRail title="Artists" tone="charcoal" allHref={`${base}/explore?kind=artists`} items={artists.map(artist => ({ id: artist.id, name: artist.name, image: artist.image, href: `${base}/creator/${encodeURIComponent(artist.id)}`, detail: `${artist.trackCount} published ${artist.trackCount === 1 ? "track" : "tracks"}` }))} />
         <CreatorPortraitRail title="Producers" tone="ink" accent="purple" allHref={`${base}/explore?kind=producers`} items={producers.slice(0, 18).map(producer => ({ id: producer.id, name: producer.name, image: producer.image, href: `${base}/creator/${encodeURIComponent(producer.id)}`, detail: `${producer.beatCount} ${producer.beatCount === 1 ? "beat" : "beats"} · BeatStore` }))} />
-      </div>
+      </div> : null}
 
-      <div className="bvs-app-creator-bands">
+      {includeShows ? <div className="bvs-app-creator-bands">
         <CreatorPortraitRail data-home-accent="shows" title="Shows" kicker="Conversations and replay moments" tone="ink" allHref={`${base}/rooms`} items={shows.map(show => ({
           id: show.slug, name: show.title, image: show.image, href: `${base}/show/${show.slug}`, detail: `${show.schedule} · ${show.tagline || show.description}`,
         }))} />
-      </div>
+      </div> : null}
     </>
   );
 }

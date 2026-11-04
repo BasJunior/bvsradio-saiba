@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { MobileSurface } from "@/lib/station-library";
 
 const HomeEngagementHub = dynamic(() => import("@/components/home/HomeEngagementHub"), { ssr: false });
 const PublishedArtistsShelf = dynamic(() => import("@/components/PublishedArtistsShelf"), { ssr: false });
@@ -63,8 +64,8 @@ export function DeferredHomeEngagementHub() {
   );
 }
 
-export function DeferredHomeCreatorBands({ children }: { children?: ReactNode }) {
-  return <DeferredMount name="creator-bands" placeholderClassName="min-h-[36rem]"><HomeCreatorBands>{children}</HomeCreatorBands></DeferredMount>;
+export function DeferredHomeCreatorBands({ children, surface }: { children?: ReactNode; surface?: MobileSurface }) {
+  return <DeferredMount name="creator-bands" placeholderClassName="min-h-[36rem]"><HomeCreatorBands surface={surface}>{children}</HomeCreatorBands></DeferredMount>;
 }
 
 export function DeferredPublishedArtistsShelf({ limit = 6 }: { limit?: number }) {
@@ -75,26 +76,26 @@ export function DeferredPublishedArtistsShelf({ limit = 6 }: { limit?: number })
   );
 }
 
-export function DeferredPublishedAlbumsShelf() {
+export function DeferredPublishedAlbumsShelf({ surface }: { surface?: MobileSurface } = {}) {
   return (
     <DeferredMount name="releases" placeholderClassName="min-h-[20rem]">
-      <PublishedAlbumsShelf />
+      <PublishedAlbumsShelf surface={surface} />
     </DeferredMount>
   );
 }
 
-export function DeferredHomeBeatRail() {
+export function DeferredHomeBeatRail({ surface }: { surface?: MobileSurface } = {}) {
   return (
     <DeferredMount name="beats" placeholderClassName="min-h-[28rem]">
-      <HomeBeatRail />
+      <HomeBeatRail surface={surface} />
     </DeferredMount>
   );
 }
 
-export function DeferredHomePublicPlaylistRail() {
+export function DeferredHomePublicPlaylistRail({ surface }: { surface?: MobileSurface } = {}) {
   return (
     <DeferredMount name="playlists" placeholderClassName="min-h-[28rem]">
-      <HomePublicPlaylistRail />
+      <HomePublicPlaylistRail surface={surface} />
     </DeferredMount>
   );
 }

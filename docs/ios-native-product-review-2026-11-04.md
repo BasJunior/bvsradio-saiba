@@ -7,7 +7,7 @@ No merge, remote push, deployment, archive, TestFlight upload or device distribu
 ## Changes made
 
 - Adopt UIKit's scene lifecycle. The original app built but iOS 27 terminated it on launch with “UIScene life cycle is required.” The new scene delegate preserves the existing Capacitor window, app activation, audio/notification state and URL/user-activity forwarding.
-- Put listening and discovery before the promotional video on iOS Home; move the account invitation below discovery. Keep Android's Home order.
+- Align iOS Home with the web's content and copy: shared hero, Top 5/discovery, BVS Original, audio and creator offers, listening room, continue listening, artists/releases/producers, BeatStore, playlists, shows, Marketplace and community paths. Adapt links to stay inside the iOS shell, add an app album detail route, and send service offers into native Marketplace instead of web checkout. Keep Android's Home unchanged.
 - Replace the empty iOS station's disabled transport with a discovery action and explanatory copy. Hide the empty mini-player while retaining player errors/notices and the full active-player component.
 - Respect horizontal safe areas in the header, page content and Now Playing. The simulator's camera/status area covered the Join action before the header fix.
 - Use one contained Back destination for the visible button and browser-preview edge swipe. Preserve discovery query/filter state on return and avoid adding Back entries for filter replacements.
@@ -45,6 +45,7 @@ The local Turbopack session repeatedly reloaded; webpack was stable. An earlier 
 - Avatar request returned HTTP 200.
 - Station endpoint returned HTTP 200 with a fail-closed empty list in approximately 6.6 seconds during the upstream outage, versus an earlier approximately 90-second request.
 - Automated: iOS visual/gesture assertions (including contained Back/filter cases), iOS surface gates, product maturity/playback/accessibility regressions, Home performance gates, media reliability/public-release access tests, TypeScript, and focused ESLint checks.
+- Home parity follow-up: `npm run test:ios-visual-gesture-review`, `npm run test:ios-surface-gates` and `npm run typecheck` pass. Browser preview at 393 × 852 confirms the shared Home headline, discovery chart and app-contained destinations; live playback remains unavailable in the current data environment.
 
 ## Remaining release blockers
 
