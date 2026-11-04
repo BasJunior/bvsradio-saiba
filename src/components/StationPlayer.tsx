@@ -2368,13 +2368,14 @@ export function PersistentPlayer() {
             <button
               type="button"
               onClick={player.openNowPlaying}
+              data-bvs-mini-player-open
               className="shrink-0"
               aria-label={`Open Now Playing for ${player.current?.title || "BVS Radio"}`}
             >
               <CoverArt src={art} sizeClass="h-11 w-11 sm:h-12 sm:w-12" rounded="rounded-md sm:rounded-lg" />
             </button>
             <span className="min-w-0 flex-1 leading-tight">
-              <button type="button" onClick={player.openNowPlaying} className="block w-full min-w-0 text-left">
+              <button type="button" onClick={player.openNowPlaying} data-bvs-mini-player-open className="block w-full min-w-0 text-left">
                 <span className="block truncate text-[9px] font-semibold uppercase tracking-[0.14em] text-brand sm:text-[10px] sm:tracking-[0.18em]">
                   {player.playingFrom || player.current?.project || "Continuous rotation"}
                 </span>
