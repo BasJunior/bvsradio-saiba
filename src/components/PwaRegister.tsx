@@ -11,7 +11,6 @@ type BeforeInstallPromptEvent = Event & {
 export default function PwaRegister() {
   const { appChrome } = useAppSurface();
   const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showIosHint, setShowIosHint] = useState(false);
   const [engaged, setEngaged] = useState(false);
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -34,7 +33,6 @@ export default function PwaRegister() {
     const dismissedKey = "bvs-install-dismissed";
     let wasDismissed = false;
     try { wasDismissed = localStorage.getItem(dismissedKey) === "1"; } catch { /* storage is optional */ }
-    let iosHintTimer: number | undefined;
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       // iOS Safari
@@ -55,31 +53,14 @@ export default function PwaRegister() {
     };
     window.addEventListener("beforeinstallprompt", onBip);
 
-    // iOS: no beforeinstallprompt — show Share → Add to Home Screen tip once
-    const ua = navigator.userAgent;
-    const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-    const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
-    if (isIos && isSafari) {
-      window.dispatchEvent(new CustomEvent("bvs:pwa-install-available"));
-      if (!wasDismissed) {
-        iosHintTimer = window.setTimeout(() => {
-          try { if (localStorage.getItem(dismissedKey) === "1") return; } catch { /* storage is optional */ }
-          setShowIosHint(true);
-          setDismissed(false);
-        }, 60_000);
-      }
-    }
-
     const onInstallRequest = () => {
       setEngaged(true);
       setDismissed(false);
-      if (isIos && isSafari) setShowIosHint(true);
     };
     window.addEventListener("bvs:pwa-install-request", onInstallRequest);
 
     return () => {
       window.clearTimeout(engagementTimer);
-      if (iosHintTimer !== undefined) window.clearTimeout(iosHintTimer);
       window.removeEventListener("beforeinstallprompt", onBip);
       window.removeEventListener("bvs:player-open", onEngagement);
       window.removeEventListener("bvs:library-change", onEngagement);
@@ -90,7 +71,6 @@ export default function PwaRegister() {
   const close = () => {
     setDismissed(true);
     setDeferred(null);
-    setShowIosHint(false);
     try {
       localStorage.setItem("bvs-install-dismissed", "1");
     } catch {
@@ -113,7 +93,7 @@ export default function PwaRegister() {
     return () => window.removeEventListener("bvs:pwa-install-request", onInstallRequest);
   });
 
-  if (appChrome || dismissed || !engaged || (!deferred && !showIosHint)) return null;
+  if (appChrome || dismissed || !engaged || !deferred) return null;
 
   return (
     <div
@@ -123,13 +103,13 @@ export default function PwaRegister() {
     >
       <div className="flex items-start gap-3">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/bvs-icon-v2-192.png" alt="" className="h-12 w-12 rounded-xl" width={48} height={48} />
+        <img src="/branding/bvs-monogram-v2.svg" alt="" className="h-12 w-12 rounded-xl" width={48} height={48} />
         <div className="min-w-0 flex-1">
           <p className="font-semibold text-text-primary">Install BVS Radio</p>
           <p className="mt-1 text-xs text-text-secondary">
-            {showIosHint
-              ? "On iPhone: tap Share → Add to Home Screen for the full app experience."
-              : "Add to your home screen — listen like a native app on phone or tablet."}
+            {/(Android)/i.test(navigator.userAgent)
+              ? "Keep BVS Radio one tap away. Open your music, discovery and library from your home screen."
+              : "Install BVS Radio on this device for quick, full-screen access to music and creator tools."}
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {deferred && (
@@ -138,7 +118,7 @@ export default function PwaRegister() {
                 onClick={() => void install()}
                 className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-black"
               >
-                Install app
+                Install BVS Radio
               </button>
             )}
             <button

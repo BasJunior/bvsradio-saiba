@@ -14,6 +14,7 @@ No merge, remote push, deployment, archive, TestFlight upload or device distribu
 - Align the iOS Beats tab with BeatStore's selected mode, including internal BeatStore navigation. Add transition feedback and a screen-reader status for pending iOS tab navigation.
 - Match the iOS launch screen to the dark/lime product using the existing BVS vector logo. Generated splash PNGs are approximately 185 KB each, down from 2.4 MB each.
 - Supply the missing default-avatar PNG and avoid caching reused development bundle URLs on localhost.
+- Update the install prompt to use the approved lime BVS monogram, keep native browser install actions for Android/Chromium, and stop showing the outdated iPhone Safari Add to Home Screen hint. The web manifest already uses the same lime monogram.
 - Bound station-library queries: six seconds for rotation/block checks and two seconds for optional video metadata. Keep mobile distribution-clearance filtering and fail-closed behavior.
 - Synchronize CocoaPods to the Capacitor version already pinned in npm's lockfile.
 
@@ -46,10 +47,11 @@ The local Turbopack session repeatedly reloaded; webpack was stable. An earlier 
 - Station endpoint returned HTTP 200 with a fail-closed empty list in approximately 6.6 seconds during the upstream outage, versus an earlier approximately 90-second request.
 - Automated: iOS visual/gesture assertions (including contained Back/filter cases), iOS surface gates, product maturity/playback/accessibility regressions, Home performance gates, media reliability/public-release access tests, TypeScript, and focused ESLint checks.
 - Home parity follow-up: `npm run test:ios-visual-gesture-review`, `npm run test:ios-surface-gates` and `npm run typecheck` pass. Browser preview at 393 × 852 confirms the shared Home headline, discovery chart and app-contained destinations; live playback remains unavailable in the current data environment.
+- Install prompt follow-up: focused lint/typecheck and iOS gates cover the Android/Chromium install affordance and iOS shell suppression; no native iOS install hint is shown on the public website.
 
 ## Remaining release blockers
 
-1. The connected Supabase project's REST origin returned Cloudflare **522 connection timeouts**. Its management API reported a healthy project, but that does not verify the REST data path. The local environment now uses only the connected project's public URL/anon key; no service-role key was copied. Restore data access before evaluating live catalogue, playback or signed-in flows.
+1. The connected Supabase project's REST origin returned Cloudflare **522 connection timeouts** from the configured public anon key. Its management API reported a healthy project, but that does not verify the REST data path. The review checkout uses only the project's public URL/anon key; no service-role key was copied. The existing VS Code web server returned local API responses (8 beats, 51 artists, 21 producers and 6 releases), but those responses cannot be confirmed as fresh while the REST origin times out. Restore the public data path before evaluating live catalogue, playback or signed-in flows.
 2. Native Feed drag attempts did not visibly switch sections using the automation input. Button switching works; real touch swipe behavior is **not verified**. Player swipes and continuity cannot be verified without playable, iOS-cleared tracks.
 3. Review a signed-in listener and creator account, populated detail pages, Now Playing, final safe-area changes, larger text/VoiceOver, rotation and real iPhone/iPad layouts. This pass does not establish broad accessibility compliance.
 4. Lock-screen/Control Center transport, audio interruptions/background recovery, APNs and notifications still need physical-device tests. A simulator launch is not release qualification.
