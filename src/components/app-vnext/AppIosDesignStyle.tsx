@@ -37,6 +37,27 @@ export default function AppIosDesignStyle() {
         border-color: rgb(193 167 255 / .45); color: #d7c9ff;
       }
       html[data-bvs-app-surface="ios"] .bvs-square-feed .bvs-section-label { color: #c1a7ff; }
+      /* Editorial accent bands reflect the updated web design without sharing
+         global CSS with web or Android. */
+      html[data-bvs-app-surface="ios"] .bvs-square-discover .bvs-discover-music-card,
+      html[data-bvs-app-surface="ios"] .bvs-square-discover .bvs-discover-rail > a {
+        border-left: 2px solid rgb(163 219 255 / .55);
+        background-color: #151a1e;
+      }
+      html[data-bvs-app-surface="ios"] .bvs-native-studio :is(
+        .bvs-studio-role, .bvs-studio-release-path, .bvs-studio-work-card, .bvs-studio-accent-card
+      ) {
+        border-left: 3px solid rgb(163 219 255 / .62);
+        border-radius: .35rem;
+        background-color: #151a1f;
+      }
+      html[data-bvs-app-surface="ios"] .bvs-square-library .bvs-library-accent-card {
+        border-left: 2px solid rgb(193 255 82 / .45);
+      }
+      html[data-bvs-app-surface="ios"] .bvs-square-marketplace .bvs-marketplace-provider-card {
+        border-left: 2px solid rgb(193 255 82 / .45);
+        border-radius: .35rem;
+      }
       html[data-bvs-app-surface="ios"] .bvs-app-stage [data-bvs-culture="station"] {
         border-left: 3px solid #c1ff52; background: #171a17;
       }
