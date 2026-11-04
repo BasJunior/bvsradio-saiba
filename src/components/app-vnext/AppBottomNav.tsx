@@ -33,6 +33,7 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const searchParams = useSearchParams();
   const { isCreator } = useAppSession();
   const base = `/app/${surface}`;
+  const isIos = surface === "ios";
   const search = searchParams.toString();
   const currentRoute = `${pathname}${search ? `?${search}` : ""}`;
   const roleDestination = isCreator
@@ -52,7 +53,9 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
       data-bvs-bottom-nav
       data-bvs-app-nav
       data-bvs-role-tab={isCreator ? "studio" : "beats"}
-      className="bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.12] bg-[#0d0e10]/98 pt-1 shadow-[0_-12px_32px_rgba(0,0,0,.26)] backdrop-blur-2xl"
+      className={isIos
+        ? "bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.12] bg-[#0d0e10]/98 pt-1 shadow-[0_-12px_32px_rgba(0,0,0,.26)] backdrop-blur-2xl"
+        : "bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.06] bg-[#08080a]/96 pt-1 shadow-[0_-18px_50px_rgba(0,0,0,.32)] backdrop-blur-2xl"}
       aria-label="Primary navigation"
     >
       <div className="bvs-app-bottom-nav-inner mx-auto grid h-[4.45rem] max-w-xl grid-cols-5 px-1 sm:px-3">
@@ -77,15 +80,19 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
               router.push(item.href);
             }}
             aria-current={item.active ? "page" : undefined}
-            className={`relative flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-1 rounded-sm text-[10px] font-semibold transition-[color,transform] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:text-[11px] ${item.active ? (item.icon === "beats" ? "text-[#c1a7ff]" : "text-white") : "text-white/58 hover:text-white/90"}`}
+            className={`relative flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-1 ${isIos ? "rounded-sm font-semibold" : "rounded-xl font-medium"} text-[10px] transition-[color,transform] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:text-[11px] ${isIos
+              ? (item.active ? (item.icon === "beats" ? "text-[#c1a7ff]" : "text-white") : "text-white/58 hover:text-white/90")
+              : (item.active ? "text-white" : "text-white/46 hover:text-white/82")}`}
           >
             <span
-              className={`grid h-8 w-11 place-items-center rounded-[.3rem] leading-none transition-colors ${item.active ? (item.icon === "beats" ? "bg-[#c1a7ff]/15 text-[#c1a7ff]" : "bg-brand/12 text-brand") : ""}`}
+              className={`grid h-8 w-11 place-items-center leading-none ${isIos ? "rounded-[.3rem] transition-colors" : "rounded-full transition-all"} ${item.active
+                ? (isIos ? (item.icon === "beats" ? "bg-[#c1a7ff]/15 text-[#c1a7ff]" : "bg-brand/12 text-brand") : "bg-brand/14 text-brand shadow-[0_0_22px_rgba(227,189,88,.12)]")
+                : ""}`}
             >
               <NavIcon name={item.icon} />
             </span>
             <span className="truncate">{item.label}</span>
-            {item.active ? <span className={`absolute bottom-0 h-0.5 w-8 ${item.icon === "beats" ? "bg-[#c1a7ff]" : "bg-brand"}`} aria-hidden="true" /> : null}
+            {item.active ? <span className={`absolute bottom-0 h-0.5 ${isIos ? "w-8" : "w-5"} ${isIos && item.icon === "beats" ? "bg-[#c1a7ff]" : "bg-brand"} ${isIos ? "" : "rounded-full"}`} aria-hidden="true" /> : null}
           </Link>
         ))}
       </div>
