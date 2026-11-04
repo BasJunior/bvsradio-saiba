@@ -4,6 +4,7 @@ import AppBeatPreviewGuard from "@/components/app-vnext/AppBeatPreviewGuard";
 import AppBottomNav from "@/components/app-vnext/AppBottomNav";
 import AppDataModeBridge from "@/components/app-vnext/AppDataModeBridge";
 import AppExperienceStyle from "@/components/app-vnext/AppExperienceStyle";
+import AppIosDesignStyle from "@/components/app-vnext/AppIosDesignStyle";
 import AppGestureBridge from "@/components/app-vnext/AppGestureBridge";
 import AppLibrarySyncBridge from "@/components/app-vnext/AppLibrarySyncBridge";
 import AppNativeRuntime from "@/components/app-vnext/AppNativeRuntime";
@@ -34,6 +35,7 @@ export default async function MobileVNextLayout({
       <AppStationFetchBridge />
       <AppGestureBridge surface={surface} />
       <AppExperienceStyle />
+      {surface === "ios" ? <AppIosDesignStyle /> : null}
       <style>{`
         html[data-bvs-app-shell="true"] footer { display: none !important; }
         html[data-bvs-app-shell="true"] body { overscroll-behavior-y: none; }
