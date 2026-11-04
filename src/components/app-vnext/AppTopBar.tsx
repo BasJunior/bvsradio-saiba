@@ -30,8 +30,9 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
   const [unread, setUnread] = useState(0);
   const mountedPath = useRef(pathname);
   const home = `/app/${surface}`;
+  const isIos = surface === "ios";
   const mainDestinations = [home, `${home}/feed`, `${home}/explore`, `${home}/library`, `${home}/studio`];
-  const showBack = surface === "ios" && !mainDestinations.includes(pathname);
+  const showBack = isIos && !mainDestinations.includes(pathname);
   // Next App Router doesn't guarantee a numeric history index. Keep the
   // contained app's own small route stack so Back never leaves /app/ios.
   const routeStack = useRef<string[]>([pathname]);
@@ -107,19 +108,21 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
     <header
       ref={measureHeader}
       data-bvs-header
-      className="fixed inset-x-0 top-0 z-[60] border-b border-white/[.12] bg-[#0d0e10]/95 pt-[env(safe-area-inset-top)] backdrop-blur-2xl"
+      className={isIos
+        ? "fixed inset-x-0 top-0 z-[60] border-b border-white/[.12] bg-[#0d0e10]/95 pt-[env(safe-area-inset-top)] backdrop-blur-2xl"
+        : "fixed inset-x-0 top-0 z-[60] border-b border-white/[.07] bg-[#09090b]/80 pt-[env(safe-area-inset-top)] backdrop-blur-2xl"}
     >
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-1 px-3 sm:px-6">
-        <div className="flex min-w-0 items-center gap-1">
+      <div className={isIos ? "mx-auto flex h-16 max-w-6xl items-center justify-between gap-1 px-3 sm:px-6" : "mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6"}>
+        <div className={isIos ? "flex min-w-0 items-center gap-1" : "contents"}>
           {showBack ? <button type="button" onClick={navigateBack} className="grid h-11 w-11 shrink-0 place-items-center text-white/85 focus-visible:outline-2 focus-visible:outline-brand" aria-label="Back to previous screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button> : null}
           <Link href={home} className="flex min-w-0 items-center gap-3" aria-label="BVS home">
-          <span className="inline-flex shrink-0 overflow-hidden rounded-none bg-transparent">
+          <span className={isIos ? "inline-flex shrink-0 overflow-hidden rounded-none bg-transparent" : "inline-flex shrink-0 overflow-hidden rounded-xl bg-transparent shadow-[0_0_0_1px_rgba(255,255,255,.06)]"}>
             <Image
-              src="/branding/bvs-logo-star-16x9.svg"
+              src={isIos ? "/branding/bvs-logo-star-16x9.svg" : "/branding/bvs-logo-cyan-2026.png"}
               alt="BVS"
-              width={1920}
-              height={1080}
-              className={`h-11 w-auto object-contain sm:h-14 ${showBack ? "max-w-[6rem]" : ""}`}
+              width={isIos ? 1920 : 1536}
+              height={isIos ? 1080 : 1024}
+              className={isIos ? `h-11 w-auto object-contain sm:h-14 ${showBack ? "max-w-[6rem]" : ""}` : "h-14 w-auto object-contain"}
               priority
             />
           </span>
@@ -130,7 +133,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           </Link>
         </div>
 
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className={isIos ? "flex shrink-0 items-center gap-0.5" : "flex items-center gap-1"}>
           <Link
             href={`/app/${surface}/marketplace`}
             className="grid h-11 w-11 place-items-center rounded-full text-white/62 transition hover:bg-white/[.055] hover:text-brand active:scale-95"
@@ -170,7 +173,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           ) : (
             <Link
               href={`/app/${surface}/join`}
-              className="bvs-join-button ml-1 inline-flex min-h-11 items-center rounded-none px-3 py-2 text-sm font-semibold transition"
+              className={isIos ? "bvs-join-button ml-1 inline-flex min-h-11 items-center rounded-none px-3 py-2 text-sm font-semibold transition" : "bvs-join-button ml-1 rounded-full px-4 py-2 text-sm font-semibold transition"}
             >
               Join
             </Link>
