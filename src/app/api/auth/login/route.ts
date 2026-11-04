@@ -110,22 +110,9 @@ export async function POST(req: Request) {
       )
     }
 
-    let profile = null
-    if (SUPABASE_SERVICE_KEY && data.user?.id) {
-      const profileRes = await fetch(
-        `${SUPABASE_URL}/rest/v1/profiles?id=eq.${data.user.id}&select=*`,
-        {
-          headers: {
-            apikey: SUPABASE_SERVICE_KEY,
-            Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-          },
-        },
-      )
-      if (profileRes.ok) {
-        const profiles = await profileRes.json()
-        profile = Array.isArray(profiles) ? profiles[0] : null
-      }
-    }
+    // A successful token exchange must not wait for optional profile hydration.
+    // The login client fetches the profile separately after persisting the session.
+    const profile = null
 
     return NextResponse.json({
       user: {
