@@ -26,6 +26,8 @@ _Last updated: 2026-11-04, Europe/Berlin. This document is intended for an autho
 - Reviewed selected operational notes and configuration templates for several high-confidence credential formats. Database connection URL examples encountered in two operational text documents contained **placeholder/redacted password text**, not a verified live password. No credential value was copied into this file.
 - **Not completed**: exhaustive scanning of every tracked file, full Git history, forks, PR attachments, actions logs, external caches, and credential-validity checks. No conclusion that the repository has always been private, or that historical secrets were absent, is justified.
 
+- Also inspected patch text in **11 targeted historical commits** across both repositories selected by security, secret, password, token, and removal-related commit messages. No high-confidence private-key or known provider-token prefix was found in those reviewed patches. This is a targeted spot-check, not a full repository-history scan.
+
 ## Current handover state
 
 - **Privacy:** ACTION REQUIRED — both repos were public at last metadata check. This document's commit does not change visibility.
