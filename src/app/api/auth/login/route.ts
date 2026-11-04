@@ -22,8 +22,10 @@ async function resolveEmailFromUsername(username: string): Promise<string | null
         apikey: SUPABASE_SERVICE_KEY,
         Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
       },
+      signal: AbortSignal.timeout(8000),
     },
   )
+  if (profileRes.status >= 500) throw new Error('Username lookup service unavailable')
   if (!profileRes.ok) return null
   const profiles = await profileRes.json()
   if (!Array.isArray(profiles) || profiles.length === 0) return null
@@ -39,7 +41,9 @@ async function resolveEmailFromUsername(username: string): Promise<string | null
       apikey: SUPABASE_SERVICE_KEY,
       Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
     },
+    signal: AbortSignal.timeout(8000),
   })
+  if (userRes.status >= 500) throw new Error('User lookup service unavailable')
   if (!userRes.ok) return null
   const user = await userRes.json()
   return typeof user?.email === 'string' ? user.email : null
@@ -86,8 +90,15 @@ export async function POST(req: Request) {
         apikey: SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ email, password }),
+      signal: AbortSignal.timeout(12000),
     })
 
+    // Supabase gateway failures can return plain text (e.g. upstream errors).
+    // Do not turn those into misleading JSON parse failures or bad credentials.
+    const contentType = res.headers.get('content-type') || ''
+    if (res.status >= 500 || !contentType.includes('application/json')) {
+      return NextResponse.json({ error: 'Sign-in service is temporarily unavailable. Please try again shortly.' }, { status: 503, headers: { 'Retry-After': '10' } })
+    }
     const data = await res.json()
 
     if (!res.ok) {
@@ -128,6 +139,6 @@ export async function POST(req: Request) {
     })
   } catch (err: unknown) {
     console.error('Login request failed:', err instanceof Error ? err.message : err)
-    return NextResponse.json({ error: 'Login is temporarily unavailable.' }, { status: 500 })
+    return NextResponse.json({ error: 'Sign-in service is temporarily unavailable. Please try again shortly.' }, { status: 503, headers: { 'Retry-After': '10' } })
   }
 }
