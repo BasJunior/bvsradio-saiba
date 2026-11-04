@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { useStationPlayer } from "@/components/StationPlayer";
 import { isNativeRuntime } from "@/lib/app-native";
 import { resolveAppSwipeIntent } from "@/lib/app-gesture-intent";
@@ -20,7 +19,6 @@ function isMiniPlayerSwipeTarget(target: Element | null) {
 }
 
 export default function AppGestureBridge({ surface }: { surface: AppSurface }) {
-  const router = useRouter();
   const player = useStationPlayer();
   const start = useRef<TouchStart | null>(null);
   const suppressClickUntil = useRef(0);
@@ -46,8 +44,9 @@ export default function AppGestureBridge({ surface }: { surface: AppSurface }) {
       if (!intent) return;
       // Browser preview only: don't shadow the native iOS edge-back gesture.
       if (began.mode === "edge" && intent === "right") {
-        if (window.history.length > 1) router.back();
-        else router.push(`/app/${surface}`);
+        // Share the visible Back button's contained route stack. Browser
+        // history can include another site or a page outside the iOS app.
+        window.dispatchEvent(new Event("bvs:app-back"));
         return;
       }
       if (began.mode !== "mini") return;
@@ -82,6 +81,6 @@ export default function AppGestureBridge({ surface }: { surface: AppSurface }) {
       document.removeEventListener("touchcancel", onCancel, true);
       document.removeEventListener("click", onClickCapture, true);
     };
-  }, [player, router, surface]);
+  }, [player, surface]);
   return null;
 }

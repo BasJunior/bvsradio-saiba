@@ -13,7 +13,15 @@ export default function AppIosDesignStyle() {
       html[data-bvs-app-surface="ios"] body { background: #0d0e10; }
       html[data-bvs-app-surface="ios"] body::before,
       html[data-bvs-app-surface="ios"] .bvs-app-stage::before { display: none; }
-      html[data-bvs-app-surface="ios"] .bvs-app-stage { color: #f7f7f6; }
+      html[data-bvs-app-surface="ios"] .bvs-app-stage {
+        color: #f7f7f6;
+        padding-inline-start: env(safe-area-inset-left, 0px);
+        padding-inline-end: env(safe-area-inset-right, 0px);
+      }
+      html[data-bvs-app-surface="ios"] [data-now-playing-shell="true"] > div {
+        padding-left: max(1rem, env(safe-area-inset-left, 0px));
+        padding-right: max(1rem, env(safe-area-inset-right, 0px));
+      }
       html[data-bvs-app-surface="ios"] .bvs-app-stage :is(h1, h2) {
         font-weight: 800; letter-spacing: -.045em;
       }

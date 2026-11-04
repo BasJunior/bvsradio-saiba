@@ -25,7 +25,7 @@ export default function PwaRegister() {
     if (typeof window === "undefined") return;
 
     // Register service worker
-    if ("serviceWorker" in navigator) {
+    if (process.env.NODE_ENV === "production" && "serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {
         /* ignore SW failures in dev */
       });

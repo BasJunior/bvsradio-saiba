@@ -5,6 +5,56 @@ import Capacitor
 import WebKit
 import UserNotifications
 
+/// The storyboard still owns the Capacitor root. Keep process-wide audio and
+/// notification state in AppDelegate while UIKit delivers UI events per scene.
+class BvsSceneDelegate: UIResponder, UIWindowSceneDelegate {
+    var window: UIWindow?
+
+    private var appDelegate: AppDelegate? { UIApplication.shared.delegate as? AppDelegate }
+
+    func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
+        appDelegate?.window = window
+        for context in connectionOptions.urlContexts { open(context) }
+        for activity in connectionOptions.userActivities { continueActivity(activity) }
+    }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        appDelegate?.window = window
+        appDelegate?.applicationDidBecomeActive(UIApplication.shared)
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        appDelegate?.applicationWillResignActive(UIApplication.shared)
+    }
+
+    func sceneDidEnterBackground(_ scene: UIScene) {
+        appDelegate?.applicationDidEnterBackground(UIApplication.shared)
+    }
+
+    func sceneWillEnterForeground(_ scene: UIScene) {
+        appDelegate?.applicationWillEnterForeground(UIApplication.shared)
+    }
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        for context in URLContexts { open(context) }
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        continueActivity(userActivity)
+    }
+
+    private func open(_ context: UIOpenURLContext) {
+        var options: [UIApplication.OpenURLOptionsKey: Any] = [.openInPlace: context.options.openInPlace]
+        if let source = context.options.sourceApplication { options[.sourceApplication] = source }
+        if let annotation = context.options.annotation { options[.annotation] = annotation }
+        _ = appDelegate?.application(UIApplication.shared, open: context.url, options: options)
+    }
+
+    private func continueActivity(_ activity: NSUserActivity) {
+        _ = appDelegate?.application(UIApplication.shared, continue: activity, restorationHandler: { _ in })
+    }
+}
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, UNUserNotificationCenterDelegate {
 
@@ -390,13 +440,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             webView.allowsBackForwardNavigationGestures = false
             return
         }
-        let trustedHosts = ["bvsradio.com", "www.bvsradio.com"]
+        var trustedHosts = ["bvsradio.com", "www.bvsradio.com"]
+        #if DEBUG && targetEnvironment(simulator)
+        trustedHosts += ["localhost", "127.0.0.1"]
+        #endif
         guard url.host.map(trustedHosts.contains) == true else {
             webView.allowsBackForwardNavigationGestures = false
             return
         }
         let primaryRoots = [
-            "/", "/app/ios", "/app/ios/explore", "/app/ios/beats", "/app/ios/library",
+            "/", "/app/ios", "/app/ios/feed", "/app/ios/studio", "/app/ios/explore", "/app/ios/beats", "/app/ios/library",
             "/app/android", "/app/android/explore", "/app/android/beats", "/app/android/library"
         ]
         let hasDismissibleLayer = url.fragment?.hasPrefix("bvs-") == true

@@ -36,9 +36,7 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
   if (raw !== "ios" && raw !== "android") notFound();
   const surface = raw as MobileSurface;
   const base = `/app/${surface}`;
-
-  return (
-    <div className="bvs-square-home mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
+  const story = (
       <HomeMediaStage
         eyebrow="BVS Original"
         title="BVS for artists"
@@ -49,9 +47,20 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
           { href: `${base}/explore`, label: "Discover music", accent: "discover" },
         ]}
       />
+  );
 
-      <div className="mt-5">
-        <AppHomeStationCard />
+  return (
+    <div className="bvs-square-home mx-auto max-w-6xl px-4 pb-12 pt-5 sm:px-6 sm:pt-8">
+      {surface === "ios" ? (
+        <div className="mb-5">
+          <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Best Virtual Sound</p>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Find your next favourite.</h1>
+          <p className="mt-2 text-sm leading-6 text-white/65">Fresh sounds, independent voices and a place for yours.</p>
+        </div>
+      ) : story}
+
+      <div className={surface === "ios" ? "" : "mt-5"}>
+        <AppHomeStationCard surface={surface} />
       </div>
 
       <HomeContinueListening />
@@ -71,13 +80,16 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
         <span className="bvs-home-accent-arrow shrink-0 text-2xl transition-transform group-hover:translate-x-1" aria-hidden="true">→</span>
       </Link>
 
-      <div className="mt-5">
+      {surface === "android" ? <div className="mt-5">
         <AppJoinCard surface={surface} />
-      </div>
+      </div> : null}
 
       <Suspense fallback={<HomeDiscoveryFallback />}>
         <AppHomeDiscoverySections surface={surface} />
       </Suspense>
+
+      {surface === "ios" ? <div className="mt-8">{story}</div> : null}
+      {surface === "ios" ? <div className="mt-8"><AppJoinCard surface={surface} /></div> : null}
 
       <div className="bvs-app-creator-bands">
         <CreatorPortraitRail title="Your BVS" kicker="Keep listening, collecting and creating" tone="charcoal" allHref={`${base}/library`} items={[

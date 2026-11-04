@@ -1,6 +1,19 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolveAppSwipeIntent } from "../src/lib/app-gesture-intent.ts";
+import { appBackRoute, recordAppRoute } from "../src/lib/contained-app-history.ts";
+
+const home = "/app/ios";
+let history = [home];
+history = recordAppRoute(history, `${home}/explore?kind=beats`);
+history = recordAppRoute(history, `${home}/explore?kind=beats&genre=afrobeat`);
+assert.equal(history.length, 2, "Changing discovery filters must not create fake Back entries");
+history = recordAppRoute(history, `${home}/beat/first`);
+assert.equal(appBackRoute(history, home), `${home}/explore?kind=beats&genre=afrobeat`, "Back must preserve the discovery selection");
+history = recordAppRoute(history, appBackRoute(history, home));
+assert.equal(appBackRoute(history, home), home, "Returning to a previous route must pop the detail entry");
+assert.equal(appBackRoute([`${home}/beat/direct`], home), home, "Direct-entry details return Home");
+assert.equal(appBackRoute(["https://other.test/", `${home}/beat/direct`], home), home, "Back must never leave the contained app");
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 assert.equal(resolveAppSwipeIntent(-110, 9, 240), "left");

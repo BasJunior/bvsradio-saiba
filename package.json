@@ -75,7 +75,8 @@
     "test:premium-ai": "node scripts/premium-ai-tests.mjs",
     "test:ask-bvs": "node scripts/ask-bvs-response-tests.mjs",
     "test:distribution-reports": "node --experimental-strip-types scripts/distribution-report-tests.mjs",
-    "test:ios-visual-gesture-review": "node --experimental-strip-types scripts/ios-visual-gesture-review-tests.mjs"
+    "test:ios-visual-gesture-review": "node --experimental-strip-types scripts/ios-visual-gesture-review-tests.mjs",
+    "ios:simulator-review": "node scripts/ios-simulator-review.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",

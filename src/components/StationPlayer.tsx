@@ -2161,7 +2161,7 @@ function CreatorFollowAction({
 export function PersistentPlayer() {
   const player = useStationPlayer();
   const progress = useStationPlayerProgress();
-  const { appChrome } = useAppSurface();
+  const { appChrome, surface } = useAppSurface();
   const playerRef = useAppShellMeasurement<HTMLElement>("--bvs-app-player-height-measured", appChrome);
   const { nowPlayingOpen, closeNowPlaying } = player;
   const nowPlayingRef = useRef<HTMLElement>(null);
@@ -2356,7 +2356,7 @@ export function PersistentPlayer() {
           </div>
         </section>
       )}
-      <section ref={playerRef} className="bvs-persistent-player fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
+      <section ref={playerRef} style={{ display: appChrome && surface === "ios" && !player.current && !player.error && !player.notice ? "none" : undefined }} className="bvs-persistent-player fixed inset-x-0 bottom-16 z-50 border-t border-white/10 bg-[#181818]/95 backdrop-blur-xl md:bottom-0 md:pb-[env(safe-area-inset-bottom)]" aria-label="BVS rotation player">
         <ProgressLine elapsed={progress.elapsed} duration={progress.duration} onSeek={player.seek} />
         {(player.error || player.notice) && (
           <p className={`px-4 py-1 text-center text-xs ${player.error ? "bg-red-500/15 text-red-200" : "bg-brand/10 text-brand"}`} role="status">

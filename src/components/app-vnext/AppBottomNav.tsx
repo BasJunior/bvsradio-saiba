@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState, useTransition } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { measureBottomNav } from "@/lib/chrome-layout";
@@ -32,17 +33,20 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isCreator } = useAppSession();
+  const [pending, startTransition] = useTransition();
+  const [requestedTab, setRequestedTab] = useState("");
   const base = `/app/${surface}`;
   const isIos = surface === "ios";
   const search = searchParams.toString();
   const currentRoute = `${pathname}${search ? `?${search}` : ""}`;
+  const isBeatsRoute = searchParams.get("kind") === "beats" || (isIos && searchParams.get("mode") === "beats");
   const roleDestination = isCreator
     ? { href: `${base}/studio`, label: "Studio", icon: "create" as const, active: pathname.startsWith(`${base}/studio`) }
-    : { href: `${base}/explore?kind=beats`, label: "Beats", icon: "beats" as const, active: (pathname === `${base}/explore` && searchParams.get("kind") === "beats") || pathname.startsWith(`${base}/beat/`) };
+    : { href: `${base}/explore?kind=beats${isIos ? "&mode=beats" : ""}`, label: "Beats", icon: "beats" as const, active: (pathname === `${base}/explore` && isBeatsRoute) || pathname.startsWith(`${base}/beat/`) };
   const items: Array<{ href: string; label: string; icon: NavIconName; active: boolean }> = [
     { href: base, label: "Home", icon: "home", active: pathname === base },
     { href: `${base}/feed`, label: "Feed", icon: "feed", active: pathname.startsWith(`${base}/feed`) },
-    { href: `${base}/explore`, label: "Discover", icon: "discover", active: pathname.startsWith(`${base}/explore`) && (isCreator || searchParams.get("kind") !== "beats") },
+    { href: `${base}/explore`, label: "Discover", icon: "discover", active: pathname.startsWith(`${base}/explore`) && (isCreator || !isBeatsRoute) },
     { href: `${base}/library`, label: "Library", icon: "library", active: pathname.startsWith(`${base}/library`) || pathname.startsWith(`${base}/playlist`) },
     roleDestination,
   ];
@@ -57,6 +61,7 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
         ? "bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.12] bg-[#0d0e10]/98 pt-1 shadow-[0_-12px_32px_rgba(0,0,0,.26)] backdrop-blur-2xl"
         : "bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.06] bg-[#08080a]/96 pt-1 shadow-[0_-18px_50px_rgba(0,0,0,.32)] backdrop-blur-2xl"}
       aria-label="Primary navigation"
+      aria-busy={isIos && pending}
     >
       <div className="bvs-app-bottom-nav-inner mx-auto grid h-[4.45rem] max-w-xl grid-cols-5 px-1 sm:px-3">
         {items.map((item) => (
@@ -77,7 +82,10 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
                 window.scrollTo({ top: 0, left: 0 });
                 return;
               }
-              router.push(item.href);
+              if (isIos) {
+                setRequestedTab(item.label);
+                startTransition(() => router.push(item.href));
+              } else router.push(item.href);
             }}
             aria-current={item.active ? "page" : undefined}
             className={`relative flex min-h-11 min-w-0 touch-manipulation flex-col items-center justify-center gap-1 ${isIos ? "rounded-sm font-semibold" : "rounded-xl font-medium"} text-[10px] transition-[color,transform] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand sm:text-[11px] ${isIos
@@ -89,13 +97,16 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
                 ? (isIos ? (item.icon === "beats" ? "bg-[#c1a7ff]/15 text-[#c1a7ff]" : "bg-brand/12 text-brand") : "bg-brand/14 text-brand shadow-[0_0_22px_rgba(227,189,88,.12)]")
                 : ""}`}
             >
-              <NavIcon name={item.icon} />
+              {isIos && pending && requestedTab === item.label
+                ? <span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent motion-reduce:animate-none" />
+                : <NavIcon name={item.icon} />}
             </span>
             <span className="truncate">{item.label}</span>
             {item.active ? <span className={`absolute bottom-0 h-0.5 ${isIos ? "w-8" : "w-5"} ${isIos && item.icon === "beats" ? "bg-[#c1a7ff]" : "bg-brand"} ${isIos ? "" : "rounded-full"}`} aria-hidden="true" /> : null}
           </Link>
         ))}
       </div>
+      {isIos ? <span role="status" className="sr-only">{pending ? `Opening ${requestedTab}` : ""}</span> : null}
     </nav>
   );
 }

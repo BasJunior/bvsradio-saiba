@@ -22,7 +22,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: {
       launchShowDuration: 1200,
-      backgroundColor: "#C4C4C4",
+      backgroundColor: mobileSurface === "ios" ? "#0D0E10" : "#C4C4C4",
       showSpinner: false,
     },
     StatusBar: {

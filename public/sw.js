@@ -22,6 +22,9 @@ self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
   const url = new URL(request.url);
+  // Development chunk URLs are reused between branches. Never replay a cached
+  // client bundle from a different local checkout against fresh server HTML.
+  if (["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)) return;
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/") || request.headers.get("RSC") === "1") return;
   if (request.mode === "navigate") {
     event.respondWith(fetch(request).catch(async () => (await caches.match("/offline.html")) || new Response("You are offline. Reconnect and reload BVS.", { status: 503, headers: { "Content-Type": "text/plain" } })));

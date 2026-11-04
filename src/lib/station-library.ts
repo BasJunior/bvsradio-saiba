@@ -150,7 +150,7 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       : "";
     const rotationRes = await fetch(
       `${url}/rest/v1/tracks?in_rotation=eq.true&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,file_url,artwork_url,play_count,release_id,genre,is_downloadable,download_price,licence_type,profiles!tracks_user_id_fkey(id,username,is_published)${mobileJoin}&order=rotation_added_at.desc&limit=500`,
-      { headers, cache: "no-store" },
+      { headers, cache: "no-store", signal: AbortSignal.timeout(6000) },
     );
 
     if (!rotationRes.ok) {
@@ -185,7 +185,7 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       if (ids.length) {
         const videoRes = await fetch(
           `${url}/rest/v1/music_videos?is_public=eq.true&editorial_status=eq.approved&content_hold=eq.false&related_track_id=in.(${ids.join(",")})&select=id,related_track_id,video_url,poster_url&limit=300`,
-          { headers, cache: "no-store" },
+          { headers, cache: "no-store", signal: AbortSignal.timeout(2000) },
         );
         if (videoRes.ok) {
           const videos = (await videoRes.json()) as Array<{
@@ -245,7 +245,7 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
 
     const blockRes = await fetch(
       `${url}/rest/v1/tracks?or=(editorial_status.eq.rejected,in_rotation.eq.false)&select=title,file_url&limit=1000`,
-      { headers, cache: "no-store" },
+      { headers, cache: "no-store", signal: AbortSignal.timeout(6000) },
     );
     const blockedTitles = new Set<string>();
     const blockedFiles = new Set<string>();

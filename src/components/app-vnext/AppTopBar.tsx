@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { appBackRoute, recordAppRoute } from "@/lib/contained-app-history";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import AppLibraryViewToggle from "@/components/app-vnext/AppLibraryViewToggle";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
@@ -25,6 +26,8 @@ function MarketplaceIcon() {
 export default function AppTopBar({ surface }: { surface: AppSurface }) {
   const { user, token, avatarUrl, profileDisplayName, profileUsername, loading, refresh } = useAppSession();
   const pathname = usePathname();
+  const search = useSearchParams().toString();
+  const route = `${pathname}${search ? `?${search}` : ""}`;
   const router = useRouter();
   const [failedAvatarUrl, setFailedAvatarUrl] = useState("");
   const [unread, setUnread] = useState(0);
@@ -35,19 +38,18 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
   const showBack = isIos && !mainDestinations.includes(pathname);
   // Next App Router doesn't guarantee a numeric history index. Keep the
   // contained app's own small route stack so Back never leaves /app/ios.
-  const routeStack = useRef<string[]>([pathname]);
+  const routeStack = useRef<string[]>([route]);
   useEffect(() => {
-    const stack = routeStack.current;
-    if (stack[stack.length - 1] === pathname) return;
-    if (stack.length > 1 && stack[stack.length - 2] === pathname) stack.pop();
-    else stack.push(pathname);
-    if (stack.length > 24) stack.shift();
-  }, [pathname]);
-  const navigateBack = () => {
-    const stack = routeStack.current;
-    const previous = stack.length > 1 ? stack[stack.length - 2] : home;
-    router.push(previous === home || previous.startsWith(`${home}/`) ? previous : home);
-  };
+    routeStack.current = recordAppRoute(routeStack.current, route);
+  }, [route]);
+  const navigateBack = useCallback(() => {
+    router.push(appBackRoute(routeStack.current, home));
+  }, [home, router]);
+  useEffect(() => {
+    if (!isIos) return;
+    window.addEventListener("bvs:app-back", navigateBack);
+    return () => window.removeEventListener("bvs:app-back", navigateBack);
+  }, [isIos, navigateBack]);
   const isLibrary = /^\/app\/(ios|android)\/library(?:\/|$)/.test(pathname);
   const initial = (
     profileDisplayName ||
@@ -112,7 +114,7 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
         ? "fixed inset-x-0 top-0 z-[60] border-b border-white/[.12] bg-[#0d0e10]/95 pt-[env(safe-area-inset-top)] backdrop-blur-2xl"
         : "fixed inset-x-0 top-0 z-[60] border-b border-white/[.07] bg-[#09090b]/80 pt-[env(safe-area-inset-top)] backdrop-blur-2xl"}
     >
-      <div className={isIos ? "mx-auto flex h-16 max-w-6xl items-center justify-between gap-1 px-3 sm:px-6" : "mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6"}>
+      <div className={isIos ? "mx-auto flex h-16 max-w-6xl items-center justify-between gap-1 [padding-inline-start:max(.75rem,env(safe-area-inset-left))] [padding-inline-end:max(.75rem,env(safe-area-inset-right))]" : "mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6"}>
         <div className={isIos ? "flex min-w-0 items-center gap-1" : "contents"}>
           {showBack ? <button type="button" onClick={navigateBack} className="grid h-11 w-11 shrink-0 place-items-center text-white/85 focus-visible:outline-2 focus-visible:outline-brand" aria-label="Back to previous screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg></button> : null}
           <Link href={home} className="flex min-w-0 items-center gap-3" aria-label="BVS home">
