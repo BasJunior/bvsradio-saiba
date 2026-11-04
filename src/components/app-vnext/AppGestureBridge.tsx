@@ -16,8 +16,7 @@ function isMiniPlayerSwipeTarget(target: Element | null) {
   if (!control) return true;
   // Taps still open Now Playing, but a deliberate swipe across artwork/title
   // provides a Spotify-like shortcut without hijacking transport controls.
-  return control instanceof HTMLButtonElement &&
-    (control.getAttribute("aria-label") || "").startsWith("Open Now Playing");
+  return control instanceof HTMLButtonElement && control.hasAttribute("data-bvs-mini-player-open");
 }
 
 export default function AppGestureBridge({ surface }: { surface: AppSurface }) {
