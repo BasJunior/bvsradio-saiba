@@ -217,7 +217,7 @@ export default function BvsFeedList({
     const target = event.target instanceof Element ? event.target : null;
     // Avoid hijacking buttons, composer controls, horizontal carousels and iOS edge navigation.
     const blocked = Boolean(target?.closest("button, a, input, textarea, select, [role='button'], [role='slider'], [contenteditable='true'], .overflow-x-auto, [data-feed-swipe-ignore]"));
-    laneSwipeStart.current = surface === "ios" && touch && !blocked &&
+    laneSwipeStart.current = surface === "ios" && event.touches.length === 1 && touch && !blocked &&
       touch.clientX > 28 && touch.clientX < window.innerWidth - 28
       ? { x: touch.clientX, y: touch.clientY, at: Date.now() } : null;
     if (refreshing || window.scrollY > 0 || !touch) {
