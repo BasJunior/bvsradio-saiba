@@ -32,10 +32,20 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
   const home = `/app/${surface}`;
   const mainDestinations = [home, `${home}/feed`, `${home}/explore`, `${home}/library`, `${home}/studio`];
   const showBack = surface === "ios" && !mainDestinations.includes(pathname);
+  // Next App Router doesn't guarantee a numeric history index. Keep the
+  // contained app's own small route stack so Back never leaves /app/ios.
+  const routeStack = useRef<string[]>([pathname]);
+  useEffect(() => {
+    const stack = routeStack.current;
+    if (stack[stack.length - 1] === pathname) return;
+    if (stack.length > 1 && stack[stack.length - 2] === pathname) stack.pop();
+    else stack.push(pathname);
+    if (stack.length > 24) stack.shift();
+  }, [pathname]);
   const navigateBack = () => {
-    const idx = (window.history.state as { idx?: number } | null)?.idx;
-    if (typeof idx === "number" && idx > 0) router.back();
-    else router.push(home);
+    const stack = routeStack.current;
+    const previous = stack.length > 1 ? stack[stack.length - 2] : home;
+    router.push(previous === home || previous.startsWith(`${home}/`) ? previous : home);
   };
   const isLibrary = /^\/app\/(ios|android)\/library(?:\/|$)/.test(pathname);
   const initial = (
