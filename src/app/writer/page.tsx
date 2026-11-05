@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 
@@ -15,6 +15,7 @@ const editStatuses = new Set(["draft", "changes_requested"]);
 
 export default function WriterStudio() {
   const [token, setToken] = useState("");
+  const lastAccessToken = useRef("");
   const [signedOut, setSignedOut] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -43,6 +44,7 @@ export default function WriterStudio() {
     const client = createClient();
     const sync = async (nextToken: string) => {
       if (!alive) return;
+      lastAccessToken.current = nextToken;
       setToken(nextToken);
       setSignedOut(!nextToken);
       if (nextToken) {
@@ -54,11 +56,9 @@ export default function WriterStudio() {
     void client.auth.getSession().then(({ data: session }) => sync(session.session?.access_token || ""));
     const { data: subscription } = client.auth.onAuthStateChange((_event, session) => {
       // Avoid synchronous Supabase client calls inside the auth callback.
-      if (alive && session?.access_token !== token) void sync(session?.access_token || "");
+      if (alive && (session?.access_token || "") !== lastAccessToken.current) void sync(session?.access_token || "");
     });
     return () => { alive = false; subscription.subscription.unsubscribe(); };
-    // Initial session and subsequent auth refreshes are tracked by the subscription.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load]);
 
   const act = async (payload: Record<string, unknown>) => {
@@ -100,7 +100,7 @@ export default function WriterStudio() {
       <Link href="/blog" className="rounded-full border border-white/15 px-5 py-3 text-sm hover:border-brand">Read the Journal</Link>
     </div>
     {loading && <p role="status" className="text-text-secondary">Opening Writer Studio…</p>}
-    {!loading && signedOut && <section className="rounded-3xl border border-brand/20 bg-white/[.03] p-8"><h2 className="text-2xl font-semibold">Become a BVS contributor</h2><p className="mt-3 text-text-secondary">Sign in or create a free BVS account to apply. You do not need an artist account.</p><Link href="/auth/login?next=/writer" className={`${button} mt-6 bg-brand text-black`}>Sign in to apply</Link><Link href="/auth/signup" className="ml-4 text-sm text-brand hover:underline">Create an account</Link></section>}
+    {!loading && signedOut && <section className="rounded-3xl border border-brand/20 bg-white/[.03] p-8"><h2 className="text-2xl font-semibold">Become a BVS contributor</h2><p className="mt-3 text-text-secondary">Sign in or create a free BVS account to apply. You do not need an artist account.</p><Link href="/auth/login?next=/writer" className={`${button} mt-6 bg-brand text-black`}>Sign in to apply</Link><Link href="/auth/signup?next=%2Fwriter" className="ml-4 text-sm text-brand hover:underline">Create an account</Link></section>}
     {error && <p role="alert" className="mb-6 rounded-xl border border-red-400/25 bg-red-500/10 p-4 text-sm text-red-200">{error}</p>}
     {notice && <p role="status" className="mb-6 rounded-xl border border-brand/25 bg-brand/10 p-4 text-sm text-brand">{notice}</p>}
     {data && <>
