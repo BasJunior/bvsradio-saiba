@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { audit, can, editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial-server'
 import { publishedArticleSlug } from '@/lib/writer-workflow'
+import { r2Configured, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 
 const clean = (value: unknown, max = 5000) => String(value || '').trim().slice(0, max)
 async function json(response: Response) { const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || 'Editorial workflow request failed.'); return data }
@@ -16,7 +17,15 @@ export async function GET(request: Request) {
   const responses = await Promise.all(paths.map(path => fetch(editorialUrl(path), { headers: serviceHeaders, cache: 'no-store' })))
   if (responses.some(response => !response.ok)) return NextResponse.json({ error: 'Creator workflow tables are not ready.' }, { status: 503 })
   const [applications, articles, briefs, shows, episodes, profiles] = await Promise.all(responses.map(response => response.json()))
-  return NextResponse.json({ applications, articles, briefs, shows, episodes, profiles })
+  const articlesWithCovers = await Promise.all((articles as Array<Record<string, unknown>>).map(async article => {
+    const key = String(article.cover_art_path || '')
+    let coverPreviewUrl: string | null = null
+    if (r2Configured() && key.startsWith('writer-covers/') && safeR2Key(key)) {
+      try { coverPreviewUrl = await signedR2DownloadUrl(key, 900) } catch { /* cover preview is best effort */ }
+    }
+    return { ...article, coverPreviewUrl }
+  }))
+  return NextResponse.json({ applications, articles: articlesWithCovers, briefs, shows, episodes, profiles }, { headers: { 'Cache-Control': 'private, no-store' } })
 }
 
 export async function POST(request: Request) {
