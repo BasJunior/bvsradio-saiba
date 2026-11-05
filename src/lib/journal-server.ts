@@ -48,11 +48,15 @@ export async function publishedWriterProfile(username: string): Promise<{
   if (!/^[a-zA-Z0-9._-]{1,70}$/.test(username)) return null;
   const profile = (await rows<Profile>(`profiles?username=eq.${encodeURIComponent(username)}&select=id,username,display_name&limit=1`))[0];
   if (!profile?.id || !profile.username) return null;
-  const applications = await rows<{bio: string; beats: string[]}>(`writer_applications?user_id=eq.${profile.id}&status=eq.approved&select=bio,beats&limit=1`);
-  if (!applications.length) return null;
-  const stories = await rows<StoryRow>(`editorial_articles?author_id=eq.${profile.id}&status=eq.published&published_at=not.is.null&select=${select}&order=published_at.desc&limit=100`);
+  const [applications, stories] = await Promise.all([
+    rows<{bio: string; beats: string[]}>(`writer_applications?user_id=eq.${profile.id}&status=eq.approved&select=bio,beats&limit=1`),
+    rows<StoryRow>(`editorial_articles?author_id=eq.${profile.id}&status=eq.published&published_at=not.is.null&select=${select}&order=published_at.desc&limit=100`),
+  ]);
+  // Staff authors may publish without applying for a writer role. A public byline
+  // should never lead to a 404 when that author already has published articles.
+  if (!applications.length && !stories.length) return null;
   return { name: profile.display_name || profile.username, username: profile.username,
-    bio: applications[0].bio || "", beats: applications[0].beats || [],
+    bio: applications[0]?.bio || "", beats: applications[0]?.beats || [],
     articles: await withBylines(stories) };
 }
 export function publicStoryCover(key: string | null | undefined) {
