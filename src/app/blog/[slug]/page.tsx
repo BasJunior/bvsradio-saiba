@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { blogPosts } from "@/lib/blog";
+import { publishedJournalStory } from "@/lib/journal-server";
+import PublishedJournalArticle from "@/components/PublishedJournalArticle";
+
+export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
@@ -14,6 +18,8 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   const post = blogPosts.find((p) => p.slug === slug);
+  const published = await publishedJournalStory(slug);
+  if (published) return { title: `${published.title} | BVS Journal`, description: published.dek };
   if (!post) return { title: "Story not found | BVS Radio" };
   return {
     title: `${post.title} | BVS Journal`,
@@ -23,6 +29,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function BlogPostPage({ params }: PageProps) {
   const { slug } = await params;
+  const published = await publishedJournalStory(slug);
+  if (published) return <PublishedJournalArticle story={published} />;
   const post = blogPosts.find((p) => p.slug === slug);
   if (!post) return notFound();
 

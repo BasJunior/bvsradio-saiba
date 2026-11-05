@@ -300,6 +300,7 @@ export default function Navbar() {
   const serviceLinks = [
     { href: '/marketplace', label: 'Creator Marketplace', detail: 'Creator products and professional talent' },
     { href: '/shop', label: 'BVS Studio Services', detail: 'Official BVS mixing, mastering and production' },
+    { href: '/writer', label: 'Write for BVS', detail: 'Apply to contribute stories to the BVS Journal' },
   ]
 
   const showEditorial = Boolean(access?.editorial)
@@ -401,7 +402,7 @@ export default function Navbar() {
               <div className="bvs-header-directory-top"><div><strong>Explore BVS</strong><span>Music, people and tools for your next move.</span></div><button type="button" aria-label="Close navigation directory" onClick={() => { moreRef.current?.removeAttribute('open'); moreRef.current?.querySelector('summary')?.focus() }}>×</button></div>
               {[
                 { title: 'Listen & discover', links: [['Live Radio', '/radio', 'Drop into the live rotation'], ['Shows', '/shows', 'Programmes and conversations'], ['Trending', '/trending', 'Hear what’s picking up'], ['Community Feed', '/feed', 'Follow the scene']] },
-                { title: 'Create with BVS', links: [['Creator Studio', '/creator/studio', 'Your releases and creative work'], ['Creator Marketplace', '/marketplace', 'Find independent talent'], ['BVS Studio Services', '/shop', 'Mixing, mastering and production'], ['Premium', '/premium', 'Explore membership options']] },
+                { title: 'Create with BVS', links: [['Creator Studio', '/creator/studio', 'Your releases and creative work'], ['Write for BVS', '/writer', 'Pitch articles and track editorial reviews'], ['Creator Marketplace', '/marketplace', 'Find independent talent'], ['BVS Studio Services', '/shop', 'Mixing, mastering and production'], ['Premium', '/premium', 'Explore membership options']] },
                 { title: 'About & support', links: [['Our story', '/about', 'Rooted in Zimbabwe'], ['Newsletter', '/newsletter', 'Stay close to BVS'], ['FAQ', '/faq', 'Find a quick answer'], ['Contact', '/contact', 'Talk to the BVS team']] },
               ].map(group => <div key={group.title}><p>{group.title}</p>{group.links.map(([label, href, detail]) => <Link key={href} href={href} onClick={() => moreRef.current?.removeAttribute('open')}><span className="bvs-header-directory-link"><strong>{label}</strong><small>{detail}</small></span><span aria-hidden="true">↗</span></Link>)}</div>)}
             </div>
