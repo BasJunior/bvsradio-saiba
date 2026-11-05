@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { audit, can, editorialIdentity, editorialUrl, serviceHeaders } from '@/lib/editorial-server'
+import { publishedArticleSlug } from '@/lib/writer-workflow'
+import { r2Configured, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 
 const clean = (value: unknown, max = 5000) => String(value || '').trim().slice(0, max)
 async function json(response: Response) { const data = await response.json().catch(() => null); if (!response.ok) throw new Error(data?.message || 'Editorial workflow request failed.'); return data }
@@ -15,7 +17,15 @@ export async function GET(request: Request) {
   const responses = await Promise.all(paths.map(path => fetch(editorialUrl(path), { headers: serviceHeaders, cache: 'no-store' })))
   if (responses.some(response => !response.ok)) return NextResponse.json({ error: 'Creator workflow tables are not ready.' }, { status: 503 })
   const [applications, articles, briefs, shows, episodes, profiles] = await Promise.all(responses.map(response => response.json()))
-  return NextResponse.json({ applications, articles, briefs, shows, episodes, profiles })
+  const articlesWithCovers = await Promise.all((articles as Array<Record<string, unknown>>).map(async article => {
+    const key = String(article.cover_art_path || '')
+    let coverPreviewUrl: string | null = null
+    if (r2Configured() && key.startsWith('writer-covers/') && safeR2Key(key)) {
+      try { coverPreviewUrl = await signedR2DownloadUrl(key, 900) } catch { /* cover preview is best effort */ }
+    }
+    return { ...article, coverPreviewUrl }
+  }))
+  return NextResponse.json({ applications, articles: articlesWithCovers, briefs, shows, episodes, profiles }, { headers: { 'Cache-Control': 'private, no-store' } })
 }
 
 export async function POST(request: Request) {
@@ -40,11 +50,19 @@ export async function POST(request: Request) {
     if (!allowed[table].includes(status)) return NextResponse.json({ error: 'Invalid review status.' }, { status: 400 })
     if (table === 'research_briefs' && status === 'approved_for_drafting' && body.publish === true) return NextResponse.json({ error: 'Research briefs can never publish automatically.' }, { status: 400 })
     const payload: Record<string,unknown> = { status, reviewed_by: identity.user.id, reviewed_at: now, updated_at: now }
-    if (table !== 'research_briefs') payload.review_notes = clean(body.notes, 5000)
+    if (['writer_applications', 'show_creator_profiles', 'show_episodes'].includes(table)) payload.review_notes = clean(body.notes, 5000)
     if (['editorial_articles','show_episodes'].includes(table)) {
-      payload.editor_notes = clean(body.notes, 5000)
+      if (table === 'editorial_articles') payload.editor_notes = clean(body.notes, 5000)
       if (status === 'scheduled') { const scheduled = new Date(clean(body.scheduledFor, 80)); if (Number.isNaN(scheduled.getTime()) || scheduled <= new Date()) return NextResponse.json({ error: 'Choose a future schedule time.' }, { status: 400 }); payload.scheduled_for = scheduled.toISOString() }
-      if (status === 'published') payload.published_at = now
+      if (status === 'published') {
+        if (table === 'editorial_articles') {
+          const current = await json(await fetch(editorialUrl(`editorial_articles?id=eq.${encodeURIComponent(itemId)}&select=title,body,slug&limit=1`), { headers: serviceHeaders, cache: 'no-store' }))
+          if (!current[0] || clean(current[0].body, 60000).length < 120) return NextResponse.json({ error: 'Article content is incomplete.' }, { status: 400 })
+          payload.slug = clean(current[0].slug, 120) || publishedArticleSlug(clean(current[0].title, 180), itemId)
+        }
+        payload.published_at = now
+      }
+      if (table === 'editorial_articles' && status === 'approved') payload.published_at = null
     }
     const data = await json(await fetch(editorialUrl(`${table}?id=eq.${encodeURIComponent(itemId)}`), { method: 'PATCH', headers: { ...serviceHeaders, Prefer: 'return=representation' }, body: JSON.stringify(payload) }))
     await audit(identity.user.id, `${action}_${status}`, table, itemId, { notes: clean(body.notes, 500) }); return NextResponse.json({ item: data[0] })

@@ -115,6 +115,8 @@ export async function POST(request: Request) {
   const id = identity.user.id
   try {
     if (action === 'apply_writer') {
+      const existing = await creatorJson(await fetch(creatorUrl(`writer_applications?user_id=eq.${id}&select=status&limit=1`), { headers: creatorHeaders, cache: 'no-store' }))
+      if (existing[0] && !['rejected', 'paused'].includes(String(existing[0].status))) return NextResponse.json({ error: 'Your application is already submitted or approved. Open Writer Studio to review its status.' }, { status: 409 })
       const bio = clean(body.bio, 2000); if (bio.length < 40) return NextResponse.json({ error: 'Tell the editors a little more about your experience.' }, { status: 400 })
       const beats = Array.isArray(body.beats) ? body.beats.map(item => clean(item, 60)).filter(Boolean).slice(0, 8) : []
       const data = await creatorJson(await fetch(creatorUrl('writer_applications?on_conflict=user_id'), { method: 'POST', headers: { ...creatorHeaders, Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify({ user_id: id, bio, beats, portfolio_url: clean(body.portfolioUrl, 500) || null, status: 'submitted', updated_at: new Date().toISOString() }) }))
@@ -128,6 +130,7 @@ export async function POST(request: Request) {
       }
       const title = clean(body.title, 180); const articleId = clean(body.id, 80); const submit = body.submit === true
       if (!title) return NextResponse.json({ error: 'Article title is required.' }, { status: 400 })
+      if (submit && clean(body.body, 60000).length < 120) return NextResponse.json({ error: 'Article must have at least 120 characters to submit.' }, { status: 400 })
       const payload = { author_id: id, title, dek: clean(body.dek, 400), body: clean(body.body, 60000), sources: Array.isArray(body.sources) ? body.sources.slice(0, 20) : [], status: submit ? 'submitted' : 'draft', updated_at: new Date().toISOString() }
       const response = articleId
         ? await fetch(creatorUrl(`editorial_articles?id=eq.${encodeURIComponent(articleId)}&author_id=eq.${id}&status=in.(draft,changes_requested)`), { method: 'PATCH', headers: { ...creatorHeaders, Prefer: 'return=representation' }, body: JSON.stringify(payload) })

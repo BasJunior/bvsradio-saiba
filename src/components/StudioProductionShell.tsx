@@ -29,10 +29,12 @@ const creationLinks: WorkspaceLink[] = [
   { href: "/creator/studio/create/release", label: "New release", accent: "core" },
   { href: "/creator/studio/create/beat", label: "New beat", accent: "beats" },
   { href: "/creator/studio/create/service", label: "New service", accent: "marketplace" },
+  { href: "/writer", label: "Write an article", accent: "core" },
 ];
 const workspaceLinks: WorkspaceLink[] = [
   { href: "/creator/studio", label: "Home", accent: "core", match: "/creator/studio" },
   { href: "/creator/studio/manage", label: "Catalogue", accent: "core", startsWith: "/creator/studio/manage" },
+  { href: "/writer", label: "Writing", accent: "core", startsWith: "/writer" },
   { href: "/creator/studio/services", label: "Services", accent: "marketplace", startsWith: "/creator/studio/services" },
   { href: "/creator/studio/earnings", label: "Earnings", accent: "money", match: "/creator/studio/earnings" },
 ];

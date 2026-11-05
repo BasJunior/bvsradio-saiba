@@ -268,6 +268,8 @@ export default function CreatorStudio() {
         <section id="writer-work" data-studio-accent="insights" className="scroll-mt-24 pt-12">
           <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.22em]">Editorial writing</p>
           <h2 className="mt-2 text-3xl font-semibold">Stories and research</h2>
+          <p className="mt-3 text-sm text-text-secondary">Draft articles, attach cover artwork and follow submissions in the dedicated Writer Studio.</p>
+          <Link href="/writer" className="mt-4 inline-flex min-h-11 items-center rounded-full border border-brand/40 px-5 py-2 text-sm font-semibold text-brand">Open Writer Studio →</Link>
           <CreatorDropDown
             label="Writer application"
             accent="insights"

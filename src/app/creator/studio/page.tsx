@@ -363,7 +363,7 @@ export default function CreatorStudioHome() {
 
       {(writer || showCreator) && (
         <section className="mt-6 flex flex-wrap gap-2 text-sm">
-          {writer && <Link href="/creator/studio/manage#writer-work" data-studio-accent="insights" className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2">Writing tools</Link>}
+          {writer && <Link href="/writer" data-studio-accent="insights" className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2">Writing tools</Link>}
           {showCreator && <Link href="/creator/studio/manage#show-work" data-studio-accent="shows" className="bvs-studio-accent-button inline-flex min-h-11 items-center rounded-full border px-4 py-2">Show & broadcast tools</Link>}
         </section>
       )}

@@ -29,7 +29,7 @@ export default function Footer() {
       ['Community Feed', '/feed'], ['Live Radio', '/radio'],
     ] },
     { title: 'Create with BVS', links: [
-      ['Creator Studio', '/creator/studio'], ['Creator Marketplace', '/marketplace'],
+      ['Creator Studio', '/creator/studio'], ['Write for BVS', '/writer'], ['Creator Marketplace', '/marketplace'],
       ['BVS Studio Services', '/shop'], ['Premium', '/premium'],
     ] },
     { title: 'About & support', links: [
