@@ -74,7 +74,8 @@
     "test:listener-experience": "node scripts/listener-experience-tests.mjs",
     "test:premium-ai": "node scripts/premium-ai-tests.mjs",
     "test:ask-bvs": "node scripts/ask-bvs-response-tests.mjs",
-    "test:distribution-reports": "node --experimental-strip-types scripts/distribution-report-tests.mjs"
+    "test:distribution-reports": "node --experimental-strip-types scripts/distribution-report-tests.mjs",
+    "test:writer-workflow": "node --experimental-strip-types scripts/writer-workflow-tests.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1096.0",

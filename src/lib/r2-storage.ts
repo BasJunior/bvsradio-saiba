@@ -137,6 +137,17 @@ export async function isPublicR2MediaKey(key: string) {
   // Shared catalogue beat-series covers are intentionally public assets.
   if (key.startsWith("beats/shared/")) return true;
 
+  // Article covers stay private until an editor explicitly publishes the story.
+  if (key.startsWith("writer-covers/")) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+    if (!url || !service) return false;
+    const response = await fetch(`${url}/rest/v1/editorial_articles?status=eq.published&cover_art_path=eq.${encodeURIComponent(key)}&select=id&limit=1`, {
+      headers: { apikey: service, Authorization: `Bearer ${service}` }, cache: "no-store",
+    });
+    return response.ok && (await response.json() as unknown[]).length > 0;
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const service = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
   if (!url || !service) return false;
