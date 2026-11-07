@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import BvsStar from "@/components/branding/BvsStar";
 import CreatorGrowthPanel from '@/components/CreatorGrowthPanel';
 import { useMemo } from "react";
 import { useAccountJson } from "@/lib/use-account-json";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
+import { LibIcon, type LibIconName } from "@/components/app-vnext/LibraryVisuals";
 import { CreatorReleaseWorkCounts } from "@/components/CreatorReleaseProgress";
 import {
   buildCreatorReleaseProgress,
@@ -177,119 +177,154 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
     return counts;
   }, [workspace]);
 
-  if (loading) return <div className="mx-auto max-w-5xl px-4 pt-8"><div className="h-48 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
-
-  if (!signedIn) return (
-    <div className="bvs-native-studio mx-auto max-w-4xl px-4 pb-12 pt-8 sm:px-6">
-      <div className="bvs-culture-sticker"><BvsStar /> BVS Studio</div>
-      <h1 className="bvs-studio-title mt-5 max-w-3xl text-4xl font-semibold sm:text-6xl">Make something. Build from there.</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">One BVS identity can grow into the creator workspace you need — artist, producer, writer or show creator.</p>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy, accent]) => <div key={title} data-studio-accent={accent} className="bvs-studio-role rounded-[1.4rem] border p-5"><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-white/60">{copy}</p></div>)}</div>
-      <div className="mt-7 flex flex-wrap gap-2.5"><Link href={`/app/${surface}/join`} className="inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black transition hover:bg-brand-dark">Create account</Link><Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/studio`)}`} className="inline-flex min-h-11 items-center rounded-full border border-white/12 px-5 text-white/64">Sign in</Link></div>
+  if (loading) return (
+    <div className="bvs-app-page mx-auto max-w-5xl px-4 pt-6 sm:px-6" data-app-accent="studio" aria-busy="true">
+      <div className="bvs-app-skeleton h-3 w-24" /><div className="bvs-app-skeleton mt-2 h-10 w-44" />
+      <div className="mt-6 grid grid-cols-2 gap-2.5">{[0, 1, 2, 3].map((key) => <div key={key} className="bvs-app-skeleton h-20" />)}</div>
     </div>
   );
 
-  if (!isCreator) return (
-    <div className="bvs-native-studio mx-auto max-w-4xl px-4 pb-12 pt-8 sm:px-6">
-      <div className="bvs-culture-sticker"><BvsStar /> BVS Studio</div>
-      <h1 className="bvs-studio-title mt-5 max-w-3xl text-4xl font-semibold sm:text-6xl">Ready when you are.</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">Your listening account stays exactly as it is. Creator access adds the tools for the work you want to do.</p>
-      <div className="mt-8 grid gap-3 sm:grid-cols-2">{roles.map(([title, copy, accent]) => <div key={title} data-studio-accent={accent} className="bvs-studio-role rounded-[1.4rem] border p-5"><h2 className="text-lg font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-white/60">{copy}</p></div>)}</div>
-      <Link href={`/app/${surface}/account#creator-role`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-brand px-5 font-semibold text-black">Choose creator access</Link>
+  if (!signedIn || !isCreator) return (
+    <div className="bvs-app-page bvs-app-studio mx-auto max-w-4xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="studio">
+      <StudioHeader title="Studio" eyebrow="BVS Studio" />
+      <p className="mt-2 max-w-xl text-sm text-white/50">{signedIn ? "Your listening account stays exactly as it is. Creator access adds the tools for the work you want to do." : "One BVS identity can grow into the creator workspace you need."}</p>
+      <section className="bvs-app-shelf" aria-labelledby="studio-roles-heading">
+        <h2 id="studio-roles-heading" className="bvs-app-shelf-title">{signedIn ? "Choose your creator path" : "Make something. Build from there."}</h2>
+        <div className="mt-2">
+          {roles.map(([title, copy, accent]) => (
+            <div key={title} className="bvs-app-row flex items-center gap-3 py-3">
+              <StudioTile icon={roleIcon[title] || "sparkle"} accent={accent as StudioAccent} />
+              <div className="min-w-0 flex-1"><h3 className="text-[15px] font-semibold">{title}</h3><p className="mt-0.5 text-[13px] leading-5 text-white/50">{copy}</p></div>
+            </div>
+          ))}
+        </div>
+      </section>
+      <div className="mt-6 flex flex-wrap gap-2">
+        {signedIn ? <Link href={`/app/${surface}/account#creator-role`} className="bvs-app-pill bvs-app-pill--primary min-h-11 px-5">Choose creator access</Link> : <>
+          <Link href={`/app/${surface}/join`} className="bvs-app-pill bvs-app-pill--primary min-h-11 px-5">Create account</Link>
+          <Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/studio`)}`} className="bvs-app-pill min-h-11 px-5">Sign in</Link>
+        </>}
+      </div>
     </div>
   );
 
-  const work: Array<{ href: string; title: string; copy: string; accent: StudioAccent }> = [
-    ...(access?.artist ? [{ href: `/app/${surface}/studio/release`, title: "Releases", copy: "Upload music, follow review and see exactly what is live.", accent: "core" as const }] : []),
-    ...(access?.producer ? [{ href: `/app/${surface}/studio/beats`, title: "BeatStore", copy: "Upload beats and packs, then manage your producer catalogue.", accent: "beats" as const }] : []),
-    { href: `/app/${surface}/studio/insights`, title: "Insights", copy: "See listening activity and the signals that matter.", accent: "insights" },
-    { href: `/app/${surface}/studio/money`, title: "Money", copy: "Understand balances, settlements and what is payable.", accent: "money" },
-    { href: `/app/${surface}/studio/marketplace`, title: "Marketplace", copy: "Manage your creator profile, products and services.", accent: "marketplace" },
-    { href: `/app/${surface}/studio/orders`, title: "Orders", copy: "Track client work, customer orders and delivery.", accent: "marketplace" },
+  const work: Array<{ href: string; title: string; copy: string; accent: StudioAccent; icon: LibIconName }> = [
+    ...(access?.artist ? [{ href: `/app/${surface}/studio/release`, title: "Releases", copy: "Upload, review, live", accent: "core" as const, icon: "upload" as const }] : []),
+    ...(access?.producer ? [{ href: `/app/${surface}/studio/beats`, title: "BeatStore", copy: "Beats and packs", accent: "beats" as const, icon: "waveform" as const }] : []),
+    { href: `/app/${surface}/studio/insights`, title: "Insights", copy: "Listening signals", accent: "insights", icon: "chart" },
+    { href: `/app/${surface}/studio/money`, title: "Money", copy: "Balances, settlements", accent: "money", icon: "wallet" },
+    { href: `/app/${surface}/studio/marketplace`, title: "Marketplace", copy: "Profile, products", accent: "marketplace", icon: "briefcase" },
+    { href: `/app/${surface}/studio/orders`, title: "Orders", copy: "Client work, delivery", accent: "marketplace", icon: "check" },
   ];
+  const doneSteps = artistPath ? artistPath.steps.filter((step) => step.state === "done").length : 0;
+  const createHref = access?.artist ? `/app/${surface}/studio/release` : access?.producer ? `/app/${surface}/studio/beats` : null;
 
   return (
-    <div className="bvs-native-studio mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
-      <div className="bvs-culture-sticker"><BvsStar /> BVS Studio</div>
-      <div className="bvs-studio-intro mt-5 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-        <div>
-          <h1 className="bvs-studio-title max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Make your next move.</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/65 sm:text-base">Create. Publish. Build your next chapter.</p>
+    <div className="bvs-app-page bvs-app-studio mx-auto max-w-5xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="studio">
+      <StudioHeader title="Studio" eyebrow={premiumActive ? `BVS Studio · Premium ${premiumPlanLabel || "Active"}` : "BVS Studio"} createHref={createHref} />
+      <p className="mt-2 text-sm text-white/50">Create. Publish. Build your next chapter.</p>
+
+      <section className="mt-5" aria-labelledby="studio-workspace-heading">
+        <h2 id="studio-workspace-heading" className="sr-only">Workspace</h2>
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {work.map((item) => (
+            <Link key={item.href} href={item.href} className="bvs-app-card group flex items-center gap-3 p-2.5">
+              <StudioTile icon={item.icon} accent={item.accent} />
+              <span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.title}</span><span className="block truncate text-xs text-white/45">{item.copy}</span></span>
+            </Link>
+          ))}
         </div>
-        {premiumActive ? <span data-studio-accent="money" className="bvs-studio-accent-button shrink-0 rounded-full border px-4 py-2 text-xs font-semibold">Premium · {premiumPlanLabel || "Active"}</span> : null}
-      </div>
+      </section>
 
       {artistPath ? (
-        <section data-studio-accent="core" className="bvs-studio-release-path mt-8 rounded-[1.8rem] border p-5 sm:p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Current release</p>
-              <h2 className="mt-2 text-3xl font-semibold">From upload to audience.</h2>
-              <p className="mt-2 text-xs text-white/60">Following: {artistPath.focusTitle}</p>
+        <section className="bvs-app-shelf" aria-labelledby="studio-release-heading">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="bvs-app-eyebrow">Current release · {doneSteps}/{artistPath.steps.length}</p>
+              <h2 id="studio-release-heading" className="bvs-app-shelf-title mt-1">{artistPath.focusTitle}</h2>
             </div>
-            <Link href={artistPath.next.href} className="min-h-11 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black transition hover:bg-brand-dark">{artistPath.next.cta}</Link>
           </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="mt-3 h-1 w-full bg-white/[.08]" aria-hidden="true"><div className="h-full bg-[#a3dbff] transition-all" style={{ width: `${Math.round((doneSteps / artistPath.steps.length) * 100)}%` }} /></div>
+          <ol className="bvs-app-rail -mx-4 mt-3 px-4 sm:-mx-6 sm:px-6" aria-label="Release steps">
             {artistPath.steps.map((step, index) => (
-              <Link key={step.label} href={step.href} className={`rounded-[1.2rem] border p-3 transition ${step.state === "done" ? "border-brand/22 bg-brand/[.07]" : step.state === "current" ? "border-white/18 bg-white/[.055]" : "border-white/[.06] bg-black/10"}`}>
-                <div className="flex items-center justify-between gap-2"><span className="text-xs text-white/26">{index + 1}</span><span className="text-[10px] font-semibold uppercase tracking-[.12em] text-brand">{step.state === "done" ? "Done" : step.state === "current" ? "Now" : ""}</span></div>
-                <h3 className="mt-2 font-semibold">{step.label}</h3>
-                <p className="mt-1 text-xs leading-5 text-white/60">{step.note}</p>
-              </Link>
+              <li key={step.label} className="w-[8.25rem]">
+                <Link href={step.href} aria-current={step.state === "current" ? "step" : undefined} className={`flex h-full flex-col border p-3 transition ${step.state === "done" ? "border-[#a3dbff]/30 bg-[#a3dbff]/[.06]" : step.state === "current" ? "border-white/40 bg-white/[.06]" : "border-white/10"}`}>
+                  <span className="flex items-center justify-between text-[11px] text-white/40"><span className="tabular-nums">{index + 1}</span>{step.state === "done" ? <LibIcon name="check" size={14} className="text-[#a3dbff]" /> : step.state === "current" ? <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#c1ff52]">Now</span> : null}</span>
+                  <span className="mt-2 text-sm font-semibold">{step.label}</span>
+                  <span className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-white/50">{step.note}</span>
+                </Link>
+              </li>
             ))}
-          </div>
-
-          <div className="mt-4 rounded-[1.25rem] border border-white/[.07] bg-black/15 p-4">
-            <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Next</p>
-            <h3 className="mt-2 text-lg font-semibold">{artistPath.next.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-white/65">{artistPath.next.copy}</p>
+          </ol>
+          <div className="mt-3 border border-white/12 bg-[#121214] p-4">
+            <p className="bvs-app-eyebrow">Next</p>
+            <h3 className="mt-1 text-lg font-bold leading-snug">{artistPath.next.title}</h3>
+            <p className="mt-1.5 text-sm leading-6 text-white/60">{artistPath.next.copy}</p>
+            <Link href={artistPath.next.href} className="bvs-app-pill bvs-app-pill--primary mt-3">{artistPath.next.cta}<LibIcon name="chevron" size={15} /></Link>
           </div>
           {(workspace?.releases || []).length ? <div className="mt-4"><CreatorReleaseWorkCounts counts={releaseCounts} /></div> : null}
         </section>
       ) : null}
 
-      <CreatorGrowthPanel key={user?.id} owner={user?.id || ''} token={token} surface={surface} />
-      <section data-studio-accent="insights" className="mt-7 rounded-[1.7rem] border border-white/[.07] bg-white/[.022] p-5 sm:p-6">
+      <section className="bvs-app-shelf" aria-labelledby="studio-inbox-heading">
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Action inbox</p>
-            <h2 className="mt-2 text-2xl font-semibold">{workspaceLoading ? "Checking your work…" : tasks.length ? `${tasks.length} item${tasks.length === 1 ? "" : "s"} need attention` : "Nothing needs you right now"}</h2>
-          </div>
-          {workspace ? <span className="rounded-full border border-white/[.07] px-3 py-1.5 text-xs text-white/60">{(workspace.releases || []).length} releases · {(workspace.tracks || []).length} tracks</span> : null}
+          <h2 id="studio-inbox-heading" className="bvs-app-shelf-title">Action inbox</h2>
+          {workspace ? <span className="shrink-0 text-xs text-white/45">{(workspace.releases || []).length} releases · {(workspace.tracks || []).length} tracks</span> : null}
         </div>
+        <p className="mt-1 text-sm text-white/50">{workspaceLoading ? "Checking your work…" : tasks.length ? `${tasks.length} item${tasks.length === 1 ? "" : "s"} need attention` : "Nothing needs you right now"}</p>
         {workspaceError ? <p role="alert" className="mt-3 text-sm text-red-300">{workspaceError} <button type="button" onClick={reload} className="min-h-11 px-3 underline">Try again</button></p> : null}
-        <div className="mt-4 space-y-2">
+        <div className="mt-2">
           {tasks.map((task) => (
-            <Link key={task.id} href={task.href} className={`block rounded-[1.2rem] border p-4 transition hover:bg-white/[.035] ${task.tone === "urgent" ? "border-amber-300/18 bg-amber-300/[.035]" : "border-white/[.07] bg-black/10"}`}>
-              <p className="text-[10px] font-semibold uppercase tracking-[.15em] text-brand">{task.eyebrow}</p>
-              <div className="mt-1 flex items-center justify-between gap-3"><h3 className="font-semibold capitalize">{task.title}</h3><span className="text-white/46">→</span></div>
-              <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/60">{task.note}</p>
+            <Link key={task.id} href={task.href} className="bvs-app-row group flex items-center gap-3 py-3">
+              <span className={`grid h-10 w-10 shrink-0 place-items-center ${task.tone === "urgent" ? "bg-amber-300/[.12] text-amber-200" : "bg-white/[.06] text-white/60"}`}><LibIcon name={task.tone === "urgent" ? "sparkle" : "clock"} size={18} /></span>
+              <span className="min-w-0 flex-1">
+                <span className={`block text-[10px] font-semibold uppercase tracking-[.15em] ${task.tone === "urgent" ? "text-amber-200" : "text-white/45"}`}>{task.eyebrow}</span>
+                <span className="mt-0.5 block truncate text-[15px] font-semibold capitalize">{task.title}</span>
+                <span className="mt-0.5 line-clamp-2 block text-[13px] leading-5 text-white/50">{task.note}</span>
+              </span>
+              <LibIcon name="chevron" size={18} className="shrink-0 text-white/35 transition group-hover:text-white/70" />
             </Link>
           ))}
         </div>
-        {!workspaceLoading && !workspaceError && !tasks.length ? <p className="mt-4 text-sm text-white/60">You’re up to date. New review requests, delivery issues and assigned work will appear here.</p> : null}
+        {!workspaceLoading && !workspaceError && !tasks.length ? <div className="mt-3 flex items-center gap-3 border border-dashed border-white/15 p-4 text-sm text-white/55"><LibIcon name="check" size={20} className="shrink-0 text-[#a3dbff]" />You’re up to date. Review requests, delivery issues and assigned work will appear here.</div> : null}
       </section>
 
-      <section className="mt-9">
-        <p data-studio-accent="core" className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.2em]">Workspace</p>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {work.map((item, index) => (
-            <Link key={item.href} href={item.href} data-studio-accent={item.accent} className="bvs-studio-work-card bvs-studio-accent-card group rounded-[1.45rem] border border-white/[.07] bg-white/[.022] p-5 hover:-translate-y-0.5">
-              <div className="mb-5 flex items-center justify-between"><span className="bvs-studio-accent-label text-xs font-bold tabular-nums">0{index + 1}</span><span className="bvs-studio-accent-label text-xl" aria-hidden="true">↗</span></div>
-              <h2 className="text-xl font-semibold">{item.title}</h2>
-              <p className="mt-2 text-sm leading-6 text-white/60">{item.copy}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <CreatorGrowthPanel key={user?.id} owner={user?.id || ''} token={token} surface={surface} />
 
-      <div className="mt-8 flex flex-wrap gap-2 text-xs text-white/60">
-        <span className="rounded-full border border-white/[.07] px-3 py-1.5">Artist {access?.artist ? "✓" : ""}</span>
-        <span className="rounded-full border border-white/[.07] px-3 py-1.5">Producer {access?.producer ? "✓" : ""}</span>
-        <span className="rounded-full border border-white/[.07] px-3 py-1.5">Writer {access?.writer ? "✓" : ""}</span>
-        <span className="rounded-full border border-white/[.07] px-3 py-1.5">Shows {access?.showCreator ? "✓" : ""}</span>
+      <div className="mt-8 flex flex-wrap gap-2 text-xs" aria-label="Your creator access">
+        {([["Artist", access?.artist], ["Producer", access?.producer], ["Writer", access?.writer], ["Shows", access?.showCreator]] as const).map(([label, on]) => (
+          <span key={label} className={`inline-flex min-h-8 items-center gap-1.5 border px-3 ${on ? "border-[#a3dbff]/35 text-[#a3dbff]" : "border-white/10 text-white/40"}`}>{on ? <LibIcon name="check" size={13} /> : null}{label}</span>
+        ))}
+        {!access?.artist || !access?.producer || !access?.writer || !access?.showCreator ? <Link href={`/app/${surface}/account#creator-role`} className="inline-flex min-h-8 items-center px-2 font-semibold text-white/60 underline-offset-4 hover:underline">Add access</Link> : null}
       </div>
     </div>
+  );
+}
+
+const accentRgb: Record<StudioAccent, string> = {
+  core: "163 219 255",
+  beats: "193 167 255",
+  insights: "126 224 195",
+  marketplace: "193 255 82",
+  money: "255 210 92",
+  shows: "255 138 92",
+};
+
+const roleIcon: Record<string, LibIconName> = { Artist: "mic", Producer: "waveform", Writer: "pen", "Show creator": "radio" };
+
+function StudioTile({ icon, accent }: { icon: LibIconName; accent: StudioAccent }) {
+  const rgb = accentRgb[accent] || accentRgb.core;
+  return <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center" style={{ background: `rgb(${rgb} / .14)`, color: `rgb(${rgb})` }}><LibIcon name={icon} size={20} /></span>;
+}
+
+function StudioHeader({ title, eyebrow, createHref }: { title: string; eyebrow: string; createHref?: string | null }) {
+  return (
+    <header className="flex items-center justify-between gap-4">
+      <div className="min-w-0">
+        <p className="bvs-app-eyebrow truncate">{eyebrow}</p>
+        <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">{title}</h1>
+      </div>
+      {createHref ? <Link href={createHref} aria-label="Create something new" className="grid h-11 w-11 shrink-0 place-items-center bg-[#c1ff52] text-black transition active:scale-95"><LibIcon name="plus" /></Link> : null}
+    </header>
   );
 }
