@@ -123,6 +123,7 @@ export default function AppExploreClient({
     return value === "beats";
   };
   const discoveryHome = !needle && kind === "all" && mode === "fresh";
+  const beatStore = !needle && mode === "beats";
   const activeMode = exploreModes.find((item) => item.value === mode) || exploreModes[0];
 
   useEffect(() => {
@@ -164,11 +165,11 @@ export default function AppExploreClient({
   const nothing = !loading && !unavailable && !(show("music") && filtered.tracks.length) && !(show("artists") && filtered.artists.length) && !(show("producers") && filtered.producers.length) && !(show("beats") && filtered.beats.length);
 
   return (
-    <div className="bvs-app-page mx-auto max-w-5xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="discover">
+    <div className="bvs-app-page mx-auto max-w-5xl px-4 pb-12 pt-5 sm:px-6" data-app-accent={beatStore ? "beats" : "discover"}>
       <header className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="bvs-app-eyebrow">Find your next favourite</p>
-          <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Discover</h1>
+          <p className="bvs-app-eyebrow">{beatStore ? "Production to build on" : "Find your next favourite"}</p>
+          <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">{beatStore ? "BeatStore" : "Discover"}</h1>
         </div>
         <Link href={`/app/${surface}/trending`} aria-label="BVS Trending chart" className="bvs-app-icon-button border border-white/15"><LibIcon name="trending" /></Link>
       </header>
@@ -180,7 +181,7 @@ export default function AppExploreClient({
           value={query}
           maxLength={160}
           onChange={(e) => { setQuery(e.target.value); setLimit(24); }}
-          placeholder="Artists, songs, producers, beats"
+          placeholder={beatStore ? "Beats, producers, genres, moods" : "Artists, songs, producers, beats"}
           enterKeyHint="search"
         />
         {query ? <button type="button" aria-label="Clear search" onClick={() => { setQuery(""); setLimit(24); }} className="grid h-8 w-8 place-items-center text-white/50"><LibIcon name="close" size={16} /></button> : null}
@@ -189,7 +190,7 @@ export default function AppExploreClient({
       <div className="bvs-app-chipbar -mx-4 mt-3 px-4 py-2.5 sm:-mx-6 sm:px-6">
         <nav className="no-scrollbar flex gap-2 overflow-x-auto" aria-label="Discovery modes">
           {!query.trim() ? exploreModes.map((item) => (
-            <button key={item.value} type="button" onClick={() => { setMode(item.value); setKind("all"); setLimit(24); }} aria-pressed={mode === item.value && kind === "all"} className="bvs-app-chip">{item.label}</button>
+            <button key={item.value} type="button" onClick={() => { setMode(item.value); setKind("all"); setLimit(24); }} aria-pressed={mode === item.value && (kind === "all" || (item.value === "beats" && kind === "beats"))} className="bvs-app-chip">{item.label}</button>
           )) : (["all", "music", "artists", "producers", "beats"] as ExploreKind[]).map((value) => (
             <button key={value} type="button" onClick={() => { setKind(value); setLimit(24); }} aria-pressed={kind === value} className="bvs-app-chip capitalize">{value === "all" ? "Top results" : value}{value !== "all" ? <span className="opacity-60">{search.counts[countKeys[value as keyof typeof countKeys]] ?? ""}</span> : null}</button>
           ))}

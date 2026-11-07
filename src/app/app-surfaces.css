@@ -7,6 +7,7 @@
 .bvs-app-page[data-app-accent="feed"] { --bvs-app-accent: 193 167 255; }
 .bvs-app-page[data-app-accent="studio"] { --bvs-app-accent: 163 219 255; }
 .bvs-app-page[data-app-accent="lime"] { --bvs-app-accent: 193 255 82; }
+.bvs-app-page[data-app-accent="beats"] { --bvs-app-accent: 193 167 255; }
 
 .bvs-app-page [class*="rounded"] { border-radius: 0; }
 .bvs-app-page :is(h1, h2) { letter-spacing: -.035em; }
