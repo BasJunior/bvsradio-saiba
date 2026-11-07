@@ -129,7 +129,8 @@ struct BvsNowPlayingWidgetView: View {
             HStack(alignment: .top) {
                 BvsArtwork(image: entry.artwork).frame(width: 58, height: 58)
                 Spacer(minLength: 0)
-                Image(systemName: snapshot.isPlaying ? "pause.circle.fill" : "play.circle.fill")
+                // Tapping opens the app (or starts the station), so never show a pause glyph.
+                Image(systemName: snapshot.isPlaying ? "waveform.circle.fill" : "play.circle.fill")
                     .font(.system(size: 30))
                     .foregroundStyle(BvsWidgetStyle.lime)
             }
@@ -147,39 +148,58 @@ struct BvsNowPlayingWidgetView: View {
     }
 
     private var medium: some View {
-        HStack(spacing: 14) {
-            BvsArtwork(image: entry.artwork, corner: 14).frame(width: 120, height: 120)
-            VStack(alignment: .leading, spacing: 5) {
+        HStack(spacing: 12) {
+            // Square cover sized to the widget height, so narrow devices keep room for text.
+            BvsArtwork(image: entry.artwork, corner: 14)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: 120, maxHeight: .infinity)
+            VStack(alignment: .leading, spacing: 4) {
                 PlayStateBadge(isPlaying: snapshot.isPlaying)
                 Text(snapshot.title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(2)
+                    .minimumScaleFactor(0.85)
                 Text(snapshot.artist)
-                    .font(.system(size: 13))
+                    .font(.system(size: 12))
                     .foregroundStyle(.white.opacity(0.65))
                     .lineLimit(1)
                 Spacer(minLength: 0)
-                HStack(spacing: 8) {
-                    Link(destination: snapshot.isPlaying ? BvsWidgetStyle.openURL : BvsWidgetStyle.playURL) {
-                        Label(snapshot.isPlaying ? "Open" : "Listen", systemImage: snapshot.isPlaying ? "waveform" : "play.fill")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundStyle(.black)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(BvsWidgetStyle.lime, in: Capsule())
-                    }
-                    Link(destination: BvsWidgetStyle.libraryURL) {
-                        Label("Library", systemImage: "heart.fill")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(Color.white.opacity(0.14), in: Capsule())
-                    }
+                ViewThatFits(in: .horizontal) {
+                    mediumButtons(compactLibrary: false)
+                    mediumButtons(compactLibrary: true)
                 }
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func mediumButtons(compactLibrary: Bool) -> some View {
+        HStack(spacing: 6) {
+            Link(destination: tapURL) {
+                Label(snapshot.isPlaying ? "Open" : "Listen", systemImage: snapshot.isPlaying ? "waveform" : "play.fill")
+                    .font(.system(size: 12, weight: .bold))
+                    .lineLimit(1)
+                    .fixedSize()
+                    .foregroundStyle(.black)
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
+                    .background(BvsWidgetStyle.lime, in: Capsule())
+            }
+            Link(destination: BvsWidgetStyle.libraryURL) {
+                Group {
+                    if compactLibrary {
+                        Image(systemName: "heart.fill").accessibilityLabel("Library")
+                    } else {
+                        Label("Library", systemImage: "heart.fill").lineLimit(1).fixedSize()
+                    }
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, compactLibrary ? 9 : 11)
+                .padding(.vertical, 7)
+                .background(Color.white.opacity(0.14), in: Capsule())
+            }
         }
     }
 

@@ -639,15 +639,21 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
 
     // MARK: Home / Lock Screen widget (BVSWidget target)
 
-    /// bvsradio://play | open | library — sent by widget taps.
+    /// Widget taps. bvsradio://play starts the station and bvsradio://open just
+    /// brings the app forward. Other bvsradio:// paths (e.g. library) fall
+    /// through to Capacitor, whose appUrlOpen/getLaunchUrl routing navigates
+    /// client-side without reloading the player.
     private func handleBvsWidgetURL(_ url: URL) -> Bool {
         guard url.scheme?.lowercased() == "bvsradio" else { return false }
         switch url.host?.lowercased() {
-        case "play": emitNativeMediaCommand("start-station")
-        case "library": emitPushAction("/app/ios/library")
-        default: break // "open": bringing the app forward is enough.
+        case "play":
+            emitNativeMediaCommand("start-station")
+            return true
+        case "open":
+            return true
+        default:
+            return false
         }
-        return true
     }
 
     private func updateWidget(_ change: (inout BvsNowPlayingSnapshot) -> Void) {
@@ -666,9 +672,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         emitNativeMediaCommand(command)
     }
 
-    /// In-app navigation from App Intents reuses the acknowledged push-tap path.
+    /// In-app navigation from App Intents uses the same bvsradio:// deep-link
+    /// routing as widget taps (works on cold start through getLaunchUrl).
     func handleIntentNavigation(_ path: String) {
-        emitPushAction(path)
+        guard let url = URL(string: "bvsradio:/\(path)") else { return }
+        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
     }
 
     private func flushPendingPushAction() {

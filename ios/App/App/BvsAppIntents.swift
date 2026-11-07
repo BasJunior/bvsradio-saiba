@@ -53,7 +53,7 @@ struct OpenBvsLibraryIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
-        BvsIntentBridge.navigate("/app/ios/library")
+        BvsIntentBridge.navigate("/library")
         return .result()
     }
 }
