@@ -239,6 +239,14 @@ p, .text-base {
   border-radius: 3px;
 }
 
+/* Horizontal shelves and chip rows scroll without a visible bar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Player animation */
 @keyframes equalizer {
   0%, 100% { height: 4px; }

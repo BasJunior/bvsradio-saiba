@@ -42,6 +42,7 @@ const react={useState:initial=>[initial,()=>{}],useMemo:fn=>fn(),useEffect(){}};
 const imports={react,'react/jsx-runtime':{jsx,jsxs:jsx},'next/image':{default:'img'},'next/link':{default:'link'},
  '@/components/app-vnext/AppBootstrap':{appDestination:()=>'/app/ios/beat/'+id},
  '@/components/app-vnext/AppOfflineDownloads':{default:'downloads'},'@/components/app-vnext/AppPlaylists':{default:'playlists'},
+ '@/components/app-vnext/LibraryVisuals':{CoverMosaic:'cover',LikedCover:'liked-cover',LibIcon:'icon'},
  '@/components/app-vnext/AppSessionProvider':{useAppSession:()=>({signedIn:true,token:'token',user:{id:'member'}})},
  '@/components/StationPlayer':{useStationPlayer:()=>player},'@/lib/app-offline-native':{listOffline:async()=>[]},
  '@/lib/use-local-library':{useLocalLibrary:section=>section==='history'?[old]:[]},
