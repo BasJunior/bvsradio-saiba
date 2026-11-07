@@ -57,6 +57,21 @@ export default function StudioProductionShell({ children }: { children: ReactNod
     return () => observer.disconnect();
   }, [pathname]);
 
+  // Close the Create menu on an outside tap or Escape (a bare <details> stays open).
+  useEffect(() => {
+    const close = (event: Event) => {
+      const menu = document.querySelector<HTMLDetailsElement>(".bvs-studio-create-menu[open]");
+      if (!menu) return;
+      if (event instanceof KeyboardEvent ? event.key === "Escape" : !menu.contains(event.target as Node)) menu.open = false;
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close);
+    };
+  }, []);
+
   const links = useMemo(
     () => sectionLinks.filter((item) => availableSections.includes(item.id)),
     [availableSections],

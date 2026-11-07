@@ -54,6 +54,8 @@
   .bvs-studio-dashboard-header { flex-direction: column; gap: 1rem; }
   .bvs-studio-header-actions { flex-direction: row; flex-wrap: wrap; }
   .bvs-studio-workspace-links { flex-wrap: nowrap; overflow-x: auto; }
+  /* A scrolling row clips the absolute Create menu, so wrap it while the menu is open. */
+  .bvs-studio-workspace-links:has(.bvs-studio-create-menu[open]) { flex-wrap: wrap; overflow: visible; }
   .bvs-studio-work-heading { align-items: flex-start; padding: 1.25rem; }
   .bvs-studio-work-controls { padding-inline: 1.25rem; }
   .bvs-studio-work-controls label, .bvs-studio-work-controls input { width: 100%; }
