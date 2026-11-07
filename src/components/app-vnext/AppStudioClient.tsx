@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import CreatorGrowthPanel from '@/components/CreatorGrowthPanel';
-import { useMemo } from "react";
+import CreatorProfileArtwork from "@/components/CreatorProfileArtwork";
+import { useMemo, useState, type CSSProperties } from "react";
 import { useAccountJson } from "@/lib/use-account-json";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { LibIcon, type LibIconName } from "@/components/app-vnext/LibraryVisuals";
-import { CreatorReleaseWorkCounts } from "@/components/CreatorReleaseProgress";
 import {
   buildCreatorReleaseProgress,
   isCreatorReleaseActionRequired,
@@ -22,11 +23,12 @@ const roles = [
   ["Show creator", "Build programmes, episodes and live-show workflows.", "shows"],
 ];
 
-type WorkspaceTrack = { id: string; title: string; editorial_status?: string; editorial_notes?: string; in_rotation?: boolean; is_public?: boolean; release_id?: string | null };
-type WorkspaceRelease = { id: string; title: string; editorial_status?: string; editorial_notes?: string; is_public?: boolean; in_rotation?: boolean };
+type WorkspaceTrack = { id: string; title: string; editorial_status?: string; editorial_notes?: string; in_rotation?: boolean; is_public?: boolean; release_id?: string | null; artwork_url?: string | null; play_count?: number; like_count?: number };
+type WorkspaceRelease = { id: string; title: string; editorial_status?: string; editorial_notes?: string; is_public?: boolean; in_rotation?: boolean; artwork_url?: string | null };
 type DistributionJob = { id: string; release_id?: string | null; status?: string; updated_at?: string; created_at?: string };
 type WorkflowItem = { id: string; title?: string; topic?: string; status?: string; editor_notes?: string; review_notes?: string; request_type?: string; staff_notes?: string; message?: string };
 type Workspace = {
+  profile?: { role?: string; username?: string; display_name?: string; avatar_url?: string };
   tracks?: WorkspaceTrack[];
   releases?: WorkspaceRelease[];
   distributionJobs?: DistributionJob[];
@@ -46,6 +48,8 @@ const normalize = (status?: string) => String(status || "").toLowerCase();
 
 export default function AppStudioClient({ surface }: { surface: AppSurface }) {
   const { loading, signedIn, isCreator, access, premiumActive, premiumPlanLabel, token, user } = useAppSession();
+  const [workFilter, setWorkFilter] = useState<"all" | ReleaseWorkGroup>("all");
+  const [workQuery, setWorkQuery] = useState("");
   const { data: workspace, loading: workspaceLoading, error: workspaceError, reload } = useAccountJson<Workspace>({
     owner: user?.id || "", token, url: "/api/creator/workspace", enabled: isCreator,
     errorMessage: "Studio workspace is unavailable.",
@@ -177,6 +181,22 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
     return counts;
   }, [workspace]);
 
+  // Same release rows as the web Studio overview: derived from editorial and
+  // distribution state, with artwork falling back to the release's tracks.
+  const workRows = useMemo(() => {
+    const tracks = workspace?.tracks || [];
+    const releases = workspace?.releases || [];
+    const jobs = workspace?.distributionJobs || [];
+    const releaseArtwork = new Map<string, string>();
+    tracks.forEach((track) => { if (track.release_id && track.artwork_url) releaseArtwork.set(track.release_id, track.artwork_url); });
+    const items = [
+      ...releases.map((release) => ({ key: release.id, title: release.title || "Untitled release", artwork: release.artwork_url || releaseArtwork.get(release.id) || "/images/albums/lord-album.jpg", kind: "Release", href: `/app/${surface}/studio/release`, status: release.editorial_status, notes: release.editorial_notes, isPublic: release.is_public, inRotation: release.in_rotation, distribution: latestDistributionJob(jobs.filter((job) => job.release_id === release.id))?.status })),
+      ...tracks.filter((track) => !track.release_id).map((track) => ({ key: `track-${track.id}`, title: track.title || "Untitled track", artwork: track.artwork_url || "/images/albums/album-16-bit.jpg", kind: "Track", href: `/app/${surface}/studio/songs/${encodeURIComponent(track.id)}`, status: track.editorial_status, notes: track.editorial_notes, isPublic: track.is_public, inRotation: track.in_rotation, distribution: undefined })),
+    ];
+    return items.map((item) => ({ item, progress: buildCreatorReleaseProgress({ editorialStatus: item.status, editorialNotes: item.notes, isPublic: item.isPublic, inRotation: item.inRotation, distributionStatus: item.distribution }) }));
+  }, [surface, workspace]);
+  const totals = useMemo(() => ({ plays: (workspace?.tracks || []).reduce((sum, track) => sum + Number(track.play_count || 0), 0) }), [workspace]);
+
   if (loading) return (
     <div className="bvs-app-page mx-auto max-w-5xl px-4 pt-6 sm:px-6" data-app-accent="studio" aria-busy="true">
       <div className="bvs-app-skeleton h-3 w-24" /><div className="bvs-app-skeleton mt-2 h-10 w-44" />
@@ -208,96 +228,182 @@ export default function AppStudioClient({ surface }: { surface: AppSurface }) {
     </div>
   );
 
-  const work: Array<{ href: string; title: string; copy: string; accent: StudioAccent; icon: LibIconName }> = [
-    ...(access?.artist ? [{ href: `/app/${surface}/studio/release`, title: "Releases", copy: "Upload, review, live", accent: "core" as const, icon: "upload" as const }] : []),
-    ...(access?.producer ? [{ href: `/app/${surface}/studio/beats`, title: "BeatStore", copy: "Beats and packs", accent: "beats" as const, icon: "waveform" as const }] : []),
-    { href: `/app/${surface}/studio/insights`, title: "Insights", copy: "Listening signals", accent: "insights", icon: "chart" },
-    { href: `/app/${surface}/studio/money`, title: "Money", copy: "Balances, settlements", accent: "money", icon: "wallet" },
-    { href: `/app/${surface}/studio/marketplace`, title: "Marketplace", copy: "Profile, products", accent: "marketplace", icon: "briefcase" },
-    { href: `/app/${surface}/studio/orders`, title: "Orders", copy: "Client work, delivery", accent: "marketplace", icon: "check" },
+  const displayName = workspace?.profile?.display_name || user?.email?.split("@")[0] || "creator";
+  const avatar = workspace?.profile?.avatar_url || undefined;
+  const createActions = [
+    access?.artist && { href: `/app/${surface}/studio/release`, label: "Release music", copy: "Submit a single, EP or album. Keep review and delivery in one place.", cta: "Start a release", image: "/images/hero-studio.jpg", accent: "core" as const },
+    access?.producer && { href: `/app/${surface}/studio/beats`, label: "Sell a beat", copy: "Upload your audio, set licence prices and build your BeatStore catalogue.", cta: "Post a beat", image: "/images/beat-covers/preview-v2.png", accent: "beats" as const },
+    { href: `/app/${surface}/studio/marketplace`, label: "Offer a service", copy: "Publish recording, production or engineering services in your storefront.", cta: "Add a service", image: "/images/editorial/audio-engineering-work.webp", accent: "marketplace" as const },
+  ].filter(Boolean) as Array<{ href: string; label: string; copy: string; cta: string; image: string; accent: "core" | "beats" | "marketplace" }>;
+  const manageLinks: Array<{ href: string; label: string; detail: string; accent: StudioAccent }> = [
+    ...(access?.artist ? [{ href: `/app/${surface}/studio/release`, label: "Catalogue & status", detail: `${workRows.length} item${workRows.length === 1 ? "" : "s"}`, accent: "core" as const }] : []),
+    ...(access?.producer ? [{ href: `/app/${surface}/studio/beats`, label: "Your BeatStore", detail: "Beats, pricing & review", accent: "beats" as const }] : []),
+    { href: `/app/${surface}/studio/insights`, label: "Insights", detail: "Listening signals", accent: "insights" },
+    { href: `/app/${surface}/studio/money`, label: "Money", detail: "Wallet & earnings", accent: "money" },
+    { href: `/app/${surface}/studio/orders`, label: "Orders", detail: "Client work", accent: "marketplace" },
+    { href: `/app/${surface}/studio/marketplace`, label: "Profile & storefront", detail: "Your public presence", accent: "marketplace" },
   ];
-  const doneSteps = artistPath ? artistPath.steps.filter((step) => step.state === "done").length : 0;
-  const createHref = access?.artist ? `/app/${surface}/studio/release` : access?.producer ? `/app/${surface}/studio/beats` : null;
+  const visibleWork = workRows
+    .filter((row) => (workFilter === "all" || row.progress.group === workFilter) && row.item.title.toLowerCase().includes(workQuery.trim().toLowerCase()))
+    .sort((a, b) => ["action_required", "in_progress", "history"].indexOf(a.progress.group) - ["action_required", "in_progress", "history"].indexOf(b.progress.group))
+    .slice(0, 8);
 
   return (
-    <div className="bvs-app-page bvs-app-studio mx-auto max-w-5xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="studio">
-      <StudioHeader title="Studio" eyebrow={premiumActive ? `BVS Studio · Premium ${premiumPlanLabel || "Active"}` : "BVS Studio"} createHref={createHref} />
-      <p className="mt-2 text-sm text-white/50">Create. Publish. Build your next chapter.</p>
-
-      <section className="mt-5" aria-labelledby="studio-workspace-heading">
-        <h2 id="studio-workspace-heading" className="sr-only">Workspace</h2>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-          {work.map((item) => (
-            <Link key={item.href} href={item.href} className="bvs-app-card group flex items-center gap-3 p-2.5">
-              <StudioTile icon={item.icon} accent={item.accent} />
-              <span className="min-w-0"><span className="block truncate text-sm font-semibold">{item.title}</span><span className="block truncate text-xs text-white/45">{item.copy}</span></span>
-            </Link>
-          ))}
+    <main
+      className="bvs-studio-home bvs-app-studio-web mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6"
+      style={{ "--studio-accent": "#c1ff52", "--studio-glow": "193,255,82", ...(avatar ? { "--studio-profile-image": `url("${avatar.replaceAll('"', "")}")` } : {}) } as CSSProperties}
+    >
+      <header className="bvs-studio-dashboard-header">
+        <div className="bvs-studio-header-copy">
+          <p className="text-xs font-semibold uppercase tracking-[.22em] text-brand">Your workspace{premiumActive ? ` · Premium ${premiumPlanLabel || "Active"}` : ""}</p>
+          <h1 className="bvs-directory-title mt-2">Studio overview</h1>
+          <p className="mt-3 text-lg font-semibold">Make your next move, {displayName}.</p>
         </div>
-      </section>
-
-      {artistPath ? (
-        <section className="bvs-app-shelf" aria-labelledby="studio-release-heading">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="bvs-app-eyebrow">Current release · {doneSteps}/{artistPath.steps.length}</p>
-              <h2 id="studio-release-heading" className="bvs-app-shelf-title mt-1">{artistPath.focusTitle}</h2>
+        <div className="bvs-studio-header-actions">
+          <div className="bvs-studio-identity">
+            <div className="bvs-studio-identity-cover">
+              <div className="bvs-studio-avatar"><CreatorProfileArtwork src={avatar} name={displayName} priority /></div>
+              <div>
+                <span className="bvs-studio-identity-name">{displayName}</span>
+                <Link href={`/app/${surface}/account`}>Edit profile ↗</Link>
+              </div>
             </div>
           </div>
-          <div className="mt-3 h-1 w-full bg-white/[.08]" aria-hidden="true"><div className="h-full bg-[#a3dbff] transition-all" style={{ width: `${Math.round((doneSteps / artistPath.steps.length) * 100)}%` }} /></div>
-          <ol className="bvs-app-rail -mx-4 mt-3 px-4 sm:-mx-6 sm:px-6" aria-label="Release steps">
-            {artistPath.steps.map((step, index) => (
-              <li key={step.label} className="w-[8.25rem]">
-                <Link href={step.href} aria-current={step.state === "current" ? "step" : undefined} className={`flex h-full flex-col border p-3 transition ${step.state === "done" ? "border-[#a3dbff]/30 bg-[#a3dbff]/[.06]" : step.state === "current" ? "border-white/40 bg-white/[.06]" : "border-white/10"}`}>
-                  <span className="flex items-center justify-between text-[11px] text-white/40"><span className="tabular-nums">{index + 1}</span>{step.state === "done" ? <LibIcon name="check" size={14} className="text-[#a3dbff]" /> : step.state === "current" ? <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-[#c1ff52]">Now</span> : null}</span>
-                  <span className="mt-2 text-sm font-semibold">{step.label}</span>
-                  <span className="mt-0.5 line-clamp-2 text-[11px] leading-4 text-white/50">{step.note}</span>
-                </Link>
+        </div>
+      </header>
+
+      {artistPath ? (
+        <section data-studio-accent="core" className="mt-6 border border-[#7ba9d0]/20 bg-[#7ba9d0]/[.045] p-5" aria-label="Artist activation">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <p className="bvs-studio-accent-label text-xs font-semibold uppercase tracking-[.18em]">Release overview · {artistPath.focusTitle}</p>
+              <h2 className="mt-2 text-2xl font-semibold">{artistPath.next.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-text-secondary">{artistPath.next.copy}</p>
+            </div>
+            <Link href={artistPath.next.href} className="bvs-studio-accent-button inline-flex min-h-11 items-center border px-5 py-2.5 text-sm font-semibold">{artistPath.next.cta}</Link>
+          </div>
+          <ol className="bvs-app-studio-steps mt-4" aria-label="Release steps">
+            {artistPath.steps.map((step) => (
+              <li key={step.label} data-step-state={step.state}>
+                <Link href={step.href}><span>{step.label}</span><small>{step.note}</small></Link>
               </li>
             ))}
           </ol>
-          <div className="mt-3 border border-white/12 bg-[#121214] p-4">
-            <p className="bvs-app-eyebrow">Next</p>
-            <h3 className="mt-1 text-lg font-bold leading-snug">{artistPath.next.title}</h3>
-            <p className="mt-1.5 text-sm leading-6 text-white/60">{artistPath.next.copy}</p>
-            <Link href={artistPath.next.href} className="bvs-app-pill bvs-app-pill--primary mt-3">{artistPath.next.cta}<LibIcon name="chevron" size={15} /></Link>
+          <div className="mt-4 grid grid-cols-3 gap-0 border-t border-white/10 pt-4">
+            <ProofMetric label="Catalogue" value={workRows.length} />
+            <ProofMetric label="Needs you" value={releaseCounts.action_required} />
+            <ProofMetric label="Total plays" value={totals.plays} />
           </div>
-          {(workspace?.releases || []).length ? <div className="mt-4"><CreatorReleaseWorkCounts counts={releaseCounts} /></div> : null}
         </section>
       ) : null}
 
-      <section className="bvs-app-shelf" aria-labelledby="studio-inbox-heading">
-        <div className="flex items-center justify-between gap-3">
-          <h2 id="studio-inbox-heading" className="bvs-app-shelf-title">Action inbox</h2>
-          {workspace ? <span className="shrink-0 text-xs text-white/45">{(workspace.releases || []).length} releases · {(workspace.tracks || []).length} tracks</span> : null}
+      {tasks.length || workspaceError ? (
+        <section className="bvs-studio-work" aria-labelledby="studio-inbox-heading">
+          <div className="bvs-studio-work-heading"><div><p className="bvs-studio-eyebrow">Action inbox</p><h2 id="studio-inbox-heading">{tasks.length} item{tasks.length === 1 ? "" : "s"} need attention</h2></div></div>
+          {workspaceError ? <p role="alert" className="px-5 pb-4 text-sm text-red-300">{workspaceError} <button type="button" onClick={reload} className="min-h-11 px-3 underline">Try again</button></p> : null}
+          <div className="bvs-studio-work-list">
+            {tasks.map((task) => (
+              <Link key={task.id} href={task.href} className="bvs-studio-work-row bvs-app-task-row">
+                <div className="bvs-studio-work-art grid place-items-center text-amber-200"><LibIcon name="sparkle" size={20} /></div>
+                <div><span className="bvs-studio-work-kind">{task.eyebrow}</span><h3 className="capitalize">{task.title}</h3><p>{task.note}</p></div>
+                <span aria-hidden="true">↗</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="bvs-studio-work" aria-labelledby="studio-work-heading">
+        <div className="bvs-studio-work-heading"><div><p className="bvs-studio-eyebrow">Keep things moving</p><h2 id="studio-work-heading">Projects & releases</h2></div><Link href={`/app/${surface}/studio/release`}>Manage releases ↗</Link></div>
+        <div className="bvs-studio-work-controls">
+          <div role="group" aria-label="Filter release work">
+            {([["all", "All work", workRows.length], ["action_required", "Needs you", releaseCounts.action_required], ["in_progress", "In progress", releaseCounts.in_progress], ["history", "History", releaseCounts.history]] as const).map(([value, label, count]) => (
+              <button type="button" key={value} aria-pressed={workFilter === value} onClick={() => setWorkFilter(value)}>{label} <span>{count}</span></button>
+            ))}
+          </div>
+          <label><span className="sr-only">Search your releases</span><input type="search" value={workQuery} onChange={(event) => setWorkQuery(event.target.value)} placeholder="Find a release or track" /></label>
         </div>
-        <p className="mt-1 text-sm text-white/50">{workspaceLoading ? "Checking your work…" : tasks.length ? `${tasks.length} item${tasks.length === 1 ? "" : "s"} need attention` : "Nothing needs you right now"}</p>
-        {workspaceError ? <p role="alert" className="mt-3 text-sm text-red-300">{workspaceError} <button type="button" onClick={reload} className="min-h-11 px-3 underline">Try again</button></p> : null}
-        <div className="mt-2">
-          {tasks.map((task) => (
-            <Link key={task.id} href={task.href} className="bvs-app-row group flex items-center gap-3 py-3">
-              <span className={`grid h-10 w-10 shrink-0 place-items-center ${task.tone === "urgent" ? "bg-amber-300/[.12] text-amber-200" : "bg-white/[.06] text-white/60"}`}><LibIcon name={task.tone === "urgent" ? "sparkle" : "clock"} size={18} /></span>
-              <span className="min-w-0 flex-1">
-                <span className={`block text-[10px] font-semibold uppercase tracking-[.15em] ${task.tone === "urgent" ? "text-amber-200" : "text-white/45"}`}>{task.eyebrow}</span>
-                <span className="mt-0.5 block truncate text-[15px] font-semibold capitalize">{task.title}</span>
-                <span className="mt-0.5 line-clamp-2 block text-[13px] leading-5 text-white/50">{task.note}</span>
-              </span>
-              <LibIcon name="chevron" size={18} className="shrink-0 text-white/35 transition group-hover:text-white/70" />
+        <div className="bvs-studio-work-list">
+          {workspaceLoading && !workspace ? <div className="bvs-studio-work-empty"><p>Checking your work…</p></div> : null}
+          {visibleWork.map(({ item, progress }) => (
+            <Link className="bvs-studio-work-row" key={item.key} href={item.href}>
+              <div className="bvs-studio-work-art"><CreatorProfileArtwork src={item.artwork} name={item.title} /></div>
+              <div><span className="bvs-studio-work-kind">{item.kind}</span><h3>{item.title}</h3><p>{progress.nextStep}</p></div>
+              <div className="bvs-studio-work-state"><span data-work-state={progress.group}>{progress.statusLabel}</span><small>Next: {progress.nextOwner}</small></div>
+              <span aria-hidden="true">↗</span>
             </Link>
           ))}
+          {workspace && !visibleWork.length ? (
+            <div className="bvs-studio-work-empty">
+              <h3>{workRows.length ? "Nothing in this view" : "Your next release starts here"}</h3>
+              <p>{workRows.length ? "Try a different status or search." : "Create a release to track its review, requested changes and publication here."}</p>
+              {workRows.length ? <button type="button" onClick={() => { setWorkFilter("all"); setWorkQuery(""); }}>Show all work</button> : access?.artist ? <Link href={`/app/${surface}/studio/release`}>Start a release ↗</Link> : null}
+            </div>
+          ) : null}
         </div>
-        {!workspaceLoading && !workspaceError && !tasks.length ? <div className="mt-3 flex items-center gap-3 border border-dashed border-white/15 p-4 text-sm text-white/55"><LibIcon name="check" size={20} className="shrink-0 text-[#a3dbff]" />You’re up to date. Review requests, delivery issues and assigned work will appear here.</div> : null}
       </section>
 
-      <CreatorGrowthPanel key={user?.id} owner={user?.id || ''} token={token} surface={surface} />
+      <section className="bvs-studio-create-grid mt-8 grid gap-3 md:grid-cols-3" aria-label="Create in BVS">
+        {createActions.map((action, index) => (
+          <Link key={action.href} href={action.href} data-studio-accent={action.accent} className="bvs-studio-accent-card group flex min-h-52 flex-col justify-between border border-white/10 bg-white/[.025] p-6">
+            <div className="bvs-studio-create-card-content">
+              <div className="bvs-studio-create-card-art" aria-hidden="true"><Image src={action.image} alt="" fill sizes="(max-width: 639px) 50vw, 240px" /></div>
+              <span className="bvs-studio-accent-button inline-flex h-8 min-w-8 items-center justify-center border px-2 text-xs font-semibold">{index + 1}</span>
+              <h2 className="mt-5 text-2xl font-semibold">{action.label}</h2>
+              <p className="mt-2 text-sm leading-6 text-text-secondary">{action.copy}</p>
+            </div>
+            <span className="bvs-studio-accent-arrow mt-6 inline-flex min-h-11 items-center text-sm font-semibold">{action.cta} →</span>
+          </Link>
+        ))}
+      </section>
 
-      <div className="mt-8 flex flex-wrap gap-2 text-xs" aria-label="Your creator access">
+      <section className="bvs-studio-business mt-10 border border-white/10 bg-black/20 p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div><p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Your work</p><h2 className="mt-2 text-xl font-semibold">Your business, connected</h2></div>
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {manageLinks.map((link) => <ManageLink key={link.href} {...link} />)}
+        </div>
+        {(releaseCounts.action_required > 0 || releaseCounts.in_progress > 0) ? (
+          <div className="mt-5 flex flex-wrap gap-2 text-xs text-text-secondary">
+            {releaseCounts.action_required > 0 ? <span className="border border-amber-300/25 bg-amber-300/[.05] px-3 py-1.5 text-amber-100">{releaseCounts.action_required} need your action</span> : null}
+            {releaseCounts.in_progress > 0 ? <span className="border border-sky-300/20 bg-sky-300/[.04] px-3 py-1.5 text-sky-100">{releaseCounts.in_progress} in progress — no action now</span> : null}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="bvs-studio-support mt-6" aria-labelledby="studio-support-heading">
+        <div><p className="bvs-studio-eyebrow">Studio support</p><h2 id="studio-support-heading">Need help from BVS?</h2><p>Ask about an existing submission, review note, account issue, or Studio workflow.</p></div>
+        <div className="bvs-studio-support-actions"><Link href={`/app/${surface}/support?topic=music`}>Editorial request ↗</Link><Link href={`/app/${surface}/support`}>Start support conversation ↗</Link></div>
+      </section>
+
+      <details className="bvs-studio-growth-drawer"><summary><span><strong>Grow with BVS</strong><small>Goals, promotion, rewards &amp; badges</small></span><span aria-hidden="true">＋</span></summary><CreatorGrowthPanel key={user?.id} owner={user?.id || ""} token={token} surface={surface} /></details>
+
+      <div className="mt-6 flex flex-wrap gap-2 text-xs" aria-label="Your creator access">
         {([["Artist", access?.artist], ["Producer", access?.producer], ["Writer", access?.writer], ["Shows", access?.showCreator]] as const).map(([label, on]) => (
-          <span key={label} className={`inline-flex min-h-8 items-center gap-1.5 border px-3 ${on ? "border-[#a3dbff]/35 text-[#a3dbff]" : "border-white/10 text-white/40"}`}>{on ? <LibIcon name="check" size={13} /> : null}{label}</span>
+          <span key={label} className={`inline-flex min-h-8 items-center gap-1.5 border px-3 ${on ? "border-[#a7cbea]/35 text-[#a7cbea]" : "border-white/10 text-white/40"}`}>{on ? <LibIcon name="check" size={13} /> : null}{label}</span>
         ))}
         {!access?.artist || !access?.producer || !access?.writer || !access?.showCreator ? <Link href={`/app/${surface}/account#creator-role`} className="inline-flex min-h-8 items-center px-2 font-semibold text-white/60 underline-offset-4 hover:underline">Add access</Link> : null}
       </div>
+    </main>
+  );
+}
+
+function ProofMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="border-r border-white/10 px-3 last:border-r-0 first:pl-0">
+      <p className="text-[10px] uppercase tracking-[.1em] text-text-secondary">{label}</p>
+      <p data-studio-accent="core" className="bvs-studio-accent-label mt-1 text-xl font-semibold tabular-nums">{value.toLocaleString()}</p>
     </div>
+  );
+}
+
+function ManageLink({ href, label, detail, accent }: { href: string; label: string; detail: string; accent: StudioAccent }) {
+  return (
+    <Link href={href} data-studio-accent={accent} className="bvs-studio-accent-card flex min-h-[4.5rem] flex-col justify-center border border-white/10 p-4">
+      <p className="font-semibold">{label}</p>
+      <p className="mt-1 text-xs text-text-secondary">{detail}</p>
+    </Link>
   );
 }
 

@@ -123,3 +123,19 @@
 .bvs-app-account > :is(form, section) p.text-brand { color: rgb(var(--bvs-app-accent)); }
 .bvs-app-account :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) { border-color: rgb(255 255 255 / .14); background: rgb(255 255 255 / .05); }
 .bvs-app-account :is(input, select, textarea):focus { border-color: rgb(var(--bvs-app-accent) / .6); outline: none; }
+
+/* App Studio mirrors the web Studio overview; only phone-specific touches here. */
+.bvs-app-studio-web { background: #111214; }
+.bvs-app-studio-web h1 { font-size: clamp(2rem, 8vw, 2.6rem); line-height: 1.05; text-transform: none; }
+.bvs-app-studio-web :is(.bvs-studio-work, .bvs-studio-business, .bvs-studio-growth-drawer, section) { border-radius: 0; }
+@media (max-width: 767px) { .bvs-app-studio-web .bvs-studio-dashboard-header { display: flex; flex-direction: column; } }
+.bvs-app-studio-web .bvs-app-task-row { grid-template-columns: 44px minmax(0, 1fr) 20px; }
+.bvs-app-studio-steps { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; padding-bottom: .25rem; }
+.bvs-app-studio-steps::-webkit-scrollbar { display: none; }
+.bvs-app-studio-steps li { flex: 0 0 auto; }
+.bvs-app-studio-steps a { display: flex; min-height: 44px; flex-direction: column; justify-content: center; border: 1px solid rgb(255 255 255 / .1); padding: .45rem .7rem; }
+.bvs-app-studio-steps span { font-size: .75rem; font-weight: 600; }
+.bvs-app-studio-steps small { font-size: .62rem; color: rgb(255 255 255 / .5); white-space: nowrap; }
+.bvs-app-studio-steps [data-step-state="done"] a { border-color: #a7cbea55; background: #7ba9d012; }
+.bvs-app-studio-steps [data-step-state="done"] span::after { content: " ✓"; color: #a7cbea; }
+.bvs-app-studio-steps [data-step-state="current"] a { border-color: #c1ff52; }

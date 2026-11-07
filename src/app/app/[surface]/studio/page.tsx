@@ -1,3 +1,4 @@
+import "@/app/creator/studio/studio-workspace.css";
 import { notFound } from "next/navigation";
 import AppStudioClient from "@/components/app-vnext/AppStudioClient";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
