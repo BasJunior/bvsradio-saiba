@@ -91,6 +91,8 @@ async function updateGrowthMember(url: string, key: string, userId: string, even
 }
 
 export async function POST(request: Request) {
+  // Temporary incident mitigation: avoid database writes while Supabase recovers.
+  if (process.env.BVS_PAUSE_ANALYTICS === "true") return new NextResponse(null, { status: 204 })
   try {
     const body = await request.json() as {
       event?: string

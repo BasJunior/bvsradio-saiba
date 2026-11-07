@@ -17,10 +17,6 @@
     {
       "path": "/api/cron/payout-messages",
       "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/newsletter",
-      "schedule": "* * * * *"
     }
   ]
 }
