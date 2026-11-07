@@ -15,7 +15,9 @@
 .library-collection-toolbar button[aria-pressed="true"] { color: #c1a7ff; border-color: #c1a7ff; }
 .library-collection-toolbar .library-play-all { background: #c1ff52; color: #080808; font-weight: 700; }
 .library-collection-count { width: 100%; font-size: .75rem; color: rgb(255 255 255 / .5); }
-.bvs-web-library .library-item-list { display: grid; gap: .5rem; }
+.bvs-web-library .library-item-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: .5rem; }
+/* Long titles must truncate, not stretch the list past the screen. */
+.bvs-web-library .library-collection-item { min-width: 0; max-width: 100%; }
 .bvs-web-library .library-collection-item { background: #080808; padding: .8rem; }
 .bvs-web-library .library-collection-item:hover { border-color: rgb(193 167 255 / .5); }
 .bvs-web-library .library-item-list--grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
