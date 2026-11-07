@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveAppSwipeIntent } from "@/lib/app-gesture-intent";
 import Link from "next/link";
+import { LibIcon } from "@/components/app-vnext/LibraryVisuals";
 import { useRouter } from "next/navigation";
 import BvsObjectCard from "@/components/flow/BvsObjectCard";
 import LibraryAction from "@/components/LibraryAction";
@@ -487,6 +488,36 @@ export default function BvsFeedList({
 
       <FeedComposer key={session.user?.id || "guest"} surface={surface} enabled={participationEnabled} initialAttachment={initialAttachment} onCreated={addPost} />
 
+      {surface ? (
+        <>
+          <div className="bvs-app-chipbar -mx-4 mt-4 px-4 py-2 sm:-mx-6 sm:px-6" aria-label="Feed controls">
+            <div className="flex items-center gap-1">
+              <nav className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto" aria-label="Feed lanes">
+                {availableLanes.map((item) => (
+                  <button key={item.id} type="button" onClick={() => setLane(item.id)} aria-pressed={lane === item.id} data-feed-lane={item.id} className="bvs-feed-lane bvs-app-chip">{item.label}</button>
+                ))}
+              </nav>
+              <button type="button" disabled={refreshing} onClick={() => void refreshFeed()} className="bvs-app-icon-button disabled:opacity-50" aria-label="Refresh feed"><span className={refreshing ? "animate-spin motion-reduce:animate-none" : ""}><LibIcon name="repost" size={19} /></span></button>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center gap-3" data-feed-app-context={accountLabel.toLowerCase().replace(/\s+/g, "-")}>
+            <div className="min-w-0 flex-1">
+              <p className="bvs-app-eyebrow truncate">{laneContext.eyebrow}{premiumBadge ? ` · ${premiumBadge}` : ""}</p>
+              <p className="mt-0.5 truncate text-[13px] text-white/60">{laneContext.title}</p>
+            </div>
+            <Link href={laneContext.actionHref} className="bvs-app-pill min-h-9 shrink-0 px-3.5 text-xs">{laneContext.actionLabel}</Link>
+          </div>
+          <details className="bvs-feed-app-refine group mt-2" data-feed-refine="true">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-[13px] text-white/55 [&::-webkit-details-marker]:hidden"><LibIcon name="sliders" size={17} /><span className="min-w-0 flex-1 truncate">Search & filter{query.trim() ? ` · ${query.trim()}` : filter !== "all" ? ` · ${filters.find(item => item.id === filter)?.label}` : ""}</span><span aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none"><LibIcon name="down" size={16} /></span></summary>
+            <label className="bvs-app-search mt-1"><span className="sr-only">Search this feed</span><LibIcon name="search" size={18} className="shrink-0 text-white/45" /><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search updates, artists or music" /></label>
+            <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto pb-1" aria-label="Feed categories">
+              {orderedFilters.map((item) => (
+                <button key={item.id} type="button" onClick={() => setFilter(item.id)} aria-pressed={filter === item.id} className="bvs-app-chip border-white/12 bg-white/[.04]">{item.label}</button>
+              ))}
+            </div>
+          </details>
+        </>
+      ) : (
       <div className="sticky top-[var(--bvs-app-header-height,4rem)] z-20 -mx-4 mt-4 border-y border-white/[.06] bg-[#08080a]/94 px-4 py-3 backdrop-blur-2xl sm:static sm:mx-0 sm:rounded-[1.4rem] sm:border sm:bg-white/[.02]" aria-label="Feed controls">
         <div className="grid grid-cols-[1fr_auto] items-center gap-2">
           <div className="grid min-w-0 grid-cols-2 gap-1.5 rounded-[1rem] border border-white/[.08] bg-black/20 p-1 sm:grid-cols-3" aria-label="Feed lanes">
@@ -559,6 +590,7 @@ export default function BvsFeedList({
           </div>
         </details>
       </div>
+      )}
 
       {postsError && filter === "all" ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ff7a70]/20 bg-[#ff7a70]/[.055] px-3 py-2 text-xs text-[#ff9a92]"><span>{postsError}</span><button type="button" onClick={() => void loadPosts(null, false)} className="min-h-9 rounded-full border border-white/15 px-3 text-white">Try again</button></div> : null}
 

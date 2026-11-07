@@ -98,3 +98,13 @@
 @keyframes bvs-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes bvs-sheet-fade { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .bvs-action-sheet-panel, .bvs-action-sheet-backdrop { animation: none; } }
+
+/* App Feed: content-first rows on hairlines instead of stacked bubbles. */
+.bvs-app-feed .bvs-participation-composer { margin-top: 1.25rem; border: 1px solid rgb(255 255 255 / .14); background: #121214; box-shadow: none; }
+.bvs-app-feed .bvs-feed-app-refine[open] { padding-bottom: .5rem; border-bottom: 1px solid rgb(255 255 255 / .12); }
+.bvs-app-feed :is(.bvs-feed-entry, [data-community-thread]) { border: 0; border-top: 1px solid rgb(255 255 255 / .14); background: transparent; box-shadow: none; padding: 1rem 0 .75rem; }
+.bvs-app-feed .bvs-feed-entry + .bvs-feed-entry, .bvs-app-feed :is(.bvs-feed-entry, [data-community-thread]) + :is(.bvs-feed-entry, [data-community-thread]) { margin-top: 0; }
+.bvs-app-feed .space-y-4 > :not(:first-child) { margin-top: 0; }
+.bvs-app-feed .bvs-feed-entry > article { border: 1px solid rgb(255 255 255 / .1); background: #121214; box-shadow: none; }
+.bvs-app-feed .bvs-feed-entry .text-brand { color: rgb(var(--bvs-app-accent)); }
+.bvs-app-feed [data-community-thread] > [class*="border-t"] { border-top-color: rgb(255 255 255 / .12); }

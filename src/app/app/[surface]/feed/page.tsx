@@ -14,17 +14,14 @@ export default async function AppFeedPage({ params }: { params: Promise<{ surfac
   const participation = participationEnabled();
 
   return (
-    <main className="bvs-square-feed bvs-page-main mx-auto min-h-[100dvh] max-w-4xl px-4 pb-10 sm:px-6">
-      <header className="pb-5 pt-6 sm:pb-7 sm:pt-8">
-        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.22em] bvs-section-label">
-          <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_18px_rgba(212,175,55,.75)]" aria-hidden="true" />
-          BVS Pulse
-        </div>
-        <h1 className="mt-3 text-[2.4rem] font-semibold leading-none tracking-tight sm:text-5xl">Feed</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/48 sm:text-base">
+    <main className="bvs-app-page bvs-app-feed bvs-page-main mx-auto min-h-[100dvh] max-w-4xl px-4 pb-10 pt-5 sm:px-6" data-app-accent="feed">
+      <header>
+        <p className="bvs-app-eyebrow">BVS Pulse</p>
+        <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Feed</h1>
+        <p className="mt-2 text-sm text-white/45">
           {participation
-            ? "See what’s moving across BVS, then like, repost and join the conversation."
-            : "The newest movement across BVS — music, creators, beats, live moments and Marketplace drops."}
+            ? "See what’s moving across BVS, then like, repost and join in."
+            : "The newest music, creators, beats and live moments on BVS."}
         </p>
       </header>
 
