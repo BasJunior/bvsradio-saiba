@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- tile images include signed media covers */
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -8,21 +9,34 @@ import AppJoinCard from "@/components/app-vnext/AppJoinCard";
 import AppHomeStationCard from "@/components/app-vnext/AppHomeStationCard";
 import AppHomeDiscoverySections from "@/components/app-vnext/AppHomeDiscoverySections";
 import HomeContinueListening from "@/components/home/HomeContinueListening";
-import HomeTopFive from "@/components/home/HomeTopFive";
 import HomeFeaturedOffer from "@/components/home/HomeFeaturedOffer";
 import HomeCreatorOffer from "@/components/home/HomeCreatorOffer";
 import IosHomeListenPanel from "@/components/app/IosHomeListenPanel";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import type { MobileSurface } from "@/lib/station-library";
 import { LibIcon, type LibIconName } from "@/components/app-vnext/LibraryVisuals";
+import AppHomeTopFive from "@/components/app-vnext/AppHomeTopFive";
+import { readTrending } from "@/lib/trending-server";
 
-function HomeQuickLink({ href, icon, rgb, label, note }: { href: string; icon: LibIconName; rgb: string; label: string; note: string }) {
+function HomeQuickLink({ href, icon, rgb, label, note, image }: { href: string; icon: LibIconName; rgb: string; label: string; note: string; image?: string | null }) {
   return (
     <Link href={href} className="bvs-app-card flex items-center gap-3 p-2.5">
-      <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center" style={{ background: `rgb(${rgb} / .14)`, color: `rgb(${rgb})` }}><LibIcon name={icon} size={20} /></span>
+      <span aria-hidden="true" className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden" style={{ background: `rgb(${rgb} / .14)`, color: `rgb(${rgb})` }}>
+        {image ? <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover" loading="lazy" /> : null}
+        {image ? <span className="absolute bottom-0.5 right-0.5 grid h-5 w-5 place-items-center bg-black/70" style={{ color: `rgb(${rgb})` }}><LibIcon name={icon} size={12} /></span> : <LibIcon name={icon} size={20} />}
+      </span>
       <span className="min-w-0"><span className="block truncate text-sm font-semibold">{label}</span><span className="block truncate text-xs text-white/45">{note}</span></span>
     </Link>
   );
+}
+
+async function topTrendingArtwork() {
+  try {
+    const board = await Promise.race([readTrending("week"), new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500))]);
+    return board?.entries.find((entry) => entry.artwork)?.artwork || null;
+  } catch {
+    return null;
+  }
 }
 
 export const dynamic = "force-dynamic";
@@ -65,6 +79,7 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
   );
 
   if (surface === "ios") {
+    const trendingArt = await topTrendingArtwork();
     return (
       <div className="bvs-square-home bvs-app-page bvs-app-home mx-auto max-w-6xl pb-12" data-app-accent="lime">
         <section className="relative px-4 pb-2 pt-5 sm:px-6 sm:pt-8" aria-labelledby="ios-home-title">
@@ -78,11 +93,13 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
           <p className="mt-2 max-w-xl text-sm text-white/50">Independent sound, the people behind it, and the tools to make your own.</p>
 
           <nav className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4" aria-label="Jump to">
-            <HomeQuickLink href="#listen" icon="radio" rgb="193 255 82" label="Live radio" note="On air now" />
-            <HomeQuickLink href={`${base}/explore`} icon="sparkle" rgb="163 219 255" label="Discover" note="New for you" />
-            <HomeQuickLink href={`${base}/trending`} icon="trending" rgb="255 210 92" label="Trending" note="BVS Top 20" />
-            <HomeQuickLink href={`${base}/studio`} icon="mic" rgb="193 167 255" label="Studio" note="Create and release" />
+            <HomeQuickLink href="#listen" icon="radio" rgb="193 255 82" label="Live radio" note="On air now" image="/images/editorial/radio-studio-harare.webp" />
+            <HomeQuickLink href={`${base}/explore`} icon="sparkle" rgb="163 219 255" label="Discover" note="New for you" image="/images/editorial/music-discovery-show.webp" />
+            <HomeQuickLink href={`${base}/trending`} icon="trending" rgb="255 210 92" label="Trending" note="BVS Top 20" image={trendingArt || "/images/editorial/audio-engineering-work.webp"} />
+            <HomeQuickLink href={`${base}/studio`} icon="mic" rgb="193 167 255" label="Studio" note="Create and release" image="/images/hero-studio.jpg" />
           </nav>
+
+          <AppHomeTopFive surface={surface} />
 
           <section id="listen" className="bvs-app-shelf bvs-culture-listen scroll-mt-24" aria-labelledby="ios-listening-room-title">
             <div className="flex items-center justify-between gap-3">
@@ -93,10 +110,6 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
           </section>
 
           <HomeContinueListening />
-
-          <section className="bvs-app-shelf" aria-label="BVS Top 5">
-            <HomeTopFive surface={surface} />
-          </section>
 
           <section className="bvs-app-shelf" aria-labelledby="ios-home-from-bvs">
             <h2 id="ios-home-from-bvs" className="bvs-app-shelf-title">From BVS</h2>
