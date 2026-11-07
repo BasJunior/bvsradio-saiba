@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const nextConfig = await readFile(new URL("../next.config.ts", import.meta.url), "utf8");
 const mediaRoute = await readFile(new URL("../src/app/api/media/[...key]/route.ts", import.meta.url), "utf8");
+const r2Storage = await readFile(new URL("../src/lib/r2-storage.ts", import.meta.url), "utf8");
 const imageBoundary = await readFile(new URL("../src/lib/image-optimization.ts", import.meta.url), "utf8");
 const checkout = await readFile(new URL("../src/app/checkout/page.tsx", import.meta.url), "utf8");
 const account = await readFile(new URL("../src/app/account/page.tsx", import.meta.url), "utf8");
@@ -32,6 +33,24 @@ for (const requiredGuard of ["safeR2Key", "isPublicR2MediaKey", "signedR2Downloa
     `/api/media must retain ${requiredGuard} before optimized public media delivery is allowed.`,
   );
 }
+
+// A published release may have a newly approved cover that its track rows do not yet reference.
+for (const encodedValue of ["encUrl", "enc"]) {
+  assert.ok(
+    r2Storage.includes('releases?is_public=eq.true&editorial_status=eq.approved&cover_url=eq.${' + encodedValue + '}&select=id&limit=1'),
+    "Public media checks must recognize approved release covers stored as either media URLs or R2 keys.",
+  );
+}
+for (const lookup of ["releaseByUrl", "releaseByKey"]) {
+  assert.ok(
+    r2Storage.includes(`|| (await nonempty(${lookup}))`),
+    `Public R2 media authorization must include the ${lookup} release-cover lookup.`,
+  );
+}
+assert.ok(
+  !r2Storage.includes('key.startsWith("artwork-changes/")'),
+  "Unapproved artwork-change uploads must never become public from their path alone.",
+);
 
 assert.ok(
   mediaRoute.includes("NextResponse.redirect"),
