@@ -165,3 +165,26 @@
 .bvs-row-actions .bvs-app-pill { min-height: 36px; padding-inline: .75rem; font-size: 12px; }
 .bvs-row-actions .bvs-app-pill--primary { background: rgb(255 255 255 / .08); color: #fff; }
 .bvs-row-actions .bvs-app-pill--primary:hover { background: #c1ff52; color: #080808; }
+
+/* App Home: shared creator bands, offers and community block in the Library shelf style. */
+.bvs-app-home .bvs-creator-band { padding: 1.5rem 0 .5rem; background: #0a0a0b !important; border-top: 1px solid rgb(255 255 255 / .2); }
+.bvs-app-home .bvs-creator-band-inner { padding-inline: 1rem; }
+@media (min-width: 640px) { .bvs-app-home .bvs-creator-band-inner { padding-inline: 1.5rem; } }
+.bvs-app-home .bvs-creator-band-header { align-items: center; }
+.bvs-app-home .bvs-creator-band h2 { margin-top: .15rem; font-size: 1.35rem; font-weight: 700; line-height: 1.2; text-transform: none; letter-spacing: -.035em; }
+.bvs-app-home .bvs-creator-kicker { font-size: 10px; font-weight: 600; letter-spacing: .22em; opacity: 1; color: rgb(255 255 255 / .45); }
+.bvs-app-home .bvs-creator-directory { display: inline-flex; min-height: 36px; align-items: center; font-size: 13px; font-weight: 600; white-space: nowrap; }
+@media (max-width: 767px) { .bvs-app-home .bvs-creator-scroll-guide { display: none; } }
+.bvs-app-home .bvs-creator-portrait-rail { gap: .75rem; margin-top: .75rem; padding-bottom: .5rem; scrollbar-width: none; }
+.bvs-app-home .bvs-creator-portrait-rail::-webkit-scrollbar { display: none; }
+.bvs-app-home .bvs-creator-portrait { flex-basis: 9.5rem; border: 0; }
+@media (min-width: 640px) { .bvs-app-home .bvs-creator-portrait { flex-basis: 11rem; } }
+.bvs-app-home .bvs-creator-photo { background: rgb(255 255 255 / .06); }
+.bvs-app-home .bvs-creator-caption { border-top: 0; padding: .5rem 0 0; }
+.bvs-app-home .bvs-creator-caption h3 { font-size: .875rem; font-weight: 600; }
+.bvs-app-home .bvs-creator-caption p { margin-top: .1rem; font-size: .75rem; color: rgb(255 255 255 / .5); opacity: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bvs-app-home .bvs-creator-portrait:hover .bvs-creator-caption { background: transparent; color: inherit; }
+.bvs-app-home .bvs-creator-portrait:hover h3 { color: #c1ff52; }
+.bvs-app-home section[aria-labelledby="ios-home-community-title"] { background: #0a0a0b; border-top: 1px solid rgb(255 255 255 / .2); padding-block: 1.5rem 2rem; }
+.bvs-app-home section[aria-labelledby="ios-home-community-title"] h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.035em; }
+.bvs-app-home section[aria-labelledby="ios-home-community-title"] > div > p:first-child { font-size: 10px; letter-spacing: .22em; }
