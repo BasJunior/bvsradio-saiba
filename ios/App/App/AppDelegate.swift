@@ -77,6 +77,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     private var canPreviousTrack = false
     private var canScrubTrack = false
     private var currentArtworkURL = ""
+    private var widgetSnapshot = BvsNowPlayingStore.load()
     private var pendingPushHref: String?
     private var pushActionBridgeReady = false
     private var pendingNativeMediaPayloads: [[String: Any]] = []
@@ -135,6 +136,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     }
 
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        if handleBvsWidgetURL(url) { return true }
         return ApplicationDelegateProxy.shared.application(app, open: url, options: options)
     }
 
@@ -289,6 +291,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         let center = MPNowPlayingInfoCenter.default()
 
         if action == "clear" {
+            updateWidget { $0.isPlaying = false }
             center.nowPlayingInfo = nil
             currentArtworkURL = ""
             canNextTrack = false
@@ -303,6 +306,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             if let title = payload["title"] as? String, !title.isEmpty { info[MPMediaItemPropertyTitle] = title }
             if let artist = payload["artist"] as? String, !artist.isEmpty { info[MPMediaItemPropertyArtist] = artist }
             if let album = payload["album"] as? String, !album.isEmpty { info[MPMediaItemPropertyAlbumTitle] = album }
+            let trackTitle = (payload["title"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            let trackArtist = (payload["artist"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            let trackSource = (payload["album"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+            let artworkChanged = (payload["artwork"] as? String).map { !$0.isEmpty && $0 != currentArtworkURL } ?? false
+            if trackTitle != nil || artworkChanged {
+                updateWidget { snapshot in
+                    if let trackTitle { snapshot.title = trackTitle }
+                    if let trackArtist { snapshot.artist = trackArtist }
+                    snapshot.source = trackSource ?? "BVS Radio"
+                    let noArtwork = ((payload["artwork"] as? String) ?? "").isEmpty
+                    if artworkChanged || noArtwork { snapshot.hasArtwork = false }
+                }
+            }
             if let artwork = payload["artwork"] as? String, !artwork.isEmpty, artwork != currentArtworkURL {
                 currentArtworkURL = artwork
                 loadNowPlayingArtwork(artwork)
@@ -327,6 +343,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         }
         if let playing = boolean(payload["playing"]) {
             info[MPNowPlayingInfoPropertyPlaybackRate] = playing ? 1.0 : 0.0
+            if playing != widgetSnapshot.isPlaying { updateWidget { $0.isPlaying = playing } }
         }
         center.nowPlayingInfo = info
         // WebKit can refresh the shared command center as media starts/resumes.
@@ -391,8 +408,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
                   let data,
                   let image = UIImage(data: data) else { return }
             let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            BvsNowPlayingStore.saveArtwork(image)
             DispatchQueue.main.async {
                 guard self.currentArtworkURL == rawURL else { return }
+                self.updateWidget { $0.hasArtwork = true }
                 var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
                 info[MPMediaItemPropertyArtwork] = artwork
                 MPNowPlayingInfoCenter.default().nowPlayingInfo = info
@@ -616,6 +635,27 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
                   let json = String(data: data, encoding: .utf8) else { return }
             webView.evaluateJavaScript("window.dispatchEvent(new CustomEvent('bvs:native-push-action',{detail:\(json)}));")
         }
+    }
+
+    // MARK: Home / Lock Screen widget (BVSWidget target)
+
+    /// bvsradio://play | open | library — sent by widget taps.
+    private func handleBvsWidgetURL(_ url: URL) -> Bool {
+        guard url.scheme?.lowercased() == "bvsradio" else { return false }
+        switch url.host?.lowercased() {
+        case "play": emitNativeMediaCommand("start-station")
+        case "library": emitPushAction("/app/ios/library")
+        default: break // "open": bringing the app forward is enough.
+        }
+        return true
+    }
+
+    private func updateWidget(_ change: (inout BvsNowPlayingSnapshot) -> Void) {
+        var next = widgetSnapshot
+        change(&next)
+        next.updatedAt = Date()
+        widgetSnapshot = next
+        BvsNowPlayingStore.save(next)
     }
 
     // MARK: Siri / Shortcuts (BvsAppIntents.swift)

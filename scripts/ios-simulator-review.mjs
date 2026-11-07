@@ -40,6 +40,16 @@ const plist = `${staged}/Info.plist`;
 run("/usr/libexec/PlistBuddy", ["-c", "Set :CFBundleIdentifier com.bvsradio.app.review", plist]);
 run("/usr/libexec/PlistBuddy", ["-c", "Set :CFBundleDisplayName BVS Review", plist]);
 run("/usr/libexec/PlistBuddy", ["-c", "Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true", plist]);
+// Embedded extensions must keep the parent's bundle-id prefix.
+const widget = `${staged}/PlugIns/BVSWidget.appex`;
+if (existsSync(widget)) {
+  run("/usr/libexec/PlistBuddy", ["-c", "Set :CFBundleIdentifier com.bvsradio.app.review.widget", `${widget}/Info.plist`]);
+  // Ad-hoc sign with the App Group so the review app can feed its widget.
+  run("codesign", ["--force", "--sign", "-", "--entitlements", "ios/App/BVSWidget/BVSWidget.entitlements", widget]);
+}
+// Ad-hoc simulator signing can carry the App Group only: push and associated
+// domains need a provisioning profile and stop the review app from launching.
+run("codesign", ["--force", "--sign", "-", "--entitlements", "ios/App/BVSWidget/BVSWidget.entitlements", staged]);
 // Require a booted simulator; never select or install onto a physical device.
 run("xcrun", ["simctl", "bootstatus", udid, "-b"]);
 run("xcrun", ["simctl", "install", udid, staged]);

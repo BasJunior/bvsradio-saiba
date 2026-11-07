@@ -7,19 +7,53 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		209D8C65F8E882F12E51EC1A /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B9F71E258D063A37FB59B05 /* Foundation.framework */; };
 		2D47B469A3F789E7ED5693C5 /* BvsAppIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90FF9766D14C71EB0201C2B2 /* BvsAppIntents.swift */; };
+		2E4B4CFCCB488253AE6E20C7 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6ABC5C8BCE4D11FE654F0297 /* SwiftUI.framework */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		34DCC501E03E014D13FA8B70 /* BVSWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 675EDA17F3BE6FB749B3E677 /* BVSWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		5ECC7AD70B8D3B440D081847 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DD03AF3340A38962355824F /* WidgetKit.framework */; };
+		98863C16D0E129A022AAE474 /* BVSWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29FD42C742B33A76880E9142 /* BVSWidget.swift */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
+		C763AA826D27997FA01E0D62 /* BvsNowPlayingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734345533710E3D76FAF56D4 /* BvsNowPlayingStore.swift */; };
+		F1C3F9F9E743300D6CCA3486 /* BvsNowPlayingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734345533710E3D76FAF56D4 /* BvsNowPlayingStore.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		28EAAC7BF899D7831153527E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 960BEC1CD0C17180195B5A6F;
+			remoteInfo = BVSWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AD44F0565C348275ACF0DFE4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				34DCC501E03E014D13FA8B70 /* BVSWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		0DB7A8C6D2BD21513A52DE3C /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		29FD42C742B33A76880E9142 /* BVSWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BVSWidget.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		3B9F71E258D063A37FB59B05 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -28,9 +62,14 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		675EDA17F3BE6FB749B3E677 /* BVSWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BVSWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		6ABC5C8BCE4D11FE654F0297 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
+		734345533710E3D76FAF56D4 /* BvsNowPlayingStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BvsNowPlayingStore.swift; sourceTree = "<group>"; };
+		8DD03AF3340A38962355824F /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
 		90FF9766D14C71EB0201C2B2 /* BvsAppIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BvsAppIntents.swift; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
+		E67322C5AC60C619C950E72D /* BVSWidget.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = BVSWidget.entitlements; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -43,6 +82,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		F37A50F9D664EFCDC59D019F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				209D8C65F8E882F12E51EC1A /* Foundation.framework in Frameworks */,
+				5ECC7AD70B8D3B440D081847 /* WidgetKit.framework in Frameworks */,
+				2E4B4CFCCB488253AE6E20C7 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -50,6 +99,7 @@
 			isa = PBXGroup;
 			children = (
 				AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */,
+				AAAFC2CE202056F531918A8D /* iOS */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -61,6 +111,7 @@
 				504EC3051FED79650016851F /* Products */,
 				7F8756D8B27F46E3366F6CEA /* Pods */,
 				27E2DDA53C4D2A4D1A88CE4A /* Frameworks */,
+				A8599604DB818F453BA55845 /* BVSWidget */,
 			);
 			sourceTree = "<group>";
 		};
@@ -68,6 +119,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				675EDA17F3BE6FB749B3E677 /* BVSWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -84,6 +136,7 @@
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
 				90FF9766D14C71EB0201C2B2 /* BvsAppIntents.swift */,
+				734345533710E3D76FAF56D4 /* BvsNowPlayingStore.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -95,6 +148,27 @@
 				AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */,
 			);
 			name = Pods;
+			sourceTree = "<group>";
+		};
+		A8599604DB818F453BA55845 /* BVSWidget */ = {
+			isa = PBXGroup;
+			children = (
+				29FD42C742B33A76880E9142 /* BVSWidget.swift */,
+				0DB7A8C6D2BD21513A52DE3C /* Info.plist */,
+				E67322C5AC60C619C950E72D /* BVSWidget.entitlements */,
+			);
+			name = BVSWidget;
+			path = BVSWidget;
+			sourceTree = "<group>";
+		};
+		AAAFC2CE202056F531918A8D /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				3B9F71E258D063A37FB59B05 /* Foundation.framework */,
+				8DD03AF3340A38962355824F /* WidgetKit.framework */,
+				6ABC5C8BCE4D11FE654F0297 /* SwiftUI.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -109,15 +183,34 @@
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
 				9592DBEFFC6D2A0C8D5DEB22 /* [CP] Embed Pods Frameworks */,
+				AD44F0565C348275ACF0DFE4 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7876C1CC2705FB21F416AB27 /* PBXTargetDependency */,
 			);
 			name = App;
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		960BEC1CD0C17180195B5A6F /* BVSWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7E4C35889A3D3A734F8B2ECA /* Build configuration list for PBXNativeTarget "BVSWidget" */;
+			buildPhases = (
+				91C8B930B568443A18C2C1F1 /* Sources */,
+				F37A50F9D664EFCDC59D019F /* Frameworks */,
+				F6E33932861315B1988B5CC4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BVSWidget;
+			productName = BVSWidget;
+			productReference = 675EDA17F3BE6FB749B3E677 /* BVSWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -150,6 +243,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				960BEC1CD0C17180195B5A6F /* BVSWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -165,6 +259,13 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F6E33932861315B1988B5CC4 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -213,10 +314,29 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				2D47B469A3F789E7ED5693C5 /* BvsAppIntents.swift in Sources */,
+				C763AA826D27997FA01E0D62 /* BvsNowPlayingStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		91C8B930B568443A18C2C1F1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				98863C16D0E129A022AAE474 /* BVSWidget.swift in Sources */,
+				F1C3F9F9E743300D6CCA3486 /* BvsNowPlayingStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7876C1CC2705FB21F416AB27 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = BVSWidget;
+			target = 960BEC1CD0C17180195B5A6F /* BVSWidget */;
+			targetProxy = 28EAAC7BF899D7831153527E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -409,6 +529,63 @@
 			};
 			name = Release;
 		};
+		64E6791B692DBC7059811B94 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = BVSWidget/BVSWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 22;
+				DEVELOPMENT_TEAM = VGFK77VH73;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BVSWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bvsradio.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C2DF28D88C6ABEE82E76EE0C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = BVSWidget/BVSWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 22;
+				DEVELOPMENT_TEAM = VGFK77VH73;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = BVSWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.4;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bvsradio.app.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -426,6 +603,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7E4C35889A3D3A734F8B2ECA /* Build configuration list for PBXNativeTarget "BVSWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C2DF28D88C6ABEE82E76EE0C /* Release */,
+				64E6791B692DBC7059811B94 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
