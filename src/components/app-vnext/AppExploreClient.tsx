@@ -231,7 +231,7 @@ export default function AppExploreClient({
             <h2 id="discover-music-heading" className="bvs-app-shelf-title">{query.trim() ? "Songs" : discoveryHome ? "New for you" : "Music"}</h2>
             <div className="flex shrink-0 items-center gap-1">
               <button type="button" aria-label={`Play ${query.trim() ? "results" : "all"}`} onClick={playAll} className="bvs-app-pill min-h-9 px-3.5"><LibIcon name="play" size={14} />Play all</button>
-              {moreMusic ? <button type="button" aria-label="Show more music" onClick={() => { setKind("music"); setLimit(value => kind === "music" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-app-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
+              {moreMusic ? <button type="button" aria-label="Show more music" onClick={() => { setKind("music"); setLimit(value => kind === "music" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-page-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
             </div>
           </div>
 
@@ -286,7 +286,7 @@ export default function AppExploreClient({
         <section className="bvs-app-shelf bvs-discover-creators" aria-labelledby="discover-artists-heading">
           <div className="flex items-center justify-between gap-3">
             <h2 id="discover-artists-heading" className="bvs-app-shelf-title">Artists to know</h2>
-            {(search.counts.artist || 0) > filtered.artists.length ? <button type="button" aria-label="Show more artists" onClick={() => { setKind("artists"); setLimit(value => kind === "artists" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-app-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
+            {(search.counts.artist || 0) > filtered.artists.length ? <button type="button" aria-label="Show more artists" onClick={() => { setKind("artists"); setLimit(value => kind === "artists" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-page-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
           </div>
           <div className="bvs-app-rail -mx-4 mt-3 px-4 sm:-mx-6 sm:px-6" role="region" aria-label="Artists">
             {filtered.artists.map((item) => (
@@ -304,7 +304,7 @@ export default function AppExploreClient({
         <section className="bvs-app-shelf bvs-discover-producers" aria-labelledby="discover-producers-heading">
           <div className="flex items-center justify-between gap-3">
             <h2 id="discover-producers-heading" className="bvs-app-shelf-title">Producers behind the sound</h2>
-            {(search.counts.producer || 0) > filtered.producers.length ? <button type="button" aria-label="Show more producers" onClick={() => { setKind("producers"); setLimit(value => kind === "producers" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-app-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
+            {(search.counts.producer || 0) > filtered.producers.length ? <button type="button" aria-label="Show more producers" onClick={() => { setKind("producers"); setLimit(value => kind === "producers" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-page-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
           </div>
           <div className="bvs-app-rail -mx-4 mt-3 px-4 sm:-mx-6 sm:px-6" role="region" aria-label="Producers">
             {filtered.producers.map((item) => (
@@ -322,7 +322,7 @@ export default function AppExploreClient({
         <section className="bvs-app-shelf bvs-discover-beats" aria-labelledby="discover-beats-heading">
           <div className="flex items-center justify-between gap-3">
             <h2 id="discover-beats-heading" className="bvs-app-shelf-title">Beats to build on</h2>
-            {(search.counts.beat || 0) > filtered.beats.length ? <button type="button" aria-label="Show more beats" onClick={() => { setKind("beats"); setLimit(value => kind === "beats" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-app-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
+            {(search.counts.beat || 0) > filtered.beats.length ? <button type="button" aria-label="Show more beats" onClick={() => { setKind("beats"); setLimit(value => kind === "beats" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-page-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
           </div>
           <div className="mt-2">
             {filtered.beats.map((item) => (
