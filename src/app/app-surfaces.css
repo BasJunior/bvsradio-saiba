@@ -177,8 +177,10 @@
 @media (max-width: 767px) { .bvs-app-home .bvs-creator-scroll-guide { display: none; } }
 .bvs-app-home .bvs-creator-portrait-rail { gap: .75rem; margin-top: .75rem; padding-bottom: .5rem; scrollbar-width: none; }
 .bvs-app-home .bvs-creator-portrait-rail::-webkit-scrollbar { display: none; }
-.bvs-app-home .bvs-creator-portrait { flex-basis: 9.5rem; border: 0; }
-@media (min-width: 640px) { .bvs-app-home .bvs-creator-portrait { flex-basis: 11rem; } }
+.bvs-app-home .bvs-creator-portrait:not(.bvs-home-beat-portrait) { flex-basis: 9.5rem; border: 0; }
+@media (min-width: 640px) { .bvs-app-home .bvs-creator-portrait:not(.bvs-home-beat-portrait) { flex-basis: 11rem; } }
+/* Beat cards keep their own width so Save, Playlist and Preview fit. */
+.bvs-app-home .bvs-home-beat-portrait.bvs-creator-portrait { flex-basis: 200px; }
 .bvs-app-home .bvs-creator-photo { background: rgb(255 255 255 / .06); }
 .bvs-app-home .bvs-creator-caption { border-top: 0; padding: .5rem 0 0; }
 .bvs-app-home .bvs-creator-caption h3 { font-size: .875rem; font-weight: 600; }
