@@ -23,6 +23,7 @@ import "./globals.css";
 import "./section-accents.css";
 import "./brand-culture.css";
 import "./creator-bands.css";
+import "./app-surfaces.css";
 import "./feed-mobile.css";
 
 const defaultSiteUrl = "https://bvsradio.com";

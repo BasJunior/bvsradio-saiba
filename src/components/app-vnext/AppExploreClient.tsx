@@ -17,6 +17,8 @@ import { useStationPlayer } from "@/components/StationPlayer";
 import { fairCreatorDailyOrder } from "@/lib/fair-discovery-order";
 import { soundKey, discoveryCreatorKey } from "@/lib/discovery-experience";
 import { trackEvent } from "@/lib/analytics";
+import { CoverMosaic, LibIcon } from "@/components/app-vnext/LibraryVisuals";
+import { HeartIcon } from "@/components/player/PlayerIcons";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
 import { appExploreStatePath, readAppExploreState, type AppExploreKind as ExploreKind, type AppExploreMode as ExploreMode, type AppExploreState } from "@/lib/discovery-continuity";
 
@@ -31,6 +33,8 @@ const exploreModes: Array<{ value: ExploreMode; label: string; description: stri
   { value: "beats", label: "BeatStore", description: "Find production you can build on, then open licensing when you’re ready." },
 ];
 
+const countKeys = { music: "track", artists: "artist", producers: "producer", beats: "beat" } as const;
+
 function safeImage(value?: string) {
   if (!value || value.includes("default-avatar")) return "";
   if (/^(https?:\/\/|\/)/.test(value)) return value;
@@ -40,8 +44,8 @@ function safeImage(value?: string) {
 function ExploreArtwork({ src, label, sizes = "(max-width: 640px) 45vw, 240px" }: { src?: string; label: string; sizes?: string }) {
   const image = safeImage(src);
   const [failedSrc, setFailedSrc] = useState("");
-  return <div className="relative aspect-square overflow-hidden rounded-[1rem] bg-gradient-to-br from-brand/15 to-white/[.035]">
-    {image && failedSrc !== image ? <Image src={image} alt="" fill sizes={sizes} unoptimized className="object-cover transition duration-500 group-hover:scale-[1.02]" onError={() => setFailedSrc(image)} /> : <span className="absolute inset-0 grid place-items-center text-xs font-semibold uppercase tracking-wider text-brand">{label}</span>}
+  return <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-white/[.09] to-white/[.02]">
+    {image && failedSrc !== image ? <Image src={image} alt="" fill sizes={sizes} unoptimized className="object-cover transition duration-500 group-hover:scale-[1.03]" onError={() => setFailedSrc(image)} /> : <span className="absolute inset-0 grid place-items-center text-white/35"><LibIcon name={label === "Beat" ? "waveform" : label === "Producer" ? "sliders" : "mic"} size={28} /></span>}
   </div>;
 }
 
@@ -154,202 +158,211 @@ export default function AppExploreClient({
     });
   };
 
-  return (
-    <div className="bvs-square-discover mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Discover</p>
-      <h1 className="mt-2 max-w-4xl text-3xl font-semibold tracking-tight sm:text-4xl">Find your next favourite.</h1>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-white/45 sm:text-base">Press play on a new sound. Meet the artist. Follow what moves you.</p>
+  const isPlaying = (id: string) => player.current?.id === id && player.isPlaying;
+  const heroArt = filtered.tracks.map((track) => safeImage(track.artwork)).filter(Boolean).slice(0, 4);
+  const moreMusic = (search.counts.track || 0) > filtered.tracks.length;
+  const nothing = !loading && !unavailable && !(show("music") && filtered.tracks.length) && !(show("artists") && filtered.artists.length) && !(show("producers") && filtered.producers.length) && !(show("beats") && filtered.beats.length);
 
-      <label className="relative mt-5 block">
+  return (
+    <div className="bvs-app-page mx-auto max-w-5xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="discover">
+      <header className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="bvs-app-eyebrow">Find your next favourite</p>
+          <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Discover</h1>
+        </div>
+        <Link href={`/app/${surface}/trending`} aria-label="BVS Trending chart" className="bvs-app-icon-button border border-white/15"><LibIcon name="trending" /></Link>
+      </header>
+
+      <label className="bvs-app-search mt-4">
         <span className="sr-only">Search BVS</span>
-        <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-lg text-white/35" aria-hidden="true">⌕</span>
+        <LibIcon name="search" size={19} className="shrink-0 text-white/45" />
         <input
           value={query}
           maxLength={160}
           onChange={(e) => { setQuery(e.target.value); setLimit(24); }}
-          placeholder="Search music, artists, producers, beats"
-          className="min-h-14 w-full rounded-[1.25rem] border border-white/[.08] bg-white/[.035] pl-12 pr-5 text-base outline-none backdrop-blur-xl transition focus:border-brand/40 focus:bg-white/[.05]"
+          placeholder="Artists, songs, producers, beats"
+          enterKeyHint="search"
         />
+        {query ? <button type="button" aria-label="Clear search" onClick={() => { setQuery(""); setLimit(24); }} className="grid h-8 w-8 place-items-center text-white/50"><LibIcon name="close" size={16} /></button> : null}
       </label>
 
-      {!query.trim() ? (
-        <div className="mt-5 flex gap-2 overflow-x-auto pb-2" aria-label="Discovery modes">
-          {exploreModes.map((item) => (
-            <button
-              key={item.value}
-              type="button"
-              onClick={() => { setMode(item.value); setKind("all"); setLimit(24); }}
-              aria-pressed={mode === item.value}
-              className={`min-h-10 shrink-0 rounded-full px-4 text-sm transition ${mode === item.value ? "bg-white font-semibold text-black" : "border border-white/[.08] bg-white/[.025] text-white/48 hover:text-white"}`}
-            >
-              {item.label}
-            </button>
+      <div className="bvs-app-chipbar -mx-4 mt-3 px-4 py-2.5 sm:-mx-6 sm:px-6">
+        <nav className="no-scrollbar flex gap-2 overflow-x-auto" aria-label="Discovery modes">
+          {!query.trim() ? exploreModes.map((item) => (
+            <button key={item.value} type="button" onClick={() => { setMode(item.value); setKind("all"); setLimit(24); }} aria-pressed={mode === item.value && kind === "all"} className="bvs-app-chip">{item.label}</button>
+          )) : (["all", "music", "artists", "producers", "beats"] as ExploreKind[]).map((value) => (
+            <button key={value} type="button" onClick={() => { setKind(value); setLimit(24); }} aria-pressed={kind === value} className="bvs-app-chip capitalize">{value === "all" ? "Top results" : value}{value !== "all" ? <span className="opacity-60">{search.counts[countKeys[value as keyof typeof countKeys]] ?? ""}</span> : null}</button>
           ))}
-        </div>
-      ) : null}
-
-      {discoveryHome ? <TrendingBoard surface={surface} preview /> : null}
-      {genre || kind !== 'all' ? <div className="mt-3 flex flex-wrap gap-2" aria-label="Active search filters">{genre ? <button type="button" onClick={() => { setGenre(''); setLimit(24); }} className="min-h-11 border border-brand/40 px-3 text-sm text-brand">Sound: {genre} ×</button> : null}{kind !== 'all' ? <button type="button" onClick={() => { setKind('all'); setLimit(24); }} className="min-h-11 border border-brand/40 px-3 text-sm text-brand">{kind} ×</button> : null}</div> : null}
-      <details className="bvs-discover-filters mt-2"><summary className="min-h-11 cursor-pointer text-sm text-white/60">Filters{kind !== "all" ? ` · ${kind}` : ""}{genre ? ` · ${genre}` : ""}</summary>
-      <div className="mt-2 flex gap-2 overflow-x-auto pb-2" aria-label="Filter discovery results">
-        {(["all", "music", "artists", "producers", "beats"] as ExploreKind[]).map((value) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => { setKind(value); setLimit(24); }}
-            aria-pressed={kind === value}
-            className={`min-h-10 shrink-0 rounded-full px-4 text-sm capitalize transition ${kind === value ? "bg-brand font-semibold text-black" : "text-white/42 hover:bg-white/[.035] hover:text-white/75"}`}
-          >
-            {value === "all" ? "Everything" : value}
-          </button>
-        ))}
+        </nav>
       </div>
 
-      {sounds.length ? <div className="mt-3 flex gap-2 overflow-x-auto pb-2" aria-label="Browse by sound">
-        <button type="button" aria-pressed={!genre} onClick={() => { setGenre(""); setLimit(24); }} className={`min-h-10 shrink-0 rounded-full border px-3 text-xs ${!genre ? "border-brand/50 text-brand" : "border-white/15 text-white/50"}`}>All sounds</button>
-        {sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(sound.key); setRound(0); setLimit(24); }} className={`min-h-10 shrink-0 rounded-full border px-3 text-xs ${genre === sound.key ? "border-brand/50 bg-brand/10 text-brand" : "border-white/15 text-white/50"}`}>{sound.label}</button>)}
+      {sounds.length ? <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1 sm:-mx-6 sm:px-6" aria-label="Browse by sound">
+        {genre ? <button type="button" aria-label="All sounds" onClick={() => { setGenre(""); setLimit(24); }} className="bvs-app-chip border-white/15"><LibIcon name="close" size={14} /></button> : null}
+        {sounds.map(sound => <button key={sound.key} type="button" aria-pressed={genre === sound.key} onClick={() => { setGenre(genre === sound.key ? "" : sound.key); setRound(0); setLimit(24); }} className="bvs-app-chip border-white/12 bg-white/[.04]">{sound.label}</button>)}
       </div> : null}
-      {genre ? <button type="button" onClick={() => setGenre("")} className="mt-3 min-h-10 text-sm text-brand">Clear sound filter: {genre}</button> : null}
-      </details>
-      {unavailable ? <div role="status" className="mt-4 rounded-xl border border-white/15 p-3 text-sm text-white/50"><p>Search is incomplete because some content could not be loaded. Retry to search everything.</p><button type="button" onClick={() => { search.retry(); }} className="mt-2 min-h-10 rounded-full border border-white/20 px-4 text-white">Retry loading</button></div> : null}
-      {!query.trim() && kind === "all" ? <section className="mt-5 rounded-2xl border border-brand/20 bg-brand/[.035] p-4">
-        <p className="font-semibold">{activeMode.description}</p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {show("music") && filtered.tracks.length ? <button type="button" onClick={playAll} className="min-h-11 rounded-full bg-brand px-4 text-sm font-semibold text-black">▶ Play discoveries</button> : null}
-          <button type="button" onClick={() => { setRound(value => value + 1); trackEvent("explore_rail_open", { action:"next_selection", surface }); }} className="min-h-11 rounded-full border border-white/20 px-4 text-sm">Show me something new</button>
-        </div><span role="status" className="sr-only">Discovery selection {round + 1}</span>
-      </section> : null}
 
-      {loading ? (
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          <div className="h-28 animate-pulse rounded-[1.4rem] bg-white/[.035]" />
-          <div className="h-28 animate-pulse rounded-[1.4rem] bg-white/[.035]" />
+      {unavailable ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-amber-200/25 bg-amber-200/[.05] p-3 text-sm text-white/65"><p className="min-w-0 flex-1">Some results couldn’t load, so this list may be incomplete.</p><button type="button" onClick={() => { search.retry(); }} className="bvs-app-pill">Retry loading</button></div> : null}
+
+      {!query.trim() && kind === "all" ? (
+        <section className="mt-5 flex items-center gap-4" aria-labelledby="discover-picks-heading">
+          <CoverMosaic images={heroArt} seed={`discover-${mode}-${round}`} className="w-28 shrink-0 sm:w-36" />
+          <div className="min-w-0 flex-1">
+            <p className="bvs-app-eyebrow">{activeMode.value === "fresh" ? "Today’s picks" : activeMode.label}</p>
+            <h2 id="discover-picks-heading" className="mt-1 text-xl font-bold leading-tight sm:text-2xl">{activeMode.description}</h2>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {show("music") && filtered.tracks.length ? <button type="button" aria-label="Play discoveries" onClick={playAll} className="bvs-app-pill bvs-app-pill--primary"><LibIcon name="play" size={15} />Play</button> : null}
+              <button type="button" aria-label="Show me something new" onClick={() => { setRound(value => value + 1); trackEvent("explore_rail_open", { action:"next_selection", surface }); }} className="bvs-app-pill"><LibIcon name="shuffle" size={16} />New picks</button>
+            </div>
+            <span role="status" className="sr-only">Discovery selection {round + 1}</span>
+          </div>
+        </section>
+      ) : null}
+
+      {loading && !search.items.length ? (
+        <div className="bvs-app-rail mt-8" aria-hidden="true">
+          {[0, 1, 2].map((key) => <div key={key} className="w-[9.5rem]"><div className="bvs-app-skeleton aspect-square" /><div className="bvs-app-skeleton mt-2 h-3.5 w-3/4" /><div className="bvs-app-skeleton mt-1.5 h-3 w-1/2" /></div>)}
         </div>
       ) : null}
 
       {show("music") && filtered.tracks.length ? (
-        <section className="mt-10">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Music</p>
-              <h2 className="mt-2 text-3xl font-semibold">A new sound for you.</h2>
-              <p className="mt-2 text-xs text-white/38">A rotating selection across BVS artists. Save the ones that stay with you.</p>
+        <section className="bvs-app-shelf" aria-labelledby="discover-music-heading">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="discover-music-heading" className="bvs-app-shelf-title">{query.trim() ? "Songs" : discoveryHome ? "New for you" : "Music"}</h2>
+            <div className="flex shrink-0 items-center gap-1">
+              <button type="button" aria-label={`Play ${query.trim() ? "results" : "all"}`} onClick={playAll} className="bvs-app-pill min-h-9 px-3.5"><LibIcon name="play" size={14} />Play all</button>
+              {moreMusic ? <button type="button" aria-label="Show more music" onClick={() => { setKind("music"); setLimit(value => kind === "music" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-app-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
             </div>
-            <button type="button" onClick={playAll} className="min-h-10 rounded-full bg-white px-4 text-sm font-semibold text-black transition hover:bg-brand">▶ Play {query.trim() ? "results" : "all"}</button>
           </div>
 
-          <div className={`mt-5 grid gap-3 ${discoveryHome ? "grid-cols-2 sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          <div className={discoveryHome ? "bvs-app-rail -mx-4 mt-3 px-4 sm:-mx-6 sm:px-6" : "mt-2"}>
             {filtered.tracks.map((item) => {
               const image = safeImage(item.artwork);
               const isLiked = liked.has(item.id);
-              return (
-                <article key={item.id} className={`bvs-discover-music-card group flex min-w-0 gap-3 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-3 transition hover:border-white/15 hover:bg-white/[.04] ${discoveryHome ? "flex-col" : ""}`}>
-                  <button type="button" onClick={() => play(item)} className={`relative shrink-0 overflow-hidden rounded-[1rem] bg-white/[.04] ${discoveryHome ? "aspect-square w-full" : "h-16 w-16"}`} aria-label={`${player.current?.id === item.id && player.isPlaying ? "Pause" : "Play"} ${item.title}`}>
-                    {image ? <Image src={image} alt="" fill unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center text-xs text-brand">BVS</span>}
-                    <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/20 text-lg text-white opacity-80 transition group-hover:opacity-100">{player.current?.id === item.id && player.isPlaying ? "Ⅱ" : "▶"}</span>
+              const saveButton = <button type="button" aria-pressed={isLiked} aria-label={`${isLiked ? "Unsave" : "Save"} ${item.title}`} onClick={() => toggleLike(item)} className="bvs-app-icon-button"><HeartIcon size={20} filled={isLiked} /></button>;
+              const more = <DiscoverMoreActions title={item.title} sheet>
+                {discoveryHome ? <button type="button" aria-pressed={isLiked} aria-label={`${isLiked ? "Unsave" : "Save"} ${item.title}`} onClick={() => toggleLike(item)} className={`bvs-app-pill justify-start ${isLiked ? "text-[#c1ff52]" : ""}`}><HeartIcon size={18} filled={isLiked} />{isLiked ? "Saved to Library" : "Save to Library"}</button> : null}
+                <AppPlaylistPicker trackId={item.id} compact />
+                <AppDownloadButton trackId={item.id} surface={surface} compact />
+                <SongShareButton id={item.id} title={item.title} artist={item.artist} image={image} compact />
+              </DiscoverMoreActions>;
+              return discoveryHome ? (
+                <article key={item.id} className="bvs-discover-music-card group w-[9.5rem] sm:w-44">
+                  <button type="button" onClick={() => play(item)} className="bvs-app-cover relative block aspect-square w-full overflow-hidden bg-white/[.05]" aria-label={`${isPlaying(item.id) ? "Pause" : "Play"} ${item.title}`}>
+                    {image ? <Image src={image} alt="" fill sizes="176px" unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center text-xs font-semibold tracking-[.2em] text-white/40">BVS</span>}
+                    <span aria-hidden="true" className="bvs-app-cover-play"><LibIcon name={isPlaying(item.id) ? "waveform" : "play"} size={16} /></span>
                   </button>
-                  <div className="bvs-discover-music-caption min-w-0 flex-1">
-                    <button type="button" onClick={() => play(item)} className="block w-full text-left">
-                      <h3 className="line-clamp-2 font-semibold">{item.title}</h3>
-                      <p className="truncate text-sm text-white/48">{item.artist}</p>
-                      <p className="mt-1 text-xs text-white/30">{item.genre || item.project || "BVS release"}</p>
-                    </button>
-                    <TrendingBadge trackId={item.id} surface={surface} />
-                    <DiscoverMoreActions title={item.title}>
-                      <button type="button" aria-pressed={isLiked} aria-label={`${isLiked ? "Unsave" : "Save"} ${item.title}`} onClick={() => toggleLike(item)} className={`min-h-9 rounded-full border px-3 text-xs font-semibold ${isLiked ? "border-brand/35 bg-brand/10 text-brand" : "border-white/12 text-white/45"}`}>{isLiked ? "♥ Saved" : "♡ Save"}</button>
-                      <AppPlaylistPicker trackId={item.id} compact />
-                      <AppDownloadButton trackId={item.id} surface={surface} compact />
-                      <SongShareButton id={item.id} title={item.title} artist={item.artist} image={image} compact />
-                    </DiscoverMoreActions>
+                  <div className="bvs-discover-music-caption mt-2 flex items-start gap-1">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-sm font-semibold">{item.title}</h3>
+                      <p className="truncate text-xs text-white/50">{item.artist}</p>
+                    </div>
+                    <div className="-mr-2.5 -mt-3 shrink-0">{more}</div>
                   </div>
+                  <TrendingBadge trackId={item.id} surface={surface} />
+                </article>
+              ) : (
+                <article key={item.id} className="bvs-discover-music-card bvs-app-row group flex min-w-0 items-center gap-3 py-2">
+                  <button type="button" onClick={() => play(item)} className="bvs-app-cover relative h-14 w-14 shrink-0 overflow-hidden bg-white/[.05]" aria-label={`${isPlaying(item.id) ? "Pause" : "Play"} ${item.title}`}>
+                    {image ? <Image src={image} alt="" fill sizes="56px" unoptimized className="object-cover" /> : <span className="grid h-full w-full place-items-center text-[10px] text-white/40">BVS</span>}
+                    {isPlaying(item.id) ? <span aria-hidden="true" className="absolute inset-0 grid place-items-center bg-black/45 text-[#c1ff52]"><LibIcon name="waveform" size={18} /></span> : null}
+                  </button>
+                  <button type="button" onClick={() => play(item)} className="bvs-discover-music-caption min-w-0 flex-1 text-left" aria-hidden="true" tabIndex={-1}>
+                    <h3 className={`truncate text-[15px] font-semibold ${isPlaying(item.id) ? "text-[#c1ff52]" : ""}`}>{item.title}</h3>
+                    <p className="truncate text-[13px] text-white/48">{[item.artist, item.genre || item.project].filter(Boolean).join(" · ")}</p>
+                  </button>
+                  {saveButton}{more}
                 </article>
               );
             })}
           </div>
-          {(search.counts.track || 0) > filtered.tracks.length ? <button type="button" onClick={() => { setKind("music"); setLimit(value => kind === "music" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more music →</button> : null}
+          {!discoveryHome && moreMusic ? <button type="button" onClick={() => { setKind("music"); setLimit(value => kind === "music" ? value + 24 : 24); }} className="bvs-app-pill mt-3 w-full">Show more music</button> : null}
         </section>
       ) : null}
 
+      {discoveryHome ? <div className="bvs-app-trending"><TrendingBoard surface={surface} preview /></div> : null}
+
       {show("artists") && filtered.artists.length ? (
-        <section className="bvs-discover-creators mt-11">
-          <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Artists</p>
-          <h2 className="mt-2 text-3xl font-semibold">Names to know.</h2>
-          <p className="mt-3 text-xs text-white/60">Scroll sideways → · Tap a portrait to explore</p>
-          <div className="bvs-discover-rail mt-5" tabIndex={0} role="region" aria-label="Creator portraits — scroll horizontally">
-            {filtered.artists.map((item) => {
-              const image = safeImage(item.image);
-              return (
-                <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}`} className="group rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
-                  {image ? <div className="relative aspect-square overflow-hidden rounded-[1rem]"><Image src={image} alt="" fill unoptimized className="object-cover transition duration-500 group-hover:scale-[1.02]" /></div> : <div className="grid aspect-square place-items-center rounded-[1rem] bg-white/[.035] text-[10px] font-semibold uppercase tracking-[.15em] text-brand">Artist</div>}
-                  <h3 className="mt-3 truncate px-1 font-semibold">{item.name}</h3>
-                  <p className="truncate px-1 pb-1 text-xs text-white/36">{item.role || "BVS artist"}</p>
-                </Link>
-              );
-            })}
+        <section className="bvs-app-shelf bvs-discover-creators" aria-labelledby="discover-artists-heading">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="discover-artists-heading" className="bvs-app-shelf-title">Artists to know</h2>
+            {(search.counts.artist || 0) > filtered.artists.length ? <button type="button" aria-label="Show more artists" onClick={() => { setKind("artists"); setLimit(value => kind === "artists" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-app-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
           </div>
-          {(search.counts.artist || 0) > filtered.artists.length ? <button type="button" onClick={() => { setKind("artists"); setLimit(value => kind === "artists" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more artists →</button> : null}
+          <div className="bvs-app-rail -mx-4 mt-3 px-4 sm:-mx-6 sm:px-6" role="region" aria-label="Artists">
+            {filtered.artists.map((item) => (
+              <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}`} className="group w-[7.5rem]">
+                <ExploreArtwork src={item.image} label="Artist" sizes="120px" />
+                <h3 className="mt-2 truncate text-sm font-semibold">{item.name}</h3>
+                <p className="truncate text-xs text-white/45">{item.role || "BVS artist"}</p>
+              </Link>
+            ))}
+          </div>
         </section>
       ) : null}
 
       {show("producers") && filtered.producers.length ? (
-        <section className="bvs-discover-producers mt-11">
-          <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Producers</p>
-          <h2 className="mt-2 text-3xl font-semibold">Meet the people behind the sound.</h2>
-          <p className="mt-3 text-xs text-white/60">Scroll sideways → · Tap a portrait to explore</p>
-          <div className="bvs-discover-rail mt-5" tabIndex={0} role="region" aria-label="Creator portraits — scroll horizontally">
+        <section className="bvs-app-shelf bvs-discover-producers" aria-labelledby="discover-producers-heading">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="discover-producers-heading" className="bvs-app-shelf-title">Producers behind the sound</h2>
+            {(search.counts.producer || 0) > filtered.producers.length ? <button type="button" aria-label="Show more producers" onClick={() => { setKind("producers"); setLimit(value => kind === "producers" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-app-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
+          </div>
+          <div className="bvs-app-rail -mx-4 mt-3 px-4 sm:-mx-6 sm:px-6" role="region" aria-label="Producers">
             {filtered.producers.map((item) => (
-              <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}?as=producer`} className="group min-w-0 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-2.5 transition hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[.04]">
-                <ExploreArtwork src={item.image} label="Producer" />
-                <h3 className="mt-3 truncate px-1 font-semibold">{item.name}</h3>
-                <p className="mt-1 px-1 pb-1 text-xs text-white/36">{item.beatCount || 0} published beat{item.beatCount === 1 ? "" : "s"}</p>
+              <Link key={item.id} href={`/app/${surface}/creator/${encodeURIComponent(item.id)}?as=producer`} className="group w-[7.5rem]">
+                <ExploreArtwork src={item.image} label="Producer" sizes="120px" />
+                <h3 className="mt-2 truncate text-sm font-semibold">{item.name}</h3>
+                <p className="truncate text-xs text-white/45">{item.beatCount || 0} beat{item.beatCount === 1 ? "" : "s"}</p>
               </Link>
             ))}
           </div>
-          {(search.counts.producer || 0) > filtered.producers.length ? <button type="button" onClick={() => { setKind("producers"); setLimit(value => kind === "producers" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more producers →</button> : null}
         </section>
       ) : null}
 
       {show("beats") && filtered.beats.length ? (
-        <section className="bvs-discover-producers mt-11">
-          <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">BeatStore</p>
-          <h2 className="mt-2 text-3xl font-semibold">Find the start of your next record.</h2>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+        <section className="bvs-app-shelf bvs-discover-beats" aria-labelledby="discover-beats-heading">
+          <div className="flex items-center justify-between gap-3">
+            <h2 id="discover-beats-heading" className="bvs-app-shelf-title">Beats to build on</h2>
+            {(search.counts.beat || 0) > filtered.beats.length ? <button type="button" aria-label="Show more beats" onClick={() => { setKind("beats"); setLimit(value => kind === "beats" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-app-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
+          </div>
+          <div className="mt-2">
             {filtered.beats.map((item) => (
-              <article key={item.id} className="group min-w-0 rounded-[1.35rem] border border-white/[.07] bg-white/[.025] p-3 transition hover:border-white/15">
-                <div className="flex min-w-0 items-start gap-3">
-                  <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} aria-label={`View ${item.title}`} className="w-20 shrink-0 sm:w-24">
-                    <ExploreArtwork src={item.artworkUrl} label="Beat" sizes="96px" />
+              <article key={item.id} className="bvs-app-row min-w-0 py-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} aria-label={`View ${item.title}`} className="w-16 shrink-0">
+                    <ExploreArtwork src={item.artworkUrl} label="Beat" sizes="64px" />
                   </Link>
-                  <div className="min-w-0 flex-1">
-                    <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} className="hover:text-brand"><h3 className="break-words text-lg font-semibold">{item.title}</h3></Link>
-                    <p className="truncate text-sm text-white/46">{item.producer || "BVS producer"}</p>
-                    <p className="mt-1 text-xs text-white/32">{[item.genre, item.mood, item.bpm ? `${item.bpm} BPM` : ""].filter(Boolean).join(" · ")}</p>
-                  </div>
+                  <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} className="min-w-0 flex-1">
+                    <h3 className="truncate text-[15px] font-semibold">{item.title}</h3>
+                    <p className="truncate text-[13px] text-white/48">{item.producer || "BVS producer"}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-white/35">{[item.genre, item.mood, item.bpm ? `${item.bpm} BPM` : ""].filter(Boolean).join(" · ")}</p>
+                  </Link>
+                  {typeof item.startingPrice === "number" && item.startingPrice > 0 ? <span className="shrink-0 text-xs font-semibold text-[#c1a7ff]">From ${item.startingPrice}</span> : null}
                 </div>
                 {item.previewUrl ? (
-                  <AppBeatPreviewPlayer
-                    title={item.title}
-                    artist={item.producer || "BVS producer"}
-                    preview={item.previewUrl}
-                    artwork={item.artworkUrl}
-                    genre={item.genre}
-                    beatId={item.id}
-                    surface={surface}
-                    compact
-                  />
+                  <div className="mt-2">
+                    <AppBeatPreviewPlayer
+                      title={item.title}
+                      artist={item.producer || "BVS producer"}
+                      preview={item.previewUrl}
+                      artwork={item.artworkUrl}
+                      genre={item.genre}
+                      beatId={item.id}
+                      surface={surface}
+                      compact
+                    />
+                  </div>
                 ) : null}
-
               </article>
             ))}
           </div>
-          {(search.counts.beat || 0) > filtered.beats.length ? <button type="button" onClick={() => { setKind("beats"); setLimit(value => kind === "beats" ? value + 24 : 24); }} className="mt-4 min-h-11 rounded-full border border-white/20 px-5 text-sm text-brand">Show more beats →</button> : null}
         </section>
       ) : null}
 
-      {!loading && !unavailable && !(show("music") && filtered.tracks.length) && !(show("artists") && filtered.artists.length) && !(show("producers") && filtered.producers.length) && !(show("beats") && filtered.beats.length) ? (
-        <div className="mt-10 rounded-[1.5rem] border border-dashed border-white/12 p-10 text-center">
-          <h2 className="text-xl font-semibold">Nothing matched that yet.</h2>
-          <p className="mt-2 text-sm text-white/38">Try another title, artist, producer, genre or mood.</p><button type="button" onClick={() => { setQuery(""); setGenre(""); setKind("all"); setMode("fresh"); setLimit(24); }} className="mt-4 min-h-11 rounded-full bg-brand px-5 text-sm font-semibold text-black">Start discovering</button>
+      {nothing ? (
+        <div className="mt-10 flex flex-col items-center border border-dashed border-white/15 px-6 py-12 text-center">
+          <span className="grid h-14 w-14 place-items-center bg-white/[.06] text-white/60"><LibIcon name="search" size={26} /></span>
+          <h2 className="mt-4 text-xl font-bold">Nothing matched that yet.</h2>
+          <p className="mt-2 max-w-xs text-sm text-white/45">Try another title, artist, producer, genre or mood.</p>
+          <button type="button" onClick={() => { setQuery(""); setGenre(""); setKind("all"); setMode("fresh"); setLimit(24); }} className="bvs-app-pill bvs-app-pill--primary mt-5">Start discovering</button>
         </div>
       ) : null}
     </div>

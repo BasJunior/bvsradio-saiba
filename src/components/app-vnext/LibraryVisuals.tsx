@@ -25,7 +25,21 @@ export type LibIconName =
   | "search"
   | "up"
   | "down"
-  | "close";
+  | "close"
+  | "trending"
+  | "sparkle"
+  | "sliders"
+  | "mic"
+  | "waveform"
+  | "chat"
+  | "repost"
+  | "upload"
+  | "chart"
+  | "wallet"
+  | "briefcase"
+  | "pen"
+  | "radio"
+  | "check";
 
 const paths: Record<LibIconName, ReactNode> = {
   heart: <path d="M12 20.2s-7.6-4.6-8.9-9.6C2.2 7.2 4.4 4.5 7.4 4.5c1.9 0 3.4 1 4.6 2.6 1.2-1.6 2.7-2.6 4.6-2.6 3 0 5.2 2.7 4.3 6.1-1.3 5-8.9 9.6-8.9 9.6Z" />,
@@ -50,6 +64,20 @@ const paths: Record<LibIconName, ReactNode> = {
   up: <path d="m6 14.5 6-6 6 6" />,
   down: <path d="m6 9.5 6 6 6-6" />,
   close: <path d="M6 6l12 12M18 6 6 18" />,
+  trending: <><path d="m3.5 16.5 6-6 4 4 7-7.5" /><path d="M15 7h5.5v5.5" /></>,
+  sparkle: <><path d="M12 3.5c.6 4.4 2.1 5.9 6.5 6.5-4.4.6-5.9 2.1-6.5 6.5-.6-4.4-2.1-5.9-6.5-6.5 4.4-.6 5.9-2.1 6.5-6.5Z" /><path d="M18.5 15.5c.3 1.9.9 2.5 2.8 2.8-1.9.3-2.5.9-2.8 2.8-.3-1.9-.9-2.5-2.8-2.8 1.9-.3 2.5-.9 2.8-2.8Z" /></>,
+  sliders: <><path d="M4 7h9M17 7h3M4 17h3M11 17h9" /><circle cx="15" cy="7" r="2" /><circle cx="9" cy="17" r="2" /></>,
+  mic: <><rect x="9" y="3.5" width="6" height="11" rx="3" /><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" /></>,
+  waveform: <path d="M4 10v4M8 6.5v11M12 4v16M16 8v8M20 10.5v3" />,
+  chat: <path d="M5 5.5h14a1.5 1.5 0 0 1 1.5 1.5v8.5A1.5 1.5 0 0 1 19 17h-8l-4.5 3.5V17H5a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 5 5.5Z" />,
+  repost: <><path d="M4.5 10V8.5a2 2 0 0 1 2-2H18" /><path d="m15.5 4 2.5 2.5L15.5 9" /><path d="M19.5 14v1.5a2 2 0 0 1-2 2H6" /><path d="M8.5 20 6 17.5 8.5 15" /></>,
+  upload: <><path d="M12 15.5V4.5" /><path d="m7.5 9 4.5-4.5L16.5 9" /><path d="M5 19.5h14" /></>,
+  chart: <><path d="M4.5 19.5h15" /><path d="M7.5 16v-5M12 16V7M16.5 16v-8" /></>,
+  wallet: <><rect x="3.5" y="6.5" width="17" height="12" rx="2" /><path d="M3.5 10h17" /><circle cx="16.5" cy="14.3" r="1" fill="currentColor" stroke="none" /></>,
+  briefcase: <><rect x="3.5" y="7.5" width="17" height="11.5" rx="2" /><path d="M9 7.5V5.5h6v2M3.5 12.5h17" /></>,
+  pen: <><path d="M14.5 5.5l4 4L9 19H5v-4l9.5-9.5Z" /><path d="M12.5 7.5l4 4" /></>,
+  radio: <><rect x="3.5" y="8.5" width="17" height="11" rx="2" /><path d="M7 8.5 16.5 4" /><circle cx="15.5" cy="14" r="2.5" /><path d="M7 12.5h3M7 15.5h3" /></>,
+  check: <path d="m5 12.5 4.5 4.5L19 7.5" />,
 };
 
 export function LibIcon({ name, size = 20, className }: { name: LibIconName; size?: number; className?: string }) {

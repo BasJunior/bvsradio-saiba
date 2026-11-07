@@ -112,6 +112,8 @@ const imports = {
   '@/lib/analytics':{trackEvent:(event, properties)=>analytics.push({event, properties})},
   '@/lib/library':{hasLibraryItem:()=>false,recordListening:item=>saved.push(item),toggleLibraryItem:()=>{const next=nextSavedState;nextSavedState=!nextSavedState;return next;}},
   '@/lib/discovery-continuity':continuity,
+  '@/components/app-vnext/LibraryVisuals':{LibIcon:'lib-icon',CoverMosaic:'cover-mosaic'},
+  '@/components/player/PlayerIcons':{HeartIcon:'heart-icon'},
 };
 const searchCalls = [];
 imports['@/lib/use-discovery-search'] = { useDiscoverySearch(params) {
@@ -131,7 +133,7 @@ assert.ok(button(tree,'Retry loading'),'Partial failures must offer recovery');
 assert.equal(nodes(tree).filter(n=>n.type==='article').length,6,'One failed source must not wipe music');
 button(tree,'Retry loading').props.onClick(); tree=render(props);
 button(tree,'Hip-Hop').props.onClick(); tree=render(props);
-button(tree,'▶ Play discoveries').props.onClick();
+button(tree,'Play discoveries').props.onClick();
 assert.ok(played.at(-1).items.every(i=>discovery.soundKey(i.genre)==='hip-hop'),'Native discovery queue must respect the selected genre');
 const firstPlay = nodes(tree).find(n => n.type === 'button' && n.props['aria-label']?.startsWith('Play Song'));
 assert.ok(firstPlay, 'Native artwork must retain a labelled play action');
@@ -155,7 +157,7 @@ const unsaveButton = nodes(tree).find(n=>n.type==='button'&&n.props['aria-label'
 assert.ok(unsaveButton,'A saved discovery track must become removable');
 unsaveButton.props.onClick();
 assert.equal(analytics.filter(item=>item.event==='track_save').length,1,'Removing a discovery save must not emit track_save');
-button(tree,'Show more music →').props.onClick(); tree=render(props);
+button(tree,'Show more music').props.onClick(); tree=render(props);
 assert.equal(nodes(tree).filter(n=>n.type==='article').length,9,'Browse more must expose the full matched pool');
 const search=nodes(tree).find(n=>n.type==='input');search.props.onChange({target:{value:'no-match'}});tree=render(props);
 assert.ok(button(tree,'Start discovering'),'Empty native views must offer a reset');

@@ -1,0 +1,100 @@
+/*
+ * Shared native-app page system (Discover, Feed, Studio), matching the
+ * redesigned Library: square tiles, cover-led shelves, quiet dividers and one
+ * accent per section. Scoped to .bvs-app-page so the web pages are untouched.
+ */
+.bvs-app-page { --bvs-app-accent: 163 219 255; }
+.bvs-app-page[data-app-accent="feed"] { --bvs-app-accent: 193 167 255; }
+.bvs-app-page[data-app-accent="studio"] { --bvs-app-accent: 163 219 255; }
+.bvs-app-page[data-app-accent="lime"] { --bvs-app-accent: 193 255 82; }
+
+.bvs-app-page [class*="rounded"] { border-radius: 0; }
+.bvs-app-page :is(h1, h2) { letter-spacing: -.035em; }
+.bvs-app-page :is(a, button, summary):focus-visible { outline: 2px solid rgb(var(--bvs-app-accent)); outline-offset: 3px; }
+
+.bvs-app-eyebrow { color: rgb(var(--bvs-app-accent)); font-size: 10px; font-weight: 600; letter-spacing: .22em; text-transform: uppercase; }
+
+/* Section chips: transparent until pressed, then an accent underline. */
+.bvs-app-chip {
+  display: inline-flex; align-items: center; gap: .4rem; flex-shrink: 0; white-space: nowrap;
+  min-height: 36px; padding-inline: 1rem; border: 1px solid transparent;
+  font-size: 13px; font-weight: 600; color: rgb(255 255 255 / .62);
+  transition: color .2s ease, background-color .2s ease, border-color .2s ease;
+}
+.bvs-app-chip:hover { color: #fff; }
+.bvs-app-chip[aria-pressed="true"] {
+  color: rgb(var(--bvs-app-accent)); background: rgb(var(--bvs-app-accent) / .11);
+  border-color: rgb(var(--bvs-app-accent)); box-shadow: inset 0 -2px rgb(var(--bvs-app-accent));
+}
+
+/* Sticky chip bar shared with Library. */
+.bvs-app-chipbar { position: sticky; top: 4rem; z-index: 30; background: rgb(9 9 11 / .92); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+
+/* Shelves sit on a hairline, like Library sections. */
+.bvs-app-shelf { margin-top: 2rem; border-top: 1px solid rgb(255 255 255 / .2); padding-top: 1.5rem; }
+.bvs-app-shelf-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.35rem; font-weight: 700; letter-spacing: -.035em; }
+.bvs-app-rail { display: flex; gap: .75rem; overflow-x: auto; scroll-snap-type: x proximity; overscroll-behavior-x: contain; scrollbar-width: none; padding-bottom: .5rem; }
+.bvs-app-rail::-webkit-scrollbar { display: none; }
+.bvs-app-rail > * { scroll-snap-align: start; flex-shrink: 0; }
+
+.bvs-app-row { border-bottom: 1px solid rgb(255 255 255 / .12); }
+.bvs-app-row:last-child { border-bottom: 0; }
+
+.bvs-app-pill {
+  display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+  min-height: 40px; padding-inline: 1rem; font-size: 13px; font-weight: 600; white-space: nowrap;
+  background: rgb(255 255 255 / .08); color: #fff; transition: background-color .2s ease, transform .15s ease;
+}
+.bvs-app-pill:hover { background: rgb(255 255 255 / .14); }
+.bvs-app-pill:active { transform: scale(.97); }
+.bvs-app-pill--primary { background: #c1ff52; color: #080808; }
+.bvs-app-pill--primary:hover { background: #d3ff85; }
+.bvs-app-pill--accent { background: rgb(var(--bvs-app-accent) / .14); color: rgb(var(--bvs-app-accent)); border: 1px solid rgb(var(--bvs-app-accent) / .35); }
+
+.bvs-app-icon-button { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; color: rgb(255 255 255 / .72); transition: color .2s ease, background-color .2s ease; }
+.bvs-app-icon-button:hover { color: #fff; background: rgb(255 255 255 / .06); }
+.bvs-app-icon-button[aria-pressed="true"] { color: #c1ff52; }
+
+.bvs-app-card { border: 1px solid rgb(255 255 255 / .14); background: #121214; transition: border-color .2s ease, background-color .2s ease; }
+.bvs-app-card:hover { border-color: rgb(var(--bvs-app-accent) / .4); background: rgb(var(--bvs-app-accent) / .04); }
+
+.bvs-app-search { display: flex; align-items: center; gap: .6rem; min-height: 48px; padding-inline: .9rem; background: rgb(255 255 255 / .07); border: 1px solid transparent; transition: border-color .2s ease, background-color .2s ease; }
+.bvs-app-search:focus-within { border-color: rgb(var(--bvs-app-accent) / .55); background: rgb(255 255 255 / .09); }
+.bvs-app-search input { min-width: 0; flex: 1; background: transparent; font-size: 16px; outline: none; }
+.bvs-app-search input::placeholder { color: rgb(255 255 255 / .4); }
+
+/* Play glyph that sits on a cover's corner. */
+.bvs-app-cover-play { position: absolute; right: .4rem; bottom: .4rem; display: grid; place-items: center; width: 1.85rem; height: 1.85rem; background: #c1ff52; color: #080808; box-shadow: 0 8px 18px -8px rgb(0 0 0 / .9); transition: transform .15s ease, opacity .2s ease; }
+.bvs-app-cover:active .bvs-app-cover-play { transform: scale(.94); }
+
+/* The shared More menu, restyled inside app pages. */
+.bvs-app-page .bvs-discover-actions { margin-top: 0; }
+.bvs-app-page .bvs-discover-actions > summary { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; font-size: 0; color: rgb(255 255 255 / .55); }
+.bvs-app-page .bvs-discover-actions > summary::before { content: "•••"; font-size: 14px; letter-spacing: .08em; }
+.bvs-app-page .bvs-discover-actions > summary > span { display: none; }
+.bvs-app-page .bvs-discover-actions-content { gap: .4rem; padding: .5rem; }
+
+/* Trending preview inside app Discover, aligned to the shelf system. */
+.bvs-app-trending > section { margin-top: 2rem; border-color: rgb(255 255 255 / .2); }
+.bvs-app-trending > section h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.035em; }
+.bvs-app-trending > section > div:first-child > div > p:first-child { font-size: 10px; font-weight: 600; letter-spacing: .22em; color: rgb(var(--bvs-app-accent)); }
+.bvs-app-trending [aria-label="Trending period"] > button { min-height: 36px; border-color: transparent; font-size: 13px; font-weight: 600; color: rgb(255 255 255 / .62); }
+.bvs-app-trending [aria-label="Trending period"] > button[aria-pressed="true"] { color: rgb(var(--bvs-app-accent)); background: rgb(var(--bvs-app-accent) / .11); border-color: rgb(var(--bvs-app-accent)); box-shadow: inset 0 -2px rgb(var(--bvs-app-accent)); }
+
+.bvs-app-skeleton { background: linear-gradient(90deg, rgb(255 255 255 / .04), rgb(255 255 255 / .08), rgb(255 255 255 / .04)); background-size: 200% 100%; animation: bvs-app-shimmer 1.4s ease-in-out infinite; }
+@keyframes bvs-app-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .bvs-app-skeleton { animation: none; } }
+
+/* Bottom action sheet (DiscoverMoreActions sheet mode), rendered on <body>. */
+.bvs-action-sheet { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: flex-end; justify-content: center; }
+.bvs-action-sheet-backdrop { position: absolute; inset: 0; background: rgb(0 0 0 / .55); animation: bvs-sheet-fade .18s ease-out; }
+.bvs-action-sheet-panel { position: relative; width: min(100%, 32rem); max-height: 80dvh; overflow-y: auto; padding: .75rem .75rem calc(.75rem + env(safe-area-inset-bottom)); background: #17171a; border-top: 1px solid rgb(255 255 255 / .16); animation: bvs-sheet-up .22s cubic-bezier(.2, .8, .2, 1); }
+.bvs-action-sheet-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: .35rem .25rem .75rem; font-size: 15px; font-weight: 700; border-bottom: 1px solid rgb(255 255 255 / .1); }
+.bvs-action-sheet .bvs-discover-actions-content { display: grid; gap: .4rem; padding: .75rem 0; border: 0; background: transparent; }
+.bvs-action-sheet .bvs-discover-actions-content :is(button, a) { display: flex; align-items: center; gap: .6rem; min-height: 48px; width: 100%; justify-content: flex-start; padding-inline: 1rem; border-radius: 0; border: 0; background: rgb(255 255 255 / .08); font-size: 14px; font-weight: 600; text-align: left; color: #fff; }
+.bvs-action-sheet .bvs-discover-actions-content > * { min-width: 0; }
+.bvs-action-sheet .bvs-discover-actions-content .relative > .absolute { position: static; width: 100%; margin-top: .5rem; }
+.bvs-action-sheet-cancel { width: 100%; min-height: 48px; font-size: 15px; font-weight: 600; background: rgb(255 255 255 / .08); }
+@keyframes bvs-sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes bvs-sheet-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .bvs-action-sheet-panel, .bvs-action-sheet-backdrop { animation: none; } }
