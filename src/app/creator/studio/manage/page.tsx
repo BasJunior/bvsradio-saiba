@@ -1067,7 +1067,7 @@ function ArtistReleases({
             className={`${field} mt-3`}
           >
             <option value="takedown">Takedown / unpublish</option>
-            <option value="metadata_correction">Metadata correction</option>
+            <option value="metadata_correction">Song details correction</option>
             <option value="artwork_replacement">Artwork replacement</option>
             <option value="rights_update">Rights update</option>
             <option value="payout_question">Payout question</option>

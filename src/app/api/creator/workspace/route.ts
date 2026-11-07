@@ -87,7 +87,10 @@ export async function GET(request: Request) {
     fetch(creatorUrl(`show_episodes?creator_id=eq.${id}&select=*&order=created_at.desc`), { headers: creatorHeaders, cache: 'no-store' }),
   ]
   const responses = await Promise.all(workflowRequests)
-  if (responses.some(response => !response.ok)) return NextResponse.json({ error: 'Creator tables are not ready. Run supabase-creator-workflows.sql.' }, { status: 503 })
+  if (responses.some(response => !response.ok)) {
+    console.error('Creator workspace tables unavailable (check supabase-creator-workflows.sql).')
+    return NextResponse.json({ error: 'Studio couldn’t load your work right now. Please try again shortly.' }, { status: 503 })
+  }
   const [applications, articles, briefs, shows, rawEpisodes] = await Promise.all(responses.map(response => response.json()))
   const episodes = await Promise.all((Array.isArray(rawEpisodes) ? rawEpisodes : []).map(async (episode: Record<string, unknown>) => ({
     ...episode,

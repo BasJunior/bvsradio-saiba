@@ -193,7 +193,7 @@ function ArtistPremiumInner() {
       {data?.distributionStores?.length ? (
         <section className="mt-10 rounded-2xl border border-white/10 p-5 sm:p-6">
           <h2 className="text-xl font-semibold">Distribution destinations</h2>
-          <p className="mt-2 text-sm text-text-secondary">Availability still depends on rights, metadata, territory and partner delivery readiness.</p>
+          <p className="mt-2 text-sm text-text-secondary">Availability still depends on rights, song details, country and when each store is ready.</p>
           <ul className="mt-4 grid grid-cols-2 gap-2 text-xs text-text-secondary sm:grid-cols-3 md:grid-cols-4">
             {data.distributionStores.map((store) => <li key={store} className="rounded-lg border border-white/10 px-3 py-2">{store}</li>)}
           </ul>

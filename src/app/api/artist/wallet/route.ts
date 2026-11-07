@@ -254,7 +254,8 @@ export async function POST(request: Request) {
     })
   }
   if (!response.ok) {
-    return NextResponse.json({ error: 'Artist wallet schema is not ready. Run the wallet and marketplace economics SQL packs in Supabase.' }, { status: 503 })
+    console.error('Artist wallet tables unavailable (check the wallet and marketplace economics SQL packs).')
+    return NextResponse.json({ error: 'We couldn’t save your request right now. Please try again shortly.' }, { status: 503 })
   }
   const [savedWaitlist] = await response.json()
   return NextResponse.json({ waitlist: savedWaitlist })

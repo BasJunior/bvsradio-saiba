@@ -310,7 +310,7 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
       <section id="corrections" className="mt-8 scroll-mt-24 rounded-3xl border border-white/10 p-5 sm:p-6" aria-labelledby="release-corrections-heading">
         <p className="text-xs font-semibold uppercase tracking-[.18em] text-text-secondary">Corrections</p>
         <h2 id="release-corrections-heading" className="mt-1 text-2xl font-semibold">Fix the existing release without starting over.</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Editorial approval remains required before metadata, rights or takedown changes affect the public catalogue. Album and EP requests can target the whole release before public track records exist.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">Editorial approval remains required before changes to song details, rights or removal show up publicly. Album and EP requests can target the whole release before public track records exist.</p>
 
         {(isRelease || tracks.length > 0) ? (
           <form onSubmit={submitCorrection} className="mt-5 grid gap-3 lg:max-w-2xl">
@@ -321,7 +321,7 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
               </select>
             ) : null}
             <select value={requestType} onChange={(event) => setRequestType(event.target.value)} className={field}>
-              <option value="metadata_correction">Metadata correction</option>
+              <option value="metadata_correction">Song details correction</option>
               <option value="rights_update">Rights / credits update</option>
               <option value="takedown">Takedown / unpublish</option>
               <option value="other">Other editorial change</option>

@@ -163,7 +163,7 @@ export async function GET(req: Request) {
   if (!token) return NextResponse.json({ error: "Sign in required." }, { status: 401 });
   if (!releasesConfigured()) {
     return NextResponse.json(
-      { error: "Releases DB not configured. Run supabase-releases-pipeline.sql.", releases: [] },
+      { error: "Releases aren’t available right now. Please try again shortly.", releases: [] },
       { status: 503 },
     );
   }

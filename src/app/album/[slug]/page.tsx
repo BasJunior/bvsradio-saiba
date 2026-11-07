@@ -1,8 +1,8 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import AlbumPlayer from '@/components/AlbumPlayer'
+import DetailHero, { DetailSection } from '@/components/DetailHero'
 import { getPublicRelease } from '@/lib/public-releases'
 
 export const dynamic = 'force-dynamic'
@@ -20,21 +20,18 @@ export default async function AlbumPage({ params }: { params: Promise<{ slug: st
   if (!release) notFound()
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <Link href="/catalogue" className="text-sm text-brand">← Back to catalogue</Link>
-      <div className="mt-8 grid gap-8 md:grid-cols-[320px_1fr]">
-        <div className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 bg-black/30">
-          <Image src={release.cover} alt={`${release.title} cover`} fill unoptimized={/^https?:\/\//i.test(release.cover)} className="object-contain" priority />
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[.25em] text-brand">{release.releaseType} · BVS catalogue</p>
-          <h1 className="mt-2 text-4xl font-semibold md:text-5xl">{release.title}</h1>
-          <p className="mt-3 text-xl text-text-secondary">{release.artist}</p>
-          <p className="mt-3 text-sm text-text-secondary">{release.genre || 'Music'} · {release.tracks.length} tracks{release.copyrightYear ? ` · © ${release.copyrightYear}` : ''}</p>
-          {release.description && <p className="mt-5 max-w-prose text-text-secondary">{release.description}</p>}
-        </div>
-      </div>
-      <div className="mt-10"><AlbumPlayer release={release} /></div>
+    <main className="bvs-app-page bvs-detail-page mx-auto max-w-5xl px-4 pb-16 pt-2 sm:px-6" data-app-accent="lime">
+      <Link href="/catalogue" className="inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-white/60 hover:text-white"><span aria-hidden="true">‹</span> Catalogue</Link>
+      <DetailHero
+        image={release.cover}
+        imageAlt={`${release.title} cover`}
+        eyebrow={release.releaseType || 'Release'}
+        title={release.title}
+        subtitle={release.artist}
+        facts={[release.genre, `${release.tracks.length} song${release.tracks.length === 1 ? '' : 's'}`, release.copyrightYear ? `© ${release.copyrightYear}` : null]}
+      />
+      {release.description ? <p className="mx-auto max-w-prose text-center text-sm leading-6 text-white/60 sm:mx-0 sm:text-left">{release.description}</p> : null}
+      <DetailSection title="Songs" id="album-songs-heading"><AlbumPlayer release={release} /></DetailSection>
     </main>
   )
 }

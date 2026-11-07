@@ -143,7 +143,7 @@ export default function CreatorInsights({ token }: { token: string }) {
             <Card label="Submissions" value={data.summary.submissions} note={`Added in the last ${data.rangeDays} days`} />
             <Card label="Published" value={data.catalogue.published} />
             <Card label="In rotation" value={data.catalogue.inRotation} />
-            <Card label="Lifetime plays" value={data.catalogue.lifetimePlays.toLocaleString()} note="Database play counter" />
+            <Card label="Lifetime plays" value={data.catalogue.lifetimePlays.toLocaleString()} note="Total plays (all time)" />
           </div>
           <div className="bvs-insight-earnings-note">
             <div><p className="text-xs uppercase tracking-[.16em] text-brand">Earnings</p><p className="mt-1 text-sm text-text-secondary">Playback insights show audience activity. Sales, fees, refunds and payout-ready balances are tracked separately in your wallet.</p></div>

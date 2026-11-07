@@ -60,7 +60,10 @@ export async function POST(request: Request) {
     headers: { ...serviceHeaders, Prefer: 'return=representation' },
     body: JSON.stringify({ user_id: user.id, body: message, broadcast_key: broadcastKey || 'bvs-live' }),
   })
-  if (!response.ok) return NextResponse.json({ error: 'Live chat is not ready. Ask an administrator to apply the community migration.' }, { status: 503 })
+  if (!response.ok) {
+    console.error('Community chat tables unavailable (check the community migration).')
+    return NextResponse.json({ error: 'Live chat isn’t available right now. Please try again shortly.' }, { status: 503 })
+  }
   const [created] = await response.json()
   return NextResponse.json({ message: { ...created, profile: access.profile } }, { status: 201 })
 }

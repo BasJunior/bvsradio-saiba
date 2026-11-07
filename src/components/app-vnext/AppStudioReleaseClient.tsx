@@ -147,7 +147,7 @@ function ReleaseCard({
             {tracks.map((track) => <option key={track.id} value={track.id}>Track · {track.title}</option>)}
           </select>
           <select value={requestType} onChange={(event) => setRequestType(event.target.value)} className={field} aria-label="Correction type">
-            <option value="metadata_correction">Metadata correction</option>
+            <option value="metadata_correction">Song details correction</option>
             <option value="rights_update">Rights / credits update</option>
             <option value="takedown">Takedown / unpublish</option>
             <option value="other">Other editorial change</option>
