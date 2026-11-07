@@ -8,7 +8,7 @@ import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
 import AppShareButton from "@/components/app-vnext/AppShareButton";
 import DetailHero, { DetailSection } from "@/components/DetailHero";
 import type { DiscoveryItem } from "@/lib/discovery";
-import { getPublicArtist, getPublishedArtists, getPublishedProducers } from "@/lib/artist-content";
+import { getPublicArtist, getPublishedArtists, getPublishedProducers, getPublishedUsernameById } from "@/lib/artist-content";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,8 @@ export default async function AppCreatorPage({
   const knownCreator = [...artistSummaries, ...producerSummaries].find(
     (creator) => creator.id === routeValue || creatorKey(creator.username) === routeKey,
   );
-  const profile = await getPublicArtist((knownCreator?.username || routeValue).toLowerCase());
+  const handle = knownCreator?.username || (await getPublishedUsernameById(routeValue)) || routeValue;
+  const profile = await getPublicArtist(handle.toLowerCase());
   if (!profile) notFound();
 
   const asRaw = searchParams ? (await searchParams).as : undefined;
@@ -61,6 +62,7 @@ export default async function AppCreatorPage({
   const credits = new Map<string, Set<string>>();
   for (const track of profile.tracks) {
     for (const credit of track.credits || []) {
+      if (creatorKey(credit.person_name) === creatorKey(profile.name)) continue;
       if (!credits.has(credit.person_name)) credits.set(credit.person_name, new Set());
       credits.get(credit.person_name)?.add(credit.credit_role);
     }

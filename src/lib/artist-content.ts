@@ -215,6 +215,22 @@ export async function getPublishedArtists(): Promise<PublishedArtistSummary[]> {
   }
 }
 
+/** Username for a published profile id, so id links still open a profile when the
+ * creator isn't in the published artist/producer summaries (e.g. found via search). */
+export async function getPublishedUsernameById(id: string): Promise<string | null> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key || !/^[0-9a-f-]{36}$/i.test(id)) return null
+  try {
+    const response = await fetch(`${url}/rest/v1/profiles?id=eq.${encodeURIComponent(id)}&is_published=eq.true&select=username&limit=1`, { headers: { apikey: key, Authorization: `Bearer ${key}` }, next: { revalidate: 300 } })
+    if (!response.ok) return null
+    const rows = await response.json() as Array<{ username?: string | null }>
+    return rows[0]?.username || null
+  } catch {
+    return null
+  }
+}
+
 export async function getPublicArtist(slug: string): Promise<PublicArtist | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY

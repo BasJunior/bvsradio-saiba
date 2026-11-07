@@ -163,3 +163,5 @@
 .bvs-detail-page [class*="rounded"] { border-radius: 0; }
 /* Compact row actions on profile song lists. */
 .bvs-row-actions .bvs-app-pill { min-height: 36px; padding-inline: .75rem; font-size: 12px; }
+.bvs-row-actions .bvs-app-pill--primary { background: rgb(255 255 255 / .08); color: #fff; }
+.bvs-row-actions .bvs-app-pill--primary:hover { background: #c1ff52; color: #080808; }
