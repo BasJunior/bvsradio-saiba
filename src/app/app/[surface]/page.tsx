@@ -14,6 +14,16 @@ import HomeCreatorOffer from "@/components/home/HomeCreatorOffer";
 import IosHomeListenPanel from "@/components/app/IosHomeListenPanel";
 import { DeferredHomeBeatRail, DeferredHomeCreatorBands, DeferredHomePublicPlaylistRail, DeferredPublishedAlbumsShelf } from "@/components/home/DeferredHomeSections";
 import type { MobileSurface } from "@/lib/station-library";
+import { LibIcon, type LibIconName } from "@/components/app-vnext/LibraryVisuals";
+
+function HomeQuickLink({ href, icon, rgb, label, note }: { href: string; icon: LibIconName; rgb: string; label: string; note: string }) {
+  return (
+    <Link href={href} className="bvs-app-card flex items-center gap-3 p-2.5">
+      <span aria-hidden="true" className="grid h-11 w-11 shrink-0 place-items-center" style={{ background: `rgb(${rgb} / .14)`, color: `rgb(${rgb})` }}><LibIcon name={icon} size={20} /></span>
+      <span className="min-w-0"><span className="block truncate text-sm font-semibold">{label}</span><span className="block truncate text-xs text-white/45">{note}</span></span>
+    </Link>
+  );
+}
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
@@ -56,49 +66,48 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
 
   if (surface === "ios") {
     return (
-      <div className="bvs-square-home mx-auto max-w-6xl pb-12">
-        <section className="relative px-4 pb-4 pt-5 sm:px-6 sm:pt-8" aria-labelledby="ios-home-title">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,.86fr)] lg:items-center">
+      <div className="bvs-square-home bvs-app-page bvs-app-home mx-auto max-w-6xl pb-12" data-app-accent="lime">
+        <section className="relative px-4 pb-2 pt-5 sm:px-6 sm:pt-8" aria-labelledby="ios-home-title">
+          <header className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-3 text-[10px] font-semibold uppercase tracking-[.2em] text-white/70 sm:text-xs">
-                <span className="border border-brand/70 px-2.5 py-1 text-brand">BVS Radio</span>
-                <span>Sound · Culture · Creator Tools</span>
-              </div>
-              <h1 id="ios-home-title" className="mt-5 max-w-3xl text-balance text-4xl font-black leading-[.98] tracking-[-0.05em] text-white sm:text-5xl">
-                Listen closer. Build what comes next.
-              </h1>
-              <p className="mt-4 max-w-2xl text-pretty text-sm leading-relaxed text-white/72 sm:text-base">
-                Discover sound from everywhere, support independent creators and move from inspiration to your next release in one place.
-              </p>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link href="#listen" className="inline-flex min-h-11 items-center justify-center rounded-sm bg-brand px-5 py-3 text-sm font-bold text-black">Listen live</Link>
-                <Link href={`${base}/explore`} className="inline-flex min-h-11 items-center justify-center rounded-sm border border-white/25 px-5 py-3 text-sm font-semibold text-white">Explore BVS</Link>
-              </div>
+              <p className="bvs-app-eyebrow">BVS Radio · Zimbabwe to the world</p>
+              <h1 id="ios-home-title" className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Listen now</h1>
             </div>
-            <div className="min-w-0"><HomeTopFive surface={surface} /></div>
-          </div>
+            <Link href={`${base}/feed`} aria-label="BVS Feed" className="bvs-app-icon-button border border-white/15"><LibIcon name="chat" /></Link>
+          </header>
+          <p className="mt-2 max-w-xl text-sm text-white/50">Independent sound, the people behind it, and the tools to make your own.</p>
 
-          <div className="mt-6 grid gap-5 lg:grid-cols-2">
-            <div className="bvs-home-media">{story}</div>
-            <div id="home-offers" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-              <HomeFeaturedOffer surface={surface} />
-              <HomeCreatorOffer surface={surface} />
-            </div>
-          </div>
+          <nav className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4" aria-label="Jump to">
+            <HomeQuickLink href="#listen" icon="radio" rgb="193 255 82" label="Live radio" note="On air now" />
+            <HomeQuickLink href={`${base}/explore`} icon="sparkle" rgb="163 219 255" label="Discover" note="New for you" />
+            <HomeQuickLink href={`${base}/trending`} icon="trending" rgb="255 210 92" label="Trending" note="BVS Top 20" />
+            <HomeQuickLink href={`${base}/studio`} icon="mic" rgb="193 167 255" label="Studio" note="Create and release" />
+          </nav>
 
-          <section id="listen" className="bvs-culture-listen mt-6 scroll-mt-24" aria-labelledby="ios-listening-room-title">
-            <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">The BVS listening room · Press play</p>
-                <h2 id="ios-listening-room-title" className="mt-1 text-2xl font-semibold">Your next favourite is here.</h2>
-                <p className="mt-1 text-sm text-white/55">BVS Radio · Zimbabwe to the world</p>
-              </div>
-              <Link href={`${base}/radio`} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand">Explore BVS Radio →</Link>
+          <section id="listen" className="bvs-app-shelf bvs-culture-listen scroll-mt-24" aria-labelledby="ios-listening-room-title">
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="ios-listening-room-title" className="bvs-app-shelf-title">On air now</h2>
+              <Link href={`${base}/radio`} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 px-2 text-[13px] font-semibold text-brand">BVS Radio<LibIcon name="chevron" size={15} /></Link>
             </div>
-            <IosHomeListenPanel />
+            <div className="mt-3"><IosHomeListenPanel /></div>
           </section>
 
           <HomeContinueListening />
+
+          <section className="bvs-app-shelf" aria-label="BVS Top 5">
+            <HomeTopFive surface={surface} />
+          </section>
+
+          <section className="bvs-app-shelf" aria-labelledby="ios-home-from-bvs">
+            <h2 id="ios-home-from-bvs" className="bvs-app-shelf-title">From BVS</h2>
+            <div className="mt-3 grid gap-4 lg:grid-cols-2">
+              <div className="bvs-home-media">{story}</div>
+              <div id="home-offers" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                <HomeFeaturedOffer surface={surface} />
+                <HomeCreatorOffer surface={surface} />
+              </div>
+            </div>
+          </section>
         </section>
 
         <DeferredHomeCreatorBands surface={surface}>
