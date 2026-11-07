@@ -8,6 +8,7 @@ import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import AppNotificationSettings from "@/components/app-vnext/AppNotificationSettings";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import { getAppPreference, setAppPreference, unregisterPushDevice } from "@/lib/app-native";
+import { LibIcon, type LibIconName } from "@/components/app-vnext/LibraryVisuals";
 
 type DataMode = "auto" | "saver" | "high";
 
@@ -50,103 +51,119 @@ export default function AppYouClient({ surface }: { surface: AppSurface }) {
   };
 
   if (loading) {
-    return <div className="mx-auto max-w-4xl px-4 pt-8"><div className="h-40 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
-  }
-
-  if (!signedIn) {
     return (
-      <div className="mx-auto max-w-4xl px-4 pb-12 pt-8 text-center sm:px-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Your BVS</p>
-        <h1 className="mx-auto mt-3 max-w-2xl text-4xl font-semibold sm:text-6xl">Make the experience yours.</h1>
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-white/44 sm:text-base">Keep your Library in sync, follow creators, join rooms and unlock Studio access when you’re ready to create.</p>
-        <Link href={`/app/${surface}/join`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-white px-6 font-semibold text-black transition hover:bg-brand">Create account</Link>
-        <div className="mt-3"><Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/you`)}`} className="text-sm text-white/54 transition hover:text-brand">Already have an account? Sign in</Link></div>
-        <div className="mt-8 flex flex-wrap justify-center gap-2 text-sm">
-          <a href="https://bvsradio.com/contact" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/[.08] px-4 py-2 text-white/40 transition hover:border-white/18 hover:text-white">Support ↗</a>
-          <a href="https://bvsradio.com/privacy" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/[.08] px-4 py-2 text-white/40 transition hover:border-white/18 hover:text-white">Privacy ↗</a>
-        </div>
+      <div className="bvs-app-page mx-auto max-w-2xl px-4 pt-6" data-app-accent="lime" aria-busy="true">
+        <div className="bvs-app-skeleton h-16 w-16" /><div className="bvs-app-skeleton mt-4 h-8 w-40" /><div className="bvs-app-skeleton mt-6 h-40" />
       </div>
     );
   }
 
-  return (
-    <div className="mx-auto max-w-4xl px-4 pb-12 pt-6 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">You</p>
-      <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">Your BVS, your settings.</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/43 sm:text-base">Identity, notifications, playback preferences and creator access — all in one place.</p>
-
-      <section className="mt-7 rounded-[1.7rem] border border-white/[.07] bg-white/[.025] p-5 backdrop-blur-xl sm:p-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-white/34">Signed in</p>
-        <p className="mt-2 truncate text-xl font-semibold">{user?.email}</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-full border border-white/[.08] bg-white/[.025] px-3 py-1.5 text-xs text-white/52">{isCreator ? "Creator" : "Listener"}</span>
-          {premiumActive ? <span data-studio-accent="money" className="bvs-studio-accent-button rounded-full border px-3 py-1.5 text-xs font-semibold">Premium · {premiumPlanLabel || "Active"}</span> : null}
+  if (!signedIn) {
+    return (
+      <div className="bvs-app-page mx-auto max-w-2xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="lime">
+        <p className="bvs-app-eyebrow">Your BVS</p>
+        <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">You</h1>
+        <div className="mt-5 border border-white/12 bg-[#121214] p-5">
+          <span className="grid h-14 w-14 place-items-center bg-white/[.07] text-white/60"><LibIcon name="people" size={26} /></span>
+          <h2 className="mt-4 text-xl font-bold">Make the experience yours.</h2>
+          <p className="mt-1.5 text-sm leading-6 text-white/55">Keep your Library in sync, follow creators, join rooms and unlock Studio when you’re ready to create.</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link href={`/app/${surface}/join`} className="bvs-app-pill bvs-app-pill--primary min-h-11 px-5">Create account</Link>
+            <Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/you`)}`} className="bvs-app-pill min-h-11 px-5">Sign in</Link>
+          </div>
         </div>
-      </section>
+        <SettingsGroup title="Help">
+          <SettingsRow href="https://bvsradio.com/contact" external icon="chat" rgb="163 219 255" label="Support" />
+          <SettingsRow href="https://bvsradio.com/privacy" external icon="lock" rgb="255 255 255" label="Privacy" />
+        </SettingsGroup>
+      </div>
+    );
+  }
 
-      <section className="mt-9">
-        <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Playback & data</p>
-        <h2 className="mt-2 text-3xl font-semibold">Tune BVS to your connection.</h2>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/40">Choose how much media BVS loads. Auto works well for most people.</p>
+  const initial = (user?.email || "B").trim().charAt(0).toUpperCase();
 
-        <div className="mt-5 grid gap-2 sm:grid-cols-3">
+  return (
+    <div className="bvs-app-page mx-auto max-w-2xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="lime">
+      <p className="bvs-app-eyebrow">Your BVS</p>
+      <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">You</h1>
+
+      <Link href={`/app/${surface}/account`} className="bvs-app-card mt-5 flex items-center gap-4 p-4">
+        <span aria-hidden="true" className="grid h-14 w-14 shrink-0 place-items-center bg-[#c1ff52] text-2xl font-black text-black">{initial}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[17px] font-semibold">{user?.email}</span>
+          <span className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex min-h-6 items-center border border-white/15 px-2 text-[11px] text-white/60">{isCreator ? "Creator" : "Listener"}</span>
+            {premiumActive ? <span data-studio-accent="money" className="bvs-studio-accent-button inline-flex min-h-6 items-center border px-2 text-[11px] font-semibold">Premium · {premiumPlanLabel || "Active"}</span> : null}
+          </span>
+        </span>
+        <LibIcon name="chevron" size={18} className="shrink-0 text-white/35" />
+      </Link>
+
+      <SettingsGroup title="Your BVS">
+        <SettingsRow href={`/app/${surface}/notifications`} icon="chat" rgb="193 167 255" label="Inbox" note="Editorial decisions, orders and account updates" />
+        <SettingsRow href={`/app/${surface}/library`} icon="heart" rgb="193 167 255" label="Library" note="Likes, playlists and downloads" />
+        {isCreator
+          ? <SettingsRow href={`/app/${surface}/studio`} icon="mic" rgb="163 219 255" label="Studio" note="Releases, review, performance and money" />
+          : <SettingsRow href={`/app/${surface}/account#creator-role`} icon="sparkle" rgb="193 255 82" label="Turn on creator access." note="Apply for the creator role that fits your work" />}
+        <SettingsRow href={`/app/${surface}/account`} icon="people" rgb="255 255 255" label="Account" note="Profile, roles, privacy, export and controls" />
+      </SettingsGroup>
+
+      <section className="bvs-app-shelf" aria-labelledby="you-playback-heading">
+        <h2 id="you-playback-heading" className="bvs-app-shelf-title">Playback & data</h2>
+        <p className="mt-1 text-sm text-white/50">Choose how much media BVS loads. Auto suits most connections.</p>
+        <div className="mt-3 grid grid-cols-3 border border-white/12" role="radiogroup" aria-label="Data mode">
           {(["auto", "saver", "high"] as DataMode[]).map((mode) => (
             <button
               key={mode}
               type="button"
+              role="radio"
+              aria-checked={dataMode === mode}
               onClick={() => updateMode(mode)}
-              className={`rounded-[1.3rem] border p-4 text-left transition ${dataMode === mode ? "border-brand/35 bg-brand/[.075]" : "border-white/[.07] bg-white/[.02] hover:border-white/15 hover:bg-white/[.035]"}`}
+              className={`min-h-11 border-r border-white/12 px-2 text-sm font-semibold transition last:border-r-0 ${dataMode === mode ? "bg-[#c1ff52] text-black" : "text-white/65 hover:bg-white/[.05]"}`}
             >
-              <span className="block font-semibold">{mode === "saver" ? "Data Saver" : mode === "high" ? "High" : "Auto"}</span>
-              <span className="mt-2 block text-xs leading-5 text-white/36">{mode === "saver" ? "Load less artwork and reduce background media use." : mode === "high" ? "Prefer richer media when your connection can handle it." : "Let BVS adapt automatically to your network."}</span>
+              {mode === "saver" ? "Data Saver" : mode === "high" ? "High" : "Auto"}
             </button>
           ))}
         </div>
-
-        <label className="mt-3 flex items-center justify-between gap-4 rounded-[1.3rem] border border-white/[.07] bg-white/[.02] p-4">
+        <p className="mt-2 text-xs text-white/45">{dataMode === "saver" ? "Loads less artwork and reduces background media use." : dataMode === "high" ? "Prefers richer media when your connection can handle it." : "BVS adapts automatically to your network."}</p>
+        <label className="mt-3 flex min-h-14 items-center justify-between gap-4 border-y border-white/12 py-3">
           <span>
-            <span className="block font-semibold">Download on Wi-Fi only</span>
-            <span className="mt-1 block text-xs text-white/34">Helps avoid unexpected mobile-data use for offline music.</span>
+            <span className="block text-[15px] font-semibold">Download on Wi-Fi only</span>
+            <span className="mt-0.5 block text-xs text-white/45">Avoids unexpected mobile-data use for offline music.</span>
           </span>
-          <input type="checkbox" checked={wifiOnly} onChange={(event) => updateWifi(event.target.checked)} className="h-5 w-5 accent-brand" />
+          <input type="checkbox" role="switch" checked={wifiOnly} onChange={(event) => updateWifi(event.target.checked)} className="bvs-app-switch" />
         </label>
       </section>
 
       <AppNotificationSettings surface={surface} />
 
-      <section className="mt-9 grid gap-3 sm:grid-cols-2">
-        <Link href={`/app/${surface}/notifications`} className="group rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-5 transition hover:border-white/15 hover:bg-white/[.035]">
-          <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Inbox</p>
-          <h2 className="mt-2 text-xl font-semibold">Updates that matter.</h2>
-          <p className="mt-2 text-sm leading-6 text-white/38">Editorial decisions, creator activity, orders and account updates.</p>
-        </Link>
-        <Link href={`/app/${surface}/account`} className="group rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-5 transition hover:border-white/15 hover:bg-white/[.035]">
-          <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Account</p>
-          <h2 className="mt-2 text-xl font-semibold">Identity & access.</h2>
-          <p className="mt-2 text-sm leading-6 text-white/38">Profile, creator roles, privacy, export and account controls.</p>
-        </Link>
-        {isCreator ? (
-          <Link href={`/app/${surface}/studio`} data-studio-accent="core" className="bvs-studio-accent-card group rounded-[1.35rem] border border-white/[.07] bg-white/[.02] p-5">
-            <p className="bvs-studio-accent-label text-[10px] font-semibold uppercase tracking-[.16em]">Studio</p>
-            <h2 className="mt-2 text-xl font-semibold">Your work starts here.</h2>
-            <p className="mt-2 text-sm leading-6 text-white/38">Releases, review, distribution, performance and money.</p>
-          </Link>
-        ) : (
-          <Link href={`/app/${surface}/account#creator-role`} className="group rounded-[1.35rem] border border-brand/18 bg-brand/[.045] p-5 transition hover:border-brand/30 hover:bg-brand/[.07]">
-            <p className="text-[10px] font-semibold uppercase tracking-[.16em] text-brand">Create</p>
-            <h2 className="mt-2 text-xl font-semibold">Turn on creator access.</h2>
-            <p className="mt-2 text-sm leading-6 text-white/38">Apply for the creator role that fits the work you want to do.</p>
-          </Link>
-        )}
-      </section>
-
-      <div className="mt-7 flex flex-wrap gap-2 text-sm">
-        <a href="https://bvsradio.com/contact" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/[.08] px-4 py-2 text-white/40 transition hover:border-white/18 hover:text-white">Support ↗</a>
-        <a href="https://bvsradio.com/privacy" target="_blank" rel="noopener noreferrer" className="rounded-full border border-white/[.08] px-4 py-2 text-white/40 transition hover:border-white/18 hover:text-white">Privacy ↗</a>
-      </div>
+      <SettingsGroup title="Help">
+        <SettingsRow href="https://bvsradio.com/contact" external icon="chat" rgb="163 219 255" label="Support" />
+        <SettingsRow href="https://bvsradio.com/privacy" external icon="lock" rgb="255 255 255" label="Privacy" />
+      </SettingsGroup>
 
       {signOutError ? <p role="alert" className="mt-5 text-sm text-red-200">{signOutError}</p> : null}
-      <button type="button" onClick={() => void signOut()} className="mt-8 min-h-11 rounded-full border border-white/[.08] px-5 text-sm text-white/38 transition hover:border-red-400/30 hover:text-red-200">Sign out</button>
+      <button type="button" onClick={() => void signOut()} className="mt-8 min-h-12 w-full border border-white/12 text-[15px] font-semibold text-red-300 transition hover:border-red-400/40 hover:bg-red-400/[.06]">Sign out</button>
     </div>
   );
+}
+
+function SettingsGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="bvs-app-shelf">
+      <h2 className="bvs-app-shelf-title">{title}</h2>
+      <div className="mt-2">{children}</div>
+    </section>
+  );
+}
+
+function SettingsRow({ href, icon, rgb, label, note, external = false }: { href: string; icon: LibIconName; rgb: string; label: string; note?: string; external?: boolean }) {
+  const body = <>
+    <span aria-hidden="true" className="grid h-10 w-10 shrink-0 place-items-center" style={{ background: `rgb(${rgb} / .12)`, color: `rgb(${rgb})` }}><LibIcon name={icon} size={19} /></span>
+    <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold">{label}</span>{note ? <span className="block truncate text-[13px] text-white/45">{note}</span> : null}</span>
+    <LibIcon name={external ? "share" : "chevron"} size={17} className="shrink-0 text-white/35" />
+  </>;
+  return external
+    ? <a href={href} target="_blank" rel="noopener noreferrer" className="bvs-app-row flex items-center gap-3 py-3">{body}</a>
+    : <Link href={href} className="bvs-app-row flex items-center gap-3 py-3">{body}</Link>;
 }

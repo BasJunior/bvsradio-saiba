@@ -109,3 +109,17 @@
 .bvs-app-feed .bvs-feed-entry > article { border: 1px solid rgb(255 255 255 / .1); background: #121214; box-shadow: none; }
 .bvs-app-feed .bvs-feed-entry .text-brand { color: rgb(var(--bvs-app-accent)); }
 .bvs-app-feed [data-community-thread] > [class*="border-t"] { border-top-color: rgb(255 255 255 / .12); }
+
+/* iOS-style switch for settings rows. */
+.bvs-app-switch { appearance: none; -webkit-appearance: none; position: relative; flex-shrink: 0; width: 51px; height: 31px; background: rgb(255 255 255 / .18); border-radius: 999px !important; transition: background-color .2s ease; cursor: pointer; }
+.bvs-app-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 999px; background: #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .35); transition: transform .2s ease; }
+.bvs-app-switch:checked { background: #c1ff52; }
+.bvs-app-switch:checked::after { transform: translateX(20px); }
+.bvs-app-switch:focus-visible { outline: 2px solid #c1ff52; outline-offset: 3px; }
+
+/* App Account: the existing forms on hairline sections with quieter headings. */
+.bvs-app-account > :is(form, section) { margin-top: 2rem; border: 0; border-top: 1px solid rgb(255 255 255 / .2); background: transparent; padding: 1.5rem 0 0; backdrop-filter: none; }
+.bvs-app-account > :is(form, section) h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.035em; }
+.bvs-app-account > :is(form, section) p.text-brand { color: rgb(var(--bvs-app-accent)); }
+.bvs-app-account :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea) { border-color: rgb(255 255 255 / .14); background: rgb(255 255 255 / .05); }
+.bvs-app-account :is(input, select, textarea):focus { border-color: rgb(var(--bvs-app-accent) / .6); outline: none; }

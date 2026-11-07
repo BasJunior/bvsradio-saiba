@@ -195,11 +195,14 @@ export default function AppAccountClient({ surface }: { surface: AppSurface }) {
   if (sessionLoading || loading) return <div className="mx-auto max-w-4xl px-4 pt-8"><div className="h-48 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
 
   if (!signedIn || !token) return (
-    <div className="mx-auto max-w-3xl px-4 pb-12 pt-10 text-center sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Account</p>
-      <h1 className="mx-auto mt-3 max-w-2xl text-4xl font-semibold sm:text-6xl">Your identity lives here.</h1>
-      <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-white/42">Sign in to manage your profile, creator access and privacy controls.</p>
-      <Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/account`)}`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-white px-6 font-semibold text-black transition hover:bg-brand">Sign in</Link>
+    <div className="bvs-app-page mx-auto max-w-2xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="lime">
+      <p className="bvs-app-eyebrow">Your BVS</p>
+      <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Account</h1>
+      <div className="mt-5 border border-white/12 bg-[#121214] p-5">
+        <h2 className="text-xl font-bold">Your identity lives here.</h2>
+        <p className="mt-1.5 text-sm leading-6 text-white/55">Sign in to manage your profile, creator access and privacy controls.</p>
+        <Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/account`)}`} className="bvs-app-pill bvs-app-pill--primary mt-4 min-h-11 px-5">Sign in</Link>
+      </div>
     </div>
   );
 
@@ -212,15 +215,15 @@ export default function AppAccountClient({ surface }: { surface: AppSurface }) {
   const changesPrimaryRole = Boolean(selectedRole && selectedRole.mode === "primary" && profile.role && profile.role !== "listener" && profile.role !== selectedRole.value);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-5">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Account</p>
-          <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">Identity & access.</h1>
-          <p className="mt-4 text-sm text-white/38">{data.user.email}</p>
+    <div className="bvs-app-page bvs-app-account mx-auto max-w-3xl px-4 pb-12 pt-5 sm:px-6" data-app-accent="lime">
+      <header className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <p className="bvs-app-eyebrow truncate">Identity & access</p>
+          <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Account</h1>
+          <p className="mt-2 truncate text-sm text-white/50">{data.user.email}</p>
         </div>
-        <Link href={`/app/${surface}/you`} className="rounded-full border border-white/[.08] px-4 py-2 text-sm text-white/42 transition hover:border-white/18 hover:text-white">Back to You</Link>
-      </div>
+        <Link href={`/app/${surface}/you`} className="bvs-app-pill shrink-0">Back to You</Link>
+      </header>
 
       {error ? <p className="mt-5 rounded-[1.2rem] border border-red-400/20 bg-red-500/[.08] p-4 text-sm text-red-200">{error}</p> : null}
       {message ? <p className="mt-5 rounded-[1.2rem] border border-brand/20 bg-brand/[.06] p-4 text-sm text-brand">{message}</p> : null}
