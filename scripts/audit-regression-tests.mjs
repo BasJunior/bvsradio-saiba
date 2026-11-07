@@ -117,5 +117,9 @@ online=false; assert.equal(await (await request('/account')).text(), 'BVS offlin
 assert.match(read('src/components/app-vnext/AppExperienceStyle.tsx'), /touch-action: manipulation/, 'Native rails must support sideways panning and pinch zoom');
 assert.match(read('src/components/app-vnext/AppExperienceStyle.tsx'), /--bvs-app-bottom-nav-height: var\(--bvs-nav-height,/, 'The player must consume the actual contained-nav measurement at every viewport width');
 assert.match(read('src/components/app-vnext/AppExperienceStyle.tsx'), /bottom: var\(--bvs-app-bottom-nav-height\) !important/, 'Desktop player utilities must not cover the contained tab bar');
-assert.doesNotMatch(read('src/components/app-vnext/AppGestureBridge.tsx'), /player\.(next|previous|closeNowPlaying)\(/, 'One shared bridge must own Now Playing swipes');
+// Mini-player skip swipes (iOS) live in AppGestureBridge; the full Now Playing
+// sheet's swipes must stay solely in NowPlayingSwipeGestures.
+const gestureBridge = read('src/components/app-vnext/AppGestureBridge.tsx');
+assert.doesNotMatch(gestureBridge, /player\.closeNowPlaying\(/, 'One shared bridge must own Now Playing swipes');
+assert.match(gestureBridge, /began\.mode !== "mini"\) return;/, 'App gesture skips must be limited to the mini player');
 console.log('Audit regressions passed: bounded auth, safe redirects, native links, auth-lock/session isolation and private offline-cache safety.');

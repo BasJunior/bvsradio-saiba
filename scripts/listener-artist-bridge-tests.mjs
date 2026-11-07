@@ -52,7 +52,7 @@ assert.ok(
 );
 assert.ok(
   player.includes('grid h-10 w-10 shrink-0 place-items-center') &&
-    player.includes('<span className="sm:hidden" aria-hidden="true">{player.liked ? "♥" : "♡"}</span>') &&
+    player.includes('<span className="sm:hidden" aria-hidden="true"><HeartIcon size={20} filled={player.liked} /></span>') &&
     player.includes('<span className="hidden sm:inline">{player.liked ? "♥ Saved" : "♡ Save"}</span>'),
   "Mobile Save must stay visible as a compact touch target while wider players retain the labelled control.",
 );
