@@ -147,9 +147,12 @@ export async function isPublicR2MediaKey(key: string) {
   const encUrl = encodeURIComponent(mediaUrl);
 
   // Targeted lookups — avoid the old limit=500 scan that missed rows / shared keys.
-  const [trackByUrl, trackByKey, beatByPath, beatByUrl, episodeByPath, episodeByUrl, marketplaceMedia, storefrontMedia, musicVideo] = await Promise.all([
+  const [trackByUrl, trackByKey, releaseByUrl, releaseByKey, beatByPath, beatByUrl, episodeByPath, episodeByUrl, marketplaceMedia, storefrontMedia, musicVideo] = await Promise.all([
     fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&or=(file_url.eq.${encUrl},artwork_url.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/tracks?is_public=eq.true&editorial_status=eq.approved&or=(file_url.eq.${enc},artwork_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
+    // Replacement cover requests update releases.cover_url without changing a track.
+    fetch(`${url}/rest/v1/releases?is_public=eq.true&editorial_status=eq.approved&cover_url=eq.${encUrl}&select=id&limit=1`, { headers, cache: "no-store" }),
+    fetch(`${url}/rest/v1/releases?is_public=eq.true&editorial_status=eq.approved&cover_url=eq.${enc}&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&or=(preview_path.eq.${enc},artwork_path.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/beats?is_public=eq.true&status=eq.published&or=(preview_path.eq.${encUrl},artwork_path.eq.${encUrl})&select=id&limit=1`, { headers, cache: "no-store" }),
     fetch(`${url}/rest/v1/show_episodes?status=eq.published&or=(audio_path.eq.${enc},artwork_url.eq.${enc})&select=id&limit=1`, { headers, cache: "no-store" }),
@@ -168,6 +171,8 @@ export async function isPublicR2MediaKey(key: string) {
   return (
     (await nonempty(trackByUrl))
     || (await nonempty(trackByKey))
+    || (await nonempty(releaseByUrl))
+    || (await nonempty(releaseByKey))
     || (await nonempty(beatByPath))
     || (await nonempty(beatByUrl))
     || (await nonempty(episodeByPath))
