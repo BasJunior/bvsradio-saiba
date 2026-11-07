@@ -1,9 +1,12 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AppStudioOrdersPanel } from "@/components/app-vnext/AppStudioTokenPanels";
+import StudioSubHeader from "@/components/app-vnext/StudioSubHeader";
 
 export default async function AppStudioOrdersPage({ params }: { params: Promise<{ surface: string }> }) {
   const { surface } = await params;
   if (surface !== "ios" && surface !== "android") notFound();
-  return <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6"><Link href={`/app/${surface}/studio`} className="text-sm text-text-secondary">← Studio</Link><div className="mt-5"><p className="text-xs uppercase tracking-[.2em] text-brand">Orders</p><h1 className="mt-2 text-4xl font-semibold tracking-tight">Deliver professional work without leaving BVS.</h1><p className="mt-3 max-w-2xl text-sm text-text-secondary">Service orders, deadlines and delivery state use the existing BVS marketplace backend. Storefront payment policy stays separate from the creator’s work queue.</p></div><section className="mt-7"><AppStudioOrdersPanel /></section></div>;
+  return <main data-studio-accent="marketplace" className="bvs-studio-home bvs-app-studio-web mx-auto max-w-5xl px-4 pb-14 pt-4 sm:px-6">
+    <StudioSubHeader href={`/app/${surface}/studio`} eyebrow="Orders" title="Client work" copy="Track service orders, deadlines and deliveries for the people who hired you." />
+    <section className="mt-5"><AppStudioOrdersPanel /></section>
+  </main>;
 }

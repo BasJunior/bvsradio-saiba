@@ -140,7 +140,7 @@ function ReleaseCard({
 
       <details id={`release-correction-${release.id}`} className="mt-4 scroll-mt-28 rounded-2xl border border-white/10 bg-black/20 p-4">
         <summary className="cursor-pointer text-sm font-semibold text-brand">Request a correction</summary>
-        <p className="mt-3 text-sm leading-6 text-text-secondary">Keep the request attached to this release. Editorial approval remains required before metadata, rights or takedown changes affect the public catalogue.</p>
+        <p className="mt-3 text-sm leading-6 text-text-secondary">Keep the request attached to this release. Editorial approval remains required before changes to song details, rights or removal show up publicly.</p>
         <form onSubmit={submitCorrection} className="mt-4 grid gap-3">
           <select value={target} onChange={(event) => setTarget(event.target.value)} className={field} aria-label="Correction target">
             <option value={wholeReleaseTarget}>Whole release · {release.title}</option>

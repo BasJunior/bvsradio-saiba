@@ -1,5 +1,7 @@
+import "@/app/creator/studio/studio-workspace.css";
 import type { ReactNode } from "react";
 
-export default function StudioLayout({ children }: { children: ReactNode }) {
-  return <div className="bvs-square-studio">{children}</div>;
+/** Every app Studio page shares the web Studio look. */
+export default function AppStudioLayout({ children }: { children: ReactNode }) {
+  return children;
 }
