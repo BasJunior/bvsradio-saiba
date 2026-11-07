@@ -79,8 +79,12 @@
 .bvs-home-beat-portrait > article > :is(button, a) + div > :is(button, a) > p { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: 1; }
 .bvs-home-beat-portrait > article > div:last-of-type { flex-wrap: nowrap; padding: 0 .75rem .75rem; gap: .375rem; }
 .bvs-home-beat-portrait > article > div:last-of-type > :is(button, a):first-child { padding-inline: .625rem; font-size: .75rem; }
-.bvs-home-beat-portrait > div { position: absolute; right: .5rem; bottom: .75rem; margin: 0; padding: 0; }
-.bvs-home-beat-portrait > article > div:last-of-type { padding-right: 4.5rem; }
+/* Save + Playlist sit on their own row under Preview; floating them over the
+   card overlapped Preview and More once Playlist joined Save. */
+.bvs-home-beat-portrait { display: flex; flex-direction: column; }
+.bvs-home-beat-portrait > div { position: static; display: flex; justify-content: flex-start; margin: 0; padding: 0 .75rem .75rem; }
+.bvs-home-beat-portrait > div > div { flex-wrap: nowrap; }
+.bvs-home-beat-portrait > article { height: auto; flex: 1 1 auto; min-height: 0; }
 /* Slightly wider mobile cards leave room for all three actions without wrapping. */
 .bvs-home-beat-portrait.bvs-creator-portrait { flex-basis: 200px; }
 @media (min-width: 1024px) { .bvs-home-beat-portrait.bvs-creator-portrait { flex-basis: 240px; } }
