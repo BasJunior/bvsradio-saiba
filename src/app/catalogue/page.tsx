@@ -22,6 +22,7 @@ import PublishedAlbumsShelf from "@/components/PublishedAlbumsShelf";
 import { producerKeysMatch, resolvePublicHandle } from "@/lib/public-name";
 import { beatGenreKey, beatGenreKeys, beatGenreLabel } from "@/lib/beat-genre-normalization";
 import { beatVibeKey, beatVibeLabel, beatVibeTags } from "@/lib/beat-vibe-normalization";
+import { beatHashtags, beatHasHashtag, popularBeatHashtags, trendingBeatIds } from "@/lib/beat-hashtags";
 import { curatedCatalogueTracks } from "@/lib/catalogue-curated-tracks";
 import { writeCartLines } from "@/lib/cart-client";
 
@@ -305,6 +306,12 @@ function CataloguePageContent() {
     return new URLSearchParams(window.location.search).get("q") || "";
   });
   const [genreFilter, setGenreFilter] = useState("All");
+  // Beat hashtag filter (#new, #trending, #trap…), shareable as ?tag=.
+  const [beatTag, setBeatTag] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("tag") || "";
+  });
+  const [hashtagNow] = useState(() => Date.now());
   const defaultBeatFilters: BeatFilterFields = {
     query: "", producers: [], genres: [], bpms: [], vibes: [], prices: [], sort: "newest",
   };
@@ -377,6 +384,7 @@ function CataloguePageContent() {
     const requestedPack = searchParams.get("pack") || "";
     queueMicrotask(() => {
       setSearch(searchParams.get("q") || "");
+      setBeatTag(searchParams.get("tag") || "");
       setProducerFilter(requestedProducer);
       setBeatDraft((previous) => ({
         ...previous,
@@ -863,6 +871,19 @@ function CataloguePageContent() {
     });
   };
 
+  const hashtagContext = useMemo(() => ({
+    trending: beatPopularityAvailable ? trendingBeatIds(beatPopularity) : new Set<string>(),
+    now: hashtagNow,
+  }), [beatPopularity, beatPopularityAvailable, hashtagNow]);
+  const chooseBeatTag = (key: string) => {
+    const next = beatTag === key ? "" : key;
+    setBeatTag(next);
+    const url = new URL(window.location.href);
+    if (next) url.searchParams.set("tag", next); else url.searchParams.delete("tag");
+    url.searchParams.set("type", "beat");
+    window.history.replaceState(window.history.state, "", `${url.pathname}?${url.searchParams.toString()}`);
+  };
+
   const filteredTracks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
     const beatOptions = typeFilter === "beat" ? beatApplied : null;
@@ -911,8 +932,9 @@ function CataloguePageContent() {
       );
       const matchesPrice = !beatOptions?.prices.length ||
         beatOptions.prices.some(matchPriceRange);
+      const matchesTag = !beatTag || typeFilter !== "beat" || beatHasHashtag(track, beatTag, hashtagContext);
       return matchesSearch && matchesGenre && matchesProducer && matchesPack &&
-        matchesType && matchesBpm && matchesVibe && matchesPrice;
+        matchesType && matchesBpm && matchesVibe && matchesPrice && matchesTag;
     });
     if (packFilter) {
       return [...rows].sort((a, b) => (a.packPosition || 0) - (b.packPosition || 0));
@@ -936,7 +958,7 @@ function CataloguePageContent() {
     }
     return rows;
   }, [scopeTracks, genreFilter, producerFilter, packFilter, search, typeFilter,
-      beatApplied, beatPopularity, beatPopularityAvailable]);
+      beatApplied, beatPopularity, beatPopularityAvailable, beatTag, hashtagContext]);
 
   const previewTrack = (track: Track) => {
     if (!track.src) return;
@@ -1483,7 +1505,14 @@ function CataloguePageContent() {
         )}
       </section>
 
-      {beatsMode ? <p className="mb-4 text-sm text-text-secondary">All available matching beats are shown below.</p> : null}
+      {beatsMode ? (() => {
+        const offered = popularBeatHashtags(scopeTracks.filter((track) => track.type === "beat"), hashtagContext, 12);
+        return offered.length ? <nav className="bvs-beat-hashtags mb-4 flex flex-wrap gap-2" aria-label="Browse beats by hashtag">
+          {offered.map((tag) => <button key={tag.key} type="button" aria-pressed={beatTag === tag.key} onClick={() => chooseBeatTag(tag.key)} className="bvs-beat-hashtag">{tag.label}</button>)}
+          {beatTag && !offered.some((tag) => tag.key === beatTag) ? <button type="button" aria-pressed onClick={() => chooseBeatTag(beatTag)} className="bvs-beat-hashtag">#{beatTag} ×</button> : null}
+        </nav> : null;
+      })() : null}
+      {beatsMode ? <p className="mb-4 text-sm text-text-secondary">{beatTag ? `Beats tagged #${beatTag}.` : "All available matching beats are shown below."}{beatTag ? <button type="button" onClick={() => chooseBeatTag(beatTag)} className="ml-2 text-brand underline-offset-4 hover:underline">Show all beats</button> : null}</p> : null}
       <section data-beat-directory={beatsMode ? true : undefined} role={beatsMode ? "region" : undefined} aria-label={beatsMode ? "BeatStore catalogue" : undefined} tabIndex={beatsMode ? 0 : undefined} className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
         {filteredTracks.map((track) => {
           const active = String(player.current?.id) === String(track.id) && player.isPlaying;
@@ -1542,6 +1571,12 @@ function CataloguePageContent() {
                   {track.type === "beat" ? <span className="flex-shrink-0" data-beat-bpm>{track.bpm ? `${String(track.bpm).replace(/\s*BPM$/i, "")} BPM` : "BPM —"}</span> : null}
                   <span className="flex-shrink-0">{priceBadge(track)}</span>
                 </div>
+                {track.type === "beat" ? (() => {
+                  const tags = beatHashtags(track, hashtagContext).slice(0, 3);
+                  return tags.length ? <div className="mt-2 flex flex-wrap gap-1.5" aria-label={`Hashtags for ${track.title}`}>
+                    {tags.map((tag) => <button key={tag.key} type="button" aria-pressed={beatTag === tag.key} onClick={() => chooseBeatTag(tag.key)} className="bvs-beat-hashtag bvs-beat-hashtag--small">{tag.label}</button>)}
+                  </div> : null;
+                })() : null}
                 {beatsMode ? <div className="mt-4 flex flex-wrap gap-2">
                   {track.streamOnly ? (
                     <>
