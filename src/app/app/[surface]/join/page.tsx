@@ -28,9 +28,9 @@ export default async function AppJoinPage({
   ];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-12 pt-8 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Join BVS</p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">One account for every side of music.</h1>
+    <div className="bvs-app-page mx-auto max-w-4xl px-4 pb-12 pt-8 sm:px-6" data-app-accent="lime">
+      <p className="bvs-app-eyebrow">Join BVS</p>
+      <h1 className="mt-1 max-w-3xl text-[2.2rem] font-bold leading-tight tracking-tight sm:text-6xl">One account for every side of music.</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-white/44 sm:text-base">Listen without an account. Join when you want your music, follows, playlists, creator access and activity to stay connected.</p>
 
       <div className="mt-8 grid gap-3 sm:grid-cols-2">

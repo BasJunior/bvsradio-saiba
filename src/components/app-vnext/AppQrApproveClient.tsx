@@ -37,7 +37,7 @@ export default function AppQrApproveClient({ surface }: { surface: AppSurface })
       if (!isSupabaseConfigured()) {
         if (!alive) return;
         setStatus("error");
-        setDetail("Account service is unavailable right now. Scan a new code later.");
+        setDetail("Sign-in isn’t available right now. Scan a new code in a moment.");
         return;
       }
       const { data } = await createClient().auth.getSession();
@@ -84,10 +84,10 @@ export default function AppQrApproveClient({ surface }: { surface: AppSurface })
   };
 
   return (
-    <div className="mx-auto flex min-h-[68dvh] max-w-lg items-center px-4 pb-12 pt-8 sm:px-6">
+    <div className="bvs-app-page mx-auto flex min-h-[68dvh] max-w-lg items-center px-4 pb-12 pt-8 sm:px-6" data-app-accent="lime">
       <section className="w-full rounded-[2rem] border border-white/[.09] bg-white/[.025] p-6 text-center shadow-2xl shadow-black/20 sm:p-8">
-        <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Secure device login</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight">Approve this computer?</h1>
+        <p className="bvs-app-eyebrow">Secure device login</p>
+        <h1 className="mt-1 text-[2.2rem] font-bold leading-tight tracking-tight">Approve this computer?</h1>
         {email ? <p className="mt-3 text-sm text-white/48">Signed in as <strong className="text-white">{email}</strong></p> : null}
         <p className="mt-5 text-sm leading-6 text-white/48">{detail}</p>
 

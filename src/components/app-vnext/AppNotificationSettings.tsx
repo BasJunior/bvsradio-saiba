@@ -9,12 +9,12 @@ type PreferenceKey = "releases" | "shows" | "creator_work" | "orders" | "communi
 type Preferences = Record<PreferenceKey, boolean>;
 const defaults: Preferences = { releases: true, shows: true, creator_work: true, orders: true, community: false, marketing: false };
 const rows: Array<{ key: PreferenceKey; title: string; note: string }> = [
-  { key: "releases", title: "New music", note: "Releases from creators you follow and meaningful BVS discovery alerts." },
+  { key: "releases", title: "New music", note: "New releases from creators you follow, plus music picked for you." },
   { key: "shows", title: "Shows & rooms", note: "Reminders for followed shows, rooms going live and important schedule changes." },
-  { key: "creator_work", title: "Studio work", note: "Editorial requests, release reviews, rights tasks and creator actions." },
-  { key: "orders", title: "Orders & money", note: "Marketplace orders, deliveries, payout and account-money state changes." },
+  { key: "creator_work", title: "Studio work", note: "Review decisions, requests from the BVS team and things you need to do in Studio." },
+  { key: "orders", title: "Orders & money", note: "Marketplace orders, deliveries, payouts and changes to your balance." },
   { key: "community", title: "Community push", note: "Lock-screen alerts for new Feed posts, discussions, likes, reposts, replies and mentions." },
-  { key: "marketing", title: "BVS news", note: "Optional product/news messages. Off by default." },
+  { key: "marketing", title: "BVS news", note: "Occasional news from BVS. Off unless you turn it on." },
 ];
 
 type ParticipationPreferences = {
@@ -172,11 +172,11 @@ function AccountNotificationSettings({ surface }: { surface: AppSurface }) {
     if (result.ok) {
       if (!preferences.community) {
         const saved = await patchParticipation({ external_community_enabled: true }, true);
-        if (!saved) { setMessage("Device registered, but community alerts could not be enabled. Please retry."); setBusy(false); return; }
+        if (!saved) { setMessage("This iPhone is set up, but community alerts couldn’t be turned on. Please try again."); setBusy(false); return; }
         setPreferences((current) => ({ ...current, community: true }));
       }
       await load();
-      setMessage("Device registered. Community alerts are enabled. Lock-screen display also follows your device’s notification settings.");
+      setMessage("Community alerts are on. Your iPhone’s notification settings decide how they show on the Lock Screen.");
     } else {
       setMessage(result.error || (result.permission === "denied" ? "Notifications are disabled in iPhone Settings." : "Notifications were not enabled."));
     }

@@ -144,7 +144,7 @@ export default function CreatorReleaseWorkspace({ releaseKey }: { releaseKey: st
   }, [data, releaseKey]);
 
   const error = !isSupabaseConfigured()
-    ? "Account service is not configured."
+    ? "This isn’t available right now. Please try again later."
     : requestError || (!sessionLoading && !session ? "Sign in with a creator account." : "");
 
   if (sessionLoading || loading || (!data && !error)) {

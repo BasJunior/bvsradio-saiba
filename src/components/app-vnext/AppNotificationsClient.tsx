@@ -57,7 +57,7 @@ function NotificationsInbox({ surface }: { surface: AppSurface }) {
         setError(result.failed === result.total ? "Could not load your inbox. Try again." : result.failed ? "Some updates could not be loaded. Your available updates are shown below." : "");
         if (user?.id) {
           const acknowledged = await acknowledgeNotificationInbox(token, user.id, result.loaded, controller.signal);
-          if (alive && !acknowledged) setError("Your updates loaded, but their seen status could not be saved. Please refresh to retry.");
+          if (alive && !acknowledged) setError("Your updates loaded, but we couldn’t mark them as seen. Refresh to try again.");
         }
       } catch { if (alive) setError("Could not refresh your inbox. Please retry."); } finally { pending = false; if (alive) { setLoading(false); setRefreshing(false); } }
     };
@@ -104,26 +104,26 @@ function NotificationsInbox({ surface }: { surface: AppSurface }) {
     }).catch(() => setError("Could not mark that update as read. Please retry."));
   }
 
-  if (sessionLoading || (loading && !events.length)) return <div className="mx-auto max-w-4xl px-4 pt-8"><div className="h-44 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
+  if (sessionLoading || (loading && !events.length)) return <div className="bvs-app-page mx-auto max-w-4xl px-4 pt-8" data-app-accent="lime"><div className="h-44 animate-pulse rounded-[2rem] bg-white/[.035]" /></div>;
 
   if (!signedIn) return (
-    <div className="mx-auto max-w-3xl px-4 pb-12 pt-10 text-center sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Inbox</p>
-      <h1 className="mx-auto mt-3 max-w-2xl text-4xl font-semibold sm:text-6xl">Your updates live here.</h1>
+    <div className="bvs-app-page mx-auto max-w-3xl px-4 pb-12 pt-10 text-center sm:px-6" data-app-accent="lime">
+      <p className="bvs-app-eyebrow">Inbox</p>
+      <h1 className="mx-auto mt-1 max-w-2xl text-[2.2rem] font-bold leading-tight tracking-tight sm:text-6xl">Your updates live here.</h1>
       <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-white/42">Sign in to see release decisions, creator activity, orders, money and community replies.</p>
       <Link href={`/app/${surface}/login?next=${encodeURIComponent(`/app/${surface}/notifications`)}`} className="mt-7 inline-flex min-h-11 items-center rounded-full bg-white px-6 font-semibold text-black transition hover:bg-brand">Sign in</Link>
     </div>
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-4 pb-12 pt-6 sm:px-6">
+    <div className="bvs-app-page mx-auto max-w-4xl px-4 pb-12 pt-6 sm:px-6" data-app-accent="lime">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Inbox</p>
+            <p className="bvs-app-eyebrow">Inbox</p>
             {participationUnread > 0 ? <span className="rounded-full bg-[#929DE0]/16 px-2 py-0.5 text-[10px] font-bold text-[#c2c9ff]">{participationUnread > 99 ? "99+" : participationUnread} new</span> : null}
           </div>
-          <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">What changed.</h1>
+          <h1 className="mt-1 text-[2.2rem] font-bold leading-tight tracking-tight sm:text-6xl">What changed.</h1>
           <p className="mt-4 max-w-2xl text-sm leading-6 text-white/42">Release reviews, Studio work, orders, money, replies and mentions — in one place.</p>
         </div>
         <Link href={`/app/${surface}/you`} className="rounded-full border border-white/[.08] px-4 py-2 text-sm text-white/42 transition hover:border-white/18 hover:text-white">Notification settings</Link>

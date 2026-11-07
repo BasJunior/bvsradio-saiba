@@ -283,7 +283,7 @@ export default function AppMarketplaceClient({
             ) : !iosCommerceRestricted ? (
               <div className="mt-6 rounded-[1.2rem] border border-white/[.07] bg-black/10 p-4">
                 <p className="font-semibold">Continue on the BVS web store</p>
-                <p className="mt-2 text-sm leading-6 text-white/38">This offer is available here for discovery. When you’re ready to purchase, open or share the secure BVS web-store link.</p>
+                <p className="mt-2 text-sm leading-6 text-white/38">You can browse this offer here. To buy it, open it on the BVS website.</p>
                 <button type="button" onClick={() => void shareWebStore(provider, service)} className="mt-4 min-h-10 rounded-full border border-brand/28 px-4 text-sm font-semibold text-brand transition hover:bg-brand/[.08]">Share store link</button>
               </div>
             ) : <div className="mt-6 rounded-[1.2rem] border border-white/[.07] bg-black/10 p-4"><p className="font-semibold">Available for discovery</p><p className="mt-2 text-sm leading-6 text-white/38">Purchasing and checkout for this offer are not available in the iOS app.</p></div>}
@@ -305,9 +305,9 @@ export default function AppMarketplaceClient({
     <div className="bvs-square-marketplace mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
       <div className="flex flex-wrap items-end justify-between gap-5">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Marketplace</p>
-          <h1 className="mt-3 max-w-4xl text-4xl font-semibold tracking-tight sm:text-6xl">Find the people who make the next version better.</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/44 sm:text-base">Studios, production and creative services connected to the same BVS ecosystem.</p>
+          <p className="bvs-app-eyebrow">Marketplace</p>
+          <h1 className="mt-1 max-w-4xl text-[2.2rem] font-bold leading-tight tracking-tight sm:text-6xl">Find the people who make the next version better.</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-6 text-white/44 sm:text-base">Studios, producers and creative services you can book through BVS.</p>
         </div>
         <Link href={`/app/${surface}/studio/marketplace`} className="min-h-10 rounded-full border border-white/[.08] px-4 py-2 text-sm text-white/42 transition hover:border-white/18 hover:text-white">Manage my provider profile</Link>
       </div>

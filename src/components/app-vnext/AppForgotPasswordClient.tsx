@@ -18,7 +18,7 @@ export default function AppForgotPasswordClient({ surface }: { surface: AppSurfa
     setLoading(true);
     setError("");
     try {
-      if (!isSupabaseConfigured()) throw new Error("Account service is not configured.");
+      if (!isSupabaseConfigured()) throw new Error("This isn’t available right now. Please try again later.");
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -35,9 +35,9 @@ export default function AppForgotPasswordClient({ surface }: { surface: AppSurfa
   };
 
   return (
-    <div className="mx-auto max-w-xl px-4 pb-12 pt-8 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Account recovery</p>
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight">Reset your password.</h1>
+    <div className="bvs-app-page mx-auto max-w-xl px-4 pb-12 pt-8 sm:px-6" data-app-accent="lime">
+      <p className="bvs-app-eyebrow">Account recovery</p>
+      <h1 className="mt-1 text-[2.2rem] font-bold leading-tight tracking-tight">Reset your password.</h1>
       <p className="mt-4 text-sm leading-6 text-white/42">We will email you a secure link to choose a new password.</p>
       {sent ? (
         <div role="status" className="mt-7 rounded-[1.5rem] border border-brand/20 bg-brand/[.06] p-6 text-center">

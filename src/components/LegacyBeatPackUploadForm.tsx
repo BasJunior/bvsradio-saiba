@@ -131,7 +131,7 @@ export default function LegacyBeatPackUploadForm() {
   const [rights, setRights] = useState(false)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState('')
-  const [error, setError] = useState(supabaseReady ? '' : 'Account service is not configured.')
+  const [error, setError] = useState(supabaseReady ? '' : 'This isn’t available right now. Please try again later.')
   const [message, setMessage] = useState('')
   const [drafts, setDrafts] = useState<DraftPack[]>([])
   const [draftsOpen, setDraftsOpen] = useState(false)

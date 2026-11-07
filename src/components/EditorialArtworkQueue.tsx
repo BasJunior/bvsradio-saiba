@@ -38,7 +38,7 @@ export default function EditorialArtworkQueue() {
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      setError("Account service is not configured.");
+      setError("This isn’t available right now. Please try again later.");
       return;
     }
     void createClient().auth.getSession().then(async ({ data }) => {

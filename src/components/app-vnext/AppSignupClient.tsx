@@ -116,10 +116,10 @@ export default function AppSignupClient({ surface, nextPath }: { surface: AppSur
 
   if (confirmationEmail) {
     return (
-      <div className="mx-auto max-w-3xl px-4 pb-12 pt-8 sm:px-6">
+      <div className="bvs-app-page mx-auto max-w-3xl px-4 pb-12 pt-8 sm:px-6" data-app-accent="lime">
         <div className="rounded-[2rem] border border-brand/18 bg-gradient-to-br from-brand/[.065] to-white/[.02] p-6 text-center sm:p-8">
-          <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Almost there</p>
-          <h1 className="mt-3 text-3xl font-semibold sm:text-4xl">Check your email.</h1>
+          <p className="bvs-app-eyebrow">Almost there</p>
+          <h1 className="mt-1 text-[2.2rem] font-bold leading-tight tracking-tight sm:text-4xl">Check your email.</h1>
           <p className="mt-4 text-sm leading-6 text-white/42">We sent a confirmation link to <strong className="text-white/82">{confirmationEmail}</strong>. Open the newest message and we’ll bring you back to BVS.</p>
           {notice ? <p className="mt-4 text-sm text-brand">{notice}</p> : null}
           {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
@@ -134,10 +134,10 @@ export default function AppSignupClient({ surface, nextPath }: { surface: AppSur
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pb-12 pt-8 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Create account</p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Start with what you want from music today.</h1>
-      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/42 sm:text-base">Everyone can listen. Your starting role simply shapes the first workspace you see; the same identity can grow with you later.</p>
+    <div className="bvs-app-page mx-auto max-w-3xl px-4 pb-12 pt-8 sm:px-6" data-app-accent="lime">
+      <p className="bvs-app-eyebrow">Create account</p>
+      <h1 className="mt-1 max-w-3xl text-[2.2rem] font-bold leading-tight tracking-tight sm:text-6xl">Start with what you want from music today.</h1>
+      <p className="mt-4 max-w-2xl text-sm leading-6 text-white/42 sm:text-base">Everyone can listen. Your choice only sets what you see first, and you can add more later.</p>
 
       <form onSubmit={submit} noValidate className="mt-8 space-y-6">
         <fieldset>

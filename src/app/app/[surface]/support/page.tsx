@@ -7,10 +7,10 @@ export default async function AppSupportPage({ params }: { params: Promise<{ sur
   if (raw !== "ios" && raw !== "android") notFound();
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
+    <div className="bvs-app-page mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6" data-app-accent="lime">
       <Link href={`/app/${raw}/you`} className="text-sm text-white/40 transition hover:text-white">← You</Link>
-      <p className="mt-7 text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Support</p>
-      <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-6xl">Talk to BVS.</h1>
+      <p className="mt-7 bvs-app-eyebrow">Support</p>
+      <h1 className="mt-1 max-w-3xl text-[2.2rem] font-bold leading-tight tracking-tight sm:text-6xl">Talk to BVS.</h1>
       <p className="mt-4 max-w-2xl text-sm leading-6 text-white/42 sm:text-base">Account help, artist support, creator services, partnerships or a technical issue — reach the right team from here.</p>
 
       <div className="mt-9 grid gap-5 lg:grid-cols-[.8fr,1.2fr]">

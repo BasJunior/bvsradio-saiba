@@ -34,7 +34,7 @@ export default function AppLoginClient({ surface }: { surface: AppSurface }) {
     setLoading(true);
     setError("");
     try {
-      if (!isSupabaseConfigured()) throw new Error("Account service is not configured. Please try again later.");
+      if (!isSupabaseConfigured()) throw new Error("Sign-in isn’t available right now. Please try again later.");
       const id = identifier.trim();
       if (!id) throw new Error("Enter your email or username.");
       const response = await fetch("/api/auth/login", {
@@ -50,11 +50,11 @@ export default function AppLoginClient({ surface }: { surface: AppSurface }) {
       if (!response.ok) throw new Error(payload.error || "Sign in failed.");
       const accessToken = payload.session?.access_token;
       const refreshToken = payload.session?.refresh_token;
-      if (!accessToken || !refreshToken) throw new Error("Sign in succeeded but no session was returned.");
+      if (!accessToken || !refreshToken) throw new Error("Sign-in didn’t finish. Please try again.");
       const { error: sessionError } = await withAuthTimeout(createClient().auth.setSession({
         access_token: accessToken,
         refresh_token: refreshToken,
-      }), 12000, "Sign-in session setup timed out. Please try again.");
+      }), 12000, "Sign-in took too long. Please try again.");
       if (sessionError) throw sessionError;
       await fetch("/api/auth/profile", {
         method: "POST",
@@ -71,9 +71,9 @@ export default function AppLoginClient({ surface }: { surface: AppSurface }) {
   };
 
   return (
-    <div className="mx-auto max-w-xl px-4 pb-12 pt-8 sm:px-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[.22em] text-brand">Your BVS identity</p>
-      <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">Welcome back.</h1>
+    <div className="bvs-app-page mx-auto max-w-xl px-4 pb-12 pt-8 sm:px-6" data-app-accent="lime">
+      <p className="bvs-app-eyebrow">Your BVS identity</p>
+      <h1 className="mt-1 text-[2.2rem] font-bold leading-tight tracking-tight sm:text-5xl">Welcome back.</h1>
       <p className="mt-4 text-sm leading-6 text-white/42">Sign in without leaving the BVS app.</p>
 
       {alreadyIn ? (
