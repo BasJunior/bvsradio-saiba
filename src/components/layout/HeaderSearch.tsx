@@ -137,7 +137,7 @@ export default function HeaderSearch({ iconOnly = false, surface: explicitSurfac
           event.stopPropagation();
           if (event.target === event.currentTarget) close();
         }}>
-          <div ref={panelRef} id={panelId} role="dialog" aria-modal="true" aria-label="Search BVS" tabIndex={-1} className="mx-auto max-w-xl rounded-2xl border border-white/15 bg-bg-primary p-3 shadow-2xl">
+          <div ref={panelRef} id={panelId} role="dialog" aria-modal="true" aria-label="Search BVS" tabIndex={-1} className="bvs-search-panel mx-auto max-w-xl rounded-2xl border border-white/15 bg-bg-primary p-3 shadow-2xl">
             {searchForm}
           </div>
         </div>,

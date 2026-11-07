@@ -190,3 +190,20 @@
 .bvs-app-home section[aria-labelledby="ios-home-community-title"] { background: #0a0a0b; border-top: 1px solid rgb(255 255 255 / .2); padding-block: 1.5rem 2rem; }
 .bvs-app-home section[aria-labelledby="ios-home-community-title"] h2 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.035em; }
 .bvs-app-home section[aria-labelledby="ios-home-community-title"] > div > p:first-child { font-size: 10px; letter-spacing: .22em; }
+
+/* Up next queue controls: one matching chip style, including Save as playlist. */
+.bvs-queue-chip, .bvs-queue-controls button { display: inline-flex; flex-shrink: 0; align-items: center; gap: .45rem; min-height: 36px; padding: 0 .85rem; border: 1px solid rgb(255 255 255 / .14); border-radius: 0; background: rgb(255 255 255 / .05); color: rgb(255 255 255 / .8); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.bvs-queue-chip:hover, .bvs-queue-controls button:hover { border-color: rgb(255 255 255 / .3); color: #fff; }
+.bvs-queue-chip[aria-pressed="true"] { border-color: rgb(193 255 82 / .5); color: #c1ff52; background: rgb(193 255 82 / .08); }
+.bvs-queue-controls > div { flex-shrink: 0; }
+
+/* Header search panel: square sheet matching the app pages. */
+.bvs-search-panel { border-radius: 0; border-color: rgb(255 255 255 / .14); background: #111113; padding: .75rem; box-shadow: 0 30px 60px -20px rgb(0 0 0 / .95); }
+.bvs-search-panel form > div:first-child { border-radius: 0; border-color: transparent; background: rgb(255 255 255 / .08); min-height: 48px; }
+.bvs-search-panel form > div:first-child:focus-within { border-color: rgb(193 255 82 / .55); }
+.bvs-search-panel input { outline: none !important; box-shadow: none !important; font-size: 16px; }
+.bvs-search-panel form > div:first-child button { border-radius: 0; }
+.bvs-search-panel form > div:first-child button:last-child { font-size: 13px; font-weight: 600; }
+.bvs-search-panel :is(.bvs-search-result, button[type="submit"]) { border-radius: 0; }
+.bvs-search-panel .bvs-search-result-art { border-radius: 0; }
+.bvs-search-panel .bvs-search-result-art.is-person { border-radius: 999px; }

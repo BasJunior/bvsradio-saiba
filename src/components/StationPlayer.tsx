@@ -1985,82 +1985,68 @@ function QueueSheet() {
       )
     : player.upNext;
   if (!player.queueOpen) return null;
+  const ondemand = player.mode === "ondemand";
+  const count = ondemand ? player.upNext.length : player.upNext.length + (player.current ? 1 : 0);
   return (
-    <div className="bvs-queue-sheet fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#121212]/98 shadow-2xl backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:rounded-2xl">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">
-            {player.mode === "station" ? "Full circular rotation" : "Up next"}
-          </p>
-          <p className="text-sm text-text-secondary">
-            Playing from <span className="text-white">{player.playingFrom}</span>
-            {player.mode === "ondemand"
-              ? ` · ${player.upNext.length} queued`
-              : ` · ${player.upNext.length + (player.current ? 1 : 0)} songs · wraps to the start`}
+    <div className="bvs-queue-sheet fixed inset-x-0 bottom-[8.5rem] z-[60] mx-auto flex max-h-[68svh] w-full max-w-3xl flex-col overflow-hidden border-t border-white/15 bg-[#111113]/98 shadow-[0_-24px_60px_-20px_rgba(0,0,0,.9)] backdrop-blur-xl md:bottom-24 md:max-h-[72svh] md:border">
+      <div className="flex items-start justify-between gap-3 px-4 pb-2 pt-4">
+        <div className="min-w-0">
+          <h2 className="text-xl font-bold tracking-tight">{ondemand ? "Up next" : "BVS rotation"}</h2>
+          <p className="mt-0.5 truncate text-[13px] text-white/50">
+            From <span className="text-white/80">{player.playingFrom}</span> · {count} song{count === 1 ? "" : "s"}{ondemand ? "" : " · loops back to the start"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={player.toggleAutoplay}
-            className={`rounded-full px-3 py-1 text-xs ${player.autoplay ? "bg-brand/20 text-brand" : "bg-white/5 text-text-secondary"}`}
-          >
-            Auto-play {player.autoplay ? "on" : "off"}
-          </button>
-          {player.mode === "ondemand" && (
-            <button type="button" onClick={player.backToStation} className="rounded-full bg-white/10 px-3 py-1 text-xs hover:bg-white/15">
-              BVS station
-            </button>
-          )}
-          {player.mode === "ondemand" && (
-            <button type="button" onClick={player.clearQueue} className="rounded-full px-2 py-1 text-xs text-text-secondary hover:text-white">
-              Clear
-            </button>
-          )}
-          {player.mode === "ondemand" ? <SaveQueueAsPlaylist items={player.upNext} /> : null}
-          <button type="button" onClick={() => player.setQueueOpen(false)} className="rounded-full px-2 py-1 text-sm text-text-secondary hover:text-white" aria-label="Close queue">
-            ✕
-          </button>
+        <button type="button" onClick={() => player.setQueueOpen(false)} className="grid h-11 w-11 shrink-0 place-items-center text-white/60 hover:text-white" aria-label="Close queue">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
+        </button>
+      </div>
+      <div className="bvs-queue-controls no-scrollbar flex items-center gap-2 overflow-x-auto px-4 pb-3">
+        <button type="button" onClick={player.toggleAutoplay} aria-pressed={player.autoplay} className="bvs-queue-chip">
+          <span aria-hidden="true" className={`h-2 w-2 ${player.autoplay ? "bg-brand" : "bg-white/30"}`} />Autoplay {player.autoplay ? "on" : "off"}
+        </button>
+        {ondemand ? <SaveQueueAsPlaylist items={player.upNext} /> : null}
+        {ondemand ? <button type="button" onClick={player.clearQueue} className="bvs-queue-chip">Clear</button> : null}
+        {ondemand ? <button type="button" onClick={player.backToStation} className="bvs-queue-chip">Back to BVS station</button> : null}
+      </div>
+      <div className="border-y border-white/10 px-4 py-2.5">
+        <label htmlFor="rotation-search" className="sr-only">Find a song in the queue</label>
+        <div className="flex h-11 items-center gap-2 border border-transparent bg-white/[.07] px-3 focus-within:border-brand/50">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="shrink-0 text-white/45" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.2" /><path d="m15.5 15.5 4.2 4.2" /></svg>
+          <input
+            id="rotation-search"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Find a song, artist or album"
+            className="min-w-0 flex-1 bg-transparent text-base text-white outline-none placeholder:text-white/40 sm:text-sm"
+          />
         </div>
       </div>
-      <div className="border-b border-white/10 px-3 py-2.5">
-        <label htmlFor="rotation-search" className="sr-only">Find a song in the rotation</label>
-        <input
-          id="rotation-search"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Find a song, artist or album…"
-          className="h-11 w-full rounded-full border border-white/10 bg-white/[0.06] px-4 text-base text-white outline-none placeholder:text-text-secondary focus:border-brand sm:text-sm"
-        />
-      </div>
-      <ol className="min-h-0 flex-1 space-y-0 overflow-y-auto overscroll-contain px-2 py-2" aria-label="BVS rotation songs">
+      <ol className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-1" aria-label="Songs up next">
         {player.upNext.length === 0 && (
-          <li className="px-3 py-6 text-center text-sm text-text-secondary">
-            Queue empty{player.autoplay ? " — auto-play will fill similar / station tracks." : "."}
+          <li className="px-3 py-6 text-center text-sm text-white/55">
+            Nothing queued{player.autoplay ? ". Autoplay will keep the music going with similar songs and the station." : "."}
           </li>
         )}
         {player.upNext.length > 0 && visibleQueue.length === 0 && (
-          <li className="px-3 py-8 text-center text-sm text-text-secondary">No rotation songs match “{query}”.</li>
+          <li className="px-3 py-8 text-center text-sm text-white/55">No songs match “{query}”.</li>
         )}
         {visibleQueue.map((item) => {
           const rotationIndex = player.upNext.findIndex((candidate) => candidate.key === item.key);
+          const sourceLabel = item.source === "mix" ? "Similar" : item.source === "auto" ? "Autoplay" : item.source === "user" ? "" : "Station";
           return (
-            <li key={item.key} className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-white/5">
-              <span className="w-7 text-center text-xs tabular-nums text-text-secondary">{rotationIndex + 1}</span>
+            <li key={item.key} className="flex items-center gap-3 border-b border-white/[.07] px-2 py-2 last:border-b-0">
+              <span className="w-6 shrink-0 text-center text-xs tabular-nums text-white/40">{rotationIndex + 1}</span>
               <button type="button" onClick={() => player.jumpToQueueItem(item.key)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
-                <CoverArt src={item.track.artwork} sizeClass="h-10 w-10" rounded="rounded-md" />
+                <CoverArt src={item.track.artwork} sizeClass="h-11 w-11" rounded="rounded-none" />
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium">{item.track.title}</span>
-                  <span className="block truncate text-xs text-text-secondary">
-                    {item.track.artist}
-                    {item.source === "user" ? " · You" : item.source === "mix" ? " · Similar" : item.source === "auto" ? " · Auto" : " · Station"}
-                  </span>
+                  <span className="block truncate text-[15px] font-semibold">{item.track.title}</span>
+                  <span className="block truncate text-[13px] text-white/50">{item.track.artist}{sourceLabel ? <span className="text-white/35"> · {sourceLabel}</span> : null}</span>
                 </span>
               </button>
-              {player.mode === "ondemand" && (
-                <button type="button" onClick={() => player.removeFromQueue(item.key)} className="rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 hover:text-white" aria-label="Remove from queue">
-                  ✕
+              {ondemand && (
+                <button type="button" onClick={() => player.removeFromQueue(item.key)} className="grid h-10 w-10 shrink-0 place-items-center text-white/40 hover:text-white" aria-label={`Remove ${item.track.title} from queue`}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" /></svg>
                 </button>
               )}
             </li>
@@ -2068,21 +2054,14 @@ function QueueSheet() {
         })}
       </ol>
       {player.history.length > 0 && (
-        <div className="border-t border-white/10 px-4 py-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand">Recently played</p>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="border-t border-white/10 px-4 pb-3 pt-3">
+          <p className="mb-2 text-[13px] font-semibold text-white/80">Recently played</p>
+          <div className="no-scrollbar flex gap-3 overflow-x-auto">
             {player.history.slice(0, 12).map((track) => (
-              <button
-                key={trackKey(track)}
-                type="button"
-                onClick={() => player.playHistoryTrack(track)}
-                className="flex w-[148px] shrink-0 items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-left hover:border-brand/40"
-              >
-                <CoverArt src={track.artwork} sizeClass="h-9 w-9" rounded="rounded-md" />
-                <span className="min-w-0">
-                  <span className="block truncate text-xs font-medium">{track.title}</span>
-                  <span className="block truncate text-[10px] text-text-secondary">{track.artist}</span>
-                </span>
+              <button key={trackKey(track)} type="button" onClick={() => player.playHistoryTrack(track)} className="w-[4.5rem] shrink-0 text-left" aria-label={`Play ${track.title} again`}>
+                <CoverArt src={track.artwork} sizeClass="h-[4.5rem] w-[4.5rem]" rounded="rounded-none" />
+                <span className="mt-1 block truncate text-[11px] font-medium">{track.title}</span>
+                <span className="block truncate text-[10px] text-white/45">{track.artist}</span>
               </button>
             ))}
           </div>
