@@ -10,13 +10,14 @@ export default async function AppRadioPage({
   const { surface } = await params;
   if (surface !== "ios" && surface !== "android") notFound();
   return (
-    <main className="mx-auto max-w-6xl px-4 pb-12 pt-6 sm:px-6">
-      <p className="text-xs uppercase tracking-[.18em] text-brand">
-        The BVS station
-      </p>
-      <h1 className="mb-6 mt-2 text-4xl font-semibold">Radio</h1>
-      <RadioPlayer />
-      <SharedProgrammeGuide />
+    <main className="bvs-app-page bvs-app-radio mx-auto max-w-5xl px-4 pb-14 pt-5 sm:px-6" data-app-accent="lime">
+      <header>
+        <p className="bvs-app-eyebrow">Zimbabwe to the world</p>
+        <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Radio</h1>
+        <p className="mt-2 text-sm text-white/50">The BVS station, live around the clock.</p>
+      </header>
+      <section className="bvs-app-shelf" aria-label="On air"><RadioPlayer /></section>
+      <section className="bvs-app-shelf" aria-label="Programme guide"><SharedProgrammeGuide /></section>
     </main>
   );
 }

@@ -6,6 +6,7 @@ import LibraryAction from "@/components/LibraryAction";
 import AppCreatorPlayback from "@/components/app-vnext/AppCreatorPlayback";
 import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
 import AppShareButton from "@/components/app-vnext/AppShareButton";
+import DetailHero, { DetailSection } from "@/components/DetailHero";
 import type { DiscoveryItem } from "@/lib/discovery";
 import { getPublicArtist, getPublishedArtists, getPublishedProducers } from "@/lib/artist-content";
 
@@ -65,101 +66,89 @@ export default async function AppCreatorPage({
     }
   }
 
+  const roleLabel = producerContext ? "Producer" : profile.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1) : "Artist";
+
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 sm:px-6">
-      <Link href={`/app/${surface}/explore`} className="text-sm text-text-secondary">← Explore</Link>
+    <main className="bvs-app-page bvs-detail-page mx-auto max-w-5xl px-4 pb-14 sm:px-6" data-app-accent={producerContext ? "beats" : "lime"}>
+      <DetailHero
+        image={profile.image}
+        imageAlt={displayName}
+        eyebrow={`Verified ${roleLabel.toLowerCase()}`}
+        title={displayName}
+        subtitle={profile.location || undefined}
+        facts={[profile.tracks.length ? `${profile.tracks.length} song${profile.tracks.length === 1 ? "" : "s"}` : null, profile.beats?.length ? `${profile.beats.length} beat${profile.beats.length === 1 ? "" : "s"}` : null]}
+        actions={<>
+          {profile.tracks.length ? <AppCreatorPlayback creatorId={profile.id} creatorName={displayName} surface={surface} /> : null}
+          <LibraryAction item={item} section="follows" analyticsSource="artist_profile" />
+          <AppShareButton
+            title={displayName}
+            text={`Follow ${displayName} on BVS`}
+            path={`/artist/${encodeURIComponent(profile.username)}`}
+            image={profile.image}
+            kicker={`Verified ${roleLabel.toLowerCase()}`}
+          />
+        </>}
+      />
+      <div className="flex justify-center sm:justify-start"><CreatorAchievementBadges creatorId={profile.id} /></div>
 
-      <section className="mt-5 grid gap-6 sm:grid-cols-[220px,1fr] sm:items-start">
-        <div className="relative aspect-square overflow-hidden rounded-[1.8rem] border border-white/10 bg-white/5">
-          <Image src={profile.image} alt={displayName} fill unoptimized={/^https?:\/\//i.test(profile.image)} className="object-cover" priority />
-        </div>
-        <div>
-          <p className="text-xs uppercase tracking-[.2em] text-brand">Verified {producerContext ? "producer" : profile.role}</p>
-          <h1 className="mt-2 text-4xl font-semibold tracking-tight sm:text-5xl">{displayName}</h1>
-          <CreatorAchievementBadges creatorId={profile.id} />
-          {profile.location ? <p className="mt-2 text-sm text-text-secondary">{profile.location}</p> : null}
-          <p className="mt-4 max-w-2xl text-sm leading-6 text-text-secondary">{profile.bio}</p>
-          {profile.tracks.length ? (
-            <div className="mt-5">
-              <AppCreatorPlayback creatorId={profile.id} creatorName={displayName} surface={surface} />
-            </div>
-          ) : null}
-          <div className="mt-4 flex flex-wrap gap-2">
-            <LibraryAction item={item} section="follows" analyticsSource="artist_profile" />
-            <AppShareButton
-              title={displayName}
-              text={`Follow ${displayName} on BVS`}
-              path={`/artist/${encodeURIComponent(profile.username)}`}
-              image={profile.image}
-              kicker={`Verified ${producerContext ? "producer" : profile.role}`}
-            />
-            {hasProducerCatalogue && !producerContext ? (
-              <Link href={`${creatorPath}?as=producer`} className="min-h-10 rounded-full border border-brand/35 px-4 py-2 text-sm text-brand">Producer view</Link>
-            ) : null}
-            {producerContext && profile.tracks.length ? (
-              <Link href={creatorPath} className="min-h-10 rounded-full border border-brand/35 px-4 py-2 text-sm text-brand">Artist view</Link>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      {profile.tracks.length ? (
-        <section className="mt-9">
-          <p className="text-xs uppercase tracking-[.18em] text-brand">Music</p>
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <h2 className="mt-1 text-2xl font-semibold">Published on BVS</h2>
-            <span className="text-xs text-text-secondary">{profile.tracks.length} {profile.tracks.length === 1 ? "track" : "tracks"}</span>
-          </div>
-          <div className="mt-4 space-y-2">
-            {profile.tracks.map((track) => (
-              <article key={track.id} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[.025] p-3">
-                {track.artwork_url ? (
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl"><Image src={track.artwork_url} alt="" fill unoptimized className="object-cover" /></div>
-                ) : (
-                  <div className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-white/5 text-xs text-brand">BVS</div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <h3 className="truncate font-semibold">{track.title}</h3>
-                  <p className="mt-1 text-xs text-text-secondary">{track.genre || "BVS release"}{track.in_rotation ? " · In rotation" : ""}</p>
-                  {track.credits?.length ? <p className="mt-1 line-clamp-1 text-xs text-text-secondary">{track.credits.map((credit) => `${credit.credit_role}: ${credit.person_name}`).join(" · ")}</p> : null}
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <AppCreatorPlayback creatorId={profile.id} creatorName={displayName} surface={surface} startTrackId={track.id} compact />
-                    <AppPlaylistPicker trackId={track.id} compact />
-                    {track.spotify_url ? <a href={track.spotify_url} target="_blank" rel="noreferrer" className="min-h-9 rounded-full border border-white/10 px-3 py-2 text-xs">DSP</a> : null}
-                  </div>
-                </div>
-              </article>
-            ))}
-          </div>
-        </section>
+      {hasProducerCatalogue && profile.tracks.length ? (
+        <nav className="mt-4 flex gap-2" aria-label="Profile view">
+          <Link href={creatorPath} aria-pressed={!producerContext} className="bvs-app-chip">Music</Link>
+          <Link href={`${creatorPath}?as=producer`} aria-pressed={producerContext} className="bvs-app-chip">Beats</Link>
+        </nav>
       ) : null}
 
-      {profile.beats?.length ? (
-        <section className="mt-9">
-          <p className="text-xs uppercase tracking-[.18em] text-brand">BeatStore</p>
-          <h2 className="mt-1 text-2xl font-semibold">Beats by {displayName}</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {profile.tracks.length && !producerContext ? (
+        <DetailSection title="Songs" id="creator-songs-heading" action={<span className="text-xs text-white/45">{profile.tracks.length}</span>}>
+          <ol>
+            {profile.tracks.map((track, index) => (
+              <li key={track.id} className="bvs-app-row flex items-center gap-3 py-2.5">
+                <span className="w-5 shrink-0 text-center text-sm tabular-nums text-white/40">{index + 1}</span>
+                {track.artwork_url ? (
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden"><Image src={track.artwork_url} alt="" fill unoptimized className="object-cover" /></div>
+                ) : (
+                  <div className="grid h-12 w-12 shrink-0 place-items-center bg-white/5 text-[10px] text-white/40">BVS</div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <h3 className="truncate text-[15px] font-semibold">{track.title}</h3>
+                  <p className="truncate text-[13px] text-white/50">{[track.genre, track.in_rotation ? "On BVS Radio" : null].filter(Boolean).join(" · ") || "Single"}</p>
+                  {track.credits?.length ? <p className="truncate text-[11px] text-white/35">{track.credits.map((credit) => `${credit.credit_role}: ${credit.person_name}`).join(" · ")}</p> : null}
+                </div>
+                <div className="bvs-row-actions flex shrink-0 items-center gap-1">
+                  <AppCreatorPlayback creatorId={profile.id} creatorName={displayName} surface={surface} startTrackId={track.id} compact />
+                  <AppPlaylistPicker trackId={track.id} compact />
+                  {track.spotify_url ? <a href={track.spotify_url} target="_blank" rel="noreferrer" aria-label={`${track.title} on streaming services`} className="bvs-app-icon-button text-xs font-semibold">↗</a> : null}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </DetailSection>
+      ) : null}
+
+      {profile.beats?.length && (producerContext || !profile.tracks.length) ? (
+        <DetailSection title={`Beats by ${displayName}`} id="creator-beats-heading">
+          <div>
             {profile.beats.map((beat) => (
-              <Link key={beat.id} href={`/app/${surface}/beat/${beat.id}`} className="rounded-2xl border border-white/10 bg-white/[.025] p-4 hover:border-brand/30">
-                <h3 className="font-semibold">{beat.title}</h3>
-                <p className="mt-1 text-sm text-text-secondary">{beat.genre || "Beat"}{typeof beat.starting_price === "number" ? ` · from $${beat.starting_price.toFixed(2)}` : ""}</p>
+              <Link key={beat.id} href={`/app/${surface}/beat/${beat.id}`} className="bvs-app-row flex items-center justify-between gap-3 py-3">
+                <span className="min-w-0"><span className="block truncate text-[15px] font-semibold">{beat.title}</span><span className="block text-[13px] text-white/50">{beat.genre || "Beat"}</span></span>
+                {typeof beat.starting_price === "number" ? <span className="shrink-0 text-sm font-semibold text-[#c1a7ff]">From ${beat.starting_price.toFixed(2)}</span> : <span aria-hidden="true" className="text-white/35">›</span>}
               </Link>
             ))}
           </div>
-        </section>
+        </DetailSection>
       ) : null}
 
+      {profile.bio ? <DetailSection title="About" id="creator-about-heading"><p className="max-w-2xl text-sm leading-6 text-white/65">{profile.bio}</p></DetailSection> : null}
+
       {credits.size ? (
-        <section className="mt-9 rounded-[1.75rem] border border-white/10 bg-white/[.025] p-5">
-          <p className="text-xs uppercase tracking-[.18em] text-brand">BVS Scene Graph</p>
-          <h2 className="mt-1 text-2xl font-semibold">People connected through the music.</h2>
-          <div className="mt-4 flex flex-wrap gap-2">
+        <DetailSection title="Worked with" id="creator-credits-heading">
+          <div className="flex flex-wrap gap-2">
             {Array.from(credits.entries()).map(([name, roles]) => (
-              <span key={name} className="rounded-full border border-white/10 px-3 py-2 text-sm"><b>{name}</b><span className="text-text-secondary"> · {Array.from(roles).join(", ")}</span></span>
+              <span key={name} className="border border-white/12 px-3 py-2 text-sm"><b>{name}</b><span className="text-white/50"> · {Array.from(roles).join(", ")}</span></span>
             ))}
           </div>
-        </section>
+        </DetailSection>
       ) : null}
-    </div>
+    </main>
   );
 }

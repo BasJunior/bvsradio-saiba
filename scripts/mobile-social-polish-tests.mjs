@@ -52,7 +52,7 @@ assert(!share.includes('window.location.origin'), 'Story media must not inherit 
 // Artist-level playback uses only public approved catalogue rows and fails closed on mobile rights clearance.
 assert(creatorPlayback.includes('player.playAll(tracks'), 'Creator Play must queue the creator catalogue in the persistent player')
 assert(creatorPlayback.includes('Shuffle'), 'Creator profile must expose shuffle playback')
-assert(creatorPlayback.includes('This track is not cleared for playback on this BVS surface.'), 'Per-track playback must fail closed when a mobile track is not cleared')
+assert(creatorPlayback.includes('This track isn’t available to play in the app yet.'), 'Per-track playback must fail closed when a mobile track is not cleared')
 assert(creatorTracks.includes('is_public=eq.true&editorial_status=eq.approved'), 'Creator playback must use public Editorial-approved tracks only')
 assert(creatorTracks.includes('mobile_distribution_clearances!inner(surface,status)'), 'Mobile creator playback must inner-join rights clearances')
 assert(creatorTracks.includes('mobile_distribution_clearances.status=eq.cleared'), 'Mobile creator playback must require cleared distribution status')

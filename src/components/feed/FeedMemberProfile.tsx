@@ -17,18 +17,25 @@ export default function FeedMemberProfile({ id, surface }: { id: string; surface
     return () => controller.abort();
   }, [id, surface, session.token, owner]);
   const data = result?.owner === owner ? result.data : undefined;
-  return <main className="mx-auto max-w-3xl px-4 pb-32 pt-8">
-    <Link href={`${surface ? `/app/${surface}` : ""}/feed`} className="inline-flex min-h-11 items-center text-sm text-white/55">← Feed</Link>
-    {!data ? <p role="status" className="mt-6 text-white/55">{result?.owner === owner && result.error ? result.error : "Loading member…"}</p> : <>
-      <section className="mt-5 border border-white/10 bg-[#111] p-6">
-        <div className="flex items-center gap-4">{data.profile.avatarUrl ? <Image src={data.profile.avatarUrl} alt="" width={80} height={80} unoptimized className="h-20 w-20 object-cover" /> : <span aria-hidden="true" className="grid h-20 w-20 place-items-center bg-white/10 text-3xl">{data.profile.displayName.slice(0,1).toUpperCase()}</span>}
-          <div><p className="text-xs text-brand">BVS member</p><h1 className="mt-1 text-3xl font-semibold">{data.profile.displayName}</h1>{data.profile.username ? <p className="mt-1 text-sm text-white/45">@{data.profile.username}</p> : null}</div></div>
-        {data.bio ? <p className="mt-5 whitespace-pre-wrap text-sm leading-6 text-white/65">{data.bio}</p> : null}
-        {data.creatorHref ? <Link href={data.creatorHref} className="mt-5 inline-flex min-h-11 items-center border border-brand/30 px-4 text-sm font-semibold text-brand">View creator page →</Link> : null}
+  const feedHref = `${surface ? `/app/${surface}` : ""}/feed`;
+  return <main className="bvs-app-page bvs-app-feed mx-auto max-w-3xl px-4 pb-32 pt-4 sm:px-6" data-app-accent="feed">
+    <Link href={feedHref} className="inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-white/60 hover:text-white"><span aria-hidden="true">‹</span> Feed</Link>
+    {!data ? <p role="status" className="mt-6 text-white/55">{result?.owner === owner && result.error ? result.error : "Loading profile…"}</p> : <>
+      <section className="mt-3 flex items-center gap-4">
+        {data.profile.avatarUrl ? <Image src={data.profile.avatarUrl} alt="" width={88} height={88} unoptimized className="h-[88px] w-[88px] shrink-0 object-cover" /> : <span aria-hidden="true" className="grid h-[88px] w-[88px] shrink-0 place-items-center bg-[#c1a7ff]/20 text-3xl font-bold text-[#c1a7ff]">{data.profile.displayName.slice(0, 1).toUpperCase()}</span>}
+        <div className="min-w-0">
+          <p className="bvs-app-eyebrow">BVS member</p>
+          <h1 className="mt-1 truncate text-[2rem] font-bold leading-none tracking-tight">{data.profile.displayName}</h1>
+          {data.profile.username ? <p className="mt-1 text-sm text-white/50">@{data.profile.username}</p> : null}
+        </div>
       </section>
-      <h2 className="mt-8 text-xl font-semibold">Recent public activity</h2>
-      <div className="mt-4 space-y-3">{data.activity.map(item => <Link key={item.id} href={item.href} className="block border border-white/10 p-4 hover:border-brand/30"><span className="text-xs text-white/40">{item.kind}</span><p className="mt-2 whitespace-pre-wrap text-sm text-white/70">{item.body}</p></Link>)}</div>
-      {!data.activity.length ? <p className="mt-4 text-sm text-white/45">No public discussion activity yet.</p> : null}
+      {data.bio ? <p className="mt-4 whitespace-pre-wrap text-sm leading-6 text-white/65">{data.bio}</p> : null}
+      {data.creatorHref ? <Link href={data.creatorHref} className="bvs-app-pill bvs-app-pill--accent mt-4">View their music →</Link> : null}
+      <section className="bvs-app-shelf" aria-labelledby="member-activity-heading">
+        <h2 id="member-activity-heading" className="bvs-app-shelf-title">Recent posts and replies</h2>
+        <div className="mt-2">{data.activity.map(item => <Link key={item.id} href={item.href} className="bvs-app-row block py-3"><span className="text-[11px] font-semibold uppercase tracking-[.12em] text-white/40">{item.kind}</span><p className="mt-1 line-clamp-3 whitespace-pre-wrap text-sm text-white/75">{item.body}</p></Link>)}</div>
+        {!data.activity.length ? <p className="mt-2 text-sm text-white/45">Nothing posted yet.</p> : null}
+      </section>
     </>}
   </main>;
 }

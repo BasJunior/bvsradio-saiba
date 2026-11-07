@@ -19,14 +19,13 @@ export default async function AppParticipationThreadPage({
   if (!threadId) notFound();
 
   return (
-    <main className="bvs-page-main mx-auto min-h-[100dvh] max-w-3xl px-4 pb-12 sm:px-6">
-      <header className="pb-5 pt-6 sm:pb-7 sm:pt-8">
-        <Link href={`/app/${surface}/feed`} className="inline-flex min-h-10 items-center rounded-full border border-white/10 px-3 text-xs font-semibold text-white/48 transition hover:border-[#929DE0]/30 hover:text-white">
-          ← Feed
+    <main className="bvs-app-page bvs-app-feed bvs-page-main mx-auto min-h-[100dvh] max-w-3xl px-4 pb-12 pt-4 sm:px-6" data-app-accent="feed">
+      <header className="pb-4">
+        <Link href={`/app/${surface}/feed`} className="inline-flex min-h-10 items-center gap-1 text-sm font-semibold text-white/60 transition hover:text-white">
+          <span aria-hidden="true">‹</span> Feed
         </Link>
-        <p className="mt-5 text-[10px] font-semibold uppercase tracking-[.2em] text-[#929DE0]">BVS conversation</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Conversation</h1>
-        <p className="mt-2 text-sm leading-6 text-white/42">A stable BVS permalink for this post and its replies.</p>
+        <h1 className="mt-3 text-[2rem] font-bold leading-none tracking-tight">Post</h1>
+        <p className="mt-2 text-sm text-white/50">Read the post and join the conversation.</p>
       </header>
 
       <ParticipationThreadPanel threadId={threadId} surface={surface} enabled showRoot />

@@ -40,7 +40,7 @@ export default function AppCreatorPlayback({
     const query = surface ? `?surface=${surface}` : "";
     const response = await fetch(`/api/app/creator/${encodeURIComponent(creatorId)}/tracks${query}`, { cache: "no-store" }).catch(() => null);
     const payload = response ? await response.json().catch(() => ({})) as { tracks?: StationTrack[]; error?: string } : {};
-    if (!response?.ok) throw new Error(payload.error || "Creator playback is unavailable.");
+    if (!response?.ok) throw new Error(payload.error || "Couldn’t load this creator’s music. Try again.");
     const tracks = (payload.tracks || []).filter((track) => Boolean(track.src));
     cache.current = tracks;
     return tracks;
@@ -52,16 +52,16 @@ export default function AppCreatorPlayback({
     setError("");
     try {
       let tracks = await loadTracks();
-      if (!tracks.length) throw new Error("No BVS-playable tracks are available for this creator yet.");
+      if (!tracks.length) throw new Error("No songs from this creator are ready to play yet.");
       if (startTrackId && !shuffle && !tracks.some((track) => track.id === startTrackId)) {
-        throw new Error("This track is not cleared for playback on this BVS surface.");
+        throw new Error("This track isn’t available to play in the app yet.");
       }
       if (shuffle) tracks = shuffled(tracks);
       const startIndex = shuffle || !startTrackId ? 0 : tracks.findIndex((track) => track.id === startTrackId);
       player.playAll(tracks, { from: `${creatorName} · BVS`, startIndex });
       player.setQueueOpen(false);
     } catch (issue) {
-      setError(issue instanceof Error ? issue.message : "Creator playback is unavailable.");
+      setError(issue instanceof Error ? issue.message : "Couldn’t load this creator’s music. Try again.");
     } finally {
       setLoading(false);
     }
@@ -74,10 +74,10 @@ export default function AppCreatorPlayback({
           type="button"
           onClick={() => void play(false)}
           disabled={loading}
-          className="min-h-9 rounded-full border border-brand/30 bg-brand/[.08] px-3 text-xs font-semibold text-brand transition hover:bg-brand/15 disabled:opacity-50"
+          className="bvs-app-pill bvs-app-pill--primary min-h-11 px-5 disabled:opacity-50"
           aria-label={`Play ${creatorName}${startTrackId ? " track" : ""} on BVS`}
         >
-          {loading ? "Loading…" : "▶ Play"}
+          {loading ? "Loading…" : <><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M8 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.52 4.75A1 1 0 0 0 8 5.6Z" fill="currentColor" /></svg>Play</>}
         </button>
         {error ? <span role="status" className="mt-1 max-w-48 text-[10px] leading-4 text-[#ff9a92]">{error}</span> : null}
       </div>
@@ -91,15 +91,15 @@ export default function AppCreatorPlayback({
           type="button"
           onClick={() => void play(false)}
           disabled={loading}
-          className="min-h-11 rounded-full bg-brand px-5 text-sm font-bold text-black shadow-[0_8px_28px_rgba(227,189,88,.16)] transition hover:brightness-105 disabled:opacity-55"
+          className="bvs-app-pill bvs-app-pill--primary min-h-11 px-5 disabled:opacity-55"
         >
-          {loading ? "Loading…" : "▶ Play"}
+          {loading ? "Loading…" : <><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M8 5.6v12.8a1 1 0 0 0 1.52.85l10.2-6.4a1 1 0 0 0 0-1.7L9.52 4.75A1 1 0 0 0 8 5.6Z" fill="currentColor" /></svg>Play</>}
         </button>
         <button
           type="button"
           onClick={() => void play(true)}
           disabled={loading}
-          className="min-h-11 rounded-full border border-white/15 px-4 text-sm font-semibold text-white/72 transition hover:border-brand/35 hover:text-brand disabled:opacity-55"
+          className="bvs-app-pill min-h-11 px-4 disabled:opacity-55"
         >
           Shuffle
         </button>
