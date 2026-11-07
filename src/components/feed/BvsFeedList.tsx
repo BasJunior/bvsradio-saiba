@@ -48,6 +48,7 @@ const categoryLabel: Record<BvsFeedCategory, string> = {
 };
 
 const PULL_REFRESH_TRIGGER = 54;
+const FEED_RENDER_BATCH = 16;
 
 function relativeTime(iso: string) {
   const age = Math.max(0, Date.now() - Date.parse(iso));
@@ -402,6 +403,31 @@ export default function BvsFeedList({
     ...visibleSystem.map((item) => ({ type: "system" as const, at: item.occurredAt, id: `system:${item.id}`, item })),
   ].sort((a, b) => Date.parse(b.at) - Date.parse(a.at)), [visiblePosts, visibleSystem]);
 
+  // Render the timeline in batches: the first screenfuls paint fast and the
+  // rest appear as the listener scrolls, instead of mounting ~90 cards at once.
+  // Reset to the first batch whenever the filter, lane or search changes.
+  const renderKey = `${filter}|${lane}|${query}`;
+  const [renderState, setRenderState] = useState({ key: renderKey, limit: FEED_RENDER_BATCH });
+  const renderLimit = renderState.key === renderKey ? renderState.limit : FEED_RENDER_BATCH;
+  const showMoreTimeline = useCallback(() => {
+    setRenderState((current) => ({
+      key: renderKey,
+      limit: (current.key === renderKey ? current.limit : FEED_RENDER_BATCH) + FEED_RENDER_BATCH,
+    }));
+  }, [renderKey]);
+  const renderMoreRef = useRef<HTMLDivElement | null>(null);
+  const shownTimeline = timeline.slice(0, renderLimit);
+  const hasMoreTimeline = timeline.length > renderLimit;
+  useEffect(() => {
+    const sentinel = renderMoreRef.current;
+    if (!hasMoreTimeline || !sentinel || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) showMoreTimeline();
+    }, { rootMargin: "900px 0px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMoreTimeline, renderLimit, showMoreTimeline]);
+
   function recordActivity(key: string, active: boolean) {
     setMyActivity((current) => {
       const next = new Set(current);
@@ -537,7 +563,7 @@ export default function BvsFeedList({
       {postsError && filter === "all" ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ff7a70]/20 bg-[#ff7a70]/[.055] px-3 py-2 text-xs text-[#ff9a92]"><span>{postsError}</span><button type="button" onClick={() => void loadPosts(null, false)} className="min-h-9 rounded-full border border-white/15 px-3 text-white">Try again</button></div> : null}
 
       <div className="mt-5 space-y-4 sm:mt-7">
-        {timeline.map((entry) => {
+        {shownTimeline.map((entry) => {
           if (entry.type === "post") {
             return <ParticipationPostCard key={`${entry.id}:${session.user?.id || "guest"}`} post={entry.post} surface={surface} enabled={participationEnabled} onChanged={updatePost} onDeleted={deletePost} />;
           }
@@ -571,6 +597,14 @@ export default function BvsFeedList({
             </div>
           );
         })}
+
+        {hasMoreTimeline ? (
+          <div ref={renderMoreRef} className="pt-1 text-center">
+            <button type="button" onClick={showMoreTimeline} className="min-h-11 rounded-full border border-white/10 px-5 text-sm font-semibold text-white/55 transition hover:border-brand/35 hover:text-white">
+              Show more updates
+            </button>
+          </div>
+        ) : null}
 
         {!timeline.length && !postsLoading ? (
           <div className="rounded-[1.65rem] border border-white/[.07] bg-white/[.02] px-5 py-12 text-center">

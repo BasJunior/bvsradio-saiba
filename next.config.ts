@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // App tab pages render the same for every visitor (personal data loads
+    // client-side), so keep visited/prefetched pages briefly for instant
+    // back-and-forth tab switches instead of a server round trip each time.
+    staleTimes: {
+      dynamic: 30,
+      static: 120,
+    },
+  },
   turbopack: {
     root: process.cwd(),
   },

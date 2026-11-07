@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { measureBottomNav } from "@/lib/chrome-layout";
+
+/** Per-tab scroll positions, so returning to a tab lands where the listener left it. */
+const tabScroll = new Map<string, number>();
 
 type NavIconName = "home" | "discover" | "library" | "feed" | "create" | "beats";
 
@@ -35,10 +38,35 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const { isCreator } = useAppSession();
   const [pending, startTransition] = useTransition();
   const [requestedTab, setRequestedTab] = useState("");
+  const [prefetchTabs, setPrefetchTabs] = useState(false);
+
+  // Warm the tabs once the app has settled, unless the listener chose data saver.
+  useEffect(() => {
+    const decide = () => {
+      const saver =
+        document.documentElement.dataset.bvsDataEffective === "saver" ||
+        Boolean((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData);
+      setPrefetchTabs(!saver);
+    };
+    const timer = window.setTimeout(decide, 1500);
+    return () => window.clearTimeout(timer);
+  }, []);
   const base = `/app/${surface}`;
   const isIos = surface === "ios";
   const search = searchParams.toString();
   const currentRoute = `${pathname}${search ? `?${search}` : ""}`;
+  const pendingTabRestore = useRef<string | null>(null);
+
+  // Restore the scroll position when a tab-bar switch lands on a tab visited before.
+  useEffect(() => {
+    if (pendingTabRestore.current !== currentRoute) return;
+    pendingTabRestore.current = null;
+    const top = tabScroll.get(currentRoute);
+    if (!top) return;
+    const frame = window.requestAnimationFrame(() => window.scrollTo({ top, left: 0 }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [currentRoute]);
+
   const isBeatsRoute = searchParams.get("kind") === "beats" || (isIos && searchParams.get("mode") === "beats");
   const roleDestination = isCreator
     ? { href: `${base}/studio`, label: "Studio", icon: "create" as const, active: pathname.startsWith(`${base}/studio`) }
@@ -68,6 +96,9 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
           <Link
             key={item.href}
             href={item.href}
+            // Fully prefetch the five tabs so switching feels instant (Next 16
+            // otherwise prefetches only the loading shell of dynamic routes).
+            prefetch={prefetchTabs ? true : null}
             onClick={(event) => {
               if (
                 event.defaultPrevented ||
@@ -80,8 +111,11 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
               event.preventDefault();
               if (item.href === currentRoute) {
                 window.scrollTo({ top: 0, left: 0 });
+                tabScroll.delete(currentRoute);
                 return;
               }
+              tabScroll.set(currentRoute, window.scrollY);
+              pendingTabRestore.current = item.href;
               if (isIos) {
                 setRequestedTab(item.label);
                 startTransition(() => router.push(item.href));
