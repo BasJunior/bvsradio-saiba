@@ -6,9 +6,11 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { measureBottomNav } from "@/lib/chrome-layout";
+import { recallTab, rememberTab, restoreScroll } from "@/lib/tab-memory";
 
-/** Per-tab scroll positions, so returning to a tab lands where the listener left it. */
-const tabScroll = new Map<string, number>();
+/** The address as the listener sees it: screens like Discover update their
+ * filters with history.replaceState, which Next's search params don't track. */
+const liveRoute = (fallback: string) => typeof window === "undefined" ? fallback : `${window.location.pathname}${window.location.search}`;
 
 type NavIconName = "home" | "discover" | "library" | "feed" | "create" | "beats";
 
@@ -55,18 +57,8 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const isIos = surface === "ios";
   const search = searchParams.toString();
   const currentRoute = `${pathname}${search ? `?${search}` : ""}`;
-  const pendingTabRestore = useRef<string | null>(null);
-
-  // Restore the scroll position when a tab-bar switch lands on a tab visited before.
-  useEffect(() => {
-    if (pendingTabRestore.current !== currentRoute) return;
-    pendingTabRestore.current = null;
-    const top = tabScroll.get(currentRoute);
-    if (!top) return;
-    const frame = window.requestAnimationFrame(() => window.scrollTo({ top, left: 0 }));
-    return () => window.cancelAnimationFrame(frame);
-  }, [currentRoute]);
-
+  const pendingTabRestore = useRef<{ route: string; top: number } | null>(null);
+  const cancelRestore = useRef<(() => void) | null>(null);
   const isBeatsRoute = searchParams.get("kind") === "beats" || (isIos && searchParams.get("mode") === "beats");
   const roleDestination = isCreator
     ? { href: `${base}/studio`, label: "Studio", icon: "create" as const, active: pathname.startsWith(`${base}/studio`) }
@@ -78,6 +70,42 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
     { href: `${base}/library`, label: "Library", icon: "library", active: pathname.startsWith(`${base}/library`) || pathname.startsWith(`${base}/playlist`) },
     roleDestination,
   ];
+  const activeTab = items.find((item) => item.active)?.label || "";
+
+  // Keep each tab's last screen (including Discover/Library filters in the URL).
+  useEffect(() => {
+    if (activeTab) rememberTab(activeTab, currentRoute);
+  }, [activeTab, currentRoute]);
+
+  // Track the scroll position continuously, so leaving a tab through a link
+  // (a song, post or playlist) still remembers where the listener was.
+  useEffect(() => {
+    if (!activeTab) return;
+    let frame = 0;
+    const save = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        if (pendingTabRestore.current) return;
+        rememberTab(activeTab, liveRoute(currentRoute), window.scrollY);
+      });
+    };
+    window.addEventListener("scroll", save, { passive: true });
+    return () => { window.removeEventListener("scroll", save); if (frame) window.cancelAnimationFrame(frame); };
+  }, [activeTab, currentRoute]);
+
+  // Returning to a tab: reopen its last screen at the remembered position,
+  // waiting for late-loading content instead of scrolling once and landing short.
+  useEffect(() => {
+    const pending = pendingTabRestore.current;
+    if (!pending || pending.route !== currentRoute) return;
+    pendingTabRestore.current = null;
+    // Not tied to this effect's cleanup: screens like Discover rewrite their
+    // URL right after mounting, which would otherwise cancel the restore.
+    cancelRestore.current?.();
+    cancelRestore.current = restoreScroll(pending.top);
+  }, [currentRoute]);
+  useEffect(() => () => cancelRestore.current?.(), []);
 
   return (
     <nav
@@ -109,13 +137,26 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
                 event.altKey
               ) return;
               event.preventDefault();
-              if (item.href === currentRoute) {
-                window.scrollTo({ top: 0, left: 0 });
-                tabScroll.delete(currentRoute);
-                return;
+              cancelRestore.current?.();
+              if (item.active) {
+                // Tapping the tab you're on goes to its first screen, at the top.
+                rememberTab(item.label, item.href, 0);
+                if (item.href === currentRoute && item.href === liveRoute(currentRoute)) {
+                  window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+                  return;
+                }
+                pendingTabRestore.current = { route: item.href, top: 0 };
+              } else {
+                if (activeTab) rememberTab(activeTab, liveRoute(currentRoute), window.scrollY);
+                const saved = recallTab(item.label);
+                const target = saved?.route || item.href;
+                pendingTabRestore.current = { route: target, top: saved?.top || 0 };
+                if (target !== item.href) {
+                  if (isIos) setRequestedTab(item.label);
+                  startTransition(() => router.push(target, { scroll: false }));
+                  return;
+                }
               }
-              tabScroll.set(currentRoute, window.scrollY);
-              pendingTabRestore.current = item.href;
               if (isIos) {
                 setRequestedTab(item.label);
                 startTransition(() => router.push(item.href));

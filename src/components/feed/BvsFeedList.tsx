@@ -50,6 +50,8 @@ const categoryLabel: Record<BvsFeedCategory, string> = {
 
 const PULL_REFRESH_TRIGGER = 54;
 const FEED_RENDER_BATCH = 16;
+/** Session memory of how far down each Feed view was rendered. */
+const feedRenderMemory = new Map<string, number>();
 
 function relativeTime(iso: string) {
   const age = Math.max(0, Date.now() - Date.parse(iso));
@@ -408,13 +410,16 @@ export default function BvsFeedList({
   // rest appear as the listener scrolls, instead of mounting ~90 cards at once.
   // Reset to the first batch whenever the filter, lane or search changes.
   const renderKey = `${filter}|${lane}|${query}`;
-  const [renderState, setRenderState] = useState({ key: renderKey, limit: FEED_RENDER_BATCH });
-  const renderLimit = renderState.key === renderKey ? renderState.limit : FEED_RENDER_BATCH;
+  // Returning to the Feed tab re-renders as many items as were shown before,
+  // so the remembered scroll position still exists.
+  const [renderState, setRenderState] = useState(() => ({ key: renderKey, limit: feedRenderMemory.get(renderKey) || FEED_RENDER_BATCH }));
+  const renderLimit = renderState.key === renderKey ? renderState.limit : feedRenderMemory.get(renderKey) || FEED_RENDER_BATCH;
   const showMoreTimeline = useCallback(() => {
-    setRenderState((current) => ({
-      key: renderKey,
-      limit: (current.key === renderKey ? current.limit : FEED_RENDER_BATCH) + FEED_RENDER_BATCH,
-    }));
+    setRenderState((current) => {
+      const limit = (current.key === renderKey ? current.limit : feedRenderMemory.get(renderKey) || FEED_RENDER_BATCH) + FEED_RENDER_BATCH;
+      feedRenderMemory.set(renderKey, limit);
+      return { key: renderKey, limit };
+    });
   }, [renderKey]);
   const renderMoreRef = useRef<HTMLDivElement | null>(null);
   const shownTimeline = timeline.slice(0, renderLimit);
