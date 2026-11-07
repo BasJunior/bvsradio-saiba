@@ -1,6 +1,6 @@
 export default function FeedLoading() {
   return (
-    <main className="bvs-square-feed mx-auto min-h-screen max-w-4xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10" aria-busy="true" aria-label="Loading the Feed">
+    <main className="bvs-app-page bvs-app-feed mx-auto min-h-screen max-w-4xl px-4 pb-24 pt-6 sm:px-6 sm:pt-10" data-app-accent="feed" aria-busy="true" aria-label="Loading the Feed">
       <p className="text-[10px] font-semibold uppercase tracking-[.24em] text-white/45">BVS Pulse</p>
       <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">What’s moving now.</h1>
       <div className="mt-8 space-y-3">

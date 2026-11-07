@@ -378,9 +378,6 @@ export default function BvsFeedList({
     [participationEnabled],
   );
 
-  const activeLaneIndex = Math.max(0, availableLanes.findIndex((item) => item.id === lane));
-  const previousLane = activeLaneIndex > 0 ? availableLanes[activeLaneIndex - 1] : null;
-  const nextLane = activeLaneIndex < availableLanes.length - 1 ? availableLanes[activeLaneIndex + 1] : null;
 
   const visibleSystem = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
@@ -493,7 +490,6 @@ export default function BvsFeedList({
 
       <FeedComposer key={session.user?.id || "guest"} surface={surface} enabled={participationEnabled} initialAttachment={initialAttachment} onCreated={addPost} />
 
-      {surface ? (
         <>
           <div className="bvs-app-chipbar -mx-4 mt-4 px-4 py-2 sm:-mx-6 sm:px-6" aria-label="Feed controls">
             <div className="flex items-center gap-1">
@@ -522,80 +518,6 @@ export default function BvsFeedList({
             </div>
           </details>
         </>
-      ) : (
-      <div className="sticky top-[var(--bvs-app-header-height,4rem)] z-20 -mx-4 mt-4 border-y border-white/[.06] bg-[#08080a]/94 px-4 py-3 backdrop-blur-2xl sm:static sm:mx-0 sm:rounded-[1.4rem] sm:border sm:bg-white/[.02]" aria-label="Feed controls">
-        <div className="grid grid-cols-[1fr_auto] items-center gap-2">
-          <div className="grid min-w-0 grid-cols-2 gap-1.5 rounded-[1rem] border border-white/[.08] bg-black/20 p-1 sm:grid-cols-3" aria-label="Feed lanes">
-            {availableLanes.map((item) => {
-              const active = lane === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setLane(item.id)}
-                  aria-pressed={active}
-                  data-feed-lane={item.id}
-                  className={`bvs-feed-lane min-h-11 rounded-[.8rem] border px-3 text-center text-xs font-semibold transition sm:text-sm ${active ? "border-brand/35 bg-brand/[.12] text-brand shadow-[0_8px_28px_rgba(0,0,0,.18)]" : "border-transparent text-white/50 hover:bg-white/[.045] hover:text-white"} ${item.id === "activity" ? "col-span-2 sm:col-span-1" : ""}`}
-                >
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-          <button type="button" disabled={refreshing} onClick={() => void refreshFeed()} className="min-h-11 shrink-0 rounded-full border border-white/15 px-3 text-xs font-semibold text-white/70 hover:text-white disabled:opacity-50" aria-label="Refresh feed">{refreshing ? "Refreshing…" : "Refresh"}</button>
-        </div>
-
-        {surface === "ios" ? <p className="mt-2 text-[11px] text-white/45 sm:hidden">Swipe left or right to switch Feed sections · Pull down to refresh</p> : null}
-        <div className="mt-3 rounded-[1rem] border border-white/[.075] bg-gradient-to-br from-white/[.04] to-white/[.015] p-3 sm:p-4" data-feed-account-context={accountLabel.toLowerCase().replace(/\s+/g, "-")}>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-brand">{laneContext.eyebrow}</span>
-                <span className="rounded-full border border-white/[.08] bg-white/[.025] px-2 py-1 text-[10px] font-semibold text-white/45">{accountLabel}</span>
-                {premiumBadge ? <span className="rounded-full border border-brand/25 bg-brand/[.08] px-2 py-1 text-[10px] font-semibold text-brand">{premiumBadge}</span> : null}
-              </div>
-              <p className="mt-2 text-sm font-semibold text-white/90 sm:text-base">{laneContext.title}</p>
-              <p className="mt-1 max-w-3xl text-xs leading-5 text-white/45 sm:text-sm sm:leading-6">{laneContext.copy}</p>
-            </div>
-            <Link href={laneContext.actionHref} className="min-h-10 shrink-0 rounded-full border border-white/12 bg-white/[.035] px-3.5 py-2.5 text-xs font-semibold text-white/75 transition hover:border-brand/30 hover:text-brand">
-              {laneContext.actionLabel}
-            </Link>
-          </div>
-          <div className="mt-3 flex items-center justify-between border-t border-white/[.06] pt-3 text-xs">
-            <button type="button" disabled={!previousLane} onClick={() => previousLane && setLane(previousLane.id)} className="min-h-9 rounded-full px-2 text-white/45 transition hover:text-white disabled:cursor-default disabled:opacity-20" aria-label={previousLane ? `Open ${previousLane.label}` : "No previous feed section"}>
-              ← {previousLane?.label || "Previous"}
-            </button>
-            <span className="text-[10px] font-semibold uppercase tracking-[.16em] text-white/28">{activeLaneIndex + 1} / {availableLanes.length}</span>
-            <button type="button" disabled={!nextLane} onClick={() => nextLane && setLane(nextLane.id)} className="min-h-9 rounded-full px-2 text-white/45 transition hover:text-white disabled:cursor-default disabled:opacity-20" aria-label={nextLane ? `Open ${nextLane.label}` : "No next feed section"}>
-              {nextLane?.label || "Next"} →
-            </button>
-          </div>
-        </div>
-
-        <details className="group mt-2" data-feed-refine="true">
-          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-2 text-xs text-white/55 transition hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-brand [&::-webkit-details-marker]:hidden"><span>Search & filter{query.trim() ? ` · ${query.trim()}` : filter !== "all" ? ` · ${filters.find(item => item.id === filter)?.label}` : ""}</span><span aria-hidden="true" className="transition-transform group-open:rotate-180 motion-reduce:transition-none">⌄</span></summary>
-          <label className="mt-2 block"><span className="sr-only">Search this feed</span><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Search updates, artists or music" className="min-h-11 w-full rounded-xl border border-white/10 bg-black/15 px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-brand/50" /></label>
-          <div className="mt-2 overflow-x-auto">
-            <div className="flex min-w-max gap-1.5 sm:flex-wrap" aria-label="Feed categories">
-              {orderedFilters.map((item) => {
-                const active = filter === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => setFilter(item.id)}
-                    aria-pressed={active}
-                    className={`min-h-9 rounded-full border px-3 text-xs font-semibold transition ${active ? "border-brand/50 bg-brand/12 text-brand" : "border-white/10 bg-white/[.02] text-white/45 hover:border-white/20 hover:text-white"}`}
-                  >
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </details>
-      </div>
-      )}
 
       {postsError && filter === "all" ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ff7a70]/20 bg-[#ff7a70]/[.055] px-3 py-2 text-xs text-[#ff9a92]"><span>{postsError}</span><button type="button" onClick={() => void loadPosts(null, false)} className="min-h-9 rounded-full border border-white/15 px-3 text-white">Try again</button></div> : null}
 

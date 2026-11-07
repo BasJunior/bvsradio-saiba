@@ -15,16 +15,11 @@ export default async function BvsFeedPage() {
   const items = await getBvsFeed({ limit: 150 });
 
   return (
-    <main className="bvs-square-feed mx-auto min-h-screen max-w-4xl px-4 pb-24 pt-8 sm:px-6 sm:pt-10">
-      <header className="mb-7 sm:mb-9">
-        <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.24em] bvs-section-label">
-          <span className="h-2 w-2 rounded-full bg-brand shadow-[0_0_18px_rgba(212,175,55,.75)]" aria-hidden="true" />
-          BVS Pulse
-        </div>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">What’s moving now.</h1>
-        <p className="mt-4 max-w-2xl text-base leading-7 text-text-secondary sm:text-lg">
-          Hear new drops, follow creators and join the conversation. Your music keeps playing while you explore.
-        </p>
+    <main className="bvs-app-page bvs-app-feed mx-auto min-h-screen max-w-4xl px-4 pb-24 pt-6 sm:px-6 sm:pt-10" data-app-accent="feed">
+      <header>
+        <p className="bvs-app-eyebrow">BVS Pulse</p>
+        <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Feed</h1>
+        <p className="mt-2 max-w-2xl text-sm text-white/50 sm:text-base">New music, creators, beats and live moments across BVS. Your music keeps playing while you explore.</p>
       </header>
 
       {/* Shared Feed list requires the app session boundary even while participation is gated. */}

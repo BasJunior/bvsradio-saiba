@@ -1,4 +1,3 @@
-import { unstable_cache } from "next/cache";
 import "server-only";
 import { getPublishedEpisodeDrops } from "@/lib/published-shows";
 
@@ -182,7 +181,7 @@ function trackRoute(title: string, surface?: AppSurface) {
     : `/catalogue?q=${encodeURIComponent(title)}`;
 }
 
-async function buildBvsFeed(options: { surface?: AppSurface; limit?: number } = {}): Promise<BvsFeedItem[]> {
+export async function getBvsFeed(options: { surface?: AppSurface; limit?: number } = {}): Promise<BvsFeedItem[]> {
   const surface = options.surface;
   const limit = Math.min(1000, Math.max(12, options.limit || 1000));
   const trackSelect = "id,user_id,title,artist_name,file_url,artwork_url,genre,release_id,rotation_added_at,created_at";
@@ -486,15 +485,3 @@ async function buildBvsFeed(options: { surface?: AppSurface; limit?: number } = 
     .slice(0, limit);
 }
 
-
-/**
- * The finished Feed is small (a few hundred KB at most) but building it takes
- * eight database reads, one of which (the full approved catalogue) is too big
- * for the per-request fetch cache. Cache the built Feed for a minute instead,
- * shared across server instances, so most visits skip the rebuild entirely.
- */
-export async function getBvsFeed(options: { surface?: AppSurface; limit?: number } = {}): Promise<BvsFeedItem[]> {
-  const surface = options.surface || "web";
-  const limit = String(options.limit || 1000);
-  return unstable_cache(() => buildBvsFeed(options), ["bvs-feed", surface, limit], { revalidate: 60 })();
-}
