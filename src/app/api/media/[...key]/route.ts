@@ -28,14 +28,20 @@ export async function GET(
   _req: Request,
   context: { params: Promise<{ key: string[] }> },
 ) {
-  if (!r2Configured()) {
-    return NextResponse.json({ error: "Media is temporarily unavailable." }, { status: 503 });
-  }
-
   const { key: parts } = await context.params;
   const key = (parts || []).join("/");
   if (!safeR2Key(key)) {
     return NextResponse.json({ error: "Invalid media path." }, { status: 400 });
+  }
+
+  if (!r2Configured()) {
+    // Local review only: opt in with BVS_DEV_MEDIA_ORIGIN=https://bvsradio.com to
+    // let the production proxy (which keeps its own public-key checks) serve media.
+    const devOrigin = process.env.NODE_ENV === "development" ? process.env.BVS_DEV_MEDIA_ORIGIN : undefined;
+    if (devOrigin) {
+      return NextResponse.redirect(new URL(`/api/media/${key}`, devOrigin), { status: 307 });
+    }
+    return NextResponse.json({ error: "Media is temporarily unavailable." }, { status: 503 });
   }
   if (!(await isPublicR2MediaKey(key))) {
     return NextResponse.json({ error: "Media is not publicly available." }, { status: 403 });

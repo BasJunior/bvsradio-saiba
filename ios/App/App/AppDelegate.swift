@@ -1,5 +1,6 @@
 import UIKit
 import AVFoundation
+import AVKit
 import MediaPlayer
 import Capacitor
 import WebKit
@@ -63,6 +64,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     private let navigationRouteHandler = "bvsNavigationRoute"
     private let nowPlayingRouteHandler = "bvsNowPlaying"
     private let pushRegistrationHandler = "bvsPushRegistration"
+    private let hapticsHandler = "bvsHaptics"
+    private let routePickerHandler = "bvsRoutePicker"
+    private lazy var routePickerView: AVRoutePickerView = {
+        let picker = AVRoutePickerView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+        picker.isHidden = true
+        picker.prioritizesVideoDevices = false
+        return picker
+    }()
     private var remoteCommandsConfigured = false
     private var canNextTrack = false
     private var canPreviousTrack = false
@@ -195,6 +204,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         webView.configuration.userContentController.add(self, name: navigationRouteHandler)
         webView.configuration.userContentController.add(self, name: nowPlayingRouteHandler)
         webView.configuration.userContentController.add(self, name: pushRegistrationHandler)
+        webView.configuration.userContentController.add(self, name: hapticsHandler)
+        webView.configuration.userContentController.add(self, name: routePickerHandler)
         webView.evaluateJavaScript(routeBridge.source)
         emitPushEvent("bvs:native-push-bridge-ready", payload: [:])
         webViewURLObservation = webView.observe(\.url, options: [.initial, .new]) { [weak self] observedWebView, _ in
@@ -227,6 +238,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             handlePushRegistrationMessage(message.body)
             return
         }
+        if message.name == hapticsHandler {
+            handleHapticMessage(message.body)
+            return
+        }
+        if message.name == routePickerHandler {
+            presentRoutePicker()
+            return
+        }
 
         guard message.name == navigationRouteHandler,
               let route = message.body as? String,
@@ -234,6 +253,35 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
               let bridge = window?.rootViewController as? CAPBridgeViewController,
               let webView = bridge.webView else { return }
         updateNavigationGestures(for: webView, routeURL: url)
+    }
+
+    /// Light, system-standard feedback for transport, save and selection taps.
+    private func handleHapticMessage(_ body: Any) {
+        let style = (body as? [String: Any])?["style"] as? String ?? "light"
+        DispatchQueue.main.async {
+            switch style {
+            case "selection":
+                UISelectionFeedbackGenerator().selectionChanged()
+            case "success":
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            case "medium":
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            case "rigid":
+                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            default:
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }
+    }
+
+    /// Opens the system AirPlay / Bluetooth output sheet from the web player.
+    private func presentRoutePicker() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let host = self.window?.rootViewController?.view else { return }
+            if self.routePickerView.superview !== host { host.addSubview(self.routePickerView) }
+            guard let button = self.routePickerView.subviews.compactMap({ $0 as? UIButton }).first else { return }
+            button.sendActions(for: .touchUpInside)
+        }
     }
 
     private func handleNowPlayingMessage(_ body: Any) {

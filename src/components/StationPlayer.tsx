@@ -43,7 +43,23 @@ import SaveQueueAsPlaylist from "@/components/library/SaveQueueAsPlaylist";
 import { previousPlaybackPlan, sharedPlaybackRecoveryDelay } from "@/lib/playback-continuity";
 import { containModalTab, focusFirstElement, lockPageScroll, registerModalLayer, restoreFocus } from "@/lib/modal-layer";
 import { playbackShortcut } from "@/lib/playback-shortcuts";
-import { SLEEP_MINUTES, useSleepTimer } from "@/components/player/useSleepTimer";
+import { useSleepTimer } from "@/components/player/useSleepTimer";
+import NowPlayingQuickActions from "@/components/player/NowPlayingQuickActions";
+import {
+  ChevronDownIcon,
+  HeartIcon,
+  NextIcon,
+  PauseIcon,
+  PlayIcon,
+  PreviousIcon,
+  RepeatIcon,
+  ShuffleIcon,
+  SkipSecondsIcon,
+} from "@/components/player/PlayerIcons";
+import { haptic } from "@/lib/native-device";
+
+/** Mixes, shows and long sets get podcast-style 15s / 30s skips. */
+const LONG_FORM_SECONDS = 10 * 60;
 
 type RepeatMode = "off" | "all" | "one";
 export type ListenMode = "station" | "ondemand";
@@ -1828,6 +1844,8 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         src={current?.src}
         preload="none"
         playsInline
+        data-bvs-station-audio=""
+        x-webkit-airplay="allow"
         onTimeUpdate={onTimeUpdate}
         onLoadedMetadata={onLoadedMetadata}
         onEnded={onEnded}
@@ -1900,19 +1918,22 @@ function NowPlayingVisual({
   track?: StationTrack;
   art?: string | null;
 }) {
+  const [failedArt, setFailedArt] = useState<string | null>(null);
   if (track?.musicVideoUrl) {
     return <MusicVideoWatch track={track} variant="stage" className="w-full" coverArt={art} />;
   }
+  const showArt = Boolean(art) && failedArt !== art;
 
   return (
-    <div className="relative mx-auto aspect-square w-full overflow-hidden bg-[#141414] sm:max-h-none">
-      {art ? (
+    <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-2xl bg-[#141414] shadow-[0_30px_80px_-20px_rgba(0,0,0,.85)] sm:max-h-none">
+      {showArt ? (
         // eslint-disable-next-line @next/next/no-img-element -- dynamic editorial artwork
         <img
-          src={art}
+          src={art || undefined}
           alt={`Artwork for ${track?.title || "BVS Radio"}`}
           className="h-full w-full object-cover"
           draggable={false}
+          onError={() => setFailedArt(art || null)}
         />
       ) : (
         <div className="grid h-full place-items-center bg-gradient-to-br from-brand/25 via-white/5 to-black text-4xl font-semibold tracking-[.2em] text-brand">
@@ -1939,6 +1960,7 @@ function CoverArt({
       className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden border border-white/10 bg-white/[0.06] ${sizeClass} ${rounded}`}
       aria-hidden={src ? true : undefined}
     >
+      <span className="select-none text-[9px] font-semibold tracking-wide text-text-secondary">{label}</span>
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- dynamic covers from storage/local
         <img
@@ -1946,10 +1968,9 @@ function CoverArt({
           alt=""
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover object-center"
+          onError={(event) => { event.currentTarget.style.display = "none"; }}
         />
-      ) : (
-        <span className="select-none text-[9px] font-semibold tracking-wide text-text-secondary">{label}</span>
-      )}
+      ) : null}
     </span>
   );
 }
@@ -2223,14 +2244,20 @@ export function PersistentPlayer() {
           style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}
         >
           <div className="relative mx-auto flex min-h-[100dvh] max-w-6xl flex-col px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-8 sm:pb-12 sm:pt-[max(1.25rem,env(safe-area-inset-top))]">
-            <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] opacity-80" aria-hidden="true" style={{ background: "radial-gradient(circle at 18% 8%, rgba(196,243,67,.12), transparent 28%), radial-gradient(circle at 82% 18%, rgba(143,111,255,.16), transparent 32%)" }} />
-            <header data-np-dismiss-zone="true" className="sticky top-0 z-10 -mx-4 border-b border-white/10 bg-[#090909]/90 px-4 pb-3 backdrop-blur-xl sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:backdrop-blur-none">
+            <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden" aria-hidden="true" data-np-ambient="true">
+              {art ? (
+                // eslint-disable-next-line @next/next/no-img-element -- blurred ambient copy of the cover
+                <img src={art} alt="" className="absolute left-1/2 top-[-10%] h-[85vh] w-[160vw] max-w-none -translate-x-1/2 scale-110 object-cover opacity-55 blur-[70px] saturate-150" onError={(event) => { event.currentTarget.style.display = "none"; }} />
+              ) : null}
+              <div className="absolute inset-0" style={{ background: "radial-gradient(circle at 18% 8%, rgba(196,243,67,.14), transparent 30%), radial-gradient(circle at 82% 18%, rgba(143,111,255,.18), transparent 34%), linear-gradient(180deg, rgba(9,9,9,.15) 0%, rgba(9,9,9,.72) 55%, #090909 88%)" }} />
+            </div>
+            <header data-np-dismiss-zone="true" className="sticky top-0 z-10 -mx-4 bg-[#090909]/40 px-4 pb-3 backdrop-blur-xl sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:backdrop-blur-none">
               <div className="mx-auto mb-2 flex justify-center sm:mb-3" aria-hidden="true">
                 <span className="h-1.5 w-12 rounded-full bg-white/35" />
               </div>
               <div className="flex items-center justify-between gap-3">
-                <button type="button" onClick={player.closeNowPlaying} className="inline-flex h-11 items-center gap-2 rounded-[4px] border border-white/15 bg-white/[.06] px-3 text-xs font-semibold text-white/80 backdrop-blur transition hover:border-brand/50 hover:bg-white/10 hover:text-white" aria-label="Close player">
-                  <span className="text-lg leading-none" aria-hidden="true">←</span>
+                <button type="button" onClick={player.closeNowPlaying} className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-full bg-white/[.08] px-3 text-xs font-semibold text-white/85 backdrop-blur transition hover:bg-white/15 hover:text-white" aria-label="Close player">
+                  <ChevronDownIcon size={22} />
                   <span className="hidden sm:inline">Close player</span>
                 </button>
                 <div className="min-w-0 flex-1 text-center">
@@ -2263,25 +2290,36 @@ export function PersistentPlayer() {
                   <CreatorFollowAction track={player.current} analyticsSource="now_playing" />
                 </div>
 
-                <div className="mt-6 flex items-center justify-between gap-2 sm:mt-8 sm:justify-start sm:gap-6">
-                  <button type="button" onClick={player.toggleShuffle} aria-pressed={player.shuffle} className={`h-11 rounded-[4px] px-3 text-xs transition sm:px-4 sm:text-sm ${player.shuffle ? "bg-brand/15 text-brand" : "text-white/60 hover:bg-white/10"}`}>Shuffle</button>
-                  <button type="button" onClick={player.previous} className="grid h-12 w-12 shrink-0 place-items-center rounded-[4px] text-xl transition hover:bg-white/10" aria-label="Previous recording">◀</button>
-                  <button type="button" onClick={player.toggle} disabled={!player.current} className="grid h-14 w-14 place-items-center rounded-full bg-brand text-xl font-bold text-black disabled:opacity-40 sm:h-16 sm:w-16" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? "Ⅱ" : "▶"}</button>
-                  <button type="button" onClick={player.next} className="grid h-12 w-12 shrink-0 place-items-center rounded-[4px] text-xl transition hover:bg-white/10" aria-label="Next recording">▶</button>
-                  <button type="button" onClick={player.cycleRepeat} aria-label={repeatLabel} className={`grid h-11 w-11 shrink-0 place-items-center rounded-[4px] text-xl transition ${player.repeat !== "off" ? "bg-brand/15 text-brand" : "text-white/60 hover:bg-white/10"}`}>{player.repeat === "one" ? "1↻" : "↻"}</button>
+                <div className="mt-6 flex items-center justify-between gap-1 sm:mt-8 sm:justify-start sm:gap-6">
+                  <button type="button" onClick={() => { haptic("selection"); player.toggleShuffle(); }} aria-pressed={player.shuffle} aria-label={player.shuffle ? "Shuffle on" : "Shuffle off"} className={`relative grid h-12 w-12 place-items-center rounded-full transition ${player.shuffle ? "text-brand" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
+                    <ShuffleIcon size={22} />
+                    {player.shuffle ? <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-brand" aria-hidden="true" /> : null}
+                  </button>
+                  <button type="button" onClick={() => { haptic("light"); player.previous(); }} className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-white transition active:scale-90 hover:bg-white/10" aria-label="Previous recording"><PreviousIcon size={30} /></button>
+                  <button type="button" onClick={() => { haptic("medium"); player.toggle(); }} disabled={!player.current} className="grid h-[4.5rem] w-[4.5rem] place-items-center rounded-full bg-brand text-black shadow-[0_12px_40px_-8px_rgba(196,243,67,.55)] transition active:scale-95 disabled:opacity-40 sm:h-20 sm:w-20" aria-label={player.isPlaying ? "Pause" : "Play"}>{player.isPlaying ? <PauseIcon size={32} /> : <PlayIcon size={32} className="translate-x-[2px]" />}</button>
+                  <button type="button" onClick={() => { haptic("light"); player.next(); }} className="grid h-14 w-14 shrink-0 place-items-center rounded-full text-white transition active:scale-90 hover:bg-white/10" aria-label="Next recording"><NextIcon size={30} /></button>
+                  <button type="button" onClick={() => { haptic("selection"); player.cycleRepeat(); }} aria-label={repeatLabel} className={`relative grid h-12 w-12 shrink-0 place-items-center rounded-full transition ${player.repeat !== "off" ? "text-brand" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
+                    <RepeatIcon size={22} one={player.repeat === "one"} />
+                    {player.repeat !== "off" ? <span className="absolute bottom-1.5 h-1 w-1 rounded-full bg-brand" aria-hidden="true" /> : null}
+                  </button>
                 </div>
+                {progress.duration >= LONG_FORM_SECONDS ? (
+                  <div className="mt-3 flex items-center justify-center gap-10" aria-label="Skip within this recording">
+                    <button type="button" onClick={() => { haptic("light"); player.seekTo(Math.max(0, progress.elapsed - 15)); }} className="grid h-11 w-11 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Back 15 seconds"><SkipSecondsIcon forward={false} size={26} /></button>
+                    <button type="button" onClick={() => { haptic("light"); player.seekTo(Math.min(progress.duration, progress.elapsed + 30)); }} className="grid h-11 w-11 place-items-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white" aria-label="Forward 30 seconds"><SkipSecondsIcon seconds={30} size={26} /></button>
+                  </div>
+                ) : null}
+
+                <NowPlayingQuickActions sleep={sleep} queueCount={player.upNext.length} onOpenQueue={() => player.setQueueOpen(true)} />
 
                 <div className="mt-6 flex flex-wrap items-center gap-2" aria-label="Track actions">
-                  <button type="button" onClick={() => player.toggleLike("now_playing")} aria-pressed={player.liked} className={`min-h-11 rounded-[4px] px-4 text-sm font-semibold transition ${player.liked ? "bg-brand/15 text-brand" : "border border-white/12 text-white/70 hover:border-brand/35 hover:text-white"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}>{player.liked ? "♥ Saved" : "♡ Save"}</button>
+                  <button type="button" onClick={() => { haptic(player.liked ? "light" : "success"); player.toggleLike("now_playing"); }} aria-pressed={player.liked} className={`inline-flex min-h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold transition ${player.liked ? "bg-brand/15 text-brand" : "border border-white/12 text-white/70 hover:border-brand/35 hover:text-white"}`} aria-label={player.liked ? "Remove from library" : "Save to library"}><HeartIcon size={18} filled={player.liked} />{player.liked ? "Saved" : "Save"}</button>
                   <PlayerSongShareAction track={player.current} />
-                  <button type="button" onClick={() => player.setQueueOpen(true)}                   className="min-h-11 rounded-[4px] border border-white/12 px-4 text-sm font-semibold text-white/70 transition hover:border-brand/35 hover:text-white">
-                    Open queue
-                  </button>
                 </div>
 
                 <details className="mt-4 pt-3 text-sm text-white/70">
                   <summary className="cursor-pointer list-none text-xs font-medium text-white/55 transition hover:text-white">
-                    <span className="mr-2 text-brand">+</span> Playback settings
+                    <span className="mr-2 text-brand">+</span> More actions
                   </summary>
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <PlaylistQuickAdd
@@ -2314,18 +2352,6 @@ export function PersistentPlayer() {
                     <CreatorLink track={player.current} entryPoint="now_playing_settings" className="inline-flex min-h-11 items-center rounded-[4px] border border-white/15 px-4 text-sm font-semibold text-white/75 transition hover:border-brand/40 hover:text-white">
                       Explore creator
                     </CreatorLink>
-                    <label className="flex min-h-11 items-center gap-3 rounded-[4px] border border-white/10 bg-black/15 px-4">
-                      <span className="text-xs font-medium text-white/70">Sleep timer</span>
-                      <select
-                        className="min-h-9 rounded-[4px] border border-white/15 bg-[#141414] px-3 text-xs text-white focus-visible:outline-2 focus-visible:outline-brand"
-                        value={sleep.timer?.minutes || 0}
-                        onChange={(event) => sleep.setMinutes(Number(event.target.value))}
-                      >
-                        <option value={0}>Off</option>
-                        {SLEEP_MINUTES.map((minutes) => <option key={minutes} value={minutes}>{minutes} minutes</option>)}
-                      </select>
-                    </label>
-                    {sleep.timer ? <span className="text-xs text-brand">Pauses at {new Date(sleep.timer.deadline).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span> : null}
                     <p className="w-full text-xs text-white/45">Keyboard: Space to play or pause · Shift + ← / → to change tracks</p>
                   </div>
                 </details>
@@ -2417,13 +2443,13 @@ export function PersistentPlayer() {
           <BuyTrackButton key={player.current?.id || "no-track"} track={player.current} variant="compact" className="inline-flex min-h-10 items-center justify-center" />
           <button
             type="button"
-            onClick={() => player.toggleLike("persistent_player")}
+            onClick={() => { haptic(player.liked ? "light" : "success"); player.toggleLike("persistent_player"); }}
             disabled={!player.current}
             className={`grid h-10 w-10 shrink-0 place-items-center rounded-full p-0 text-lg font-semibold disabled:opacity-40 sm:h-auto sm:w-auto sm:px-3 sm:py-2 sm:text-xs ${player.liked ? "bg-brand/15 text-brand" : "text-text-secondary hover:bg-white/5 hover:text-white"}`}
             aria-pressed={player.liked}
             aria-label={player.liked ? "Remove from library" : "Save to library"}
           >
-            <span className="sm:hidden" aria-hidden="true">{player.liked ? "♥" : "♡"}</span>
+            <span className="sm:hidden" aria-hidden="true"><HeartIcon size={20} filled={player.liked} /></span>
             <span className="hidden sm:inline">{player.liked ? "♥ Saved" : "♡ Save"}</span>
           </button>
           <button type="button" onClick={() => player.setQueueOpen(!player.queueOpen)} className="hidden rounded-full px-2 py-1 text-xs text-text-secondary hover:bg-white/10 sm:block" aria-label="Open queue">Queue</button>
@@ -2434,22 +2460,22 @@ export function PersistentPlayer() {
             aria-pressed={player.shuffle}
             aria-label={player.shuffle ? "Shuffle on" : "Shuffle off"}
           >
-            ⇝
+            <ShuffleIcon size={18} />
           </button>
           <button type="button" onClick={player.previous} className="hidden rounded-full p-2 hover:bg-white/10 sm:block" aria-label="Previous recording">
-            ◀
+            <PreviousIcon size={20} />
           </button>
           <button
             type="button"
-            onClick={player.toggle}
+            onClick={() => { haptic("medium"); player.toggle(); }}
             disabled={!player.current}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand font-bold text-black disabled:opacity-40 sm:h-12 sm:w-12"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-brand font-bold text-black transition active:scale-95 disabled:opacity-40 sm:h-12 sm:w-12"
             aria-label={player.isPlaying ? "Pause" : "Play"}
           >
-            {player.isPlaying ? "Ⅱ" : "▶"}
+            {player.isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} className="translate-x-[1px]" />}
           </button>
-          <button type="button" onClick={player.next} disabled={!player.current} className="grid h-10 w-10 shrink-0 place-items-center rounded-full p-0 hover:bg-white/10 disabled:opacity-40" aria-label="Next recording">
-            ▶
+          <button type="button" onClick={() => { haptic("light"); player.next(); }} disabled={!player.current} className="grid h-10 w-10 shrink-0 place-items-center rounded-full p-0 hover:bg-white/10 disabled:opacity-40" aria-label="Next recording">
+            <NextIcon size={20} />
           </button>
           <button
             type="button"
@@ -2458,7 +2484,7 @@ export function PersistentPlayer() {
             aria-label={repeatLabel}
             title={repeatLabel}
           >
-            {player.repeat === "one" ? "1↻" : "↻"}
+            <RepeatIcon size={18} one={player.repeat === "one"} />
           </button>
           <label className="hidden items-center gap-2 text-xs text-text-secondary md:flex">
             Volume
