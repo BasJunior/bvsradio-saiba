@@ -207,3 +207,8 @@
 .bvs-search-panel :is(.bvs-search-result, button[type="submit"]) { border-radius: 0; }
 .bvs-search-panel .bvs-search-result-art { border-radius: 0; }
 .bvs-search-panel .bvs-search-result-art.is-person { border-radius: 999px; }
+
+/* Add-to-playlist picker: square sheet like the rest of the app. */
+.bvs-playlist-sheet, .bvs-playlist-sheet [class*="rounded"] { border-radius: 0; }
+.bvs-playlist-sheet { background: #111113; border-color: rgb(255 255 255 / .14); }
+.bvs-playlist-sheet p.text-brand { font-size: 10px; letter-spacing: .22em; }
