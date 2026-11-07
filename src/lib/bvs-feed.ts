@@ -115,7 +115,9 @@ async function rows<T>(path: string): Promise<T[]> {
   try {
     const response = await fetch(creatorUrl(path), {
       headers: creatorHeaders,
-      cache: "no-store",
+      // Public, approved content only: a one-minute cache keeps the Feed fast
+      // (it was rebuilding from the database on every visit, ~14s cold).
+      next: { revalidate: 60 },
       signal: AbortSignal.timeout(4500),
     });
     if (!response.ok) return [];
