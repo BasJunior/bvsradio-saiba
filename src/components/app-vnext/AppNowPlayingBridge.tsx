@@ -50,7 +50,10 @@ export default function AppNowPlayingBridge() {
   const player = useStationPlayer();
   const timeline = useStationPlayerProgress();
   const lastNativeSecond = useRef(-1);
+  /** Siri "Play BVS Radio" can arrive before the station has loaded a track. */
+  const pendingStart = useRef<number | null>(null);
   const commandState = useRef({
+    hasCurrent: Boolean(player.current),
     isPlaying: player.isPlaying,
     elapsed: timeline.elapsed,
     play: player.play,
@@ -60,6 +63,7 @@ export default function AppNowPlayingBridge() {
     seekTo: player.seekTo,
   });
   const current = player.current;
+  const play = player.play;
   const timelineSecond = Math.floor(timeline.elapsed || 0);
   const constrainedNext = Boolean(current && (isBeatTrack(current) || isEditorialPlay(current)));
   const canNext = Boolean(
@@ -71,6 +75,7 @@ export default function AppNowPlayingBridge() {
 
   useEffect(() => {
     commandState.current = {
+      hasCurrent: Boolean(current),
       isPlaying: player.isPlaying,
       elapsed: timeline.elapsed,
       play: player.play,
@@ -79,7 +84,16 @@ export default function AppNowPlayingBridge() {
       previous: player.previous,
       seekTo: player.seekTo,
     };
-  }, [timeline.elapsed, player.isPlaying, player.next, player.pause, player.play, player.previous, player.seekTo]);
+  }, [timeline.elapsed, current, player.isPlaying, player.next, player.pause, player.play, player.previous, player.seekTo]);
+
+  useEffect(() => {
+    const requestedAt = pendingStart.current;
+    if (requestedAt === null || !current) return;
+    pendingStart.current = null;
+    // Ignore a stale request if the station took too long to come up.
+    if (Date.now() - requestedAt > 30_000) return;
+    void play();
+  }, [current, play]);
 
   // Keep explicit WebKit music actions in every installed native generation.
   // Native targets alone do not describe the WebView's supported actions; an
@@ -208,6 +222,11 @@ export default function AppNowPlayingBridge() {
       const command = payload?.command;
       const state = commandState.current;
       if (command === "play") void state.play();
+      else if (command === "start-station") {
+        if (state.isPlaying) return;
+        if (state.hasCurrent) void state.play();
+        else pendingStart.current = Date.now();
+      }
       else if (command === "pause") state.pause();
       else if (command === "next") runRemoteTrackCommand("next", "native", () => state.next());
       else if (command === "previous") runRemoteTrackCommand("previous", "native", () => state.previous());

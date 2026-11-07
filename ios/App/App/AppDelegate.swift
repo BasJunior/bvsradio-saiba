@@ -618,6 +618,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         }
     }
 
+    // MARK: Siri / Shortcuts (BvsAppIntents.swift)
+
+    /// Media commands from App Intents reuse the lock-screen command path, which
+    /// queues until the web player is ready on a cold start.
+    func handleIntentMediaCommand(_ command: String) {
+        emitNativeMediaCommand(command)
+    }
+
+    /// In-app navigation from App Intents reuses the acknowledged push-tap path.
+    func handleIntentNavigation(_ path: String) {
+        emitPushAction(path)
+    }
+
     private func flushPendingPushAction() {
         guard let href = pendingPushHref else { return }
         emitPushAction(href)
