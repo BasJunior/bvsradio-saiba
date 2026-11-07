@@ -249,10 +249,10 @@ export default function AppLibraryClient({ surface, initialSection = "all" }: { 
           <section className="mt-5" aria-labelledby="quick-access-heading">
             <h2 id="quick-access-heading" className="sr-only">Quick access</h2>
             <div className="bvs-library-metrics grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-              <QuickCard accent="library" cover={<LikedCover className="h-12 w-12" rounded="rounded-lg" />} label="Liked Music" value={`${liked.length} saved`} onClick={() => changeSection("liked")} />
+              <QuickCard accent="library" cover={likedArtwork.length ? <BadgedCover icon="heart" rgb="193 167 255"><CoverMosaic images={likedArtwork} seed="liked" className="h-12 w-12" rounded="rounded-none" /></BadgedCover> : <LikedCover className="h-12 w-12" rounded="rounded-lg" />} label="Liked Music" value={`${liked.length} saved`} onClick={() => changeSection("liked")} />
               <QuickCard accent="library" cover={<CoverMosaic images={playlists[0]?.coverArtwork || []} seed={playlists[0]?.id || "playlists"} className="h-12 w-12" rounded="rounded-lg" />} label="Playlists" value={signedIn ? `${playlists.length} playlist${playlists.length === 1 ? "" : "s"}` : "Sign in to sync"} onClick={() => changeSection("playlists")} />
-              <QuickCard accent="downloads" cover={<IconCover name="download" tone="downloads" />} label="Downloads" value={downloadCountError ? "Unavailable · open details" : downloadCountLoading || downloadCount === null ? "Checking this device…" : `${downloadCount} offline`} onClick={() => changeSection("downloads")} />
-              <QuickCard accent="library" cover={<IconCover name="clock" tone="recent" />} label="Recently Played" value={recent.length ? `${recent.length} recent` : "Ready when you listen"} onClick={() => changeSection("recent")} />
+              <QuickCard accent="downloads" cover={<TintTile icon="download" rgb="94 200 255" />} label="Downloads" value={downloadCountError ? "Unavailable · open details" : downloadCountLoading || downloadCount === null ? "Checking this device…" : `${downloadCount} offline`} onClick={() => changeSection("downloads")} />
+              <QuickCard accent="library" cover={recent[0]?.image ? <BadgedCover icon="clock" rgb="193 255 82"><CoverMosaic images={[recent[0].image]} seed="recent" className="h-12 w-12" rounded="rounded-none" /></BadgedCover> : <TintTile icon="clock" rgb="193 255 82" />} label="Recently Played" value={recent.length ? `${recent.length} recent` : "Ready when you listen"} onClick={() => changeSection("recent")} />
             </div>
             {libraryMetaLoading ? <p className="mt-2 text-xs text-white/30">Updating…</p> : null}
             {downloadCountError ? <p role="alert" className="mt-3 text-sm text-amber-200">Downloads could not be checked. <button type="button" onClick={() => setOfflineRefresh((value) => value + 1)} className="min-h-10 px-2 font-semibold text-brand underline">Try again</button><button type="button" onClick={() => changeSection("downloads")} className="min-h-10 px-2 font-semibold text-brand underline">Open Downloads</button></p> : null}
@@ -364,6 +364,21 @@ function IconCover({ name, tone, large = false }: { name: LibIconName; tone: "do
       <LibIcon name={name} size={large ? 64 : 22} />
     </span>
   );
+}
+
+/** A real cover with a small icon badge in the corner, like the Home tiles. */
+function BadgedCover({ icon, rgb, children }: { icon: LibIconName; rgb: string; children: ReactNode }) {
+  return (
+    <span aria-hidden="true" className="relative block h-12 w-12">
+      {children}
+      <span className="absolute bottom-0.5 right-0.5 grid h-5 w-5 place-items-center bg-black/75" style={{ color: `rgb(${rgb})` }}><LibIcon name={icon} size={12} /></span>
+    </span>
+  );
+}
+
+/** Flat tinted square with an icon, for collections without artwork yet. */
+function TintTile({ icon, rgb }: { icon: LibIconName; rgb: string }) {
+  return <span aria-hidden="true" className="grid h-12 w-12 place-items-center" style={{ background: `rgb(${rgb} / .14)`, color: `rgb(${rgb})` }}><LibIcon name={icon} size={22} /></span>;
 }
 
 function QuickCard({ accent, cover, label, value, onClick }: { accent: "library" | "downloads"; cover: ReactNode; label: string; value: string; onClick: () => void }) {

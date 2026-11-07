@@ -1,4 +1,5 @@
 'use client';
+import { CHART_BADGE_NAMES } from '@/lib/chart-badges';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAccountJson } from '@/lib/use-account-json';
@@ -13,7 +14,7 @@ type Data = ReturnType<typeof creatorGrowth> & {
   badges: Array<{ badge_id: string; earned_at: string }>;
   results: Array<{ id: string; kind: string; itemId: string; visits: number; plays: number; saves: number }>;
 };
-const badgeNames: Record<string, string> = { first_release: 'First Release', beat_maker: 'Beat Maker', on_air: 'On Air', first_audience: 'First Audience', first_100: 'First 100', first_sale: 'First Sale', launch: 'Launch', momentum: 'Momentum', breakthrough: 'Breakthrough' };
+const badgeNames: Record<string, string> = { first_release: 'First Release', beat_maker: 'Beat Maker', on_air: 'On Air', first_audience: 'First Audience', first_100: 'First 100', first_sale: 'First Sale', launch: 'Launch', momentum: 'Momentum', breakthrough: 'Breakthrough', ...CHART_BADGE_NAMES };
 
 export default function CreatorGrowthPanel({ owner, token, surface }: { owner: string; token: string; surface?: 'ios' | 'android' }) {
   const [selection, setSelection] = useState<{ owner: string; role: GrowthRole } | null>(null);
