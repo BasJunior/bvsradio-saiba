@@ -89,12 +89,12 @@ async function getMarketplace(request: Request) {
       creatorMarketplaceEntitlements(identity.user.id),
     ]);
     const images = storefrontImages(profiles[0]?.portfolio);
-    const avatarUrl = ownedPath(images.avatar_path, identity.user.id) ? await signedR2DownloadUrl(images.avatar_path) : null;
-    const bannerUrl = ownedPath(images.banner_path, identity.user.id) ? await signedR2DownloadUrl(images.banner_path) : null;
+    const avatarUrl = ownedPath(images.avatar_path, identity.user.id) ? await signedR2DownloadUrl(images.avatar_path).catch(() => null) : null;
+    const bannerUrl = ownedPath(images.banner_path, identity.user.id) ? await signedR2DownloadUrl(images.banner_path).catch(() => null) : null;
     const hydratedListings = await Promise.all(listings.map(async listing => ({
       ...listing,
       artwork_url: listing.artwork_path && safeMarketplacePath(listing.artwork_path)
-        ? await signedR2DownloadUrl(listing.artwork_path)
+        ? await signedR2DownloadUrl(listing.artwork_path).catch(() => null)
         : null,
     })));
     return NextResponse.json({

@@ -40,6 +40,7 @@ export default function QuickServiceCreate() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const [category, setCategory] = useState("mixing");
@@ -83,9 +84,22 @@ export default function QuickServiceCreate() {
       })
       .catch((loadError) => {
         setError(loadError instanceof Error ? loadError.message : "Could not open service setup.");
+        setLoadFailed(true);
         setLoading(false);
       });
   }, []);
+
+  const retryLoad = () => {
+    setError("");
+    setLoadFailed(false);
+    setLoading(true);
+    load(token)
+      .catch((loadError) => {
+        setError(loadError instanceof Error ? loadError.message : "Could not open service setup.");
+        setLoadFailed(true);
+      })
+      .finally(() => setLoading(false));
+  };
 
   const post = async (body: Record<string, unknown>) => {
     const response = await fetch("/api/marketplace", {
@@ -169,6 +183,16 @@ export default function QuickServiceCreate() {
       <section className="rounded-3xl border border-white/10 p-6 text-center">
         <p className="text-text-secondary">{error}</p>
         <Link href="/auth/login?next=/creator/studio/create/service" className="mt-5 inline-flex rounded-full bg-brand px-5 py-2.5 font-semibold text-black">Sign in</Link>
+      </section>
+    );
+  }
+
+  // Without seller data, a returning seller must not be shown first-time setup.
+  if (loadFailed) {
+    return (
+      <section className="rounded-3xl border border-white/10 p-6 text-center">
+        <p role="alert" className="text-text-secondary">{error}</p>
+        <button type="button" onClick={retryLoad} className="mt-5 inline-flex rounded-full bg-brand px-5 py-2.5 font-semibold text-black">Try again</button>
       </section>
     );
   }

@@ -51,6 +51,7 @@ export default function EditorialDashboard() {
   const [error, setError] = useState(configured ? '' : 'Supabase is not configured.')
   const [busy, setBusy] = useState('')
   const [loading, setLoading] = useState(configured)
+  const [queueLoadFailed, setQueueLoadFailed] = useState(false)
 
   const emptyData = useCallback((identity: EditorialData['identity']): EditorialData => ({
     identity,
@@ -147,7 +148,13 @@ export default function EditorialDashboard() {
     const permissions = bootstrap.identity.permissions || []
     const walletAllowed = permissions.includes('manage_artist_wallet')
     const parallel = ['tracks', 'beats', 'releases', 'profiles', 'programmes', ...(walletAllowed ? ['wallet'] : [])]
-    await loadSections(accessToken, parallel)
+    try {
+      await loadSections(accessToken, parallel)
+      setQueueLoadFailed(false)
+    } catch (caught) {
+      setQueueLoadFailed(true)
+      throw caught
+    }
   }, [fetchSection, loadSections, mergeSection])
 
   const boot = useCallback(async () => {
@@ -220,6 +227,18 @@ export default function EditorialDashboard() {
       await load(token, secs)
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Editorial action failed.') }
     finally { setBusy('') }
+  }
+
+  // Failed queues are unknown, not empty: never show staff "No submissions yet".
+  if (queueLoadFailed) {
+    return (
+      <main className="mx-auto min-h-[65vh] max-w-2xl px-6 py-20 text-center">
+        <h1 className="text-3xl">Editorial queues did not load</h1>
+        <p role="alert" className="mt-4 text-text-secondary">{error || 'Could not load editorial dashboard.'}</p>
+        <p className="mt-3 text-sm text-text-secondary">Work may be waiting. Nothing has been cleared or changed.</p>
+        <button type="button" onClick={() => void boot()} className="mt-7 rounded-full bg-brand px-6 py-3 font-semibold text-black">Retry</button>
+      </main>
+    )
   }
 
   if (error && !data) {

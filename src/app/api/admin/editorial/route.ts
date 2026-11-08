@@ -36,7 +36,7 @@ async function requiredJson(path: string) {
 async function signStoredMedia(value?: string | null) {
   if (!value) return value
   const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
-  return key ? signedR2DownloadUrl(key, EDITORIAL_MEDIA_URL_TTL_SECONDS) : value
+  return key ? signedR2DownloadUrl(key, EDITORIAL_MEDIA_URL_TTL_SECONDS).catch(() => null) : value
 }
 
 async function syncBeatPackLiveState(packId?: string | null) {

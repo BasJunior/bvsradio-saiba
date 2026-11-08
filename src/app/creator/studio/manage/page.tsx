@@ -136,8 +136,8 @@ export default function CreatorStudio() {
       headers: { Authorization: `Bearer ${t}` },
       cache: "no-store",
     });
-    const p = await r.json();
-    if (!r.ok) throw new Error(p.error);
+    const p = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(p.error || "Could not open your creator workspace. Please try again.");
     setData(p);
   }, []);
   useEffect(() => {
@@ -177,13 +177,23 @@ export default function CreatorStudio() {
     return (
       <main className="mx-auto min-h-[65vh] max-w-2xl px-6 py-20 text-center">
         <h1 className="text-3xl">Creator workspace unavailable</h1>
-        <p className="mt-4 text-text-secondary">{error}</p>
-        <Link
-          href="/auth/login"
-          className="mt-6 inline-block rounded-full bg-brand px-6 py-3 font-semibold text-black"
-        >
-          Sign in
-        </Link>
+        <p role="alert" className="mt-4 text-text-secondary">{error}</p>
+        {token ? (
+          <button
+            type="button"
+            onClick={() => { setError(""); load(token).catch((e) => setError(e.message)); }}
+            className="mt-6 inline-block rounded-full bg-brand px-6 py-3 font-semibold text-black"
+          >
+            Try again
+          </button>
+        ) : (
+          <Link
+            href="/auth/login?next=/creator/studio/manage"
+            className="mt-6 inline-block rounded-full bg-brand px-6 py-3 font-semibold text-black"
+          >
+            Sign in
+          </Link>
+        )}
       </main>
     );
   if (!data)
