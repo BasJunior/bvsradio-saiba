@@ -87,7 +87,6 @@ function Composer({ label, send }: { label: string; send: (message: string) => P
         onChange={(event) => setValue(event.target.value)}
         className="mt-2 w-full rounded-xl border border-white/15 bg-black/30 p-3 text-sm"
       />
-      <p className="mt-2 text-xs text-text-secondary">Keep contact on BVS. Phone numbers, emails and social handles are blocked so we can help with disputes and refunds.</p>
       {error ? <p role="alert" className="mt-2 text-sm text-amber-200">{error}</p> : null}
       <button type="submit" disabled={busy || !value.trim()} className="mt-3 inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black disabled:opacity-50">
         {busy ? "Sending…" : "Send message"}
