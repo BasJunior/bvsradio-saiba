@@ -54,7 +54,11 @@ assert.doesNotMatch(uptownSeed, /\+?\d{9,}|@[a-z0-9_.]+|instagram|whatsapp/i, "U
 
 assert.match(storefronts, /export function marketplaceStorefronts\(/, "Marketplace must expose one provider-store resolver");
 assert.match(marketplace, /\.filter\(\(provider\) => provider\.services\.length > 0\)/, "Stores with no offers must not be listed in the directory");
-assert.match(storefronts, /const claim = live\.find\(\(item\) => item\.slug === seed\.slug\)/, "A real provider must be able to claim a seeded storefront");
+assert.match(storefronts, /const claim = live\.find\(\(item\) => seed\.ownerAccountId[\s\S]*?item\.sellerUserId === seed\.ownerAccountId/, "Seeded stores must use an explicit account identity where reserved");
+assert.match(storefronts, /ownerAccountId: '307acddd-440c-4941-a876-ac87eccc6871'/, "Uptown must be reserved for its BVS account, not a mutable display name");
+assert.match(storefronts, /sourceSeedId: profile\.user_id === '307acddd-440c-4941-a876-ac87eccc6871'/, "An edited owner listing must supersede its corresponding seeded offer");
+assert.match(storefronts, /headline: claim\.headline \|\| seed\.headline[\s\S]*?location: claim\.location \|\| seed\.location/, "Editorial-approved profile changes must appear on the seeded storefront");
+assert.match(availabilityApi, /reservedStore\?\.slug \|\| providerStorefrontSlug/, "Approved Uptown owner availability must retain the canonical provider key");
 assert.match(storefronts, /services: mergeServices\(seed\.services, claim\.services\)/, "Uploaded services must merge under the claimed provider store");
 assert.match(marketplace, /marketplaceStorefronts\(data\.profiles \|\| \[\], data\.listings \|\| \[\]\)/, "Marketplace home must render the merged provider model");
 assert.match(store, /marketplaceStorefronts\(data\.profiles \|\| \[\], data\.listings \|\| \[\]\)/, "Provider detail must render the merged provider model");
@@ -74,6 +78,7 @@ assert.match(bookingApi, /marketplace_provider_slots\?provider_key=eq\./, "Publi
 assert.match(bookingApi, /status=eq\.available/, "Public calendar must expose only available slots");
 assert.match(bookingApi, /starts_at=gt\./, "Public calendar must expose only future slots");
 assert.match(bookingApi, /rpc\/request_marketplace_booking/, "Booking request must use the atomic database RPC");
+assert.match(bookingApi, /reservedStore\?\.slug \|\| storefrontSlug/, "Owner-published service bookings must keep the Uptown canonical slug even after account renames");
 assert.match(bookingPage, /has not published any open booking times yet/, "Empty calendars must not invent availability");
 assert.match(bookingPage, /Only time slots published by the provider appear here/, "Booking UI must explain real provider availability");
 

@@ -12,6 +12,8 @@ export type StorefrontService = {
   priceLabel?: string
   packages?: Array<{ name: string; description?: string; priceUsd: number }>
   bookingMode: 'calendar' | 'checkout' | 'enquiry'
+  // Imported BVS-seeded service this creator listing supersedes after publication.
+  sourceSeedId?: string
   turnaroundDays?: number | null
   revisionsIncluded?: number | null
   note?: string
@@ -21,6 +23,8 @@ export type StorefrontService = {
 export type MarketplaceStorefront = {
   slug: string
   sellerUserId?: string
+  // Reserved account identity: owning a seed requires Editorial profile approval.
+  ownerAccountId?: string
   source: 'seed' | 'creator'
   name: string
   kind: 'studio' | 'engineer' | 'producer' | 'official'
@@ -42,6 +46,7 @@ type MarketplaceProfileRow = {
   roles?: string[]
   headline?: string
   bio?: string
+  location?: string
   skills?: string[]
   accomplishments?: Array<{ verification?: string }>
   portfolio?: Array<{ kind?: string; path?: string; title?: string; url?: string }>
@@ -55,6 +60,7 @@ type MarketplaceProfileRow = {
 
 type MarketplaceListingRow = {
   id: string
+  slug?: string
   seller_user_id: string
   listing_type: string
   category: string
@@ -146,6 +152,8 @@ export const seededStorefronts: MarketplaceStorefront[] = [
     // Calendar requests require a real provider-published slot and studio confirmation.
     // Do not enable checkout on the seeded offers until the seller account is linked.
     slug: 'uptown-music',
+    // This exact BVS account is the only permitted claimant; don't trust a mutable public name.
+    ownerAccountId: '307acddd-440c-4941-a876-ac87eccc6871',
     source: 'seed',
     name: 'Up-Town Music',
     kind: 'studio',
@@ -309,6 +317,9 @@ export function liveStorefronts(
             }))
           : [],
         bookingMode: listing.listing_type === 'service' ? 'calendar' : 'checkout',
+        sourceSeedId: profile.user_id === '307acddd-440c-4941-a876-ac87eccc6871' && listing.slug?.startsWith('uptown-music-seed-')
+          ? listing.slug.slice('uptown-music-seed-'.length)
+          : undefined,
         turnaroundDays: listing.turnaround_days,
         revisionsIncluded: listing.revisions_included,
       }))
@@ -320,6 +331,7 @@ export function liveStorefronts(
       kind,
       headline: profile.headline || `${kind.replaceAll('_', ' ')} on BVS`,
       bio: profile.bio || '',
+      location: profile.location || undefined,
       heroImage: mediaUrlForStoredValue(profile.portfolio?.find(item => item.kind === 'storefront_banner')?.path) || profile.profiles?.avatar_url,
       avatarImage: mediaUrlForStoredValue(profile.portfolio?.find(item => item.kind === 'storefront_avatar')?.path) || profile.profiles?.avatar_url,
       specialties: [...new Set([...(profile.skills || []), ...roles])].slice(0, 10),
@@ -336,8 +348,15 @@ function serviceKey(service: StorefrontService) {
 }
 
 function mergeServices(seed: StorefrontService[], live: StorefrontService[]) {
-  const merged = new Map(seed.map((service) => [serviceKey(service), service]))
-  for (const service of live) merged.set(serviceKey(service), service)
+  // Preserve the seeded service identity when the owner edits its title.
+  // Once Editorial publishes the replacement, it takes the original card's place.
+  const merged = new Map(seed.map((service) => [service.id, service]))
+  for (const service of live) {
+    const sourceSeedId = service.sourceSeedId && merged.has(service.sourceSeedId)
+      ? service.sourceSeedId
+      : seed.find((item) => serviceKey(item) === serviceKey(service))?.id
+    merged.set(sourceSeedId || service.id, service)
+  }
   return [...merged.values()]
 }
 
@@ -348,20 +367,28 @@ export function marketplaceStorefronts(
   const live = liveStorefronts(profiles, listings)
   const claimed = new Set<string>()
   const seeded = seededStorefronts.map((seed) => {
-    const claim = live.find((item) => item.slug === seed.slug)
+    const claim = live.find((item) => seed.ownerAccountId
+      ? item.sellerUserId === seed.ownerAccountId
+      : item.slug === seed.slug)
     if (!claim) return seed
     claimed.add(claim.slug)
     return {
       ...seed,
       sellerUserId: claim.sellerUserId,
       username: claim.username,
+      headline: claim.headline || seed.headline,
+      bio: claim.bio || seed.bio,
+      location: claim.location || seed.location,
+      specialties: [...new Set([...seed.specialties, ...claim.specialties])],
       heroImage: profiles.find(profile => profile.user_id === claim.sellerUserId)?.portfolio?.some(item => item.kind === 'storefront_banner' && item.path) ? claim.heroImage : seed.heroImage,
       avatarImage: claim.avatarImage || seed.avatarImage,
       verified: seed.verified || claim.verified,
       services: mergeServices(seed.services, claim.services),
     }
   })
-  return [...seeded, ...live.filter((item) => !claimed.has(item.slug))]
+  // No second user can impersonate a reserved seeded storefront by renaming their account.
+  const reservedSlugs = new Set(seededStorefronts.map((item) => item.slug))
+  return [...seeded, ...live.filter((item) => !claimed.has(item.slug) && !reservedSlugs.has(item.slug))]
 }
 
 export function seededStorefront(slug: string) {

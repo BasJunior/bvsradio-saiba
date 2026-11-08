@@ -108,7 +108,7 @@ async function getMarketplace(request: Request) {
 
   const [profiles, listings] = await Promise.all([
     rows(
-      "creator_marketplace_profiles?status=eq.approved&select=user_id,roles,headline,bio,experience,skills,genres,portfolio,accomplishments,credits,equipment,software,profiles!inner(username,display_name,creator_public_name,creator_name_status,avatar_url)&order=updated_at.desc&limit=200",
+      "creator_marketplace_profiles?status=eq.approved&select=user_id,roles,headline,bio,location,experience,skills,genres,portfolio,accomplishments,credits,equipment,software,profiles!inner(username,display_name,creator_public_name,creator_name_status,avatar_url)&order=updated_at.desc&limit=200",
     ),
     rows(
       "creator_marketplace_listings?status=eq.published&select=id,seller_user_id,listing_type,category,title,slug,description,price_usd,artwork_path,preview_path,compatibility,licence_summary,packages,addons,turnaround_days,revisions_included,published_at,profiles!inner(username,display_name,creator_public_name,creator_name_status)&order=published_at.desc&limit=300",
@@ -131,7 +131,7 @@ async function postMarketplace(request: Request) {
   const packageText = Array.isArray(body.packages)
     ? body.packages.flatMap((item) => [(item as Record<string, unknown>)?.name, (item as Record<string, unknown>)?.description])
     : [];
-  const contactIssue = offPlatformContactIssue([body.headline, body.bio, body.experience, body.title, body.description, ...packageText]);
+  const contactIssue = offPlatformContactIssue([body.headline, body.bio, body.location, body.experience, body.title, body.description, ...packageText]);
   if (contactIssue) return NextResponse.json({ error: contactIssue }, { status: 400 });
 
   if (action === "save_profile") {
@@ -170,6 +170,7 @@ async function postMarketplace(request: Request) {
       roles: selectedRoles,
       headline: clean(body.headline ?? current?.headline, 180),
       bio: clean(body.bio ?? current?.bio, 3000),
+      location: clean(body.location ?? current?.location, 180),
       experience: clean(body.experience ?? current?.experience, 3000),
       skills: list(body.skills ?? current?.skills),
       genres: list(body.genres ?? current?.genres),

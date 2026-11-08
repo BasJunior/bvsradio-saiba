@@ -26,4 +26,19 @@ const checkedStore=marketplaceStorefronts([{...profile,accomplishments:[{verific
 assert.equal(checkedStore.verified,true,'a staff-verified claim earns the Verified badge');
 const approvedOnly=marketplaceStorefronts([{...profile,accomplishments:[{verification:'self_declared'}],profiles:{display_name:'Approved Only'}}],[]).find(s=>s.slug==='approved-only');
 assert.equal(approvedOnly.verified,false,'approval alone must not show Verified');
+// An unverified account cannot claim Up-Town merely by changing its public display name.
+const spoof = marketplaceStorefronts([
+  {...profile, profiles:{display_name:'Up-Town Music'}},
+],[]).find(s=>s.slug==='uptown-music');
+assert.equal(spoof?.sellerUserId,undefined,'a renamed unrelated account cannot take the reserved Uptown store');
+const uptownId='307acddd-440c-4941-a876-ac87eccc6871';
+const uptownProfile={...profile,user_id:uptownId,headline:'Updated studio headline',bio:'Updated studio bio',location:'Borrowdale, Harare',profiles:{display_name:'Trayn Dillinger'}};
+const uptownListing={...listing,id:'updated-recording',slug:'uptown-music-seed-recording-session',seller_user_id:uptownId,listing_type:'service',category:'recording',title:'Updated Recording Session',price_usd:75};
+const uptown=marketplaceStorefronts([uptownProfile],[uptownListing]).find(s=>s.slug==='uptown-music');
+assert.equal(uptown?.sellerUserId,uptownId,'only the reserved approved seller can claim Uptown');
+assert.equal(uptown?.headline,'Updated studio headline','approved account changes update the seeded storefront');
+assert.equal(uptown?.location,'Borrowdale, Harare','approved owner location is shown on the store');
+assert.equal(uptown?.services.length,5,'a renamed imported service replaces rather than duplicates its seed');
+assert.ok(uptown?.services.some(s=>s.id==='updated-recording'&&s.title==='Updated Recording Session'),'published owner service overrides its seed');
+assert.ok(!uptown?.services.some(s=>s.id==='recording-session'),'the original seeded service is retired when overridden');
 console.log('Marketplace storefront media: banner/avatar/listing artwork, legacy fallback and claimed storefront passed.');
