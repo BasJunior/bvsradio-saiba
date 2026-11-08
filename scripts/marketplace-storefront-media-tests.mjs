@@ -41,4 +41,19 @@ assert.equal(uptown?.location,'Borrowdale, Harare','approved owner location is s
 assert.equal(uptown?.services.length,5,'a renamed imported service replaces rather than duplicates its seed');
 assert.ok(uptown?.services.some(s=>s.id==='updated-recording'&&s.title==='Updated Recording Session'),'published owner service overrides its seed');
 assert.ok(!uptown?.services.some(s=>s.id==='recording-session'),'the original seeded service is retired when overridden');
+// Linking a seeded store to a BVS account must not replace its custom crest
+// with the account's generic green placeholder.
+const linkedUptown=marketplaceStorefronts([{
+ ...uptownProfile,
+ portfolio:[],
+ profiles:{display_name:'UptownMusic',avatar_url:'/assets/images/default-avatar.png'}
+}],[]).find(s=>s.slug==='uptown-music');
+assert.equal(linkedUptown?.avatarImage,'/images/marketplace/uptown-music-crest.jpg','seed crest stays visible without an explicit storefront avatar');
+assert.equal(linkedUptown?.heroImage,'/images/marketplace/uptown-music-studio.jpg','seed studio banner stays visible without an uploaded banner');
+const withStoreAvatar=marketplaceStorefronts([{
+ ...uptownProfile,
+ portfolio:[{kind:'storefront_avatar',path:'marketplace/307acddd-440c-4941-a876-ac87eccc6871/12-storefront_avatar-aabbcc.webp'}],
+ profiles:{display_name:'UptownMusic',avatar_url:'/assets/images/default-avatar.png'}
+}],[]).find(s=>s.slug==='uptown-music');
+assert.equal(withStoreAvatar?.avatarImage,'/api/media/marketplace/307acddd-440c-4941-a876-ac87eccc6871/12-storefront_avatar-aabbcc.webp','a genuine storefront avatar supersedes the seed crest');
 console.log('Marketplace storefront media: banner/avatar/listing artwork, legacy fallback and claimed storefront passed.');
