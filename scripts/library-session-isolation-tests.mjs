@@ -24,4 +24,11 @@ assert(webSync.includes('if (!hasSession && getLibraryCacheOwner()) clearLibrary
 assert(webSync.includes('if (getLibraryCacheOwner()) clearLibraryCache()'), 'web auth sign-out must clear the account cache')
 assert(webSync.includes('applyRemote(result.libraries, result.userId)'), 'web remote hydration must associate cache data with the active account')
 
+const libraryRoute = read('src/app/api/library/route.ts')
+assert(libraryRoute.includes('export async function GET'), 'web sync must have a read-only library load')
+assert(libraryRoute.includes("serviceHeaders('resolution=ignore-duplicates,return=minimal')"), 'a merge must not reset existing library timestamps')
+assert(webSync.includes('getLibraryCacheOwner() === userId'), 'a cache the account already owns must be read, not merged')
+assert(webSync.includes('syncedUser.current !== session.user.id'), 'repeated auth events must not sync the library again')
+assert(webSync.includes('running.current ||='), 'overlapping library syncs must share one request')
+
 console.log('Library session-isolation assertions passed.')

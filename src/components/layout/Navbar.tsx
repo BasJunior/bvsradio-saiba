@@ -395,7 +395,7 @@ export default function Navbar() {
         <div className="bvs-web-account hidden md:flex items-center gap-2">
           <div className="bvs-header-search-wide"><HeaderSearch /></div>
           <div className="bvs-header-search-compact"><HeaderSearch iconOnly /></div>
-          <details ref={moreRef} className="bvs-header-more" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) event.currentTarget.removeAttribute('open') }}>
+          <details ref={moreRef} className="bvs-header-more" onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node)) event.currentTarget.removeAttribute('open') }}>
             <summary aria-label="Browse BVS" title="Browse BVS" className="min-h-11 cursor-pointer list-none px-3 py-3 text-sm text-white/65"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="3" width="6" height="6" rx="1"/><rect x="15" y="3" width="6" height="6" rx="1"/><rect x="3" y="15" width="6" height="6" rx="1"/><rect x="15" y="15" width="6" height="6" rx="1"/></svg></summary>
             <div className="bvs-header-directory">
               <div className="bvs-header-directory-top"><div><strong>Explore BVS</strong><span>Music, people and tools for your next move.</span></div><button type="button" aria-label="Close navigation directory" onClick={() => { moreRef.current?.removeAttribute('open'); moreRef.current?.querySelector('summary')?.focus() }}>×</button></div>

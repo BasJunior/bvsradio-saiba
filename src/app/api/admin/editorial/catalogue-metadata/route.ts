@@ -40,7 +40,7 @@ async function signStoredMedia(value?: unknown) {
   const raw = String(value || '').trim()
   if (!raw) return ''
   const key = r2KeyFromMediaUrl(raw) || (safeR2Key(raw) && !/^https?:/i.test(raw) ? raw : null)
-  return key ? signedR2DownloadUrl(key, 900) : raw
+  return key ? signedR2DownloadUrl(key, 900).catch(() => null) : raw
 }
 
 function cleanTitle(value: unknown) {
@@ -123,7 +123,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Could not load catalogue normalization data.' },
+      { error: 'Could not load catalogue normalization data.' },
       { status: 500 },
     )
   }

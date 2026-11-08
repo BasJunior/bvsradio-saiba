@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { DiscoveryItem } from '@/lib/discovery'
 import {
   clearLibraryCache,
@@ -22,16 +22,19 @@ const LibrarySyncContext = createContext<SyncContextValue>({ state: 'device', si
 export function LibrarySyncProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SyncState>('device')
   const [signedIn, setSignedIn] = useState(false)
+  const syncedUser = useRef('')
+  const running = useRef<Promise<void> | null>(null)
 
-  const request = useCallback(async (body: object) => {
+  const request = useCallback(async (body?: object) => {
     if (!isSupabaseConfigured()) throw new Error('Account sync is unavailable in this environment')
     const supabase = createClient()
     const { data } = await supabase.auth.getSession()
     if (!data.session) throw new Error('Not signed in')
     const response = await fetch('/api/library', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${data.session.access_token}` },
-      body: JSON.stringify(body),
+      method: body ? 'POST' : 'GET',
+      cache: 'no-store',
+      headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), Authorization: `Bearer ${data.session.access_token}` },
+      ...(body ? { body: JSON.stringify(body) } : {}),
     })
     const payload = await response.json() as LibraryResponse
     if (!response.ok || !payload.libraries) throw new Error(payload.error || 'Library sync failed')
@@ -43,7 +46,7 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
     if (userId) setLibraryCacheOwner(userId)
   }, [])
 
-  const syncNow = useCallback(async () => {
+  const runSync = useCallback(async () => {
     setState('syncing')
     try {
       if (!isSupabaseConfigured()) throw new Error('Account sync is unavailable in this environment')
@@ -54,12 +57,17 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
       const owner = getLibraryCacheOwner()
       if (owner && owner !== userId) clearLibraryCache()
 
-      const result = await request({ operation: 'merge', libraries: {
-        favourites: readLibrary('favourites'),
-        follows: readLibrary('follows'),
-        history: readLibrary('history'),
-      } })
+      // A cache this account already owns is only read. Merging device items
+      // once stops every page load rewriting the library or restoring removals.
+      const result = getLibraryCacheOwner() === userId
+        ? await request()
+        : await request({ operation: 'merge', libraries: {
+          favourites: readLibrary('favourites'),
+          follows: readLibrary('follows'),
+          history: readLibrary('history'),
+        } })
       applyRemote(result.libraries, result.userId)
+      syncedUser.current = userId
       setSignedIn(true)
       setState('synced')
     } catch {
@@ -76,6 +84,11 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
     }
   }, [applyRemote, request])
 
+  const syncNow = useCallback(() => {
+    running.current ||= runSync().finally(() => { running.current = null })
+    return running.current
+  }, [runSync])
+
   useEffect(() => {
     if (!isSupabaseConfigured()) return
     const supabase = createClient()
@@ -85,8 +98,9 @@ export function LibrarySyncProvider({ children }: { children: React.ReactNode })
       if (session) {
         const owner = getLibraryCacheOwner()
         if (owner && owner !== session.user.id) clearLibraryCache()
-        window.setTimeout(syncNow, 0)
+        if (syncedUser.current !== session.user.id) window.setTimeout(syncNow, 0)
       } else {
+        syncedUser.current = ''
         if (getLibraryCacheOwner()) clearLibraryCache()
         setLibraryCacheOwner(null)
         setState('device')

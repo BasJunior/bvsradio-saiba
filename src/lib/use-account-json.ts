@@ -17,12 +17,12 @@ export function useAccountJson<T>({ owner, token, url, enabled = true, errorMess
     const deadline = window.setTimeout(() => controller.abort(), 12000);
     void fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store", signal: controller.signal })
       .then(async response => {
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload?.error || errorMessage);
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || payload === null) throw new Error(payload?.error || errorMessage);
         if (active) setResult({ owner, url, request, data: payload as T, error: "" });
       })
       .catch(caught => {
-        if (active) setResult({ owner, url, request, data: null, error: controller.signal.aborted ? "Loading took too long. Please try again." : caught instanceof Error ? caught.message : errorMessage });
+        if (active) setResult({ owner, url, request, data: null, error: controller.signal.aborted ? "Loading took too long. Please try again." : caught instanceof Error && !(caught instanceof TypeError) ? caught.message : errorMessage });
       })
       .finally(() => window.clearTimeout(deadline));
     return () => { active = false; controller.abort(); window.clearTimeout(deadline); };

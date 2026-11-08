@@ -47,6 +47,16 @@ async function fetchLibrary(userId: string) {
   }, { favourites: [], follows: [], history: [] })
 }
 
+export async function GET(req: Request) {
+  const user = await authenticatedUser(req)
+  if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
+  try {
+    return NextResponse.json({ libraries: await fetchLibrary(user.id) })
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Library sync failed' }, { status: 503 })
+  }
+}
+
 export async function POST(req: Request) {
   const user = await authenticatedUser(req)
   if (!user) return NextResponse.json({ error: 'Authentication required' }, { status: 401 })
@@ -64,7 +74,8 @@ export async function POST(req: Request) {
       if (rows.length) {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/user_library_items?on_conflict=user_id,section,item_id`, {
           method: 'POST',
-          headers: serviceHeaders('resolution=merge-duplicates,return=minimal'),
+          // A merge only adds missing items, so existing saves keep their position.
+          headers: serviceHeaders('resolution=ignore-duplicates,return=minimal'),
           body: JSON.stringify(rows),
         })
         if (!response.ok) throw new Error('Library merge failed')

@@ -10,7 +10,7 @@ const hasCreatorAccess = (profile: { role: string; is_producer?: boolean }) =>
 async function privateMediaUrl(value?: string | null) {
   if (!value) return value
   const key = r2KeyFromMediaUrl(value) || (safeR2Key(value) && !/^https?:/i.test(value) ? value : null)
-  return key ? signedR2DownloadUrl(key, 900) : value
+  return key ? signedR2DownloadUrl(key, 900).catch(() => null) : value
 }
 
 export async function GET(request: Request) {
