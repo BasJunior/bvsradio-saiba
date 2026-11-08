@@ -241,7 +241,7 @@ export function resolveSeededMarketplaceService(ref: string): SeededMarketplaceS
   const [providerSlug, serviceId, packageIndexRaw] = String(ref || '').split(':')
   const provider = seededStorefronts.find((item) => item.slug === providerSlug)
   const service = provider?.services.find((item) => item.id === serviceId)
-  if (!provider || !service) return null
+  if (!provider || !service || service.bookingMode === 'enquiry') return null
 
   let packageName: string | undefined
   let priceUsd = service.priceUsd

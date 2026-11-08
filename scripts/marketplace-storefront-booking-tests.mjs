@@ -45,6 +45,7 @@ assert.match(storefronts, /id: 'exclusive-beat-production'[\s\S]*?priceUsd: 200/
 assert.match(storefronts, /id: 'full-production'[\s\S]*?priceUsd: 500/, "$500 full production must match the Up-Town price list");
 const uptownSeed = storefronts.slice(storefronts.indexOf("slug: 'uptown-music'"), storefronts.indexOf("slug: 'bvs-studio-services'"));
 assert.doesNotMatch(uptownSeed, /bookingMode: '(calendar|checkout)'/, "Up-Town Music must stay enquiry-only until a seller account is linked");
+assert.match(storefronts, /if \(!provider \|\| !service \|\| service\.bookingMode === 'enquiry'\) return null/, "Enquiry-only services must not resolve to a payable checkout item");
 assert.doesNotMatch(uptownSeed, /\+?\d{9,}|@[a-z0-9_.]+|instagram|whatsapp/i, "Up-Town Music must not publish off-platform contact details; sales communication stays on BVS");
 
 assert.match(storefronts, /export function marketplaceStorefronts\(/, "Marketplace must expose one provider-store resolver");
