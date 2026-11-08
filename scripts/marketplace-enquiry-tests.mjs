@@ -159,5 +159,10 @@ const sellerApi = fs.readFileSync("src/app/api/marketplace/route.ts", "utf8");
 assert.match(sellerApi, /offPlatformContactIssue\(\[body\.headline, body\.bio/, "seller-written text must be checked");
 const store = fs.readFileSync("src/app/marketplace/[slug]/page.tsx", "utf8");
 assert.match(store, /provider\.sellerUserId \? <MarketplaceEnquiryPanel/, "only stores with a linked seller can be messaged");
+const consumerComposer = fs.readFileSync("src/components/MarketplaceEnquiries.tsx", "utf8");
+assert.doesNotMatch(consumerComposer, /Keep contact on BVS|Phone numbers, emails and social handles are blocked|disputes and refunds/, "consumer-facing Marketplace messaging must not show internal moderation and dispute copy");
+assert.match(consumerComposer, /<Composer/, "buyer and seller messaging remains available");
+const enquiryApi = fs.readFileSync("src/app/api/marketplace/enquiries/route.ts", "utf8");
+assert.match(enquiryApi, /offPlatformContactIssue\(\[message\]\)/, "backend message safeguards must remain active");
 
 console.log("Marketplace enquiries: contact filter, access rules, threads and staff review passed.");
