@@ -4,6 +4,8 @@ import { sendMusicApprovalEmail } from '@/lib/approval-email'
 import type { EditorialPermission, EditorialRole } from '@/lib/editorial'
 import { r2KeyFromMediaUrl, safeR2Key, signedR2DownloadUrl } from '@/lib/r2-storage'
 import { assertCanPublishLiveBeat } from '@/lib/producer-entitlements'
+import { ensureBeatArtworkPath } from '@/lib/beat-cover-autogen'
+import { creatorPublicName } from '@/lib/public-name'
 
 const EDITORIAL_MEDIA_URL_TTL_SECONDS = 6 * 60 * 60
 
@@ -937,8 +939,8 @@ export async function PATCH(request: Request) {
         const beatId = String(body.beatId || '')
         const publish = Boolean(body.publish)
         const beat = (await optionalJson(
-          `beats?id=eq.${encodeURIComponent(beatId)}&select=id,producer_user_id,is_public,status,pack_id&limit=1`,
-        ))[0] as { id?: string; producer_user_id?: string; is_public?: boolean; status?: string; pack_id?: string | null } | undefined
+          `beats?id=eq.${encodeURIComponent(beatId)}&select=id,title,producer_user_id,is_public,status,pack_id,artwork_path&limit=1`,
+        ))[0] as { id?: string; title?: string; producer_user_id?: string; is_public?: boolean; status?: string; pack_id?: string | null; artwork_path?: string | null } | undefined
         if (!beat?.producer_user_id) {
           return NextResponse.json({ error: 'Beat or producer profile not found.' }, { status: 404 })
         }
@@ -957,6 +959,29 @@ export async function PATCH(request: Request) {
               },
               { status: 409 },
             )
+          }
+          // Do not publish uncovered beats from any submission path, including legacy records.
+          if (!String(beat.artwork_path || '').trim()) {
+            const producer = (await optionalJson(
+              `profiles?id=eq.${encodeURIComponent(beat.producer_user_id)}&select=username,display_name,creator_public_name,creator_name_status&limit=1`,
+            ))[0] as { username?: string; display_name?: string; creator_public_name?: string; creator_name_status?: string } | undefined
+            const producerName = creatorPublicName({
+              publicName: producer?.creator_public_name,
+              publicNameStatus: producer?.creator_name_status,
+              username: producer?.username,
+            }) || producer?.display_name || producer?.username || 'BVS producer'
+            const ensured = await ensureBeatArtworkPath({
+              producerUserId: beat.producer_user_id,
+              title: beat.title || 'Untitled beat',
+              producerName,
+            })
+            if (!ensured.path) {
+              return NextResponse.json({ error: 'Could not generate cover artwork; beat was not published.' }, { status: 503 })
+            }
+            await patchTable('beats', `id=eq.${encodeURIComponent(beatId)}`, {
+              artwork_path: ensured.path,
+              updated_at: new Date().toISOString(),
+            })
           }
         }
         const result = await patchTable(

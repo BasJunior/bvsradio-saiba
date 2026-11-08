@@ -8,6 +8,8 @@ import {
 } from "@/lib/beatstore-server";
 import { r2ObjectExists } from "@/lib/r2-storage";
 import { licenceOptionSeed } from "@/lib/beat-licences";
+import { ensureBeatArtworkPath } from "@/lib/beat-cover-autogen";
+import { creatorPublicName } from "@/lib/public-name";
 import {
   CRATE_CHALLENGE_ACTIVE,
   crateProgress,
@@ -303,13 +305,39 @@ export async function POST(req: Request) {
         },
         { status: 400 },
       );
-    const items = d.payload.items.map((i, index) => ({
-      ...i,
-      title: i.title.trim(),
-      slug: `${slugifyBeat(i.title) || "beat"}-${randomUUID().slice(0, 8)}-${index + 1}`,
-      bpm: i.bpm ? String(Math.round(Number(i.bpm))) : "",
-      artworkPath: i.artworkPath || d.payload.artworkPath,
-      licence: licenceOptionSeed("standard_lease", Number(i.price)),
+    // Batch uploads bypass the legacy /api/beats POST route. Generate the same
+    // BVS cover for every uncovered item before the atomic finalization RPC.
+    const [producer] = (await db(
+      `profiles?id=eq.${a.userId}&select=username,display_name,creator_public_name,creator_name_status&limit=1`,
+    )) as Array<{
+      username?: string;
+      display_name?: string;
+      creator_public_name?: string;
+      creator_name_status?: string;
+    }>;
+    const producerName =
+      creatorPublicName({
+        publicName: producer?.creator_public_name,
+        publicNameStatus: producer?.creator_name_status,
+        username: producer?.username,
+      }) || producer?.display_name || producer?.username || "BVS producer";
+    const items = await Promise.all(d.payload.items.map(async (i, index) => {
+      const artwork = await ensureBeatArtworkPath({
+        producerUserId: a.userId,
+        title: i.title.trim(),
+        producerName,
+        artworkPath: i.artworkPath || d.payload.artworkPath,
+      });
+      // Never submit a beat with a missing cover if storage/generation failed.
+      if (!artwork.path) throw new Error("Could not generate cover art. Your draft is saved; please retry.");
+      return {
+        ...i,
+        title: i.title.trim(),
+        slug: `${slugifyBeat(i.title) || "beat"}-${randomUUID().slice(0, 8)}-${index + 1}`,
+        bpm: i.bpm ? String(Math.round(Number(i.bpm))) : "",
+        artworkPath: artwork.path,
+        licence: licenceOptionSeed("standard_lease", Number(i.price)),
+      };
     }));
     const result = await db("rpc/finalize_beat_upload", {
       method: "POST",

@@ -66,6 +66,8 @@ const receiptApi=load('src/app/api/beats/crate/route.ts',{
  'node:crypto':{randomUUID},'@/lib/beatstore-server':{beatIdentity:async()=>({user:{id:owner},profile:{is_producer:true}}),beatHeaders:{},beatUrl:p=>p,slugifyBeat:s=>s},
  '@/lib/r2-storage':{r2ObjectExists:()=>{throw new Error('receipt recovery must not inspect or upload files')}},
  '@/lib/beat-licences':{licenceOptionSeed:()=>({})},'@/lib/beat-crate':lib,
+ '@/lib/beat-cover-autogen':{ensureBeatArtworkPath:async()=>{throw new Error('Artwork generation should not run for recovered or invalid drafts')}},
+ '@/lib/public-name':{creatorPublicName:({username})=>username},
 },{fetch:async()=>({ok:true,json:async()=>[{state:'submitted',result:first}]}),URL,Request,Response})
 assert.equal((await receiptApi.POST(new Request('https://bvsradio.com/api/beats/crate',{method:'POST',body:JSON.stringify({id:draft})}))).body.result.count,25)
 const single=randomUUID(),singleStamp=await insertDraft(single)
@@ -75,6 +77,8 @@ const imports={
  'next/server':{NextResponse:{json:(body,init)=>({body,status:init?.status||200})}},'node:crypto':{randomUUID},
  '@/lib/beatstore-server':{beatIdentity:async()=>({user:{id:owner},profile:{is_producer:true}}),beatHeaders:{},beatUrl:p=>p,slugifyBeat:s=>s},
  '@/lib/r2-storage':{r2ObjectExists:async()=>false},'@/lib/beat-licences':{licenceOptionSeed:()=>({})},'@/lib/beat-crate':lib,
+ '@/lib/beat-cover-autogen':{ensureBeatArtworkPath:async()=>{throw new Error('Artwork generation should not run for recovered or invalid drafts')}},
+ '@/lib/public-name':{creatorPublicName:({username})=>username},
 }
 const route=(overrides={},fetcher=async()=>{throw new Error('Unexpected database request')})=>load('src/app/api/beats/crate/route.ts',{...imports,...overrides},{fetch:fetcher,URL,Request,Response})
 const noAuth=route({'@/lib/beatstore-server':{...imports['@/lib/beatstore-server'],beatIdentity:async()=>null}})
@@ -91,4 +95,35 @@ let rpcCalls=0
 const incomplete=route({},async(path)=>{if(path.startsWith('rpc/'))rpcCalls++;return {ok:true,json:async()=>[{id:draft,state:'draft',payload:ownPayload,updated_at:'stamp'}]}})
 assert.equal((await incomplete.POST(new Request('https://bvsradio.com/api/beats/crate',{method:'POST',body:JSON.stringify({id:draft})}))).status,400)
 assert.equal(rpcCalls,0,'missing media must never enter editorial review')
+// A single beat submitted without artwork must receive a durable generated cover
+// before the finalization RPC, and any artwork failure must keep the draft safe.
+let capturedItems=null, generatedCalls=0, finalizedCalls=0
+const coverGenerator=async ({producerUserId,title,artworkPath})=>{
+ generatedCalls++
+ return {path:artworkPath || `beats/${producerUserId}/${title}-artwork-generated.svg`,generated:!artworkPath}
+}
+const crateFetcher=async(path,init)=>{
+ if(path.startsWith('beat_upload_drafts?'))return {ok:true,json:async()=>[{id:draft,state:'draft',payload:ownPayload,updated_at:'stamp'}]}
+ if(path.startsWith('profiles?'))return {ok:true,json:async()=>[{username:'producer',display_name:'Producer'}]}
+ if(path==='rpc/finalize_beat_upload'){
+  finalizedCalls++;capturedItems=JSON.parse(init.body).p_items
+  return {ok:true,json:async()=>{return {count:1,beatIds:[randomUUID()],packId:null}}}
+ }
+ throw new Error(`Unexpected path ${path}`)
+}
+const covered=route({
+ '@/lib/r2-storage':{r2ObjectExists:async()=>true},
+ '@/lib/beat-cover-autogen':{ensureBeatArtworkPath:coverGenerator},
+},crateFetcher)
+const coveredResult=await covered.POST(new Request('https://bvsradio.com/api/beats/crate',{method:'POST',body:JSON.stringify({id:draft})}))
+assert.equal(coveredResult.status,200)
+assert.equal(capturedItems[0].artworkPath,`beats/${owner}/${ownPayload.items[0].title}-artwork-generated.svg`)
+assert.equal(generatedCalls,1)
+assert.equal(finalizedCalls,1)
+const noCover=route({
+ '@/lib/r2-storage':{r2ObjectExists:async()=>true},
+ '@/lib/beat-cover-autogen':{ensureBeatArtworkPath:async()=>({path:null,generated:false})},
+},crateFetcher)
+assert.equal((await noCover.POST(new Request('https://bvsradio.com/api/beats/crate',{method:'POST',body:JSON.stringify({id:draft})}))).status,503)
+assert.equal(finalizedCalls,1,'missing artwork must never reach the finalization RPC')
 await db.close();console.log('Beat crate: 25-file validation, eligibility, timestamp ordering, atomic rollback, ownership, duplicate prevention, receipt recovery and private grants passed.')
