@@ -6,6 +6,7 @@ import {
 } from "@/lib/creator-server";
 import { r2ObjectExists, signedR2DownloadUrl } from "@/lib/r2-storage";
 import { creatorMarketplaceEntitlements } from "@/lib/creator-marketplace-entitlements";
+import { offPlatformContactIssue } from "@/lib/marketplace-contact-filter";
 
 export const runtime = "nodejs";
 
@@ -125,6 +126,13 @@ async function postMarketplace(request: Request) {
     unknown
   >;
   const action = clean(body.action, 30);
+
+  // Only text sent in this save is checked, so older profiles can still change other fields.
+  const packageText = Array.isArray(body.packages)
+    ? body.packages.flatMap((item) => [(item as Record<string, unknown>)?.name, (item as Record<string, unknown>)?.description])
+    : [];
+  const contactIssue = offPlatformContactIssue([body.headline, body.bio, body.experience, body.title, body.description, ...packageText]);
+  if (contactIssue) return NextResponse.json({ error: contactIssue }, { status: 400 });
 
   if (action === "save_profile") {
     const current = (await rows(`creator_marketplace_profiles?user_id=eq.${identity.user.id}&select=*&limit=1`))[0];

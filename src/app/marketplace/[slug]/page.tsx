@@ -11,6 +11,7 @@ import {
   type StorefrontService,
 } from "@/lib/marketplace-storefronts";
 import MarketplaceProviderMap from "@/components/MarketplaceProviderMap";
+import { MarketplaceEnquiryPanel } from "@/components/MarketplaceEnquiries";
 import { readCartLines, writeCartLines } from "@/lib/cart-client";
 
 type MarketplacePayload = {
@@ -233,6 +234,7 @@ export default function MarketplaceStorefrontPage() {
             ) : null}
             <Link href="/marketplace" className="mt-5 inline-flex text-sm text-brand hover:underline">Compare other providers →</Link>
           </div>
+          {provider.sellerUserId ? <MarketplaceEnquiryPanel sellerUserId={provider.sellerUserId} providerName={provider.name} slug={provider.slug} /> : null}
           <MarketplaceProviderMap providers={[provider]} compact />
         </aside>
       </div>

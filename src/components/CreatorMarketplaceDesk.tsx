@@ -801,6 +801,7 @@ export function CreatorMarketplaceDesk({
               ? "View storefront ↗"
               : "Browse marketplace ↗"}
           </Link>
+          {!surface ? <Link className={s.button} href="/marketplace/enquiries">Enquiries</Link> : null}
           <button
             className={s.primary}
             onClick={() => openListing("digital_product")}
