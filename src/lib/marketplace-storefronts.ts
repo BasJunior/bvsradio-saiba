@@ -143,14 +143,15 @@ export const seededStorefronts: MarketplaceStorefront[] = [
     policyNotes: ['No custom beats.', 'No beat remakes.'],
   },
   {
-    // Enquiry-only until the owner's BVS account is linked: seeded checkout has no seller to credit yet.
+    // Calendar requests require a real provider-published slot and studio confirmation.
+    // Do not enable checkout on the seeded offers until the seller account is linked.
     slug: 'uptown-music',
     source: 'seed',
     name: 'Up-Town Music',
     kind: 'studio',
     headline: 'Recording, mixing, mastering and beat production under one roof.',
     bio: 'Up-Town Music is a recording studio run by Trayn Dillinger, offering hourly sessions, fixed-rate mixing and mastering, beat leases, exclusive beat production and full song production.',
-    location: 'Pomona, Harare',
+    location: 'Borrowdale, Harare',
     heroImage: '/images/marketplace/uptown-music-studio.jpg',
     avatarImage: '/images/marketplace/uptown-music-crest.jpg',
     specialties: ['Recording', 'Mixing', 'Mastering', 'Beat production', 'Beat leases'],
@@ -163,7 +164,7 @@ export const seededStorefronts: MarketplaceStorefront[] = [
         description: 'Studio recording session, charged by the hour.',
         priceUsd: 60,
         priceLabel: '$60 / hour',
-        bookingMode: 'enquiry',
+        bookingMode: 'calendar',
       },
       {
         id: 'mix-and-master',
@@ -172,7 +173,7 @@ export const seededStorefronts: MarketplaceStorefront[] = [
         description: 'Mixing and mastering for song vocals or instruments/beats, at a fixed rate.',
         priceUsd: 100,
         priceLabel: '$100 fixed',
-        bookingMode: 'enquiry',
+        bookingMode: 'calendar',
       },
       {
         id: 'beat-lease',
@@ -180,7 +181,7 @@ export const seededStorefronts: MarketplaceStorefront[] = [
         category: 'Beat package',
         description: 'Lease a beat from Up-Town Music.',
         priceUsd: 50,
-        bookingMode: 'enquiry',
+        bookingMode: 'calendar',
       },
       {
         id: 'exclusive-beat-production',
@@ -188,7 +189,7 @@ export const seededStorefronts: MarketplaceStorefront[] = [
         category: 'Beat package',
         description: 'Includes the beat production and exclusive rights to the beat.',
         priceUsd: 200,
-        bookingMode: 'enquiry',
+        bookingMode: 'calendar',
       },
       {
         id: 'full-production',
@@ -197,10 +198,10 @@ export const seededStorefronts: MarketplaceStorefront[] = [
         description: 'Includes beat production, recording, mixing and mastering, at a fixed rate.',
         priceUsd: 500,
         priceLabel: '$500 fixed',
-        bookingMode: 'enquiry',
+        bookingMode: 'calendar',
       },
     ],
-    policyNotes: ['Bookings for this studio open on BVS soon. All messages and payments stay on BVS.'],
+    policyNotes: ['Bookings are requests until confirmed by the studio. Available times appear only after the studio publishes them on BVS. All messages and payments stay on BVS.'],
   },
   {
     slug: 'bvs-studio-services',

@@ -227,9 +227,9 @@ export default function MarketplaceStorefrontPage() {
             <div className="mt-5 flex flex-wrap gap-2">
               {provider.specialties.map((item) => <span key={item} className="rounded-full bg-white/5 px-3 py-1 text-xs">{item.replaceAll("_", " ")}</span>)}
             </div>
-            {wolf ? (
+            {provider.services.some((service) => service.bookingMode === "calendar") ? (
               <p className="mt-5 rounded-xl border border-white/10 p-3 text-xs text-text-secondary">
-                Choose an available time to request a studio session. All times are shown in the studio’s timezone.
+                Check provider-published times to request a booking. Sessions are only confirmed when the studio accepts your request; times are shown in the studio’s timezone.
               </p>
             ) : null}
             <Link href="/marketplace" className="mt-5 inline-flex text-sm text-brand hover:underline">Compare other providers →</Link>
