@@ -144,6 +144,9 @@ const materialOptions = [
   ['other_third_party', 'Other third-party material'],
 ] as const
 
+const RELEASE_STEPS = ['Details', 'Rights', 'Files', 'Confirm'] as const
+const LAST_RELEASE_STEP = RELEASE_STEPS.length - 1
+
 export default function ReleaseSubmitForm(props: { onSuccess?: () => void; songWorkspaceId?: string }) {
   const {session, loading} = useBrowserSession()
   if (loading) return <p role="status" className="text-sm text-text-secondary">Opening your saved release…</p>
@@ -214,6 +217,9 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
   const [metadataReady,setMetadataReady] = useState(false)
   const [draftNotice,setDraftNotice] = useState('')
   const skipDraft = useRef(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  const [step, setStep] = useState(0)
+  const goToStep = (next: number) => { setError(null); setStep(next); formRef.current?.scrollIntoView?.({ block: 'start' }) }
   const draftKey = releaseFormDraftKey(owner, songWorkspaceId)
   const [retainedFiles,setRetainedFiles] = useState<{fileNames:string[];coverName:string}>({fileNames:[],coverName:''})
   useEffect(() => {
@@ -426,11 +432,18 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    // Enter in a field moves forward; only the last step can submit.
+    if (step < LAST_RELEASE_STEP) {
+      goToStep(step + 1)
+      return
+    }
     if (!title.trim() || !genre || !files.length || !cover || !rights || !explicitDeclared) {
+      setStep(!title.trim() || !genre ? 0 : !files.length || !cover ? 2 : 3)
       setError('Title, genre, cover art, tracks, rights confirmation and explicit-status declaration are required.')
       return
     }
     if (!masterOwner.trim() || !compositionOwners.trim() || !songwriters.trim() || !producers.trim()) {
+      setStep(1)
       setError('Name the master owner, composition owner, songwriter and producer before submitting.')
       return
     }
@@ -445,11 +458,13 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
       grantPromote &&
       accuracyConfirmed
     if (!attestationOk) {
+      setStep(3)
       setError('Complete the versioned rights attestation (master, composition, contributors, samples/beats, and BVS grants).')
       return
     }
     const requiredEvidenceTypes = materialTypes.filter((type) => type !== 'original')
     if (!materialTypes.length || requiredEvidenceTypes.some((type) => !(type === 'leased_beat' && autoLicensedBeat) && !evidenceFiles[type])) {
+      setStep(1)
       setError('Declare the material type and upload clearance evidence for every cover, remix, sample, leased beat or third-party element not already licensed through BVS.')
       return
     }
@@ -750,7 +765,7 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
   }
 
   return (
-    <form onSubmit={submit} onChange={() => { skipDraft.current=false }} noValidate className="space-y-5">
+    <form ref={formRef} onSubmit={submit} onChange={() => { skipDraft.current=false }} noValidate className="scroll-mt-40 space-y-5">
       {draftNotice ? <div className="border border-white/15 p-3 text-xs leading-5 text-text-secondary"><p role="status">{draftNotice}</p>{!files.length && retainedFiles.fileNames.length ? <details className="mt-2"><summary className="min-h-9 cursor-pointer py-2">Files to reselect</summary><ul className="list-disc pl-4">{retainedFiles.fileNames.map((name,index)=><li key={`${index}:${name}`}>{name}</li>)}{retainedFiles.coverName ? <li>Cover: {retainedFiles.coverName}</li> : null}</ul></details> : null}</div> : null}
       {pendingReleaseFinalize && (
         <div className="rounded-xl border border-amber-300/30 bg-amber-300/[.07] p-4 text-sm">
@@ -822,6 +837,15 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
           </div>
         </div>
       )}
+      <ol aria-label="Release steps" className="flex flex-wrap gap-2">
+        {RELEASE_STEPS.map((name, index) => (
+          <li key={name}>
+            <button type="button" aria-current={step === index ? 'step' : undefined} onClick={() => goToStep(index)} className={`min-h-11 rounded-full border px-4 text-sm ${step === index ? 'border-brand bg-brand/10 text-brand' : 'border-white/10 text-text-secondary'}`}>{index + 1}. {name}</button>
+          </li>
+        ))}
+      </ol>
+
+      <div hidden={step !== 0} className="space-y-5">
       <p className="rounded-xl border border-brand/20 bg-brand/5 px-4 py-3 text-sm text-text-secondary">
         Submit an <strong className="text-text-primary">album, EP or multi-track project</strong> (cover + ordered
         songs). After editorial approve &amp; publish, tracks can enter continuous rotation. Premium is separate —
@@ -836,6 +860,7 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
             onChange={(e) => setTitle(e.target.value)}
             className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
             placeholder="Your official release title"
+            aria-required="true"
           />
         </label>
         <label className="block text-sm">
@@ -859,6 +884,7 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
         <select
           value={genre}
           onChange={(e) => setGenre(e.target.value)}
+          aria-required="true"
           className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
         >
           <option value="">Select genre</option>
@@ -882,6 +908,9 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
 
       <details className="border border-white/10 p-3 text-xs text-text-secondary"><summary className="min-h-9 cursor-pointer py-2">Help me write my release description</summary><ul className="mt-2 list-disc space-y-2 pl-4"><li>Start with the release’s sound and the story behind it.</li><li>Credit featured artists and producers by their public names.</li><li>Add language, hometown or recording context when it matters.</li><li>Keep release titles clean; put credits and background here rather than promotional claims in the title.</li></ul></details>
 
+      </div>
+
+      <div hidden={step !== 1} className="space-y-5">
       <section className="space-y-4 rounded-2xl border border-brand/20 bg-brand/[.03] p-5">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-brand">Rights Passport</p>
@@ -890,20 +919,20 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm">Copyright year *
-            <input value={copyrightYear} onChange={(e) => setCopyrightYear(e.target.value)} inputMode="numeric" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+            <input aria-required="true" value={copyrightYear} onChange={(e) => setCopyrightYear(e.target.value)} inputMode="numeric" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
           </label>
           <label className="text-sm">Master recording owner *
-            <input value={masterOwner} onChange={(e) => setMasterOwner(e.target.value)} placeholder="Person or company" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+            <input aria-required="true" value={masterOwner} onChange={(e) => setMasterOwner(e.target.value)} placeholder="Person or company" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
           </label>
         </div>
         <label className="block text-sm">Composition / publishing owner(s) *
-          <input value={compositionOwners} onChange={(e) => setCompositionOwners(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+          <input aria-required="true" value={compositionOwners} onChange={(e) => setCompositionOwners(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
         </label>
         <label className="block text-sm">Songwriter(s) / composer(s) *
-          <input value={songwriters} onChange={(e) => setSongwriters(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+          <input aria-required="true" value={songwriters} onChange={(e) => setSongwriters(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
         </label>
         <label className="block text-sm">Producer(s) *
-          <input value={producers} onChange={(e) => setProducers(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
+          <input aria-required="true" value={producers} onChange={(e) => setProducers(e.target.value)} placeholder="Names, separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
         </label>
         <label className="block text-sm">Featured artist(s)
           <input value={featuredArtists} onChange={(e) => setFeaturedArtists(e.target.value)} placeholder="Optional; names separated by commas" className="mt-1.5 w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3" />
@@ -963,15 +992,19 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
         })}
       </section>
 
+      </div>
+
+      <div hidden={step !== 2} className="space-y-5">
       <div>
-        <label className="mb-1.5 block text-sm font-medium">Audio tracks * (1–30)</label>
-        <input type="file" multiple onChange={(e) => onFiles(e.target.files)} className="text-sm" />
+        <label htmlFor="release-audio" className="mb-1.5 block text-sm font-medium">Audio tracks * (1–30)</label>
+        <input id="release-audio" aria-required="true" type="file" multiple onChange={(e) => onFiles(e.target.files)} className="text-sm" />
         {files.length > 0 && (
           <ul className="mt-3 space-y-2">
             {files.map((f, i) => (
               <li key={`${f.name}-${i}`} className="flex flex-wrap items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm">
                 <span className="text-xs text-brand">{i + 1}</span>
                 <input
+                  aria-label={`Track ${i + 1} title`}
                   value={trackTitles[i] || ''}
                   onChange={(e) => {
                     const next = [...trackTitles]
@@ -988,11 +1021,14 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium">Cover art *</label>
-        <input type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} className="text-sm" />
+        <label htmlFor="release-cover" className="mb-1.5 block text-sm font-medium">Cover art *</label>
+        <input id="release-cover" aria-required="true" type="file" accept="image/*" onChange={(e) => setCover(e.target.files?.[0] || null)} className="text-sm" />
         {cover && <p className="mt-1 text-xs text-text-secondary">{cover.name}</p>}
       </div>
 
+      </div>
+
+      <div hidden={step !== 3} className="space-y-5">
       <section className="space-y-3 rounded-xl border border-white/10 p-4">
         <h3 className="text-sm font-semibold text-text-primary">Versioned rights attestation *</h3>
         <p className="text-xs text-text-secondary">
@@ -1066,11 +1102,19 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
         </span>
       </label>
 
+      </div>
+
       {error && <div role="alert" className="rounded-xl bg-red-500/10 p-3 text-sm text-red-300">{error}</div>}
       {loading && progress && <p className="text-center text-sm text-brand" aria-live="polite">{progress}</p>}
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {step > 0 ? <button type="button" onClick={() => goToStep(step - 1)} className="min-h-11 rounded-full border border-white/20 px-5 text-sm">Back</button> : <span />}
+        {step < LAST_RELEASE_STEP ? <button type="button" onClick={() => goToStep(step + 1)} className="min-h-11 rounded-full bg-brand px-6 text-sm font-semibold text-black">Continue to {RELEASE_STEPS[step + 1]}</button> : null}
+      </div>
+
       <button
         type="submit"
+        hidden={step !== LAST_RELEASE_STEP}
         disabled={loading}
         className="w-full rounded-full bg-brand py-4 text-lg font-semibold text-black hover:bg-brand-dark disabled:opacity-60"
       >

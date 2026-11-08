@@ -75,14 +75,14 @@ export default function PremiumInstantPromoBanner() {
         </p>
         <Link
           href="/premium"
-          className="shrink-0 rounded-full bg-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-brand hover:bg-black/85 sm:px-3 sm:text-[11px]"
+          className="relative shrink-0 rounded-full bg-black px-2.5 py-1 after:absolute after:-inset-2 after:content-[''] text-[10px] font-bold uppercase tracking-wide text-brand hover:bg-black/85 sm:px-3 sm:text-[11px]"
         >
           View
         </Link>
         <button
           type="button"
           onClick={dismiss}
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-black/70 hover:bg-black/10 hover:text-black"
+          className="relative after:absolute after:-inset-3 after:content-[''] grid h-7 w-7 shrink-0 place-items-center rounded-full text-black/70 hover:bg-black/10 hover:text-black"
           aria-label="Dismiss Premium Instant banner"
         >
           <span aria-hidden="true" className="text-base leading-none">

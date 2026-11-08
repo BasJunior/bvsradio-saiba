@@ -260,7 +260,7 @@ export default function VisitorAssistant() {
       ) : null}
       {/* One labelled launcher replaces the separate speech bubble and floating icon. */}
       <button ref={launcherRef} type="button" onClick={toggleAssistant} aria-expanded={open} aria-controls={open ? "bvs-assistant-panel" : undefined} aria-label={open ? "Close Ask BVS" : "Open Ask BVS"} className="inline-flex min-h-12 items-center gap-2.5 rounded-full border border-white/20 bg-[#202023] px-4 py-3 text-sm font-medium text-white shadow-xl transition hover:border-brand/50 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">
-        <span aria-hidden="true" className="text-lg text-brand">{open ? "×" : "✦"}</span>{open ? "Close" : "Ask BVS"}
+        <span aria-hidden="true" className="text-lg text-brand">{open ? "×" : "✦"}</span><span className="sr-only sm:not-sr-only">{open ? "Close" : "Ask BVS"}</span>
       </button>
     </div>
   );

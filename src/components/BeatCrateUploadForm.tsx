@@ -794,6 +794,7 @@ function CrateEditor({
                     Beat title *
                     <input
                       className={field}
+                      aria-required="true"
                       value={item.title}
                       onChange={(e) =>
                         itemEdit(item.id, { title: e.target.value })
@@ -805,6 +806,7 @@ function CrateEditor({
                     Standard lease price (USD) *
                     <input
                       className={field}
+                      aria-required="true"
                       value={item.price}
                       type="number"
                       min={1}
@@ -824,6 +826,7 @@ function CrateEditor({
                           : "Individual cover (optional)"}
                       <input
                         type="file"
+                        aria-required={kind === "preview"}
                         accept={kind === "artwork" ? artAccept : audioAccept}
                         onChange={(e) =>
                           chooseFile(item.id, kind, e.target.files?.[0] || null)

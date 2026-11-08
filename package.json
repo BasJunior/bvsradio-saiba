@@ -41,7 +41,7 @@
     "test:growth-activation": "node scripts/growth-activation-tests.mjs",
     "test:creator-next-move": "node --experimental-strip-types scripts/creator-next-move-tests.mjs",
     "test:home-accents": "node scripts/home-accent-tests.mjs && node scripts/creator-portrait-rail-tests.mjs",
-    "test:studio-ui": "node scripts/studio-ui-tests.mjs && node scripts/workspace-error-state-tests.mjs",
+    "test:studio-ui": "node scripts/studio-ui-tests.mjs && node scripts/workspace-error-state-tests.mjs && node scripts/audit-remaining-tests.mjs",
     "test:cross-surface-ui": "node scripts/cross-surface-ui-tests.mjs",
     "test:order-receipt-pdf": "node scripts/order-receipt-pdf-tests.mjs",
     "test:media-reliability": "node scripts/media-reliability-tests.mjs && node scripts/public-release-access-tests.mjs",
