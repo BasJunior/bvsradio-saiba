@@ -60,15 +60,18 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const pendingTabRestore = useRef<{ route: string; top: number } | null>(null);
   const cancelRestore = useRef<(() => void) | null>(null);
   const isBeatsRoute = searchParams.get("kind") === "beats" || (isIos && searchParams.get("mode") === "beats");
+  // Same order as the website's mobile footer: Home, Feed, Discover, BeatStore, Library, then Studio for creators.
+  const beatsDestination = { href: `${base}/explore?kind=beats${isIos ? "&mode=beats" : ""}`, label: "BeatStore", icon: "beats" as const, active: (pathname === `${base}/explore` && isBeatsRoute) || pathname.startsWith(`${base}/beat/`) };
   const roleDestination = isCreator
     ? { href: `${base}/studio`, label: "Studio", icon: "create" as const, active: pathname.startsWith(`${base}/studio`) }
-    : { href: `${base}/explore?kind=beats${isIos ? "&mode=beats" : ""}`, label: "Beats", icon: "beats" as const, active: (pathname === `${base}/explore` && isBeatsRoute) || pathname.startsWith(`${base}/beat/`) };
+    : null;
   const items: Array<{ href: string; label: string; icon: NavIconName; active: boolean }> = [
     { href: base, label: "Home", icon: "home", active: pathname === base },
     { href: `${base}/feed`, label: "Feed", icon: "feed", active: pathname.startsWith(`${base}/feed`) },
-    { href: `${base}/explore`, label: "Discover", icon: "discover", active: pathname.startsWith(`${base}/explore`) && (isCreator || !isBeatsRoute) },
+    { href: `${base}/explore`, label: "Discover", icon: "discover", active: pathname.startsWith(`${base}/explore`) && !isBeatsRoute },
+    beatsDestination,
     { href: `${base}/library`, label: "Library", icon: "library", active: pathname.startsWith(`${base}/library`) || pathname.startsWith(`${base}/playlist`) },
-    roleDestination,
+    ...(roleDestination ? [roleDestination] : []),
   ];
   const activeTab = items.find((item) => item.active)?.label || "";
 
@@ -119,7 +122,7 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
       aria-label="Primary navigation"
       aria-busy={isIos && pending}
     >
-      <div className="bvs-app-bottom-nav-inner mx-auto grid h-[4.45rem] max-w-xl grid-cols-5 px-1 sm:px-3">
+      <div className={`bvs-app-bottom-nav-inner mx-auto grid h-[4.45rem] max-w-xl ${isCreator ? "grid-cols-6" : "grid-cols-5"} px-1 sm:px-3`}>
         {items.map((item) => (
           <Link
             key={item.href}
