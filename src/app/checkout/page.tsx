@@ -390,7 +390,7 @@ export default function CheckoutPage() {
 
   if (!items.length && !result) {
     return <main className="bvs-checkout mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
-      <p className="bvs-checkout-kicker">Your BVS basket</p>
+      <p className="bvs-checkout-kicker">Your BVS cart</p>
       <h1 className="mt-3 text-4xl font-semibold sm:text-6xl">Room for your next find.</h1>
       <p className="mt-4 max-w-xl text-text-secondary">Save a sound, find a beat or bring your next release to life. Your selections will appear here when you’re ready.</p>
       {cancelled ? <p role="status" className="mt-5 text-sm text-text-secondary">Payment was not completed. No new purchase has been confirmed.</p> : null}
@@ -405,7 +405,7 @@ export default function CheckoutPage() {
     <div className="bvs-checkout mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-14">
       <section className="mb-10">
         <p className="mb-3 text-xs uppercase tracking-[3px] text-brand">
-          Your BVS basket
+          Your BVS cart
         </p>
         <h1 className="mb-3 text-4xl font-semibold sm:text-5xl">Checkout</h1>
         <p className="max-w-2xl text-lg text-text-secondary">
@@ -517,7 +517,7 @@ export default function CheckoutPage() {
                 ))}
                 {belowBasketTarget && (
                   <div className="rounded-xl border border-brand/25 bg-brand/[.06] p-4 text-sm">
-                    <strong>Small basket tip:</strong>{" "}
+                    <strong>Small cart tip:</strong>{" "}
                     <span className="text-text-secondary">
                       Buying a few tracks together helps more of your purchase reach creators. You can still continue with this basket.
                     </span>

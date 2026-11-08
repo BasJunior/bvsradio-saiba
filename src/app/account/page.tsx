@@ -123,7 +123,7 @@ export default function AccountPage() {
   const shortcuts = useMemo(() => {
     const items = [
       { href: '/library', title: 'Library', copy: 'Favourites, follows and listening history.' },
-      { href: '/checkout', title: 'Cart', copy: 'Review your current basket and continue checkout.' },
+      { href: '/checkout', title: 'Cart', copy: 'Review your cart and continue to checkout.' },
       { href: '/notifications', title: 'Notifications', copy: 'Review editorial, creator, order and account updates.' },
       { href: '/newsletter', title: 'Newsletter', copy: 'Choose BVS email updates or unsubscribe.' },
     ]

@@ -22,4 +22,8 @@ assert.equal(liveStorefronts([{...profile,portfolio:[]}],[])[0].heroImage,'/acco
 const claimed=marketplaceStorefronts([{...profile,profiles:{display_name:'WolfBridges Studio'}}],[listing]).find(s=>s.slug==='wolfbridges-studio');
 assert.equal(claimed.heroImage,store.heroImage,'an explicit saved banner is visible on a claimed provider store');
 assert.ok(claimed.services.some(s=>s.listingId==='one'),'existing offers remain available');
+const checkedStore=marketplaceStorefronts([{...profile,accomplishments:[{verification:'verified'}],profiles:{display_name:'Staff Checked'}}],[]).find(s=>s.slug==='staff-checked');
+assert.equal(checkedStore.verified,true,'a staff-verified claim earns the Verified badge');
+const approvedOnly=marketplaceStorefronts([{...profile,accomplishments:[{verification:'self_declared'}],profiles:{display_name:'Approved Only'}}],[]).find(s=>s.slug==='approved-only');
+assert.equal(approvedOnly.verified,false,'approval alone must not show Verified');
 console.log('Marketplace storefront media: banner/avatar/listing artwork, legacy fallback and claimed storefront passed.');

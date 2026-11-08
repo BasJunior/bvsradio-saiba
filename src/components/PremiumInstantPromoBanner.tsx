@@ -12,7 +12,8 @@ function shouldHideOnPath(pathname: string | null): boolean {
   if (!pathname) return false;
   if (pathname === "/premium" || pathname.startsWith("/premium/")) return true;
   if (pathname.startsWith("/artist/premium")) return true;
-  if (pathname.startsWith("/creator/studio")) return true;
+  if (pathname.startsWith("/creator/")) return true;
+  if (pathname.startsWith("/editorial") || pathname.startsWith("/admin/")) return true;
   if (pathname.startsWith("/checkout")) return true;
   if (pathname.startsWith("/auth/")) return true;
   return false;

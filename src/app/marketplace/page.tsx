@@ -43,7 +43,7 @@ function ProviderCard({ provider }: { provider: MarketplaceStorefront }) {
       </Link>
       <div className="p-4 sm:p-5">
         <p className="text-sm text-text-secondary">{provider.headline}</p>
-        <p className="mt-3 text-sm font-medium">{provider.services.length} offers{Number.isFinite(minimumPrice) ? ` · From $${minimumPrice}` : ""}</p>
+        <p className="mt-3 text-sm font-medium">{provider.services.length} {provider.services.length === 1 ? "offer" : "offers"}{Number.isFinite(minimumPrice) ? ` · From $${minimumPrice}` : ""}</p>
         <div className="mt-3 flex flex-wrap gap-2 sm:mt-4">
           {provider.specialties.slice(0, 3).map((item) => (
             <span key={item} className="bvs-chip normal-case tracking-normal">
@@ -88,7 +88,7 @@ export default function MarketplacePage() {
   }, [retry]);
 
   const storefronts = useMemo(
-    () => marketplaceStorefronts(data.profiles || [], data.listings || []),
+    () => marketplaceStorefronts(data.profiles || [], data.listings || []).filter((provider) => provider.services.length > 0),
     [data],
   );
 
@@ -190,7 +190,7 @@ export default function MarketplacePage() {
 
       {state === "loading" ? <div className="bvs-surface mt-8 h-24 animate-pulse rounded-[1.35rem] sm:mt-12" /> : null}
 
-      <p role="status" className="sr-only">{added ? "Product added to your basket." : ""}</p>
+      <p role="status" className="sr-only">{added ? "Product added to your cart." : ""}</p>
       {liveProducts.length ? (
         <section className="mt-10 sm:mt-16" aria-labelledby="marketplace-products-title">
           <p className="bvs-section-kicker">Digital products</p>
@@ -206,7 +206,7 @@ export default function MarketplacePage() {
                   <div className="mt-4 flex items-center justify-between gap-3 sm:mt-5">
                     <strong>${Number(item.price_usd).toFixed(2)}</strong>
                     <button type="button" onClick={() => addProduct(item)} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-black">
-                      {added === item.id ? "Added" : "Add to basket"}
+                      {added === item.id ? "Added" : "Add to cart"}
                     </button>
                   </div>
                 </div>

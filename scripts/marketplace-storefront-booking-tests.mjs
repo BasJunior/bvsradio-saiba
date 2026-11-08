@@ -49,6 +49,7 @@ assert.match(storefronts, /if \(!provider \|\| !service \|\| service\.bookingMod
 assert.doesNotMatch(uptownSeed, /\+?\d{9,}|@[a-z0-9_.]+|instagram|whatsapp/i, "Up-Town Music must not publish off-platform contact details; sales communication stays on BVS");
 
 assert.match(storefronts, /export function marketplaceStorefronts\(/, "Marketplace must expose one provider-store resolver");
+assert.match(marketplace, /\.filter\(\(provider\) => provider\.services\.length > 0\)/, "Stores with no offers must not be listed in the directory");
 assert.match(storefronts, /const claim = live\.find\(\(item\) => item\.slug === seed\.slug\)/, "A real provider must be able to claim a seeded storefront");
 assert.match(storefronts, /services: mergeServices\(seed\.services, claim\.services\)/, "Uploaded services must merge under the claimed provider store");
 assert.match(marketplace, /marketplaceStorefronts\(data\.profiles \|\| \[\], data\.listings \|\| \[\]\)/, "Marketplace home must render the merged provider model");
