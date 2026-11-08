@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
+import { useAppSession } from "@/components/app-vnext/AppSessionProvider";
 import { measureBottomNav } from "@/lib/chrome-layout";
 import { recallTab, rememberTab, restoreScroll } from "@/lib/tab-memory";
 
@@ -36,6 +37,7 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isCreator } = useAppSession();
   const [pending, startTransition] = useTransition();
   const [requestedTab, setRequestedTab] = useState("");
   const [prefetchTabs, setPrefetchTabs] = useState(false);
@@ -58,14 +60,15 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
   const pendingTabRestore = useRef<{ route: string; top: number } | null>(null);
   const cancelRestore = useRef<(() => void) | null>(null);
   const isBeatsRoute = searchParams.get("kind") === "beats" || (isIos && searchParams.get("mode") === "beats");
-  // Beats is the fifth tab for everyone; creators reach Studio from the header.
-  const beatsDestination = { href: `${base}/explore?kind=beats${isIos ? "&mode=beats" : ""}`, label: "Beats", icon: "beats" as const, active: (pathname === `${base}/explore` && isBeatsRoute) || pathname.startsWith(`${base}/beat/`) };
+  const roleDestination = isCreator
+    ? { href: `${base}/studio`, label: "Studio", icon: "create" as const, active: pathname.startsWith(`${base}/studio`) }
+    : { href: `${base}/explore?kind=beats${isIos ? "&mode=beats" : ""}`, label: "Beats", icon: "beats" as const, active: (pathname === `${base}/explore` && isBeatsRoute) || pathname.startsWith(`${base}/beat/`) };
   const items: Array<{ href: string; label: string; icon: NavIconName; active: boolean }> = [
     { href: base, label: "Home", icon: "home", active: pathname === base },
     { href: `${base}/feed`, label: "Feed", icon: "feed", active: pathname.startsWith(`${base}/feed`) },
-    { href: `${base}/explore`, label: "Discover", icon: "discover", active: pathname.startsWith(`${base}/explore`) && !isBeatsRoute },
+    { href: `${base}/explore`, label: "Discover", icon: "discover", active: pathname.startsWith(`${base}/explore`) && (isCreator || !isBeatsRoute) },
     { href: `${base}/library`, label: "Library", icon: "library", active: pathname.startsWith(`${base}/library`) || pathname.startsWith(`${base}/playlist`) },
-    beatsDestination,
+    roleDestination,
   ];
   const activeTab = items.find((item) => item.active)?.label || "";
 
@@ -109,7 +112,7 @@ export default function AppBottomNav({ surface }: { surface: AppSurface }) {
       ref={measureBottomNav}
       data-bvs-bottom-nav
       data-bvs-app-nav
-      data-bvs-role-tab="beats"
+      data-bvs-role-tab={isCreator ? "studio" : "beats"}
       className={isIos
         ? "bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.12] bg-[#0d0e10]/98 pt-1 shadow-[0_-12px_32px_rgba(0,0,0,.26)] backdrop-blur-2xl"
         : "bvs-app-bottom-nav fixed inset-x-0 bottom-0 z-[49] border-t border-white/[.06] bg-[#08080a]/96 pt-1 shadow-[0_-18px_50px_rgba(0,0,0,.32)] backdrop-blur-2xl"}

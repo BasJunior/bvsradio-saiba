@@ -42,7 +42,7 @@ const iosStyle = read("src/components/app-vnext/AppIosDesignStyle.tsx");
 assert(iosStyle.includes('data-bvs-app-surface="ios"'), "scope styling to the contained iOS surface");
 assert(!iosStyle.includes("touch-action: none"), "preserve pinch zoom and normal scrolling");
 const nav = read("src/components/app-vnext/AppBottomNav.tsx");
-assert(nav.includes("grid-cols-5") && nav.includes('label: "Beats"'), "keep five tabs with Beats");
+assert(nav.includes("grid-cols-5") && nav.includes('label: "Studio"') && nav.includes('label: "Beats"'), "keep five role-aware tabs");
 const feed = read("src/components/feed/BvsFeedList.tsx");
 assert(feed.includes('surface === "ios" && event.touches.length === 1 && touch'), "Feed swipes must be iOS-specific");
 assert(feed.includes('participationEnabled || item.id !== "activity"'), "unavailable lanes must not be reachable by gesture");

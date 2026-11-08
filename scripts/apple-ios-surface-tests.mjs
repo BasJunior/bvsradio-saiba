@@ -69,8 +69,8 @@ for (const label of ['Home', 'Discover', 'Library', 'Feed']) {
   assert(nav.includes(`label: "${label}"`), `vNext bottom nav must contain ${label}`)
 }
 assert(nav.includes('label: "Feed"'), 'vNext bottom nav must provide Feed for every identity')
-assert(nav.includes('label: "Beats"') && !nav.includes('label: "Studio"'), 'bottom nav keeps Beats for everyone; Studio lives in the header')
-assert(read('src/components/app-vnext/AppTopBar.tsx').includes('aria-label="Studio"'), 'creators reach Studio from the header')
+assert(nav.includes('label: "Studio"'), 'creator vNext bottom nav must use Studio as the role tab')
+assert(nav.includes('data-bvs-role-tab={isCreator ? "studio" : "beats"}'), 'role tab must switch using existing creator access')
 assert(nav.includes('bvs-app-bottom-nav'), 'bottom nav must use the base-anchored safe-area shell')
 assert(nav.includes('bvs-app-bottom-nav-inner'), 'bottom nav controls must stay inside the safe-area inner rail')
 assert(nav.includes('router.push(item.href)'), 'hydrated vNext tabs must use client routing so persistent playback survives tab changes')
