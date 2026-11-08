@@ -12,6 +12,7 @@ import type { AppSurface } from "@/components/app-vnext/AppBootstrap";
 import AppBeatPreviewPlayer from "@/components/app-vnext/AppBeatPreviewPlayer";
 import AppDownloadButton from "@/components/app-vnext/AppDownloadButton";
 import AppPlaylistPicker from "@/components/app-vnext/AppPlaylistPicker";
+import BuyTrackButton, { trackIsBuyable } from "@/components/BuyTrackButton";
 import SongShareButton from "@/components/SongShareButton";
 import { useStationPlayer } from "@/components/StationPlayer";
 import { fairCreatorDailyOrder } from "@/lib/fair-discovery-order";
@@ -242,6 +243,7 @@ export default function AppExploreClient({
               const saveButton = <button type="button" aria-pressed={isLiked} aria-label={`${isLiked ? "Unsave" : "Save"} ${item.title}`} onClick={() => toggleLike(item)} className="bvs-app-icon-button"><HeartIcon size={20} filled={isLiked} /></button>;
               const more = <DiscoverMoreActions title={item.title} sheet>
                 {discoveryHome ? <button type="button" aria-pressed={isLiked} aria-label={`${isLiked ? "Unsave" : "Save"} ${item.title}`} onClick={() => toggleLike(item)} className={`bvs-app-pill justify-start ${isLiked ? "text-[#c1ff52]" : ""}`}><HeartIcon size={18} filled={isLiked} />{isLiked ? "Saved to Library" : "Save to Library"}</button> : null}
+                {trackIsBuyable(item) ? <BuyTrackButton track={item} variant="pill" /> : null}
                 <AppPlaylistPicker trackId={item.id} compact />
                 <AppDownloadButton trackId={item.id} surface={surface} compact />
                 <SongShareButton id={item.id} title={item.title} artist={item.artist} image={image} compact />

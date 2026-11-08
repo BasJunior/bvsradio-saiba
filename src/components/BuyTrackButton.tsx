@@ -17,8 +17,8 @@ function sellablePrice(track: StationTrack | null | undefined): number | null {
 
 type Props = {
   track?: StationTrack | null;
-  /** compact = mini player chip; full = now-playing card */
-  variant?: "compact" | "full";
+  /** compact = mini player chip; pill = page action button; full = now-playing card */
+  variant?: "compact" | "pill" | "full";
   className?: string;
   onAfterAdd?: () => void;
 };
@@ -92,6 +92,19 @@ export default function BuyTrackButton({
     });
     onAfterAdd?.();
   };
+
+  if (variant === "pill") {
+    return (
+      <a
+        href={purchaseHref}
+        onClick={(event) => { event.stopPropagation(); prepareWebCart(); if (event.defaultPrevented) setBusy(false); }}
+        className={`bvs-app-pill bvs-app-pill--accent min-h-11 px-5 ${className}`}
+        aria-label={`Buy ${track.title} for $${price.toFixed(2)} on BVS web checkout`}
+      >
+        {busy ? "Opening…" : `Buy · $${price.toFixed(price % 1 ? 2 : 0)}`}
+      </a>
+    );
+  }
 
   if (variant === "compact") {
     return (

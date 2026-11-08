@@ -270,8 +270,18 @@
 }
 
 /* BeatStore hashtags (#new, #trending, #trap…). */
-.bvs-beat-hashtag { display: inline-flex; align-items: center; min-height: 36px; padding: 0 .8rem; border: 1px solid rgb(193 167 255 / .3); background: rgb(193 167 255 / .06); color: #d7c9ff; font-size: .8rem; font-weight: 600; transition: border-color .2s ease, background-color .2s ease, color .2s ease; }
+.bvs-beat-hashtag { display: inline-flex; align-items: center; min-height: 32px; padding: 0 .65rem; border: 1px solid rgb(193 167 255 / .3); background: rgb(193 167 255 / .06); color: #d7c9ff; font-size: .75rem; font-weight: 600; transition: border-color .2s ease, background-color .2s ease, color .2s ease; }
 .bvs-beat-hashtag:hover { border-color: rgb(193 167 255 / .6); color: #fff; }
 .bvs-beat-hashtag[aria-pressed="true"] { border-color: #c1a7ff; background: #c1a7ff; color: #0a0a0a; }
 .bvs-beat-hashtag--small { min-height: 28px; padding: 0 .5rem; font-size: .7rem; }
 .bvs-beat-hashtag:focus-visible { outline: 2px solid #c1a7ff; outline-offset: 2px; }
+
+/* Card hashtags: one quiet line of tappable text, not boxed buttons. */
+.bvs-beat-hashtag-line { display: flex; gap: .1rem .6rem; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, #000 85%, transparent); }
+.bvs-beat-hashtag-inline { padding: .15rem 0; font-size: .72rem; font-weight: 600; color: rgb(193 167 255 / .75); }
+.bvs-beat-hashtag-inline:hover, .bvs-beat-hashtag-inline:focus-visible { color: #d7c9ff; text-decoration: underline; text-underline-offset: 3px; }
+.bvs-beat-hashtag-inline[aria-pressed="true"] { color: #c1a7ff; text-decoration: underline; }
+
+/* Beat cards: the licence label appears on hover or keyboard focus only. */
+.bvs-catalogue-offer-label.is-beat { opacity: 0; transition: opacity .2s ease; }
+.bvs-catalogue-card:hover .bvs-catalogue-offer-label.is-beat, .bvs-catalogue-card:focus-within .bvs-catalogue-offer-label.is-beat { opacity: 1; }

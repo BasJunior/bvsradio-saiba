@@ -9,9 +9,11 @@ import BvsSignalPanel from '@/components/BvsSignalPanel';
 import { promotionRows, UUID } from '@/lib/creator-promotion-server';
 import { mediaUrlForStoredValue } from '@/lib/media-url';
 import DetailHero, { DetailSection } from '@/components/DetailHero';
+import BuyTrackButton from '@/components/BuyTrackButton';
+import { PRICE_SINGLE_DOWNLOAD } from '@/lib/catalogue-pricing';
 async function load(id: string) {
   if (!UUID.test(id)) return null;
-  return (await promotionRows(`tracks?id=eq.${id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,user_id,artwork_url,genre,profiles!tracks_user_id_fkey(username)&limit=1`))[0] || null;
+  return (await promotionRows(`tracks?id=eq.${id}&is_public=eq.true&editorial_status=eq.approved&select=id,title,artist_name,user_id,artwork_url,genre,is_downloadable,download_price,licence_type,profiles!tracks_user_id_fkey(username)&limit=1`))[0] || null;
 }
 export async function songMetadata(id: string): Promise<Metadata> {
   const track = await load(id);
@@ -24,6 +26,9 @@ export default async function SongDetail({ id, surface }: { id: string; surface?
   const path = `/song/${track.id}`;
   const creatorHref = surface ? `/app/${surface}/creator/${encodeURIComponent(track.user_id)}` : track.profiles?.username ? `/artist/${encodeURIComponent(track.profiles.username)}` : null;
   const artist = track.artist_name || 'Artist';
+  // Same rule as Discover: downloadable and not 'not for sale', at its price or the standard single price.
+  const forSale = track.is_downloadable === true && track.licence_type !== 'not_for_sale';
+  const price = forSale ? (Number(track.download_price) > 0 ? Number(track.download_price) : PRICE_SINGLE_DOWNLOAD) : null;
   return <main className="bvs-app-page bvs-detail-page mx-auto max-w-4xl px-4 pb-14 sm:px-6" data-app-accent="lime">
     <DetailHero
       image={image}
@@ -34,6 +39,7 @@ export default async function SongDetail({ id, surface }: { id: string; surface?
       facts={[track.genre]}
       actions={<>
         <AppCreatorPlayback creatorId={track.user_id} creatorName={artist} startTrackId={track.id} surface={surface} compact />
+        {price ? <BuyTrackButton variant="pill" track={{ id: track.id, title: track.title, artist, src: '', artwork: image || undefined, isDownloadable: true, downloadPrice: price }} /> : null}
         <LibraryAction item={{ id: track.id, kind: 'track', title: track.title, subtitle: track.artist_name || '', href: surface ? `/app/${surface}${path}` : path, image: image || undefined }} />
         <AppShareButton title={track.title} text="Hear where this track is moving on BVS Radio" path={path} image={image || undefined} kicker="BVS Signal" />
       </>}

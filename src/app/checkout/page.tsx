@@ -703,6 +703,7 @@ export default function CheckoutPage() {
             )}
           </section>
 
+          {hasCreatorService || hasServiceItems ? (
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
             <h2 className="mb-2 text-xl font-semibold">
               {hasCreatorService ? "Project brief" : "Project notes"}
@@ -727,6 +728,20 @@ export default function CheckoutPage() {
               }
             />
           </section>
+          ) : (
+          // Music-only baskets: an optional note, folded away so checkout stays short.
+          <details className="rounded-2xl border border-white/10 bg-bg-card/35 px-6 py-4">
+            <summary className="cursor-pointer text-sm font-semibold text-text-secondary">Add a note to your order (optional)</summary>
+            <textarea
+              aria-label="Project notes"
+              value={projectNotes}
+              onChange={(e) => setProjectNotes(e.target.value)}
+              rows={3}
+              className="mt-3 w-full resize-y rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
+              placeholder="Anything we should know about this order?"
+            />
+          </details>
+          )}
 
           {error && (
             <div role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">

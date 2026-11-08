@@ -1546,7 +1546,7 @@ function CataloguePageContent() {
                     className="object-cover transition duration-300 group-hover:scale-[1.02]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-80" />
-                  <span className="absolute left-3 top-3 rounded-none bg-black/70 px-2.5 py-1 text-[10px] uppercase tracking-[1.5px] text-white">
+                  <span className={`bvs-catalogue-offer-label absolute left-3 top-3 rounded-none bg-black/70 px-2.5 py-1 text-[10px] uppercase tracking-[1.5px] text-white ${track.type === "beat" ? "is-beat" : ""}`}>
                     {offerLabel(track)}
                   </span>
                 </div>
@@ -1573,8 +1573,8 @@ function CataloguePageContent() {
                 </div>
                 {track.type === "beat" ? (() => {
                   const tags = beatHashtags(track, hashtagContext).slice(0, 3);
-                  return tags.length ? <div className="mt-2 flex flex-wrap gap-1.5" aria-label={`Hashtags for ${track.title}`}>
-                    {tags.map((tag) => <button key={tag.key} type="button" aria-pressed={beatTag === tag.key} onClick={() => chooseBeatTag(tag.key)} className="bvs-beat-hashtag bvs-beat-hashtag--small">{tag.label}</button>)}
+                  return tags.length ? <div className="bvs-beat-hashtag-line mt-1.5" aria-label={`Hashtags for ${track.title}`}>
+                    {tags.map((tag) => <button key={tag.key} type="button" aria-pressed={beatTag === tag.key} onClick={() => chooseBeatTag(tag.key)} className="bvs-beat-hashtag-inline">{tag.label}</button>)}
                   </div> : null;
                 })() : null}
                 {beatsMode ? <div className="mt-4 flex flex-wrap gap-2">

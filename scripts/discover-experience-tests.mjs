@@ -114,6 +114,7 @@ const imports = {
   '@/lib/discovery-continuity':continuity,
   '@/components/app-vnext/LibraryVisuals':{LibIcon:'lib-icon',CoverMosaic:'cover-mosaic'},
   '@/components/player/PlayerIcons':{HeartIcon:'heart-icon'},
+  '@/components/BuyTrackButton':{default:'buy-track', trackIsBuyable:(t)=>Boolean(t?.isDownloadable)},
 };
 const searchCalls = [];
 imports['@/lib/use-discovery-search'] = { useDiscoverySearch(params) {
