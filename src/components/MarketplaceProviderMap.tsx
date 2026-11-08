@@ -29,6 +29,8 @@ function mapQuery(location: string) {
 /** Approx coordinates for known physical provider areas (public area pins, not door addresses). */
 function approxCoords(location: string): { lat: number; lng: number } | null {
   const value = location.toLowerCase();
+  // Borrowdale suburb: approximate public area, not the studio's street address.
+  if (value.includes("borrowdale")) return { lat: -17.7573, lng: 31.1081 };
   if (value.includes("pomona")) return { lat: -17.742, lng: 31.077 };
   if (
     value.includes("madokero") ||
@@ -99,10 +101,15 @@ export default function MarketplaceProviderMap({
     for (const provider of providers) {
       const locationLabel = physicalLocation(provider.location);
       if (!locationLabel) continue;
-      const explicitLat = Number(provider.latitude);
-      const explicitLng = Number(provider.longitude);
+      // Number(null) and Number(undefined) would resolve to zero and pin
+      // seeded stores off Africa instead of using their city-area fallback.
+      const explicitLat = provider.latitude;
+      const explicitLng = provider.longitude;
       const coords =
-        Number.isFinite(explicitLat) && Number.isFinite(explicitLng)
+        typeof explicitLat === "number" &&
+        typeof explicitLng === "number" &&
+        Number.isFinite(explicitLat) &&
+        Number.isFinite(explicitLng)
           ? { lat: explicitLat, lng: explicitLng }
           : approxCoords(locationLabel);
       if (!coords) continue;
