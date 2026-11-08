@@ -34,6 +34,7 @@ type Profile = {
   roles?: string[];
   headline?: string;
   bio?: string;
+  location?: string;
   experience?: string;
   skills?: string[];
   genres?: string[];
@@ -105,6 +106,7 @@ const emptyProfile = () => ({
   roles: ["producer"],
   headline: "",
   bio: "",
+  location: "",
   experience: "",
   skills: "",
   genres: "",
@@ -209,6 +211,7 @@ export function CreatorMarketplaceDesk({
         roles: p?.roles?.length ? p.roles : ["producer"],
         headline: p?.headline || "",
         bio: p?.bio || "",
+        location: p?.location || "",
         experience: p?.experience || "",
         skills: p?.skills?.join(", ") || "",
         genres: p?.genres?.join(", ") || "",
@@ -1444,6 +1447,18 @@ export function CreatorMarketplaceDesk({
                         setProfileDirty(true);
                       }}
                       placeholder="Tell customers what you make and what it is like working with you."
+                    />
+                  </Field>
+                  <Field label="Service area / city" wide>
+                    <input
+                      className={s.field}
+                      maxLength={180}
+                      value={profile.location}
+                      onChange={(e) => {
+                        setProfile((v) => ({ ...v, location: e.target.value }));
+                        setProfileDirty(true);
+                      }}
+                      placeholder="e.g. Borrowdale, Harare (public approximate area)"
                     />
                   </Field>
                 </div>
