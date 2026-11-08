@@ -4,7 +4,7 @@ import {
   creatorIdentity,
   creatorUrl,
 } from "@/lib/creator-server";
-import { storefrontSlug } from "@/lib/marketplace-storefronts";
+import { seededStorefronts, storefrontSlug } from "@/lib/marketplace-storefronts";
 
 export const runtime = "nodejs";
 
@@ -35,7 +35,10 @@ async function providerFor(request: Request) {
   if (market?.status !== "approved") {
     return { error: "Editorial must approve your Marketplace profile before you publish availability.", status: 403 as const };
   }
-  const providerKey = providerStorefrontSlug(profile?.creator_public_name || profile?.display_name || profile?.username || "");
+  // Approved seeded-store owners retain their stable booking identity even if
+  // they later edit their display or creator name.
+  const reservedStore = seededStorefronts.find((store) => store.ownerAccountId === identity.user.id);
+  const providerKey = reservedStore?.slug || providerStorefrontSlug(profile?.creator_public_name || profile?.display_name || profile?.username || "");
   if (!providerKey) return { error: "Set a public creator name or username before publishing availability.", status: 409 as const };
   return { identity, providerKey, profile };
 }
