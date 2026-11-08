@@ -24,7 +24,7 @@ function MarketplaceIcon() {
 }
 
 export default function AppTopBar({ surface }: { surface: AppSurface }) {
-  const { user, token, avatarUrl, profileDisplayName, profileUsername, loading, refresh, isCreator } = useAppSession();
+  const { user, token, avatarUrl, profileDisplayName, profileUsername, loading, refresh } = useAppSession();
   const pathname = usePathname();
   const search = useSearchParams().toString();
   const route = `${pathname}${search ? `?${search}` : ""}`;
@@ -144,14 +144,6 @@ export default function AppTopBar({ surface }: { surface: AppSurface }) {
           >
             <MarketplaceIcon />
           </Link>
-          {isCreator ? <Link
-            href={`/app/${surface}/explore?kind=beats${isIos ? "&mode=beats" : ""}`}
-            className="grid h-11 w-11 place-items-center rounded-full text-white/62 transition hover:bg-white/[.055] hover:text-[#c1a7ff] active:scale-95"
-            aria-label="BeatStore"
-            title="BeatStore"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="h-5 w-5" aria-hidden="true"><path d="M7 17V8m5 12V4m5 13V8" /></svg>
-          </Link> : null}
           {user ? <Link href={`/app/${surface}/notifications`} className="relative grid h-11 w-11 place-items-center rounded-full text-white/62 hover:bg-white/[.055]" aria-label={`Notifications${unread ? `, ${unread} new` : ""}`}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-5 w-5" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
             {unread ? <span className="absolute right-0 top-0 rounded-full bg-brand px-1.5 text-[10px] font-bold text-black">{unread > 99 ? "99+" : unread}</span> : null}
