@@ -372,6 +372,9 @@ export function marketplaceStorefronts(
       : item.slug === seed.slug)
     if (!claim) return seed
     claimed.add(claim.slug)
+    const ownerProfile = profiles.find((profile) => profile.user_id === claim.sellerUserId)
+    const hasStorefrontBanner = ownerProfile?.portfolio?.some((item) => item.kind === 'storefront_banner' && item.path)
+    const hasStorefrontAvatar = ownerProfile?.portfolio?.some((item) => item.kind === 'storefront_avatar' && item.path)
     return {
       ...seed,
       sellerUserId: claim.sellerUserId,
@@ -380,8 +383,10 @@ export function marketplaceStorefronts(
       bio: claim.bio || seed.bio,
       location: claim.location || seed.location,
       specialties: [...new Set([...seed.specialties, ...claim.specialties])],
-      heroImage: profiles.find(profile => profile.user_id === claim.sellerUserId)?.portfolio?.some(item => item.kind === 'storefront_banner' && item.path) ? claim.heroImage : seed.heroImage,
-      avatarImage: claim.avatarImage || seed.avatarImage,
+      heroImage: hasStorefrontBanner ? claim.heroImage || seed.heroImage : seed.heroImage || claim.heroImage,
+      // A seeded store's own crest must not be displaced by the linked account's
+      // generic/default avatar. Only an explicit storefront portrait replaces it.
+      avatarImage: hasStorefrontAvatar ? claim.avatarImage || seed.avatarImage : seed.avatarImage || claim.avatarImage,
       verified: seed.verified || claim.verified,
       services: mergeServices(seed.services, claim.services),
     }
