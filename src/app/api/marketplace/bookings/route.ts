@@ -6,6 +6,7 @@ import {
 } from "@/lib/creator-server";
 import {
   seededStorefront,
+  seededStorefronts,
   storefrontSlug,
   type StorefrontService,
 } from "@/lib/marketplace-storefronts";
@@ -32,7 +33,10 @@ async function authoritativeService(providerKey: string, serviceRef: string) {
   const row = listings?.[0] as Record<string, unknown> | undefined;
   if (!row) return null;
   const profile = row.profiles as { username?: string; display_name?: string; creator_public_name?: string } | undefined;
-  const providerSlug = storefrontSlug(profile?.creator_public_name || profile?.display_name || profile?.username || "");
+  // An approved seeded-store owner can change its display name without
+  // breaking booking requests for the owner-published replacement listings.
+  const reservedStore = seededStorefronts.find((store) => store.ownerAccountId === String(row.seller_user_id || ""));
+  const providerSlug = reservedStore?.slug || storefrontSlug(profile?.creator_public_name || profile?.display_name || profile?.username || "");
   if (!providerSlug || providerSlug !== providerKey) return null;
   const service: StorefrontService = {
     id: String(row.id),
