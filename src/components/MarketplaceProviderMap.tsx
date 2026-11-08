@@ -29,6 +29,7 @@ function mapQuery(location: string) {
 /** Approx coordinates for known physical provider areas (public area pins, not door addresses). */
 function approxCoords(location: string): { lat: number; lng: number } | null {
   const value = location.toLowerCase();
+  if (value.includes("pomona")) return { lat: -17.742, lng: 31.077 };
   if (
     value.includes("madokero") ||
     (value.includes("harare") && !value.includes("zimbabwe")) ||

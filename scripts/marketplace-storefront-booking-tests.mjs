@@ -34,6 +34,19 @@ assert.match(storefronts, /id: 'beat-lease-mp3'[\s\S]*?priceUsd: 30/, "$30 MP3 b
 assert.match(storefronts, /id: 'beat-lease-mp3-wav'[\s\S]*?priceUsd: 50/, "$50 MP3 + WAV beat lease must remain exact");
 assert.match(storefronts, /policyNotes: \['No custom beats\.', 'No beat remakes\.'\]/, "WolfBridges no-custom/remake policy must stay visible");
 
+assert.match(storefronts, /slug: 'uptown-music'/, "Up-Town Music must have one canonical storefront slug");
+assert.match(storefronts, /location: 'Pomona, Harare'/, "Up-Town Music must publish its approximate area");
+assert.match(providerMap, /includes\("pomona"\)\) return \{ lat: -17\.742, lng: 31\.077 \}[\s\S]*?includes\("madokero"\)/, "Pomona must get its own area pin before the general Harare fallback");
+assert.match(storefronts, /'up-town-music'[\s\S]*?'uptownmusicent'[\s\S]*?return 'uptown-music'/, "Up-Town Music account names must claim the existing storefront");
+assert.match(storefronts, /id: 'recording-session'[\s\S]*?priceUsd: 60/, "$60 per hour recording must match the Up-Town price list");
+assert.match(storefronts, /id: 'mix-and-master'[\s\S]*?priceUsd: 100/, "$100 mix and master must match the Up-Town price list");
+assert.match(storefronts, /id: 'beat-lease',[\s\S]*?priceUsd: 50/, "$50 beat lease must match the Up-Town price list");
+assert.match(storefronts, /id: 'exclusive-beat-production'[\s\S]*?priceUsd: 200/, "$200 exclusive beat must match the Up-Town price list");
+assert.match(storefronts, /id: 'full-production'[\s\S]*?priceUsd: 500/, "$500 full production must match the Up-Town price list");
+const uptownSeed = storefronts.slice(storefronts.indexOf("slug: 'uptown-music'"), storefronts.indexOf("slug: 'bvs-studio-services'"));
+assert.doesNotMatch(uptownSeed, /bookingMode: '(calendar|checkout)'/, "Up-Town Music must stay enquiry-only until a seller account is linked");
+assert.doesNotMatch(uptownSeed, /\+?\d{9,}|@[a-z0-9_.]+|instagram|whatsapp/i, "Up-Town Music must not publish off-platform contact details; sales communication stays on BVS");
+
 assert.match(storefronts, /export function marketplaceStorefronts\(/, "Marketplace must expose one provider-store resolver");
 assert.match(storefronts, /const claim = live\.find\(\(item\) => item\.slug === seed\.slug\)/, "A real provider must be able to claim a seeded storefront");
 assert.match(storefronts, /services: mergeServices\(seed\.services, claim\.services\)/, "Uploaded services must merge under the claimed provider store");
