@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase";
+import { seededStorefronts } from "@/lib/marketplace-storefronts";
 
 type Row = Record<string, unknown>;
 export default function MarketplaceReview() {
@@ -118,6 +119,7 @@ export default function MarketplaceReview() {
         <div className="mt-4 grid gap-4">
           {data?.profiles.map((row) => {
             const id = String(row.user_id);
+            const reservedStore = seededStorefronts.find((store) => store.ownerAccountId === id);
             const p = row.profiles as Row | undefined;
             const claims = Array.isArray(row.accomplishments)
               ? (row.accomplishments as Row[])
@@ -150,6 +152,18 @@ export default function MarketplaceReview() {
                 <p className="mt-3 text-sm text-text-secondary">
                   {String(row.headline || row.bio || "")}
                 </p>
+                {reservedStore ? (
+                  <div className="mt-3 rounded-xl border border-brand/25 bg-brand/[.04] p-4 text-sm">
+                    <p className="font-semibold text-brand">Existing BVS store · owner-claim review</p>
+                    <Link href={`/marketplace/${reservedStore.slug}`} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex text-brand underline">
+                      Review {reservedStore.name} storefront
+                    </Link>
+                    <p className="mt-2 text-text-secondary">
+                      {reservedStore.services.length} existing BVS-seeded offers · {reservedStore.location}. Verify account ownership before approving.
+                      Approval connects this account to the existing store; the creator can edit imported drafts and manage real booking availability in Studio.
+                    </p>
+                  </div>
+                ) : null}
                 <p className="mt-2 text-xs text-text-secondary">
                   Experience: {String(row.experience || "not provided")} ·
                   Equipment:{" "}
