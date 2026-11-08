@@ -78,6 +78,7 @@ assert.match(bookingApi, /marketplace_provider_slots\?provider_key=eq\./, "Publi
 assert.match(bookingApi, /status=eq\.available/, "Public calendar must expose only available slots");
 assert.match(bookingApi, /starts_at=gt\./, "Public calendar must expose only future slots");
 assert.match(bookingApi, /rpc\/request_marketplace_booking/, "Booking request must use the atomic database RPC");
+assert.match(bookingApi, /reservedStore\?\.slug \|\| storefrontSlug/, "Owner-published service bookings must keep the Uptown canonical slug even after account renames");
 assert.match(bookingPage, /has not published any open booking times yet/, "Empty calendars must not invent availability");
 assert.match(bookingPage, /Only time slots published by the provider appear here/, "Booking UI must explain real provider availability");
 
