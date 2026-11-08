@@ -84,7 +84,9 @@ export function storefrontSlug(value: string) {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 80)
-  return slug === 'wolf-bridges' || slug === 'wolfbridges' ? 'wolfbridges-studio' : slug
+  if (slug === 'wolf-bridges' || slug === 'wolfbridges') return 'wolfbridges-studio'
+  if (['up-town-music', 'uptownmusic', 'uptownmusicent', 'uptown-music-ent', 'up-town-music-ent'].includes(slug)) return 'uptown-music'
+  return slug
 }
 
 export function canonicalMarketplaceStorefrontSlug(value: string) {
@@ -140,6 +142,66 @@ export const seededStorefronts: MarketplaceStorefront[] = [
     policyNotes: ['No custom beats.', 'No beat remakes.'],
   },
   {
+    // Enquiry-only until the owner's BVS account is linked: seeded checkout has no seller to credit yet.
+    slug: 'uptown-music',
+    source: 'seed',
+    name: 'Up-Town Music',
+    kind: 'studio',
+    headline: 'Recording, mixing, mastering and beat production under one roof.',
+    bio: 'Up-Town Music is a recording studio run by Trayn Dillinger, offering hourly sessions, fixed-rate mixing and mastering, beat leases, exclusive beat production and full song production.',
+    location: 'Pomona, Harare',
+    heroImage: '/images/marketplace/uptown-music-studio.jpg',
+    avatarImage: '/images/marketplace/uptown-music-crest.jpg',
+    specialties: ['Recording', 'Mixing', 'Mastering', 'Beat production', 'Beat leases'],
+    verified: false,
+    services: [
+      {
+        id: 'recording-session',
+        title: 'Recording Session',
+        category: 'Recording',
+        description: 'Studio recording session, charged by the hour.',
+        priceUsd: 60,
+        priceLabel: '$60 / hour',
+        bookingMode: 'enquiry',
+      },
+      {
+        id: 'mix-and-master',
+        title: 'Mixing & Mastering',
+        category: 'Mixing & mastering',
+        description: 'Mixing and mastering for song vocals or instruments/beats, at a fixed rate.',
+        priceUsd: 100,
+        priceLabel: '$100 fixed',
+        bookingMode: 'enquiry',
+      },
+      {
+        id: 'beat-lease',
+        title: 'Beat Lease',
+        category: 'Beat package',
+        description: 'Lease a beat from Up-Town Music.',
+        priceUsd: 50,
+        bookingMode: 'enquiry',
+      },
+      {
+        id: 'exclusive-beat-production',
+        title: 'Beat Production with Exclusive Lease',
+        category: 'Beat package',
+        description: 'Includes the beat production and exclusive rights to the beat.',
+        priceUsd: 200,
+        bookingMode: 'enquiry',
+      },
+      {
+        id: 'full-production',
+        title: 'Full Production',
+        category: 'Production package',
+        description: 'Includes beat production, recording, mixing and mastering, at a fixed rate.',
+        priceUsd: 500,
+        priceLabel: '$500 fixed',
+        bookingMode: 'enquiry',
+      },
+    ],
+    policyNotes: ['Bookings for this studio open on BVS soon. All messages and payments stay on BVS.'],
+  },
+  {
     slug: 'bvs-studio-services',
     source: 'seed',
     name: 'BVS Studio Services',
@@ -179,7 +241,7 @@ export function resolveSeededMarketplaceService(ref: string): SeededMarketplaceS
   const [providerSlug, serviceId, packageIndexRaw] = String(ref || '').split(':')
   const provider = seededStorefronts.find((item) => item.slug === providerSlug)
   const service = provider?.services.find((item) => item.id === serviceId)
-  if (!provider || !service) return null
+  if (!provider || !service || service.bookingMode === 'enquiry') return null
 
   let packageName: string | undefined
   let priceUsd = service.priceUsd
