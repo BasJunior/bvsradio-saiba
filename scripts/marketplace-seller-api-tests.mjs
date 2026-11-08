@@ -4,9 +4,10 @@ import ts from 'typescript';
 const uid='11111111-1111-4111-8111-111111111111';
 const id='22222222-2222-4222-8222-222222222222';
 let existing=null, profile={user_id:uid,status:'approved'}, fail=false, writes=[];
-globalThis.__marketplaceTest={NextResponse:{json:(data, options)=>Response.json(data,options)},creatorHeaders:{},creatorUrl:path=>'https://test.invalid/'+path,creatorIdentity:async()=>({user:{id:uid},profile:{username:'seller'}}),r2ObjectExists:async()=>true,signedR2DownloadUrl:async key=>'https://signed.invalid/'+key,creatorMarketplaceEntitlements:async()=>({planId:'free',serviceListingLimit:1,productListingLimit:1,servicePackageLimit:3,addonsEnabled:true})};
+const contactFilter=await import('data:text/javascript;base64,'+Buffer.from(ts.transpileModule(fs.readFileSync('src/lib/marketplace-contact-filter.ts','utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText).toString('base64'));
+globalThis.__marketplaceTest={offPlatformContactIssue:contactFilter.offPlatformContactIssue,NextResponse:{json:(data, options)=>Response.json(data,options)},creatorHeaders:{},creatorUrl:path=>'https://test.invalid/'+path,creatorIdentity:async()=>({user:{id:uid},profile:{username:'seller'}}),r2ObjectExists:async()=>true,signedR2DownloadUrl:async key=>'https://signed.invalid/'+key,creatorMarketplaceEntitlements:async()=>({planId:'free',serviceListingLimit:1,productListingLimit:1,servicePackageLimit:3,addonsEnabled:true})};
 let source=fs.readFileSync('src/app/api/marketplace/route.ts','utf8').replace(/import[\s\S]*?from\s+"[^"]+";/g,'');
-source='const {NextResponse,creatorHeaders,creatorUrl,creatorIdentity,r2ObjectExists,signedR2DownloadUrl,creatorMarketplaceEntitlements}=globalThis.__marketplaceTest;\n'+source;
+source='const {offPlatformContactIssue,NextResponse,creatorHeaders,creatorUrl,creatorIdentity,r2ObjectExists,signedR2DownloadUrl,creatorMarketplaceEntitlements}=globalThis.__marketplaceTest;\n'+source;
 const code=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText;
 const {POST,GET}=await import('data:text/javascript;base64,'+Buffer.from(code).toString('base64'));
 globalThis.fetch=async(url,options={})=>{
@@ -18,6 +19,8 @@ globalThis.fetch=async(url,options={})=>{
 };
 const post=body=>POST(new Request('https://test.invalid/api/marketplace',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}));
 const base={action:'save_listing',listingType:'digital_product',category:'sample_pack',title:'Sounds',priceUsd:12,rightsConfirmed:true};
+assert.equal((await post({...base,description:'Call +263 00 000 0000'})).status,400,'listings cannot publish contact details');
+assert.equal(writes.length,0,'refused listings are not saved');
 existing={id,seller_user_id:uid,listing_type:'digital_product',slug:'stable-slug',asset_path:`marketplace/${uid}/product.zip`,artwork_path:null,status:'published'};
 let response=await post({...base,id,submit:true});assert.equal(response.status,200);assert.equal(writes.at(-1).method,'PATCH');assert.equal(writes.at(-1).payload.slug,'stable-slug');assert.equal(writes.at(-1).payload.asset_path,existing.asset_path);assert.equal(writes.at(-1).payload.status,'submitted');assert.match(writes.at(-1).url,new RegExp(`seller_user_id=eq.${uid}`));
 existing={id,seller_user_id:uid,listing_type:'digital_product',slug:'legacy-stable-slug',asset_path:'marketplace/legacy-owner/product.zip',artwork_path:'marketplace/legacy-owner/artwork.png',status:'published'};
