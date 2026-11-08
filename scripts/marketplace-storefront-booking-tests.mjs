@@ -35,8 +35,9 @@ assert.match(storefronts, /id: 'beat-lease-mp3-wav'[\s\S]*?priceUsd: 50/, "$50 M
 assert.match(storefronts, /policyNotes: \['No custom beats\.', 'No beat remakes\.'\]/, "WolfBridges no-custom/remake policy must stay visible");
 
 assert.match(storefronts, /slug: 'uptown-music'/, "Up-Town Music must have one canonical storefront slug");
-assert.match(storefronts, /location: 'Pomona, Harare'/, "Up-Town Music must publish its approximate area");
-assert.match(providerMap, /includes\("pomona"\)\) return \{ lat: -17\.742, lng: 31\.077 \}[\s\S]*?includes\("madokero"\)/, "Pomona must get its own area pin before the general Harare fallback");
+assert.match(storefronts, /location: 'Borrowdale, Harare'/, "Up-Town Music must publish Borrowdale, Harare");
+assert.match(providerMap, /includes\("borrowdale"\)\) return \{ lat: -17\.7573, lng: 31\.1081 \}/, "Borrowdale must have its own approximate area pin");
+assert.match(providerMap, /typeof explicitLat === "number"[\s\S]*?typeof explicitLng === "number"/, "Missing or null coordinates must use area coordinates rather than zero");
 assert.match(storefronts, /'up-town-music'[\s\S]*?'uptownmusicent'[\s\S]*?return 'uptown-music'/, "Up-Town Music account names must claim the existing storefront");
 assert.match(storefronts, /id: 'recording-session'[\s\S]*?priceUsd: 60/, "$60 per hour recording must match the Up-Town price list");
 assert.match(storefronts, /id: 'mix-and-master'[\s\S]*?priceUsd: 100/, "$100 mix and master must match the Up-Town price list");
@@ -44,7 +45,10 @@ assert.match(storefronts, /id: 'beat-lease',[\s\S]*?priceUsd: 50/, "$50 beat lea
 assert.match(storefronts, /id: 'exclusive-beat-production'[\s\S]*?priceUsd: 200/, "$200 exclusive beat must match the Up-Town price list");
 assert.match(storefronts, /id: 'full-production'[\s\S]*?priceUsd: 500/, "$500 full production must match the Up-Town price list");
 const uptownSeed = storefronts.slice(storefronts.indexOf("slug: 'uptown-music'"), storefronts.indexOf("slug: 'bvs-studio-services'"));
-assert.doesNotMatch(uptownSeed, /bookingMode: '(calendar|checkout)'/, "Up-Town Music must stay enquiry-only until a seller account is linked");
+assert.equal((uptownSeed.match(/bookingMode: 'calendar'/g) || []).length, 5, "All five Up-Town Music offers must expose provider-published availability and booking");
+assert.doesNotMatch(uptownSeed, /bookingMode: '(enquiry|checkout)'/, "Unlinked Up-Town offers must use calendar requests, not checkout or Compare providers");
+assert.match(store, /See availability &amp; book/, "The storefront must show the booking CTA");
+assert.match(bookingPage, /has not published any open booking times yet/, "Up-Town bookings must never invent times when there are no published slots");
 assert.match(storefronts, /if \(!provider \|\| !service \|\| service\.bookingMode === 'enquiry'\) return null/, "Enquiry-only services must not resolve to a payable checkout item");
 assert.doesNotMatch(uptownSeed, /\+?\d{9,}|@[a-z0-9_.]+|instagram|whatsapp/i, "Up-Town Music must not publish off-platform contact details; sales communication stays on BVS");
 
