@@ -43,6 +43,7 @@ type MarketplaceProfileRow = {
   headline?: string
   bio?: string
   skills?: string[]
+  accomplishments?: Array<{ verification?: string }>
   portfolio?: Array<{ kind?: string; path?: string; title?: string; url?: string }>
   profiles?: {
     username?: string
@@ -321,7 +322,8 @@ export function liveStorefronts(
       heroImage: mediaUrlForStoredValue(profile.portfolio?.find(item => item.kind === 'storefront_banner')?.path) || profile.profiles?.avatar_url,
       avatarImage: mediaUrlForStoredValue(profile.portfolio?.find(item => item.kind === 'storefront_avatar')?.path) || profile.profiles?.avatar_url,
       specialties: [...new Set([...(profile.skills || []), ...roles])].slice(0, 10),
-      verified: true,
+      // The badge means BVS staff checked something, not just that a profile was approved.
+      verified: Array.isArray(profile.accomplishments) && profile.accomplishments.some((claim) => claim?.verification === 'verified'),
       username: username || undefined,
       services,
     }

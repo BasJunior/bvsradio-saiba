@@ -52,6 +52,7 @@ export default function TrendingBoard({ surface, preview = false, discover = fal
         </div>
       </li>
     })}</ol>}
+    {!preview && window === 'now' && entries.length > 0 && entries.length < 3 ? <p className="mt-4 text-sm text-text-secondary">Only a few songs are climbing fast right now. <button type="button" onClick={() => setWindow('week')} className="min-h-11 text-brand underline">See this week’s chart</button></p> : null}
     {!preview ? <details className="mt-6 border-t border-white/10 pt-4 text-sm text-text-secondary"><summary className="min-h-11 cursor-pointer">How BVS Trending works</summary><p className="max-w-2xl leading-6">Unique qualified listeners, listening completion, saves, shares, return listeners and recent growth shape the chart. Repeat actions are capped and unusual bursts are limited. Only published, BVS-approved songs qualify. Premium never buys a position. Radio rotation remains an editorial decision.</p></details> : null}
   </section>
 }
