@@ -1274,6 +1274,12 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
       setPlaying(true);
       return;
     }
+    // A guest preview stopped at its limit plays again from the start.
+    if (nowRef.current?.source === "preview" && el.currentTime >= GUEST_BEAT_PREVIEW_SECONDS) {
+      el.currentTime = 0;
+      setElapsed(0);
+      setNotice(null);
+    }
     const request = ++playRequest.current;
     try {
       editorialHoldRef.current = false;
