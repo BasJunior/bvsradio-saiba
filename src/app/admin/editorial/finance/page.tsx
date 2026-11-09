@@ -1,5 +1,6 @@
 'use client'
 
+import { FINANCE_QUARTER_TARGETS } from '@/lib/finance-pulse'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
@@ -122,12 +123,7 @@ type FinanceData = {
   }
 }
 
-const targets = [
-  { quarter: 'Q3 2026', artists: null, gmv: null, newsletter: null, outcome: 'Reconcile 100% of verified sales and establish the contribution baseline.' },
-  { quarter: 'Q4 2026', artists: 25, gmv: 1000, newsletter: 150, outcome: 'Three positive marketplace-contribution months.' },
-  { quarter: 'Q1 2027', artists: 60, gmv: 2500, newsletter: 350, outcome: 'Recurring contribution covers 60% of fixed OPEX.' },
-  { quarter: 'Q2 2027', artists: 100, gmv: 5000, newsletter: 600, outcome: 'Two positive free-cash-flow months.' },
-]
+const targets = FINANCE_QUARTER_TARGETS
 
 const emptyExample: Example = {
   id: 'unavailable',
@@ -286,13 +282,13 @@ export default function EditorialFinancePage() {
   const quarterTarget = data ? targets.find((item) => item.quarter === data.period.quarter) : null
 
   return <main className="mx-auto max-w-7xl px-6 py-12">
-    <div className="flex flex-wrap items-end justify-between gap-5"><div><Link href="/editorial" className="text-sm text-brand hover:underline">← Editorial workflow</Link><p className="mt-5 text-xs uppercase tracking-[.22em] text-brand">Accounting & performance</p><h1 className="mt-2 text-4xl font-semibold">Editorial Finance</h1><p className="mt-3 max-w-3xl text-text-secondary">GMV, BVS revenue, tax liabilities, creator liabilities and processor costs stay separate. Incomplete data is never labelled profit.</p></div><button onClick={() => void load()} className="rounded-full border border-white/20 px-5 py-2 text-sm">Refresh live statistics</button></div>
+    <div className="flex flex-wrap items-end justify-between gap-5"><div><Link href="/editorial" className="text-sm text-brand hover:underline">← Editorial workflow</Link><p className="mt-5 text-xs uppercase tracking-[.22em] text-brand">Accounting & performance</p><h1 className="mt-2 text-4xl font-semibold">Editorial Finance</h1><p className="mt-3 max-w-3xl text-text-secondary">GMV, BVS revenue, tax liabilities, creator liabilities and processor costs stay separate. Incomplete data is never labelled profit.</p><Link href="/editorial/finance/pulse" className="mt-4 inline-flex min-h-11 items-center rounded-full bg-brand px-5 text-sm font-semibold text-black">Open Business Pulse: what’s growing and what needs attention →</Link></div><button onClick={() => void load()} className="rounded-full border border-white/20 px-5 py-2 text-sm">Refresh live statistics</button></div>
 
     {loading && !data ? <div className="mt-8 animate-pulse rounded-2xl border border-white/10 p-10 text-text-secondary">Loading protected finance statistics…</div> : null}
     {error ? <div className="mt-8 rounded-2xl border border-red-400/30 bg-red-500/10 p-5 text-red-200">{error}</div> : null}
 
     {data ? <>
-      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Paid artist subscribers" value={data.current.paidArtists ?? 'Not connected'} note={`${data.current.activeArtistMemberships ?? 0} active/trial artist memberships`} /><Metric label="Marketplace GMV this month" value={usd(data.current.monthMarketplaceGmv)} note={`${data.current.monthMarketplaceOrders} paid marketplace orders`} /><Metric label="Subscription MRR" value={usd(data.current.subscriptionMrr)} note="Monthly equivalent of provider-backed artist subscriptions" /><Metric label="Newsletter subscribers" value={data.current.newsletterSubscribers ?? 'Not connected'} note={data.availability.newsletter ? 'Active opt-ins' : 'Newsletter source not available'} warning={!data.availability.newsletter} /></section>
+      <section className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Paid artist subscribers" value={data.current.paidArtists ?? 'Not connected'} note={`${data.current.activeArtistMemberships ?? 0} active/trial artist memberships`} /><Metric label="Marketplace GMV this month" value={usd(data.current.monthMarketplaceGmv)} note={`${data.current.monthMarketplaceOrders} paid marketplace orders`} /><Metric label="Subscription MRR" value={usd(data.current.subscriptionMrr)} note="Monthly equivalent of real Stripe and Paynow artist subscriptions" /><Metric label="Newsletter subscribers" value={data.current.newsletterSubscribers ?? 'Not connected'} note={data.availability.newsletter ? 'Active opt-ins' : 'Newsletter source not available'} warning={!data.availability.newsletter} /></section>
 
       {data.streamFinance ? <section className="mt-10 rounded-3xl border border-white/10 bg-white/[.03] p-6">
         <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs uppercase tracking-[.18em] text-brand">BVS Radio streams</p><h2 className="mt-2 text-3xl font-semibold">Monthly stream measurement & liability</h2><p className="mt-3 max-w-4xl text-sm text-text-secondary">≥{data.streamFinance.qualifiedStreamSeconds}s truthful listens are measured now. Wallet royalties settle {data.streamFinance.settlementCadence} only from a funded listen-ad pot, capped at ${data.streamFinance.maximumUsdPerEligiblePlay.toFixed(5)} / eligible play. Theoretical liability is a ceiling, not booked debt.</p></div><span className={`rounded-full border px-3 py-1 text-xs ${data.streamFinance.measurementLive ? 'border-emerald-400/40 text-emerald-200' : 'border-amber-400/40 text-amber-100'}`}>{data.streamFinance.measurementLive ? '30s measurement live' : 'Measurement pending flag/schema'}</span></div>
