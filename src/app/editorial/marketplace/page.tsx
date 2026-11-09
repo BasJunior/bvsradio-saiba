@@ -5,6 +5,30 @@ import { createClient } from "@/lib/supabase";
 import { seededStorefronts } from "@/lib/marketplace-storefronts";
 
 type Row = Record<string, unknown>;
+type ReviewFilter = "submitted" | "changes_requested" | "draft" | "live" | "all";
+
+const REVIEW_FILTERS: Array<[ReviewFilter, string]> = [
+  ["submitted", "Waiting for review"],
+  ["changes_requested", "Changes requested"],
+  ["draft", "Drafts"],
+  ["live", "Live"],
+  ["all", "All"],
+];
+
+function reviewQueue(rows: Row[] | undefined, review: ReviewFilter, search: string) {
+  const needle = search.trim().toLowerCase();
+  const matches = (rows || []).filter((row) => {
+    const status = String(row.status);
+    const inView = review === "all" || (review === "live" ? ["approved", "published"].includes(status) : status === review);
+    if (!inView) return false;
+    if (!needle) return true;
+    const owner = (row.profiles || {}) as Row;
+    return [row.title, row.headline, row.category, owner.username, owner.display_name, owner.creator_public_name].join(" ").toLowerCase().includes(needle);
+  });
+  // The longest-waiting submission comes first so nothing is left at the bottom.
+  const direction = review === "submitted" ? 1 : -1;
+  return [...matches].sort((a, b) => direction * String(a.updated_at || "").localeCompare(String(b.updated_at || "")));
+}
 export default function MarketplaceReview() {
   const [data, setData] = useState<{
       canReview: boolean;
@@ -14,7 +38,9 @@ export default function MarketplaceReview() {
       messages: Row[];
     } | null>(null),
     [error, setError] = useState(""),
-    [notes, setNotes] = useState<Record<string, string>>({});
+    [notes, setNotes] = useState<Record<string, string>>({}),
+    [review, setReview] = useState<ReviewFilter>("submitted"),
+    [search, setSearch] = useState("");
   const token = async () => {
     const { data } = await createClient().auth.getSession();
     return data.session?.access_token || "";
@@ -96,6 +122,8 @@ export default function MarketplaceReview() {
       </div>
     );
   };
+  const profileQueue = reviewQueue(data?.profiles, review, search);
+  const listingQueue = reviewQueue(data?.listings, review, search);
   return (
     <main className="mx-auto max-w-6xl px-6 py-12">
       <Link href="/editorial" className="text-brand">
@@ -114,10 +142,17 @@ export default function MarketplaceReview() {
           {error}
         </p>
       ) : null}
+      <div className="mt-8 flex flex-wrap items-center gap-2">
+        {REVIEW_FILTERS.map(([value, label]) => (
+          <button key={value} type="button" aria-pressed={review === value} onClick={() => setReview(value)} className={`min-h-11 rounded-full border px-4 text-sm ${review === value ? "border-brand bg-brand/10 text-brand" : "border-white/10 text-text-secondary"}`}>{label}</button>
+        ))}
+        <input type="search" aria-label="Search profiles and listings" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search name, title or category" className="min-h-11 flex-1 rounded-xl border border-white/15 bg-black/30 px-3 text-sm sm:min-w-64 sm:flex-none" />
+      </div>
       <section className="mt-10">
-        <h2 className="text-2xl">Creator profiles</h2>
+        <h2 className="text-2xl">Creator profiles <span className="text-base text-text-secondary">({profileQueue.length})</span></h2>
         <div className="mt-4 grid gap-4">
-          {data?.profiles.map((row) => {
+          {data && !profileQueue.length ? <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">No profiles in this view.</p> : null}
+          {profileQueue.map((row) => {
             const id = String(row.user_id);
             const reservedStore = seededStorefronts.find((store) => store.ownerAccountId === id);
             const p = row.profiles as Row | undefined;
@@ -192,7 +227,7 @@ export default function MarketplaceReview() {
                           Evidence: {String(claim.evidenceUrl)}
                         </p>
                       )}
-                      {data.canReview && (
+                      {data?.canReview && (
                         <button
                           onClick={() =>
                             void act(
@@ -222,7 +257,7 @@ export default function MarketplaceReview() {
                   maxLength={2000}
                   className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
                 />
-                {data.canReview ? (
+                {data?.canReview ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       disabled={!notes[id]?.trim()}
@@ -307,9 +342,10 @@ export default function MarketplaceReview() {
         </div>
       </section>
       <section className="mt-12">
-        <h2 className="text-2xl">Listings</h2>
+        <h2 className="text-2xl">Listings <span className="text-base text-text-secondary">({listingQueue.length})</span></h2>
         <div className="mt-4 grid gap-4">
-          {data?.listings.map((row) => {
+          {data && !listingQueue.length ? <p className="rounded-xl border border-dashed border-white/10 p-5 text-sm text-text-secondary">No listings in this view.</p> : null}
+          {listingQueue.map((row) => {
             const id = String(row.id);
             return (
               <article
@@ -358,7 +394,7 @@ export default function MarketplaceReview() {
                   maxLength={2000}
                   className="mt-3 min-h-24 w-full rounded-xl border border-white/10 bg-black/20 p-3 text-sm"
                 />
-                {data.canReview ? (
+                {data?.canReview ? (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       disabled={!notes[id]?.trim()}

@@ -381,3 +381,8 @@ p, .text-base {
 .bvs-search-result-art { position: relative; display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; overflow: hidden; background: #c1a7ff15; color: #c1a7ff; font-size: 1.1rem; }
 .bvs-search-result-art.is-person { border-radius: 50%; }
 .bvs-search-result-art img { width: 100%; height: 100%; object-fit: cover; }
+
+/* iOS zooms the page when a focused field is under 16px. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), select, textarea { font-size: 16px; }
+}

@@ -109,7 +109,7 @@ export default function HomeTopFive({ surface }: { surface?: MobileSurface } = {
           <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">BVS Discover</p>
           <h2 id="home-top-five-title" className="mt-1 text-lg font-semibold">{ranked || !settled ? "Top 5 this week" : "Discover your next favourite"}</h2>
         </div>
-      <Link href={ranked ? (surface ? `/app/${surface}/trending` : "/trending") : (surface ? `/app/${surface}/explore` : "/search")} className="text-xs font-semibold text-brand hover:underline">{ranked ? "Full chart →" : "Explore →"}</Link>
+      <Link href={ranked ? (surface ? `/app/${surface}/trending` : "/trending") : (surface ? `/app/${surface}/explore` : "/search")} className="inline-flex min-h-11 items-center text-xs font-semibold text-brand hover:underline">{ranked ? "Full chart →" : "Explore →"}</Link>
       </div>
 
       {slide ? (
@@ -173,7 +173,7 @@ export default function HomeTopFive({ surface }: { surface?: MobileSurface } = {
                 aria-label={`Show ${index + 1} of ${slides.length}, ${item.title}`}
                 aria-current={index === activeIndex ? "true" : undefined}
                 onClick={() => { setActiveIndex(index); setPaused(true); }}
-                className="grid h-11 w-8 place-items-center rounded-full"
+                className="grid h-11 w-11 place-items-center rounded-full"
               ><span aria-hidden="true" className={`h-1.5 rounded-full transition-all ${index === activeIndex ? "w-6 bg-brand" : "w-1.5 bg-white/30"}`} /></button>
             ))}
             {slides.length > 1 ? <button type="button" onClick={() => setPaused(value => !value)} aria-label={paused ? "Resume chart rotation" : "Pause chart rotation"} aria-pressed={paused} className="ml-auto min-h-11 px-2 text-xs text-white/65">{paused ? "Resume" : "Pause"}</button> : null}

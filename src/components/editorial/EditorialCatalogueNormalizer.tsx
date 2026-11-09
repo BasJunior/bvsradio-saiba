@@ -378,7 +378,10 @@ function ReleaseCard({
   )
 }
 
+const CATALOGUE_PAGE_SIZE = 40
+
 export default function EditorialCatalogueNormalizer() {
+  const [visibleCount, setVisibleCount] = useState(CATALOGUE_PAGE_SIZE)
   const [payload, setPayload] = useState<Payload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -525,7 +528,7 @@ export default function EditorialCatalogueNormalizer() {
             <button
               key={value}
               type="button"
-              onClick={() => setFilter(value)}
+              onClick={() => { setFilter(value); setVisibleCount(CATALOGUE_PAGE_SIZE) }}
               className={`rounded-full px-4 py-2 text-sm transition ${filter === value ? 'bg-brand font-semibold text-black' : 'border border-white/10 text-text-secondary hover:border-white/20 hover:text-text-primary'}`}
             >
               {label}
@@ -534,7 +537,8 @@ export default function EditorialCatalogueNormalizer() {
           <input
             type="search"
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => { setQuery(event.target.value); setVisibleCount(CATALOGUE_PAGE_SIZE) }}
+            aria-label="Search catalogue"
             placeholder="Search artist, title, genre…"
             className="min-h-10 min-w-[15rem] flex-1 rounded-full border border-white/10 bg-black/20 px-4 text-sm outline-none focus:border-brand"
           />
@@ -558,7 +562,7 @@ export default function EditorialCatalogueNormalizer() {
 
       {payload ? (
         <section className={`mt-8 ${view === 'grid' ? 'grid gap-5 xl:grid-cols-2' : 'space-y-5'}`}>
-          {items.map((item) => item.track ? (
+          {items.slice(0, visibleCount).map((item) => item.track ? (
             <SingleCard key={item.key} track={item.track} profiles={profiles} onSave={save} busy={busy} />
           ) : item.release ? (
             <ReleaseCard
@@ -572,6 +576,15 @@ export default function EditorialCatalogueNormalizer() {
             />
           ) : null)}
         </section>
+      ) : null}
+
+      {payload && items.length > 0 ? (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <p role="status" className="text-sm text-text-secondary">Showing {Math.min(visibleCount, items.length)} of {items.length}</p>
+          {visibleCount < items.length ? (
+            <button type="button" onClick={() => setVisibleCount((count) => count + CATALOGUE_PAGE_SIZE)} className="min-h-11 rounded-full border border-white/20 px-5 text-sm">Show {Math.min(CATALOGUE_PAGE_SIZE, items.length - visibleCount)} more</button>
+          ) : null}
+        </div>
       ) : null}
     </main>
   )

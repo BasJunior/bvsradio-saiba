@@ -177,7 +177,7 @@ function ResolvedBvsObjectCard({
             </>
           ) : (
             <>
-              <Link href={object.route} onClick={openObject} className={`relative ${artworkClass} shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}>{image}</Link>
+              <Link href={object.route} onClick={openObject} aria-label={`Open ${object.title}`} className={`relative ${artworkClass} shrink-0 overflow-hidden rounded-xl bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand`}>{image}</Link>
               <Link href={object.route} onClick={openObject} className="min-w-0 flex-1 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">{feedContent}</Link>
             </>
           )}
