@@ -112,7 +112,7 @@ assert(workerOwner.includes("PARTICIPATION_WORKER_PROJECT_ID") && workerOwner.in
 assert(workerOwner.includes('VERCEL_ENV === "production"'), "participation worker must run only in production");
 assert(cron.includes("isParticipationWorkerOwner") && cron.includes('skipped: "non_worker_project"'), "isolated app host cron must safely no-op before touching participation queues");
 assert(!cron.includes("APP_HOST_PREFIX"), "queue ownership must not fall back to a request Host header");
-assert(vercel.includes('"/api/cron/participation"') && vercel.includes('"*/5 * * * *"'), "Vercel must schedule the durable participation worker every five minutes");
+assert(vercel.includes('"/api/cron/participation"') && vercel.includes('"*/15 * * * *"'), "Vercel must schedule the durable participation worker every five minutes");
 assert(vercel.includes('"ignoreCommand"') && vercel.includes('VERCEL_GIT_COMMIT_REF') && vercel.includes('then exit 1') && vercel.includes('else exit 0'), "Vercel must always build main while ignoring non-main Git deploys so both production hosts stay on the same release SHA");
 
 console.log("BVS participation first-release architecture, safety, delivery and UI assertions passed.");

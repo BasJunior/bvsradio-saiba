@@ -4,7 +4,7 @@
   "crons": [
     {
       "path": "/api/cron/participation",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/creator-upload-cleanup",
@@ -16,7 +16,7 @@
     },
     {
       "path": "/api/cron/payout-messages",
-      "schedule": "*/5 * * * *"
+      "schedule": "*/30 * * * *"
     }
   ]
 }
