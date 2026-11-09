@@ -1,5 +1,6 @@
 'use client'
 
+import PremiumDistributionNotice from '@/components/PremiumDistributionNotice'
 import Link from 'next/link'
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -180,10 +181,11 @@ function ArtistPremiumInner() {
             <li>Existing Founding and Standard subscriptions keep their current terms</li>
             <li>No paid editorial influence, chart position or guaranteed streams</li>
           </ul>
+          <div className="mt-5"><PremiumDistributionNotice /></div>
           {!data?.premiumActive && (
             <div className="mt-6 flex flex-wrap gap-2">
               <button disabled={busy || !token || data?.stripeEnabled === false} onClick={() => void subscribe('stripe')} className="min-h-11 rounded-full bg-brand px-5 py-2 font-semibold text-black disabled:opacity-40">{busy ? 'Starting…' : `Subscribe — US$${annualPrice}/year`}</button>
-              <button disabled={busy || !token || data?.paynowEnabled === false} onClick={() => void subscribe('paynow')} className="min-h-11 rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">Pay one year with Paynow</button>
+              {data?.paynowEnabled ? <button disabled={busy || !token} onClick={() => void subscribe('paynow')} className="min-h-11 rounded-full border border-white/20 px-5 py-2 text-sm disabled:opacity-40">Pay one year with Paynow</button> : null}
             </div>
           )}
           {data?.premiumActive && <p className="mt-5 rounded-xl border border-white/10 p-4 text-sm text-text-secondary">Your current membership already provides ongoing distribution eligibility; you do not need a new checkout.</p>}

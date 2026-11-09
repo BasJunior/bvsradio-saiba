@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBrowserSession } from '@/lib/use-browser-session'
 import { parseReleaseFormDraft, releaseFormDraftKey } from '@/lib/release-form-draft'
+import SocietyDeclarationFields, { EMPTY_SOCIETY_DECLARATION, societyDeclarationError } from '@/components/SocietyDeclarationFields'
+import { RELEASE_GRANT_TEXT } from '@/lib/rights-declarations'
 import { createClient, isSupabaseConfigured } from '@/lib/supabase'
 import { isAllowedAudioFile } from '@/lib/audio-formats'
 import { trackEvent } from '@/lib/analytics'
@@ -164,6 +166,7 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
   const [cover, setCover] = useState<File | null>(null)
   const [rights, setRights] = useState(false)
   const [explicit, setExplicit] = useState(false)
+  const [societyDeclaration, setSocietyDeclaration] = useState(EMPTY_SOCIETY_DECLARATION)
   const [explicitDeclared, setExplicitDeclared] = useState(false)
   const [copyrightYear, setCopyrightYear] = useState(String(new Date().getFullYear()))
   const [masterOwner, setMasterOwner] = useState('')
@@ -468,6 +471,17 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
       setError('Declare the material type and upload clearance evidence for every cover, remix, sample, leased beat or third-party element not already licensed through BVS.')
       return
     }
+    const societyError = societyDeclarationError(societyDeclaration, { requireGrant: false })
+    if (societyError) {
+      setStep(1)
+      setError(societyError)
+      return
+    }
+    if (!societyDeclaration.grantAccepted) {
+      setStep(LAST_RELEASE_STEP)
+      setError('Confirm how BVS can use this release before submitting.')
+      return
+    }
     if (!isSupabaseConfigured()) {
       setError('Account service not configured.')
       return
@@ -498,6 +512,9 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
         description: description.trim(),
         releaseType,
         rightsConfirmed: true,
+        societyStatus: societyDeclaration.status,
+        societyName: societyDeclaration.name.trim(),
+        grantAccepted: societyDeclaration.grantAccepted,
         explicit,
         explicitDeclared: true,
         copyrightYear: Number(copyrightYear),
@@ -992,6 +1009,7 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
         })}
       </section>
 
+      <SocietyDeclarationFields value={societyDeclaration} onChange={setSocietyDeclaration} showGrant={false} />
       </div>
 
       <div hidden={step !== 2} className="space-y-5">
@@ -1073,6 +1091,14 @@ function ReleaseEditor({ owner, onSuccess, songWorkspaceId }: { owner: string; o
           <span>I confirm this attestation is accurate to the best of my knowledge.</span>
         </label>
       </section>
+
+      <label className="flex gap-3 rounded-xl border border-white/10 p-4 text-sm">
+        <input type="checkbox" aria-required="true" checked={societyDeclaration.grantAccepted} onChange={(e) => setSocietyDeclaration({ ...societyDeclaration, grantAccepted: e.target.checked })} className="mt-1 accent-brand" />
+        <span>
+          <strong className="block">How BVS uses this release *</strong>
+          <span className="text-text-secondary">{RELEASE_GRANT_TEXT}</span>
+        </span>
+      </label>
 
       <label className="flex gap-3 rounded-xl border border-white/10 p-4 text-sm">
         <input type="checkbox" checked={rights} onChange={(e) => setRights(e.target.checked)} className="mt-1 accent-brand" />

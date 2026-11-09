@@ -1,5 +1,6 @@
 "use client";
 
+import PremiumDistributionNotice from "@/components/PremiumDistributionNotice";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -151,14 +152,17 @@ export default function PremiumInstantClient() {
           >
             {busy ? "Starting checkout…" : "Distribute this release — US$5.99"}
           </button>
+          {data.paynowEnabled ? (
           <button
             type="button"
-            disabled={busy || !releaseId || !selected?.canPurchase || !data.paynowEnabled}
+            disabled={busy || !releaseId || !selected?.canPurchase}
             onClick={() => void checkout("paynow")}
             className="min-h-11 rounded-full border border-white/20 px-6 py-3 text-sm disabled:opacity-40"
           >
             Pay with Paynow
           </button>
+          ) : null}
+          <div className="basis-full"><PremiumDistributionNotice /></div>
         </div>
       ) : (
         <p className="rounded-xl border border-white/10 p-4 text-sm text-text-secondary">

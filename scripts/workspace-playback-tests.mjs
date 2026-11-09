@@ -18,6 +18,7 @@ let effects = [], destinations = [], events = []
 const react = { useState: value => [typeof value === 'function' ? value() : value, () => {}], useEffect: fn => effects.push(fn), useMemo: fn => fn() }
 const creatorReleaseProgress = load('src/lib/creator-release-progress.ts', {})
 const studio = load('src/app/creator/studio/page.tsx', {
+  '@/components/StudioRightsPrompt': { default: () => null },
   react, 'next/link': { default: 'link' }, 'next/image': { default: 'image' }, 'next/navigation': { useRouter: () => ({ replace: href => destinations.push(href) }) },
   '@/lib/use-browser-session': { useBrowserSession: () => ({ session: null, loading: false }) },
   '@/lib/use-account-json': { useAccountJson: () => ({ data: null, error: '', reload() {} }) },

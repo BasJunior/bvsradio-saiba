@@ -139,7 +139,7 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
 
         <section aria-labelledby="ios-home-community-title" className="border-t border-white/15 bg-[#141414] px-4 py-10 sm:px-6 sm:py-14">
           <div className="mx-auto max-w-6xl">
-            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Best Virtual Sound · Rooted in Zimbabwe</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[.2em] text-brand">Best Virtual Sound · Independent music</p>
             <h2 id="ios-home-community-title" className="mt-3 max-w-3xl text-balance text-3xl font-bold leading-tight tracking-tight sm:text-4xl">Independent sound. A place to belong.</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/65 sm:text-base">BVS Radio brings music, people and ideas together. Listen to the station, discover independent artists, and meet the producers and creators behind your next favourite.</p>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">

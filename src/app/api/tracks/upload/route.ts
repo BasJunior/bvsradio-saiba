@@ -5,6 +5,8 @@ import {
   r2ObjectExists,
 } from "@/lib/r2-storage";
 import { creatorPublicName } from "@/lib/public-name";
+import { cleanSocietyDeclaration } from "@/lib/rights-declarations";
+import { saveRightsDeclaration } from "@/lib/rights-declarations-server";
 import {
   getCreatorUploadSession,
   updateCreatorUploadSession,
@@ -73,6 +75,9 @@ type TrackSessionPayload = {
   genre?: unknown;
   description?: unknown;
   rightsConfirmed?: unknown;
+  societyStatus?: unknown;
+  societyName?: unknown;
+  grantAccepted?: unknown;
   explicit?: unknown;
 };
 
@@ -379,6 +384,7 @@ export async function POST(req: Request) {
 
     const track = await insertRes.json();
     const savedTrack = Array.isArray(track) ? track[0] : track;
+    if (savedTrack?.id) await saveRightsDeclaration({ ownerUserId: userId, trackId: savedTrack.id, declaration: cleanSocietyDeclaration(sourcePayload as TrackSessionPayload) });
 
     if (durableSession && savedTrack?.id) {
       await updateCreatorUploadSession(durableSession.id, userId, {

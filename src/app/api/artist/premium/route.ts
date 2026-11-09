@@ -4,6 +4,7 @@ import { PREMIUM_DISTRIBUTION_STORES } from "@/lib/premium-catalog";
 import { getArtistPremiumStatus } from "@/lib/premium-billing";
 import { PREMIUM_INSTANT_PRICE_USD } from "@/lib/premium-instant";
 import { paynowEnabled } from "@/lib/paynow";
+import { premiumPaynowAllowed } from "@/lib/payment-rules";
 import { stripeEnabled } from "@/lib/stripe";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
     providerRef: status.providerRef,
     foundingSeat: status.foundingSeat,
     legacyFounding: Boolean(status.planId?.includes("founding")),
-    paynowEnabled: paynowEnabled(),
+    paynowEnabled: paynowEnabled() && premiumPaynowAllowed(),
     stripeEnabled: stripeEnabled(),
     annualPriceUsd: 29,
     standardMonthlyUsd: 12,

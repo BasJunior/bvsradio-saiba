@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { paynowAllowedForCountry } from "@/lib/payment-rules";
 import {
   notifyOwnerNewOrder,
   orderReference,
@@ -170,6 +171,12 @@ export async function POST(req: Request) {
 
     const countryCode =
       payload.countryCode || payload.customer.country || "OTHER";
+    if (method.startsWith("paynow") && !paynowAllowedForCountry(countryCode)) {
+      return NextResponse.json(
+        { error: "Paynow is available for Zimbabwe billing addresses. Please pay by card." },
+        { status: 400 },
+      );
+    }
     const vatId = payload.vatId || payload.customer.vatId || "";
     const tax = calculateTax({
       subtotal,

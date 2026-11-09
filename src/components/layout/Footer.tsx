@@ -46,7 +46,7 @@ export default function Footer() {
           {/* BRAND — keep this short; the homepage already explains the platform. */}
           <div>
             <Link href="/" className="inline-flex min-h-11 items-center text-xl font-bold tracking-tight text-brand focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand">BVS Radio</Link>
-            <p className="mt-3 max-w-sm text-sm leading-7 text-white/60">Best Virtual Sound. Independent music, radio and creator tools. Rooted in Zimbabwe, open to the world.</p>
+            <p className="mt-3 max-w-sm text-sm leading-7 text-white/60">Best Virtual Sound. Independent music, radio and creator tools. Made for artists everywhere.</p>
             <nav aria-label="BVS social channels" className="mt-4 flex flex-wrap gap-x-5 gap-y-1">
               {[
                 ['Instagram', 'https://instagram.com/bvsradio'],

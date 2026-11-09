@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { paynowAllowedForCountry } from "@/lib/payment-rules";
 import "./checkout.css";
 import { shouldBypassImageOptimizer } from "@/lib/image-optimization";
 import Link from "next/link";
@@ -63,17 +64,17 @@ type RecoverableOrder = {
 /** Live checkout rails only — no WhatsApp cosplay methods. */
 const paymentMethodsBase = [
   {
-    id: "paynow",
-    label: "Paynow (EcoCash, OneMoney & local)",
-    detail: "EcoCash, OneMoney and local cards through Paynow.",
-    needsPaynow: true,
+    id: "card",
+    label: "Card (Stripe)",
+    detail: "Visa and Mastercard through Stripe’s secure checkout.",
+    needsStripe: true,
     primary: true,
   },
   {
-    id: "card",
-    label: "International card (Stripe)",
-    detail: "Visa and Mastercard through Stripe’s secure checkout.",
-    needsStripe: true,
+    id: "paynow",
+    label: "Paynow",
+    detail: "Local payment for Zimbabwe billing addresses.",
+    needsPaynow: true,
     primary: false,
   },
 ];
@@ -135,7 +136,7 @@ export default function CheckoutPage() {
     whatsapp: "",
   });
   const [projectNotes, setProjectNotes] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("paynow");
+  const [paymentMethod, setPaymentMethod] = useState("card");
   const [stripeReady, setStripeReady] = useState(false);
   const [paynowReady, setPaynowReady] = useState(false);
   const [whatsapp, setWhatsapp] = useState<string | null>("+491706580888");
@@ -217,8 +218,8 @@ export default function CheckoutPage() {
         setPaynowReady(Boolean(cfg.paynowEnabled));
         if (cfg.whatsapp) setWhatsapp(cfg.whatsapp);
         if (cfg.orderEmail) setOrderEmail(cfg.orderEmail);
-        if (cfg.paynowEnabled) setPaymentMethod("paynow");
-        else if (cfg.stripeEnabled) setPaymentMethod("card");
+        if (cfg.stripeEnabled) setPaymentMethod("card");
+        else if (cfg.paynowEnabled) setPaymentMethod("paynow");
       })
       .catch(() => null);
   }, []);
@@ -273,7 +274,7 @@ export default function CheckoutPage() {
   const total = tax.total;
 
   const methods = paymentMethodsBase.filter((m) => {
-    if (m.needsPaynow) return paynowReady;
+    if (m.needsPaynow) return paynowReady && paynowAllowedForCountry(countryCode);
     if (m.needsStripe) return stripeReady;
     return false;
   });
@@ -603,7 +604,7 @@ export default function CheckoutPage() {
                 <select
                   required
                   value={countryCode}
-                  onChange={(e) => setCountryCode(e.target.value)}
+                  onChange={(e) => { setCountryCode(e.target.value); if (!paynowAllowedForCountry(e.target.value)) setPaymentMethod("card"); }}
                   className="w-full rounded-xl border border-white/10 bg-bg-primary px-4 py-3 outline-none focus:border-brand"
                   aria-label="Billing country for tax"
                 >
@@ -640,13 +641,9 @@ export default function CheckoutPage() {
           <section className="rounded-2xl border border-white/10 bg-bg-card/35 p-6">
             <h2 id="checkout-payment" className="mb-2 text-xl font-semibold">Payment</h2>
             <p className="mb-4 text-sm text-text-secondary">
-              {paynowReady && stripeReady
-                ? "Choose Paynow for local Zimbabwe payments or Stripe for international cards. You’ll continue to your chosen provider to pay."
-                : paynowReady
-                  ? "Pay securely on Paynow (EcoCash, OneMoney, local methods)."
-                  : stripeReady
-                    ? "Pay securely by card on Stripe."
-                    : "Online checkout is temporarily unavailable. Contact BVS to complete your order."}
+              {methods.length
+                ? "Choose how to pay. You’ll continue to the provider to complete payment."
+                : "Online checkout is temporarily unavailable. Contact BVS to complete your order."}
             </p>
             {methods.length > 0 ? (
               <div className="grid gap-3">
@@ -690,7 +687,7 @@ export default function CheckoutPage() {
             )}
             {hasServiceItems && (
               <p className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-xs leading-relaxed text-text-secondary">
-                Studio / service jobs: prefer Paynow or card above. Need an
+                Studio / service jobs: use the payment options above. Need an
                 invoice or bank details for a larger booking?{" "}
                 <Link
                   href="/contact?topic=invoice"

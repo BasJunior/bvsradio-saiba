@@ -41,7 +41,7 @@ export const shows: Show[] = [
     slug: "harare-after-dark",
     title: "Harare After Dark",
     tagline: "The city, after hours.",
-    description: "A home for late-night studio music, DJ selections and conversations from the creative scene, rooted in Zimbabwe.",
+    description: "A home for late-night studio music, DJ selections and conversations from the creative scene.",
     image: "/images/editorial/radio-studio-harare.webp",
     host: "BVS Radio",
     schedule: "Friday · 20:00 CAT",

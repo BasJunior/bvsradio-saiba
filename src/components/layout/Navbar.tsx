@@ -402,7 +402,7 @@ export default function Navbar() {
               {[
                 { title: 'Listen & discover', links: [['Live Radio', '/radio', 'Drop into the live rotation'], ['Shows', '/shows', 'Programmes and conversations'], ['Trending', '/trending', 'Hear what’s picking up'], ['Community Feed', '/feed', 'Follow the scene']] },
                 { title: 'Create with BVS', links: [['Creator Studio', '/creator/studio', 'Your releases and creative work'], ['Creator Marketplace', '/marketplace', 'Find independent talent'], ['BVS Studio Services', '/shop', 'Mixing, mastering and production'], ['Premium', '/premium', 'Explore membership options']] },
-                { title: 'About & support', links: [['Our story', '/about', 'Rooted in Zimbabwe'], ['Newsletter', '/newsletter', 'Stay close to BVS'], ['FAQ', '/faq', 'Find a quick answer'], ['Contact', '/contact', 'Talk to the BVS team']] },
+                { title: 'About & support', links: [['Our story', '/about', 'How BVS started'], ['Newsletter', '/newsletter', 'Stay close to BVS'], ['FAQ', '/faq', 'Find a quick answer'], ['Contact', '/contact', 'Talk to the BVS team']] },
               ].map(group => <div key={group.title}><p>{group.title}</p>{group.links.map(([label, href, detail]) => <Link key={href} href={href} onClick={() => moreRef.current?.removeAttribute('open')}><span className="bvs-header-directory-link"><strong>{label}</strong><small>{detail}</small></span><span aria-hidden="true">↗</span></Link>)}</div>)}
             </div>
           </details>

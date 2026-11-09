@@ -21,7 +21,7 @@ export default function RadioPage() {
             <span className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[.18em] text-brand">
               <span className="h-1.5 w-1.5 rounded-full bg-brand" /> The BVS station
             </span>
-            <span className="text-xs text-text-secondary">Zimbabwe roots. Worldwide sound.</span>
+            <span className="text-xs text-text-secondary">Independent sound, worldwide.</span>
           </div>
           <h1 className="mt-3 text-5xl font-semibold tracking-tight sm:text-7xl">Radio</h1>
           <p className="mt-3 max-w-xl text-base text-text-secondary sm:text-lg">Press play. Find your next favourite. Keep the music moving.</p>

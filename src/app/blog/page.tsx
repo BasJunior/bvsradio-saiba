@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "Blog | BVS Radio",
-  description: "Stories, insights and conversations from studio music and radio culture, rooted in Zimbabwe and open to the world.",
+  description: "Stories, insights and conversations from studio music and radio culture from around the world.",
 };
 
 export default function BlogIndexPage() {

@@ -1,4 +1,5 @@
 import "server-only";
+import { applyRightsRotationGate } from "@/lib/rights-declarations-server";
 import fs from "node:fs";
 import path from "node:path";
 import type { StationTrack } from "./station";
@@ -158,7 +159,7 @@ export async function getStationTracks(surface?: MobileSurface): Promise<Station
       return surface ? [] : shuffleDaily(localFallback);
     }
 
-    const remote = (await rotationRes.json()) as Array<{
+    const remote = (await applyRightsRotationGate(await rotationRes.json(), url, headers)) as Array<{
       id: string;
       title: string;
       artist_name: string;

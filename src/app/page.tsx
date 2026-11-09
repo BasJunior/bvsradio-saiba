@@ -148,7 +148,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-6 lg:grid-cols-[1fr_.7fr] lg:items-end lg:gap-16">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Best Virtual Sound · Rooted in Zimbabwe</p>
+              <p className="text-xs font-semibold uppercase tracking-[.2em] text-brand">Best Virtual Sound · Independent music</p>
               <h2 id="home-community-title" className="mt-4 max-w-3xl text-balance text-3xl font-bold leading-tight tracking-tight sm:text-5xl">Independent sound. A place to belong.</h2>
             </div>
             <p className="max-w-xl text-base leading-relaxed text-white/70">

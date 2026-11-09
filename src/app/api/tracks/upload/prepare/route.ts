@@ -239,6 +239,9 @@ export async function POST(req: Request) {
       genre?: string;
       description?: string;
       rightsConfirmed?: boolean;
+      societyStatus?: string;
+      societyName?: string;
+      grantAccepted?: boolean;
       explicit?: boolean;
       audio?: SlotInput;
       artwork?: SlotInput | null;
@@ -318,6 +321,9 @@ export async function POST(req: Request) {
         genre,
         description,
         rightsConfirmed: true,
+        societyStatus: body.societyStatus,
+        societyName: body.societyName,
+        grantAccepted: body.grantAccepted === true,
         explicit: Boolean(body.explicit),
       },
       mediaManifest: {

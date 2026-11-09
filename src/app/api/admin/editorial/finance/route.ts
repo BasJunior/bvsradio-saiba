@@ -4,6 +4,7 @@ import {
   editorialUrl,
   serviceHeaders,
 } from "@/lib/editorial-server";
+import { isPayingMembership } from "@/lib/finance-pulse";
 import {
   MARKETPLACE_POLICY_SUMMARY,
   MARKETPLACE_POLICY_VERSION,
@@ -691,14 +692,14 @@ export async function GET(request: Request) {
       },
       current: {
         paidArtists: memberships.available
-          ? memberships.rows.filter((row) => Boolean(row.provider)).length
+          ? memberships.rows.filter((row) => isPayingMembership(row, now)).length
           : null,
         activeArtistMemberships: memberships.available
           ? memberships.rows.length
           : null,
         subscriptionMrr: memberships.available
           ? memberships.rows
-              .filter((row) => Boolean(row.provider))
+              .filter((row) => isPayingMembership(row, now))
               .reduce((sum, row) => sum + membershipMrr(row), 0)
           : null,
         newsletterSubscribers: newsletter.available
