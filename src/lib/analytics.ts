@@ -135,7 +135,7 @@ function sessionId() {
   return value
 }
 
-function visitorId() {
+export function visitorId() {
   if (typeof window === "undefined") return undefined
   let value = window.localStorage.getItem(VISITOR_KEY)
   if (!value) {

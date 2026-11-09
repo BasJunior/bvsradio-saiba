@@ -52,13 +52,12 @@ type WalletData = {
   radio: {
     eligiblePlays: number
     qualifiedStreams: number
-    theoreticalCapUsd: number
     fundedEarnings: number
     settlementStatus: string
+    statements?: Array<{ month: string; listens: number; baseUsd: number; potUsd: number; totalUsd: number }>
     policy?: {
       qualifiedStreamSeconds: number
       settlementCadence: string
-      maximumUsdPerEligiblePlay: number
       listenAdPotEnabled: boolean
     }
   }
@@ -71,11 +70,11 @@ const emptyData: WalletData = {
   ledger: [],
   payoutRequests: [],
   sellerSettlements: [],
-  settings: { payoutMinimumUsd: 25, currency: 'USD' },
+  settings: { payoutMinimumUsd: 10, currency: 'USD' },
   balances: { available: 0, pendingDeposits: 0, pendingEarnings: 0 },
   earnings: { lifetimeGrossSales: 0, bvsPlatformFees: 0, processorFees: 0, refundDebits: 0, postedNetEarnings: 0, netAfterRefunds: 0, pendingNetEarnings: 0, settlementCount: 0 },
   sources: { marketplaceEarnings: 0, radioEarnings: 0, foundingBonus: 0, otherCreditsAndAdjustments: 0 },
-  radio: { eligiblePlays: 0, qualifiedStreams: 0, theoreticalCapUsd: 0, fundedEarnings: 0, settlementStatus: 'awaiting_funded_programme' },
+  radio: { eligiblePlays: 0, qualifiedStreams: 0, fundedEarnings: 0, settlementStatus: 'awaiting_funded_programme' },
 }
 
 function money(amount: number | string, currency = 'USD') {
@@ -189,7 +188,7 @@ export default function ArtistsPage() {
       </div>
     </section>
 
-    <section className="bvs-wallet-radio mt-8 rounded-2xl border border-brand/25 bg-brand/[.05] p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[.16em] text-brand">BVS Radio</p><h2 className="mt-1 text-xl font-semibold">Activity & credited cash</h2></div><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs capitalize text-text-secondary">{String(data.radio.settlementStatus || '').replaceAll('_', ' ')}</span></div><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4"><Metric compact label="Eligible plays" value={new Intl.NumberFormat('en-US').format(data.radio.eligiblePlays || 0)} note="Approved catalogue plays" /><Metric compact label="Qualified listens" value={new Intl.NumberFormat('en-US').format(data.radio.qualifiedStreams || 0)} note={`${data.radio.policy?.qualifiedStreamSeconds || 30}s+ listens`} /><Metric compact label="Credited earnings" value={money(data.radio.fundedEarnings || 0)} note="Posted programme credits" /><Metric compact label="Policy ceiling" value={money(data.radio.theoreticalCapUsd || 0)} note="Illustrative, not expected income" /></div><p className="mt-3 text-xs text-text-secondary">Activity becomes wallet cash only after a funded monthly programme is settled and posted.</p></section>
+    <section className="bvs-wallet-radio mt-8 rounded-2xl border border-brand/25 bg-brand/[.05] p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-xs uppercase tracking-[.16em] text-brand">BVS Radio</p><h2 className="mt-1 text-xl font-semibold">Activity & credited cash</h2></div><span className="rounded-full border border-white/10 bg-black/20 px-3 py-1.5 text-xs capitalize text-text-secondary">{String(data.radio.settlementStatus || '').replaceAll('_', ' ')}</span></div><div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3"><Metric compact label="Eligible plays" value={new Intl.NumberFormat('en-US').format(data.radio.eligiblePlays || 0)} note="Approved catalogue plays" /><Metric compact label="Qualified listens" value={new Intl.NumberFormat('en-US').format(data.radio.qualifiedStreams || 0)} note={`${data.radio.policy?.qualifiedStreamSeconds || 30}s+ listens`} /><Metric compact label="Credited earnings" value={money(data.radio.fundedEarnings || 0)} note="Posted programme credits" /></div><p className="mt-3 text-xs text-text-secondary">BVS pays a base rate per counted listen plus a share of a monthly pot, credited after a monthly review. The pot changes each month and isn’t guaranteed, and the base rate can change with notice. <a href="/creator/studio/rights" className="text-brand underline">Confirm your music</a> to share in the pot.</p>{data.radio.statements?.length ? <div className="mt-4 border-t border-white/10 pt-3"><h3 className="text-sm font-semibold">Monthly statements</h3><ul className="mt-2 space-y-1 text-sm">{data.radio.statements.map((row) => <li key={row.month} className="flex flex-wrap justify-between gap-2"><span>{new Date(`${row.month}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' })}</span><span className="text-text-secondary">{row.listens} listens · base {money(row.baseUsd)} · pot {money(row.potUsd)}</span><span className="font-semibold">{money(row.totalUsd)}</span></li>)}</ul></div> : null}</section>
 
     {hasCommerce ? <section className="mt-8 rounded-2xl border border-brand/25 bg-brand/[.05] p-5"><h2 className="text-xl font-semibold">How a marketplace sale reaches your wallet</h2><div className="mt-4 flex flex-wrap items-center gap-2 text-sm"><FlowStep text="Pre-tax product sale" /><Arrow /><FlowStep text="BVS platform fee" /><Arrow /><FlowStep text="Payment processing" /><Arrow /><FlowStep text="Your earnings" /><Arrow /><FlowStep text="Refund/reversal adjustments" /><Arrow /><FlowStep text="Available for payout" /></div><p className="mt-4 text-sm text-text-secondary">VAT/sales tax is outside the split. BVS commission is never calculated on customer tax. Unknown processing keeps a sale pending instead of pretending an estimated fee is final.</p></section> : null}
 

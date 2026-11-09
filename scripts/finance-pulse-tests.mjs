@@ -52,7 +52,7 @@ const money = pulse.PULSE_LINES.find((row) => row.id === "beats");
 assert.equal(pulse.summariseLine(money, [["2026-11-09", 1, 29.5, "Beat"]], 30, "2026-11-09").current, 29.5, "money lines add amounts");
 
 const sums = pulse.PULSE_LINES.map((row) => pulse.summariseLine(row, row.id === "unfinished" ? [["2026-11-05", 9, 180, "Paynow"]] : row.id === "paid_orders" ? [["2026-11-05", 1, 4, "Paid"]] : [], 30, "2026-11-09"));
-const notes = pulse.buildPulseNotes(sums, { payingMemberships: 1, monthlyRecurring: 9, nonPayingMemberships: 5, publicBeats: 150, publishedListings: 2, staffTestCheckouts: 0, staffPayingMemberships: 0, staffMonthlyRecurring: 0 }, "in the last 30 days");
+const notes = pulse.buildPulseNotes(sums, { payingMemberships: 1, monthlyRecurring: 9, nonPayingMemberships: 5, publicBeats: 150, publishedListings: 2, staffListens: 0, staffTestCheckouts: 0, staffPayingMemberships: 0, staffMonthlyRecurring: 0 }, "in the last 30 days");
 assert.match(notes.attention[0].text, /9 of 10 checkouts were never paid, worth \$180/, "unfinished checkouts lead");
 assert.match(notes.attention[1].text, /Only 1 paying customer on a plan, worth \$9/);
 assert.ok(notes.attention.some((note) => /No beat licences sold in the last 30 days, with 150 beats/.test(note.text)));
@@ -70,7 +70,7 @@ const orderRows = [
   { status: "paid", subtotal: 4, payment_method: "card", created_at: "2026-11-02T10:00:00Z", items: [{ productType: "mix", title: "Test Mix", price: 4, quantity: 1 }], customer_email: "tester@example.com" },
   { status: "free_workspace", subtotal: 0, created_at: "2026-11-03T10:00:00Z", items: [] },
 ];
-const manyStreams = Array.from({ length: 2500 }, (_, index) => ({ track_id: "t1", qualified_at: "2026-11-04T00:00:00Z", index }));
+const manyStreams = [...Array.from({ length: 2500 }, (_, index) => ({ track_id: "t1", qualified_at: "2026-11-04T00:00:00Z", index })), { track_id: "t1", user_id: "staff-1", qualified_at: "2026-11-04T00:00:00Z" }];
 globalThis.__pulse = { NextResponse: { json: (data, options) => Response.json(data, options) }, editorialIdentity: async () => identity, editorialUrl: (path) => `https://t.invalid/${path}`, serviceHeaders: {}, isPayingMembership: pulse.isPayingMembership, membershipMonthlyUsd: pulse.membershipMonthlyUsd, orderItemLine: pulse.orderItemLine };
 const source = read("src/app/api/admin/editorial/finance/pulse/route.ts").replace(/import[\s\S]*?from\s+"[^"]+";/g, "");
 const route = await load(`const {NextResponse,editorialIdentity,editorialUrl,serviceHeaders,isPayingMembership,membershipMonthlyUsd,orderItemLine}=globalThis.__pulse;\n${source}`);
@@ -93,6 +93,7 @@ assert.equal(body.lines.streams.events[0][1], 2500, "every page of data is read,
 assert.equal(body.snapshot.payingMemberships, 1, "benefits don't count as paying");
 assert.equal(body.snapshot.monthlyRecurring, 9);
 assert.equal(body.snapshot.nonPayingMemberships, 1);
+assert.equal(body.snapshot.staffListens, 1, "staff listening is left out");
 assert.equal(body.snapshot.staffPayingMemberships, 1, "staff who pay aren't counted as customers");
 assert.equal(body.snapshot.staffMonthlyRecurring, 9);
 assert.equal(body.lines.memberships.events.reduce((sum, row) => sum + row[1], 0), 1, "the new-member trend is customers only");

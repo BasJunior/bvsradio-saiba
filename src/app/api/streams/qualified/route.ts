@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/supabase-server";
 
@@ -35,6 +36,7 @@ export async function POST(request: Request) {
       trackId?: unknown;
       listenedSeconds?: unknown;
       source?: unknown;
+      visitorId?: unknown;
     };
 
     const playInstanceId = String(body.playInstanceId || "");
@@ -67,21 +69,27 @@ export async function POST(request: Request) {
     const tracks = await trackResponse.json() as Array<{ id: string }>;
     if (!tracks.length) return new NextResponse(null, { status: 204 });
 
-    const response = await fetch(
+    const visitor = typeof body.visitorId === "string" ? body.visitorId.slice(0, 80) : "";
+    const qualification = {
+      play_instance_id: playInstanceId,
+      track_id: trackId,
+      user_id: await optionalUserId(),
+      source,
+      listened_seconds: Math.floor(listenedSeconds),
+      status: "pending",
+    };
+    const save = (row: Record<string, unknown>) => fetch(
       `${url}/rest/v1/stream_qualifications?on_conflict=play_instance_id`,
       {
         method: "POST",
         headers: serviceHeaders("resolution=ignore-duplicates,return=minimal"),
-        body: JSON.stringify({
-          play_instance_id: playInstanceId,
-          track_id: trackId,
-          user_id: await optionalUserId(),
-          source,
-          listened_seconds: Math.floor(listenedSeconds),
-          status: "pending",
-        }),
+        body: JSON.stringify(row),
       },
     );
+    // The device key is one-way hashed so repeat plays can be limited without storing the device ID.
+    let response = await save(visitor ? { ...qualification, listener_key: createHash("sha256").update(visitor).digest("hex").slice(0, 32) } : qualification);
+    // A listen must never be lost if the column isn't available yet.
+    if (!response.ok && visitor) response = await save(qualification);
 
     return new NextResponse(null, { status: response.ok ? 204 : 503 });
   } catch {

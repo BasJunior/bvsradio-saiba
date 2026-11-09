@@ -30,7 +30,7 @@ export const PULSE_LINES: PulseLine[] = [
   { id: "releases", group: "creators", label: "Releases submitted", unit: "count", minVolume: 5, meaning: "Releases sent in by artists. This is the supply that feeds Premium.", actHref: "/editorial", actLabel: "Open the review queue" },
   { id: "beat_uploads", group: "creators", label: "Beats uploaded", unit: "count", minVolume: 10, meaning: "New beats added to BeatStore.", actHref: "/editorial/catalogue", actLabel: "Open Catalogue" },
   { id: "listings", group: "creators", label: "Marketplace listings", unit: "count", minVolume: 5, meaning: "Services and products created by sellers, including drafts.", actHref: "/editorial/marketplace", actLabel: "Open Marketplace" },
-  { id: "streams", group: "audience", label: "Qualified listens", unit: "count", minVolume: 50, meaning: "Plays of at least 30 seconds. These are measured only and earn nothing until an ad pot is funded.", actHref: "/editorial/catalogue", actLabel: "Open Catalogue" },
+  { id: "streams", group: "audience", label: "Qualified listens", unit: "count", minVolume: 50, meaning: "Plays of at least 30 seconds by real listeners. Staff listening is left out.", actHref: "/editorial/catalogue", actLabel: "Open Catalogue" },
   { id: "newsletter", group: "audience", label: "Newsletter sign-ups", unit: "count", minVolume: 10, meaning: "People who opted in to the newsletter and are still subscribed.", actHref: "/editorial/newsletter", actLabel: "Open Newsletter" },
   { id: "paid_orders", group: "hidden", label: "Paid orders", unit: "count", minVolume: 5, meaning: "", actHref: "/editorial/finance", actLabel: "Open Finance" },
 ];
@@ -131,7 +131,7 @@ function buildBuckets(line: PulseLine, events: PulseEvent[], start: number, end:
 
 export const formatPulseValue = (value: number, unit: PulseUnit) => (unit === "money" ? `$${value.toLocaleString("en-US", { minimumFractionDigits: value % 1 ? 2 : 0, maximumFractionDigits: 2 })}` : value.toLocaleString("en-US"));
 
-export type PulseSnapshot = { payingMemberships: number; monthlyRecurring: number; nonPayingMemberships: number; publicBeats: number; publishedListings: number; staffTestCheckouts: number; staffPayingMemberships: number; staffMonthlyRecurring: number };
+export type PulseSnapshot = { payingMemberships: number; monthlyRecurring: number; nonPayingMemberships: number; publicBeats: number; publishedListings: number; staffListens: number; staffTestCheckouts: number; staffPayingMemberships: number; staffMonthlyRecurring: number };
 export type PulseNote = { lineId: string; text: string; weight: number };
 
 /** Turns the numbers into a short ranked list staff can act on. */

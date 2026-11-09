@@ -12,7 +12,7 @@ export default async function AppRadioPage({
   return (
     <main className="bvs-app-page bvs-app-radio mx-auto max-w-5xl px-4 pb-14 pt-5 sm:px-6" data-app-accent="lime">
       <header>
-        <p className="bvs-app-eyebrow">Zimbabwe to the world</p>
+        <p className="bvs-app-eyebrow">Independent sound, worldwide</p>
         <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Radio</h1>
         <p className="mt-2 text-sm text-white/50">The BVS station, live around the clock.</p>
       </header>

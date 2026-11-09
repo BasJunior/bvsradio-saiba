@@ -126,6 +126,7 @@ export default function BusinessPulsePage() {
               <h2 className="font-semibold">Needs attention</h2>
               {notes.attention.length ? <ol className="mt-2 space-y-1">{notes.attention.slice(0, 5).map((note) => <li key={note.text}><button type="button" onClick={() => open(note.lineId)} className="min-h-11 w-full py-1 text-left text-sm hover:text-brand">{note.text}</button></li>)}</ol> : <p className="mt-2 text-sm text-text-secondary">Nothing stands out in this period.</p>}
               {data.snapshot.staffTestCheckouts ? <p className="mt-2 text-xs text-text-secondary">{data.snapshot.staffTestCheckouts} staff test checkouts are left out of these numbers.</p> : null}
+              {data.snapshot.staffListens ? <p className="mt-1 text-xs text-text-secondary">{data.snapshot.staffListens.toLocaleString("en-US")} staff listens are left out too.</p> : null}
             </div>
             <div className="rounded-2xl border border-white/10 p-5">
               <h2 className="font-semibold">Growing</h2>

@@ -1,7 +1,7 @@
 export const RADIO_EARNINGS_POLICY = {
   currency: 'USD',
   maximumUsdPerEligiblePlay: 0.00025,
-  payoutMinimumUsd: 25,
+  payoutMinimumUsd: 10,
   settlementCadence: 'monthly',
   /** 30s truthful listen is measurement only; wallet credit is monthly + funded pot. */
   qualifiedStreamSeconds: 30,

@@ -673,11 +673,11 @@ export async function GET(request: Request) {
       },
       rules: [
         "≥30s truthful listen = qualified stream measurement only; not an instant wallet credit.",
-        "Monthly settlement credits royalty_credit only from a funded net listen-ad pot.",
-        "Artist credit = min(share of pot, eligible plays × $0.00025).",
-        "If listen-ad pot is disabled or $0, funded stream liability stays $0.",
-        "Do not raid Premium, BeatStore, studio, or other department cash for stream royalties.",
-        "When ads go live: set artist_wallet_settings.listen_ad_pot enabled=true and netListenAdPotUsd to net cash, then run monthly settlement.",
+        "Stream pay is a base rate per counted listen plus a capped share of the monthly pot.",
+        "Each month is calculated on the Stream pay page and credited only after staff review and approval.",
+        "Staff listens, own-music listens and excess repeat plays are left out.",
+        "Sponsor and advertising money is added to the pot on its own line, after costs.",
+        "Add ad or sponsor income to the pot on the Stream pay page when it exists.",
       ],
     };
 
@@ -816,9 +816,9 @@ export async function GET(request: Request) {
           "Do not deduct a guessed withholding percentage until qualified Zimbabwe / Germany advice confirms an obligation.",
         ],
         streams: [
-          "Qualified streams (≥30s) feed measurement and future monthly settlement inputs.",
-          "Funded stream expenses appear only after a listen-ad pot is enabled with real net cash.",
-          "Theoretical liability uses the $0.00025 per eligible play ceiling and is not booked debt.",
+          "Qualified streams (≥30s) feed the monthly stream pay run.",
+          "Stream pay becomes a wallet liability only when a reviewed run is credited.",
+          "The per-listen figure above is an illustration at the base rate and is not booked debt.",
         ],
       },
       availability: {

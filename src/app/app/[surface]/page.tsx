@@ -85,7 +85,7 @@ export default async function MobileAppPage({ params }: { params: Promise<{ surf
         <section className="relative px-4 pb-2 pt-5 sm:px-6 sm:pt-8" aria-labelledby="ios-home-title">
           <header className="flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <p className="bvs-app-eyebrow">BVS Radio · Zimbabwe to the world</p>
+              <p className="bvs-app-eyebrow">BVS Radio · Independent sound, worldwide</p>
               <h1 id="ios-home-title" className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">Listen now</h1>
             </div>
             <Link href={`${base}/feed`} aria-label="BVS Feed" className="bvs-app-icon-button border border-white/15"><LibIcon name="chat" /></Link>
