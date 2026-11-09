@@ -3,7 +3,6 @@ import { editorialUrl, serviceHeaders } from '@/lib/editorial-server'
 import {
   RADIO_EARNINGS_POLICY,
   parseListenAdPotSettings,
-  theoreticalStreamLiabilityUsd,
 } from '@/lib/radio-earnings'
 
 const RADIO_EARNINGS_ENTRY_TYPES = new Set(['royalty_credit'])
@@ -97,6 +96,9 @@ export async function GET(request: Request) {
     getJson<Array<{ id?: string; play_count?: number | string }>>(`tracks?user_id=eq.${userId}&select=id,play_count&is_public=eq.true&editorial_status=eq.approved&limit=2000`, []),
     getJson<Array<{ id?: string; track_id?: string; status?: string }>>(`stream_qualifications?select=id,track_id,status&limit=5000`, []),
   ])
+
+  const statementRows = await getJson<Array<{ listens: number; base_usd: number | string; pot_usd: number | string; total_usd: number | string; stream_pay_runs?: { month?: string; status?: string } }>>(`stream_pay_run_lines?artist_user_id=eq.${userId}&select=listens,base_usd,pot_usd,total_usd,stream_pay_runs!inner(month,status)&stream_pay_runs.status=eq.credited&limit=36`, [])
+  const statements = statementRows.map((row) => ({ month: String(row.stream_pay_runs?.month || ''), listens: Number(row.listens) || 0, baseUsd: Number(row.base_usd) || 0, potUsd: Number(row.pot_usd) || 0, totalUsd: Number(row.total_usd) || 0 })).filter((row) => row.month).sort((a, b) => b.month.localeCompare(a.month))
 
   const refundByReference = new Map<string, number>()
   for (const entry of ledger) {
@@ -202,13 +204,12 @@ export async function GET(request: Request) {
     radio: {
       eligiblePlays,
       qualifiedStreams,
-      theoreticalCapUsd: theoreticalStreamLiabilityUsd(eligiblePlays),
       fundedEarnings: radioEarnings,
-      settlementStatus: radioEarnings > 0 ? 'credited' : pot.enabled && pot.netListenAdPotUsd > 0 ? 'awaiting_monthly_settlement' : 'awaiting_funded_programme',
+      settlementStatus: radioEarnings > 0 ? 'credited' : 'paid_monthly_after_review',
+      statements,
       policy: {
         qualifiedStreamSeconds: RADIO_EARNINGS_POLICY.qualifiedStreamSeconds,
         settlementCadence: RADIO_EARNINGS_POLICY.settlementCadence,
-        maximumUsdPerEligiblePlay: RADIO_EARNINGS_POLICY.maximumUsdPerEligiblePlay,
         listenAdPotEnabled: pot.enabled,
       },
     },

@@ -16,7 +16,7 @@ import {
   isEditorialPlay,
 } from "@/lib/beat-playback";
 import { hasLibraryItem, recordListening, toggleLibraryItem } from "@/lib/library";
-import { listeningBucket, trackEvent } from "@/lib/analytics";
+import { listeningBucket, trackEvent, visitorId } from "@/lib/analytics";
 import { flowV2Flags } from "@/lib/feature-flags";
 import {
   accumulateListening,
@@ -1018,6 +1018,7 @@ export function StationPlayerProvider({ tracks: initialTracks, children }: { tra
         trackId: state.trackId,
         listenedSeconds: Math.max(QUALIFIED_STREAM_SECONDS, Math.floor(state.listenedSeconds)),
         source,
+        visitorId: visitorId(),
       }),
       keepalive: true,
     }).catch(() => {});

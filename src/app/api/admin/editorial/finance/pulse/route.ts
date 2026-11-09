@@ -93,7 +93,7 @@ export async function GET(request: Request) {
     const [staff, memberships, streams, tracks, profiles, releases, beats, listings, newsletter] = await Promise.all([
       optionalRows("editorial_staff?select=user_id&order=user_id.asc"),
       optionalRows("bvs_memberships?select=user_id,plan_id,billing_interval,status,provider,starts_at,ends_at,created_at&order=created_at.asc"),
-      optionalRows("stream_qualifications?select=track_id,source,qualified_at&order=qualified_at.asc"),
+      optionalRows("stream_qualifications?select=track_id,user_id,source,qualified_at&order=qualified_at.asc"),
       optionalRows("tracks?select=id,artist_name&order=created_at.asc"),
       optionalRows("profiles?select=role,created_at&order=created_at.asc"),
       optionalRows("releases?select=artist_name,created_at&order=created_at.asc"),
@@ -113,7 +113,8 @@ export async function GET(request: Request) {
     const staffPaying = memberships.rows.filter((row) => isPayingMembership(row, now) && isStaffMember(row));
     memberships.rows.filter((row) => ["stripe", "paynow"].includes(String(row.provider || "").toLowerCase()) && !isStaffMember(row)).forEach((row) => events.add("memberships", row.starts_at || row.created_at, titleCase(row.plan_id, "Plan"), membershipMonthlyUsd(row)));
     const artistByTrack = new Map(tracks.rows.map((row) => [String(row.id), String(row.artist_name || "Unknown artist")]));
-    streams.rows.forEach((row) => events.add("streams", row.qualified_at, artistByTrack.get(String(row.track_id)) || "Unknown artist"));
+    const realStreams = streams.rows.filter((row) => !staffIds.has(String(row.user_id)));
+    realStreams.forEach((row) => events.add("streams", row.qualified_at, artistByTrack.get(String(row.track_id)) || "Unknown artist"));
     profiles.rows.forEach((row) => events.add("signups", row.created_at, titleCase(row.role, "Listener")));
     releases.rows.forEach((row) => events.add("releases", row.created_at, String(row.artist_name || "Unknown artist")));
     beats.rows.forEach((row) => events.add("beat_uploads", row.created_at, titleCase(row.genre, "No genre")));
@@ -128,6 +129,7 @@ export async function GET(request: Request) {
       publishedListings: listings.rows.filter((row) => row.status === "published").length,
       staffPayingMemberships: staffPaying.length,
       staffMonthlyRecurring: round(staffPaying.reduce((sum, row) => sum + membershipMonthlyUsd(row), 0)),
+      staffListens: streams.rows.length - realStreams.length,
       staffTestCheckouts: orders.filter((order) => order.status === "pending_payment" && isStaffOrder(order)).length,
     };
 

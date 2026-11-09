@@ -37,7 +37,7 @@ type Snapshot = {
 }
 
 const EMPTY: Snapshot = {
-  settings: { payoutMinimumUsd: 25, currency: 'USD' },
+  settings: { payoutMinimumUsd: 10, currency: 'USD' },
   balances: { available: 0, reserved: 0, withdrawable: 0 },
   methods: [],
   requests: [],

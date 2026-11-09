@@ -60,7 +60,7 @@ export default function HomeListenPanel() {
           <div className="min-w-0 flex-1">
             <p className="truncate text-[10px] font-semibold uppercase tracking-[.12em] text-white/50">{player.playingFrom || "Independent sound. Non-stop."}</p>
             <h2 className="mt-2 break-words text-xl font-semibold leading-tight tracking-tight sm:text-3xl">{player.current?.title || "Your next favourite is here."}</h2>
-            <p className="mt-2 truncate text-sm text-white/65">{player.current?.artist || "BVS Radio · Zimbabwe to the world"}</p>
+            <p className="mt-2 truncate text-sm text-white/65">{player.current?.artist || "BVS Radio · Independent sound, worldwide"}</p>
           </div>
         </div>
         <ListenTimeline />

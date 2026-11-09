@@ -120,6 +120,13 @@ export default function TermsPage() {
               guaranteed royalty earnings.
             </li>
             <li>
+              <strong className="text-text-primary">BVS stream pay</strong>, where offered, is a base rate per counted
+              listen plus a share of a monthly pot, credited after monthly review. The pot changes each month and is
+              not guaranteed, the base rate can change with notice, and BVS may leave out listens that break its
+              counting rules. Taking part in the pot requires confirming your music.{" "}
+              <span className="text-amber-200/90">Lawyer review: final stream pay wording.</span>
+            </li>
+            <li>
               Where offered, <strong className="text-text-primary">royalty and payout reporting support</strong> means
               BVS may help surface statements, eligibility status, and payout readiness for money actually received
               through BVS-managed sales and/or future partner distribution statements for that release or membership

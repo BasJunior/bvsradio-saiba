@@ -24,7 +24,7 @@ export default function BlogIndexPage() {
         <div className="flex items-center gap-2 text-xs tracking-[2px] text-brand mb-2">STORIES &amp; INSIGHTS</div>
         <h1 className="text-5xl font-bold tracking-tight mb-4">The BVS Journal</h1>
         <p className="max-w-lg text-xl text-text-secondary">
-          Deep dives into studio music, radio culture, artist stories, and the future of sound, with Zimbabwe at the roots.
+          Deep dives into studio music, radio culture, artist stories, and the future of sound.
         </p>
       </div>
 
