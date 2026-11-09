@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (rel) => fs.readFileSync(path.join(root, rel), "utf8");
@@ -40,5 +41,23 @@ assert(appDetail.includes("beatId ? { beatId } : { trackId }"), "app playlist de
 assert(publicApi.includes("select=playlist_id,track_id,beat_id"), "public playlist discovery must load beat memberships");
 assert(publicApi.includes("itemCount: publicMemberships.length"), "public playlist discovery must count mixed items");
 assert(publicApi.includes("publicStorageUrl(beatById.get(item.beat_id)?.artwork_path)"), "public playlist discovery must use beat artwork for playlist covers");
+
+const beatControlSource = read("src/lib/beat-play-control.ts");
+const beatControl = await import(`data:text/javascript;base64,${Buffer.from(ts.transpileModule(beatControlSource, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText).toString("base64")}`);
+assert(beatControl.beatPlayAction("a", true, "a") === "pause", "the playing beat must pause");
+assert(beatControl.beatPlayAction("a", false, "a") === "resume", "a paused beat must resume, even if its button still said pause");
+assert(beatControl.beatPlayAction("a", true, "b") === "start", "another beat must start");
+assert(beatControl.beatPlayAction(undefined, false, "b") === "start", "with nothing loaded the beat must start");
+assert(beatControl.beatPlayAction("beat-a", true, "a") === "pause", "prefixed player ids must match the listing");
+assert(!beatControl.sameBeatId("", ""), "empty ids must never match");
+
+const beatCards = read("src/components/BeatStoreCardLayout.tsx");
+assert(beatCards.includes("const live = playerRef.current;"), "BeatStore presses must read the latest player");
+assert(!beatCards.includes('const currentlyPaused = playButton.textContent'), "BeatStore presses must not trust the button text");
+assert(beatCards.includes("beatPlayAction(liveNow.current?.id, liveNow.isPlaying && audioIsRunning(), beat.id)"), "BeatStore buttons must show real player state");
+assert(beatCards.includes("beatPlayAction(live.current?.id, live.isPlaying && audioIsRunning(), pressed.id)"), "audio stopped outside the player must resume on press");
+assert(beatCards.includes("next > offset"), "BeatStore cards must load every page of beats");
+assert(read("src/app/creator-bands.css").includes('[data-beat-play-control="true"]::after'), "the small play button needs a larger hit area");
+assert(read("src/components/StationPlayer.tsx").includes('nowRef.current?.source === "preview" && el.currentTime >= GUEST_BEAT_PREVIEW_SECONDS'), "a finished guest preview must replay");
 
 console.log("Mixed track + BeatStore playlist assertions passed.");

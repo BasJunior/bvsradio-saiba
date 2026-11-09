@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useStationPlayer } from "@/components/StationPlayer";
+import { beatPlayAction } from "@/lib/beat-play-control";
 
 type BeatLicence = {
   licence_code?: string | null;
@@ -20,6 +21,12 @@ type PublicBeat = {
   previewUrl?: string | null;
   startingPrice?: number | string | null;
   licences?: BeatLicence[];
+};
+
+// Calls, headphones and other apps can stop the audio without telling the player.
+const audioIsRunning = () => {
+  const element = document.querySelector<HTMLAudioElement>("audio[data-bvs-station-audio]");
+  return !element || (!element.paused && !element.ended);
 };
 
 const normalize = (value: string | null | undefined) =>
@@ -45,14 +52,22 @@ const producerPrice = (beat?: PublicBeat) => {
 
 export default function BeatStoreCardLayout() {
   const player = useStationPlayer();
+  // Press handlers are bound once per button, so they read the player from here.
+  const playerRef = useRef(player);
+  const beatIndex = useRef<{ byKey: Map<string, PublicBeat>; byTitle: Map<string, PublicBeat> } | null>(null);
+
+  useEffect(() => {
+    playerRef.current = player;
+  }, [player]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("type") !== "beat") return;
 
     let disposed = false;
-    let beatsByKey = new Map<string, PublicBeat>();
-    let beatsByTitle = new Map<string, PublicBeat>();
+    const beatForCard = (title: string, producer: string) =>
+      beatIndex.current?.byKey.get(`${normalize(title)}::${normalize(producer)}`) ||
+      beatIndex.current?.byTitle.get(normalize(title));
 
     const enhance = () => {
       if (disposed) return;
@@ -65,9 +80,7 @@ export default function BeatStoreCardLayout() {
         const title = card.querySelector("h2")?.textContent || "";
         const paragraphs = Array.from(card.querySelectorAll("p"));
         const producer = paragraphs[0]?.textContent || "";
-        const beat =
-          beatsByKey.get(`${normalize(title)}::${normalize(producer)}`) ||
-          beatsByTitle.get(normalize(title));
+        const beat = beatForCard(title, producer);
 
         const beatId = beat?.id;
         card.style.position = "relative";
@@ -127,12 +140,15 @@ export default function BeatStoreCardLayout() {
         const artwork = card.querySelector<HTMLElement>("div.relative.aspect-square");
         if (playButton instanceof HTMLButtonElement && artwork) {
           playButton.dataset.beatPlayControl = "true";
-          const isPause = playButton.textContent?.trim() === "Pause" || playButton.textContent?.trim() === "Ⅱ";
-          playButton.textContent = isPause ? "Ⅱ" : "▶";
-          playButton.setAttribute(
-            "aria-label",
-            isPause ? `Pause ${title}` : `Play ${title}`,
-          );
+          const liveNow = playerRef.current;
+          const shownText = playButton.textContent?.trim();
+          const isPause = beat?.id
+            ? beatPlayAction(liveNow.current?.id, liveNow.isPlaying && audioIsRunning(), beat.id) === "pause"
+            : shownText === "Pause" || shownText === "Ⅱ";
+          const glyph = isPause ? "Ⅱ" : "▶";
+          if (playButton.textContent !== glyph) playButton.textContent = glyph;
+          const playLabel = isPause ? `Pause ${title}` : `Play ${title}`;
+          if (playButton.getAttribute("aria-label") !== playLabel) playButton.setAttribute("aria-label", playLabel);
           Object.assign(playButton.style, {
             position: "absolute",
             left: "auto",
@@ -165,37 +181,37 @@ export default function BeatStoreCardLayout() {
                 event.stopPropagation();
                 event.stopImmediatePropagation();
 
-                const currentlyPaused = playButton.textContent?.trim() === "Ⅱ";
-                if (currentlyPaused) {
-                  player.pause();
-                  playButton.textContent = "▶";
-                  playButton.setAttribute("aria-label", `Play ${title}`);
+                // React can reuse this element after sorting, so resolve the beat at press time.
+                const pressedCard = playButton.closest("article");
+                const pressed = beatForCard(
+                  pressedCard?.querySelector("h2")?.textContent || "",
+                  pressedCard?.querySelector("p")?.textContent || "",
+                );
+                if (!pressed?.previewUrl) return;
+
+                const live = playerRef.current;
+                const action = beatPlayAction(live.current?.id, live.isPlaying && audioIsRunning(), pressed.id);
+                if (action === "pause") {
+                  live.pause();
                   return;
                 }
-
-                directory
-                  .querySelectorAll<HTMLButtonElement>('[data-beat-play-control="true"]')
-                  .forEach((button) => {
-                    button.textContent = "▶";
-                    const buttonTitle = button.closest("article")?.querySelector("h2")?.textContent || "beat";
-                    button.setAttribute("aria-label", `Play ${buttonTitle}`);
-                  });
-
-                player.playNow(
+                if (action === "resume") {
+                  void live.play();
+                  return;
+                }
+                live.playNow(
                   {
-                    id: beat.id,
-                    title: beat.title || title,
-                    artist: beat.producer || producer,
-                    src: beat.previewUrl!,
-                    artwork: beat.artworkUrl || undefined,
+                    id: pressed.id,
+                    title: pressed.title || title,
+                    artist: pressed.producer || producer,
+                    src: pressed.previewUrl,
+                    artwork: pressed.artworkUrl || undefined,
                     project: "BVS BeatStore",
-                    genre: beat.genre || undefined,
+                    genre: pressed.genre || undefined,
                     kind: "beat",
                   },
                   { from: "BeatStore" },
                 );
-                playButton.textContent = "Ⅱ";
-                playButton.setAttribute("aria-label", `Pause ${title}`);
               },
               true,
             );
@@ -304,23 +320,32 @@ export default function BeatStoreCardLayout() {
       });
     };
 
-    fetch("/api/beats?scope=public", { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then((payload: { beats?: PublicBeat[] }) => {
-        if (disposed) return;
-        const beats = Array.isArray(payload.beats) ? payload.beats : [];
-        beatsByKey = new Map(
-          beats.map((beat) => [
-            `${normalize(beat.title)}::${normalize(beat.producer)}`,
-            beat,
-          ]),
-        );
-        beatsByTitle = new Map(
-          beats.map((beat) => [normalize(beat.title), beat]),
-        );
-        enhance();
-      })
-      .catch(() => enhance());
+    // This effect re-runs on every player change; the catalogue only needs loading once.
+    const loadBeats = async () => {
+      const beats: PublicBeat[] = [];
+      let offset: number | null = 0;
+      while (offset !== null) {
+        const response: Response = await fetch(`/api/beats?scope=public&offset=${offset}`, { cache: "no-store" });
+        if (!response.ok) throw new Error("Beat catalogue unavailable");
+        const page = (await response.json()) as { beats?: PublicBeat[]; nextOffset?: number | null };
+        beats.push(...(Array.isArray(page.beats) ? page.beats : []));
+        const next: number | null | undefined = page.nextOffset;
+        offset = typeof next === "number" && next > offset ? next : null;
+      }
+      return beats;
+    };
+
+    if (!beatIndex.current) {
+      loadBeats()
+        .then((beats) => {
+          beatIndex.current = {
+            byKey: new Map(beats.map((beat) => [`${normalize(beat.title)}::${normalize(beat.producer)}`, beat])),
+            byTitle: new Map(beats.map((beat) => [normalize(beat.title), beat])),
+          };
+          if (!disposed) enhance();
+        })
+        .catch(() => enhance());
+    }
 
     let queued = false;
     const observer = new MutationObserver(() => {
@@ -335,12 +360,16 @@ export default function BeatStoreCardLayout() {
 
     const onResize = () => enhance();
     window.addEventListener("resize", onResize);
+    // Media events don't bubble, so listen on capture to catch the player's audio element.
+    const mediaEvents = ["play", "pause", "ended"];
+    mediaEvents.forEach((name) => document.addEventListener(name, enhance, true));
     enhance();
 
     return () => {
       disposed = true;
       observer.disconnect();
       window.removeEventListener("resize", onResize);
+      mediaEvents.forEach((name) => document.removeEventListener(name, enhance, true));
     };
   }, [player]);
 

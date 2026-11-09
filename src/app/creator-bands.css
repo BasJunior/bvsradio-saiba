@@ -3,6 +3,8 @@
 /* BeatStore uses rows, with six cards across desktop. */
 .bvs-beatstore-directory [data-beat-directory] { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .9rem; }
 .bvs-beatstore-directory [data-beat-directory] > article { min-width: 0; }
+/* Keep the small play square but give it a 44px target, so near misses don't open the card. */
+[data-beat-play-control="true"]::after { content: ""; position: absolute; inset: -12.5px; }
 .bvs-beatstore-directory [data-beat-directory] article > div.p-4 { padding: .8rem; }
 .bvs-beatstore-directory [data-beat-directory] article div.mt-3 { display: flex; flex-wrap: wrap; gap: .5rem; }
 @media (min-width: 768px) { .bvs-beatstore-directory [data-beat-directory] { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
