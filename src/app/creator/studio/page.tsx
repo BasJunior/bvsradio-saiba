@@ -9,6 +9,7 @@ import { useBrowserSession } from "@/lib/use-browser-session";
 import { useAccountJson } from "@/lib/use-account-json";
 import { trackEvent } from "@/lib/analytics";
 import BeatCrateChallenge from '@/components/BeatCrateChallenge';
+import StudioRightsPrompt from '@/components/StudioRightsPrompt';
 import { CRATE_CHALLENGE_ACTIVE } from '@/lib/beat-crate';
 import CreatorGrowthPanel from '@/components/CreatorGrowthPanel';
 import CreatorProfileArtwork from "@/components/CreatorProfileArtwork";
@@ -330,6 +331,7 @@ export default function CreatorStudioHome() {
         ))}
       </section>}
 
+      {(artist || producer) && <StudioRightsPrompt token={session?.access_token || ""} />}
       {studioPreferences.visibleCards.includes("business") && <section className="bvs-studio-business mt-10 rounded-3xl border border-white/10 bg-black/20 p-5 sm:p-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -341,6 +343,7 @@ export default function CreatorStudioHome() {
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <ManageLink href="/creator/studio/manage#releases" accent="core" label="Catalogue & status" detail={`${activity.catalogue} item${activity.catalogue === 1 ? "" : "s"}`} />
           {producer && <ManageLink href="/creator/studio/manage#beatstore" accent="beats" label="Your BeatStore" detail="Beats, pricing & review" />}
+          {(artist || producer) && <ManageLink href="/creator/studio/rights" label="Music rights" detail="Confirm society status" accent={producer && !artist ? "beats" : "core"} />}
           {(artist || producer) && <ManageLink href="/creator/studio/artwork" label="Cover artwork" detail="Upload a replacement" accent={producer && !artist ? "beats" : "core"} />}
           <ManageLink href="/creator/studio/earnings" label="Money" detail="Wallet & earnings" accent="money" />
           <ManageLink href="/creator/studio/manage#service-orders" label="Orders" detail="Client work" accent="marketplace" />

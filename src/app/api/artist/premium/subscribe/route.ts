@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { authUserId, serviceHeaders } from "@/lib/storage-upload";
 import { getPaynow, humanizePaynowError, paynowAuthEmail, paynowEnabled } from "@/lib/paynow";
 import { siteUrl } from "@/lib/stripe";
+import { premiumPaynowAllowed } from "@/lib/payment-rules";
 import {
   artistPremiumPriceUsd,
   artistPremiumSku,
@@ -29,6 +30,9 @@ export async function POST(req: Request) {
   }
   if (!paynowEnabled()) {
     return NextResponse.json({ error: "Paynow is not configured yet." }, { status: 503 });
+  }
+  if (!premiumPaynowAllowed()) {
+    return NextResponse.json({ error: "Please pay for Premium by card." }, { status: 403 });
   }
 
   const user = await authUserId(SUPABASE_URL, SERVICE, token);

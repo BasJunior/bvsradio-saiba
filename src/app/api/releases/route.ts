@@ -8,6 +8,8 @@ import {
   type ReleaseTrackRow,
 } from "@/lib/releases-server";
 import { authUserId } from "@/lib/storage-upload";
+import { RELEASE_GRANT_VERSION, cleanSocietyDeclaration } from "@/lib/rights-declarations";
+import { saveRightsDeclaration } from "@/lib/rights-declarations-server";
 import { creatorPublicName } from "@/lib/public-name";
 import {
   getCreatorUploadSession,
@@ -38,6 +40,9 @@ type ReleaseFinalizeBody = {
   description?: string;
   releaseType?: string;
   rightsConfirmed?: boolean;
+  societyStatus?: string;
+  societyName?: string;
+  grantAccepted?: boolean;
   explicit?: boolean;
   explicitDeclared?: boolean;
   copyrightYear?: number;
@@ -431,6 +436,7 @@ export async function POST(req: Request) {
     if (!release?.id) {
       return NextResponse.json({ error: "Release create returned empty." }, { status: 500 });
     }
+    await saveRightsDeclaration({ ownerUserId: user.id, releaseId: release.id, declaration: cleanSocietyDeclaration(body), grantVersion: RELEASE_GRANT_VERSION });
 
     const memberRows = tracks.map((t, i) => {
       const audioPath = String(t.audioPath);

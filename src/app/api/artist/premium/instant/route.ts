@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { premiumPaynowAllowed } from "@/lib/payment-rules";
 import { authUserId } from "@/lib/storage-upload";
 import { getPaynow, humanizePaynowError, paynowAuthEmail, paynowEnabled } from "@/lib/paynow";
 import { getStripe, siteUrl, stripeEnabled } from "@/lib/stripe";
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
     note: "One-time release fee. No monthly subscription.",
     releases: await listPremiumInstantReleases(user.id),
     stripeEnabled: stripeEnabled(),
-    paynowEnabled: paynowEnabled(),
+    paynowEnabled: paynowEnabled() && premiumPaynowAllowed(),
   });
 }
 
@@ -41,6 +42,7 @@ export async function POST(req: Request) {
   };
   const releaseId = String(body.releaseId || "").trim();
   const provider = body.provider === "paynow" ? "paynow" : "stripe";
+  if (provider === "paynow" && !premiumPaynowAllowed()) return NextResponse.json({ error: "Please pay for Premium by card." }, { status: 403 });
   if (!releaseId) return NextResponse.json({ error: "Choose an approved release." }, { status: 400 });
 
   const eligible = await assertPremiumInstantRelease(user.id, releaseId);

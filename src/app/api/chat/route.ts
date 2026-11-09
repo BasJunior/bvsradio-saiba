@@ -86,7 +86,7 @@ const topics: Topic[] = [
   {
     words: ["about", "who are you", "what is bvs", "best virtual sound", "zimbabwe"],
     answer: {
-      reply: "BVS stands for Best Virtual Sound. It brings independent music, radio, discovery and creator tools together—rooted in Zimbabwe and open to the world.",
+      reply: "BVS stands for Best Virtual Sound. It brings independent music, radio, discovery and creator tools together for artists everywhere.",
       links: [{ label: "About BVS", href: "/about" }],
     },
   },

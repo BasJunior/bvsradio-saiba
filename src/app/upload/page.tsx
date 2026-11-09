@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
+import SocietyDeclarationFields, { EMPTY_SOCIETY_DECLARATION, societyDeclarationError } from '@/components/SocietyDeclarationFields'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
@@ -129,6 +130,7 @@ function UploadPageInner() {
   const [audioFile, setAudioFile] = useState<File | null>(null)
   const [artworkFile, setArtworkFile] = useState<File | null>(null)
   const [rightsConfirmed, setRightsConfirmed] = useState(false)
+  const [societyDeclaration, setSocietyDeclaration] = useState(EMPTY_SOCIETY_DECLARATION)
   const [explicit, setExplicit] = useState(false)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState('')
@@ -343,6 +345,11 @@ function UploadPageInner() {
       setError('Tick “I control the necessary rights” before submitting.')
       return
     }
+    const societyError = societyDeclarationError(societyDeclaration)
+    if (societyError) {
+      setError(societyError)
+      return
+    }
     const check = isAllowedAudioFile(audioFile)
     if (!check.ok) {
       setError(check.error || 'Unsupported audio file.')
@@ -399,6 +406,9 @@ function UploadPageInner() {
             genre,
             description: description.trim(),
             rightsConfirmed: true,
+            societyStatus: societyDeclaration.status,
+            societyName: societyDeclaration.name.trim(),
+            grantAccepted: societyDeclaration.grantAccepted,
             explicit,
             audio: {
               name: audioFile.name,
@@ -927,6 +937,8 @@ function UploadPageInner() {
                 </span>
               </span>
             </label>
+
+            <SocietyDeclarationFields value={societyDeclaration} onChange={setSocietyDeclaration} />
 
             <label className="flex gap-3 rounded-xl border border-white/10 p-4 text-sm">
               <input

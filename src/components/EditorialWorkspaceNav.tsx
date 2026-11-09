@@ -25,6 +25,7 @@ export default function EditorialWorkspaceNav() {
       <Link href="/editorial/finance" aria-current={is('/editorial/finance') || (is('/admin/editorial/finance') && !is('/admin/editorial/finance/payouts')) ? 'page' : undefined} className="bvs-editorial-chip">Finance</Link>
       <Link href="/editorial/marketplace" aria-current={is('/editorial/marketplace') ? 'page' : undefined} className="bvs-editorial-chip">Marketplace</Link>
       <Link href="/editorial/disputes" aria-current={is('/editorial/disputes') ? 'page' : undefined} className="bvs-editorial-chip">Disputes</Link>
+      <Link href="/editorial/rights" aria-current={is('/editorial/rights') ? 'page' : undefined} className="bvs-editorial-chip">Rights</Link>
       <Link href="/editorial/newsletter" aria-current={is('/editorial/newsletter') ? 'page' : undefined} className="bvs-editorial-chip">Newsletter</Link>
       <Link href="/admin/creator-workflows" className="bvs-editorial-chip">Writing &amp; research</Link>
     </div>

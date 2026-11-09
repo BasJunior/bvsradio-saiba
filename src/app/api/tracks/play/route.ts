@@ -30,6 +30,16 @@ export async function POST(request: Request) {
       }),
     })
 
+    const country = request.headers.get('x-vercel-ip-country')?.toUpperCase() || ''
+    if (response.ok && /^[A-Z]{2}$/.test(country)) {
+      // Aggregated by day and country only. A failure here must not affect the play.
+      await fetch(`${url}/rest/v1/rpc/record_listener_country`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ p_country: country }),
+      }).catch(() => null)
+    }
+
     return new NextResponse(null, { status: response.ok ? 204 : 503 })
   } catch {
     return NextResponse.json({ error: 'Invalid play event.' }, { status: 400 })
