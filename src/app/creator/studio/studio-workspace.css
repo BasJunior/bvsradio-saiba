@@ -337,3 +337,25 @@
 @media (min-width: 1100px) { .bvs-studio-console > footer.bvs-studio-footer { grid-column: 2; width: auto; } }
 @media (max-width: 479px) { .bvs-studio-compact-beat > summary { grid-template-columns: 40px minmax(0,1fr) 80px 12px; } }
 @media (min-width: 1100px) { .bvs-studio-console > footer#studio-wallet { width: auto; } }
+
+/* Premium Song Lab lives at the bottom of the established Studio workspace. */
+.bvs-studio-song-lab-entry {
+  text-decoration: none;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+.bvs-studio-song-lab-entry[aria-current="page"] {
+  background: #c1ff5224;
+  box-shadow: inset 3px 0 #c1ff52;
+}
+@media (min-width: 1100px) {
+  .bvs-studio-console > .bvs-studio-workspace-nav > div {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+  .bvs-studio-console .bvs-studio-song-lab-entry {
+    margin-top: auto;
+    margin-bottom: 1rem;
+  }
+}
