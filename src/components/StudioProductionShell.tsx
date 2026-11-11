@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useBrowserSession } from "@/lib/use-browser-session";
 
 const sectionLinks = [
   { id: "artist-access", label: "Artist", accent: "core" },
@@ -40,6 +41,20 @@ const workspaceLinks: WorkspaceLink[] = [
 export default function StudioProductionShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [availableSections, setAvailableSections] = useState<string[]>([]);
+  const { session } = useBrowserSession();
+  const [songLabAllowed, setSongLabAllowed] = useState(false);
+
+  useEffect(() => {
+    const token = session?.access_token;
+    if (!token) { setSongLabAllowed(false); return; }
+    let active = true;
+    fetch("/api/creator/song-lab/access", {
+      headers: { Authorization: "Bearer " + token }, cache: "no-store",
+    }).then(async (response) => response.ok ? response.json() : { allowed: false })
+      .then((result) => { if (active) setSongLabAllowed(result.allowed === true); })
+      .catch(() => { if (active) setSongLabAllowed(false); });
+    return () => { active = false; };
+  }, [session?.access_token]);
 
   useEffect(() => {
     const refreshSections = () => {
@@ -116,6 +131,14 @@ export default function StudioProductionShell({ children }: { children: ReactNod
               ))}
               </nav></details>
           ) : null}
+
+          {songLabAllowed ? <Link href="/creator/studio/ai-song-lab"
+            aria-current={pathname.startsWith("/creator/studio/ai-song-lab") ? "page" : undefined}
+            className="bvs-studio-song-lab-entry mt-4 flex min-h-12 items-center justify-between gap-2 border border-[#c1ff52]/45 bg-[#c1ff52]/10 px-3 py-3 text-xs font-bold text-[#d8ff9c] hover:bg-[#c1ff52]/15"
+          >
+            <span><span aria-hidden="true">✦</span> AI Song Lab <span className="ml-1 text-[10px] font-normal uppercase tracking-wide">Premium</span></span>
+            <span aria-hidden="true">↗</span>
+          </Link> : null}
         </div>
       </div>
 
