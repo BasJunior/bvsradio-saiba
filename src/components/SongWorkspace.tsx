@@ -178,6 +178,7 @@ export default function SongWorkspace({ id }: { id: string }) {
                 <span className="rounded-full border border-brand/30 px-3 py-1 text-xs text-brand">{workspace.licenceCode.replaceAll('_', ' ')}</span>
               </div>
               <audio controls preload="metadata" src={workspace.audioUrl} className="mt-4 w-full" />
+              <Link href={"/creator/studio/ai-song-lab?workspace=" + encodeURIComponent(id)} className="mt-4 inline-flex min-h-11 items-center border border-brand/30 bg-brand/10 px-4 text-sm font-semibold text-brand hover:bg-brand/15">✦ Open in AI Song Lab <span className="ml-2 text-[10px] uppercase tracking-wider">Premium</span></Link>
             </div>
           ) : null}
 
