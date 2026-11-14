@@ -49,9 +49,19 @@ async function prepare(request: Request) {
         { error: "Artwork must be JPG, PNG or WebP." },
         { status: 400 },
       );
+    // Previews are served publicly once a listing is published, so keep them to short audio files.
+    if (kind === "preview" && (!["mp3", "m4a", "wav", "ogg"].includes(extension) || size > 20 * 1024 * 1024))
+      return NextResponse.json(
+        { error: "Previews must be MP3, M4A, WAV or OGG audio, 20 MB or smaller." },
+        { status: 400 },
+      );
     if (["artwork", "storefront_avatar", "storefront_banner"].includes(kind) && size > 10 * 1024 * 1024) return NextResponse.json({ error: "Images must be 10 MB or smaller." }, { status: 400 });
     const path = `marketplace/${identity.user.id}/${Date.now()}-${kind}-${crypto.randomUUID().slice(0, 6)}.${extension}`;
-    const contentType = ["artwork", "storefront_avatar", "storefront_banner"].includes(kind) ? ({ jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" }[extension] || "application/octet-stream") : String(file.type || "") || "application/octet-stream";
+    const contentType = ["artwork", "storefront_avatar", "storefront_banner"].includes(kind)
+      ? ({ jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" }[extension] || "application/octet-stream")
+      : kind === "preview"
+        ? ({ mp3: "audio/mpeg", m4a: "audio/mp4", wav: "audio/wav", ogg: "audio/ogg" }[extension] || "application/octet-stream")
+        : String(file.type || "") || "application/octet-stream";
     slots.push({
       kind,
       path,

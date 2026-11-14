@@ -5,6 +5,7 @@ import Link from "next/link";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase";
 import MarketplaceAvailabilityDesk from "@/components/MarketplaceAvailabilityDesk";
 import { storefrontSlug } from "@/lib/marketplace-storefronts";
+import { trackEvent } from "@/lib/analytics";
 import s from "./marketplace/desk.module.css";
 
 type Listing = {
@@ -331,14 +332,19 @@ export function CreatorMarketplaceDesk({
   };
   const choose = (kind: string, file?: File) => {
     if (!file) return;
-    const image = kind !== "asset";
-    const max = image ? 10 : 250;
+    const audioPreview = kind === "preview";
+    const image = kind !== "asset" && !audioPreview;
+    const max = image ? 10 : audioPreview ? 20 : 250;
     if (file.size > max * 1024 * 1024 || file.size === 0) {
       setError(`Choose a file between 1 byte and ${max} MB.`);
       return;
     }
     if (image && !/\.(jpe?g|png|webp)$/i.test(file.name)) {
       setError("Choose a JPG, PNG or WebP image.");
+      return;
+    }
+    if (audioPreview && !/\.(mp3|m4a|wav|ogg)$/i.test(file.name)) {
+      setError("Choose an MP3, M4A, WAV or OGG audio preview.");
       return;
     }
     const previous = uploadRef.current[kind];
@@ -463,7 +469,7 @@ export function CreatorMarketplaceDesk({
   const clearListingUploads = () =>
     setUploads((v) => {
       const next = { ...v };
-      for (const k of ["asset", "artwork"]) {
+      for (const k of ["asset", "artwork", "preview"]) {
         if (next[k]?.preview) URL.revokeObjectURL(next[k].preview!);
         delete next[k];
       }
@@ -516,7 +522,7 @@ export function CreatorMarketplaceDesk({
         throw new Error(
           "Confirm the rights and listing claims before submitting.",
         );
-      const paths = await uploadFiles(["asset", "artwork"]);
+      const paths = await uploadFiles(["asset", "artwork", "preview"]);
       const old = listings.find((x) => x.id === editor.id);
       const p = await request({
         action: "save_listing",
@@ -537,6 +543,8 @@ export function CreatorMarketplaceDesk({
         submit,
       });
       setEditor((v) => (v ? { ...v, id: p.listing.id } : v));
+      if (submit && editor.listingType === "digital_product")
+        trackEvent("product_submitted", { category: editor.category, has_preview: Boolean(paths.previewPath || old?.preview_path) });
       setListingDirty(false);
       await load(token);
       setNotice(
@@ -636,13 +644,19 @@ export function CreatorMarketplaceDesk({
           <span className={`block ${s.muted}`}>
             {kind === "asset"
               ? "Private customer download · up to 250 MB"
-              : "JPG, PNG or WebP · up to 10 MB"}
+              : kind === "preview"
+                ? "Public demo buyers can play before buying · MP3, M4A, WAV or OGG · up to 20 MB"
+                : "JPG, PNG or WebP · up to 10 MB"}
           </span>
           <input
             disabled={busy}
             type="file"
             accept={
-              kind === "asset" ? undefined : "image/jpeg,image/png,image/webp"
+              kind === "asset"
+                ? undefined
+                : kind === "preview"
+                  ? "audio/mpeg,audio/mp4,audio/wav,audio/ogg,.mp3,.m4a,.wav,.ogg"
+                  : "image/jpeg,image/png,image/webp"
             }
             onChange={(e) => {
               choose(kind, e.target.files?.[0]);
@@ -1186,6 +1200,15 @@ export function CreatorMarketplaceDesk({
                           "artwork",
                           "Listing artwork",
                           existing?.artwork_url,
+                        )}
+                      </div>
+                      <div>
+                        {uploadBox("preview", "Audio preview")}
+                        {existing?.preview_path && !uploads.preview && (
+                          <p className={s.muted}>
+                            Your current preview is attached. Choose a file only
+                            to replace it.
+                          </p>
                         )}
                       </div>
                       <Field label="Software / version compatibility" wide>

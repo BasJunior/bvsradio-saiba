@@ -68,6 +68,12 @@ export const analyticsEvents = [
   "activation_task_complete",
   "activation_completed",
   "web_vital",
+  "product_shelf_view",
+  "product_view",
+  "product_preview_play",
+  "product_add_to_cart",
+  "product_submitted",
+  "product_download",
 ] as const
 
 export type AnalyticsEvent = (typeof analyticsEvents)[number]

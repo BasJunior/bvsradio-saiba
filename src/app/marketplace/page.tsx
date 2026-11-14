@@ -131,6 +131,7 @@ export default function MarketplacePage() {
           <a href="#providers" className="rounded-full bg-brand px-5 py-2.5 font-semibold text-black shadow-[0_10px_28px_rgba(212,175,55,.18)]">Studios &amp; engineers</a>
           <a href="#services" className="rounded-full border border-white/15 bg-white/[.03] px-5 py-2.5">Browse services</a>
           <Link href="/catalogue?type=beat#beatstore" className="rounded-full border border-white/15 bg-white/[.03] px-5 py-2.5">BeatStore</Link>
+          <Link href="/marketplace/products" className="rounded-full border border-white/15 bg-white/[.03] px-5 py-2.5">Sound shelf</Link>
           <Link href="/creator/marketplace" className="rounded-full border border-brand/45 bg-brand/[.06] px-5 py-2.5 text-brand">My marketplace workspace</Link>
         </div>
       </section>
@@ -194,14 +195,19 @@ export default function MarketplacePage() {
       {liveProducts.length ? (
         <section className="mt-10 sm:mt-16" aria-labelledby="marketplace-products-title">
           <p className="bvs-section-kicker">Digital products</p>
-          <h2 id="marketplace-products-title" className="mt-2 text-3xl font-semibold">Creator tools and downloads</h2>
+          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+            <h2 id="marketplace-products-title" className="text-3xl font-semibold">Creator tools and downloads</h2>
+            <Link href="/marketplace/products" className="text-sm font-semibold text-brand hover:underline">Browse the sound shelf →</Link>
+          </div>
           <div className="mt-5 grid gap-4 sm:mt-6 sm:gap-5 md:grid-cols-2 lg:grid-cols-3">
             {liveProducts.map((item) => (
               <article key={item.id} className="bvs-surface bvs-surface-hover overflow-hidden rounded-[1.35rem] sm:rounded-2xl">
                 {item.artwork_path ? <img src={mediaUrlForStoredValue(item.artwork_path) || undefined} alt="" className="aspect-square w-full object-cover" /> : null}
                 <div className="p-4 sm:p-5">
                   <p className="bvs-chip bvs-chip-brand">{item.category.replaceAll("_", " ")}</p>
-                  <h3 className="mt-3 text-xl font-semibold">{item.title}</h3>
+                  <h3 className="mt-3 text-xl font-semibold">
+                    {item.slug ? <Link href={`/marketplace/products/${item.slug}`} className="hover:underline">{item.title}</Link> : item.title}
+                  </h3>
                   <p className="mt-2 text-sm text-text-secondary">{item.description}</p>
                   <div className="mt-4 flex items-center justify-between gap-3 sm:mt-5">
                     <strong>${Number(item.price_usd).toFixed(2)}</strong>

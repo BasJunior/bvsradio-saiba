@@ -14,6 +14,9 @@ function marketplaceRoute(pathname: string, root: string, search: string, hash: 
     return `${root}/marketplace${suffix ? `?${suffix}` : ""}${hash}`;
   }
   if (pathname === "/marketplace") return withQueryAndHash(`${root}/marketplace`, search, hash);
+  // The web sound shelf has no in-app page; keep its links inside the app Marketplace
+  // instead of treating "products" as a provider name.
+  if (pathname === "/marketplace/products" || pathname.startsWith("/marketplace/products/")) return `${root}/marketplace${hash}`;
   const match = pathname.match(/^\/marketplace\/([^/]+)(?:\/(book))?$/);
   if (!match?.[1]) return null;
   params.set("provider", decodeURIComponent(match[1]));

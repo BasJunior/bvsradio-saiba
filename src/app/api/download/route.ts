@@ -4,6 +4,7 @@ import path from "path";
 import { loadOrder } from "@/lib/orders";
 import { resolveProductAsset, verifyDownloadToken } from "@/lib/products";
 import { signedR2DownloadUrl } from "@/lib/r2-storage";
+import { recordServerEvent } from "@/lib/analytics-server";
 
 /**
  * Secure product download from VPS bvsradio-products folder.
@@ -39,6 +40,13 @@ export async function GET(req: Request) {
       { status: 404 },
     );
   }
+
+  // Measures delivery, not people: no customer details are attached.
+  void recordServerEvent("product_download", {
+    product_id: parsed.itemId.slice(0, 80),
+    product_type: String(item?.type || "unknown").slice(0, 40),
+    storage: asset.kind,
+  }).catch(() => undefined);
 
   if (asset.kind === "r2") {
     const signed = await signedR2DownloadUrl(asset.key, 300, asset.filename);
