@@ -28,6 +28,7 @@ type Workspace = {
   musicalKey?: string | null
   genre?: string | null
   audioUrl?: string | null
+  mixer?: 'available' | 'upgrade' | 'hidden'
 }
 
 const sections = ['Intro', 'Verse', 'Pre-Chorus', 'Chorus', 'Bridge', 'Outro']
@@ -71,6 +72,8 @@ export default function SongWorkspace({ id }: { id: string }) {
       setDirty(false)
       setSaveState('saved')
       trackEvent('lyrics_pad_open', { workspace: true, kind: next.workspaceKind || 'licensed' })
+      if (next.mixer === 'upgrade') trackEvent('studio_mixer_gate_view', { workspace: true })
+      if (next.mixer === 'available') trackEvent('studio_mixer_open', { workspace: true })
     }).catch(() => { if (active) setError('Could not open Song Workspace.') })
     return () => { active = false; invalidateGeneration() }
   }, [id, invalidateGeneration])
@@ -194,6 +197,13 @@ export default function SongWorkspace({ id }: { id: string }) {
             <summary className="min-h-10 cursor-pointer font-semibold">Song notes <span className="font-normal text-text-secondary">(private)</span></summary>
             <textarea value={notes} onChange={(e) => { setNotes(e.target.value); markDirty() }} placeholder="Melody ideas, recording notes, ad-libs, reference tracks…" className="mt-4 min-h-36 w-full rounded-2xl border border-white/10 bg-black/20 p-4 text-sm leading-6 outline-none focus:border-brand" />
           </details>
+          {workspace.mixer !== 'hidden' && workspace.mixer ? <section className="mt-5 rounded-3xl border border-white/10 bg-white/[.02] p-5 sm:p-6" aria-labelledby="studio-mixer-heading">
+            <p className="text-xs font-semibold uppercase tracking-[.18em] text-brand">Studio</p>
+            <h2 id="studio-mixer-heading" className="mt-2 text-xl font-semibold">Mixer</h2>
+            {workspace.mixer === 'available'
+              ? <p className="mt-2 text-sm text-text-secondary">Your mixer workspace is ready. Track and audio tools are coming next.</p>
+              : <><p className="mt-2 text-sm text-text-secondary">The Studio Mixer is available with an active paid BVS membership.</p><Link href="/premium" className="mt-4 inline-flex rounded-full border border-brand/40 px-4 py-2 text-sm font-semibold text-brand">Explore Premium →</Link></>}
+          </section> : null}
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
