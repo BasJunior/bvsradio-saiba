@@ -125,6 +125,7 @@ export default function AppExploreClient({
   };
   const discoveryHome = !needle && kind === "all" && mode === "fresh";
   const beatStore = !needle && mode === "beats";
+  const beatDirectory = beatStore || kind === "beats";
   const activeMode = exploreModes.find((item) => item.value === mode) || exploreModes[0];
 
   useEffect(() => {
@@ -169,8 +170,9 @@ export default function AppExploreClient({
     <div className="bvs-app-page mx-auto max-w-5xl px-4 pb-12 pt-5 sm:px-6" data-app-accent={beatStore ? "beats" : "discover"}>
       <header className="flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <p className="bvs-app-eyebrow">{beatStore ? "Production to build on" : "Find your next favourite"}</p>
+          <p className="bvs-app-eyebrow">{beatStore ? "BVS BeatStore" : "Find your next favourite"}</p>
           <h1 className="mt-1 text-[2.4rem] font-bold leading-none tracking-tight sm:text-6xl">{beatStore ? "BeatStore" : "Discover"}</h1>
+          {beatStore ? <p className="mt-3 max-w-2xl text-sm leading-6 text-white/60">Find your sound. Listen to beats, explore producer crates and choose your licence.</p> : null}
         </div>
         <Link href={`/app/${surface}/trending`} aria-label="BVS Trending chart" className="bvs-app-icon-button border border-white/15"><LibIcon name="trending" /></Link>
       </header>
@@ -205,7 +207,7 @@ export default function AppExploreClient({
 
       {unavailable ? <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-amber-200/25 bg-amber-200/[.05] p-3 text-sm text-white/65"><p className="min-w-0 flex-1">Some results couldn’t load, so this list may be incomplete.</p><button type="button" onClick={() => { search.retry(); }} className="bvs-app-pill">Retry loading</button></div> : null}
 
-      {!query.trim() && kind === "all" ? (
+      {!query.trim() && kind === "all" && !beatStore ? (
         <section className="mt-5 flex items-center gap-4" aria-labelledby="discover-picks-heading">
           <CoverMosaic images={heroArt} seed={`discover-${mode}-${round}`} className="w-28 shrink-0 sm:w-36" />
           <div className="min-w-0 flex-1">
@@ -323,12 +325,33 @@ export default function AppExploreClient({
       {show("beats") && filtered.beats.length ? (
         <section className="bvs-app-shelf bvs-discover-beats" aria-labelledby="discover-beats-heading">
           <div className="flex items-center justify-between gap-3">
-            <h2 id="discover-beats-heading" className="bvs-app-shelf-title">Beats to build on</h2>
+            <div>
+              {beatDirectory ? <p className="bvs-app-eyebrow">Beat licences</p> : null}
+              <h2 id="discover-beats-heading" className="bvs-app-shelf-title">{beatDirectory ? "Browse beats" : "Beats to build on"}</h2>
+            </div>
             {(search.counts.beat || 0) > filtered.beats.length ? <button type="button" aria-label="Show more beats" onClick={() => { setKind("beats"); setLimit(value => kind === "beats" ? value + 24 : 24); }} className="inline-flex min-h-9 shrink-0 items-center gap-0.5 whitespace-nowrap px-2 text-[13px] font-semibold" style={{ color: "rgb(var(--bvs-page-accent))" }}>See all<LibIcon name="chevron" size={15} /></button> : null}
           </div>
-          <div className="mt-2">
+          <div className={beatDirectory ? "mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3" : "mt-2"}>
             {filtered.beats.map((item) => (
-              <article key={item.id} className="bvs-app-row min-w-0 py-3">
+              <article key={item.id} className={beatDirectory ? "min-w-0 overflow-hidden border border-white/10 bg-white/[.03]" : "bvs-app-row min-w-0 py-3"}>
+                {beatDirectory ? <>
+                  <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} aria-label={`View ${item.title}`} className="relative block aspect-square overflow-hidden bg-white/[.05]">
+                    <ExploreArtwork src={item.artworkUrl} label="Beat" sizes="(min-width: 640px) 33vw, 50vw" />
+                    <span className="absolute left-2 top-2 bg-black/75 px-2 py-1 text-[10px] font-semibold uppercase tracking-[.15em] text-white">Beat licence</span>
+                  </Link>
+                  <div className="p-3">
+                    <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} className="block min-w-0">
+                      <h3 className="truncate text-sm font-semibold">{item.title}</h3>
+                      <p className="mt-1 truncate text-xs text-white/55">{item.producer || "BVS producer"}</p>
+                    </Link>
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-x-2 gap-y-1 text-[11px] text-white/50">
+                      <span className="truncate">{item.genre || "Beat"}</span>
+                      <span>{item.bpm ? `${item.bpm} BPM` : "BPM —"}</span>
+                    </div>
+                    {typeof item.startingPrice === "number" && item.startingPrice > 0 ? <p className="mt-2 text-xs font-semibold text-[#c1a7ff]">From ${item.startingPrice}</p> : null}
+                    {item.previewUrl ? <div className="mt-3"><AppBeatPreviewPlayer title={item.title} artist={item.producer || "BVS producer"} preview={item.previewUrl} artwork={item.artworkUrl} genre={item.genre} beatId={item.id} surface={surface} compact /></div> : null}
+                  </div>
+                </> : <>
                 <div className="flex min-w-0 items-center gap-3">
                   <Link href={`/app/${surface}/beat/${encodeURIComponent(item.id)}`} aria-label={`View ${item.title}`} className="w-16 shrink-0">
                     <ExploreArtwork src={item.artworkUrl} label="Beat" sizes="64px" />
@@ -354,6 +377,7 @@ export default function AppExploreClient({
                     />
                   </div>
                 ) : null}
+                </>}
               </article>
             ))}
           </div>
