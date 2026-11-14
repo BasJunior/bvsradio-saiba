@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { studioMixerAccess, studioMixerPresentation } from '@/lib/studio-mixer-access'
 import {
   findBeatEntitlement,
   getOwnSongWorkspace,
@@ -30,7 +31,11 @@ export async function GET(
   const id = (await params).id
   const loaded = await loadActive(request, id)
   if ('error' in loaded) return NextResponse.json({ error: loaded.error }, { status: loaded.status })
-  return NextResponse.json({ workspace: await presentSongWorkspace(loaded.row, loaded.entitlement, true) })
+  const [workspace, mixerAccess] = await Promise.all([
+    presentSongWorkspace(loaded.row, loaded.entitlement, true),
+    studioMixerAccess(request),
+  ])
+  return NextResponse.json({ workspace: { ...workspace, mixer: studioMixerPresentation(mixerAccess) } })
 }
 
 export async function PATCH(
