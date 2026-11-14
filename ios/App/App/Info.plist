@@ -65,6 +65,41 @@
 			</array>
 		</dict>
 	</dict>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>play.fill</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Play BVS Radio</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.bvsradio.app.play</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>magnifyingglass</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Search</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.bvsradio.app.search</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>heart.fill</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>My Library</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.bvsradio.app.library</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemIconSymbolName</key>
+			<string>dot.radiowaves.left.and.right</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>Feed</string>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.bvsradio.app.feed</string>
+		</dict>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>

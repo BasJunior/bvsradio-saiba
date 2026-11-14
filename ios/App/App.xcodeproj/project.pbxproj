@@ -21,6 +21,9 @@
 		5ECC7AD70B8D3B440D081847 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DD03AF3340A38962355824F /* WidgetKit.framework */; };
 		98863C16D0E129A022AAE474 /* BVSWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29FD42C742B33A76880E9142 /* BVSWidget.swift */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
+		B5A0000000000000000000A2 /* BvsPlaybackIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A0000000000000000000A1 /* BvsPlaybackIntents.swift */; };
+		B5A0000000000000000000A3 /* BvsPlaybackIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A0000000000000000000A1 /* BvsPlaybackIntents.swift */; };
+		B5A0000000000000000000A5 /* BvsReviewPrompt.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A0000000000000000000A4 /* BvsReviewPrompt.swift */; };
 		C763AA826D27997FA01E0D62 /* BvsNowPlayingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734345533710E3D76FAF56D4 /* BvsNowPlayingStore.swift */; };
 		F1C3F9F9E743300D6CCA3486 /* BvsNowPlayingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 734345533710E3D76FAF56D4 /* BvsNowPlayingStore.swift */; };
 /* End PBXBuildFile section */
@@ -64,6 +67,8 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		675EDA17F3BE6FB749B3E677 /* BVSWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BVSWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		6ABC5C8BCE4D11FE654F0297 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/SwiftUI.framework; sourceTree = DEVELOPER_DIR; };
+		B5A0000000000000000000A1 /* BvsPlaybackIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BvsPlaybackIntents.swift; sourceTree = "<group>"; };
+		B5A0000000000000000000A4 /* BvsReviewPrompt.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BvsReviewPrompt.swift; sourceTree = "<group>"; };
 		734345533710E3D76FAF56D4 /* BvsNowPlayingStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BvsNowPlayingStore.swift; sourceTree = "<group>"; };
 		8DD03AF3340A38962355824F /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/WidgetKit.framework; sourceTree = DEVELOPER_DIR; };
 		90FF9766D14C71EB0201C2B2 /* BvsAppIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BvsAppIntents.swift; sourceTree = "<group>"; };
@@ -137,6 +142,8 @@
 				50B271D01FEDC1A000F3C39B /* public */,
 				90FF9766D14C71EB0201C2B2 /* BvsAppIntents.swift */,
 				734345533710E3D76FAF56D4 /* BvsNowPlayingStore.swift */,
+				B5A0000000000000000000A1 /* BvsPlaybackIntents.swift */,
+				B5A0000000000000000000A4 /* BvsReviewPrompt.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -315,6 +322,8 @@
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				2D47B469A3F789E7ED5693C5 /* BvsAppIntents.swift in Sources */,
 				C763AA826D27997FA01E0D62 /* BvsNowPlayingStore.swift in Sources */,
+				B5A0000000000000000000A2 /* BvsPlaybackIntents.swift in Sources */,
+				B5A0000000000000000000A5 /* BvsReviewPrompt.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -324,6 +333,7 @@
 			files = (
 				98863C16D0E129A022AAE474 /* BVSWidget.swift in Sources */,
 				F1C3F9F9E743300D6CCA3486 /* BvsNowPlayingStore.swift in Sources */,
+				B5A0000000000000000000A3 /* BvsPlaybackIntents.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

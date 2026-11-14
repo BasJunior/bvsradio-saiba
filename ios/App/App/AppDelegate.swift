@@ -17,6 +17,12 @@ class BvsSceneDelegate: UIResponder, UIWindowSceneDelegate {
         appDelegate?.window = window
         for context in connectionOptions.urlContexts { open(context) }
         for activity in connectionOptions.userActivities { continueActivity(activity) }
+        if let item = connectionOptions.shortcutItem { _ = appDelegate?.handleQuickAction(item) }
+    }
+
+    /// Home Screen quick actions (long-press the app icon) while the app is running.
+    func windowScene(_ windowScene: UIWindowScene, performActionFor shortcutItem: UIApplicationShortcutItem, completionHandler: @escaping (Bool) -> Void) {
+        completionHandler(appDelegate?.handleQuickAction(shortcutItem) ?? false)
     }
 
     func sceneDidBecomeActive(_ scene: UIScene) {
@@ -78,6 +84,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     private var canScrubTrack = false
     private var currentArtworkURL = ""
     private var widgetSnapshot = BvsNowPlayingStore.load()
+    private var lastCountedTrackTitle = ""
     private var pendingPushHref: String?
     private var pushActionBridgeReady = false
     private var pendingNativeMediaPayloads: [[String: Any]] = []
@@ -105,6 +112,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
             object: AVAudioSession.sharedInstance()
         )
         configureRemoteCommandsIfNeeded()
+        // Widget buttons and the Control Center control reach the player here.
+        BvsPlaybackRelay.handler = { [weak self] command in
+            self?.handleIntentMediaCommand(command)
+        }
         DispatchQueue.main.async { [weak self] in
             self?.configureNavigationGesturesIfNeeded()
         }
@@ -129,6 +140,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         configureRemoteCommandsIfNeeded()
         flushPendingNativeMediaCommands()
         applyMusicRemoteCommandPolicy()
+        BvsReviewPrompt.requestIfEligible(in: window?.windowScene)
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
@@ -291,7 +303,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         let center = MPNowPlayingInfoCenter.default()
 
         if action == "clear" {
-            updateWidget { $0.isPlaying = false }
+            updateWidget {
+                $0.isPlaying = false
+                $0.canSkip = false
+            }
             center.nowPlayingInfo = nil
             currentArtworkURL = ""
             canNextTrack = false
@@ -326,6 +341,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
 
             if let canNext = boolean(payload["canNext"]) {
                 canNextTrack = canNext
+                if widgetSnapshot.canSkip != canNext { updateWidget { $0.canSkip = canNext } }
             }
             if let canPrevious = boolean(payload["canPrevious"]) {
                 canPreviousTrack = canPrevious
@@ -343,6 +359,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
         }
         if let playing = boolean(payload["playing"]) {
             info[MPNowPlayingInfoPropertyPlaybackRate] = playing ? 1.0 : 0.0
+            // Count a track for the rating prompt only once it is actually playing.
+            if playing, let title = info[MPMediaItemPropertyTitle] as? String, title != lastCountedTrackTitle {
+                lastCountedTrackTitle = title
+                BvsReviewPrompt.recordTrackStarted()
+            }
             if playing != widgetSnapshot.isPlaying { updateWidget { $0.isPlaying = playing } }
         }
         center.nowPlayingInfo = info
@@ -677,6 +698,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate, WKScriptMessageHandler, U
     func handleIntentNavigation(_ path: String) {
         guard let url = URL(string: "bvsradio:/\(path)") else { return }
         _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: url, options: [:])
+    }
+
+    // MARK: Home Screen quick actions (UIApplicationShortcutItems in Info.plist)
+
+    func handleQuickAction(_ item: UIApplicationShortcutItem) -> Bool {
+        switch item.type {
+        case "com.bvsradio.app.play":
+            emitNativeMediaCommand("start-station")
+        case "com.bvsradio.app.search":
+            handleIntentNavigation("/search")
+        case "com.bvsradio.app.library":
+            handleIntentNavigation("/library")
+        case "com.bvsradio.app.feed":
+            handleIntentNavigation("/feed")
+        default:
+            return false
+        }
+        return true
     }
 
     private func flushPendingPushAction() {

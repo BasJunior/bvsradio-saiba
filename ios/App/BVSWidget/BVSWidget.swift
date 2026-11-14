@@ -1,3 +1,4 @@
+import AppIntents
 import SwiftUI
 import WidgetKit
 
@@ -129,10 +130,21 @@ struct BvsNowPlayingWidgetView: View {
             HStack(alignment: .top) {
                 BvsArtwork(image: entry.artwork).frame(width: 58, height: 58)
                 Spacer(minLength: 0)
-                // Tapping opens the app (or starts the station), so never show a pause glyph.
-                Image(systemName: snapshot.isPlaying ? "waveform.circle.fill" : "play.circle.fill")
-                    .font(.system(size: 30))
-                    .foregroundStyle(BvsWidgetStyle.lime)
+                if snapshot.isPlaying {
+                    // Pauses in place; the rest of the widget still opens the app.
+                    Button(intent: BvsWidgetPauseIntent()) {
+                        Image(systemName: "pause.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundStyle(BvsWidgetStyle.lime)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Pause")
+                } else {
+                    // Starting WebView audio needs the app, so this state opens it.
+                    Image(systemName: "play.circle.fill")
+                        .font(.system(size: 30))
+                        .foregroundStyle(BvsWidgetStyle.lime)
+                }
             }
             Spacer(minLength: 0)
             PlayStateBadge(isPlaying: snapshot.isPlaying)
@@ -176,15 +188,27 @@ struct BvsNowPlayingWidgetView: View {
 
     private func mediumButtons(compactLibrary: Bool) -> some View {
         HStack(spacing: 6) {
-            Link(destination: tapURL) {
-                Label(snapshot.isPlaying ? "Open" : "Listen", systemImage: snapshot.isPlaying ? "waveform" : "play.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .lineLimit(1)
-                    .fixedSize()
-                    .foregroundStyle(.black)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 7)
-                    .background(BvsWidgetStyle.lime, in: Capsule())
+            if snapshot.isPlaying {
+                Button(intent: BvsWidgetPauseIntent()) {
+                    primaryLabel("Pause", systemImage: "pause.fill")
+                }
+                .buttonStyle(.plain)
+                if snapshot.canSkip == true {
+                    Button(intent: BvsWidgetNextIntent()) {
+                        Image(systemName: "forward.end.fill")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 9)
+                            .padding(.vertical, 7)
+                            .background(Color.white.opacity(0.14), in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Skip track")
+                }
+            } else {
+                Link(destination: BvsWidgetStyle.playURL) {
+                    primaryLabel("Listen", systemImage: "play.fill")
+                }
             }
             Link(destination: BvsWidgetStyle.libraryURL) {
                 Group {
@@ -201,6 +225,17 @@ struct BvsNowPlayingWidgetView: View {
                 .background(Color.white.opacity(0.14), in: Capsule())
             }
         }
+    }
+
+    private func primaryLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.system(size: 12, weight: .bold))
+            .lineLimit(1)
+            .fixedSize()
+            .foregroundStyle(.black)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 7)
+            .background(BvsWidgetStyle.lime, in: Capsule())
     }
 
     private var rectangular: some View {
@@ -241,9 +276,29 @@ struct BvsNowPlayingWidget: Widget {
     }
 }
 
+// MARK: - Control Center / Lock Screen / Action button
+
+/// One-tap "Play BVS Radio" control. It opens the app and starts the station,
+/// because WebView audio cannot begin while the app is in the background.
+@available(iOS 18.0, *)
+struct BvsPlayControl: ControlWidget {
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: "com.bvsradio.app.control.play") {
+            ControlWidgetButton(action: BvsStartStationIntent()) {
+                Label("BVS Radio", systemImage: "radio.fill")
+            }
+        }
+        .displayName("Play BVS Radio")
+        .description("Open BVS Radio and start the station.")
+    }
+}
+
 @main
 struct BvsWidgetBundle: WidgetBundle {
     var body: some Widget {
         BvsNowPlayingWidget()
+        if #available(iOS 18.0, *) {
+            BvsPlayControl()
+        }
     }
 }

@@ -13,6 +13,9 @@ struct BvsNowPlayingSnapshot: Codable, Equatable {
     var isPlaying: Bool
     var hasArtwork: Bool
     var updatedAt: Date
+    /// True while the queue has a next track. Optional so snapshots written
+    /// by older builds still decode.
+    var canSkip: Bool?
 
     static let idle = BvsNowPlayingSnapshot(
         title: "BVS Radio",
